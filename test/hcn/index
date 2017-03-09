@@ -1,0 +1,7 @@
+
+	!! Product-is->Label
+	!! People-is->Label
+	!! test
+	: %[ test ].$( hcn ) : "./test/hcn/dir/index.hcn"
+	>:%[ test ].$( html )
+

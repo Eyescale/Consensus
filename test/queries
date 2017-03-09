@@ -1,0 +1,30 @@
+!! titi-is->toto
+!! titi-->toto
+!! titi-has->birthday
+>: 1. setup
+>:    !! titi-is->toto
+>:    !! titi-->toto
+>:    !! titi-has->birthday
+>:
+>: 2. queries
+>:    titi-.->toto	%[ titi-.->toto ]
+>:    titi-~->toto	%[ titi-~->toto ]
+>:    titi-~is->. 	%[ titi-~is->. ]
+>:    titi-[ ~is:~ ]->.	%[ titi-[ ~is:~ ]->. ]
+>:
+>:    .   	%[ . ]
+>:    ~   	%[ ~ ]
+>:    .-.->.	%[ .-.->. ]
+>:    [ ?:~ ]	%[ [ ?:~ ] ]
+>:    ..?  	%[ ..? ]
+>:    .-[ ?:~ ]->. %[ .-[ ?:~ ]->. ]
+>:
+: variable : .-.->? : [ .-is->toto ]
+>:3. variable
+>:3.1. expression       %variable
+>:     result(s)        %[ %variable ]
+: variable : [ [ [ ?:a-is->b ] ]-c->d ]
+>:3.2. expression       %variable
+>:     result(s)        %[ %variable ]
+>:
+

@@ -1,0 +1,14 @@
+
+	: titi : !! toto()
+		on init do exit
+		/
+	!! this-is->that
+	!! that-is->this
+	: %[ this-is->that ].$( narratives ) : %titi
+	>:this-is->that has the following narratives:
+	>:%[ this-is->that ].$( narratives )
+	>:%[ this-is->that ].toto()
+	: %[ that-is->this ].$( narratives ) : toto()
+	>:that-is->this has the following narratives:
+	>:%[ that-is->this ].$( narratives )
+	>:%[ that-is->this ].toto()

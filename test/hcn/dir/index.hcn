@@ -1,0 +1,23 @@
+<html>
+<body>
+<h1 style="text-align:center; font-weight:normal;">Welcome to Consensus!</h1>
+<<? %[ ?-is->Label ] >>
+	<ul>
+	<<? : ?-is->Label >>
+	<li> <a href="consensus.cgi?label=%?">%?</a>
+	<</>>
+	</ul>
+<</~>>
+	No label yet.
+<</>>
+
+<form action="consensus.cgi" method="get">
+Create label: <input type="text" name="new_label">
+<input type="submit" value="Send">
+</form>
+
+<hr>
+%console
+
+</body>
+</html>

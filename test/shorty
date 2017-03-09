@@ -1,0 +1,46 @@
+
+
+	: Patrick : Patrick-is->father
+	: Laure : !! Laure-is->mother
+	: Kimi : !! Kimi-is->mother
+	: Fei : !! Fei-is->mother
+	!! Jules-is->[ child<-has-%Patrick ]
+	!! Charles-is->[ child<-has-%Patrick ]
+	!! Koan-is->[ child<-has-%Patrick ]
+	!! Dawen-is->[ child<-has-%Patrick ]
+	!! Jules-is->[ child<-has-%Laure ]
+	!! Charles-is->[ child<-has-%Laure ]
+	!! Koan-is->[ child<-has-%Kimi ]
+	!! Dawen-is->[ child<-has-%Fei ]
+
+>: [ Fei.. ]                 %[ Fei.. ]
+>: [ [ Fei.. ].. ]           %[ [ Fei.. ].. ]
+>: ~[ ... ]                  %[ ~[ ... ] ]
+>: .:~%\[ ??? ]              %[ .:~%[ ??? ] ]
+>:
+>: [ ..child ]               %[ ..child ]
+>: ..[ child<-.. ]             %[ ..[ child<-.. ] ]
+>: [ ?-.->[ ..child ] ]      %[ ?-.->[ ..child ] ]
+>: [ ..[ ..child ] ]         %[ ..[ ..child ] ]
+>:
+>: ?-.->[ child<-has-[ Patrick.. ] ]    %[ ?-.->[ child<-has-[ Patrick.. ] ] ]
+>: ..[ child<-has-[ Patrick.. ] ]       %[ ..[ child<-has-[ Patrick.. ] ] ]
+>:
+>: ?..                       %[ ?.. ]
+>: .?.                       %[ .?. ]
+>: ..?                       %[ ..? ]
+>: ..[ [ ... ].. ]           %[ ..[ [ ... ].. ] ]
+>: ..[ [ ?.. ].. ]           %[ ..[ [ ?.. ].. ] ]
+>: ..[ [ .?. ].. ]           %[ ..[ [ .?. ].. ] ]
+>: ..[ [ ..? ].. ]           %[ ..[ [ ..? ].. ] ]
+>:
+>: variables
+: variable : [ [ [ [ ?.. ] ]<-has-[ [ c ] ] ]: d ]
+>: test 1. Collapsing        %variable
+: variable : [ .[ ..[ %variable ] ]. ]-[ ... ]->[ ?.. ]
+>: test 2. Formatting        %variable
+: variable1 : [ ?:[ a-is->b: %[ ?.. ] ]:~%[ .?. ] ]
+: variable2 : [ ?:[ a-is->b: %[ ?.. ] ]: %[ .?. ] ]
+>: test 3. as-sub            %variable1
+>:                           %variable2
+

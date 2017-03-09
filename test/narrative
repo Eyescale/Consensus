@@ -1,0 +1,47 @@
+
+	!! titi()
+	on init do ~.
+	in ?-is->toto in toto on :!! titi
+		do exit
+		then
+			in toto on event:that-is->true !*
+				do >:tto
+				do >:tti
+				/
+			in that do !!Tata then do exit
+			/
+	in a-is->[ b<-has-c ]:d do
+		>:hello
+		?:?-is->toto
+			>:%?
+			/
+		?%[ a-is->b ]
+			>:tt
+			/~
+			>:yy
+			/
+		/
+		
+		
+		.
+
+	in tata on :!* toto() do
+		>:what time is it?
+		/
+		then on :[ ?.. ]-is->bong !_
+			do !! titi
+			do !! toto
+			then do
+				>:come va?
+				/
+				then
+					do !!tata
+					/
+	/
+
+	>:
+	>:narrative titi()
+	>:----------------
+	>:
+	>:%.titi()
+	>:

@@ -1,0 +1,9 @@
+
+	!!is
+	!!People
+	!!Label
+	!!People-is->Label
+	: test : "is"
+	: %test.hcn : "./test/hcn.dir/i2.hcn"
+	>:%test.html
+

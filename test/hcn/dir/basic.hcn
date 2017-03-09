@@ -1,0 +1,6 @@
+<html>
+<body>
+	<< : titi : "hello, world\n" >>
+	<< >: %titi >>
+</body>
+</html>
