@@ -66,7 +66,7 @@ freeExpression( Expression *expression )
 }
 
 /*---------------------------------------------------------------------------
-	mark_negated
+	trace_mark, mark_negated
 ---------------------------------------------------------------------------*/
 int
 trace_mark( Expression *expression )

@@ -255,7 +255,7 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 			return 0;
 		}
 #ifdef DEBUG
-			fprintf( stderr, "debug> passed test_as_sub [ %d ]\n", as_sub );
+		fprintf( stderr, "debug> passed test_as_sub [ %d ]\n", as_sub );
 #endif
 		sub[ 3 ].ptr = entity;
 		sub[ 3 ].active = cn_is_active( entity );
@@ -672,13 +672,14 @@ resolve( Expression *expression )
 	if ( mark )
 	{
 		listItem *results = NULL;
-		if ( mark != 8 )
-		for ( int count=0; count<3; count++ )
-		{
-			if ( !( mark & ( 1 << count )) )
-				continue;
+		if ( mark != 8 ) {
+			for ( int count=0; count<3; count++ )
+			{
+				if ( !( mark & ( 1 << count )) )
+					continue;
 
-			extract_final_results( &results, expression, count, expression->result.list );
+				extract_final_results( &results, expression, count, expression->result.list );
+			}
 		}
 		if ( mark & 8 ) {
 			if ( results == NULL ) {
@@ -697,18 +698,14 @@ resolve( Expression *expression )
 		return 1;
 	}
 
+	// here we haven't found the mark yet
 	ExpressionSub *sub = expression->sub;
 	for ( int count = 0; count<4; count++ )
 	{
-#ifdef DO_LATER
 		if ( !sub[ count ].result.resolve )
 			continue;
+
 		Expression *e = sub[ count ].e;
-#else
-		Expression *e = sub[ count ].e;
-		if (( e == NULL ) || ( sub[ count ].result.identifier.type == VariableIdentifier ))
-			continue;
-#endif
 		if (( count == 3 ) || sub[ 1 ].result.none )
 		{
 			e->result.list = expression->result.list;
@@ -718,6 +715,7 @@ resolve( Expression *expression )
 		{
 			freeListItem( &e->result.list );
 			listItem *list = NULL;
+			// extract subs and transport results up to the next level
 			extract_final_results( &list, expression, count, expression->result.list );
 			e->result.list = list;
 		}
