@@ -5,6 +5,12 @@ language: cpp
 sudo: false
 os:
   - osx
+  - linux
+addons:
+  apt:
+    packages:
+    - cmake
+    - ninja-build
 env:
   global:
     - NINJA_STATUS="[%p %u/%t@%o %r]"
@@ -13,9 +19,10 @@ env:
   - BUILD_TYPE=Debug
   - BUILD_TYPE=Release
 before_install:
-  - brew update
-  - brew outdated cmake || brew upgrade cmake
-  - brew install ninja
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then (brew outdated cmake || brew upgrade cmake); fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install ninja; fi
+
 script:
   - mkdir $BUILD_TYPE
   - cd $BUILD_TYPE
