@@ -7,7 +7,6 @@
 
 _action read_expression;
 _action read_command;
-_action push_input_pipe;
 _action push_input_hcn;
 
 /*---------------------------------------------------------------------------

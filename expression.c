@@ -630,7 +630,7 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 	event = 0;
 	do
 	{
-	event = input( state, event, &same, context );
+	event = input( state, event, NULL, context );
 #ifdef DEBUG
 	fprintf( stderr, "debug> read_as_sub: in \"%s\", on '%c'\n", state, event );
 #endif
@@ -807,7 +807,7 @@ static int
 read_shorty( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = input( state, event, &same, context );
+	event = input( state, event, NULL, context );
 #ifdef DEBUG
 	fprintf( stderr, "debug> read_shorty: in \"%s\", on '%c'\n", state, event );
 #endif
@@ -1110,7 +1110,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 	end
 
 	do {
-	event = input( state, event, &same, context );
+	event = input( state, event, NULL, context );
 #ifdef DEBUG
 	fprintf( stderr, "debug> parse_expression: in \"%s\", on '%c'\n", state, (event==-1)?'E':event );
 #endif

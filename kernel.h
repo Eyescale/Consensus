@@ -184,6 +184,7 @@ typedef struct {
 	Registry entities;	// { ( entity, narrative-pseudo ) }
 	Registry instances;	// { ( entity, narrative-instance ) }
 	unsigned int deactivate : 1;
+	unsigned int assigned : 1;
 }
 Narrative;
 
@@ -320,6 +321,7 @@ typedef struct {
 			unsigned int one : 1;
 			unsigned int block : 1;
 			unsigned int output : 1;
+			unsigned int script : 1;
 		} mode;
 		struct {
 			struct {
@@ -391,12 +393,14 @@ extern
 #ifdef KERNEL_C
 char *base = "base";
 char *same = "same";
+char *out = "out";
 char *pop_state = "pop";
 char *this_symbol = "%";
 char *variator_symbol = "?";
 #else
 extern char *base;
 extern char *same;
+extern char *out;
 extern char *pop_state;
 extern char *this_symbol;
 extern char *variator_symbol;

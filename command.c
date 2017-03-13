@@ -10,6 +10,7 @@
 
 #include "api.h"
 #include "command.h"
+#include "frame.h"
 #include "input.h"
 #include "output.h"
 #include "expression.h"
@@ -24,9 +25,6 @@
 ---------------------------------------------------------------------------*/
 #define	command_do_( a, s ) \
 	event = command_execute( a, &state, event, s, context );
-
-#define BRKOUT if ( context->narrative.mode.one ) command_do_( nothing, "" ) else
-#define BRKERR if ( context->narrative.mode.one ) command_do_( error, "" ) else
 
 static int
 command_execute( _action action, char **state, int event, char *next_state, _context *context )
@@ -45,6 +43,11 @@ command_execute( _action action, char **state, int event, char *next_state, _con
 	{
 		event = action( *state, event, &next_state, context );
 		*state = next_state;
+	}
+	else if ( !strcmp( next_state, out ) )
+	{
+		action( *state, event, &next_state, context );
+		*state = "";
 	}
 	else
 	{
@@ -231,14 +234,17 @@ command_narrative( char *state, int event, char **next_state, _context *context 
 		; listItem *last_i = NULL, *next_i;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
 			next_i = i->next;
-			if ( !overwrite_narrative(( Entity *) i->ptr, context ) ) {
+			if ( !overwrite_narrative(( Entity *) i->ptr, context ) )
+			{
 				clipListItem( &context->expression.results, i, last_i, next_i );
-			} else last_i = i;
+			}
+			else last_i = i;
 		}
 		read_narrative( state, event, next_state, context );
 		Narrative *narrative = context->narrative.current;
 		if ( narrative == NULL ) {
-			return log_error( context, 0, "Narrative empty - not instantiated" );
+			fprintf( stderr, "consensus> Warning: Narrative empty - not instantiated\n" );
+			return 0;
 		}
 		int do_register = 0;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
@@ -278,16 +284,19 @@ command_narrative( char *state, int event, char **next_state, _context *context 
 static int
 exit_narrative( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
+	switch ( context->control.mode ) {
+	case FreezeMode:
 		return 0;
-
-	if ( context->narrative.current == NULL ) {
-		return log_error( context, event, "'exit' command only supported in narrative mode" );
-	}
-	else if ( context->narrative.mode.block && ( context->control.mode == InstructionMode ) ) {
-		return log_error( context, event, "'exit' is not a supported instruction - use 'do exit' action instead" );
-	}
-	else {
+	case InstructionMode:
+		if ( context->narrative.mode.one )
+			break;
+	case ExecutionMode:
+		if ( context->narrative.current == NULL ) {
+			return log_error( context, event, "'exit' command only supported in narrative mode" );
+		}
+		else if ( context->narrative.mode.block && ( context->control.mode == InstructionMode ) ) {
+			return log_error( context, event, "'exit' is not a supported instruction - use 'do exit' action instead" );
+		}
 		context->narrative.current->deactivate = 1;
 	}
 	return event;
@@ -302,7 +311,7 @@ read_va( char *state, int event, char **next_state, _context *context )
 	event = 0;	// we know it is '$'
 	state = base;
 	do {
-	event = input( state, event, &same, context );
+	event = input( state, event, NULL, context );
 #ifdef DEBUG
 	fprintf( stderr, "debug> read_va: in \"%s\", on '%c'\n", state, event );
 #endif
@@ -500,7 +509,7 @@ command_push_input( InputType type, int event, _context *context )
 	return 0;
 }
 
-int
+static int
 push_input_pipe( char *state, int event, char **next_state, _context *context )
 {
 	return command_push_input( PipeInput, event, context );
@@ -515,7 +524,7 @@ push_input_hcn( char *state, int event, char **next_state, _context *context )
 /*---------------------------------------------------------------------------
 	command_pop
 ---------------------------------------------------------------------------*/
-int
+static int
 command_pop( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
@@ -561,9 +570,10 @@ command_pop( char *state, int event, char **next_state, _context *context )
 			freeInstructionBlock( context );
 		} else {
 			reorderListItem( &context->record.instructions );
-			stack->loop.begin = context->record.instructions;
-			context->control.execute = context->record.instructions;
-			push_input( NULL, context->control.execute->ptr, BlockStringInput, context );
+			listItem *instruction = context->record.instructions;
+			stack->loop.begin = instruction;
+			context->control.execute = instruction;
+			push_input( NULL, instruction->ptr, BlockStringInput, context );
 			*next_state = base;
 			do_pop = 0;
 		}
@@ -636,20 +646,61 @@ command_pop( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	system_frame
+---------------------------------------------------------------------------*/
+static int
+system_frame( char *state, int event, char **next_state, _context *context )
+{
+	if ( context_check( 0, 0, ExecutionMode ) && !strcmp( state, base ) &&
+	   ( context->control.level == 0 ) && ( event == 0 ) ) {
+
+		// 1. translate occurrences into events
+		// 2. translate events into actions
+		// 3. execute actions
+		for ( int i=0; i<3; i++ ) {
+			command_do_( systemFrame, same );
+		}
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	command_error
+---------------------------------------------------------------------------*/
+static int
+command_error( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->narrative.mode.one || context->narrative.mode.script )
+	{
+		*next_state = "";
+	}
+	else
+	{
+		command_do_( flush_input, same );
+		*next_state = base;
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
 	read_command
 ---------------------------------------------------------------------------*/
+#define BRKOUT if ( context->narrative.mode.one ) command_do_( nothing, "" ) else
+#define BRKERR if ( context->narrative.mode.one ) command_do_( error, "" ) else
+#define RETURN ( context->narrative.mode.one ? out : base )
+
 int
 read_command( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = input( state, event, &same, context );
+	event = input( state, event, NULL, context );
 
 #ifdef DEBUG
 	fprintf( stderr, "main: \"%s\", '%c'\n", state, event );
 #endif
 
 	bgn_
-	on_( -1 )	BRKOUT command_do_( flush_input, base )
+	on_( -1 )	command_do_( command_error, base )
 	in_( base ) bgn_
 		on_( ' ' )	command_do_( nop, same )
 		on_( '\t' )	command_do_( nop, same )
@@ -677,25 +728,40 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '%' )	command_do_( nop, "!. %" )
 				on_other	command_do_( read_expression, "!. expression" )
 				end
-				in_( "!. expression" ) bgn_
-					on_( ' ' )	BRKOUT command_do_( nop, same )
-					on_( '\t' )	BRKOUT command_do_( nop, same )
-					on_( '\n' )	BRKOUT command_do_( command_expression, base )
-					on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
-					on_other	BRKOUT command_do_( error, base )
-					end
+				in_( "!. expression" )
+					if ( context->narrative.mode.one ) bgn_
+						on_( ' ' )	command_do_( command_expression, out )
+						on_( '\t' )	command_do_( command_expression, out )
+						on_( '\n' )	command_do_( command_expression, out )
+						on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+						on_other	command_do_( nothing, out )
+						end
+					else bgn_
+						on_( ' ' )	command_do_( nop, same )
+						on_( '\t' )	command_do_( nop, same )
+						on_( '\n' )	command_do_( command_expression, base )
+						on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+						on_other	command_do_( error, base )
+						end
 				in_( "!. narrative(" ) bgn_
 					on_( ' ' )	command_do_( nop, same )
 					on_( '\t' )	command_do_( nop, same )
 					on_( ')' )	command_do_( nop, "!. narrative(_)" )
 					on_other	command_do_( error, base )
 					end
-					in_( "!. narrative(_)" ) bgn_
-						on_( ' ' )	BRKOUT command_do_( nop, same )
-						on_( '\t' )	BRKOUT command_do_( nop, same )
-						on_( '\n' )	BRKOUT command_do_( command_narrative, base )
-						on_other	BRKOUT command_do_( error, base )
-						end
+					in_( "!. narrative(_)" )
+						if ( context->narrative.mode.one ) bgn_
+							on_( ' ' )	command_do_( command_narrative, out )
+							on_( '\t' )	command_do_( command_narrative, out )
+							on_( '\n' )	command_do_( command_narrative, out )
+							on_other	command_do_( nothing, out )
+							end
+						else bgn_
+							on_( ' ' )	command_do_( nop, same )
+							on_( '\t' )	command_do_( nop, same )
+							on_( '\n' )	command_do_( command_narrative, base )
+							on_other	command_do_( error, base )
+							end
 				in_( "!. %" ) bgn_
 					on_( '[' )	command_do_( nop, "!. %[" )
 					on_other	command_do_( read_expression, "!. expression" )
@@ -726,12 +792,19 @@ read_command( char *state, int event, char **next_state, _context *context )
 											on_( ')' )	command_do_( nop, "!. %[_].arg(_)" )
 											on_other	command_do_( error, base )
 											end
-											in_( "!. %[_].arg(_)" ) bgn_
-												on_( ' ' )	BRKOUT command_do_( nop, same )
-												on_( '\t' )	BRKOUT command_do_( nop, same )
-												on_( '\n' )	BRKOUT command_do_( command_narrative, base )
-												on_other	BRKOUT command_do_( error, base )
-												end
+											in_( "!. %[_].arg(_)" )
+												if ( context->narrative.mode.one ) bgn_
+													on_( ' ' )	command_do_( command_narrative, out )
+													on_( '\t' )	command_do_( command_narrative, out )
+													on_( '\n' )	command_do_( command_narrative, out )
+													on_other	command_do_( nothing, out )
+													end
+												else bgn_
+													on_( ' ' )	command_do_( nop, same )
+													on_( '\t' )	command_do_( nop, same )
+													on_( '\n' )	command_do_( command_narrative, base )
+													on_other	command_do_( error, base )
+													end
 		in_( "~" ) bgn_
 			on_( '.' )	command_do_( nop, "~." )
 			on_other	command_do_( error, base )
@@ -753,7 +826,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_other	command_do_( error, base )
 					end
 					in_( "exit" ) bgn_
-						on_( '\n' )	BRKOUT command_do_( exit_narrative, base ) // ONLY IN NARRATIVE MODE
+						on_( '\n' )	command_do_( exit_narrative, RETURN ) // ONLY IN NARRATIVE MODE
 						on_other	command_do_( error, base )
 						end
 
@@ -787,7 +860,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 		on_other	command_do_( error, base )
 		end
 		in_( ">:" ) bgn_
-			on_( '\n' )	BRKOUT command_do_( output_char, base )
+			on_( '\n' )	command_do_( output_char, RETURN )
 			on_( '%' )	command_do_( nop, ">: %" )
 			on_other	command_do_( output_char, same )
 			end
@@ -795,12 +868,12 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '?' )	command_do_( output_variator_value, ">:" )
 				on_( '.' )	command_do_( set_results_to_nil, ">: %[_]." )
 				on_( '[' )	command_do_( nop, ">: %[" )
-				on_( '\n' )	BRKOUT command_do_( output_mod, base )
+				on_( '\n' )	command_do_( output_mod, RETURN )
 				on_separator	command_do_( output_mod, ">:" )
 				on_other	command_do_( read_identifier, ">: %variable" )
 				end
 				in_( ">: %variable" ) bgn_
-					on_( '\n' )	BRKOUT command_do_( output_variable_value, base )
+					on_( '\n' )	command_do_( output_variable_value, RETURN )
 					on_other	command_do_( output_variable_value, ">:" )
 					end
 				in_( ">: %[" ) bgn_
@@ -812,7 +885,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 						in_( ">: %[_]" ) bgn_
 							on_( '.' )	command_do_( nop, ">: %[_]." )
-							on_( '\n' )	BRKOUT command_do_( output_expression_results, base )
+							on_( '\n' )	command_do_( output_expression_results, RETURN )
 							on_other	command_do_( output_expression_results, ">:" )
 							end
 					in_( ">: %[_]." ) bgn_
@@ -821,7 +894,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_other	command_do_( read_argument, ">: %[_].arg" )
 						end
 						in_( ">: %[_].$" ) bgn_
-							on_( '\n' )	BRKOUT command_do_( output_va, base )
+							on_( '\n' )	command_do_( output_va, RETURN )
 							on_other	command_do_( output_va, ">:" )
 							end
 						in_( ">: %[_].arg" ) bgn_
@@ -837,7 +910,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 								on_other	command_do_( error, base )
 								end
 								in_( ">: %[_].narrative(_)" ) bgn_
-									on_( '\n' )	BRKOUT command_do_( output_narrative, base )
+									on_( '\n' )	command_do_( output_narrative, RETURN )
 									on_other	command_do_( output_narrative, ">:" )
 									end
 
@@ -937,7 +1010,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 				in_( ": identifier : expression" ) bgn_
 					on_( '(' )	command_do_( set_results_to_nil, ": identifier : narrative(" )
-					on_( '\n' )	BRKOUT command_do_( assign_expression, base )
+					on_( '\n' )	command_do_( assign_expression, RETURN )
 					on_other	command_do_( error, base )
 					end
 				in_( ": identifier : %" ) bgn_
@@ -956,7 +1029,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 							in_( ": identifier : %[_]" ) bgn_
 								on_( ' ' )	command_do_( nop, same )
 								on_( '\t' )	command_do_( nop, same )
-								on_( '\n' )	BRKOUT command_do_( assign_results, base )
+								on_( '\n' )	command_do_( assign_results, RETURN )
 								on_other	command_do_( error, base )
 								end
 				in_( ": identifier : !" ) bgn_
@@ -975,7 +1048,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 						in_( ": identifier : !. expression" ) bgn_
 							on_( '(' )	command_do_( set_results_to_nil, ": identifier : !. narrative(" )
-							on_( '\n' )	BRKOUT command_do_( assign_results, base )
+							on_( '\n' )	command_do_( assign_results, RETURN )
 							on_other	command_do_( error, base )
 							end
 						in_( ": identifier : !. narrative(" ) bgn_
@@ -987,10 +1060,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 							in_( ": identifier : !. narrative(_)" ) bgn_
 								on_( ' ' )	command_do_( nop, same )
 								on_( '\t' )	command_do_( nop, same )
-								on_( '\n' )	BRKOUT {
-										command_do_( command_narrative, same )
-										command_do_( assign_narrative, base )
-										}
+								on_( '\n' )	command_do_( command_narrative, same )
+										command_do_( assign_narrative, RETURN )
 								on_other	command_do_( error, base )
 								end
 				in_( ": identifier : narrative(" ) bgn_
@@ -1002,7 +1073,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					in_( ": identifier : narrative(_)" ) bgn_
 						on_( ' ' )	command_do_( nop, same )
 						on_( '\t' )	command_do_( nop, same )
-						on_( '\n' )	BRKOUT command_do_( assign_narrative, base )
+						on_( '\n' )	command_do_( assign_narrative, RETURN )
 						on_other	command_do_( error, base )
 						end
 
@@ -1048,14 +1119,14 @@ read_command( char *state, int event, char **next_state, _context *context )
 							in_( ": %[_].$: %arg" ) bgn_
 								on_( ' ' )	command_do_( nop, same )
 								on_( '\t' )	command_do_( nop, same )
-								on_( '\n' )	BRKOUT command_do_( set_va_from_variable, base )
+								on_( '\n' )	command_do_( set_va_from_variable, RETURN )
 								on_other	command_do_( error, base )
 								end
 						in_( ": %[_].$: arg" ) bgn_
 							on_( ' ' )	command_do_( nop, same )
 							on_( '\t' )	command_do_( nop, same )
 							on_( '(' )	command_do_( nop, ": %[_].$: arg(" )
-							on_( '\n' )	BRKOUT command_do_( set_va, base )
+							on_( '\n' )	command_do_( set_va, RETURN )
 							on_other	command_do_( error, base )
 							end
 							in_( ": %[_].$: arg(" ) bgn_
@@ -1067,7 +1138,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 								in_( ": %[_].$: arg(_)" ) bgn_
 									on_( ' ' )	command_do_( nop, same )
 									on_( '\t' )	command_do_( nop, same )
-									on_( '\n' )	BRKOUT command_do_( set_va, base )
+									on_( '\n' )	command_do_( set_va, RETURN )
 									on_other	command_do_( error, base )
 									end
 
@@ -1092,13 +1163,24 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_( ')' )	command_do_( nop, ":< %( string )" )
 						on_other	command_do_( error, base )
 						end
-						in_( ":< %( string )" ) bgn_
-							on_( ' ' )	BRKOUT command_do_( nop, same )
-							on_( '\t' )	BRKOUT command_do_( nop, same )
-							on_( '\n' )	BRKOUT command_do_( push_input_pipe, base )
-							on_other	command_do_( error, base )
-							end
+						in_( ":< %( string )" )
+							if ( context->narrative.mode.one ) bgn_
+								on_( ' ' )	command_do_( push_input_pipe, out )
+								on_( '\t' )	command_do_( push_input_pipe, out )
+								on_( '\n' )	command_do_( push_input_pipe, out )
+								on_other	command_do_( nothing, out )
+								end
+							else bgn_
+								on_( ' ' )	command_do_( nop, same )
+								on_( '\t' )	command_do_( nop, same )
+								on_( '\n' )	command_do_( push_input_pipe, base )
+								on_other	command_do_( error, base )
+								end
 	end
+
+	// invoke system frame upon each return to base
+	command_do_( system_frame, same )
+
 	}
 	while ( strcmp( state, "" ) );
 

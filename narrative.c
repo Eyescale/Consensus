@@ -215,7 +215,7 @@ read_narrative_in( char *state, int event, char **next_state, _context *context 
 {
 	state = "i";
 	do {
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "i" ) bgn_
 			on_( 'n' )	narrative_do_( nop, "in" )
@@ -281,7 +281,7 @@ read_narrative_on( char *state, int event, char **next_state, _context *context 
 {
 	state = "o";
 	do {
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "o" ) bgn_
 			on_( 'n' )	narrative_do_( nop, "on" )
@@ -413,7 +413,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	state = base;
 	do
 	{
-		event = input( state, event, &same, context );
+		event = input( state, event, NULL, context );
 #ifdef DEBUG
 		fprintf( stderr, "debug> read_narrative_event: in \"%s\", on '%c'\n", state, event );
 #endif
@@ -557,7 +557,7 @@ read_narrative_then( char *state, int event, char **next_state, _context *contex
 	int read_from_base = !strcmp( state, base );
 	state = "t";
 	do {
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "t" ) bgn_
 			on_( 'h' )	narrative_do_( nop, "th" )
@@ -633,7 +633,7 @@ read_narrative_do( char *state, int event, char **next_state, _context *context 
 {
 	state = "d";
 	do {
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "d" ) bgn_
 			on_( 'o' )	narrative_do_( nop, "do" )
@@ -733,8 +733,9 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 				fprintf( stderr, "\t" );
 			context->control.prompt = 0;
 		}
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 		bgn_
+		on_( -1 )	narrative_do_( nothing, "" )
 		in_( base ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )
 			on_( '\t' )	narrative_do_( nop, same )
@@ -829,17 +830,8 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 static int
 narrative_init( char *state, int event, char **next_state, _context *context )
 {
-	switch ( context->control.mode )
-	{
-	case FreezeMode:
-		*next_state = "";
-		break;
-	case InstructionMode:
-		*next_state = "";
-		return log_error( context, event, "narrative definition is only supported in Execution Mode" );
-	case ExecutionMode:
-		break;
-	}
+	context->narrative.mode.script = ( context->input.stack != NULL );
+
 	context->narrative.backup.identifier.ptr = context->identifier.id[ 0 ].ptr;
 	context->identifier.id[ 0 ].ptr = NULL;
 	context->narrative.backup.expression.results = context->expression.results;
@@ -860,8 +852,8 @@ narrative_init( char *state, int event, char **next_state, _context *context )
 /*---------------------------------------------------------------------------
 	narrative_exit
 ---------------------------------------------------------------------------*/
-int
-narrative_exit( _context *context )
+static int
+narrative_exit( char *state, int event, char **next_state, _context *context )
 {
 	Narrative *narrative = context->narrative.current;
 
@@ -894,21 +886,61 @@ narrative_exit( _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	narrative_error
+---------------------------------------------------------------------------*/
+static int
+narrative_error( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->narrative.mode.script )
+	{
+		free( context->record.string.ptr );
+		context->record.string.ptr = NULL;
+		freeInstructionBlock( context );
+
+		while ( context->control.level >= context->narrative.level )
+			pop( base, 0, NULL, context );
+
+		if ( context->input.stack != NULL )
+			pop_input( base, 0, NULL, context );
+
+		freeNarrative( context->narrative.current );
+		context->narrative.current = NULL;
+		*next_state = "";
+	}
+	else
+	{
+		narrative_do_( flush_input, same );
+		*next_state = base;
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
 	read_narrative
 ---------------------------------------------------------------------------*/
 int
 read_narrative( char *state, int event, char **next_state, _context *context )
 {
+	switch ( context->control.mode )
+	{
+	case FreezeMode:
+		return 0;
+	case InstructionMode:
+		return log_error( context, event, "narrative definition is only supported in Execution Mode" );
+	case ExecutionMode:
+		break;
+	}
+
 	narrative_do_( narrative_init, base );
 
 	while( strcmp( state, "" ) )
 	{
-		event = input( state, event, &same, context );
+		event = input( state, event, NULL, context );
 #ifdef DEBUG
 		fprintf( stderr, "debug> narrative: in \"%s\", on '%c'\n", state, event );
 #endif
 		bgn_
-		on_( -1 )	narrative_do_( flush_input, base )
+		on_( -1 )	narrative_do_( narrative_error, base )
 		in_( base ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )
 			on_( '\t' )	narrative_do_( nop, same )
@@ -1056,8 +1088,8 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 				end
 		end
 	}
-	narrative_exit( context );
 
+	narrative_do_( narrative_exit, same );
 	return event;
 }
 

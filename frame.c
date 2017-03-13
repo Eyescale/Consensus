@@ -15,6 +15,8 @@
 #include "narrative.h"
 #include "variables.h"
 
+// #define DEBUG
+
 /*---------------------------------------------------------------------------
 	search_and_register_events	- recursive
 ---------------------------------------------------------------------------*/
@@ -283,29 +285,46 @@ execute_narrative_actions( Narrative *instance, _context *context )
 	context->narrative.current = instance;
 	context->narrative.level = context->control.level + 1;
 
+	// frame.occurrences, frame.events and frame.actions are all LIFO
+	// we must reorder the actions to execute them in FIFO order
+	reorderListItem( &instance->frame.actions );
+
 	for ( listItem *i = instance->frame.actions; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
-
-		push( base, 0, &same, context );
-		int level = context->control.level;
-
-		context->narrative.mode.block = 1;
-		context->control.execute = occurrence->va.action.instructions;
-		push_input( NULL, context->control.execute->ptr, BlockStringInput, context );
-		int event = read_command( base, 0, &same, context );
-		pop_input( base, 0, &same, context );
-
-		if ( context->control.level == level ) {
-			// returned from '/' - did not pop yet (expecting then)
-			pop( base, 0, NULL, context );
-			for ( listItem *j = occurrence->sub.n; j!=NULL; j=j->next ) {
-				// we know there can be only one there...
-				addItem( &instance->frame.then, j->ptr );
-			}
-			break;
+		listItem *instruction = occurrence->va.action.instructions;
+		if ( instruction->next == NULL )
+		{
+			context->narrative.mode.one = 1;
+			push_input( NULL, instruction->ptr, APIStringInput, context );
+			int event = read_command( base, 0, &same, context );
+			pop_input( base, 0, NULL, context );
+			context->narrative.mode.one = 0;
 		}
-		context->narrative.mode.block = 0;
+		else
+		{
+			push( base, 0, &same, context );
+			int level = context->control.level;
+			context->control.execute = instruction;
+			context->record.level = level;
+			context->narrative.mode.block = 1;
+
+			push_input( NULL, instruction->ptr, BlockStringInput, context );
+                        ((StreamVA *) context->input.stack->ptr )->level--; // we want to call pop_input ourselves
+			int event = read_command( base, 0, &same, context );
+			pop_input( base, 0, NULL, context );
+
+			if ( context->control.level == level ) {
+				// returned from '/' - did not pop yet (expecting then)
+				pop( base, 0, NULL, context );
+				for ( listItem *j = occurrence->sub.n; j!=NULL; j=j->next ) {
+					// we know there can be only one there...
+					addItem( &instance->frame.then, j->ptr );
+				}
+				break;
+			}
+			context->narrative.mode.block = 0;
+		}
 
 		if ( instance->deactivate ) {
 			freeListItem( &instance->frame.then );
@@ -337,6 +356,9 @@ execute_narrative_actions( Narrative *instance, _context *context )
 int
 systemFrame( char *state, int e, char **next_state, _context *context )
 {
+#ifdef DEBUG
+	fprintf( stderr, "debug> entering systemFrame\n" );
+#endif
 	// perform actions registered from last frame, and update current conditions
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
@@ -345,6 +367,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		{
 			Entity *e = (Entity *) j->identifier;
 			Narrative *n = (Narrative *) j->value;
+#ifdef DEBUG
+			fprintf( stderr, "debug> systemFrame: invoking execute_narrative_actions()\n" );
+#endif
 			execute_narrative_actions( n, context );
 			if ( n->deactivate ) {
 				deregisterByValue( &narrative->instances, n );
@@ -365,7 +390,13 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			for ( listItem *i = n->frame.events; i!=NULL; i=i->next )
 			{
 				Occurrence *event = (Occurrence *) i->ptr;
-				search_and_register_actions( n, event, context );
+#ifdef DEBUG
+				fprintf( stderr, "debug> systemFrame: invoking search_and_register_actions()\n" );
+#endif
+				if ( event->registered ) {
+					event->registered = 0;	// no need to take the same route twice
+					search_and_register_actions( n, event, context );
+				}
 			}
 			freeListItem( &n->frame.events );
 		}
@@ -377,6 +408,10 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		Narrative *narrative = (Narrative *) i->ptr;
 		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
 		{
+#ifdef DEBUG
+			fprintf( stderr, "debug> systemFrame: invoking search_and_register_events() %0x\n",
+				(int) context->frame.log.entities.instantiated );
+#endif
 			Narrative *n = (Narrative *) j->value;
 			search_and_register_events( n, &n->root, context );
 			for ( listItem *j = n->frame.then; j!=NULL; j=j->next ) {
@@ -415,6 +450,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{
 			Entity *e = (Entity *) j->ptr;
+#ifdef DEBUG
+			fprintf( stderr, "debug> systemFrame: invoking activateNarrative()\n" );
+#endif
 			Narrative *n = activateNarrative( e, narrative );
 			search_and_register_init( n, &n->root, context );
 		}

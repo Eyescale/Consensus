@@ -587,9 +587,9 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			context->control.mode = InstructionMode;
 			context->narrative.mode.one = 1;
 
-			push_input( NULL, occurrence->va.action.instructions->ptr, APIStringInput, context );
+			push_input( NULL, instruction->ptr, APIStringInput, context );
 			int event = read_command( base, 0, &same, context );
-			pop_input( base, 0, &same, context );
+			pop_input( base, 0, NULL, context );
 
 			context->narrative.mode.one = 0;
 			context->control.mode = ExecutionMode;
@@ -604,14 +604,14 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			push( state, 0, &same, context );
 			context->control.level = level;
 			context->control.mode = InstructionMode;
-			context->control.execute = occurrence->va.action.instructions;
+			context->control.execute = instruction;
 			context->record.level = level;
 			context->narrative.mode.block = 1;
 
-			push_input( NULL, occurrence->va.action.instructions->ptr, BlockStringInput, context );
+			push_input( NULL, instruction->ptr, BlockStringInput, context );
 			((StreamVA *) context->input.stack->ptr )->level--; // we want to call pop_input ourselves
 			int event = read_command( base, 0, &same, context );
-			pop_input( base, 0, &same, context );
+			pop_input( base, 0, NULL, context );
 
 			if ( context->control.level == level ) {
 				// returned from '/' - did not pop yet (expecting then)
@@ -683,7 +683,7 @@ narrative_output_traverse( Occurrence *root, int level )
 			OccurrenceType type = occurrence->type;
 			if ( occurrence->sub.num == 0 ) {
 				narrative_output_standalone( occurrence, level );
-				if (( type == ActionOccurrence ) ? ( occurrence->va.action.instructions->next == NULL ) : 1 ) {
+				if (( type != ActionOccurrence ) || ( occurrence->va.action.instructions->next == NULL )) {
 					printf( "\n" );
 				}
 				occurrence = NULL;
@@ -748,7 +748,7 @@ narrative_output_traverse( Occurrence *root, int level )
 	}
 }
 
-static void
+void
 narrative_output( Narrative *narrative, _context *context )
 {
 	if ( narrative == NULL ) return;

@@ -55,7 +55,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 	}
 
 	if ( do_flush ) do {
-		event = input( state, 0, &same, context );
+		event = input( state, 0, NULL, context );
 	} while ( event != '\n' );
 
 	switch ( context->control.mode ) {
@@ -69,6 +69,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 	case ExecutionMode:
 		if ( context->record.instructions == NULL )
 			break;
+
 		// here we are in the execution part of a loop => abort
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
 		log_error( context, 0, "aborting loop..." );
@@ -174,15 +175,16 @@ push_input( char *identifier, char *string, InputType type, _context *context )
 /*---------------------------------------------------------------------------
 	pop_input
 ---------------------------------------------------------------------------*/
-void
+int
 pop_input( char *state, int event, char **next_state, _context *context )
 {
 	StreamVA *input = (StreamVA *) context->input.stack->ptr;
 	int delta = context->control.level - input->level;
 	if ( delta > 0 ) {
-		log_error( context, 0, "reached premature EOF - restoring original stack level" );
+		event = log_error( context, 0, "reached premature EOF - restoring original stack level" );
 		while ( delta-- ) pop( state, event, next_state, context );
 	}
+	else event = 0;
 
 	free( input );
 	listItem *next_i = context->input.stack->next;
@@ -197,6 +199,7 @@ pop_input( char *state, int event, char **next_state, _context *context )
 			set_control_mode( ExecutionMode, 0, context );
 		}
 	}
+	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -310,7 +313,6 @@ input( char *state, int event, char **next_state, _context *context )
 					else if ( stream->mode.api ) {
 						stream->position--;
 						return '\n';
-						do_pop = 0;
 					}
 					else if ( stream->mode.variable ) {
 						registryEntry *entry = lookupByValue( context->input.string, stream );
@@ -340,7 +342,7 @@ input( char *state, int event, char **next_state, _context *context )
 
 				if ( do_pop ) {
 					stream->mode.pop = 0;
-					pop_input( state, event, next_state, context );
+					event = pop_input( state, event, next_state, context );
 				}
 			}
 		}
@@ -349,7 +351,7 @@ input( char *state, int event, char **next_state, _context *context )
 
 	// record instruction or expression if needed
 
-	switch( context->record.mode ) {
+	if ( event > 0 ) switch( context->record.mode ) {
 	case RecordInstructionMode:
 		if ( context->record.string.list == NULL ) {
 			string_start( &context->record.string, event );
@@ -425,7 +427,7 @@ read_identifier( char *state, int event, char **next_state, _context *context )
 
 	state = base;
 	do {
-		event = input( state, event, &same, context );
+		event = input( state, event, NULL, context );
 		bgn_
 		in_( base ) bgn_
 			on_( '\"' )	read_do_( identifier_start, "string" )

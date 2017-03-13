@@ -15,6 +15,7 @@
 #include "variables.h"
 
 // #define DEBUG
+#include "output.h"
 
 /*---------------------------------------------------------------------------
 	registerNarrative
@@ -135,16 +136,24 @@ duplicateNarrative( Occurrence *master, Occurrence *copy )
 		copy_sub->sub.num = 0;
 		duplicateNarrative( master_sub, copy_sub );
 	}
+	reorderListItem( &copy->sub.n );
 }
 
 Narrative *
 activateNarrative( Entity *entity, Narrative *narrative )
 {
-	Narrative *instance = (Narrative *) calloc( 1, sizeof( Narrative ) );
+	Narrative *instance;
 	registryEntry *entry = lookupByAddress( narrative->entities, entity );
-	instance->name = ( entry->value == NULL ) ? narrative->name : (char *) entry->value;
+	if (( entry->value == NULL ) && !narrative->assigned ) {
+		instance = narrative;
+		narrative->assigned = 1;
+	} else {
+		instance = (Narrative *) calloc( 1, sizeof( Narrative ) );
+		duplicateNarrative( &narrative->root, &instance->root );
+		instance->name = ( entry->value == NULL ) ?
+			narrative->name : (char *) entry->value;
+	}
 	set_this_variable( &instance->variables, entity );
-	duplicateNarrative( &narrative->root, &instance->root );
 	registerByAddress( &narrative->instances, entity, instance );
 	return instance;
 }

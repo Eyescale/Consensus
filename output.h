@@ -20,6 +20,7 @@ _action output_char;
 
 void	output_name( Entity *e, Expression *format, int base );
 void	prompt( _context *context );
+void	narrative_output( Narrative *narrative, _context *context );
 
 
 
