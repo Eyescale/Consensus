@@ -16,10 +16,10 @@
 		>: %? is the child of %[ [ [ ?-.->. ]-has->child ]<-is-%? ]
 		>: %[ [ [ ?.. ]-has->child ]<-is-%? ] are the parents of %?
 		?:[ ?-has->child ]<-is-%?
-			?%[ ?-is->father: %? ]
+			?%: ?-is->father: %?
 				>:	%[ ?-is->father: %? ] is the father
 				/
-			?%[ ?-is->mother: %? ]
+			?%: ?-is->mother: %?
 				>:	%[ ?-is->mother: %? ] is the mother
 				/
 			/

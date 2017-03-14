@@ -82,6 +82,8 @@ cn_free( Entity *e )
 		deregisterByAddress( (Registry *) &i->value, e );
 	}
 
+	// finally remove entity from CN.DB
+
 	removeItem( &CN.DB, e );
 	freeEntity( e );
 }
@@ -127,6 +129,46 @@ cn_va_get_value( char *va_name, Entity *e )
 	if ( entry == NULL ) return NULL;
 	return entry->value;
 
+}
+
+/*---------------------------------------------------------------------------
+	cn_instance
+---------------------------------------------------------------------------*/
+Expression *
+cn_expression( Entity *e )
+{
+	if ( e == NULL ) return NULL;
+
+	Expression *expression = (Expression *) calloc( 1, sizeof(Expression));
+	ExpressionSub *sub = expression->sub;
+	sub[ 3 ].result.any = 1;
+
+	if ( e == CN.nil ) {
+		sub[ 0 ].result.identifier.type = NullIdentifier;
+		sub[ 1 ].result.none = 1;
+		sub[ 2 ].result.none = 1;
+	}
+	else
+	{
+		char *name = cn_name( e );
+		if ( name != NULL ) {
+			sub[ 0 ].result.identifier.type = DefaultIdentifier;
+			sub[ 0 ].result.identifier.value = strdup( name );
+			sub[ 1 ].result.none = 1;
+			sub[ 2 ].result.none = 1;
+		}
+		else for ( int i=0; i<3; i++ ) {
+			char *name = cn_name( e->sub[ i ] );
+			if ( name != NULL ) {
+				sub[ i ].result.identifier.type = DefaultIdentifier;
+				sub[ i ].result.identifier.value = strdup( name );
+			} else {
+				sub[ i ].e = cn_expression( e->sub[ i ] );
+				sub[ i ].result.none = ( sub[ i ].e == NULL );
+			}
+		}
+	}
+	return expression;
 }
 
 /*---------------------------------------------------------------------------
@@ -186,10 +228,16 @@ cn_instantiate( Entity *source, Entity *medium, Entity *target )
 void
 cn_release( Entity *e )
 {
+	// we must find all instances where e is involved and release these as well.
+	for ( int i=0; i<3; i++ ) {
+		listItem *next_j;
+		for ( listItem *j=e->as_sub[ i ]; j!=NULL; j=next_j ) {
+			next_j = j->next;
+			cn_release( (Entity *) j->ptr );
+		}
+	}
+	addItem( &CN.context->frame.log.entities.released, cn_expression( e ) );
 	cn_free( e );
-#if 0
-	addItem( &CN.context->frame.log.entities.released, full_expression( e ) );
-#endif
 }
 
 /*---------------------------------------------------------------------------

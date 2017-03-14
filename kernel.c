@@ -148,7 +148,8 @@ push( char *state, int event, char **next_state, _context *context )
 		return 0;
 	}
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
+	if ( next_state != NULL )
+		stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
 	context->control.level++;
 
 	listItem *new_s = newItem( (StackVA *) calloc( 1, sizeof(StackVA) ) );

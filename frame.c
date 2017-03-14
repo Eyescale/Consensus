@@ -26,7 +26,7 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 	if ( occurrence->registered || ( log == NULL ))
 		return;	// either registered already or no such events logged in this frame
 
-	context->expression.mode = EvaluateMode;
+	context->expression.mode = ( occurrence->va.event.type.release ? ExpandedMode : EvaluateMode );
 	context->expression.filter = log;
 	int success = expression_solve( occurrence->va.event.expression, 3, context );
 	context->expression.filter = NULL;
@@ -46,7 +46,7 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 			variable = (VariableVA *) entry->value;
 			freeVariableValue( variable );
 		}
-		variable->type = EntityVariable;
+		variable->type = ( occurrence->va.event.type.release ? ExpressionVariable : EntityVariable );
 		variable->data.value = context->expression.results;
 		context->expression.results = NULL;
 	}
@@ -141,7 +141,7 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 				else if ( occurrence->va.event.type.deactivate )
 					log = context->frame.log.entities.deactivated;
 				else if ( occurrence->va.event.type.release )
-					;	// DO_LATER
+					log = context->frame.log.entities.released;
 				test_and_register_event( instance, log, occurrence, context );
 			}
 
@@ -279,7 +279,7 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 static int
 execute_narrative_actions( Narrative *instance, _context *context )
 {
-        push( base, 0, &same, context );
+        push( base, 0, NULL, context );
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	stack->variables = instance->variables;
 	context->narrative.current = instance;
@@ -303,7 +303,7 @@ execute_narrative_actions( Narrative *instance, _context *context )
 		}
 		else
 		{
-			push( base, 0, &same, context );
+			push( base, 0, NULL, context );
 			int level = context->control.level;
 			context->control.execute = instruction;
 			context->record.level = level;

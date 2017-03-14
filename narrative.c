@@ -666,10 +666,7 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 #ifdef DEBUG
 	fprintf( stderr, "debug> narrative: read action \"%s\" - returning '%c'\n", context->record.string.ptr, event );
 #endif
-	if ( event == -1 ) {
-		free( context->record.string.ptr );
-		context->record.string.ptr = NULL;
-	} else {
+	if ( event >= 0 ) {
 		// Note: context->record.instructions is assumed to be NULL here...
 		addItem( &context->record.instructions, context->record.string.ptr );
 		context->record.string.ptr = NULL;
@@ -796,7 +793,7 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 
 	if ( event < 0 )
 		;
-	if ( context->control.level == level ) {
+	else if ( context->control.level == level ) {
 		// returned from '/' - did not pop yet
 		event = read_action_closure( base, event, next_state, context );
 	}
@@ -882,6 +879,7 @@ narrative_exit( char *state, int event, char **next_state, _context *context )
 		}
 	}
 	context->narrative.level = 0;
+	context->narrative.mode.script = 0;
 	return 0;
 }
 

@@ -49,6 +49,7 @@ typedef enum {
 	DefaultIdentifier = 0,
 	StringIdentifier,
 	VariableIdentifier,
+	ListIdentifier,
 	NullIdentifier,
 }
 IdentifierType;
@@ -67,7 +68,7 @@ typedef enum {
 	ReleaseMode,
 	ActivateMode,
 	DeactivateMode,
-	TextMode,
+	ExpandedMode,
 	ErrorMode
 }
 ExpressionMode;
@@ -93,7 +94,7 @@ typedef struct _Expression {
 		struct {
 			struct {
 				IdentifierType type;
-				char *name;
+				void *value;
 			} identifier;
 			unsigned int active : 1;
 			unsigned int inactive : 1;
@@ -101,6 +102,7 @@ typedef struct _Expression {
 			unsigned int any : 1;
 			unsigned int none : 1;
 			unsigned int resolve : 1;
+			unsigned int lookup : 1;
 			listItem *list;
 		}
 		result;

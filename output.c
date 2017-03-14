@@ -90,11 +90,11 @@ test_shorty( Expression *expression )
 }
 
 int
-output_expression( ExpressionOutput cmp, Expression *expression, int i, int shorty )
+output_expression( ExpressionOutput component, Expression *expression, int i, int shorty )
 {
 	ExpressionSub *sub = expression->sub;
 	int mark = expression->result.mark;
-	switch ( cmp ) {
+	switch ( component ) {
 	case SubFlags:
 		if ( sub[ i ].result.active )
 			printf( "*" );
@@ -108,15 +108,15 @@ output_expression( ExpressionOutput cmp, Expression *expression, int i, int shor
 		printf( mark & ( 1 << i ) ? "?" : "." );
 		return 1;
 	case SubVariable:
-		if ( sub[ i ].result.identifier.name != NULL ) {
+		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			printf( "%%%s", sub[ i ].result.identifier.name );
+			printf( "%%%s", sub[ i ].result.identifier.value );
 		}
 		return 1;
 	case SubIdentifier:
-		if ( sub[ i ].result.identifier.name != NULL ) {
+		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			printf( "%s", sub[ i ].result.identifier.name );
+			printf( "%s", sub[ i ].result.identifier.value );
 		}
 		return 1;
 	case SubNull:
@@ -201,7 +201,10 @@ output_expression( ExpressionOutput cmp, Expression *expression, int i, int shor
 			if ( mark++ ) printf( ":" );
 			printf( sub[ 0 ].result.not ? "~" : "~." );
 		}
-		else if ( !sub[ 0 ].result.any || sub[ 0 ].result.active || sub[ 0 ].result.inactive ) {
+		else if ( sub[ 0 ].result.any && !sub[ 0 ].result.active && !sub[ 0 ].result.inactive ) {
+			if ( !mark ) { mark++; printf( "." ); }
+		}
+		else {
 			if ( mark++ ) printf( ": " );
 			output_expression( SubAll, expression, 0, 0 );
 		}
@@ -335,6 +338,27 @@ output_results( listItem *i, Expression *format )
 }
 
 static void
+output_expression_list( listItem *i )
+{
+	if ( i == NULL ) {
+		return;
+	}
+	else if ( i->next == NULL ) {
+		output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
+	}
+	else {
+		printf( "{ " );
+		output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
+		for ( i = i->next; i!=NULL; i=i->next )
+		{
+			printf( ", " );
+			output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
+		}
+		printf( " }" );
+	}
+}
+
+static void
 output_value( VariableVA *variable )
 {
 	switch ( variable->type ) {
@@ -360,7 +384,7 @@ output_value( VariableVA *variable )
 		}
 		break;
 	case ExpressionVariable:
-		output_expression( ExpressionAll, (Expression *) variable->data.value, -1, -1 );
+		output_expression_list( (listItem *) variable->data.value );
 		break;
 	case EntityVariable:
 		output_results( (listItem *) variable->data.value, NULL );
@@ -601,7 +625,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			char *state = base;
 			int backup = context->control.level;
 
-			push( state, 0, &same, context );
+			push( state, 0, NULL, context );
 			context->control.level = level;
 			context->control.mode = InstructionMode;
 			context->control.execute = instruction;

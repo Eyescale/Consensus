@@ -56,14 +56,17 @@ newEntity( Entity *source, Entity *medium, Entity *target )
 void
 freeEntity( Entity *entity )
 {
-	// we must find all instances where it is used and remove it from
-	// the corresponding as_source, as_medium and as_target lists
+	// we must find all instances where entity is involved and
+	// 1. replace entity with NULL in these instances
+	// 2. remove the instance from the as_source, as_medium and as_target
+	//    lists of the other terms.
 
 	for ( int i=0; i<3; i++ )
 	{
 		for ( listItem *j=entity->as_sub[ i ]; j!=NULL; j=j->next )
 		{
 			Entity *e = (Entity *) j->ptr;
+			e->sub[ i ] = NULL;
 			int k = (i+1)%3;
 			Entity *sub = e->sub[ k ];
 			if ( sub != NULL ) removeItem( &sub->as_sub[ k ], e );
@@ -74,7 +77,7 @@ freeEntity( Entity *entity )
 		freeListItem( &entity->as_sub[ i ] );
 	}
 
-	// now we must also remove it from the as_sub lists of its subs
+	// then we must also remove entity from the as_sub lists of its subs
 	for ( int i=0; i< 3; i++ )
 	{
 		Entity *sub = entity->sub[ i ];

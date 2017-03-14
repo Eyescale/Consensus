@@ -18,7 +18,7 @@
 #ifdef DEBUG
 #define DEBUG_1	\
 	fprintf( stderr, "solve: no sub-expression[ %d ], starting from %s, any:%d, active:%d, inactive:%d, mark:%d\n", \
-	count, expression->sub[count].result.identifier.name, expression->sub[count].result.any, expression->sub[count].result.active, \
+	count, expression->sub[count].result.identifier.value, expression->sub[count].result.any, expression->sub[count].result.active, \
 	expression->sub[count].result.inactive, ( expression->result.mark & ( 1 << count ) ) >> count );
 #define DEBUG_2 \
 	fprintf( stderr, "\tsource: %0x, any:%d, active: %d, inactive:%d: mark:%d\n", (int) r_sub[0], \
@@ -37,8 +37,6 @@
 #define DEBUG_1
 #define DEBUG_2
 #endif
-
-#define cn_expression( e )	NULL
 
 typedef struct {
 	unsigned int any : 1;
@@ -106,13 +104,13 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 		return;
 	}
 
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		ExpressionSub *s;
 		if ( type == IDENTIFIER )
 		{
 			s_loop( count, results, &s ) {
-				if ( !strcmp( s->result.identifier.name, (char *)instance ) ) {
+				if ( !strcmp( s->result.identifier.value, (char *)instance ) ) {
 					addItem( list, s );
 				}
 			}
@@ -129,7 +127,7 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 			} else if (( entity->sub[ 0 ] == NULL ) && ( entity->sub[ 2 ] == NULL )) {
 				char *identifier = (char *) entity->sub[ 1 ];
 				s_loop( count, results, &s ) {
-					if ( !strcmp( s->result.identifier.name, identifier ) )
+					if ( !strcmp( s->result.identifier.value, identifier ) )
 						addItem( list, s );
 				}
 			} else {
@@ -156,7 +154,7 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 			*list = results;
 		}
 	}
-	else	// not in TextMode
+	else	// not in ExpandedMode
 	{
 		Entity *e;
 		if ( instance != NULL )
@@ -230,7 +228,7 @@ first_candidate( listItem **sub, FlagSub *flag_sub, Expression *expression, list
 static int
 set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 {
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		ExpressionSub *entity = (ExpressionSub *) candidate->ptr;
 		sub[ 3 ].ptr = entity;
@@ -279,8 +277,8 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 static int
 solve( Expression *expression, int as_sub, listItem *results )
 {
-	listItem *sub[4], *candidate;
 	_context *context = CN.context;
+	ExpressionSub *sub = expression->sub;
 
 #ifdef DEBUG
 	fprintf( stderr, "debug> solve: entering - %0x\n", (int) expression );
@@ -290,24 +288,32 @@ solve( Expression *expression, int as_sub, listItem *results )
 	// ----------------------
 	for ( int count=0; count<4; count++ )
 	{
-		if ( expression->sub[ count ].result.none || expression->sub[ count ].result.any )
+		if ( sub[ count ].result.none || sub[ count ].result.any )
 			continue;
 
-		listItem **sub_results = &expression->sub[ count ].result.list;
+		listItem **sub_results = &sub[ count ].result.list;
 
-		int type = expression->sub[ count ].result.identifier.type;
+		int type = sub[ count ].result.identifier.type;
 		switch ( type ) {
 		case NullIdentifier:
 			filter_results( sub_results, expression, count, CN.nil, ENTITY, results );
 			if ( *sub_results == NULL ) return 0;
 			break;
 		case VariableIdentifier:
-			if ( expression->sub[ count ].result.identifier.name != NULL )
+			if ( sub[ count ].result.identifier.value != NULL )
 			{
-				char *identifier = expression->sub[ count ].result.identifier.name;
-				registryEntry *entry = lookupVariable( context, identifier );
+				char *identifier = sub[ count ].result.identifier.value;
+				registryEntry *entry;
+				if ( sub[ count ].result.lookup ) {
+					listItem *stack = context->control.stack;
+					context->control.stack = stack->next;
+					entry = lookupVariable( context, identifier );
+					context->control.stack = stack;
+				} else {
+					entry = lookupVariable( context, identifier );
+				}
 				if ( entry == NULL ) {
-					char *msg; asprintf( &msg, "variable '%%%s' not found in current scope", identifier );
+					char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
 					int retval = log_error( context, 0, msg ); free( msg );
 					return retval;
 				}
@@ -323,19 +329,27 @@ solve( Expression *expression, int as_sub, listItem *results )
 					filter_results( sub_results, expression, count, NULL, 0, results );
 					if (( results != NULL ) && ( *sub_results == NULL )) return 0;
 
-					context->expression.filter = *sub_results;
-					int sub_count = expression->sub[ 1 ].result.none ? 3 : count;
 					listItem *restore_filter = context->expression.filter;
-					int success = expression_solve( (Expression *) variable->data.value, sub_count, context );
+					context->expression.filter = *sub_results;
+					int sub_count = sub[ 1 ].result.none ? 3 : count;
+					listItem *last_results = NULL;
+					for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+						int success = expression_solve( (Expression *) i->ptr, sub_count, context );
+						if ( success <= 0 ) continue;
+
+						listItem *j = context->expression.results;
+						while ( j->next != NULL ) j=j->next;
+						j->next = last_results;
+						last_results = context->expression.results;
+						context->expression.results = NULL;
+					}
 					context->expression.filter = restore_filter;
 #ifndef MEMOPT
-					if (( count != 3 ) && ( !expression->sub[ 1 ].result.none ))
+					if (( count != 3 ) && ( !sub[ 1 ].result.none ))
 #endif
 						freeListItem( sub_results );
-					if ( success <= 0 ) return success;
-
-					*sub_results = context->expression.results;
-					context->expression.results = NULL;
+					if ( last_results == NULL ) return 0;
+					*sub_results = last_results;
 					break;
 				case NarrativeVariable:
 					; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
@@ -343,18 +357,18 @@ solve( Expression *expression, int as_sub, listItem *results )
 					return retval;
 				}
 			}
-			else if ( expression->sub[ count ].e != NULL )
+			else if ( sub[ count ].e != NULL )
 			{
 				filter_results( sub_results, expression, count, NULL, 0, results );
 				if (( results != NULL ) && ( sub_results == NULL )) return 0;
 
 				context->expression.filter = *sub_results;
-				int sub_count = expression->sub[ 1 ].result.none ? 3 : count;
+				int sub_count = sub[ 1 ].result.none ? 3 : count;
 				listItem *restore_filter = context->expression.filter;
-				int success = expression_solve( expression->sub[ count ].e, sub_count, context );
+				int success = expression_solve( sub[ count ].e, sub_count, context );
 				context->expression.filter = restore_filter;
 #ifdef MEMOPT
-				if (( count != 3 ) && ( !expression->sub[ 1 ].result.none ))
+				if (( count != 3 ) && ( !sub[ 1 ].result.none ))
 #endif
 					freeListItem( sub_results );
 				if ( success <= 0 ) return success;
@@ -367,12 +381,38 @@ solve( Expression *expression, int as_sub, listItem *results )
 				return log_error( context, 0, "expression terms are incomplete" );
 			}
 			break;
+		case ListIdentifier:
+			filter_results( sub_results, expression, count, NULL, 0, results );
+			if (( results != NULL ) && ( *sub_results == NULL )) return 0;
+
+			listItem *restore_filter = context->expression.filter;
+			context->expression.filter = *sub_results;
+			int sub_count = sub[ 1 ].result.none ? 3 : count;
+			listItem *last_results = NULL;
+			for ( listItem *i = (listItem *) sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+				int success = expression_solve( (Expression *) i->ptr, sub_count, context );
+				if ( success <= 0 ) continue;
+
+				listItem *j = context->expression.results;
+				while ( j->next != NULL ) j=j->next;
+				j->next = last_results;
+				last_results = context->expression.results;
+				context->expression.results = NULL;
+			}
+			context->expression.filter = restore_filter;
+#ifndef MEMOPT
+			if (( count != 3 ) && ( !sub[ 1 ].result.none ))
+#endif
+				freeListItem( sub_results );
+			if ( last_results == NULL ) return 0;
+			*sub_results = last_results;
+			break;
 		case DefaultIdentifier:
-			if ( expression->sub[ count ].result.identifier.name != NULL )
+			if ( sub[ count ].result.identifier.value != NULL )
 			{
 				DEBUG_1;
-				char *identifier = expression->sub[ count ].result.identifier.name;
-				if ( context->expression.mode == TextMode ) {
+				char *identifier = sub[ count ].result.identifier.value;
+				if ( context->expression.mode == ExpandedMode ) {
 					filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
 					if ( *sub_results == NULL ) return 0;
 					break;
@@ -388,7 +428,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 					fprintf( stderr, "debug> set_sub_identifier[ %d ]: created new: %s, addr: %0x\n",
 						count, identifier, (int) e );
 #endif
-				} else if ( !expression->sub[ count ].result.not ) {
+				} else if ( !sub[ count ].result.not ) {
 					if ( context->expression.mode == EvaluateMode ) {
 						return 0;
 					} else {
@@ -398,25 +438,25 @@ solve( Expression *expression, int as_sub, listItem *results )
 					}
 				}
 			}
-			else if ( expression->sub[ count ].e != NULL )
+			else if ( sub[ count ].e != NULL )
 			{
 				filter_results( sub_results, expression, count, NULL, 0, results );
 				if (( results != NULL ) && ( *sub_results == NULL )) return 0;
 
 #ifdef DEBUG_FULL
-				fprintf( stderr, "debug> recursing in SOLVE: count=%d, not=%d\n", count, expression->sub[ count ].result.not );
+				fprintf( stderr, "debug> recursing in SOLVE: count=%d, not=%d\n", count, sub[ count ].result.not );
 #endif
 
-				Expression *e = expression->sub[ count ].e;
-				int sub_count = expression->sub[ 1 ].result.none ? 3 : count;
+				Expression *e = sub[ count ].e;
+				int sub_count = sub[ 1 ].result.none ? 3 : count;
 				int success = solve( e, sub_count, *sub_results );
 #ifdef MEMOPT
-				if (( count != 3 ) && ( !expression->sub[ 1 ].result.none ))
+				if (( count != 3 ) && ( !sub[ 1 ].result.none ))
 #endif
 					freeListItem( sub_results );
 				if ( success <= 0 ) return success;
 #ifdef DEBUG
-				fprintf( stderr, "debug> solve: returning - %0x [ %d ]\n", (int) expression->sub[ count ].e, count );
+				fprintf( stderr, "debug> solve: returning - %0x [ %d ]\n", (int) sub[ count ].e, count );
 #endif
 				*sub_results = e->result.list;
 				e->result.list = NULL;
@@ -430,14 +470,14 @@ solve( Expression *expression, int as_sub, listItem *results )
 
 	if ( context->expression.mode == InstantiateMode )
 	{
-		if ( expression->sub[ 1 ].result.none ) {
-			expression->result.list = expression->sub[ 0 ].result.list;
-			expression->sub[ 0 ].result.list = NULL;
+		if ( sub[ 1 ].result.none ) {
+			expression->result.list = sub[ 0 ].result.list;
+			sub[ 0 ].result.list = NULL;
 			return 1;
 		}
-		for ( listItem *i = expression->sub[ 0 ].result.list; i!=NULL; i=i->next )
-		for ( listItem *j = expression->sub[ 1 ].result.list; j!=NULL; j=j->next )
-		for ( listItem *k = expression->sub[ 2 ].result.list; k!=NULL; k=k->next )
+		for ( listItem *i = sub[ 0 ].result.list; i!=NULL; i=i->next )
+		for ( listItem *j = sub[ 1 ].result.list; j!=NULL; j=j->next )
+		for ( listItem *k = sub[ 2 ].result.list; k!=NULL; k=k->next )
 		{
 			Entity *source = (Entity *) i->ptr;
 			Entity *medium = (Entity *) j->ptr;
@@ -463,8 +503,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	fprintf( stderr, "debug> solver: 1. checking special cases...\n" );
 #endif
 	// special cases: "?: a : b" or "?:b" or "?: *:b" or "*:b" or "b"
-	if ( expression->sub[ 1 ].result.none ) {
-		ExpressionSub *sub = expression->sub;
+	if ( sub[ 1 ].result.none ) {
 		if ( sub[ 3 ].result.any ) {
 			if ( sub[ 0 ].result.any ) {
 				return 1;
@@ -501,13 +540,13 @@ solve( Expression *expression, int as_sub, listItem *results )
 #endif
 	FlagSub flag_sub[ 4 ];
 	for ( int i=0; i<4; i++ ) {
-		flag_sub[ i ].active = expression->sub[ i ].result.active;
-		flag_sub[ i ].inactive = expression->sub[ i ].result.inactive;
-		flag_sub[ i ].not = expression->sub[ i ].result.not;
-		flag_sub[ i ].any = expression->sub[ i ].result.any;
+		flag_sub[ i ].active = sub[ i ].result.active;
+		flag_sub[ i ].inactive = sub[ i ].result.inactive;
+		flag_sub[ i ].not = sub[ i ].result.not;
+		flag_sub[ i ].any = sub[ i ].result.any;
 	}
 	for ( int i=0; i<4; i++ ) {
-		if ( expression->sub[ i ].result.list != NULL )
+		if ( sub[ i ].result.list != NULL )
 			continue;
 		if ( flag_sub[ i ].not ) {
 			flag_sub[ i ].not = 0;
@@ -541,7 +580,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			fprintf( stderr, "debug> solver: 3.1. special case - inverting all %d\n", count );
 #endif
 			int sub_count = ( count < 3 ) ? ( 1 << count ) : as_sub;
-			invert_results( &expression->sub[ count ], sub_count, NULL );
+			invert_results( &sub[ count ], sub_count, NULL );
 			flag_sub[ count ].not = 0;
 		}
 		else	// special cases: [ .-.->. : . ] aka. [ ... ], .-.->[ ..? ] etc.
@@ -555,22 +594,24 @@ solve( Expression *expression, int as_sub, listItem *results )
 
 			int sub_count = ( count < 3 ) ? ( 1 << count ) : as_sub;
 			listItem *list = take_all( expression, as_sub, NULL );
-			expression->sub[ count ].result.list = list;
+			sub[ count ].result.list = list;
 		}
 	}
 
 	// 4. generate own list of results
 	// -------------------------------
+	listItem *sub_list[4], *candidate;
+
 #ifdef DEBUG
 	fprintf( stderr, "debug> solver: 4. searching...\n" );
 #endif
 	// initiate loop
 	void *r_sub[ 4 ];
 	for ( int i=0; i<4; i++ ) {
-		r_sub[ i ] = sub_init( sub, i, expression );
+		r_sub[ i ] = sub_init( sub_list, i, expression );
 	}
 	DEBUG_2;
-	candidate = first_candidate( sub, flag_sub, expression, results );
+	candidate = first_candidate( sub_list, flag_sub, expression, results );
 	if ( candidate == NULL ) {
 #ifdef DEBUG
 		fprintf( stderr, " - NULL candidate\n" );
@@ -614,22 +655,22 @@ solve( Expression *expression, int as_sub, listItem *results )
 			candidate = candidate->next;
 		}
 		else do {
-			if (( r_sub[3] = sub_next( sub, 3 ) )) {
+			if (( r_sub[3] = sub_next( sub_list, 3 ) )) {
 				;
-			} else if (( r_sub[2] = sub_next( sub, 2 ) )) {
-				r_sub[3] = sub_init( sub, 3, expression );
-			} else if (( r_sub[1] = sub_next( sub, 1 ) )) {
-				r_sub[2] = sub_init( sub, 2, expression );
-				r_sub[3] = sub_init( sub, 3, expression );
-			} else if (( r_sub[0] = sub_next( sub, 0 ) )) {
-				r_sub[1] = sub_init( sub, 1, expression );
-				r_sub[2] = sub_init( sub, 2, expression );
-				r_sub[3] = sub_init( sub, 3, expression );
+			} else if (( r_sub[2] = sub_next( sub_list, 2 ) )) {
+				r_sub[3] = sub_init( sub_list, 3, expression );
+			} else if (( r_sub[1] = sub_next( sub_list, 1 ) )) {
+				r_sub[2] = sub_init( sub_list, 2, expression );
+				r_sub[3] = sub_init( sub_list, 3, expression );
+			} else if (( r_sub[0] = sub_next( sub_list, 0 ) )) {
+				r_sub[1] = sub_init( sub_list, 1, expression );
+				r_sub[2] = sub_init( sub_list, 2, expression );
+				r_sub[3] = sub_init( sub_list, 3, expression );
 			}
 			else {
 				return ( expression->result.list == NULL ) ? 0 : 1;
 			}
-			candidate = first_candidate( sub, flag_sub, expression, results );
+			candidate = first_candidate( sub_list, flag_sub, expression, results );
 		}
 		while( candidate == NULL );
 	}
@@ -646,14 +687,14 @@ solve( Expression *expression, int as_sub, listItem *results )
 static void
 extract_final_results( listItem **list, Expression *expression, int count, listItem *results )
 {
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		ExpressionSub *s;
 		s_loop( count, results, &s ) {
 			addItem( list, s );
 		}
 	}
-	else	// not in TextMode
+	else	// not in ExpandedMode
 	{
 		Entity *e;
 		e_loop( count, results, &e ) {
@@ -768,7 +809,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 #endif
 	int success;
 	if (( expression == NULL ) ||
-	   (( context->expression.mode == TextMode ) && ( context->expression.filter == NULL )) )
+	   (( context->expression.mode == ExpandedMode ) && ( context->expression.filter == NULL )) )
 	{
 		freeListItem( &context->expression.results );
 		return 0;

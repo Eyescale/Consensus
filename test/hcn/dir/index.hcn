@@ -1,7 +1,7 @@
 <html>
 <body>
 <h1 style="text-align:center; font-weight:normal;">Welcome to Consensus!</h1>
-<<? %[ ?-is->Label ] >>
+<<?%: ?-is->Label >>
 	<ul>
 	<<? : ?-is->Label >>
 	<li> <a href="consensus.cgi?label=%?">%?</a>

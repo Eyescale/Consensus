@@ -255,7 +255,7 @@ set_sub_identifier( int count, int event, _context *context )
 
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
-	expression->sub[ count ].result.identifier.name = context->identifier.id[ 1 ].ptr;
+	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
 	context->identifier.id[ 1 ].ptr = NULL;
@@ -275,7 +275,7 @@ set_sub_variable( int count, int event, _context *context )
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
-	expression->sub[ count ].result.identifier.name = context->identifier.id[ 1 ].ptr;
+	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
 	context->identifier.id[ 1 ].ptr = NULL;
@@ -312,7 +312,7 @@ set_sub_variator( int count, int event, _context *context )
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
-	expression->sub[ count ].result.identifier.name = variator_symbol;
+	expression->sub[ count ].result.identifier.value = variator_symbol;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
 	set_flags( stack, expression, count );
@@ -331,7 +331,7 @@ set_sub_this( int count, int event, _context *context )
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
-	expression->sub[ count ].result.identifier.name = this_symbol;
+	expression->sub[ count ].result.identifier.value = this_symbol;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
 	set_flags( stack, expression, count );
@@ -826,6 +826,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		on_( '|' )	expression_do_( nop, "?|" )
 		on_( '?' )	expression_do_( nop, "??" )
 		on_( '.' )	expression_do_( nop, "?." )
+		on_( '\n' )	expression_do_( set_mark, "" )
 		on_other	expression_do_( error, "" )
 		end
 		in_( "?." ) bgn_
@@ -1103,11 +1104,16 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	fprintf( stderr, "debug> parser: entering\n" );
 #endif
+	// set own state according to commander's state
 	bgn_
-	in_( "!. %" )			expression_do_( parser_init, "%" )
-	in_( ": identifier : %" )	expression_do_( parser_init, "%" )
-	in_other 			expression_do_( parser_init, base )
+	in_( "!. %" )			expression_do_( nop, "%" )
+	in_( ": identifier : %" )	expression_do_( nop, "%" )
+	in_( "? %" )			expression_do_( nop, base )
+	in_( "?~ %" )			expression_do_( nop, base )
+	in_other 			expression_do_( nothing, base )
 	end
+
+	expression_do_( parser_init, same )
 
 	do {
 	event = input( state, event, NULL, context );

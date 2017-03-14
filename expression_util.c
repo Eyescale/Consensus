@@ -17,21 +17,30 @@
 	freeExpression
 ---------------------------------------------------------------------------*/
 static void
-nullify( Expression *expression, listItem **residue )
+nullify( Expression *expression, listItem **residue, listItem **list )
 {
 	if ( expression == NULL ) return;
-	// residues are earlier versions of an expression which has superceded
+	ExpressionSub *sub = expression->sub;
+
+	// residues and lists are earlier versions of an expression which has superceded
 	// itself, possibly more than once. Each must be freed only once.
 	for ( int i=0; i<4; i++ )
 	{
-		Expression *sub = expression->sub[ i ].e;
-		if ( sub == NULL )
+		if ( sub[ i ].result.identifier.type == ListIdentifier ) {
+			for ( listItem *j = (listItem *) sub[ i ].result.identifier.value; j!=NULL; j=j->next )
+			{
+				nullify( (Expression *) j->ptr, residue, list );
+			}
+			addIfNotThere( list, sub[ i ].result.identifier.value );
+			sub[ i ].result.identifier.value = NULL;
+		}
+		if ( sub[ i ].e == NULL )
 			continue;
-		nullify( sub, residue );
-		if ( expression->sub[ i ].result.identifier.name != NULL )
+		nullify( sub[ i ].e, residue, list );
+		if ( sub[ i ].result.identifier.value != NULL )
 			continue;
-		addIfNotThere( residue, sub );
-		expression->sub[ i ].e = NULL;
+		addIfNotThere( residue, sub[ i ].e );
+		sub[ i ].e = NULL;
 	}
 }
 
@@ -39,16 +48,16 @@ static void
 erase( Expression *expression )
 {
 	if ( expression == NULL ) return;
+	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<4; i++ )
 	{
-		ExpressionSub *sub = &expression->sub[ i ];
-		if ( sub->result.identifier.type == VariableIdentifier ?
-		     (( sub->result.identifier.name != variator_symbol ) && ( sub->result.identifier.name != this_symbol )) : 1 )
+		if (( sub[ i ].result.identifier.type != VariableIdentifier ) ||
+		    (( sub[ i ].result.identifier.value != variator_symbol ) && ( sub[ i ].result.identifier.value != this_symbol )))
 		{
-			free( sub->result.identifier.name );
+			free( sub[ i ].result.identifier.value );
 		}
-		erase( sub->e );
-		free( sub->e );
+		erase( sub[ i ].e );
+		free( sub[ i ].e );
 	}
 	freeListItem( &expression->result.list );
 }
@@ -56,13 +65,20 @@ erase( Expression *expression )
 void
 freeExpression( Expression *expression )
 {
-	listItem *residue = NULL;
-	nullify( expression, &residue );
+	listItem *residue = NULL, *list = NULL;
+	nullify( expression, &residue, &list );
 	for ( listItem *i = residue; i!=NULL; i=i->next ) {
 		erase( (Expression *) i->ptr );
 	}
+	for ( listItem *i = list; i!=NULL; i=i->next ) {
+		for ( listItem *j = (listItem *) i->ptr; j!=NULL; j=j->next ) {
+			erase( (Expression *) j->ptr );
+		}
+		freeListItem( (listItem **) &i->ptr );
+	}
 	erase( expression );
 	freeListItem( &residue );
+	freeListItem( &list );
 }
 
 /*---------------------------------------------------------------------------
@@ -192,19 +208,25 @@ expression_collapse( Expression *expression )
 		}
 	}
 
-	if ( !sub[ 1 ].result.none )
-		return;
-
-	if (( expression->result.mark & 7 ) && sub[ 0 ].result.none ) {
+	if ( sub[ 0 ].result.none ) {
+		int mark = expression->result.mark;
+		if ( mark == 8 ) {
+			sub[ 0 ].result.any = 1;
+			sub[ 0 ].result.none = 0;
+		}
+		else if ( mark & 7 ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> expression_collapse: completing according to mark\n" );
+			fprintf( stderr, "debug> expression_collapse: completing according to mark\n" );
 #endif
-		for ( int i=0; i<3; i++ ) {
-			sub[ i ].result.any = 1;
-			sub[ i ].result.none = 0;
+			for ( int i=0; i<3; i++ ) {
+				sub[ i ].result.any = 1;
+				sub[ i ].result.none = 0;
+			}
 		}
 	}
-		
+
+	if ( !sub[ 1 ].result.none )
+		return;
 
 	// we want to replace at least the body of the current expression with its sub[ 0 ]
 	else if (( sub[ 0 ].e != NULL ) && !sub[ 0 ].result.not )
@@ -308,7 +330,7 @@ invert_results( ExpressionSub *sub, int as_sub, listItem *results )
 	listItem *dest = NULL;
 	int active = sub->result.active;
 	int inactive = sub->result.inactive;
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
@@ -372,7 +394,7 @@ take_all( Expression *expression, int as_sub, listItem *results )
 	fprintf( stderr, "debug> take_all: init done, as_sub=%d, count=%d, check_instance=%d\n", as_sub, count, check_instance );
 #endif
 
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
@@ -441,7 +463,7 @@ take_sub_results( ExpressionSub *sub, int as_sub )
 	int active = sub->result.active;
 	int inactive = sub->result.inactive;
 	listItem **list = &sub->result.list;
-	if ( CN.context->expression.mode == TextMode )
+	if ( CN.context->expression.mode == ExpandedMode )
 	{
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
@@ -492,11 +514,11 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 	listItem *last_i = NULL, *next_i;
 	if ( sub0->result.not && sub3->result.not )
 	{
-		listItem *all = ( CN.context->expression.mode == TextMode ) ?
+		listItem *all = ( CN.context->expression.mode == ExpandedMode ) ?
 			results : ( results == NULL ) ? CN.DB : results;
 		for ( listItem *i = all; i!=NULL; i=i->next )
 		{
-			if (( CN.context->expression.mode != TextMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )
@@ -521,7 +543,7 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != TextMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )
@@ -545,7 +567,7 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != TextMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )

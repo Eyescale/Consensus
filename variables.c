@@ -32,7 +32,12 @@ freeVariableValue( VariableVA *variable )
 		freeRegistry((Registry *) &variable->data.value );
 		break;
 	case ExpressionVariable:
-		freeExpression( variable->data.value );
+		for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next )
+		{
+			Expression *e = (Expression *) i->ptr;
+			freeExpression( e );
+		}
+		freeListItem( (listItem **) &variable->data.value );
 		variable->data.value = NULL;
 		break;
 	case EntityVariable:
@@ -183,6 +188,36 @@ assign_narrative( char *state, int event, char **next_state, _context *context )
 	assign_expression
 ---------------------------------------------------------------------------*/
 static int
+expression_substitute( Expression *expression, char *identifier, listItem *value, int count )
+{
+	if (( expression == NULL ) || !count )
+		return count;
+
+	ExpressionSub *sub = expression->sub;
+	for ( int i=0; i<4; i++ ) {
+		switch ( sub[ i ].result.identifier.type ) {
+		case VariableIdentifier:
+			; char *name = sub[ i ].result.identifier.value;
+			if (( name == NULL ) || strcmp( name, identifier ) )
+				continue;
+			if ( value == NULL ) {
+				sub[ i ].result.lookup = 1;
+			} else {
+				free( name );
+				sub[ i ].result.identifier.value = value;
+				sub[ i ].result.identifier.type = ListIdentifier;
+			}
+			count--;
+			break;
+		default:
+			count = expression_substitute( expression->sub[ i ].e, identifier, value, count );
+		}
+		if ( !count ) break;
+	}
+	return count;
+}
+
+static int
 expression_replace( Expression *expression, char *identifier, Expression *value, int count )
 {
 	if (( expression == NULL ) || !count )
@@ -192,11 +227,11 @@ expression_replace( Expression *expression, char *identifier, Expression *value,
 	for ( int i=0; i<4; i++ ) {
 		switch ( sub[ i ].result.identifier.type ) {
 		case VariableIdentifier:
-			; char *name = sub[ i ].result.identifier.name;
+			; char *name = sub[ i ].result.identifier.value;
 			if (( name == NULL ) || strcmp( name, identifier ) )
 				continue;
 			free( name );
-			sub[ i ].result.identifier.name = NULL;
+			sub[ i ].result.identifier.value = NULL;
 			sub[ i ].e = value;
 			if ( count == 1 ) {
 				sub[ i ].result.identifier.type = DefaultIdentifier;
@@ -224,7 +259,7 @@ count_occurrences( Expression *expression, char *identifier, int count )
 	{
 		switch ( sub[ i ].result.identifier.type ) {
 		case VariableIdentifier:
-			; char *name = sub[ i ].result.identifier.name;
+			; char *name = sub[ i ].result.identifier.value;
 			if (( name == NULL ) || strcmp( name, identifier ) )
 				continue;
 			count++;
@@ -246,13 +281,21 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	if ( expression == NULL ) {
 		return log_error( context, event, "cannot assign variable to (null) expression" );
 	}
-
-#ifdef DEBUG
-	fprintf( stderr, "debug> : %s : \"%s\"\n", context->identifier.id[ 0 ].ptr, context->string.ptr );
-#endif
 	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
 		return log_error( context, event, "variable names cannot be in \"quotes\"" );
 	}
+
+	char *identifier = context->identifier.id[ 0 ].ptr;
+	int count = count_occurrences( expression, identifier, 0 );
+	if ( count > 0 ) {
+		registryEntry *entry = lookupVariable( context, identifier );
+		if (( entry == NULL )  || (((VariableVA *) entry->value )-> type != ExpressionVariable ))
+			return log_error( context, event, "self-referencing variable has no match\n" );
+	}
+
+#ifdef DEBUG
+	fprintf( stderr, "debug> assigning expression : %s\n", identifier );
+#endif
 
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	Entity *entity;
@@ -262,35 +305,41 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 
 	VariableVA *variable;
 
-	registryEntry *entry = lookupByName( stack->variables, context->identifier.id[ 0 ].ptr );
+	registryEntry *entry = lookupByName( stack->variables, identifier );
 	if ( entry == NULL ) {
 		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &stack->variables, context->identifier.id[ 0 ].ptr, variable );
+		registerByName( &stack->variables, identifier, variable );
 		context->identifier.id[ 0 ].ptr = NULL;
 	}
 	else {
 		variable = (VariableVA *) entry->value;
 		if ( variable->type == EntityVariable ) {
 			freeVariableValue( variable );
-			free( context->identifier.id[ 0 ].ptr );
+			free( identifier );
 			context->identifier.id[ 0 ].ptr = NULL;
 		}
 	}
 
 	if ( variable->type == ExpressionVariable )
 	{
-		char *identifier = context->identifier.id[ 0 ].ptr;
-		Expression *original = (Expression *) variable->data.value;
-		int count = count_occurrences( expression, identifier, 0 );
-		expression_replace( expression, identifier, original, count );
-		variable->data.value = expression;
+		if ( count > 0 ) {
+			listItem *value = (listItem *) variable->data.value;
+			if ( value->next == NULL ) {
+				expression_replace( expression, identifier, value->ptr, count );
+			} else {
+				expression_substitute( expression, identifier, value, count );
+			}
+		} else {
+			freeVariableValue( variable );
+		}
 		free( context->identifier.id[ 0 ].ptr );
 		context->identifier.id[ 0 ].ptr = NULL;
 	}
 	else  {
-		variable->data.value = context->expression.ptr;
+		expression_substitute( expression, identifier, NULL, count );
 		variable->type = ExpressionVariable;
 	}
+	variable->data.value = newItem( expression );
 	context->expression.ptr = NULL;
 	return 0;
 }
