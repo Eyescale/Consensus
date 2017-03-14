@@ -1,0 +1,52 @@
+Mar 13, 2017
+DONE	. change syntax for conditional execution
+DONE	. tracked entity released log events (cf test/monitor)
+DONE	. replace expression with expression list in variables everywhere
+DONE	. Fix bug: monitor event does not output '.'
+
+Mar 9, 2017
+DONE	publish code on github
+DONE	: variable : .-.->? : [ .-is->toto ]	>>> does not collapse??? should!!
+DONE	introduce flag	sub[ count ].result.resolve in expression_solve.c
+DONE	Fix:
+DONE		consensus$ : titi : [ ?..: . : %[ ??. ] ]
+DONE		consensus$ >:%titi
+DONE		?..: %[ ??. ]	>>> should be ?..: . : %[ ??. ]
+DONE	. Fix bugs below:
+DONE		>:%[ ?.. : %? ] returns whole instance (vs. source)
+DONE		>:%[ ?.. : ... : %? ] yields different results	(yields the right results!)
+DONE	. fix	>:%[ *. ] or >:%[ _. ]	(crash)
+DONE	. fix	!! %titi	( fails )
+DONE	. Code restructuring
+DONE	. Narrative
+DONE		. check overwrite beforehand
+DONE	. collapse
+DONE		. take ~ flag into account
+DONE	. output shorty
+DONE	. Expression:
+DONE		. flags in Parser and in Output
+DONE		. support '*' and '_' and '~' in expression
+DONE		. complete solve_expression - take_sub_result: do all the comparisons
+DONE		. '~' execution / testing
+DONE		. special case : ~.
+DONE		. debug freeExpression()
+DONE		. generalize shorty...
+DONE	. ?~ ... (start directly with if not)
+DONE	. IMPLEMENT READ_ACTION from narrative.c
+DONE	. >:%narrative()
+DONE	. : identifier : %[ expression ]
+DONE	. IMPLEMENT PUSH_ACTION from narrative.c
+DONE	. read narrative event
+DONE	. narrative variables
+DONE	. ADD RULE: exit can only be performed during narrative execution, and not in instruction block
+DONE	. rewrite frame traversing narrative's internal structure
+DONE	. narrative removal at init
+DONE	. read narrative from file - done ":<%( "cat file" )"
+DONE	. narrative output
+DONE		. output actions using command.c
+DONE	. ADD RULE: No more ON after ON-IN
+DONE	. ADD RULE: init can not be followed by any other event (but can be preceded and/or followed by conditions...)
+DONE	. ADD RULE: no "on init" after then
+DONE	. narrative cleanup at exit - or right after popping...
+DONE	. allow actions without event - write correct pipeline
+
