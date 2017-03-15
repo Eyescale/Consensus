@@ -100,7 +100,7 @@ assign_results( char *state, int event, char **next_state, _context *context )
 	// -------------------------------------
 
 	if ( context->expression.results == NULL ) {
-		return log_error( context, event, "cannot set expression to (null) results");
+		return log_error( context, event, "cannot set variable to (null) results");
 	}
 
 	// fetch or create identified variable in current scope
@@ -274,6 +274,12 @@ count_occurrences( Expression *expression, char *identifier, int count )
 int
 assign_expression( char *state, int event, char **next_state, _context *context )
 {
+	if ( context->expression.mode == EvaluateMode ) {
+		// expression_solve() may have changed mode - if an EntityVariable
+		// typed filter variable was used in expression
+		return assign_results( state, event, next_state, context );
+	}
+
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
@@ -348,7 +354,7 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	assign_variator_variable
 ---------------------------------------------------------------------------*/
 void
-assign_variator_variable( Entity *index, _context *context )
+assign_variator_variable( Entity *index, int type, _context *context )
 {
 #ifdef DEBUG
 	fprintf( stderr, "debug> assigning index to variator variable\n" );
@@ -360,13 +366,13 @@ assign_variator_variable( Entity *index, _context *context )
 	entry = lookupByName( stack->variables, variator_symbol );
 	if ( entry == NULL ) {
 		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		variable->type = EntityVariable;
+		variable->type = type;
 		registerByName( &stack->variables, variator_symbol, variable );
 	}
 	else {
 		variable = (VariableVA *) entry->value;
 		freeVariableValue( variable );
-		variable->type = EntityVariable;
+		if ( type ) variable->type = type;
 	}
 
 	addItem( (listItem **) &variable->data.value, index );

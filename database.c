@@ -198,6 +198,13 @@ void freeItem( listItem *item )
         freeItemList = item;
 }
 
+void popListItem( listItem **list )
+{
+	listItem *next_i = (*list)->next;
+	freeItem( *list );
+	*list = next_i;
+}
+
 void freeListItem( listItem **list )
 {
 	listItem *i, *next_i;

@@ -9,6 +9,7 @@
 
 #include "api.h"
 #include "expression.h"
+#include "variables.h"
 #include "expression_util.h"
 
 // #define DEBUG
@@ -293,6 +294,136 @@ expression_collapse( Expression *expression )
 }
 
 /*---------------------------------------------------------------------------
+	instantiable
+---------------------------------------------------------------------------*/
+int
+instantiable( Expression *expression, _context *context )
+{
+	if ( expression->result.marked ) {
+		log_error( context, 0, "'?' is not instantiable" );
+		return 0;
+	}
+
+	ExpressionSub *sub = expression->sub;
+	if ( expression->result.as_sub || !sub[ 3 ].result.any ) {
+		log_error( context, 0, "instance designation is not allowed in instantiation mode" );
+		return 0;
+	}
+
+	if ( sub[ 0 ].result.any || sub[ 1 ].result.any || sub[ 2 ].result.any ) {
+		log_error( context, 0, "'.' is not instantiable" );
+		return 0;
+	}
+
+	for ( int i=0; i<4; i++ ) {
+		if ( sub[ i ].result.active || sub[ i ].result.inactive || sub[ i ].result.not ) {
+			log_error( context, 0, "expression flags are not allowed in instantiation mode" );
+			return 0;
+		}
+	}
+
+	for ( int i=0; i<3; i++ ) {
+		if ( sub[ i ].e != NULL ) {
+			if ( !instantiable( sub[ i ].e, context ) )
+				return 0;
+		}
+		else switch ( sub[ i ].result.identifier.type ) {
+		case VariableIdentifier:
+			; char *identifier = sub[ i ].result.identifier.value;
+			if ( identifier == NULL )
+				break;
+			registryEntry *entry;
+			if ( sub[ i ].result.lookup ) {
+				listItem *stack = context->control.stack;
+				context->control.stack = stack->next;
+				entry = lookupVariable( context, identifier );
+				context->control.stack = stack;
+			} else {
+				entry = lookupVariable( context, identifier );
+			}
+			if ( entry == NULL ) {
+				char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
+				log_error( context, 0, msg ); free( msg );
+				return 0;
+			}
+			VariableVA *variable = (VariableVA *) entry->value;
+			switch ( variable->type ) {
+			case EntityVariable:
+				break;
+			case NarrativeVariable:
+				; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
+				log_error( context, 0, msg ); free( msg );
+				return 0;
+			case ExpressionVariable:
+				for ( listItem *j = variable->data.value; j!=NULL; j=j->next )
+					if ( !instantiable( (Expression * ) j->ptr, context ) )
+						return 0;
+				break;
+			}
+			break;
+		case ListIdentifier:
+			for ( listItem *j = sub[ i ].result.identifier.value; j!=NULL; j=j->next )
+				if ( !instantiable( (Expression * ) j->ptr, context ) )
+					return 0;
+			break;
+		default:
+			break;
+		}
+	}
+	return 1;
+}
+
+/*---------------------------------------------------------------------------
+	set_filter_variable
+---------------------------------------------------------------------------*/
+int
+set_filter_variable( _context *context )
+{
+	int retval = 1;
+
+	char *identifier = context->expression.filter_identifier;
+	if ( identifier == NULL )
+		return 0;
+
+	if ( context->expression.filter != NULL )
+		return log_error( context, 0, "expression filter is already in place" );
+
+	registryEntry *entry = lookupVariable( context, identifier );
+	if ( entry == NULL ) {
+		char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
+		retval = log_error( context, 0, msg ); free( msg );
+		return retval;
+	}
+
+	VariableVA *variable = (VariableVA *) entry->value;
+	switch ( variable->type ) {
+	case EntityVariable:
+		if ( context->expression.mode == InstantiateMode ) {
+			char *msg; asprintf( &msg, "'%%%s' is an entity variable - "
+				"cannot be used as expression filter in instantiation mode", identifier );
+			retval = log_error( context, 0, msg ); free( msg );
+			return retval;
+		}
+		context->expression.mode = EvaluateMode;
+		retval = 0;
+		break;
+	case ExpressionVariable:
+		context->expression.mode = ReadMode;
+		break;
+	case NarrativeVariable:
+		; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - "
+			"cannot be used as expression filter", identifier );
+		retval = log_error( context, 0, msg ); free( msg );
+		return retval;
+	}
+
+	context->expression.filter = variable->data.value;
+	context->expression.filter_identifier = NULL;
+	free( identifier );
+	return retval;
+}
+
+/*---------------------------------------------------------------------------
 	test_as_sub
 ---------------------------------------------------------------------------*/
 int
@@ -330,7 +461,7 @@ invert_results( ExpressionSub *sub, int as_sub, listItem *results )
 	listItem *dest = NULL;
 	int active = sub->result.active;
 	int inactive = sub->result.inactive;
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
@@ -394,7 +525,7 @@ take_all( Expression *expression, int as_sub, listItem *results )
 	fprintf( stderr, "debug> take_all: init done, as_sub=%d, count=%d, check_instance=%d\n", as_sub, count, check_instance );
 #endif
 
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
@@ -463,7 +594,7 @@ take_sub_results( ExpressionSub *sub, int as_sub )
 	int active = sub->result.active;
 	int inactive = sub->result.inactive;
 	listItem **list = &sub->result.list;
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
@@ -514,11 +645,11 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 	listItem *last_i = NULL, *next_i;
 	if ( sub0->result.not && sub3->result.not )
 	{
-		listItem *all = ( CN.context->expression.mode == ExpandedMode ) ?
+		listItem *all = ( CN.context->expression.mode == ReadMode ) ?
 			results : ( results == NULL ) ? CN.DB : results;
 		for ( listItem *i = all; i!=NULL; i=i->next )
 		{
-			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )
@@ -543,7 +674,7 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )
@@ -567,7 +698,7 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != ExpandedMode ) && !( as_sub & 8 ))
+			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
 			{
 				Entity *e = (Entity *) i->ptr;
 				if ( !test_as_sub( e, as_sub ) )

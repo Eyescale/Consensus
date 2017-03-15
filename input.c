@@ -76,8 +76,8 @@ flush_input( char *state, int event, char **next_state, _context *context )
 		freeListItem( &stack->loop.index );
 		freeInstructionBlock( context );
 		stack->loop.begin = NULL;
-		pop( state, event, next_state, context );
 		pop_input( state, event, next_state, context );
+		pop( state, event, next_state, context );
 		break;
 	}
 
@@ -85,14 +85,26 @@ flush_input( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	set_input
+---------------------------------------------------------------------------*/
+void
+set_input( listItem *src, _context *context )
+{
+	context->input.instruction = src;
+	StreamVA *input = context->input.stack->ptr;
+	input->ptr.string = context->input.instruction->ptr;
+	input->position = NULL;
+}
+
+/*---------------------------------------------------------------------------
 	push_input
 ---------------------------------------------------------------------------*/
 int
-push_input( char *identifier, char *string, InputType type, _context *context )
+push_input( char *identifier, void *src, InputType type, _context *context )
 {
 	StreamVA *input;
 #ifdef DEBUG
-	fprintf( stderr, "debug> push_input: \"%s\", \"%s\"\n", identifier, string );
+	fprintf( stderr, "debug> push_input: \"%s\"\n", identifier );
 #endif
 	switch ( type ) {
 	case PipeInput:
@@ -134,19 +146,33 @@ push_input( char *identifier, char *string, InputType type, _context *context )
 				return event;
 			}
 		}
-#ifdef DEBUG
-		fprintf( stderr, "reading from string: \"%s\"\n", string );
-#endif
 		// create and register new active stream
 		input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
 		input->level = context->control.level;
+		if ( context->narrative.mode.action.block ) {
+			input->level--;	// pop_input() will be called from outside in this case
+		}
 		input->type = StringInput;
-		input->ptr.string = string;
 		input->position = NULL;
 		switch ( type ) {
-			case BlockStringInput: input->mode.block = 1; break;
-			case EscapeStringInput: input->mode.escape = 1; break;
-			case APIStringInput: input->mode.api = 1; break;
+			case InstructionBlock:
+				input->mode.instructions = 1;
+				context->record.level = context->control.level;
+				listItem *first_instruction = (listItem *) src;
+				context->input.instruction = first_instruction;
+				input->ptr.string = first_instruction->ptr;
+				break;
+			case LastInstruction:
+				input->mode.escape = 1;
+				listItem *last_instruction = context->record.instructions;
+				context->input.instruction = last_instruction;
+				context->record.instructions = last_instruction->next;
+				input->ptr.string = last_instruction->ptr;
+				break;
+			case APIStringInput:
+				input->mode.api = 1;
+				input->ptr.string = src;
+				break;
 			default: break;
 		}
 		if ( identifier != NULL ) {
@@ -187,14 +213,12 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	else event = 0;
 
 	free( input );
-	listItem *next_i = context->input.stack->next;
-	freeItem( context->input.stack );
-	context->input.stack = next_i;
+	popListItem( &context->input.stack );
 
 	if ( context->input.stack == NULL ) {
 		context->control.prompt = 1;
 	} else {
-		StreamVA *input = (StreamVA *) next_i->ptr;
+		StreamVA *input = (StreamVA *) context->input.stack->ptr;
 		if ( input->mode.escape ) {
 			set_control_mode( ExecutionMode, 0, context );
 		}
@@ -213,9 +237,7 @@ set_input_mode( RecordMode mode, int event, _context *context )
 		if ( context->record.mode == OnRecordMode )
 		{
 			// remove the last event from the record
-			listItem *next_i = context->record.string.list->next;
-			freeItem( context->record.string.list );
-			context->record.string.list = next_i;
+			popListItem( &context->record.string.list );
 			string_finish( &context->record.string );
 		}
 		context->record.mode = mode;
@@ -259,7 +281,7 @@ input( char *state, int event, char **next_state, _context *context )
 			if ( !stream->mode.pop ) switch ( stream->type ) {
 			case StringInput:
 				if ( stream->position == NULL ) {
-					if ( stream->mode.block && context->narrative.mode.output ) {
+					if ( stream->mode.instructions && context->narrative.mode.output ) {
 						for ( int i=0; i<=context->control.level; i++ )
 							printf( "\t" );
 					}
@@ -297,15 +319,15 @@ input( char *state, int event, char **next_state, _context *context )
 				switch ( stream->type ) {
 				case StringInput:
 					if ( stream->mode.escape ) {
-	        				free( context->control.execute->ptr );
-				        	freeItem( context->control.execute );
-					        context->control.execute = NULL;
+	        				free( context->input.instruction->ptr );
+				        	freeItem( context->input.instruction );
+					        context->input.instruction = NULL;
 						set_control_mode( InstructionMode, event, context );
 					}
-					else if ( stream->mode.block ) {
-						context->control.execute = context->control.execute->next;
-						if ( context->control.execute != NULL ) {
-							stream->ptr.string = context->control.execute->ptr;
+					else if ( stream->mode.instructions ) {
+						context->input.instruction = context->input.instruction->next;
+						if ( context->input.instruction != NULL ) {
+							stream->ptr.string = context->input.instruction->ptr;
 							stream->position = NULL;
 						}
 						do_pop = 0;

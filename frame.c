@@ -26,7 +26,7 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 	if ( occurrence->registered || ( log == NULL ))
 		return;	// either registered already or no such events logged in this frame
 
-	context->expression.mode = ( occurrence->va.event.type.release ? ExpandedMode : EvaluateMode );
+	context->expression.mode = ( occurrence->va.event.type.release ? ReadMode : EvaluateMode );
 	context->expression.filter = log;
 	int success = expression_solve( occurrence->va.event.expression, 3, context );
 	context->expression.filter = NULL;
@@ -295,22 +295,19 @@ execute_narrative_actions( Narrative *instance, _context *context )
 		listItem *instruction = occurrence->va.action.instructions;
 		if ( instruction->next == NULL )
 		{
-			context->narrative.mode.one = 1;
+			context->narrative.mode.action.one = 1;
 			push_input( NULL, instruction->ptr, APIStringInput, context );
 			int event = read_command( base, 0, &same, context );
 			pop_input( base, 0, NULL, context );
-			context->narrative.mode.one = 0;
+			context->narrative.mode.action.one = 0;
 		}
 		else
 		{
 			push( base, 0, NULL, context );
 			int level = context->control.level;
-			context->control.execute = instruction;
-			context->record.level = level;
-			context->narrative.mode.block = 1;
+			context->narrative.mode.action.block = 1;
 
-			push_input( NULL, instruction->ptr, BlockStringInput, context );
-                        ((StreamVA *) context->input.stack->ptr )->level--; // we want to call pop_input ourselves
+			push_input( NULL, instruction, InstructionBlock, context );
 			int event = read_command( base, 0, &same, context );
 			pop_input( base, 0, NULL, context );
 
@@ -323,7 +320,7 @@ execute_narrative_actions( Narrative *instance, _context *context )
 				}
 				break;
 			}
-			context->narrative.mode.block = 0;
+			context->narrative.mode.action.block = 0;
 		}
 
 		if ( instance->deactivate ) {

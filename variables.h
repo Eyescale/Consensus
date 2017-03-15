@@ -18,7 +18,7 @@ registryEntry *lookupVariable( _context *context, char *identifier );
 void	set_this_variable( Registry *variables, Entity *this_value );
 void	freeVariableValue( VariableVA *variable );
 void	freeVariables( registryEntry **variables );
-void	assign_variator_variable( Entity *index, _context *context );
+void	assign_variator_variable( Entity *index, int type, _context *context );
 
 
 #endif	// VARIABLES_H

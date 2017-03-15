@@ -609,13 +609,13 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			printf( "do " );
 			_context *context = CN.context;
 			context->control.mode = InstructionMode;
-			context->narrative.mode.one = 1;
+			context->narrative.mode.action.one = 1;
 
 			push_input( NULL, instruction->ptr, APIStringInput, context );
 			int event = read_command( base, 0, &same, context );
 			pop_input( base, 0, NULL, context );
 
-			context->narrative.mode.one = 0;
+			context->narrative.mode.action.one = 0;
 			context->control.mode = ExecutionMode;
 		}
 		else
@@ -628,12 +628,9 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			push( state, 0, NULL, context );
 			context->control.level = level;
 			context->control.mode = InstructionMode;
-			context->control.execute = instruction;
-			context->record.level = level;
-			context->narrative.mode.block = 1;
 
-			push_input( NULL, instruction->ptr, BlockStringInput, context );
-			((StreamVA *) context->input.stack->ptr )->level--; // we want to call pop_input ourselves
+			context->narrative.mode.action.block = 1;
+			push_input( NULL, instruction, InstructionBlock, context );
 			int event = read_command( base, 0, &same, context );
 			pop_input( base, 0, NULL, context );
 
@@ -642,7 +639,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 				pop( state, 0, NULL, context );
 			}
 			context->control.level = backup;
-			context->narrative.mode.block = 0;
+			context->narrative.mode.action.block = 0;
 			context->control.mode = ExecutionMode;
 		}
 		break;

@@ -104,7 +104,7 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 		return;
 	}
 
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		ExpressionSub *s;
 		if ( type == IDENTIFIER )
@@ -154,7 +154,7 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 			*list = results;
 		}
 	}
-	else	// not in ExpandedMode
+	else	// not in ReadMode
 	{
 		Entity *e;
 		if ( instance != NULL )
@@ -228,7 +228,7 @@ first_candidate( listItem **sub, FlagSub *flag_sub, Expression *expression, list
 static int
 set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 {
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		ExpressionSub *entity = (ExpressionSub *) candidate->ptr;
 		sub[ 3 ].ptr = entity;
@@ -393,9 +393,11 @@ solve( Expression *expression, int as_sub, listItem *results )
 				int success = expression_solve( (Expression *) i->ptr, sub_count, context );
 				if ( success <= 0 ) continue;
 
-				listItem *j = context->expression.results;
-				while ( j->next != NULL ) j=j->next;
-				j->next = last_results;
+				if ( last_results != NULL ) {
+					listItem *j = context->expression.results;
+					while ( j->next != NULL ) j=j->next;
+					j->next = last_results;
+				}
 				last_results = context->expression.results;
 				context->expression.results = NULL;
 			}
@@ -412,7 +414,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			{
 				DEBUG_1;
 				char *identifier = sub[ count ].result.identifier.value;
-				if ( context->expression.mode == ExpandedMode ) {
+				if ( context->expression.mode == ReadMode ) {
 					filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
 					if ( *sub_results == NULL ) return 0;
 					break;
@@ -421,7 +423,9 @@ solve( Expression *expression, int as_sub, listItem *results )
 			       	if ( e != NULL )  {
 					filter_results( sub_results, expression, count, e, ENTITY, results );
 					if ( *sub_results == NULL ) return 0;
-				} else if ( context->expression.mode == InstantiateMode ) {
+				}
+				else if ( context->expression.mode == InstantiateMode )
+				{
 					e = cn_new( strdup( identifier ) );
 					addItem( sub_results, e );
 #ifdef DEBUG
@@ -687,14 +691,14 @@ solve( Expression *expression, int as_sub, listItem *results )
 static void
 extract_final_results( listItem **list, Expression *expression, int count, listItem *results )
 {
-	if ( CN.context->expression.mode == ExpandedMode )
+	if ( CN.context->expression.mode == ReadMode )
 	{
 		ExpressionSub *s;
 		s_loop( count, results, &s ) {
 			addItem( list, s );
 		}
 	}
-	else	// not in ExpandedMode
+	else	// not in ReadMode
 	{
 		Entity *e;
 		e_loop( count, results, &e ) {
@@ -804,14 +808,34 @@ cleanup_results( Expression *expression )
 int
 expression_solve( Expression *expression, int as_sub, _context *context )
 {
+	int success;
 #ifdef DEBUG
 	fprintf( stderr, "debug> entering expression_solve...\n" );
 #endif
-	int success;
-	if (( expression == NULL ) ||
-	   (( context->expression.mode == ExpandedMode ) && ( context->expression.filter == NULL )) )
-	{
-		freeListItem( &context->expression.results );
+	freeListItem( &context->expression.results );
+	if ( expression == NULL ) return 0;
+
+	int restore_mode = context->expression.mode;
+	switch ( restore_mode ) {
+	case ErrorMode:
+		return 0;
+	case InstantiateMode:
+		if ( !instantiable( expression, context ) )
+			return 0;
+		break;
+	case ReadMode:
+		if (( context->expression.filter == NULL ) && ( context->expression.filter_identifier == NULL ))
+			return 0;
+		break;
+	default:
+		break;
+	}
+
+	int filter_variable_on = set_filter_variable( context );
+	if ( filter_variable_on < 0 ) {
+		free( context->expression.filter_identifier );
+		context->expression.filter_identifier = NULL;
+		context->expression.mode = ErrorMode;
 		return 0;
 	}
 
@@ -823,7 +847,6 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	}
 	addItem( &context->expression.stack, expression );
 
-	freeListItem( &context->expression.results );
 	setup_results( expression );
 	if (( expression->sub[ 0 ].result.any || expression->sub[ 0 ].result.none ) &&
 	    ( expression->sub[ 1 ].result.any || expression->sub[ 1 ].result.none ) &&
@@ -840,25 +863,56 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 			( expression->result.mark == 2 ) ? 1 :
 			( expression->result.mark == 4 ) ? 2 : 3;
 
-		success = ( count == 3 ) && !expression->result.no_mark ?
+		success = ( count == 3 ) && expression->result.marked ?
 			resolve( expression ) : ( expression->result.list != NULL );
 	}
 	else
 	{
 		// resolve must be called even in TestMode due to embedded expressions
-		success = solve( expression, as_sub, context->expression.filter ) ?
-			expression->result.no_mark ? 1 : resolve( expression ) : 0;
+		success = solve( expression, as_sub, context->expression.filter ) &&
+			( !expression->result.marked || resolve( expression ));
 	}
-
-	listItem *results = expression->result.list;
-	context->expression.results = results;
-	expression->result.list = NULL;
-	cleanup_results( expression );
 
 	// pop expression from expression stack
 	listItem *next_i = context->expression.stack->next;
 	freeItem( context->expression.stack );
 	context->expression.stack = next_i;
+
+	context->expression.results = expression->result.list;
+	expression->result.list = NULL;
+	cleanup_results( expression );
+
+	if ( filter_variable_on && ( success > 0 ))
+	{
+		// here the current mode is ReadMode
+		switch ( restore_mode ) {
+		case EvaluateMode:
+		case InstantiateMode:
+		case ReleaseMode:
+		case ActivateMode:
+		case DeactivateMode:
+			context->expression.mode = restore_mode;
+			; listItem *results = context->expression.results, *last_results = NULL;
+			for ( listItem *i = results; i!=NULL; i=i->next )
+			{
+				context->expression.results = NULL;
+				success = expression_solve( (Expression *) i->ptr, as_sub, context );
+				if ( success <= 0 ) continue;
+
+				if ( last_results != NULL ) {
+					listItem *j = context->expression.results;
+					while ( j->next != NULL ) j=j->next;
+					j->next = last_results;
+				}
+				last_results = context->expression.results;
+			}
+			freeListItem( &results );
+			success = ( last_results != NULL );
+		default:
+			break;
+		}
+	}
+	context->expression.filter = NULL;
 
 #ifdef DEBUG
 	fprintf( stderr, "debug> exiting expression_solve - success: %d\n", success );

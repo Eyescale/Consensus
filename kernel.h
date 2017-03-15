@@ -32,8 +32,8 @@ typedef enum {
 	HCNFileInput,
 	PipeInput,
 	StringInput,
-	BlockStringInput,
-	EscapeStringInput,
+	InstructionBlock,
+	LastInstruction,
 	APIStringInput
 }
 InputType;
@@ -62,13 +62,19 @@ typedef enum {
 VariableType;
 
 typedef enum {
+	VariableFilter = 1,
+	ExpressionFilter,
+	ListFilter
+}
+FilterType;
+
+typedef enum {
 	EvaluateMode = 1,
 	ReadMode,
 	InstantiateMode,
 	ReleaseMode,
 	ActivateMode,
 	DeactivateMode,
-	ExpandedMode,
 	ErrorMode
 }
 ExpressionMode;
@@ -110,7 +116,7 @@ typedef struct _Expression {
 	sub[ 4 ];
 	struct {
 		int as_sub, mark;
-		unsigned int no_mark : 1;
+		unsigned int marked : 1;
 		unsigned int output_swap : 1;
 		listItem *list;
 	}
@@ -204,7 +210,7 @@ typedef struct {
 	int level;
 	InputType type;
 	struct {
-		unsigned int block : 1;
+		unsigned int instructions : 1;
 		unsigned int escape : 1;
 		unsigned int api : 1;
 		unsigned int variable : 1;
@@ -279,7 +285,6 @@ typedef struct {
 		ControlMode mode;	// ExecutionMode or InstructionMode or FreezeMode
 		listItem *stack;	// current StackVA
 		int level;
-		listItem *execute;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
 		unsigned int output : 1;
@@ -291,6 +296,7 @@ typedef struct {
 		listItem *stack;
 		registryEntry *stream;
 		registryEntry *string;
+		listItem *instruction;
 	} input;
 	struct {
 		int level;
@@ -310,9 +316,9 @@ typedef struct {
 	struct {
 		int level;
 		ExpressionMode mode;
-		listItem *args;
 		listItem *results;
 		listItem *filter;
+		char *filter_identifier;
 		Expression *ptr;
 		listItem *stack;
 		int marked;
@@ -320,8 +326,12 @@ typedef struct {
 	struct {
 		int level;
 		struct {
-			unsigned int one : 1;
-			unsigned int block : 1;
+			unsigned int condition : 1;
+			unsigned int event : 1;
+			struct {
+				unsigned int one : 1;
+				unsigned int block : 1;
+			} action;
 			unsigned int output : 1;
 			unsigned int script : 1;
 		} mode;

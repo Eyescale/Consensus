@@ -1,3 +1,62 @@
+
+TODO
+	. Finalize narrative local execution and event-handling - which requires:
+	. add support for sub-queries, i.e.
+		. allow %[ ] as TERM in expressions (allowing several '?' )
+		  This also allows to execute ?: %[ a-is->b < %event ]
+		. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
+	. narrative init and exit notifications
+	. narrative deactivation
+	. complete documentation as-is
+	. Release v1.0
+
+Mar 15, 2017
+DONE	. add support for filter variables, e.g.
+		: variable2 : expression < %variable1	// extract relevant expression terms from variable1
+
+	  variable2 then takes the type of variable1 - i.e. either ExpressionVariable or EntityVariable
+
+	  This allows
+		1. to process 'release' event notifications - as the event variable cannot hold entities
+		   which no longer exist. The 'release' notification event variable holds expressions,
+		   which we may want to process to perform other DB changes (see example 1. below)
+		2. to process future event notifications or requests from other sources, which will
+		   necessarily be passed as expressions - vs. local memory addresses (see example 2.)
+
+	  EXAMPLES:
+		1. on event: .-is->b !~ do
+			?: ?-is->b < %event
+				!! %?-is->c	// re-attach to c what was attached to b
+				/
+			/.
+		2. on event < source >: .-is->b !~ do
+			?: [ ?: %event ]<-has-%source	// parse local DB for entities matching event
+				!~ %?			// maps changes from source to local image
+				/
+			/.
+
+	  NOTES:
+		. if event is an Expression variable:
+
+			?%: ?-is->b < %event		will pass if event has a TERM matching expression
+			?%: %[ ?-is->b < %event ]	will pass if DB has an ENTITY matching such TERM
+			?: ?-is->b < %event		will loop over the TERMS ( = sub-expressions )
+			?: %[ ?-is->b < %event ]	will loop over the ENTITIES
+
+		. otherwise, if event is an Entity variable, then:
+
+			?-is->toto < %event		returns the same as: ?-is->toto : %event
+			?-is->toto : titi < %event	returns the same as: [ ?-is->toto: titi ] : %event
+
+DONE	. clean up interface with input.c
+		. rename context->control.execute into context->input.instructions
+		. change push_input() to set context->input.instructions
+		. rename BlockStringInput into InstructionBlock
+		. rename EscapeStringInput into LastInstruction
+		. set record.level from push_input() upon InstructionBlock
+DONE	. fix !! [ .-is->toto ]-is->tata 	=> should NOT work
+DONE	. fix !! () and !! titi-is->toto()	=> should NOT work
+
 Mar 13, 2017
 DONE	. change syntax for conditional execution
 DONE	. tracked entity released log events (cf test/monitor)
@@ -49,4 +108,15 @@ DONE	. ADD RULE: init can not be followed by any other event (but can be precede
 DONE	. ADD RULE: no "on init" after then
 DONE	. narrative cleanup at exit - or right after popping...
 DONE	. allow actions without event - write correct pipeline
+
+
+---------------------------------------------------------------------------
+Example substitutions:
+:1,$s/on_(\(.*\),\(.*\),\(.*\))/on_(\1 )\tdo_(\2,\3)/g
+:1,$s/on_other(\(.*\),\(.*\))/on_other\tdo_(\1,\2)/g
+:'a,'bs/on_(\(.*\),\(.*\),\(.*\))/on_(\1 )\tdo_(\2,\3)/g
+:'a,'bs/on_other(\(.*\),\(.*\))/on_other\tdo_(\1,\2)/g
+
+
+
 

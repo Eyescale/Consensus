@@ -245,7 +245,10 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
-	return read_expression( state, event, next_state, context );
+	context->narrative.mode.condition = 1;
+	event = read_expression( state, event, next_state, context );
+	context->narrative.mode.condition = 0;
+	return event;
 }
 
 static int
@@ -408,6 +411,8 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
+	context->narrative.mode.event = 1;
+
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	bzero( &stack->narrative.event, sizeof( EventVA ) );
 	state = base;
@@ -496,6 +501,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	}
 	while ( strcmp( state, "" ) );
 
+	context->narrative.mode.event = 0;
 	return event;
 }
 
@@ -657,9 +663,9 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 {
 	context->control.mode = InstructionMode;
 	set_input_mode( OnRecordMode, event, context );
-	context->narrative.mode.one = 1;
+	context->narrative.mode.action.one = 1;
 	event = read_command( base, event, &same, context );
-	context->narrative.mode.one = 0;
+	context->narrative.mode.action.one = 0;
 	set_input_mode( OffRecordMode, event, context );
 	context->control.mode = ExecutionMode;
 
@@ -786,7 +792,7 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 
 	int level = context->control.level;
 
-	context->narrative.mode.block = 1;
+	context->narrative.mode.action.block = 1;
 	set_control_mode( InstructionMode, event, context );
 	event = read_command( base, 0, &same, context );
 	set_control_mode( ExecutionMode, event, context );
@@ -817,7 +823,7 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 		retval = set_narrative_action( state, 0, next_state, context );
 		context->control.stack = s;
 	}
-	context->narrative.mode.block = 0;
+	context->narrative.mode.action.block = 0;
 	return ( retval < 0 ? retval : event );
 }
 

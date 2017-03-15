@@ -148,13 +148,13 @@ push( char *state, int event, char **next_state, _context *context )
 		return 0;
 	}
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	if ( next_state != NULL )
+	if ( next_state != NULL ) {
 		stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
+	}
 	context->control.level++;
 
-	listItem *new_s = newItem( (StackVA *) calloc( 1, sizeof(StackVA) ) );
-	new_s->next = context->control.stack;
-	context->control.stack = new_s;
+	stack = (StackVA *) calloc( 1, sizeof(StackVA) );
+	addItem( &context->control.stack, stack );
 
 #ifdef DEBUG
 	fprintf( stderr, "Consensus: push: from state=\"%s\" to state=\"%s\"\n", state, stack->next_state );
@@ -192,15 +192,12 @@ pop( char *state, int event, char **next_state, _context *context )
 	freeVariables( &stack->variables );
 
 	if ( context->control.level ) {
-		listItem *last_s = context->control.stack->next;
-		stack = (StackVA *) last_s->ptr;
-		if ( next_state != NULL )
-			*next_state = stack->next_state;
-
-		free( context->control.stack->ptr );
-		freeItem( context->control.stack );
-		context->control.stack = last_s;
-
+		free( stack );
+		popListItem( &context->control.stack );
+		stack = (StackVA *) context->control.stack->ptr;
+		if ( next_state != NULL ) {
+			*next_state  = stack->next_state;
+		}
 		context->control.level--;
 	} else {
 		if ( next_state != NULL )
