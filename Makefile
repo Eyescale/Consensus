@@ -11,7 +11,7 @@ INCLUDES = -I.
 OBJDIR = .ofiles
 SRCS =	api.c expression.c frame.c kernel.c narrative_util.c string_util.c command.c \
 	expression_solve.c hcn.c main.c output.c value.c database.c expression_util.c \
-	input.c narrative.c registry.c variables.c
+	input.c narrative.c registry.c variables.c filter_util.c
 
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 MAIN = consensus

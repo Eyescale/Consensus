@@ -1,6 +1,19 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
+typedef enum {
+	ExpressionAll,
+	ExpressionMark,
+	SubAll,
+	SubFlags,
+	SubAny,
+	SubVariable,
+	SubIdentifier,
+	SubNull,
+	SubSub
+}
+ExpressionOutput;
+
 /*---------------------------------------------------------------------------
 	output actions		- public
 ---------------------------------------------------------------------------*/
@@ -19,6 +32,7 @@ _action output_char;
 ---------------------------------------------------------------------------*/
 
 void	output_name( Entity *e, Expression *format, int base );
+int	output_expression( ExpressionOutput component, Expression *expression, int i, int shorty );
 void	prompt( _context *context );
 void	narrative_output( Narrative *narrative, _context *context );
 

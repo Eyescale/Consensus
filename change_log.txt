@@ -1,14 +1,29 @@
 
-TODO
-	. Finalize narrative local execution and event-handling - which requires:
-	. add support for sub-queries, i.e.
-		. allow %[ ] as TERM in expressions (allowing several '?' )
-		  This also allows to execute ?: %[ a-is->b < %event ]
-		. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
-	. narrative init and exit notifications
-	. narrative deactivation
-	. complete documentation as-is
-	. Release v1.0
+Mar 19, 2017
+DONE	. introduced "literal" value account in order to test filter variables
+		: variable : %[ expression ].$( literal )
+	  translates entities into special expressions (see below Mar 15, 2017)
+	  The variable type is then LiteralVariable (vs. ExpressionVariable)
+DONE	. added "test/filter" to test operations on literals / filter variables
+DONE	. modified "test/monitor" to instantiate new entities from released ones
+DONE	. filter variables completed (see below explanations from Mar 15, 2017)
+DONE		. in expression_solve.c: must re-extract the results after resolve()
+DONE		. take_all: does not take filter into account yet
+DONE		. variable assignment: does not take filter into account yet
+DONE		. test with loops: does not take filter into account yet
+DONE		. more - see test/filter
+DONE		  need to test : .-is->[ ?-is->toto ]
+
+	  TODO next:
+		. add support for sub-queries, i.e.
+			. allow %[ ] as TERM in expressions (allowing several '?' )
+			  This also allows to execute ?: %[ a-is->b < %event ]
+			. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
+		. narrative init and exit notifications
+		. narrative deactivation
+		. complete documentation as-is
+		. Release v1.0
+
 
 Mar 15, 2017
 DONE	. add support for filter variables, e.g.
@@ -108,15 +123,5 @@ DONE	. ADD RULE: init can not be followed by any other event (but can be precede
 DONE	. ADD RULE: no "on init" after then
 DONE	. narrative cleanup at exit - or right after popping...
 DONE	. allow actions without event - write correct pipeline
-
-
----------------------------------------------------------------------------
-Example substitutions:
-:1,$s/on_(\(.*\),\(.*\),\(.*\))/on_(\1 )\tdo_(\2,\3)/g
-:1,$s/on_other(\(.*\),\(.*\))/on_other\tdo_(\1,\2)/g
-:'a,'bs/on_(\(.*\),\(.*\),\(.*\))/on_(\1 )\tdo_(\2,\3)/g
-:'a,'bs/on_other(\(.*\),\(.*\))/on_other\tdo_(\1,\2)/g
-
-
 
 

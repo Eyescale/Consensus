@@ -214,10 +214,10 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 			if ( retval < 0 ) event = retval;
 		}
 	}
-
 	if ( restore_mode ) {
 		context->expression.mode = restore_mode;
 	}
+
 	return event;
 }
 
@@ -290,7 +290,7 @@ overwrite_narrative( Entity *e, _context *context )
 		if ( overwrite == 'n' )
 			return 0;
 
-		removeNarrative( n, e );
+		removeNarrative( e, n );
 	}
 	return 1;
 }
@@ -540,7 +540,7 @@ push_loop( char *state, int event, char **next_state, _context *context )
 	else {
 		stack->loop.index = context->expression.results;
 		context->expression.results = NULL;
-		int type = (( context->expression.mode == ReadMode ) ? ExpressionVariable : EntityVariable );
+		int type = (( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable );
 		assign_variator_variable( stack->loop.index->ptr, type, context );
 	}
 	return 0;
@@ -712,7 +712,7 @@ static int
 system_frame( char *state, int event, char **next_state, _context *context )
 {
 	if ( context_check( 0, 0, ExecutionMode ) && !strcmp( state, base ) &&
-	   ( context->control.level == 0 ) && ( event == 0 ) ) {
+	   ( context->control.level == 0 ) && ( event == 0 )) {
 
 		// 1. translate occurrences into events
 		// 2. translate events into actions
@@ -940,6 +940,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_any	command_do_( evaluate_expression, ">: %[_" )
 					end
 					in_( ">: %[_" ) bgn_
+						on_( ' ' )	command_do_( nop, same )
+						on_( '\t' )	command_do_( nop, same )
 						on_( ']' )	command_do_( nop, ">: %[_]")
 						on_other	command_do_( error, base )
 						end
@@ -1099,8 +1101,17 @@ read_command( char *state, int event, char **next_state, _context *context )
 								on_( ' ' )	command_do_( nop, same )
 								on_( '\t' )	command_do_( nop, same )
 								on_( '\n' )	command_do_( assign_results, RETURN )
+								on_( '.' )	command_do_( nop, ": identifier : %[_]." )
 								on_other	command_do_( error, base )
 								end
+								in_( ": identifier : %[_]." ) bgn_
+									on_( '$' )	command_do_( read_va, ": identifier : %[_].$" )
+									on_other	command_do_( error, base )
+									end
+									in_( ": identifier : %[_].$" ) bgn_
+										on_( '\n' )	command_do_( assign_va, RETURN )
+										on_other	command_do_( error, base )
+										end
 				in_( ": identifier : !" ) bgn_
 					on_( '!' )	command_do_( set_expression_mode, same )
 							command_do_( read_expression, ": identifier : !." )

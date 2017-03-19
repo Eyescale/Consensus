@@ -20,6 +20,7 @@ newEntity( Entity *source, Entity *medium, Entity *target )
 		e = freeEntityList;
 		freeEntityList = freeEntityList->next;
 		e->next = NULL;
+		e->state = 0;
 	}
 
 	e->sub[0] = source;
@@ -56,34 +57,20 @@ newEntity( Entity *source, Entity *medium, Entity *target )
 void
 freeEntity( Entity *entity )
 {
-	// we must find all instances where entity is involved and
-	// 1. replace entity with NULL in these instances
-	// 2. remove the instance from the as_source, as_medium and as_target
-	//    lists of the other terms.
+	if ( entity->state == -1 )
+		return;
 
-	for ( int i=0; i<3; i++ )
-	{
-		for ( listItem *j=entity->as_sub[ i ]; j!=NULL; j=j->next )
-		{
-			Entity *e = (Entity *) j->ptr;
-			e->sub[ i ] = NULL;
-			int k = (i+1)%3;
-			Entity *sub = e->sub[ k ];
-			if ( sub != NULL ) removeItem( &sub->as_sub[ k ], e );
-			k = (k+1)%3;
-			sub = e->sub[ k ];
-			if ( sub != NULL ) removeItem( &sub->as_sub[ k ], e );
-		}
-		freeListItem( &entity->as_sub[ i ] );
-	}
-
-	// then we must also remove entity from the as_sub lists of its subs
+	// remove entity from the as_sub lists of its subs
 	for ( int i=0; i< 3; i++ )
 	{
 		Entity *sub = entity->sub[ i ];
-		if ( sub != NULL ) removeItem( &sub->as_sub[ i ], entity );
+		if (( sub == NULL ) || ( sub->state == -1 ))
+			continue;
+
+		removeItem( &sub->as_sub[ i ], entity );
 	}
 
+	entity->state = -1;
 	entity->next = freeEntityList;
 	freeEntityList = entity;
 }
@@ -196,6 +183,16 @@ void freeItem( listItem *item )
         item->next = freeItemList;
 	item->ptr = NULL;
         freeItemList = item;
+}
+
+listItem *catListItem( listItem *list1, listItem *list2 )
+{
+	if ( list2 != NULL ) {
+		listItem *j = list1;
+		while ( j->next != NULL ) j=j->next;
+		j->next = list2;
+	}
+	return list1;
 }
 
 void popListItem( listItem **list )

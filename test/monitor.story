@@ -1,5 +1,4 @@
 
-	!~ .
 	!! monitor()
 		on init do
 			>:	monitor() >>>>> init done
@@ -16,25 +15,6 @@
 		on e_released: . !~ do
 			>:	monitor() >>>>> entities released: %e_released
 			>:	monitor() >>>>> entities remaining: %[ . ]
-			!! %e_released-is->tata
-			>:
-			>:	~ NEXT FRAME IS TRIGGERED BY NEW LINE FROM SCRIPT OR COMMAND ~
 			/.
 		/
-
-	>:%.monitor()
-
-	>:1. !* monitor()
 	!* monitor()
-
-	>:2. !! titi-is->toto
-	!! titi-is->toto
-
-	>:3. !* titi
-	!* titi
-
-	>:4. !_ titi
-	!_ titi
-
-	>:5. !~ titi
-	!~ titi

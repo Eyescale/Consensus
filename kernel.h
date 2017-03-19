@@ -46,10 +46,9 @@ typedef enum {
 RecordMode;
 
 typedef enum {
-	DefaultIdentifier = 0,
+	DefaultIdentifier = 1,
 	StringIdentifier,
 	VariableIdentifier,
-	ListIdentifier,
 	NullIdentifier,
 }
 IdentifierType;
@@ -57,6 +56,7 @@ IdentifierType;
 typedef enum {
 	EntityVariable = 1,
 	ExpressionVariable,
+	LiteralVariable,
 	NarrativeVariable,
 }
 VariableType;

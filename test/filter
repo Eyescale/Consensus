@@ -1,0 +1,39 @@
+
+	!~ .
+	!! titi-is->toto
+	>:1. DB                           %[ . ]
+	>:   command                      : filter : %\[ . ]$( literal )
+	: filter : %[ . ].$( literal )
+	>:   command                      !~ .
+	!~ .
+	>:   %\filter                      %filter
+	: titi : ?-is->toto < %filter
+	>:   ?-is->toto < %\filter         %titi
+	>:   %\[ ?-is->toto < %\filter ]    %[ ?-is->toto < %filter ]
+	>:
+	!! titi-is->toto
+	!! tata-is->toto
+	!! tutu-is->toto
+	>:2. DB                           %[ . ]
+	>:   %\[ ?-is->toto < %\filter ]    %[ ?-is->toto < %filter ]
+	>:   command                      : filter : %\[ . ]$( literal )
+	: filter : %[ . ].$( literal )
+	>:   command                      !~ .
+	!~ .
+	>:   %\filter                      %filter
+	>:   ?:?-is->toto < %\filter
+	?: toto<-is-? < %filter
+		>:		%?
+		/
+	>:
+	!! titi-is->[ toto<-has-tata ]
+	!! tutu-is->[ titi<-has-tata ]
+	>:3. DB                           %[ . ]
+	>:   command                      : filter : %\[ . ]$( literal )
+	: filter : %[ . ].$( literal )
+	>:   command                      !~ .
+	!~ .
+	: titi : [ ?<-has-tata ]<-is-. < %filter
+	>:   [ ?<-has-tata ]<-is-. < %\filter
+        >:                                %titi
+

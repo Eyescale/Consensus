@@ -16,9 +16,6 @@
 		on e_released: . !~ do
 			>:	monitor() >>>>> entities released: %e_released
 			>:	monitor() >>>>> entities remaining: %[ . ]
-			!! %e_released-is->tata
-			>:
-			>:	~ NEXT FRAME IS TRIGGERED BY NEW LINE FROM SCRIPT OR COMMAND ~
 			/.
 		/
 
@@ -38,3 +35,4 @@
 
 	>:5. !~ titi
 	!~ titi
+

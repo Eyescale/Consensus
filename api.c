@@ -62,15 +62,14 @@ cn_free( Entity *e )
 	name = cn_va_get_value( "url", e );
 	free( name );
 
-	// deregister entity from all its narratives
+	// remove all entity's narratives
 
 	Registry narratives = cn_va_get_value( "narratives", e );
-	for ( registryEntry *i = narratives; i!=NULL; i=i->next )
+	for ( registryEntry *r = narratives; r!=NULL; r=r->next )
 	{
-		Narrative *n = (Narrative *) i->value;
-		removeFromNarrative( n, e );
+		Narrative *n = (Narrative *) r->value;
+		removeNarrative( e, n );
 	}
-	freeRegistry( &narratives );
 
 	// remove entity from name registry
 
@@ -78,8 +77,8 @@ cn_free( Entity *e )
 
 	// close all value accounts associated with this entity
 
-	for ( registryEntry *i = CN.VB; i!=NULL; i=i->next ) {
-		deregisterByAddress( (Registry *) &i->value, e );
+	for ( registryEntry *r = CN.VB; r!=NULL; r=r->next ) {
+		deregisterByAddress( (Registry *) &r->value, e );
 	}
 
 	// finally remove entity from CN.DB
@@ -132,7 +131,7 @@ cn_va_get_value( char *va_name, Entity *e )
 }
 
 /*---------------------------------------------------------------------------
-	cn_instance
+	cn_expression
 ---------------------------------------------------------------------------*/
 Expression *
 cn_expression( Entity *e )
@@ -142,6 +141,7 @@ cn_expression( Entity *e )
 	Expression *expression = (Expression *) calloc( 1, sizeof(Expression));
 	ExpressionSub *sub = expression->sub;
 	sub[ 3 ].result.any = 1;
+	sub[ 3 ].e = expression;
 
 	if ( e == CN.nil ) {
 		sub[ 0 ].result.identifier.type = NullIdentifier;
@@ -158,7 +158,7 @@ cn_expression( Entity *e )
 			sub[ 2 ].result.none = 1;
 		}
 		else for ( int i=0; i<3; i++ ) {
-			char *name = cn_name( e->sub[ i ] );
+			name = cn_name( e->sub[ i ] );
 			if ( name != NULL ) {
 				sub[ i ].result.identifier.type = DefaultIdentifier;
 				sub[ i ].result.identifier.value = strdup( name );
@@ -228,6 +228,9 @@ cn_instantiate( Entity *source, Entity *medium, Entity *target )
 void
 cn_release( Entity *e )
 {
+	if (( e == CN.nil ) || ( e == CN.this ) || ( e->state == -1 ))
+		return;
+
 	// we must find all instances where e is involved and release these as well.
 	for ( int i=0; i<3; i++ ) {
 		listItem *next_j;
@@ -236,7 +239,8 @@ cn_release( Entity *e )
 			cn_release( (Entity *) j->ptr );
 		}
 	}
-	addItem( &CN.context->frame.log.entities.released, cn_expression( e ) );
+	Expression *expression = cn_expression( e );
+	addItem( &CN.context->frame.log.entities.released, &expression->sub[ 3 ] );
 	cn_free( e );
 }
 

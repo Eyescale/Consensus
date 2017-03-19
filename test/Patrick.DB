@@ -1,0 +1,14 @@
+
+	: Patrick : Patrick-is->father
+	: Laure : !! Laure-is->mother
+	: Kimi : !! Kimi-is->mother
+	: Fei : !! Fei-is->mother
+	!! Jules-is->[ child<-has-%Patrick ]
+	!! Charles-is->[ child<-has-%Patrick ]
+	!! Koan-is->[ child<-has-%Patrick ]
+	!! Dawen-is->[ child<-has-%Patrick ]
+	!! Jules-is->[ child<-has-%Laure ]
+	!! Charles-is->[ child<-has-%Laure ]
+	!! Koan-is->[ child<-has-%Kimi ]
+	!! Dawen-is->[ child<-has-%Fei ]
+

@@ -248,6 +248,7 @@ set_sub_identifier( int count, int event, _context *context )
 
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
+	expression->sub[ count ].result.identifier.type = DefaultIdentifier;
 	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
@@ -777,8 +778,8 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		on_( '?' )	expression_do_( nop, "?" )
 		end
 	in_( "?" ) bgn_
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
+		on_( ' ' )	expression_do_( set_mark, "?_" )
+		on_( '\t' )	expression_do_( set_mark, "?_" )
 		on_( ':' )	expression_do_( set_mark, base )
 		on_( ']' )	expression_do_( set_mark, "" )
 		on_( '-' )	expression_do_( set_source_mark, "source-" )
@@ -838,7 +839,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '\t' )	expression_do_( nop, same )
 			on_( ':' )	expression_do_( nop, base )
 			on_( ']' )	expression_do_( nothing, base )
-			on_other	expression_do_( nothing, "" )
+			on_other	expression_do_( nothing, "source-medium->target" )
 			end
 	in_( "[]" ) bgn_
 		on_( '.' )	expression_do_( nop, "[]." )
@@ -975,7 +976,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		end
 
 		// return control to parse_expression after push or when mark set
-		if (( state == base ) || !strcmp( state, "source-" ) || !strcmp( state, "target<" ))
+		if (( state == base ) || !strcmp( state, "source-" ) || !strcmp( state, "target<" ) || !strcmp( state, "source-medium->target" ))
 			{ *next_state = state; state = ""; }
 	}
 	while ( strcmp( state, "" ) );

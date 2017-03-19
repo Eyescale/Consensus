@@ -46,7 +46,7 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 			variable = (VariableVA *) entry->value;
 			freeVariableValue( variable );
 		}
-		variable->type = ( occurrence->va.event.type.release ? ExpressionVariable : EntityVariable );
+		variable->type = ( occurrence->va.event.type.release ? LiteralVariable : EntityVariable );
 		variable->data.value = context->expression.results;
 		context->expression.results = NULL;
 	}

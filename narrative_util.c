@@ -90,29 +90,35 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 	removeNarrative
 ---------------------------------------------------------------------------*/
 void
-removeNarrative( Narrative *narrative, Entity *entity )
+removeNarrative( Entity *entity, Narrative *narrative )
 {
 	registryEntry *entry = lookupByName( CN.VB, "narratives" );
 	if ( entry == NULL ) return;
 	Registry *va = (Registry *) &entry->value;
 	entry = lookupByAddress( *va, entity );
+
 	if ( entry == NULL ) return;
-	registryEntry *last_i = NULL, *next_i;
-	for ( registryEntry *i = (Registry) entry->value; i!=NULL; i=next_i )
+	registryEntry *last_r = NULL, *next_r;
+	for ( registryEntry *r = (Registry) entry->value; r!=NULL; r=next_r )
 	{
-		Narrative *n = (Narrative *) i->value;
-		next_i = i->next;
+		Narrative *n = (Narrative *) r->value;
+		next_r = r->next;
 		if ( n == narrative )
 		{
 			removeFromNarrative( n, entity );
-			if ( last_i == NULL ) {
-				entry->value = next_i;
+			if ( last_r == NULL ) {
+				if ( next_r == NULL ) {
+					deregisterByAddress( va, entity );
+				} else {
+					entry->value = next_r;
+				}
 			} else {
-				last_i->next = next_i;
+				last_r->next = next_r;
 			}
+			freeRegistryItem( r );
 			return;
 		}
-		last_i = i;
+		last_r = r;
 	}
 }
 

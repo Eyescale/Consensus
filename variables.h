@@ -8,6 +8,7 @@
 _action	assign_results;
 _action	assign_narrative;
 _action	assign_expression;
+_action	assign_va;
 
 /*---------------------------------------------------------------------------
 	variables utilities	- public

@@ -14,19 +14,6 @@
 
 // #define DEBUG
 
-typedef enum {
-	ExpressionAll,
-	ExpressionMark,
-	SubAll,
-	SubFlags,
-	SubAny,
-	SubVariable,
-	SubIdentifier,
-	SubNull,
-	SubSub
-}
-ExpressionOutput;
-
 /*---------------------------------------------------------------------------
 	prompt
 ---------------------------------------------------------------------------*/
@@ -147,8 +134,10 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		case VariableIdentifier:
 			output_expression( SubVariable, expression, i, shorty );
 			break;
-		default:
+		case DefaultIdentifier:
 			output_expression( SubIdentifier, expression, i, shorty );
+			break;
+		default:
 			break;
 		}
 		if ( sub[ i ].e != NULL ) {
@@ -174,7 +163,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		printf( ( mark & 2 ) ? "?" : "." );
 		printf( ( mark & 4 ) ? "?" : "." );
 		return 1;
-	default:
+	case ExpressionAll:
 		break;
 	}
 
@@ -191,6 +180,9 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 
 	// output body in all its various forms...
 	if ( sub[ 0 ].result.none ) {
+#ifdef DEBUG
+		fprintf( stderr, "debug> output_expression: no source...\n" );
+#endif
 		;	// do nothing here
 	}
 	else if ( sub[ 1 ].result.none ) {
@@ -224,6 +216,9 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		}
 	}
 	else if ( expression->result.output_swap ) {
+#ifdef DEBUG
+		fprintf( stderr, "debug> output_expression: output body - swap...\n" );
+#endif
 		if ( mark++ ) printf( ": " );
 		output_expression( SubAll, expression, 2, 0 );
 		printf( "<-" );
@@ -231,6 +226,9 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		printf( "-" );
 		output_expression( SubAll, expression, 0, 0 );
 	} else {
+#ifdef DEBUG
+		fprintf( stderr, "debug> output_expression: output body...\n" );
+#endif
 		if ( mark++ ) printf( ": " );
 		output_expression( SubAll, expression, 0, 0 );
 		printf( "-" );
@@ -338,56 +336,52 @@ output_results( listItem *i, Expression *format )
 }
 
 static void
-output_expression_list( listItem *i )
-{
-	if ( i == NULL ) {
-		return;
-	}
-	else if ( i->next == NULL ) {
-		output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
-	}
-	else {
-		printf( "{ " );
-		output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
-		for ( i = i->next; i!=NULL; i=i->next )
-		{
-			printf( ", " );
-			output_expression( ExpressionAll, (Expression *) i->ptr, -1, -1 );
-		}
-		printf( " }" );
-	}
-}
-
-static void
 output_value( VariableVA *variable )
 {
 	switch ( variable->type ) {
 	case NarrativeVariable:
-		; registryEntry *i = (Registry) variable->data.value;
-		Entity *e = (Entity *) i->identifier;
-		char *narrative = (char *) i->value;
-		if ( i->next == NULL ) {
-			if ( i->identifier == CN.nil ) printf( "%s()", narrative );
+		; registryEntry *r = (Registry) variable->data.value;
+		Entity *e = (Entity *) r->identifier;
+		char *narrative = (char *) r->value;
+		if ( r->next == NULL ) {
+			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
 			else { output_name( e, NULL, 1 ); printf( ".%s()", narrative ); }
 		}
 		else {
 			printf( "{ ");
-			if ( i->identifier == CN.nil ) printf( "%s()", narrative );
+			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
 			else printf( "%s.%s()", cn_name( e ), narrative );
-			for ( i=i->next; i!=NULL; i=i->next ) {
-				e = (Entity *) i->identifier;
-				narrative = (char *) i->value;
-				if ( i->identifier == CN.nil ) printf( "%s()", narrative );
+			for ( r=r->next; r!=NULL; r=r->next ) {
+				printf( ", " );
+				e = (Entity *) r->identifier;
+				narrative = (char *) r->value;
+				if ( r->identifier == CN.nil ) printf( "%s()", narrative );
 				else { output_name( e, NULL, 1 ); printf( ".%s()", narrative ); }
 			} 
 			printf( " }" );
 		}
 		break;
-	case ExpressionVariable:
-		output_expression_list( (listItem *) variable->data.value );
-		break;
 	case EntityVariable:
 		output_results( (listItem *) variable->data.value, NULL );
+		break;
+	case ExpressionVariable:
+		output_expression( ExpressionAll, ((listItem *) variable->data.value )->ptr, -1, -1 );
+		break;
+	case LiteralVariable:
+		; listItem *i = variable->data.value;
+		ExpressionSub *s = (ExpressionSub *) i->ptr;
+		if ( i->next == NULL ) {
+			output_expression( ExpressionAll, s->e, -1, -1 );
+		} else {
+			printf( "{ " );
+			output_expression( ExpressionAll, s->e, -1, -1 );
+			for ( i=i->next; i!=NULL; i=i->next ) {
+				printf( ", " );
+				ExpressionSub *s = (ExpressionSub *) i->ptr;
+				output_expression( ExpressionAll, s->e, -1, -1 );
+			} 
+			printf( " }" );
+		}
 		break;
 	}
 }
@@ -518,7 +512,9 @@ output_va( char *state, int event, char **next_state, _context *context )
 	}
 	output_va_( va_name, event, context );
 
-	printf( "%c", event );
+	if ( event != '\n' ) {
+		printf( "%c", event );
+	}
 	return 0;
 }
 

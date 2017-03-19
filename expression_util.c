@@ -18,30 +18,27 @@
 	freeExpression
 ---------------------------------------------------------------------------*/
 static void
-nullify( Expression *expression, listItem **residue, listItem **list )
+nullify( Expression *expression, listItem **residue )
 {
-	if ( expression == NULL ) return;
-	ExpressionSub *sub = expression->sub;
+	// residues are earlier versions of an expression which has superceded itself,
+	// possibly more than once. Each must be freed only once.
 
-	// residues and lists are earlier versions of an expression which has superceded
-	// itself, possibly more than once. Each must be freed only once.
+	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<4; i++ )
 	{
-		if ( sub[ i ].result.identifier.type == ListIdentifier ) {
-			for ( listItem *j = (listItem *) sub[ i ].result.identifier.value; j!=NULL; j=j->next )
-			{
-				nullify( (Expression *) j->ptr, residue, list );
-			}
-			addIfNotThere( list, sub[ i ].result.identifier.value );
-			sub[ i ].result.identifier.value = NULL;
-		}
+		if ( sub[ i ].result.any || sub[ i ].result.none )
+			continue;
+
 		if ( sub[ i ].e == NULL )
 			continue;
-		nullify( sub[ i ].e, residue, list );
-		if ( sub[ i ].result.identifier.value != NULL )
-			continue;
-		addIfNotThere( residue, sub[ i ].e );
-		sub[ i ].e = NULL;
+
+		nullify( sub[ i ].e, residue );
+
+		if (( sub[ i ].result.identifier.type == VariableIdentifier ) && ( sub[ i ].result.identifier.value == NULL ))
+		{
+			addIfNotThere( residue, sub[ i ].e );
+			sub[ i ].e = NULL;
+		}
 	}
 }
 
@@ -52,34 +49,38 @@ erase( Expression *expression )
 	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<4; i++ )
 	{
-		if (( sub[ i ].result.identifier.type != VariableIdentifier ) ||
-		    (( sub[ i ].result.identifier.value != variator_symbol ) && ( sub[ i ].result.identifier.value != this_symbol )))
-		{
-			free( sub[ i ].result.identifier.value );
-		}
+		if ( sub[ i ].result.any || sub[ i ].result.none )
+			continue;
+
 		erase( sub[ i ].e );
-		free( sub[ i ].e );
+
+		switch ( sub[ i ].result.identifier.type ) {
+		case VariableIdentifier:
+			if (( sub[ i ].result.identifier.value == variator_symbol ) || ( sub[ i ].result.identifier.value == this_symbol ))
+				break;
+		case DefaultIdentifier:
+			free( sub[ i ].result.identifier.value );
+		default:
+			break;
+		}
 	}
 	freeListItem( &expression->result.list );
+	free( expression );
 }
 
 void
 freeExpression( Expression *expression )
 {
-	listItem *residue = NULL, *list = NULL;
-	nullify( expression, &residue, &list );
+	if ( expression == NULL )
+		return;
+
+	listItem *residue = NULL;
+	nullify( expression, &residue );
 	for ( listItem *i = residue; i!=NULL; i=i->next ) {
 		erase( (Expression *) i->ptr );
 	}
-	for ( listItem *i = list; i!=NULL; i=i->next ) {
-		for ( listItem *j = (listItem *) i->ptr; j!=NULL; j=j->next ) {
-			erase( (Expression *) j->ptr );
-		}
-		freeListItem( (listItem **) &i->ptr );
-	}
 	erase( expression );
 	freeListItem( &residue );
-	freeListItem( &list );
 }
 
 /*---------------------------------------------------------------------------
@@ -93,6 +94,8 @@ trace_mark( Expression *expression )
 		return 1;
 	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<4; i++ ) {
+		if ( sub[ i ].result.any )
+			continue;
 		if ( sub[ i ].result.identifier.type == VariableIdentifier )
 			continue;
 		if ( trace_mark( sub[ i ].e ) ) {
@@ -110,7 +113,10 @@ mark_negated( Expression *expression, int negated )
 		return negated;
 	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<4; i++ ) {
-		if ( !sub[ i ].result.resolve ) continue;
+		if ( sub[ i ].result.any )
+			continue;
+		if ( !sub[ i ].result.resolve )
+			continue;
 		if ( mark_negated( sub[ i ].e, negated || sub[ i ].result.not ) )
 			return 1;
 	}
@@ -169,18 +175,18 @@ expression_collapse( Expression *expression )
 #ifdef DEBUG
 	fprintf( stderr, " debug> expression_collapse: entering %0x\n", (int) expression );
 #endif
-	if (( sub[ 3 ].e != NULL ) &&
+	if (( sub[ 3 ].e != NULL ) && !sub[ 3 ].result.any &&
 	     !sub[ 3 ].result.active && !sub[ 3 ].result.inactive && !sub[ 3 ].result.not &&
 	    ( sub[ 0 ].result.any && !sub[ 0 ].result.active && !sub[ 0 ].result.inactive && !sub[ 0 ].result.not ) &&
 	    ( sub[ 1 ].result.any && !sub[ 1 ].result.active && !sub[ 1 ].result.inactive && !sub[ 1 ].result.not ) &&
 	    ( sub[ 2 ].result.any && !sub[ 2 ].result.active && !sub[ 2 ].result.inactive && !sub[ 2 ].result.not ))
 	{
+		// in this case we replace the whole current expression with its sub[ 3 ]
 		flags[ 0 ] = 0;
 		flags[ 1 ] = 0;
 #ifdef DEBUG
 		fprintf( stderr, "debug> expression_collapse: collapsing whole...\n" );
 #endif
-		// in this case we replace the whole current expression with its sub[ 3 ]
 		collapse( expression, flags, 3, 4, -1 );
 	}
 
@@ -188,7 +194,7 @@ expression_collapse( Expression *expression )
 	for ( int i=0; i<4; i++ )	// look at each sub and see if it can be collapsed
 	{
 		// we want to replace sub[ i ] with its own sub-expression
-		if ( sub[ i ].e == NULL )
+		if (( sub[ i ].e == NULL ) || sub[ i ].result.any )
 			continue;
 
 		Expression *e = sub[ i ].e;
@@ -262,7 +268,7 @@ expression_collapse( Expression *expression )
 		}
 	}
 	// we want to replace the current expression with its sub[ 3 ]
-	else if ( sub[ 0 ].result.any && ( sub[ 3 ].e != NULL ) )
+	else if ( sub[ 0 ].result.any && ( sub[ 3 ].e != NULL ) && !sub[ 3 ].result.any )
 	{
 		flags[ 0 ] = sub[ 0 ].result.active || sub[ 3 ].result.active;
 		flags[ 1 ] = sub[ 0 ].result.inactive || sub[ 3 ].result.inactive;
@@ -323,7 +329,7 @@ instantiable( Expression *expression, _context *context )
 	}
 
 	for ( int i=0; i<3; i++ ) {
-		if ( sub[ i ].e != NULL ) {
+		if (( sub[ i ].e != NULL ) && !sub[ i ].result.any ) {
 			if ( !instantiable( sub[ i ].e, context ) )
 				return 0;
 		}
@@ -349,78 +355,23 @@ instantiable( Expression *expression, _context *context )
 			VariableVA *variable = (VariableVA *) entry->value;
 			switch ( variable->type ) {
 			case EntityVariable:
+			case LiteralVariable:
 				break;
 			case NarrativeVariable:
 				; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
 				log_error( context, 0, msg ); free( msg );
 				return 0;
 			case ExpressionVariable:
-				for ( listItem *j = variable->data.value; j!=NULL; j=j->next )
-					if ( !instantiable( (Expression * ) j->ptr, context ) )
-						return 0;
+				if ( !instantiable( ((listItem * ) variable->data.value )->ptr, context ) )
+					return 0;
 				break;
 			}
-			break;
-		case ListIdentifier:
-			for ( listItem *j = sub[ i ].result.identifier.value; j!=NULL; j=j->next )
-				if ( !instantiable( (Expression * ) j->ptr, context ) )
-					return 0;
 			break;
 		default:
 			break;
 		}
 	}
 	return 1;
-}
-
-/*---------------------------------------------------------------------------
-	set_filter_variable
----------------------------------------------------------------------------*/
-int
-set_filter_variable( _context *context )
-{
-	int retval = 1;
-
-	char *identifier = context->expression.filter_identifier;
-	if ( identifier == NULL )
-		return 0;
-
-	if ( context->expression.filter != NULL )
-		return log_error( context, 0, "expression filter is already in place" );
-
-	registryEntry *entry = lookupVariable( context, identifier );
-	if ( entry == NULL ) {
-		char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
-		retval = log_error( context, 0, msg ); free( msg );
-		return retval;
-	}
-
-	VariableVA *variable = (VariableVA *) entry->value;
-	switch ( variable->type ) {
-	case EntityVariable:
-		if ( context->expression.mode == InstantiateMode ) {
-			char *msg; asprintf( &msg, "'%%%s' is an entity variable - "
-				"cannot be used as expression filter in instantiation mode", identifier );
-			retval = log_error( context, 0, msg ); free( msg );
-			return retval;
-		}
-		context->expression.mode = EvaluateMode;
-		retval = 0;
-		break;
-	case ExpressionVariable:
-		context->expression.mode = ReadMode;
-		break;
-	case NarrativeVariable:
-		; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - "
-			"cannot be used as expression filter", identifier );
-		retval = log_error( context, 0, msg ); free( msg );
-		return retval;
-	}
-
-	context->expression.filter = variable->data.value;
-	context->expression.filter_identifier = NULL;
-	free( identifier );
-	return retval;
 }
 
 /*---------------------------------------------------------------------------
