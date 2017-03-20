@@ -12,8 +12,10 @@ set(CONSENSUS_SOURCES
   api.c
   command.c
   database.c
+  expression_solve.c
   expression_util.c
   expression.c
+  filter_util.c
   frame.c
   hcn.c
   input.c
