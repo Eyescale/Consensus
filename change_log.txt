@@ -14,8 +14,6 @@ DONE	. modified test/full to test filter variables after test/monitor
 			. allow %[ ] as TERM in expressions (allowing several '?' )
 			  This also allows to execute ?: %[ a-is->b < %event ]
 			. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
-		. narrative init and exit notifications
-		. narrative deactivation
 		. complete documentation as-is
 		. Release v1.0
 
