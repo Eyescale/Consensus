@@ -40,7 +40,7 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 		registryEntry *entry = lookupByName( instance->variables, identifier );
 		if ( entry == NULL ) {
 			variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-			registerByName( &instance->variables, identifier, variable );
+			registerByName( &instance->variables, strdup( identifier ), variable );
 		}
 		else {
 			variable = (VariableVA *) entry->value;
@@ -54,44 +54,6 @@ test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurre
 	// register this occurrence in context->frame.events
 	occurrence->registered = 1;
 	addItem( &instance->frame.events, occurrence );
-}
-
-static void
-test_and_register_narrative_event( Narrative *instance, Registry log, Occurrence *occurrence, _context *context )
-{
-	if ( occurrence->registered || ( log == NULL ) )
-		return;	// either registered already or no such events logged in this frame
-
-	if ( occurrence->va.event.expression == NULL ) {
-		freeListItem( &context->expression.results );
-		context->expression.results = newItem( CN.nil );
-	} else {
-		context->expression.mode = EvaluateMode;
-		expression_solve( occurrence->va.event.expression, 3, context );
-	}
-
-	for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
-	{
-		Entity *result = (Entity *) i->ptr;
-		for ( registryEntry *j = log; j!=NULL; j=j->next )
-		{
-			Narrative *n = (Narrative *) j->identifier;
-			// j->value holds the list of entities for which an instance of that narrative has been activated
-			for ( listItem *k = (listItem *) j->value; k!=NULL; k=k->next )
-			{
-				Entity *e = (Entity *) k->ptr;
-				if ( e != result ) continue;
-				// find the pseudo used by that entity for that narrative
-				registryEntry *entry = lookupByAddress( n->entities, e );
-				char *name = ( entry->value == NULL ) ? n->name : (char *) entry->value;
-				if ( !strcmp( occurrence->va.event.narrative_identifier, name ) ) {
-					occurrence->registered = 1;
-					addItem( &instance->frame.events, occurrence );
-					return;
-				}
-			}
-		}
-	}
 }
 
 static void
@@ -111,6 +73,7 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 				search_and_register_events( instance, occurrence, context );
 			}
 			break;
+
 		case EventOccurrence:
 			if ( occurrence->va.event.identifier.type == VariableIdentifier )
 				break;	// DO_LATER
@@ -118,32 +81,16 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 			if ( !occurrence->va.event.type.notification )
 				break;	// DO_LATER
 
-			if ( occurrence->va.event.type.narrative )
-			{
-				Registry log = NULL;
-				if ( occurrence->va.event.type.instantiate )
-					log = context->frame.log.narratives.instantiated;
-				else if ( occurrence->va.event.type.release )
-					log = context->frame.log.narratives.released;
-				else if ( occurrence->va.event.type.activate )
-					log = context->frame.log.narratives.activated;
-				if ( occurrence->va.event.type.deactivate )
-					log = context->frame.log.narratives.deactivated;
-				test_and_register_narrative_event( instance, log, occurrence, context );
-			}
-			else
-			{
-				listItem *log = NULL;
-				if ( occurrence->va.event.type.instantiate )
-					log = context->frame.log.entities.instantiated;
-				else if ( occurrence->va.event.type.activate )
-					log = context->frame.log.entities.activated;
-				else if ( occurrence->va.event.type.deactivate )
-					log = context->frame.log.entities.deactivated;
-				else if ( occurrence->va.event.type.release )
-					log = context->frame.log.entities.released;
-				test_and_register_event( instance, log, occurrence, context );
-			}
+			listItem *log = NULL;
+			if ( occurrence->va.event.type.instantiate )
+				log = context->frame.log.entities.instantiated;
+			else if ( occurrence->va.event.type.activate )
+				log = context->frame.log.entities.activated;
+			else if ( occurrence->va.event.type.deactivate )
+				log = context->frame.log.entities.deactivated;
+			else if ( occurrence->va.event.type.release )
+				log = context->frame.log.entities.released;
+			test_and_register_event( instance, log, occurrence, context );
 
 			if ( occurrence->registered ) {
 				search_and_register_events( instance, occurrence, context );
@@ -323,11 +270,8 @@ execute_narrative_actions( Narrative *instance, _context *context )
 			context->narrative.mode.action.block = 0;
 		}
 
-		if ( instance->deactivate ) {
-			freeListItem( &instance->frame.then );
-			freeListItem( &instance->frame.events );
+		if ( instance->deactivate )
 			break;
-		}
 
 		for ( listItem *j = occurrence->thread->sub.n; j!=NULL; j=j->next )
 		{
@@ -356,6 +300,22 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 #ifdef DEBUG
 	fprintf( stderr, "debug> entering systemFrame\n" );
 #endif
+	// Check narratives to be deactivated - and deactivate them
+	for ( registryEntry *i = context->frame.log.narratives.deactivate; i!=NULL; i=i->next )
+	{
+		Narrative *narrative = (Narrative *) i->identifier;
+		listItem *entities = (listItem *) i->value;
+		for ( listItem *j = entities; j!=NULL; j=j->next )
+		{
+#ifdef DEBUG
+			fprintf( stderr, "debug> systemFrame: invoking deactivateNarrative()\n" );
+#endif
+			deactivateNarrative( (Entity *) j->ptr, narrative );
+		}
+		freeListItem( (listItem **) &i->value );
+	}
+	freeRegistry( &context->frame.log.narratives.deactivate );
+
 	// perform actions registered from last frame, and update current conditions
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
@@ -368,11 +328,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			fprintf( stderr, "debug> systemFrame: invoking execute_narrative_actions()\n" );
 #endif
 			execute_narrative_actions( n, context );
+			// check if the narrative reached 'exit'
 			if ( n->deactivate ) {
-				deregisterByValue( &narrative->instances, n );
-				registerByAddress( &context->frame.log.narratives.deactivated, e, n->name );
-				n->name = NULL;
-				freeNarrative( n );
+				deactivateNarrative( e, narrative );
 			}
 		}
 	}
@@ -419,10 +377,6 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			freeListItem( &n->frame.then );
 		}
 	}
-	freeRegistry( &context->frame.log.narratives.instantiated );
-	freeRegistry( &context->frame.log.narratives.released );
-	freeRegistry( &context->frame.log.narratives.activated );
-	freeRegistry( &context->frame.log.narratives.deactivated );
 	freeListItem( &context->frame.log.entities.instantiated );
 	freeListItem( &context->frame.log.entities.released );
 	freeListItem( &context->frame.log.entities.activated );
@@ -453,7 +407,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			Narrative *n = activateNarrative( e, narrative );
 			search_and_register_init( n, &n->root, context );
 		}
-		freeListItem( &entities );
+		freeListItem( (listItem **) &i->value );
 	}
 	freeRegistry( &context->frame.log.narratives.activate );
 

@@ -147,10 +147,8 @@ typedef struct {
 		unsigned int init : 1;
 		unsigned int notification : 1;
 		unsigned int request : 1;
-		unsigned int narrative : 1;
 	} type;
 	Expression *expression;
-	char *narrative_identifier;
 }
 EventVA;
 
@@ -356,10 +354,7 @@ typedef struct {
 			} entities;
 			struct {
 				Registry activate;	// { ( narrative, { entity } ) }
-				Registry instantiated;	// { ( narrative, { entity } ) }
-				Registry released;	// { ( narrative, { entity-expression } ) }
-				Registry activated;	// { ( narrative, { entity } ) }
-				Registry deactivated;	// { ( narrative, { entity } }
+				Registry deactivate;	// { ( narrative, { entity } ) }
 			} narratives;
 		} log;
 	} frame;

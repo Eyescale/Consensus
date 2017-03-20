@@ -150,6 +150,7 @@ activateNarrative( Entity *entity, Narrative *narrative )
 {
 	Narrative *instance;
 	registryEntry *entry = lookupByAddress( narrative->entities, entity );
+	// entry->value is the pseudo used by this entity to refer to that narrative
 	if (( entry->value == NULL ) && !narrative->assigned ) {
 		instance = narrative;
 		narrative->assigned = 1;
@@ -165,12 +166,35 @@ activateNarrative( Entity *entity, Narrative *narrative )
 }
 
 /*---------------------------------------------------------------------------
+	deactivateNarrative
+---------------------------------------------------------------------------*/
+void
+deactivateNarrative( Entity *entity, Narrative *narrative )
+{
+	Narrative *instance;
+	registryEntry *entry = lookupByAddress( narrative->instances, entity );
+	instance = (Narrative *) entry->value;
+	freeListItem( &instance->frame.events );
+	freeListItem( &instance->frame.actions );
+	freeListItem( &instance->frame.then );
+	if ( instance == narrative ) {
+		narrative->deactivate = 0;
+		narrative->assigned = 0;
+		freeVariables( &narrative->variables );
+	} else {
+		instance->name = NULL;
+		freeNarrative( instance );
+	}
+	deregisterByValue( &narrative->instances, instance );
+}
+
+/*---------------------------------------------------------------------------
 	lookupNarrative
 ---------------------------------------------------------------------------*/
 Narrative *
 lookupNarrative( Entity *entity, char *name )
 {
-	Registry narratives = cn_va_get_value( "narratives", entity );
+	Registry narratives = cn_va_get_value( entity, "narratives" );
 	registryEntry *entry = lookupByName( narratives, name );
 	return ( entry == NULL ) ? NULL : entry->value;
 }

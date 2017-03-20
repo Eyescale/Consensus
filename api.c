@@ -28,7 +28,7 @@ cn_entity( char *name )
 char *
 cn_name( Entity *e )
 {
-	return (char *) cn_va_get_value( "name", e );
+	return (char *) cn_va_get_value( e, "name" );
 }
 
 /*---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ Entity *
 cn_new( char *name )
 {
 	Entity *e = newEntity( NULL, NULL, NULL );
-	cn_va_set_value( "name", e, name );
+	cn_va_set_value( e, "name", name );
 	registerByName( &CN.registry, name, e );
 	addItem( &CN.DB, e );
 	addItem( &CN.context->frame.log.entities.instantiated, e );
@@ -55,16 +55,16 @@ cn_free( Entity *e )
 
 	// free entity's name, hcn and url strings
 
-	name = cn_va_get_value( "name", e );
+	name = cn_va_get_value( e, "name" );
 	free( name );
-	name = cn_va_get_value( "hcn", e );
+	name = cn_va_get_value( e, "hcn" );
 	free( name );
-	name = cn_va_get_value( "url", e );
+	name = cn_va_get_value( e, "url" );
 	free( name );
 
 	// remove all entity's narratives
 
-	Registry narratives = cn_va_get_value( "narratives", e );
+	Registry narratives = cn_va_get_value( e, "narratives" );
 	for ( registryEntry *r = narratives; r!=NULL; r=r->next )
 	{
 		Narrative *n = (Narrative *) r->value;
@@ -91,7 +91,7 @@ cn_free( Entity *e )
 	cn_va_set_value
 ---------------------------------------------------------------------------*/
 registryEntry *
-cn_va_set_value( char *va_name, Entity *e, void *value )
+cn_va_set_value( Entity *e, char *va_name, void *value )
 {
 	if ( value == NULL ) return NULL;
 	registryEntry *entry = lookupByName( CN.VB, va_name );
@@ -120,7 +120,7 @@ cn_va_set_value( char *va_name, Entity *e, void *value )
 	cn_va_get_value
 ---------------------------------------------------------------------------*/
 void *
-cn_va_get_value( char *va_name, Entity *e )
+cn_va_get_value( Entity *e, char *va_name )
 {
 	registryEntry *va = lookupByName( CN.VB, va_name );
 	if ( va == NULL ) return NULL;
@@ -284,25 +284,37 @@ cn_instantiate_narrative( Entity *e, Narrative *narrative )
 		if ( e == CN.nil ) {
 			fprintf( stderr, "consensus> Warning: narrative '%s()' already exists - cannot instantiate\n", narrative->name );
 		} else {
-			fprintf( stderr, "consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
-			fprintf( stderr, ".%s()' already exists - cannot instantiate\n", narrative->name );
+			fprintf( stderr, "consensus> Warning: narrative %%[ '" ); output_name( e, NULL, 0 );
+			fprintf( stderr, " ].%s()' already exists - cannot instantiate\n", narrative->name );
 		}
 		return 0;
 	}
 	addNarrative( e, narrative->name, narrative );
 
-	// log narrative instantiation event
-	Registry *log = &CN.context->frame.log.narratives.instantiated;
-	if ( *log == NULL ) {
-		CN.context->frame.log.narratives.instantiated = newRegistryItem( narrative, newItem( e ) );
-	} else {
-		registryEntry *entry = lookupByAddress( *log, narrative );
-		if ( entry == NULL ) {
-			registerByAddress( log, narrative, newItem(e) );
+	return 1;
+}
+
+/*---------------------------------------------------------------------------
+	cn_release_narrative
+---------------------------------------------------------------------------*/
+int
+cn_release_narrative( Entity *e, char *name )
+{
+	Narrative *n = lookupNarrative( e, name );
+	if ( n == NULL ) return 0;
+
+	//check if the requested narrative instance is active
+	if ( lookupByAddress( n->instances, e ) != NULL ) {
+		if ( e == CN.nil ) {
+			fprintf( stderr, "consensus> Warning: narrative '%s()' is currently active - cannot release\n", name );
 		} else {
-			addIfNotThere((listItem **) &entry->value, e );
+			fprintf( stderr, "consensus> Warning: narrative %%[ '" ); output_name( e, NULL, 0 );
+			fprintf( stderr, " ].%s()' is currently active - cannot release\n", name );
 		}
+		return 0;
 	}
+	removeNarrative( e, n );
+
 	return 1;
 }
 
@@ -322,6 +334,33 @@ cn_activate_narrative( Entity *e, char *name )
 	Registry *log = &CN.context->frame.log.narratives.activate;
 	if ( *log == NULL ) {
 		CN.context->frame.log.narratives.activate = newRegistryItem( n, newItem( e ) );
+	} else {
+		registryEntry *entry = lookupByAddress( *log, n );
+		if ( entry == NULL ) {
+			registerByAddress( log, n, newItem(e) );
+		} else {
+			addIfNotThere((listItem **) &entry->value, e );
+		}
+	}
+	return 1;
+}
+
+/*---------------------------------------------------------------------------
+	cn_deactivate_narrative
+---------------------------------------------------------------------------*/
+int
+cn_deactivate_narrative( Entity *e, char *name )
+{
+	Narrative *n = lookupNarrative( e, name );
+	if ( n == NULL ) return 0;
+
+	// check if the requested narrative instance actually exists
+	if ( lookupByAddress( n->instances, e ) == NULL ) return 0;
+
+	// log narrative deactivation event - the actual deactivation is performed in systemFrame
+	Registry *log = &CN.context->frame.log.narratives.deactivate;
+	if ( *log == NULL ) {
+		CN.context->frame.log.narratives.deactivate = newRegistryItem( n, newItem( e ) );
 	} else {
 		registryEntry *entry = lookupByAddress( *log, n );
 		if ( entry == NULL ) {

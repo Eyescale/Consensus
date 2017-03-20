@@ -1,4 +1,24 @@
 
+Mar 20, 2017
+DONE	. deprecated all narrative event notifications (e.g. init, exit)
+		. these can be notified using normal entities in the corresponding actions
+DONE	. modified test/narrative to remove narrative event
+DONE	. implemented narrative deactivation command
+DONE		. test monitor deactivation
+DONE		. modify test/monitor to deactivate monitor() at the end of test
+DONE	. implemented narrative release command
+DONE	. modified test/full to test filter variables after test/monitor
+
+	TODO next:
+		. add support for sub-queries, i.e.
+			. allow %[ ] as TERM in expressions (allowing several '?' )
+			  This also allows to execute ?: %[ a-is->b < %event ]
+			. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
+		. narrative init and exit notifications
+		. narrative deactivation
+		. complete documentation as-is
+		. Release v1.0
+
 Mar 19, 2017
 DONE	. introduced "literal" value account in order to test filter variables
 		: variable : %[ expression ].$( literal )
@@ -13,17 +33,6 @@ DONE		. variable assignment: does not take filter into account yet
 DONE		. test with loops: does not take filter into account yet
 DONE		. more - see test/filter
 DONE		  need to test : .-is->[ ?-is->toto ]
-
-	  TODO next:
-		. add support for sub-queries, i.e.
-			. allow %[ ] as TERM in expressions (allowing several '?' )
-			  This also allows to execute ?: %[ a-is->b < %event ]
-			. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
-		. narrative init and exit notifications
-		. narrative deactivation
-		. complete documentation as-is
-		. Release v1.0
-
 
 Mar 15, 2017
 DONE	. add support for filter variables, e.g.

@@ -335,14 +335,6 @@ set_event_variable( char *state, int event, char **next_state, _context *context
 }
 
 static int
-set_event_narrative( char *state, int event, char **next_state, _context *context )
-{
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	stack->narrative.event.type.narrative = 1;
-	return 0;
-}
-
-static int
 set_event_request( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
@@ -459,37 +451,14 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 						on_other	narrative_do_( error, base )
 						end
 						in_( "identifier: !." ) bgn_
-							on_any	narrative_do_( read_expression, "identifier: !. expression" )
+							on_any	narrative_do_( read_expression, "" )
 							end
-							in_( "identifier: !. expression" ) bgn_
-								on_( '(' )	narrative_do_( set_event_narrative, "identifier: !. narrative(" )
-								on_other	narrative_do_( nothing, "" )
-								end
-							in_( "identifier: !. narrative(" ) bgn_
-								on_( ' ' )	narrative_do_( nop, same )
-								on_( '\t' )	narrative_do_( nop, same )
-								on_( ')' )	narrative_do_( nop, "" )
-								on_other	narrative_do_( error, base )
-								end
 					in_( "identifier: expression" ) bgn_
 						on_( ' ' )	narrative_do_( nop, same )
 						on_( '\t' )	narrative_do_( nop, same )
-						on_( '(' )	narrative_do_( nop, "identifier: narrative(" )
 						on_( '!' )	narrative_do_( set_event_notification, "identifier: expression !" )
 						on_other	narrative_do_( error, base )
 						end
-					in_( "identifier: narrative(" ) bgn_
-						on_( ' ' )	narrative_do_( nop, same )
-						on_( '\t' )	narrative_do_( nop, same )
-						on_( ')' )	narrative_do_( nop, "identifier: narrative(_)" )
-						on_other	narrative_do_( error, base )
-						end
-						in_( "identifier: narrative(_)" ) bgn_
-							on_( ' ' )	narrative_do_( nop, same )
-							on_( '\t' )	narrative_do_( nop, same )
-							on_( '!' )	narrative_do_( set_event_notification, "identifier: expression !" )
-							on_other	narrative_do_( error, base )
-							end
 					in_( "identifier: expression !" ) bgn_
 						on_( '!' )	narrative_do_( set_event_type, "" )
 						on_( '~' )	narrative_do_( set_event_type, "" )
@@ -522,13 +491,9 @@ set_narrative_event( char *state, int event, char **next_state, _context *contex
 	occurrence->type = EventOccurrence;
 	bcopy( &stack->narrative.event, &occurrence->va.event, sizeof( EventVA ) );
 
-	if ( stack->narrative.event.type.narrative ) {
-		occurrence->va.event.narrative_identifier = context->identifier.id[ 1 ].ptr;
-		context->identifier.id[ 1 ].ptr = NULL;
-	} else {
-		occurrence->va.event.expression = context->expression.ptr;
-		context->expression.ptr = NULL;
-	}
+	occurrence->va.event.expression = context->expression.ptr;
+	context->expression.ptr = NULL;
+
 	return narrative_build( occurrence, event, context );
 }
 

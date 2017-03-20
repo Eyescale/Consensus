@@ -38,3 +38,6 @@
 
 	>:5. !~ titi
 	!~ titi
+
+	!_ monitor()
+	>:

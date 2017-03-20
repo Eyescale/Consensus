@@ -335,12 +335,32 @@ command_narrative( char *state, int event, char **next_state, _context *context 
 		context->narrative.current = NULL;
 		break;
 
-	case ActivateMode:
+	case ReleaseMode:
 		; char *name = context->identifier.id[ 1 ].ptr;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
+			cn_release_narrative( e, name );
+		}
+		event = 0;
+		break;
+
+	case ActivateMode:
+		name = context->identifier.id[ 1 ].ptr;
+		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
+		{
+			Entity *e = (Entity *) i->ptr;
 			cn_activate_narrative( e, name );
+		}
+		event = 0;
+		break;
+
+	case DeactivateMode:
+		name = context->identifier.id[ 1 ].ptr;
+		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
+		{
+			Entity *e = (Entity *) i->ptr;
+			cn_deactivate_narrative( e, name );
 		}
 		event = 0;
 		break;
@@ -570,7 +590,7 @@ command_push_input( InputType type, int event, _context *context )
 			identifier = string_extract( context->identifier.id[ 0 ].ptr );
 		} else if ( context->expression.results != NULL ) {
 			Entity *entity = (Entity *) context->expression.results->ptr;
-			identifier = (char *) cn_va_get_value( "hcn", entity );
+			identifier = (char *) cn_va_get_value( entity, "hcn" );
 		}
 		push_input( identifier, NULL, type, context );
 		break;

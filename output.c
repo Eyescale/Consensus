@@ -345,18 +345,18 @@ output_value( VariableVA *variable )
 		char *narrative = (char *) r->value;
 		if ( r->next == NULL ) {
 			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-			else { output_name( e, NULL, 1 ); printf( ".%s()", narrative ); }
+			else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
 		}
 		else {
 			printf( "{ ");
 			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-			else printf( "%s.%s()", cn_name( e ), narrative );
+			else printf( "%%[ %s ].%s()", cn_name( e ), narrative );
 			for ( r=r->next; r!=NULL; r=r->next ) {
 				printf( ", " );
 				e = (Entity *) r->identifier;
 				narrative = (char *) r->value;
 				if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-				else { output_name( e, NULL, 1 ); printf( ".%s()", narrative ); }
+				else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
 			} 
 			printf( " }" );
 		}
@@ -480,7 +480,7 @@ output_va_( char *va_name, int event, _context *context )
 	if ( i == NULL ) return;
 
 	Entity *e = (Entity *) i->ptr;
-	void *value = cn_va_get_value( va_name, e );
+	void *value = cn_va_get_value( e, va_name );
 	int narrative_account = !strcmp( va_name, "narratives" );
 
 	if ( i->next != NULL ) printf( "{ " );
@@ -489,7 +489,7 @@ output_va_( char *va_name, int event, _context *context )
 	else {
 		for ( i = i->next; i!=NULL; i=i->next ) {
 			e = (Entity *) i->ptr;
-			value = cn_va_get_value( va_name, e );
+			value = cn_va_get_value( e, va_name );
 			output_va_value( value, narrative_account );
 		}
 		printf( " }\n" );
@@ -583,8 +583,6 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		}
 		if ( occurrence->va.event.expression != NULL ) {
 			output_expression( ExpressionAll, occurrence->va.event.expression, -1, -1 );
-		} else if ( occurrence->va.event.narrative_identifier != NULL ) {
-			printf( "%s()", occurrence->va.event.narrative_identifier );
 		}
 		if ( occurrence->va.event.type.notification ) {
 			if ( occurrence->va.event.type.instantiate ) {
@@ -799,7 +797,7 @@ output_narrative( char *state, int event, char **next_state, _context *context )
 	for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 	{
 		Entity *e = (Entity *) i->ptr;
-		Registry narratives = cn_va_get_value( "narratives", e );
+		Registry narratives = cn_va_get_value( e, "narratives" );
 		if ( narratives == NULL ) continue;
 		registryEntry *entry = lookupByName( narratives, name );
 		if ( entry == NULL ) continue;

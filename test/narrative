@@ -25,7 +25,7 @@
 		
 		.
 
-	in tata on :!* toto() do
+	in tata on :!* toto do
 		>:what time is it?
 		/
 		then on :[ ?.. ]-is->bong !_

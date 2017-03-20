@@ -40,7 +40,7 @@ set_va_( char *va_name, int event, _context *context )
 		{
 			Entity *e = (Entity *) i->ptr;
 			// reset each of these entities' narratives value account to that single narrative
-			cn_va_set_value( va_name, e, newRegistryItem( narrative->name, narrative ) );
+			cn_va_set_value( e, va_name, newRegistryItem( narrative->name, narrative ) );
 			// register each of the passed entities to the narrative's list of entities
 			addToNarrative( narrative, e );
 		}
@@ -57,7 +57,7 @@ set_va_( char *va_name, int event, _context *context )
 		}
 		for ( listItem *i = (listItem *) context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
-			cn_va_set_value( va_name, e, value );
+			cn_va_set_value( e, va_name, value );
 		}
 	}
 	return 0;
@@ -142,7 +142,7 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 	{
 		Entity *e = (Entity *) i->ptr;
 		// reset each of these entities' narratives value account to the list
-		cn_va_set_value( va_name, e, value );
+		cn_va_set_value( e, va_name, value );
 
 		// register each of the passed entities to the narrative's list of entities
 		for ( registryEntry *j = value; j!=NULL; j=j->next ) {
