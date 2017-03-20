@@ -268,7 +268,7 @@ expression_substitute( Expression *expression, char *identifier, listItem *value
 				sub[ i ].result.identifier.value = NULL;
 				sub[ i ].e = value->ptr;
 				if ( count == 1 ) {
-					sub[ i ].result.identifier.type = DefaultIdentifier;
+					sub[ i ].result.identifier.type = 0;
 					count = 0;
 				}
 			}
@@ -279,7 +279,7 @@ expression_substitute( Expression *expression, char *identifier, listItem *value
 		}
 		if ( !count ) break;
 	}
-	if ( !count && ( value != NULL ) && ( value->next == NULL )) {
+	if ( !count && ( value != NULL ) ) {
 		// only collapse if the original count is 1
 		expression_collapse( expression );
 	}
@@ -340,8 +340,9 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 		count = count_occurrences( expression, identifier, 0 );
 		if ( count > 0 ) {
 			registryEntry *entry = lookupVariable( context, identifier );
-			if (( entry == NULL ) || (((VariableVA *) entry->value )-> type != ExpressionVariable ))
-				return log_error( context, event, "self-referencing variable has no match\n" );
+			if ( entry == NULL ) return log_error( context, event, "self-referenced variable not found" );
+			else if ( (((VariableVA *) entry->value )->type != ExpressionVariable ))
+				return log_error( context, event, "self-referenced variable type mismatch" );
 		}
 		type = ExpressionVariable;
 		freeListItem( &context->expression.results );

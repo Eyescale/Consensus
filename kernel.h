@@ -48,8 +48,8 @@ RecordMode;
 typedef enum {
 	DefaultIdentifier = 1,
 	StringIdentifier,
-	VariableIdentifier,
 	NullIdentifier,
+	VariableIdentifier,
 }
 IdentifierType;
 

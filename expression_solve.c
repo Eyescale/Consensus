@@ -99,12 +99,6 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 		count = 3;
 	}
 
-	if ( results == NULL ) {
-		if ( instance != NULL )
-			addItem( list, instance );
-		return;
-	}
-
 	if ( CN.context->expression.mode == ReadMode )
 	{
 		ExpressionSub *s;
@@ -160,7 +154,13 @@ filter_results( listItem **list, Expression *expression, int count, void *instan
 	else	// not in ReadMode
 	{
 		Entity *e;
-		if ( instance != NULL )
+		if ( results == NULL ) {
+			if ( instance != NULL ) {
+				addItem( list, instance );
+			}
+			return;
+		}
+		else if ( instance != NULL )
 		{
 			e_loop( count, results, &e ) {
 				if ( e == (Entity *) instance ) {
@@ -379,7 +379,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 					return retval;
 				}
 			}
-			else if ( sub[ count ].e != NULL )
+			else if ( sub[ count ].e != NULL )	// residue
 			{
 				filter_results( sub_results, expression, count, NULL, 0, results );
 				if (( results != NULL ) && ( sub_results == NULL )) return 0;
@@ -404,65 +404,62 @@ solve( Expression *expression, int as_sub, listItem *results )
 			}
 			break;
 		case DefaultIdentifier:
-		default:
-			if ( sub[ count ].result.identifier.value != NULL )
-			{
-				DEBUG_1;
-				char *identifier = sub[ count ].result.identifier.value;
-				if ( context->expression.mode == ReadMode ) {
-					filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
-					if ( *sub_results == NULL ) return 0;
-					break;
-				}
-				Entity *e = cn_entity( identifier );
-			       	if ( e != NULL )  {
-					filter_results( sub_results, expression, count, e, ENTITY, results );
-					if ( *sub_results == NULL ) return 0;
-				}
-				else if ( context->expression.mode == InstantiateMode )
-				{
-					e = cn_new( strdup( identifier ) );
-					addItem( sub_results, e );
-#ifdef DEBUG
-					fprintf( stderr, "debug> set_sub_identifier[ %d ]: created new: '%s', addr: %0x\n",
-						count, identifier, (int) e );
-#endif
-				} else if ( !sub[ count ].result.not ) {
-					if ( context->expression.mode == EvaluateMode ) {
-						return 0;
-					} else {
-						char *msg; asprintf( &msg, "'%s' is not instantiated", identifier );
-						int retval = log_error( context, 0, msg ); free( msg );
-						return retval;
-					}
-				}
-			}
-			else if ( sub[ count ].e != NULL )
-			{
-				filter_results( sub_results, expression, count, NULL, 0, results );
-				if (( results != NULL ) && ( *sub_results == NULL )) return 0;
-
-#ifdef DEBUG_FULL
-				fprintf( stderr, "debug> recursing in SOLVE: count=%d, not=%d\n", count, sub[ count ].result.not );
-#endif
-
-				Expression *e = sub[ count ].e;
-				int sub_count = sub[ 1 ].result.none ? 3 : count;
-				int success = solve( e, sub_count, *sub_results );
-#ifdef MEMOPT
-				if (( count != 3 ) && ( !sub[ 1 ].result.none ))
-#endif
-					freeListItem( sub_results );
-				if ( success <= 0 ) return success;
-#ifdef DEBUG
-				fprintf( stderr, "debug> solve: returning - %0x [ %d ]\n", (int) sub[ count ].e, count );
-#endif
-				*sub_results = e->result.list;
-				e->result.list = NULL;
-			}
-			else {
+			if ( sub[ count ].result.identifier.value == NULL ) {
 				return log_error( context, 0, "expression terms are incomplete" );
 			}
+			DEBUG_1;
+			char *identifier = sub[ count ].result.identifier.value;
+			if ( context->expression.mode == ReadMode ) {
+				filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
+				if ( *sub_results == NULL ) return 0;
+				break;
+			}
+			Entity *e = cn_entity( identifier );
+		       	if ( e != NULL )  {
+				filter_results( sub_results, expression, count, e, ENTITY, results );
+				if ( *sub_results == NULL ) return 0;
+			}
+			else if ( context->expression.mode == InstantiateMode )
+			{
+				e = cn_new( strdup( identifier ) );
+				addItem( sub_results, e );
+#ifdef DEBUG
+				fprintf( stderr, "debug> set_sub_identifier[ %d ]: created new: '%s', addr: %0x\n",
+					count, identifier, (int) e );
+#endif
+			} else if ( !sub[ count ].result.not ) {
+				if ( context->expression.mode == EvaluateMode ) {
+					return 0;
+				} else {
+					char *msg; asprintf( &msg, "'%s' is not instantiated", identifier );
+					int retval = log_error( context, 0, msg ); free( msg );
+					return retval;
+				}
+			}
+			break;
+		default:
+			if ( sub[ count ].e == NULL ) {
+				return log_error( context, 0, "expression terms are incomplete" );
+			}
+#ifdef DEBUG_FULL
+			fprintf( stderr, "debug> recursing in SOLVE: count=%d, not=%d\n", count, sub[ count ].result.not );
+#endif
+			filter_results( sub_results, expression, count, NULL, 0, results );
+			if (( results != NULL ) && ( *sub_results == NULL )) return 0;
+
+			Expression *sub_e = sub[ count ].e;
+			int sub_count = sub[ 1 ].result.none ? 3 : count;
+			int success = solve( sub_e, sub_count, *sub_results );
+#ifdef MEMOPT
+			if (( count != 3 ) && ( !sub[ 1 ].result.none ))
+#endif
+				freeListItem( sub_results );
+			if ( success <= 0 ) return success;
+#ifdef DEBUG
+			fprintf( stderr, "debug> solve: returning - %0x [ %d ]\n", (int) sub[ count ].e, count );
+#endif
+			*sub_results = sub_e->result.list;
+			sub_e->result.list = NULL;
 			break;
 		}
 	}
@@ -826,7 +823,7 @@ cleanup_results( Expression *expression )
 int
 expression_solve( Expression *expression, int as_sub, _context *context )
 {
-	int success;
+	int success, do_resolve;
 #ifdef DEBUG
 	fprintf( stderr, "debug> entering expression_solve: %0x...\n", (int) expression );
 #endif
@@ -885,28 +882,29 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 			( expression->result.mark == 2 ) ? 1 :
 			( expression->result.mark == 4 ) ? 2 : 3;
 
-		if ( filter_on ) {
-			rebuild_filtered_results( &expression->result.list, context );
-		}
-		success = (( count == 3 ) && expression->result.marked ) ?
-			resolve( expression ) : ( expression->result.list != NULL );
+		success = ( expression->result.list != NULL );
+		do_resolve = (( count == 3 ) && expression->result.marked );
 	}
 	else
 	{
 		success = solve( expression, as_sub, context->expression.filter );
-		if (( success > 0 ) && filter_on ) {
-			success = rebuild_filtered_results( &expression->result.list, context );
+		do_resolve = expression->result.marked;
+	}
+
+	// invoke resolve() to extract marked results
+
+	if ( filter_on && ( success > 0 ) ) {
+		success = rebuild_filtered_results( &expression->result.list, context );
+	}
+	// resolve must be called even in TestMode due to embedded expressions
+	if ( do_resolve  && ( success > 0 )) {
+		success = resolve( expression );
+		if ( filter_on && ( success <= 0 )) {
+			free_filter_results( expression, context );
 		}
-		// resolve must be called even in TestMode due to embedded expressions
-		if (( success > 0 ) && expression->result.marked ) {
-			success = resolve( expression );
-			if ( filter_on && ( success <= 0 )) {
-				free_filter_results( expression, context );
-			}
-		}
-		if (( success > 0 ) && filter_on ) {
-			success = remove_filter( expression, restore_mode, as_sub, context );
-		}
+	}
+	if ( filter_on && ( success > 0 )) {
+		success = remove_filter( expression, restore_mode, as_sub, context );
 	}
 
 	// pop expression from expression stack
