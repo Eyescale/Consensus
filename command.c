@@ -1312,4 +1312,3 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 	return event;
 }
-

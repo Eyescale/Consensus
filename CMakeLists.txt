@@ -5,9 +5,9 @@ project(Consensus VERSION 0.1.0)
 set(Consensus_VERSION_ABI 1)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
-include(Consensus)
+include(Extra)
 
-set(CONSENSUS_SOURCES
+extra_application(Consensus SOURCES
 	expression_solve.c
   api.c
   command.c
@@ -29,5 +29,3 @@ set(CONSENSUS_SOURCES
   value.c
   variables.c
 )
-
-add_executable(Consensus ${CONSENSUS_SOURCES})
