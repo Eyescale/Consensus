@@ -18,7 +18,7 @@ ExpressionOutput;
 	output actions		- public
 ---------------------------------------------------------------------------*/
 
-_action output_expression_results;
+_action output_results;
 _action output_narrative;
 _action output_variable_value;
 _action output_variator_value;

@@ -371,6 +371,8 @@ input( char *state, int event, char **next_state, _context *context )
 	}
 	while ( event == 0 );
 
+	context->input.event = event;
+
 	// record instruction or expression if needed
 
 	if ( event > 0 ) switch( context->record.mode ) {

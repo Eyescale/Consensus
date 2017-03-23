@@ -1,4 +1,35 @@
 
+Mar 23, 2016
+DONE	. deprecated new 'filter' syntax - reverted to syntax already in place, e.g.
+		?: source-medium->target: %filter	NEW
+	  instead of
+		?: source-medium->target < %filter	DEPRECATED
+	  Then
+		?: %[ source-medium->target: %filter ]
+		will actually parse the entities - if there are - corresponding to literal
+
+DONE	. implemented ?: %[ expression ] to translate literals into entities, when instance is a literal variable
+DONE	. implemented ? %: %[ expression ] to test the same
+DONE	. implemented ?~ %: %[ expression ] to test the same
+DONE	. updated test/filter to new syntax
+DONE	. allowed to assign narrative & va to literals (which are then translated into local entities)
+DONE	. changed 'this' symbol from '%' to '!' - as we may want to use %% in the future, as foreseen by SEI
+DONE	. updated test/va in order to test existing narrative assignment to variable
+DONE	. fixed bugs e.g. #ifndef MEMOPT instead of #ifdef MEMOPT in expression_solve
+
+
+	TODO next:
+	. complete documentation as-is
+	. change return value from expression commands to return entities actually affected by the command
+	  : variable : !! a-is->b	should return only and all entities newly instantiated
+	  : variable : !~ a-is->b	should report only and all entities newly released
+	  : variable : !* a-is->b	should return only and all entities newly activated
+	  : variable : !_ a-is->b	should return only and all entities newly deactivated
+	. Release v1.0
+
+	Notes:
+	. support for sub-queries (ie. support %[ ] as TERM in expression) de-scoped from this release.
+
 Mar 20, 2017
 DONE	. deprecated all narrative event notifications (e.g. init, exit)
 		. these can be notified using normal entities in the corresponding actions
@@ -8,15 +39,6 @@ DONE		. test monitor deactivation
 DONE		. modify test/monitor to deactivate monitor() at the end of test
 DONE	. implemented narrative release command
 DONE	. modified test/full to test filter variables after test/monitor
-
-	TODO next:
-		. add support for sub-queries, i.e.
-			. allow %[ ] as TERM in expressions (allowing several '?' )
-			  This also allows to execute ?: %[ a-is->b < %event ]
-			. Note: will have to disable test_as_sub when evaluating sub-queries in InstantiateMode
-		. complete documentation as-is
-		. Release v1.0
-
 Mar 19, 2017
 DONE	. introduced "literal" value account in order to test filter variables
 		: variable : %[ expression ].$( literal )

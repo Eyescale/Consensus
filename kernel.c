@@ -64,7 +64,7 @@ set_control_mode( ControlMode mode, int event, _context *context )
 int
 log_error( _context *context, int event, char *message )
 {
-	context->error.flush_input = !(( event == '\n' ) || ( event == 0 ));
+	context->error.flush_input = ( context->input.event != '\n' );
 	if ( message != NULL ) {
 		// must flush output on stdout
 		if ( context->error.flush_output ) {

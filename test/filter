@@ -2,38 +2,75 @@
 	!~ .
 	!! titi-is->toto
 	>:1. DB                           %[ . ]
-	>:   command                      : filter : %\[ . ]$( literal )
+	>:   command                      : filter : %\[ . ].$( literal )
 	: filter : %[ . ].$( literal )
 	>:   command                      !~ .
 	!~ .
 	>:   %\filter                      %filter
-	: titi : ?-is->toto < %filter
-	>:   ?-is->toto < %\filter         %titi
-	>:   %\[ ?-is->toto < %\filter ]    %[ ?-is->toto < %filter ]
+	>:   %\[ ?-is->toto: %\filter ]     %[ ?-is->toto: %filter ]
+	>:   command                      : variable : ?-is->toto : %\filter
+	: variable : ?-is->toto: %filter
+	>:   %\variable                    %variable
+	>:   %\[ %\variable ]               %[ %variable ](nothing expected)
+	>:   %\[ .: %\variable ]            %[ .: %variable ] ('titi' expected)
+	>:   command                      : value : %\[ .: %\variable ]
+	: value : %[ .: %variable ]
+	>:   %\value                       %value
+	>:   %\[ %\value ]                  %[ %value ](nothing expected)
 	>:
 	!! titi-is->toto
 	!! tata-is->toto
 	!! tutu-is->toto
 	>:2. DB                           %[ . ]
-	>:   %\[ ?-is->toto < %\filter ]    %[ ?-is->toto < %filter ]
-	>:   command                      : filter : %\[ . ]$( literal )
+	>:   %\[ ?-is->toto: %\filter ]     %[ ?-is->toto: %filter ]
+	>:   %\[ %\value ]                  %[ %value ] ('titi' expected)
+	>:   command                      : filter : %\[ . ].$( literal )
 	: filter : %[ . ].$( literal )
 	>:   command                      !~ .
 	!~ .
 	>:   %\filter                      %filter
-	>:   ?:?-is->toto < %\filter
-	?: toto<-is-? < %filter
-		>:		%?
+	>:   ?: ?-is->toto: %\filter
+	?: toto<-is-? : %filter
+		>:	%?
+		/
+	>:   ? %:%\[ ?-is->toto: %\filter ]
+	? %: %[ toto<-is-? : %filter ]
+		>: ***** Error: there should not be anything here
+		/~
+		>:	no entity found - as expected
+		/
+	>:   ?~ %:%\[ ?-is->toto: %\filter ]
+	?~ %: %[ toto<-is-? : %filter ]
+		>:	no entity found - as expected
+		/~
+		>: ***** Error: there should not be anything here
+		/
+	>:   command                      !! tutu
+	!! tutu
+	>:   ?: %\[ ?-is->toto: %\filter ]
+	? %: %[ ?-is->toto: %filter ]
+		?: %[ toto<-is-? : %filter ]
+			>:	'%?' found - as expected
+			/
 		/
 	>:
 	!! titi-is->[ toto<-has-tata ]
 	!! tutu-is->[ titi<-has-tata ]
 	>:3. DB                           %[ . ]
-	>:   command                      : filter : %\[ . ]$( literal )
+	>:   command                      : filter : %\[ . ].$( literal )
 	: filter : %[ . ].$( literal )
+	: variable : [ ?<-has-tata ]<-is-. : %filter
+	>:   %\[ %\variable ]               %[ %variable ]
 	>:   command                      !~ .
 	!~ .
-	: titi : [ ?<-has-tata ]<-is-. < %filter
-	>:   [ ?<-has-tata ]<-is-. < %\filter
-        >:                                %titi
+	>:   %\variable                    %variable
+	>:   %\[ %\variable ]               %[ %variable ](nothing expected)
+	>:   %\[ .: %\variable ]            %[ .: %variable ]
+	>:   command                      : value : %\[ .: %\variable ]
+	: value : %[ .: %variable ]
+	>:   %\value                       %value
+	>:   %\[ %\value ]                  %[ %value ](nothing expected)
+	>:   command                      !! titi
+	!! titi
+	>:   %\[ %\value ]                  %[ %value ] ('titi' expected)
 

@@ -88,60 +88,6 @@ set_expression_mode( char *state, int event, char **next_state, _context *contex
 }
 
 static int
-set_expression_filter( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context_check( 0, 0, ExecutionMode ) )
-		return event;
-
-	if ( context->identifier.id[ 1 ].type != DefaultIdentifier ) {
-		return log_error( context, event, "variable names cannot be in \"quotes\"" );
-	}
-
-	context->expression.filter_identifier = context->identifier.id[ 1 ].ptr;
-	context->identifier.id[ 1 ].ptr = NULL;
-	return event;
-}
-
-static int
-read_expression_filter( char *state, int event, char **next_state, _context *context )
-{
-	free( context->expression.filter_identifier );
-	context->expression.filter_identifier = NULL;
-
-	state = base;
-	do {
-	event = input( state, event, NULL, context );
-#ifdef DEBUG
-	fprintf( stderr, "debug> read_expression_filter: in \"%s\", on '%c'\n", state, event );
-#endif
-	bgn_
-	on_( -1 )	command_do_( nothing, "" )
-	in_( base ) bgn_
-		on_( ' ' )	command_do_( nop, same )
-		on_( '\t' )	command_do_( nop, same )
-		on_( '<' )	command_do_( nop, "expression <" )
-		on_other	command_do_( nothing, "" )
-		end
-		in_( "expression <" ) bgn_
-			on_( ' ' )	command_do_( nop, same )
-			on_( '\t' )	command_do_( nop, same )
-			on_( '%' )	command_do_( nop, "expression < %" )
-			on_other	command_do_( error, "" )
-			end
-			in_( "expression < %" ) bgn_
-				on_any	command_do_( read_argument, "expression < %filter" )
-				end
-				in_( "expression < %filter" ) bgn_
-					on_any	command_do_( set_expression_filter, "" )
-					end
-	end
-	}
-	while ( strcmp( state, "" ) );
-
-	return event;
-}
-
-static int
 command_expression( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
@@ -181,43 +127,64 @@ command_expression( char *state, int event, char **next_state, _context *context
 static int
 evaluate_expression( char *state, int event, char **next_state, _context *context )
 {
-	if ( context_check( FreezeMode, 0, 0 ) ) {
+	switch ( context->control.mode ) {
+	case FreezeMode:
 		command_do_( flush_input, same );
 		return event;
+	case InstructionMode:
+		command_do_( parse_expression, same );
+		return event;
+	case ExecutionMode:
+		break;
 	}
 
-	// the mode may be needed by command_narrative
-	int restore_mode = context->expression.mode;
+	int restore_mode = 0;
+	context->expression.do_resolve = 1;
 	bgn_
-	in_( ">: %[" )		context->error.flush_output = 1;
-	end
-
+	/*
+	   the mode will be needed by command_narrative
+	*/
+	in_( "!. %[" )			restore_mode = context->expression.mode;
+	in_( ": identifier : !. %[" )	restore_mode = context->expression.mode;
 	/*
 	   in loop or condition evaluation we do not want expression_solve() to
-	   resolve the filtered results if there are. Note that expression_solve
-	   may revert to EvaluateMode depending on the filter variable type.
+	   resolve filtered results if there are, and unless specified otherwise.
+	   Note that expression_solve may revert to EvaluateMode.
 	*/
-	bgn_
-	in_( "? identifier:" )	restore_mode = 0;
-	in_( "?~ %:" )		restore_mode = 0;
-	in_( "? %:" )		restore_mode = 0;
+#if 1
+	in_( "? identifier:" )		context->expression.do_resolve = 0;
+	in_( "?~ %:" )			context->expression.do_resolve = 0;
+	in_( "? %:" )			context->expression.do_resolve = 0;
+	in_( ": identifier : %[" )	context->expression.do_resolve = 0;	// cf. assign_results, assign_va, assign_narrative
+	in_( ">: %[" )			context->expression.do_resolve = 0;	// cf. output_results, output_va, output_narrative
+					context->error.flush_output = 1;	// we want to output errors in the text
+#else
+	in_( ">: %[" )			context->expression.do_resolve = 0;	// cf. output_results, output_va, output_narrative
+					context->error.flush_output = 1;	// we want to output errors in the text
+	in_( "!. %[" )			context->expression.do_resolve = 1;
+	in_( "?~ %:" )			context->expression.do_resolve = 0;
+	in_( "?~ %: %[" )		context->expression.do_resolve = 1;
+	in_( "? %:" )			context->expression.do_resolve = 0;
+	in_( "? %: %[" )		context->expression.do_resolve = 1;
+	in_( "? identifier:" )		context->expression.do_resolve = 0;
+	in_( "? identifier: %[" )	context->expression.do_resolve = 1;
+	in_( ": identifier : %[" )	context->expression.do_resolve = 0;	// cf. assign_results, assign_va, assign_narrative
+	in_( ": %[" )			context->expression.do_resolve = 1; 	// cf. set_va_from_variable, set_va
+#endif
 	end
 
 	command_do_( parse_expression, same );
 	if ( context->expression.mode != ErrorMode ) {
-		command_do_( read_expression_filter, same );
-		if ( event > 0 ) {
-			context->expression.mode =
-				( restore_mode || ( context->expression.filter_identifier == NULL )) ?
-				EvaluateMode : ReadMode;
-			int retval = expression_solve( context->expression.ptr, 3, context );
-			if ( retval < 0 ) event = retval;
-		}
+		Expression *expression = context->expression.ptr;
+		context->expression.mode = EvaluateMode;
+		int retval = expression_solve( expression, 3, context );
+		if ( retval < 0 ) event = retval;
 	}
+	context->expression.do_resolve = 0;
+
 	if ( restore_mode ) {
 		context->expression.mode = restore_mode;
 	}
-
 	return event;
 }
 
@@ -234,9 +201,6 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	command_do_( parse_expression, same );
 	context->expression.mode = restore_mode;
 
-	if ( !context->narrative.mode.condition && !context->narrative.mode.event ) {
-		command_do_( read_expression_filter, same );
-	}
 	return event;
 }
 
@@ -457,6 +421,10 @@ push_condition( int condition, char *state, int event, char **next_state, _conte
 		stack->condition = ConditionActive;
 		break;
 	case ExecutionMode:
+		if ( context->expression.mode == ReadMode ) {
+			freeLiteral( &context->expression.results );
+		}
+
 		stack = (StackVA *) context->control.stack->ptr;
 		stack->condition = condition ?
 			( context->control.contrary ? ConditionPassive : ConditionActive ) :
@@ -967,8 +935,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 						in_( ">: %[_]" ) bgn_
 							on_( '.' )	command_do_( nop, ">: %[_]." )
-							on_( '\n' )	command_do_( output_expression_results, RETURN )
-							on_other	command_do_( output_expression_results, ">:" )
+							on_( '\n' )	command_do_( output_results, RETURN )
+							on_other	command_do_( output_results, ">:" )
 							end
 					in_( ">: %[_]." ) bgn_
 						on_( '$' )	command_do_( read_va, ">: %[_].$" )
@@ -1018,6 +986,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				in_( "?~ %:" ) bgn_
 					on_( ' ' )	command_do_( nop, same )
 					on_( '\t' )	command_do_( nop, same )
+					on_( '%' )	command_do_( nop, "?~ %: %" )
 					on_other	command_do_( evaluate_expression, "?~ %: expression" )
 					end
 					in_( "?~ %: expression" ) bgn_
@@ -1025,14 +994,32 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_( '\t' )	command_do_( nop, same )
 						on_( '\n' )	command_do_( set_condition_to_contrary, same )
 								command_do_( push_condition_from_expression, base )
-						on_other	command_do_( error, same )
+						on_other	command_do_( error, base )
 						end
+					in_( "?~ %: %" ) bgn_
+						on_( '[' )	command_do_( nop, "?~ %: %[" )
+						on_other	command_do_( error, base )
+						end
+						in_( "?~ %: %[" ) bgn_
+							on_any	command_do_( evaluate_expression, "?~ %: %[_" )
+							end
+							in_( "?~ %: %[_" ) bgn_
+								on_( ']' )	command_do_( nop, "?~ %: %[_]" )
+								on_other	command_do_( error, base )
+								end
+								in_( "?~ %: %[_]" ) bgn_
+									on_( ' ' )	command_do_( nop, same )
+									on_( '\t' )	command_do_( nop, same )
+									on_( '\n' )	command_do_( set_condition_to_contrary, same )
+											command_do_( push_condition_from_expression, base )
+									on_other	command_do_( error, base )
+									end
 				in_( "?~ %variable" ) bgn_
 					on_( ' ' )	command_do_( nop, same )
 					on_( '\t' )	command_do_( nop, same )
 					on_( '\n' )	command_do_( set_condition_to_contrary, same )
 							command_do_( push_condition_from_variable, base )
-					on_other	command_do_( error, same )
+					on_other	command_do_( error, base )
 					end
 		in_( "? %" ) bgn_
 			on_( ':' )	command_do_( nop, "? %:" )
@@ -1041,6 +1028,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( "? %:" ) bgn_
 				on_( ' ' )	command_do_( nop, same )
 				on_( '\t' )	command_do_( nop, same )
+				on_( '%' )	command_do_( nop, "? %: %" )
 				on_other	command_do_( evaluate_expression, "? %: expression" )
 				end
 				in_( "? %: expression" ) bgn_
@@ -1049,6 +1037,23 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_( '\n' )	command_do_( push_condition_from_expression, base )
 					on_other	command_do_( error, base )
 					end
+				in_( "? %: %" ) bgn_
+					on_( '[' )	command_do_( nop, "? %: %[" )
+					on_other	command_do_( error, base )
+					end
+					in_( "? %: %[" ) bgn_
+						on_any	command_do_( evaluate_expression, "? %: %[_" )
+						end
+						in_( "? %: %[_" ) bgn_
+							on_( ']' )	command_do_( nop, "? %: %[_]" )
+							on_other	command_do_( error, base )
+							end
+							in_( "? %: %[_]" ) bgn_
+								on_( ' ' )	command_do_( nop, same )
+								on_( '\t' )	command_do_( nop, same )
+								on_( '\n' )	command_do_( push_condition_from_expression, base )
+								on_other	command_do_( error, base )
+								end
 			in_( "? %variable" ) bgn_
 				on_( ' ' )	command_do_( nop, same )
 				on_( '\t' )	command_do_( nop, same )
@@ -1066,6 +1071,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( "? identifier:" ) bgn_
 				on_( ' ' )	command_do_( nop, same )
 				on_( '\t' )	command_do_( nop, same )
+				on_( '%' )	command_do_( nop, "? identifier: %" )
 				on_( '\n' )	command_do_( error, base )
 				on_other	command_do_( evaluate_expression, "? identifier: expression" )
 				end
@@ -1075,7 +1081,23 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_( '\n' )	command_do_( push_loop, base )
 					on_other	command_do_( error, base )
 					end
-
+				in_( "? identifier: %" ) bgn_
+					on_( '[' )	command_do_( nop, "? identifier: %[" )
+					on_other	command_do_( error, base )
+					end
+					in_( "? identifier: %[" ) bgn_
+						on_any	command_do_( evaluate_expression, "? identifier: %[_" )
+						end
+						in_( "? identifier: %[_" ) bgn_
+							on_( ']' )	command_do_( nop, "? identifier: %[_]" )
+							on_other	command_do_( error, base )
+							end
+							in_( "? identifier: %[_]" ) bgn_
+								on_( ' ' )	command_do_( nop, same )
+								on_( '\t' )	command_do_( nop, same )
+								on_( '\n' )	command_do_( push_loop, base )
+								on_other	command_do_( error, base )
+								end
 	in_( ":" ) bgn_
 		on_( ' ' )	command_do_( nop, same )
 		on_( '\t' )	command_do_( nop, same )
@@ -1100,6 +1122,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_other	command_do_( read_expression, ": identifier : expression" )
 				end
 				in_( ": identifier : expression" ) bgn_
+					on_( ' ' )	command_do_( nop, same )
+					on_( '\t' )	command_do_( nop, same )
 					on_( '(' )	command_do_( set_results_to_nil, ": identifier : narrative(" )
 					on_( '\n' )	command_do_( assign_expression, RETURN )
 					on_other	command_do_( error, base )
@@ -1126,10 +1150,16 @@ read_command( char *state, int event, char **next_state, _context *context )
 								end
 								in_( ": identifier : %[_]." ) bgn_
 									on_( '$' )	command_do_( read_va, ": identifier : %[_].$" )
-									on_other	command_do_( error, base )
+									on_other	command_do_( read_argument, ": identifier : %[_].narrative" )
 									end
 									in_( ": identifier : %[_].$" ) bgn_
 										on_( '\n' )	command_do_( assign_va, RETURN )
+										on_other	command_do_( error, base )
+										end
+									in_( ": identifier : %[_].narrative" ) bgn_
+										on_( ' ' )	command_do_( nop, same )
+										on_( '\t' )	command_do_( nop, same )
+										on_( '(' )	command_do_( nop, ": identifier : narrative(" )
 										on_other	command_do_( error, base )
 										end
 				in_( ": identifier : !" ) bgn_
@@ -1186,14 +1216,10 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_any	command_do_( evaluate_expression, ": %[_" )
 				end
 				in_( ": %[_" ) bgn_
-					on_( ' ' )	command_do_( nop, same )
-					on_( '\t' )	command_do_( nop, same )
 					on_( ']' )	command_do_( nop, ": %[_]" )
 					on_other	command_do_( error, base )
 					end
 					in_( ": %[_]" ) bgn_
-						on_( ' ' )	command_do_( nop, same )
-						on_( '\t' )	command_do_( nop, same )
 						on_( '.' )	command_do_( nop, ": %[_]." )
 						on_other	command_do_( error, base )
 						end

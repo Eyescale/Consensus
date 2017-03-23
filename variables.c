@@ -41,11 +41,7 @@ freeVariableValue( VariableVA *variable )
 		freeListItem( (listItem **) &variable->data.value );
 		break;
 	case LiteralVariable:
-		for ( listItem *i = variable->data.value; i!=NULL; i=i->next ) {
-			ExpressionSub *s = (ExpressionSub *) i->ptr;
-			freeExpression( s->e );
-		}
-		freeListItem( (listItem **) &variable->data.value );
+		freeLiteral( (listItem **) &variable->data.value );
 		break;
 	}
 }
@@ -125,7 +121,7 @@ assign_results( char *state, int event, char **next_state, _context *context )
 		context->identifier.id[ 0 ].ptr = NULL;
 	}
 
-	variable->type = EntityVariable;
+	variable->type = ( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable;
 	variable->data.value = context->expression.results;
 	context->expression.results = NULL;
 
@@ -143,6 +139,9 @@ assign_va( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	fprintf( stderr, "debug> : %s : %%[_].$( %s )\n", context->identifier.id[ 0 ].ptr, context->identifier.id[ 2 ].ptr );
 #endif
+	if ( context->expression.mode == ReadMode ) {
+		translateFromLiteral( &context->expression.results, 3, context );
+	}
 	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
 		return log_error( context, event, "variable names cannot be in \"quotes\"" );
 	}
@@ -150,7 +149,7 @@ assign_va( char *state, int event, char **next_state, _context *context )
 		return log_error( context, event, "va assignment missing target entity" );
 	}
 	if ( strcmp( context->identifier.id[ 2 ].ptr, "literal" ) ) {
-		return log_error( context, event, "currently only 'filter' values can be assigned to variables" );
+		return log_error( context, event, "currently only 'literal' values can be assigned to variables" );
 	}
 
 	// fetch or create identified variable in current scope
@@ -199,6 +198,9 @@ assign_narrative( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	fprintf( stderr, "debug> : %s : %s()\n", context->identifier.id[ 0 ].ptr, context->identifier.id[ 1 ].ptr );
 #endif
+	if ( context->expression.mode == ReadMode ) {
+		translateFromLiteral( &context->expression.results, 3, context );
+	}
 	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
 		return log_error( context, event, "variable names cannot be in \"quotes\"" );
 	}
@@ -331,23 +333,12 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	char *identifier = context->identifier.id[ 0 ].ptr;
 	int count, type;
 
-	if ( context->expression.filter_identifier != NULL ) {
-		context->expression.mode = ReadMode;
-		int retval = expression_solve( expression, 3, context );
-		if ( retval <= 0 ) return log_error( context, event, "cannot assign variable to (null) results" );
-		type = (( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable );
-	} else {
-		count = count_occurrences( expression, identifier, 0 );
-		if ( count > 0 ) {
-			registryEntry *entry = lookupVariable( context, identifier );
-			if ( entry == NULL ) return log_error( context, event, "self-referenced variable not found" );
-			else if ( (((VariableVA *) entry->value )->type != ExpressionVariable ))
-				return log_error( context, event, "self-referenced variable type mismatch" );
-		}
-		type = ExpressionVariable;
-		freeListItem( &context->expression.results );
-		context->expression.results = newItem( expression );
-		context->expression.ptr = NULL;
+	count = count_occurrences( expression, identifier, 0 );
+	if ( count > 0 ) {
+		registryEntry *entry = lookupVariable( context, identifier );
+		if ( entry == NULL ) return log_error( context, event, "self-referenced variable not found" );
+		else if ( (((VariableVA *) entry->value )->type != ExpressionVariable ))
+			return log_error( context, event, "self-referenced variable type mismatch" );
 	}
 
 	// fetch or create identified variable in current scope
@@ -378,37 +369,26 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 		freeVariableValue( variable );
 		free( identifier );
 		context->identifier.id[ 0 ].ptr = NULL;
-		variable->type = type;
 		break;
 	case ExpressionVariable:
-		switch ( type ) {
-		case EntityVariable:
-		case LiteralVariable:
+		if ( count ) {
+			expression_substitute( expression, identifier, variable->data.value, count );
+		} else {
 			freeVariableValue( variable );
-			variable->type = type;
-			break;
-		case ExpressionVariable:
-			if ( count ) {
-				expression_substitute( expression, identifier, variable->data.value, count );
-			} else {
-				freeVariableValue( variable );
-			}
-			break;
 		}
 		free( identifier );
 		context->identifier.id[ 0 ].ptr = NULL;
 		break;
 	default:
 		// variable is newly created
-		if (( type == ExpressionVariable ) && count ) {
+		if ( count ) {
 			// variable was higher-up on the stack and of the same type
 			expression_substitute( expression, identifier, NULL, count );
 		}
-		variable->type = type;
 	}
-
-	variable->data.value = context->expression.results;
-	context->expression.results = NULL;
+	variable->type = ExpressionVariable;
+	variable->data.value = newItem( context->expression.ptr );
+	context->expression.ptr = NULL;
 	return 0;
 }
 

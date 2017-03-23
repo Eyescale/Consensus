@@ -8,6 +8,7 @@
 #include "kernel.h"
 
 #include "api.h"
+#include "filter_util.h"
 #include "expression.h"
 #include "variables.h"
 #include "output.h"
@@ -15,59 +16,100 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	set_filter_variable
+	set_filter
 ---------------------------------------------------------------------------*/
-int
-set_filter_variable( _context *context )
+ExpressionMode
+set_filter( Expression *expression, _context *context )
 {
-	int retval = 1;
+	int restore_mode = context->expression.mode;
+	if (( context->expression.filter != NULL ) || ( context->expression.mode == ErrorMode ))
+		return restore_mode;
 
-	char *identifier = context->expression.filter_identifier;
+	ExpressionSub *sub = expression->sub;
+
+	if ( sub[ 3 ].result.any || ( sub[ 3 ].result.identifier.type != VariableIdentifier ))
+		return restore_mode;
+
+	char *identifier = sub[ 3 ].result.identifier.value;
 	if ( identifier == NULL )
-		return 0;
-
-	if ( context->expression.filter != NULL )
-		return log_error( context, 0, "expression filter is already in place" );
+		return restore_mode;
 
 	registryEntry *entry = lookupVariable( context, identifier );
 	if ( entry == NULL ) {
 		char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
-		retval = log_error( context, 0, msg ); free( msg );
-		return retval;
+		int retval = log_error( context, 0, msg ); free( msg );
+		context->expression.mode = ErrorMode;
+		return ErrorMode;
 	}
 
 	VariableVA *variable = (VariableVA *) entry->value;
 	switch ( variable->type ) {
-	case EntityVariable:
-		; char *msg;
-		if ( context->expression.mode == InstantiateMode ) {
-			asprintf( &msg, "'%%%s' is an entity variable - "
-				"cannot be used as expression filter in instantiation mode", identifier );
-			retval = log_error( context, 0, msg ); free( msg );
-			return retval;
-		}
-		context->expression.mode = EvaluateMode;
-		retval = 0;
-		break;
 	case ExpressionVariable:
-		asprintf( &msg, "'%%%s' is an expression variable - "
-			"cannot be used as expression filter", identifier );
-		retval = log_error( context, 0, msg ); free( msg );
-		return retval;
+		expression = ((listItem *) variable->data.value )->ptr;
+		return set_filter( expression, context );
+	case EntityVariable:
+		context->expression.mode = EvaluateMode;
+		switch ( restore_mode ) {
+		case InstantiateMode:
+			return 0;
+		case ReleaseMode:
+		case ActivateMode:
+		case DeactivateMode:
+		case EvaluateMode:
+			break;
+		default:
+			restore_mode = EvaluateMode;
+			break;
+		}
+		break;
 	case LiteralVariable:
 		context->expression.mode = ReadMode;
+		switch ( restore_mode ) {
+		case InstantiateMode:
+		case ReleaseMode:
+		case ActivateMode:
+		case DeactivateMode:
+			break;
+		default:
+			restore_mode = ( context->expression.do_resolve ? EvaluateMode : ReadMode );
+			break;
+		}
 		break;
 	case NarrativeVariable:
-		asprintf( &msg, "'%%%s' is a narrative variable - "
+		; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - "
 			"cannot be used as expression filter", identifier );
-		retval = log_error( context, 0, msg ); free( msg );
-		return retval;
+		int retval = log_error( context, 0, msg ); free( msg );
+		context->expression.mode = ErrorMode;
+		return ErrorMode;
+	}
+	return restore_mode;
+}
+
+/*---------------------------------------------------------------------------
+	remove_filter
+---------------------------------------------------------------------------*/
+int
+remove_filter( Expression *expression, int mode, int as_sub, _context *context )
+{
+	context->expression.filter = NULL;
+
+	// the current context->expression.mode is ReadMode
+
+	switch ( mode ) {
+	case EvaluateMode:
+	case InstantiateMode:
+	case ReleaseMode:
+	case ActivateMode:
+	case DeactivateMode:
+		context->expression.mode = mode;
+		break;
+	default:
+		return 1;
 	}
 
-	context->expression.filter = variable->data.value;
-	context->expression.filter_identifier = NULL;
-	free( identifier );
-	return retval;
+	// now we need to perform the operation on the filtered results
+
+	return translateFromLiteral( &expression->result.list, as_sub, context );
 }
 
 /*---------------------------------------------------------------------------
@@ -229,46 +271,5 @@ free_filter_results( Expression *expression, _context *context )
 		Expression *expression = ((ExpressionSub *) i->ptr )->e;
 		freeExpression( expression );
 	}
-}
-
-/*---------------------------------------------------------------------------
-	remove_filter
----------------------------------------------------------------------------*/
-int
-remove_filter( Expression *expression, int mode, int as_sub, _context *context )
-{
-	context->expression.filter = NULL;
-
-	// the current context->expression.mode is ReadMode
-
-	switch ( mode ) {
-	case EvaluateMode:
-	case InstantiateMode:
-	case ReleaseMode:
-	case ActivateMode:
-	case DeactivateMode:
-		context->expression.mode = mode;
-		break;
-	default:
-		return 1;
-	}
-
-	// now we need to perform the operation on the filtered results
-
-	listItem *results = expression->result.list;
-	listItem *last_results = NULL;
-	for ( listItem *i = results; i!=NULL; i=i->next )
-	{
-		Expression *expression = ((ExpressionSub *) i->ptr )->e;
-		int success = expression_solve( expression, as_sub, context );
-		freeExpression( expression );
-		if ( success > 0 ) {
-			last_results = catListItem( context->expression.results, last_results );
-			context->expression.results = NULL;
-		}
-	}
-	freeListItem( &results );
-	expression->result.list = last_results;
-	return ( last_results != NULL );
 }
 

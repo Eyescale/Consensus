@@ -50,6 +50,7 @@ typedef enum {
 	StringIdentifier,
 	NullIdentifier,
 	VariableIdentifier,
+	QueryIdentifier
 }
 IdentifierType;
 
@@ -295,6 +296,7 @@ typedef struct {
 		registryEntry *stream;
 		registryEntry *string;
 		listItem *instruction;
+		int event;
 	} input;
 	struct {
 		int level;
@@ -316,10 +318,10 @@ typedef struct {
 		ExpressionMode mode;
 		listItem *results;
 		listItem *filter;
-		char *filter_identifier;
 		Expression *ptr;
 		listItem *stack;
 		int marked;
+		int do_resolve;
 	} expression;
 	struct {
 		int level;
@@ -402,8 +404,8 @@ char *base = "base";
 char *same = "same";
 char *out = "out";
 char *pop_state = "pop";
-char *this_symbol = "%";
 char *variator_symbol = "?";
+char *this_symbol = "!";
 #else
 extern char *base;
 extern char *same;

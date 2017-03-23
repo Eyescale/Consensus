@@ -13,6 +13,7 @@
 #include "expression_util.h"
 #include "api.h"
 
+#define FILTERED
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
@@ -679,20 +680,20 @@ set_shorty( char *state, int event, char **next_state, _context *context )
 
 	in_( "[]." )		expression_do_( set_source_pop, same )
 	in_( "identifier." )	expression_do_( set_source_identifier, same )
-	in_( "%%." )		expression_do_( set_source_this, same )
+	in_( "%!." )		expression_do_( set_source_this, same )
 	in_( "%?." )		expression_do_( set_source_variator, same )
 	in_( "%identifier." )	expression_do_( set_source_variable, same )
 
 	in_( ".[]" )		expression_do_( set_medium_pop, same )
 	in_( ".identifier" )	expression_do_( set_medium_identifier, same )
 	in_( ".%?" )		expression_do_( set_medium_variator, same )
-	in_( ".%%" )		expression_do_( set_medium_this, same )
+	in_( ".%!" )		expression_do_( set_medium_this, same )
 	in_( ".%identifier" )	expression_do_( set_medium_variable, same )
 
 	in_( "..[]" )		EPUSH expression_do_( set_target_pop, same ) EPOP
 	in_( "..identifier" )	EPUSH expression_do_( set_target_identifier, same ) EPOP
 	in_( "..%?" )		EPUSH expression_do_( set_target_variator, same ) EPOP
-	in_( "..%%" )		EPUSH expression_do_( set_target_this, same ) EPOP
+	in_( "..%!" )		EPUSH expression_do_( set_target_this, same ) EPOP
 	in_( "..%identifier" )	EPUSH expression_do_( set_target_variable, same ) EPOP
 	end
 
@@ -855,10 +856,10 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '.' )	expression_do_( set_shorty, "" )
 			on_other	expression_do_( error, "" )
 			end
-	in_( "%%" ) bgn_
-		on_( '.' )	expression_do_( nop, "%%." )
+	in_( "%!" ) bgn_
+		on_( '.' )	expression_do_( nop, "%!." )
 		end
-		in_( "%%." ) bgn_
+		in_( "%!." ) bgn_
 			on_( '.' )	expression_do_( set_shorty, "" )
 			on_other	expression_do_( error, "" )
 			end
@@ -906,14 +907,14 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			end
 		in_( ".%" ) bgn_
 			on_( '?' )	expression_do_( nop, ".%?" )
-			on_( '%' )	expression_do_( nop, ".%%" )
+			on_( '!' )	expression_do_( nop, ".%!" )
 			on_other	expression_do_( read_argument, ".%identifier" )
 			end
 			in_( ".%?" ) bgn_
 				on_( '.' )	expression_do_( set_shorty, "" )
 				on_other	expression_do_( error, "" )
 				end
-			in_( ".%%" ) bgn_
+			in_( ".%!" ) bgn_
 				on_( '.' )	expression_do_( set_shorty, "" )
 				on_other	expression_do_( error, "" )
 				end
@@ -961,13 +962,13 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				end
 			in_( "..%" ) bgn_
 				on_( '?' )	expression_do_( nop, "..%?" )
-				on_( '%' )	expression_do_( nop, "..%%" )
+				on_( '!' )	expression_do_( nop, "..%!" )
 				on_other	expression_do_( read_argument, "..%identifier" )
 				end
 				in_( "..%?" ) bgn_
 					on_any	expression_do_( set_shorty, "" )
 					end
-				in_( "..%%" ) bgn_
+				in_( "..%!" ) bgn_
 					on_any	expression_do_( set_shorty, "" )
 					end
 				in_( "..%identifier" ) bgn_
@@ -996,10 +997,10 @@ parser_init( char *state, int event, char **next_state, _context *context )
 	context->expression.level = context->control.level;
 	context->expression.mode = ReadMode;
 	context->expression.marked = 0;
-	free( context->identifier.id[ 1 ].ptr );
-	context->identifier.id[ 1 ].ptr = NULL;
+
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
+	context->expression.filter = NULL;
 	if ( context->control.mode != ExecutionMode )
 		return event;
 
@@ -1194,11 +1195,11 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			end
 
 		in_( "%" ) bgn_
-			on_( '%' )	expression_do_( nop, "%%" )
+			on_( '!' )	expression_do_( nop, "%!" )
 			on_( '?' )	expression_do_( nop, "%?" )
 			on_other	expression_do_( read_argument, "%identifier" )
 			end
-			in_( "%%" ) bgn_
+			in_( "%!" ) bgn_
 				on_( '(' )	expression_do_( error, "" )
 				on_( '-' )	expression_do_( set_source_this, "source-" )
 				on_( '<' )	expression_do_( set_target_this, "target<" )
@@ -1281,11 +1282,11 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( error, "" )
 			end
 		in_( "source-%" ) bgn_
-			on_( '%' )	expression_do_( nop, "source-%%" )
+			on_( '!' )	expression_do_( nop, "source-%!" )
 			on_( '?' )	expression_do_( nop, "source-%?" )
 			on_other	expression_do_( read_argument, "source-%identifier" )
 			end
-			in_( "source-%%" ) bgn_
+			in_( "source-%!" ) bgn_
 				on_( '-' )	expression_do_( set_medium_this, "source-medium-" )
 				on_other	expression_do_( error, "" )
 				end
@@ -1362,11 +1363,11 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( set_target_identifier, pop_state )
 			end
 		in_( "source-medium->%" ) bgn_
-				on_( '%' )	expression_do_( nop, "source-medium->%%" )
+				on_( '!' )	expression_do_( nop, "source-medium->%!" )
 				on_( '?' )	expression_do_( nop, "source-medium->%?" )
 				on_other	expression_do_( read_argument, "source-medium->%identifier" )
 				end
-				in_( "source-medium->%%" ) bgn_
+				in_( "source-medium->%!" ) bgn_
 					on_( '(' )	expression_do_( error, "" )
 					on_( ' ' )	expression_do_( set_target_this, "source-medium->target" )
 					on_( '\t' )	expression_do_( set_target_this, "source-medium->target" )
@@ -1446,11 +1447,11 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( error, "" )
 			end
 		in_( "target<-%" ) bgn_
-			on_( '%' )	expression_do_( nop, "target<-%%" )
+			on_( '!' )	expression_do_( nop, "target<-%!" )
 			on_( '?' )	expression_do_( nop, "target<-%?" )
 			on_other	expression_do_( read_argument, "target<-%identifier" )
 			end
-			in_( "target<-%%" ) bgn_
+			in_( "target<-%!" ) bgn_
 				on_( '-' )	expression_do_( set_medium_this, "target<-medium-" )
 				on_other	expression_do_( error, "" )
 				end
@@ -1522,11 +1523,11 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( set_source_identifier, pop_state )
 			end
 		in_( "target<-medium-%" ) bgn_
-			on_( '%' )	expression_do_( nop, "target<-medium-%%" )
+			on_( '!' )	expression_do_( nop, "target<-medium-%!" )
 			on_( '?' )	expression_do_( nop, "target<-medium-%?" )
 			on_other	expression_do_( read_argument, "target<-medium-%identifier" )
 			end
-			in_( "target<-medium-%%" ) bgn_
+			in_( "target<-medium-%!" ) bgn_
 				on_( '(' )	expression_do_( error, "" )
 				on_( ' ' )	expression_do_( set_source_this, "source-medium->target" )
 				on_( '\t' )	expression_do_( set_source_this, "source-medium->target" )
@@ -1605,12 +1606,12 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( set_instance_pop, pop_state )
 			end
 		in_( "source-medium->target: %" ) bgn_
-			on_( '%' )	expression_do_( nop, "source-medium->target: %%" )
+			on_( '!' )	expression_do_( nop, "source-medium->target: %!" )
 			on_( '?' )	expression_do_( nop, "source-medium->target: %?" )
 			on_( '[' )	expression_do_( read_as_sub, "source-medium->target: instance" )
 			on_other	expression_do_( read_argument, "source-medium->target: %identifier" )
 			end
-			in_( "source-medium->target: %%" ) bgn_
+			in_( "source-medium->target: %!" ) bgn_
 				on_( '(' )	expression_do_( error, "" )
 				on_( ' ' )	expression_do_( set_instance_this, "source-medium->target: instance" )
 				on_( '\t' )	expression_do_( set_instance_this, "source-medium->target: instance" )

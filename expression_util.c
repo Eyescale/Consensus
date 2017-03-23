@@ -15,6 +15,57 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
+	just_any
+---------------------------------------------------------------------------*/
+int
+just_any( Expression *expression, int i )
+{
+	ExpressionSub *sub = expression->sub;
+	return	sub[ i ].result.any &&
+		!sub[ i ].result.active &&
+		!sub[ i ].result.inactive &&
+		!sub[ i ].result.not;
+}
+
+/*---------------------------------------------------------------------------
+	freeLiteral
+---------------------------------------------------------------------------*/
+void
+freeLiteral( listItem **list )
+{
+	for ( listItem *i = *list; i!=NULL; i=i->next ) {
+		ExpressionSub *s = (ExpressionSub *) i->ptr;
+		freeExpression( s->e );
+	}
+	freeListItem( list );
+}
+
+/*---------------------------------------------------------------------------
+	translateFromLiteral
+---------------------------------------------------------------------------*/
+int
+translateFromLiteral( listItem **list, int as_sub, _context *context )
+{
+	listItem *last_results = NULL;
+	if ( list == &context->expression.results ) {
+		context->expression.results = NULL;
+	}
+	for ( listItem *i = *list; i!=NULL; i=i->next )
+	{
+		Expression *expression = ((ExpressionSub *) i->ptr )->e;
+		int success = expression_solve( expression, as_sub, context );
+		freeExpression( expression );
+		if ( success > 0 ) {
+			last_results = catListItem( context->expression.results, last_results );
+			context->expression.results = NULL;
+		}
+	}
+	freeListItem( list );
+	*list = last_results;
+	return ( last_results != NULL );
+}
+
+/*---------------------------------------------------------------------------
 	freeExpression
 ---------------------------------------------------------------------------*/
 static void
@@ -177,9 +228,7 @@ expression_collapse( Expression *expression )
 #endif
 	if (( sub[ 3 ].e != NULL ) && !sub[ 3 ].result.any &&
 	     !sub[ 3 ].result.active && !sub[ 3 ].result.inactive && !sub[ 3 ].result.not &&
-	    ( sub[ 0 ].result.any && !sub[ 0 ].result.active && !sub[ 0 ].result.inactive && !sub[ 0 ].result.not ) &&
-	    ( sub[ 1 ].result.any && !sub[ 1 ].result.active && !sub[ 1 ].result.inactive && !sub[ 1 ].result.not ) &&
-	    ( sub[ 2 ].result.any && !sub[ 2 ].result.active && !sub[ 2 ].result.inactive && !sub[ 2 ].result.not ))
+	     just_any( expression, 0 ) && just_any( expression, 1 ) && just_any( expression, 2 ))
 	{
 		// in this case we replace the whole current expression with its sub[ 3 ]
 		flags[ 0 ] = 0;

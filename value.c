@@ -15,7 +15,7 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	set_expression_value
+	set_va
 ---------------------------------------------------------------------------*/
 static int
 set_va_( char *va_name, int event, _context *context )
@@ -85,7 +85,7 @@ set_va( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	set_expression_value_from_variable
+	set_va_from_variable	- narratives only
 ---------------------------------------------------------------------------*/
 int
 set_va_from_variable( char *state, int event, char **next_state, _context *context )

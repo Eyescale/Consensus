@@ -8,6 +8,7 @@
 
 #include "api.h"
 #include "input.h"
+#include "expression.h"
 #include "command.h"
 #include "output.h"
 #include "variables.h"
@@ -52,16 +53,6 @@ prompt( _context *context )
 /*---------------------------------------------------------------------------
 	output_variable_value
 ---------------------------------------------------------------------------*/
-static int
-just_any( Expression *expression, int i )
-{
-	ExpressionSub *sub = expression->sub;
-	return	sub[ i ].result.any &&
-		!sub[ i ].result.active &&
-		!sub[ i ].result.inactive &&
-		!sub[ i ].result.not;
-}
-
 static int
 test_shorty( Expression *expression )
 {
@@ -193,7 +184,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 			if ( mark++ ) printf( ":" );
 			printf( sub[ 0 ].result.not ? "~" : "~." );
 		}
-		else if ( sub[ 0 ].result.any && !sub[ 0 ].result.active && !sub[ 0 ].result.inactive ) {
+		else if ( just_any( expression, 0 ) ) {
 			if ( !mark ) { mark++; printf( "." ); }
 		}
 		else {
@@ -263,7 +254,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	else if ( sub[ 3 ].result.identifier.type == NullIdentifier ) {
 		if ( mark ) printf( ":" );
 		printf( sub[ 3 ].result.not ? "~" : "~." );
-	} else if ( !sub[ 3 ].result.any || sub[ 3 ].result.active || sub[ 3 ].result.inactive ) {
+	} else if ( !just_any( expression, 3 ) ) {
 		if ( mark ) printf( ": " );
 		output_expression( SubAll, expression, 3, 0 );
 	}
@@ -315,12 +306,36 @@ output_name( Entity *e, Expression *format, int base )
 }
 
 static void
-output_results( listItem *i, Expression *format )
+output_narrative_variable( registryEntry *r )
 {
-	if ( i == NULL ) {
-		return;
+	if ( r == NULL ) return;
+
+	Entity *e = (Entity *) r->identifier;
+	char *narrative = (char *) r->value;
+	if ( r->next == NULL ) {
+		if ( r->identifier == CN.nil ) printf( "%s()", narrative );
+		else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
 	}
-	else if ( i->next == NULL ) {
+	else {
+		printf( "{ ");
+		if ( r->identifier == CN.nil ) printf( "%s()", narrative );
+		else printf( "%%[ %s ].%s()", cn_name( e ), narrative );
+		for ( r=r->next; r!=NULL; r=r->next ) {
+			printf( ", " );
+			e = (Entity *) r->identifier;
+			narrative = (char *) r->value;
+			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
+			else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
+		} 
+		printf( " }" );
+	}
+}
+
+static void
+output_entity_variable( listItem *i, Expression *format )
+{
+	if ( i == NULL ) return;
+	if ( i->next == NULL ) {
 		output_name( (Entity *) i->ptr, format, 1 );
 	}
 	else  {
@@ -336,52 +351,39 @@ output_results( listItem *i, Expression *format )
 }
 
 static void
+output_literal_variable( listItem *i, Expression *format )
+{
+	if ( i == NULL ) return;
+	ExpressionSub *s = (ExpressionSub *) i->ptr;
+	if ( i->next == NULL ) {
+		output_expression( ExpressionAll, s->e, -1, -1 );
+	} else {
+		printf( "{ " );
+		output_expression( ExpressionAll, s->e, -1, -1 );
+		for ( i=i->next; i!=NULL; i=i->next ) {
+			printf( ", " );
+			ExpressionSub *s = (ExpressionSub *) i->ptr;
+			output_expression( ExpressionAll, s->e, -1, -1 );
+		} 
+		printf( " }" );
+	}
+}
+
+static void
 output_value( VariableVA *variable )
 {
 	switch ( variable->type ) {
 	case NarrativeVariable:
-		; registryEntry *r = (Registry) variable->data.value;
-		Entity *e = (Entity *) r->identifier;
-		char *narrative = (char *) r->value;
-		if ( r->next == NULL ) {
-			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-			else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
-		}
-		else {
-			printf( "{ ");
-			if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-			else printf( "%%[ %s ].%s()", cn_name( e ), narrative );
-			for ( r=r->next; r!=NULL; r=r->next ) {
-				printf( ", " );
-				e = (Entity *) r->identifier;
-				narrative = (char *) r->value;
-				if ( r->identifier == CN.nil ) printf( "%s()", narrative );
-				else { printf( "%%[ " ); output_name( e, NULL, 1 ); printf( " ].%s()", narrative ); }
-			} 
-			printf( " }" );
-		}
+		output_narrative_variable( (registryEntry *) variable->data.value );
 		break;
 	case EntityVariable:
-		output_results( (listItem *) variable->data.value, NULL );
+		output_entity_variable( (listItem *) variable->data.value, NULL );
 		break;
 	case ExpressionVariable:
 		output_expression( ExpressionAll, ((listItem *) variable->data.value )->ptr, -1, -1 );
 		break;
 	case LiteralVariable:
-		; listItem *i = variable->data.value;
-		ExpressionSub *s = (ExpressionSub *) i->ptr;
-		if ( i->next == NULL ) {
-			output_expression( ExpressionAll, s->e, -1, -1 );
-		} else {
-			printf( "{ " );
-			output_expression( ExpressionAll, s->e, -1, -1 );
-			for ( i=i->next; i!=NULL; i=i->next ) {
-				printf( ", " );
-				ExpressionSub *s = (ExpressionSub *) i->ptr;
-				output_expression( ExpressionAll, s->e, -1, -1 );
-			} 
-			printf( " }" );
-		}
+		output_literal_variable( (listItem *) variable->data.value, NULL );
 		break;
 	}
 }
@@ -429,16 +431,23 @@ output_variator_value( char *state, int event, char **next_state, _context *cont
 
 
 /*---------------------------------------------------------------------------
-	output_expression_results
+	output_results
 ---------------------------------------------------------------------------*/
 int
-output_expression_results( char *state, int event, char **next_state, _context *context )
+output_results( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
 	context->error.flush_output = ( event != '\n' );
-	output_results( context->expression.results, context->expression.ptr );
+	switch ( context->expression.mode ) {
+	case ReadMode:
+		output_literal_variable( context->expression.results, context->expression.ptr );
+		freeLiteral( &context->expression.results );
+		break;
+	default:
+		output_entity_variable( context->expression.results, context->expression.ptr );
+	}
 
 	printf( "%c", event );
 	return 0;
@@ -504,6 +513,9 @@ output_va( char *state, int event, char **next_state, _context *context )
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( !strcmp( va_name, "html" ) ) {
 		return push_input_hcn( state, event, next_state, context );
+	}
+	if ( !strcmp( va_name, "literal" ) ) {
+		return output_results( state, event, next_state, context );
 	}
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
 		char *msg; asprintf( &msg, "unknown value account name '%s'", va_name );
