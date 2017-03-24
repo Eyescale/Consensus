@@ -105,6 +105,7 @@ command_expression( char *state, int event, char **next_state, _context *context
 			Entity *e = (Entity *) i->ptr;
 			cn_release( e );
 		}
+		freeListItem( &context->expression.results );
 		break;
 	case ActivateMode:
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
@@ -1104,6 +1105,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 		on_( '\n' )	command_do_( error, base )
 		on_( '%' )	command_do_( nop, ": %" )
 		on_( '<' )	command_do_( nop, ":<" )
+		on_( '~' )	command_do_( nop, ":~" )
 		on_other	command_do_( read_identifier, ": identifier" )
 		end
 		in_( ": identifier" ) bgn_
@@ -1268,6 +1270,25 @@ read_command( char *state, int event, char **next_state, _context *context )
 									on_other	command_do_( error, base )
 									end
 
+		in_( ":~" ) bgn_
+			on_( ' ' )	command_do_( nop, same )
+			on_( '\t' )	command_do_( nop, same )
+			on_( '\n' )	command_do_( reset_variables, RETURN )
+			on_other	command_do_( read_identifier, ":~ identifier" )
+			end
+			in_( ":~ identifier" )
+				if ( context->narrative.mode.action.one ) bgn_
+					on_( ' ' )	command_do_( variable_reset, out )
+					on_( '\t' )	command_do_( variable_reset, out )
+					on_( '\n' )	command_do_( variable_reset, out )
+					on_other	command_do_( nothing, out )
+					end
+				else bgn_
+					on_( ' ' )	command_do_( nop, same )
+					on_( '\t' )	command_do_( nop, same )
+					on_( '\n' )	command_do_( variable_reset, base )
+					on_other	command_do_( error, base )
+					end
 		in_( ":<" ) bgn_
 			on_( ' ' )	command_do_( nop, same )
 			on_( '\t' )	command_do_( nop, same )
@@ -1312,3 +1333,4 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 	return event;
 }
+

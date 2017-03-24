@@ -143,16 +143,16 @@ registerByName( Registry *registry, char *name, void *address )
 void
 deregisterByAddress( Registry *registry, void *address )
 {
-        registryEntry *r, *r_last = NULL;
-
-        for ( r=*registry; r!=NULL; r=r->next )
+        registryEntry *r, *r_next, *r_last = NULL;
+        for ( r=*registry; r!=NULL; r=r_next )
         {
+		r_next = r->next;
                 if ( r->identifier == address )
                 {
                         if ( r_last == NULL )
-                                *registry = r->next;
+                                *registry = r_next;
                         else
-                                r_last->next = r->next;
+                                r_last->next = r_next;
 
                         freeRegistryItem( r );
                         return;
@@ -167,16 +167,16 @@ deregisterByAddress( Registry *registry, void *address )
 void
 deregisterByValue( Registry *registry, void *value )
 {
-        registryEntry *r, *r_last = NULL;
-
-        for ( r=*registry; r!=NULL; r=r->next )
+        registryEntry *r, *r_next, *r_last = NULL;
+        for ( r=*registry; r!=NULL; r=r_next )
         {
+		r_next = r->next;
                 if ( r->value == value )
                 {
                         if ( r_last == NULL )
-                                *registry = r->next;
+                                *registry = r_next;
                         else
-                                r_last->next = r->next;
+                                r_last->next = r_next;
 
                         freeRegistryItem( r );
                         return;

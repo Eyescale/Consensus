@@ -78,6 +78,75 @@ lookupVariable( _context *context, char *identifier )
 }
 
 /*---------------------------------------------------------------------------
+	variable_reset, reset_variables
+---------------------------------------------------------------------------*/
+int
+variable_reset( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
+		return log_error( context, event, "variable names cannot be in \"quotes\"" );
+	}
+
+	// fetch or create identified variable in current scope
+	// ----------------------------------------------------
+
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	char *identifier = context->identifier.id[ 0 ].ptr;
+	if ( !strcmp( identifier, this_symbol ) )
+		return 0;
+
+	registryEntry *entry = lookupByName( stack->variables, identifier );
+	if ( entry == NULL ) return 0;
+
+	char *name = (char *) entry->identifier;
+
+	if ( name != variator_symbol ) free( name );
+	VariableVA *variable = (VariableVA *) entry->value;
+	if ( !variable->data.ref )
+		freeVariableValue( variable );
+	free( variable );
+
+	deregisterByAddress( &stack->variables, name );
+	return 0;
+}
+
+int
+reset_variables( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	Registry *variables = &stack->variables;
+
+	registryEntry *r, *r_next, *r_last = NULL;
+	for ( r = *variables; r!=NULL; r=r_next )
+	{
+		r_next = r->next;
+		char *name = r->identifier;
+		if ( !strcmp( name, this_symbol ) )
+			continue;
+
+		if ( name != variator_symbol ) free( name );
+		VariableVA *variable = (VariableVA *) r->value;
+		if ( !variable->data.ref )
+			freeVariableValue( variable );
+		free( variable );
+
+		if ( r_last == NULL )
+			*variables = r_next;
+		else
+			r_last->next = r_next;
+
+		freeRegistryItem( r );
+	}
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
 	assign_results
 ---------------------------------------------------------------------------*/
 int

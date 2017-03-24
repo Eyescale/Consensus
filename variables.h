@@ -5,6 +5,8 @@
 	variables actions		- public
 ---------------------------------------------------------------------------*/
 
+_action	reset_variables;
+_action	variable_reset;
 _action	assign_results;
 _action	assign_narrative;
 _action	assign_expression;

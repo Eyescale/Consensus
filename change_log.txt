@@ -1,4 +1,22 @@
 
+Mar 24, 2016
+DONE    . return proper values from expression commands: fine as-is, except release command should just return nothing
+	  Note: consequently in the future variables should be assignable to null - that is: reset / not set
+		This requires to change the current behaviour upon error (e.g. variable not found).
+DONE    . introduced reset operations - untested
+DONE            :~              // reset variable stack
+DONE            :~ identifier   // reset variable (i.e. remove from variable stack)
+
+        TODO next:
+                . complete documentation of software as-is
+                        . document '~.' as variable value
+                        . document how to deal with race conditions
+                          without proper design / agreement upfront, things do break
+                        . document difference between command expression's return values
+                          and narrative events (or: how to handle actual changes)
+                . Release v1.0
+
+
 Mar 23, 2016
 DONE	. deprecated new 'filter' syntax - reverted to syntax already in place, e.g.
 		?: source-medium->target: %filter	NEW
