@@ -1,5 +1,13 @@
 
-Mar 24, 2016
+Mar 28, 2017
+DONE	. disabled requests for local event - cf. narrative.c: read_narrative_event()
+DONE	. modified test/narrative accordingly
+
+        TODO next:
+DONE            . complete documentation of software as-is (Reference Manual)
+                . Release v1.0
+
+Mar 24, 2017
 DONE    . return proper values from expression commands: fine as-is, except release command should just return nothing
 	  Note: consequently in the future variables should be assignable to null - that is: reset / not set
 		This requires to change the current behaviour upon error (e.g. variable not found).
@@ -7,17 +15,8 @@ DONE    . introduced reset operations - untested
 DONE            :~              // reset variable stack
 DONE            :~ identifier   // reset variable (i.e. remove from variable stack)
 
-        TODO next:
-                . complete documentation of software as-is
-                        . document '~.' as variable value
-                        . document how to deal with race conditions
-                          without proper design / agreement upfront, things do break
-                        . document difference between command expression's return values
-                          and narrative events (or: how to handle actual changes)
-                . Release v1.0
 
-
-Mar 23, 2016
+Mar 23, 2017
 DONE	. deprecated new 'filter' syntax - reverted to syntax already in place, e.g.
 		?: source-medium->target: %filter	NEW
 	  instead of
@@ -35,15 +34,6 @@ DONE	. changed 'this' symbol from '%' to '!' - as we may want to use %% in the f
 DONE	. updated test/va in order to test existing narrative assignment to variable
 DONE	. fixed bugs e.g. #ifndef MEMOPT instead of #ifdef MEMOPT in expression_solve
 
-
-	TODO next:
-	. complete documentation as-is
-	. change return value from expression commands to return entities actually affected by the command
-	  : variable : !! a-is->b	should return only and all entities newly instantiated
-	  : variable : !~ a-is->b	should report only and all entities newly released
-	  : variable : !* a-is->b	should return only and all entities newly activated
-	  : variable : !_ a-is->b	should return only and all entities newly deactivated
-	. Release v1.0
 
 	Notes:
 	. support for sub-queries (ie. support %[ ] as TERM in expression) de-scoped from this release.

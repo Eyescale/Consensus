@@ -382,24 +382,6 @@ check_init_event( char *state, int event, char **next_state, _context *context )
 
 static int
 read_narrative_event( char *state, int event, char **next_state, _context *context )
-/*
-	event can be either
-		1. on init
-		2.1. on identifier : { !!, !~, !*, !_ } expression
-		2.2. on identifier : expression { !!, !~, !*, !_ }
-		3.1. on %identifier : { !!, !~, !*, !_ } expression
-		3.2. on %identifier : expression { !!, !~, !*, !_ }
-			where identifier has been declared as
-			do : identifier < %connection
-		4. on %identifier :: expression
-			where identifier has been declared as either
-			3.1. do : identifier < stream : expression
-				   do : event <
-				   then on %event: '\n'
-			3.2. do : identifier : value
-				   do : event : '\n'
-				   on %event: '\n'
-*/
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
@@ -440,7 +422,9 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 				in_( "identifier:" ) bgn_
 					on_( ' ' )	narrative_do_( nop, same )
 					on_( '\t' )	narrative_do_( nop, same )
+#if 0
 					on_( '!' )	narrative_do_( set_event_request, "identifier: !" )
+#endif
 					on_other	narrative_do_( read_expression, "identifier: expression" )
 					end
 					in_( "identifier: !" )	bgn_

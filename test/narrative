@@ -1,7 +1,7 @@
 
 	!! titi()
 	on init do ~.
-	in ?-is->toto in toto on :!! titi
+	in ?-is->toto in toto on :titi !!
 		do exit
 		then
 			in toto on event:that-is->true !*
@@ -25,7 +25,7 @@
 		
 		.
 
-	in tata on :!* toto do
+	in tata on :toto !* do
 		>:what time is it?
 		/
 		then on :[ ?.. ]-is->bong !_
