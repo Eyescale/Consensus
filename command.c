@@ -551,11 +551,11 @@ command_push_input( InputType type, int event, _context *context )
 		push_input( NULL, NULL, LastInstruction, context );
 		break;
 	case ExecutionMode:
-		if ( context->identifier.id[ 0 ].type != StringIdentifier ) {
-			return log_error( context, event, "expected argument in \"quotes\"" );
-		}
-		char *identifier;
+		; char *identifier;
 		if ( type == PipeInput ) {
+			if ( context->identifier.id[ 0 ].type != StringIdentifier ) {
+				return log_error( context, event, "expected argument in \"quotes\"" );
+			}
 			identifier = string_extract( context->identifier.id[ 0 ].ptr );
 		} else if ( context->expression.results != NULL ) {
 			Entity *entity = (Entity *) context->expression.results->ptr;
@@ -750,6 +750,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 	bgn_
 	on_( -1 )	command_do_( command_error, base )
+
 	in_( base ) bgn_
 		on_( ' ' )	command_do_( nop, same )
 		on_( '\t' )	command_do_( nop, same )
@@ -764,120 +765,121 @@ read_command( char *state, int event, char **next_state, _context *context )
 		on_( 'e' )	command_do_( nop, "e" )
 		on_other	command_do_( error, base )
 		end
-		in_( "!" ) bgn_
-			on_( '!' )	command_do_( set_expression_mode, "!." )
-			on_( '~' )	command_do_( set_expression_mode, "!." )
-			on_( '*' )	command_do_( set_expression_mode, "!." )
-			on_( '_' )	command_do_( set_expression_mode, "!." )
-			on_other	command_do_( error, base )
+
+	in_( "!" ) bgn_
+		on_( '!' )	command_do_( set_expression_mode, "!." )
+		on_( '~' )	command_do_( set_expression_mode, "!." )
+		on_( '*' )	command_do_( set_expression_mode, "!." )
+		on_( '_' )	command_do_( set_expression_mode, "!." )
+		on_other	command_do_( error, base )
+		end
+		in_( "!." ) bgn_
+			on_( ' ' )	command_do_( nop, same )
+			on_( '\t' )	command_do_( nop, same )
+			on_( '%' )	command_do_( nop, "!. %" )
+			on_other	command_do_( read_expression, "!. expression" )
 			end
-			in_( "!." ) bgn_
+			in_( "!. expression" )
+				if ( context->narrative.mode.action.one ) bgn_
+					on_( ' ' )	command_do_( command_expression, out )
+					on_( '\t' )	command_do_( command_expression, out )
+					on_( '\n' )	command_do_( command_expression, out )
+					on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+					on_other	command_do_( nothing, out )
+					end
+				else bgn_
+					on_( ' ' )	command_do_( nop, same )
+					on_( '\t' )	command_do_( nop, same )
+					on_( '\n' )	command_do_( command_expression, base )
+					on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+					on_other	command_do_( error, base )
+					end
+			in_( "!. narrative(" ) bgn_
 				on_( ' ' )	command_do_( nop, same )
 				on_( '\t' )	command_do_( nop, same )
-				on_( '%' )	command_do_( nop, "!. %" )
-				on_other	command_do_( read_expression, "!. expression" )
+				on_( ')' )	command_do_( nop, "!. narrative(_)" )
+				on_other	command_do_( error, base )
 				end
-				in_( "!. expression" )
+				in_( "!. narrative(_)" )
 					if ( context->narrative.mode.action.one ) bgn_
-						on_( ' ' )	command_do_( command_expression, out )
-						on_( '\t' )	command_do_( command_expression, out )
-						on_( '\n' )	command_do_( command_expression, out )
-						on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+						on_( ' ' )	command_do_( command_narrative, out )
+						on_( '\t' )	command_do_( command_narrative, out )
+						on_( '\n' )	command_do_( command_narrative, out )
 						on_other	command_do_( nothing, out )
 						end
 					else bgn_
 						on_( ' ' )	command_do_( nop, same )
 						on_( '\t' )	command_do_( nop, same )
-						on_( '\n' )	command_do_( command_expression, base )
-						on_( '(' )	command_do_( set_results_to_nil, "!. narrative(" )
+						on_( '\n' )	command_do_( command_narrative, base )
 						on_other	command_do_( error, base )
 						end
-				in_( "!. narrative(" ) bgn_
-					on_( ' ' )	command_do_( nop, same )
-					on_( '\t' )	command_do_( nop, same )
-					on_( ')' )	command_do_( nop, "!. narrative(_)" )
-					on_other	command_do_( error, base )
+			in_( "!. %" ) bgn_
+				on_( '[' )	command_do_( nop, "!. %[" )
+				on_other	command_do_( read_expression, "!. expression" )
+				end
+				in_( "!. %[" ) bgn_
+					on_any	command_do_( evaluate_expression, "!. %[_" )
 					end
-					in_( "!. narrative(_)" )
-						if ( context->narrative.mode.action.one ) bgn_
-							on_( ' ' )	command_do_( command_narrative, out )
-							on_( '\t' )	command_do_( command_narrative, out )
-							on_( '\n' )	command_do_( command_narrative, out )
-							on_other	command_do_( nothing, out )
-							end
-						else bgn_
-							on_( ' ' )	command_do_( nop, same )
-							on_( '\t' )	command_do_( nop, same )
-							on_( '\n' )	command_do_( command_narrative, base )
-							on_other	command_do_( error, base )
-							end
-				in_( "!. %" ) bgn_
-					on_( '[' )	command_do_( nop, "!. %[" )
-					on_other	command_do_( read_expression, "!. expression" )
-					end
-					in_( "!. %[" ) bgn_
-						on_any	command_do_( evaluate_expression, "!. %[_" )
+					in_( "!. %[_" ) bgn_
+						on_( ']' )	command_do_( nop, "!. %[_]" )
+						on_other	command_do_( error, base )
 						end
-						in_( "!. %[_" ) bgn_
-							on_( ']' )	command_do_( nop, "!. %[_]" )
+						in_( "!. %[_]" ) bgn_
+							on_( '.' )	command_do_( nop, "!. %[_]." )
 							on_other	command_do_( error, base )
 							end
-							in_( "!. %[_]" ) bgn_
-								on_( '.' )	command_do_( nop, "!. %[_]." )
-								on_other	command_do_( error, base )
+							in_( "!. %[_]." ) bgn_
+								on_any	command_do_( read_argument, "!. %[_].arg" )
 								end
-								in_( "!. %[_]." ) bgn_
-									on_any	command_do_( read_argument, "!. %[_].arg" )
+								in_( "!. %[_].arg" ) bgn_
+									on_( ' ' )	command_do_( nop, same )
+									on_( '\t' )	command_do_( nop, same )
+									on_( '(' )	command_do_( nop, "!. %[_].arg(" )
+									on_other	command_do_( error, base )
 									end
-									in_( "!. %[_].arg" ) bgn_
+									in_( "!. %[_].arg(" ) bgn_
 										on_( ' ' )	command_do_( nop, same )
 										on_( '\t' )	command_do_( nop, same )
-										on_( '(' )	command_do_( nop, "!. %[_].arg(" )
+										on_( ')' )	command_do_( nop, "!. %[_].arg(_)" )
 										on_other	command_do_( error, base )
 										end
-										in_( "!. %[_].arg(" ) bgn_
-											on_( ' ' )	command_do_( nop, same )
-											on_( '\t' )	command_do_( nop, same )
-											on_( ')' )	command_do_( nop, "!. %[_].arg(_)" )
-											on_other	command_do_( error, base )
-											end
-											in_( "!. %[_].arg(_)" )
-												if ( context->narrative.mode.action.one ) bgn_
-													on_( ' ' )	command_do_( command_narrative, out )
-													on_( '\t' )	command_do_( command_narrative, out )
-													on_( '\n' )	command_do_( command_narrative, out )
-													on_other	command_do_( nothing, out )
-													end
-												else bgn_
-													on_( ' ' )	command_do_( nop, same )
-													on_( '\t' )	command_do_( nop, same )
-													on_( '\n' )	command_do_( command_narrative, base )
-													on_other	command_do_( error, base )
-													end
-		in_( "~" ) bgn_
-			on_( '.' )	command_do_( nop, "~." )
+										in_( "!. %[_].arg(_)" )
+											if ( context->narrative.mode.action.one ) bgn_
+												on_( ' ' )	command_do_( command_narrative, out )
+												on_( '\t' )	command_do_( command_narrative, out )
+												on_( '\n' )	command_do_( command_narrative, out )
+												on_other	command_do_( nothing, out )
+												end
+											else bgn_
+												on_( ' ' )	command_do_( nop, same )
+												on_( '\t' )	command_do_( nop, same )
+												on_( '\n' )	command_do_( command_narrative, base )
+												on_other	command_do_( error, base )
+												end
+	in_( "~" ) bgn_
+		on_( '.' )	command_do_( nop, "~." )
+		on_other	command_do_( error, base )
+		end
+		in_( "~." ) bgn_
+			on_( '\n' )	BRKOUT command_do_( nop, base )
 			on_other	command_do_( error, base )
 			end
-			in_( "~." ) bgn_
-				on_( '\n' )	BRKOUT command_do_( nop, base )
-				on_other	command_do_( error, base )
-				end
-		in_( "e" ) bgn_
-			on_( 'x' )	command_do_( nop, "ex" )
+	in_( "e" ) bgn_
+		on_( 'x' )	command_do_( nop, "ex" )
+		on_other	command_do_( error, base )
+		end
+		in_( "ex" ) bgn_
+			on_( 'i' )	command_do_( nop, "exi" )
 			on_other	command_do_( error, base )
 			end
-			in_( "ex" ) bgn_
-				on_( 'i' )	command_do_( nop, "exi" )
+			in_( "exi" ) bgn_
+				on_( 't' )	command_do_( nop, "exit" )
 				on_other	command_do_( error, base )
 				end
-				in_( "exi" ) bgn_
-					on_( 't' )	command_do_( nop, "exit" )
+				in_( "exit" ) bgn_
+					on_( '\n' )	command_do_( exit_narrative, RETURN ) // ONLY IN NARRATIVE MODE
 					on_other	command_do_( error, base )
 					end
-					in_( "exit" ) bgn_
-						on_( '\n' )	command_do_( exit_narrative, RETURN ) // ONLY IN NARRATIVE MODE
-						on_other	command_do_( error, base )
-						end
 
 	in_( "%" ) bgn_
 		on_( '?' )	BRKERR command_do_( output_variator_value, base )	// ONLY IN HCN MODE
