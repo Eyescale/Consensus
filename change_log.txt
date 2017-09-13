@@ -1,4 +1,9 @@
 
+Sep 13, 2017
+DONE	. fixed bug in HCN output from command line
+DONE	. replace ? %: %[_] syntax with ? %[_]	=> change command.c, test/filter, doc/ref. manual
+	. move log_error() from kernel.c to output.c
+
 Mar 28, 2017
 DONE	. disabled requests for local event - cf. narrative.c: read_narrative_event()
 DONE	. modified test/narrative accordingly
