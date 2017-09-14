@@ -262,6 +262,7 @@ typedef struct {
 	struct {
 		struct {
 			unsigned int action : 1;
+			unsigned int closure : 1;
 			unsigned int exit : 1;
 			unsigned int event : 1;
 			unsigned int condition : 1;
@@ -284,9 +285,9 @@ typedef struct {
 		ControlMode mode;	// ExecutionMode or InstructionMode or FreezeMode
 		listItem *stack;	// current StackVA
 		int level;
+		unsigned int terminal : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
-		unsigned int output : 1;
 	} control;
 	struct {
 		int level;
@@ -432,7 +433,6 @@ _action	warning;
 	kernel utilities	- public
 ---------------------------------------------------------------------------*/
 
-int log_error( _context *context, int event, char *message );
 void set_control_mode( ControlMode mode, int event, _context *context );
 int context_check( int freeze, int instruct, int execute );
 

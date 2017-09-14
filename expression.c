@@ -9,6 +9,7 @@
 #include "string_util.h"
 
 #include "input.h"
+#include "output.h"
 #include "expression.h"
 #include "expression_util.h"
 #include "api.h"
@@ -78,7 +79,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	if ( action == push )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> parser: pushing from level %d\n", context->control.level );
+		output( Debug, "parser: pushing from level %d", context->control.level );
 #endif
 		Expression *e = ( context->control.mode == ExecutionMode ) ?
 			set_sub_expression( *state, context ) : NULL;
@@ -98,7 +99,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		else if ( context->control.level == context->expression.level )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> parser: popping from base level %d\n", context->control.level );
+			output( Debug, "parser: popping from base level %d", context->control.level );
 #endif
 			if ( context->control.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
@@ -111,7 +112,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		else
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> parser: popping from level %d\n", context->control.level );
+			output( Debug, "parser: popping from level %d", context->control.level );
 #endif
 			if ( context->control.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
@@ -178,14 +179,14 @@ set_sub_mark( int count, int event, _context *context )
 	if (( count == 3 ) && ( event == ':' )) {
 		StackVA *stack = (StackVA*) context->control.stack->ptr;
 		if ( stack->expression.flags.not )
-			return log_error( context, event, "extraneous '~' in expression" );
+			return output( Error, "extraneous '~' in expression" );
 		if ( stack->expression.flags.active )
-			return log_error( context, event, "extraneous '*' in expression" );
+			return output( Error, "extraneous '*' in expression" );
 		if ( stack->expression.flags.inactive )
-			return log_error( context, event, "extraneous '_' in expression" );
+			return output( Error, "extraneous '_' in expression" );
 	}
 	if ( context->expression.marked ) {
-		return log_error( context, event, "too many '?''s" );
+		return output( Error, "too many '?''s" );
 	}
 	context->expression.marked = 1;
 	if ( context->control.mode != ExecutionMode )
@@ -230,7 +231,7 @@ set_sub_any( int count, int event, _context *context )
 		stack->expression.flags.not = 0;
 		stack->expression.flags.active = 0;
 		if ( stack->expression.flags.inactive ) {
-			return log_error( context, event, "(nil) is always active" );
+			return output( Error, "(nil) is always active" );
 		}
 	} else {
 		expression->sub[ count ].result.any = 1;
@@ -519,7 +520,7 @@ set_flag_not( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	if ( stack->expression.flags.not ) {
-		return log_error( context, event, "redundant '~' in expression" );
+		return output( Error, "redundant '~' in expression" );
 	}
 	stack->expression.flags.not = 1;
 	return 0;
@@ -529,10 +530,10 @@ set_flag_active( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	if ( stack->expression.flags.not ) {
-		return log_error( context, event, "'*' must precede '~' in expression" );
+		return output( Error, "'*' must precede '~' in expression" );
 	}
 	if ( stack->expression.flags.inactive ) {
-		return log_error( context, event, "conflicting '_' and '*' in expression" );
+		return output( Error, "conflicting '_' and '*' in expression" );
 	}
 	stack->expression.flags.active = 1;
 	return 0;
@@ -542,10 +543,10 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	if ( stack->expression.flags.not ) {
-		return log_error( context, event, "'_' must precede '~' in expression" );
+		return output( Error, "'_' must precede '~' in expression" );
 	}
 	if ( stack->expression.flags.active ) {
-		return log_error( context, event, "conflicting '*' and '_' in expression" );
+		return output( Error, "conflicting '*' and '_' in expression" );
 	}
 	stack->expression.flags.inactive = 1;
 	return 0;
@@ -600,7 +601,7 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 	{
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	fprintf( stderr, "debug> read_as_sub: in \"%s\", on '%c'\n", state, event );
+	output( Debug, "read_as_sub: in \"%s\", on '%c'", state, event );
 #endif
 
 	bgn_
@@ -714,7 +715,7 @@ static int
 set_mark( char *state, int event, char **next_state, _context *context )
 {
 	if ( context->expression.marked ) {
-		return log_error( context, event, "'?' too many question marks" );
+		return output( Error, "'?' too many question marks" );
 	}
 	context->expression.marked = 1;
 	if ( context->control.mode != ExecutionMode )
@@ -771,7 +772,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	fprintf( stderr, "debug> read_shorty: in \"%s\", on '%c'\n", state, event );
+	output( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
 #endif
 
 	bgn_
@@ -992,7 +993,7 @@ static int
 parser_init( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> parser_init: setting parser level to %d\n", context->control.level );
+	output( Debug, "parser_init: setting parser level to %d", context->control.level );
 #endif
 	context->expression.level = context->control.level;
 	context->expression.mode = ReadMode;
@@ -1026,7 +1027,7 @@ static int
 parser_exit( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> parser_exit: on the way: returning event=%d in mode=%d...\n", event, context->expression.mode );
+	output( Debug, "parser_exit: on the way: returning event=%d in mode=%d...", event, context->expression.mode );
 #endif
 	if (( event < 0 ) || ( context->expression.mode == ErrorMode ))
 		pop_all( state, event, next_state, context );
@@ -1051,7 +1052,8 @@ parser_exit( char *state, int event, char **next_state, _context *context )
 			if ( expression->result.marked ) {
 				trace_mark( expression );
 				if ( mark_negated( expression, 0 ) ) {
-					fprintf( stderr, "consensus: Warning: '?' inside of negative clause - will not yield result...\n" );
+					output( Warning, "'?' inside of negative clause - "
+						"will not yield result..." );
 				}
 			}
 		}
@@ -1067,7 +1069,7 @@ int
 parse_expression( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> parser: entering\n" );
+	output( Debug, "parser: entering" );
 #endif
 	// set own state according to commander's state
 	bgn_
@@ -1080,7 +1082,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	fprintf( stderr, "debug> parse_expression: in \"%s\", on '%c'\n", state, (event==-1)?'E':event );
+	output( Debug, "parse_expression: in \"%s\", on '%c'", state, (event==-1)?'E':event );
 #endif
 
 	bgn_
@@ -1654,7 +1656,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 	expression_do_( parser_exit, same );
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> exiting parse_expression '%c'\n", event );
+	output( Debug, "exiting parse_expression '%c'", event );
 #endif
 
 	return event;

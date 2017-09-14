@@ -282,7 +282,8 @@ cn_instantiate_narrative( Entity *e, Narrative *narrative )
 	Narrative *n = lookupNarrative( e, narrative->name );
 	if ( n != NULL ) {
 		if ( e == CN.nil ) {
-			fprintf( stderr, "consensus> Warning: narrative '%s()' already exists - cannot instantiate\n", narrative->name );
+			fprintf( stderr, "consensus> Warning: narrative '%s()' already exists - "
+				"cannot instantiate\n", narrative->name );
 		} else {
 			fprintf( stderr, "consensus> Warning: narrative %%[ '" ); output_name( e, NULL, 0 );
 			fprintf( stderr, " ].%s()' already exists - cannot instantiate\n", narrative->name );
@@ -306,7 +307,8 @@ cn_release_narrative( Entity *e, char *name )
 	//check if the requested narrative instance is active
 	if ( lookupByAddress( n->instances, e ) != NULL ) {
 		if ( e == CN.nil ) {
-			fprintf( stderr, "consensus> Warning: narrative '%s()' is currently active - cannot release\n", name );
+			fprintf( stderr, "consensus> Warning: narrative '%s()' is currently active - "
+				"cannot release\n", name );
 		} else {
 			fprintf( stderr, "consensus> Warning: narrative %%[ '" ); output_name( e, NULL, 0 );
 			fprintf( stderr, " ].%s()' is currently active - cannot release\n", name );

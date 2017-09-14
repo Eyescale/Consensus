@@ -9,6 +9,7 @@
 #include "kernel.h"
 
 #include "input.h"
+#include "output.h"
 #include "command.h"
 #include "expression.h"
 #include "narrative.h"
@@ -31,7 +32,7 @@ narrative_execute( _action action, char **state, int event, char *next_state, _c
 		int pop_level = context->control.level;
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
 		if ( !stack->narrative.state.whole && ( context->narrative.level < pop_level )) {
-			fprintf( stderr, "consensus> Warning: last narrative statement incomplete - will be truncated or removed...\n" );
+			output( Warning, "last narrative statement incomplete - will be truncated or removed..." );
 		}
 		listItem *s = context->control.stack;
 		for ( s=s->next, pop_level--; pop_level >= context->narrative.level; s=s->next, pop_level-- )
@@ -82,23 +83,23 @@ static _action push_narrative_condition, push_narrative_event, read_narrative_th
 static void debug_stack( StackVA *stack, _action from )
 {
 	if ( from == push_narrative_condition ) {
-		fprintf( stderr, "debug> narrative: ( %d, %d, %d, %d )-in->( 1, %d, %d, %d )\n",
+		output( Debug, "narrative: ( %d, %d, %d, %d )-in->( 1, %d, %d, %d )",
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then,
 		stack->narrative.state.condition, stack->narrative.state.action, stack->narrative.state.then );
 	} else if ( from == push_narrative_event ) {
-		fprintf( stderr, "debug> narrative: ( %d, %d, %d, %d )-on->( %d, 1, %d, %d )\n",
+		output( Debug, "narrative: ( %d, %d, %d, %d )-on->( %d, 1, %d, %d )",
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then,
 		stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then );
 	} else if ( from == read_narrative_then ) {
-		fprintf( stderr, "debug> narrative: ( %d, %d, %d, %d )-then->( 0, 0, 0, 1 )\n",
+		output( Debug, "narrative: ( %d, %d, %d, %d )-then->( 0, 0, 0, 1 )",
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then );
 		break;
 	} else if ( from == push_narrative_then ) {
-		fprintf( stderr, "debug> narrative: pushing ( %d, %d, %d, %d )-then->( %d, %d, %d, 1 )\n",
+		output( Debug, "narrative: pushing ( %d, %d, %d, %d )-then->( %d, %d, %d, 1 )",
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then,
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action );
 	} else if ( from == set_narrative_action ) {
-		fprintf( stderr, "debug> narrative: ( %d, %d, %d, %d )-do->( %d, %d, 1, %d )\n",
+		output( Debug, "narrative: ( %d, %d, %d, %d )-do->( %d, %d, 1, %d )",
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.action, stack->narrative.state.then,
 		stack->narrative.state.condition, stack->narrative.state.event, stack->narrative.state.then );
 	}
@@ -123,7 +124,7 @@ narrative_build( Occurrence *occurrence, int event, _context *context )
 	}
 	occurrence->thread = thread;
 #ifdef DEBUG
-	fprintf( stderr, "debug> building narrative: thread %0x\n", (int) thread );
+	output( Debug, "building narrative: thread %0x", (int) thread );
 #endif
 	addItem( &thread->sub.n, occurrence );
 	thread->sub.num++;
@@ -159,7 +160,7 @@ narrative_on_in_on_( int event, _context *context )
 		if ( parent->type == ThenOccurrence )
 			break;
 		if ( parent->type == EventOccurrence ) {
-			return log_error( context, event, "narrative on-in-on sequence is not supported" );
+			return output( Error, "narrative on-in-on sequence is not supported" );
 		}
 	}
 	return event;
@@ -181,7 +182,7 @@ narrative_on_init_on_( int event, _context *context )
 		if ( parent->type == ThenOccurrence )
 			break;
 		if (( parent->type == EventOccurrence ) && parent->va.event.type.init ) {
-			return log_error( context, event, "narrative on-init-on sequence is not supported" );
+			return output( Error, "narrative on-init-on sequence is not supported" );
 		}
 	}
 	return event;
@@ -201,7 +202,7 @@ narrative_then_on_init_( int event, _context *context )
 	}
 	for ( ; parent != NULL; parent=parent->thread ) {
 		if ( parent->type == ThenOccurrence ) {
-			return log_error( context, event, "narrative then-on-init sequence is not supported" );
+			return output( Error, "narrative then-on-init sequence is not supported" );
 		}
 	}
 	return event;
@@ -313,7 +314,7 @@ static int
 set_event_identifier( char *state, int event, char **next_state, _context *context )
 {
 	if ( !strcmp( context->identifier.id[ 0 ].ptr, "init" ) ) {
-		return log_error( context, event, "'init' used as event identifier" );
+		return output( Error, "'init' used as event identifier" );
 	}
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	stack->narrative.event.identifier.name = context->identifier.id[ 0 ].ptr;
@@ -325,7 +326,7 @@ static int
 set_event_variable( char *state, int event, char **next_state, _context *context )
 {
 	if ( !strcmp( context->identifier.id[ 0 ].ptr, "init" ) ) {
-		return log_error( context, event, "'init' used as event identifier" );
+		return output( Error, "'init' used as event identifier" );
 	}
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	stack->narrative.event.identifier.type = VariableIdentifier;
@@ -374,8 +375,7 @@ check_init_event( char *state, int event, char **next_state, _context *context )
 		}
 	}
 	else {
-		char *msg; asprintf( &msg, "unspecified event for identifier '%s'", context->identifier.id[ 0 ].ptr );
-		event = log_error( context, event, msg ); free( msg );
+		event = output( Error, "unspecified event for identifier '%s'", context->identifier.id[ 0 ].ptr );
 	}
 	return event;
 }
@@ -394,7 +394,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	{
 		event = input( state, event, NULL, context );
 #ifdef DEBUG
-		fprintf( stderr, "debug> read_narrative_event: in \"%s\", on '%c'\n", state, event );
+		output( Debug, "read_narrative_event: in \"%s\", on '%c'", state, event );
 #endif
 		bgn_
 		on_( -1 )	narrative_do_( nothing, "" )
@@ -463,9 +463,9 @@ set_narrative_event( char *state, int event, char **next_state, _context *contex
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 #ifdef DEBUG
-	fprintf( stderr, "debug> set_narrative_event:\n"
+	output( Debug, "set_narrative_event:\n"
 	"\tidentifier: %s, type: %d\n"
-	"\tinstantiate: %d, release: %d, activate: %d, deactivate: %d, notification: %d, request: %d, init: %d\n",
+	"\tinstantiate: %d, release: %d, activate: %d, deactivate: %d, notification: %d, request: %d, init: %d",
 	stack->narrative.event.identifier.name, stack->narrative.event.identifier.type,
 	stack->narrative.event.type.instantiate, stack->narrative.event.type.release, stack->narrative.event.type.activate,
 	stack->narrative.event.type.deactivate, stack->narrative.event.type.notification, stack->narrative.event.type.request,
@@ -504,10 +504,10 @@ read_narrative_then( char *state, int event, char **next_state, _context *contex
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	if ( !stack->narrative.state.action && !stack->narrative.state.whole ) {
-		return log_error( context, event, "'then' must follow action..." );
+		return output( Error, "'then' must follow action..." );
 	}
 	if ( stack->narrative.state.exit ) {
-		fprintf( stderr, "consensus> Warning: 'then' following exit - may be ignored\n" );
+		output( Warning, "'then' following exit - may be ignored" );
 	}
 	int read_from_base = !strcmp( state, base );
 	state = "t";
@@ -619,7 +619,7 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 	context->control.mode = ExecutionMode;
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> narrative: read action \"%s\" - returning '%c'\n", context->record.string.ptr, event );
+	output( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.ptr, event );
 #endif
 	if ( event >= 0 ) {
 		// Note: context->record.instructions is assumed to be NULL here...
@@ -643,12 +643,13 @@ set_narrative_action( char *state, int event, char **next_state, _context *conte
 		int level = context->control.level;
 		for ( listItem *s = context->control.stack; level>=context->narrative.level; s=s->next, level-- )
 		{
-			StackVA *stack = (StackVA *) s->ptr;
-			if ( stack->narrative.state.whole ) break;
-			stack->narrative.state.whole = 1;
+			StackVA *sptr = (StackVA *) s->ptr;
+			if ( sptr->narrative.state.whole ) break;
+			sptr->narrative.state.whole = 1;
 		}
 	}
-	else stack->narrative.state.whole = 1;
+	else
+		stack->narrative.state.whole = 1;
 
 	listItem *instructions = context->record.instructions;
 	context->record.instructions = NULL;
@@ -674,17 +675,10 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 {
 	int level = context->control.level;
 
-	// set this stack level temporarily to action - until 'then'
 	StackVA *stack = context->control.stack->ptr;
-	stack->narrative.state.action = 1;
+	stack->narrative.state.closure = 1;	// just for prompt
 
 	do {
-		if ( context->control.prompt ) {
-			fprintf( stderr, "(then/.)?_ " );
-			for ( int i=0; i<context->control.level; i++ )
-				fprintf( stderr, "\t" );
-			context->control.prompt = 0;
-		}
 		event = input( state, 0, NULL, context );
 		bgn_
 		on_( -1 )	narrative_do_( nothing, "" )
@@ -693,9 +687,25 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 			on_( '\t' )	narrative_do_( nop, same )
 			on_( '\n' )	narrative_do_( nop, same )
 			on_( '.' )	narrative_do_( nop, "." )
-			on_( 't' )	narrative_do_( read_narrative_then, "" )
+			on_( 't' )	narrative_do_( nop, "t" )
 			on_other	narrative_do_( nop, "flush" )
 			end
+			in_( "t" ) bgn_
+				on_( 'h' )	narrative_do_( nop, "th" )
+				on_other	narrative_do_( nop, "flush" )
+				end
+				in_( "th" ) bgn_
+					on_( 'e' )	narrative_do_( nop, "the" )
+					on_other	narrative_do_( nop, "flush" )
+					end
+					in_( "the" ) bgn_
+						on_( 'n' )	narrative_do_( nop, "then" )
+						on_other	narrative_do_( nop, "flush" )
+						end
+						in_( "then" ) bgn_
+							on_( '\n' )	narrative_do_( nothing, "" )
+							on_other	narrative_do_( nop, "flush" )
+							end
 			in_( "." ) bgn_
 				on_( '\n' )	narrative_do_( pop, "" )
 						state = "";
@@ -709,11 +719,22 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 	}
 	while ( strcmp( state, "" ) );
 
+	stack->narrative.state.closure = 0;
+
 	if ( event < 0 )
 		;
-	if ( context->control.level < level ) {
+	else if ( context->control.level < level ) {
+		// did pop at last
+		StackVA *stack = (StackVA *) context->control.stack->ptr;
+
+		stack->narrative.state.event = 0;
+		stack->narrative.state.condition = 0;
+		stack->narrative.state.action = 1;
+		stack->narrative.state.then = 0;
+
 		*next_state = base;
-		// did pop at last - now need to replace last instruction with "/."
+
+		// now need to replace last instruction with "/."
 		if ( context->record.instructions->next != NULL ) {
 			char *string; asprintf( &string, "/.%c", '\n' );
 			addItem( &context->record.instructions, string );
@@ -723,10 +744,17 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 			freeItem( next_i );
 		}
 		else {
-			fprintf( stderr, "consensus> Warning: no action specified - will be removed from narrative...\n" );
+			output( Warning, "no action specified - will be removed from narrative..." );
 			freeListItem( &context->record.instructions );
 		}
 	} else {
+		StackVA *stack = (StackVA *) context->control.stack->ptr;
+
+		stack->narrative.state.event = 0;
+		stack->narrative.state.condition = 0;
+		stack->narrative.state.action = 0;
+		stack->narrative.state.then = 1;
+
 		*next_state = "then";
 	}
 	return event;
@@ -769,7 +797,9 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 		reorderListItem( &context->record.instructions );
 		listItem *s = context->control.stack;
 		context->control.stack = s->next;
+		context->control.level--;
 		retval = set_narrative_action( state, 0, next_state, context );
+		context->control.level++;
 		context->control.stack = s;
 	}
 	context->narrative.mode.action.block = 0;
@@ -879,7 +909,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 	case FreezeMode:
 		return 0;
 	case InstructionMode:
-		return log_error( context, event, "narrative definition is only supported in Execution Mode" );
+		return output( Error, "narrative definition is only supported in Execution Mode" );
 	case ExecutionMode:
 		break;
 	}
@@ -890,7 +920,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 	{
 		event = input( state, event, NULL, context );
 #ifdef DEBUG
-		fprintf( stderr, "debug> narrative: in \"%s\", on '%c'\n", state, event );
+		output( Debug, "narrative: in \"%s\", on '%c'", state, event );
 #endif
 		bgn_
 		on_( -1 )	narrative_do_( narrative_error, base )

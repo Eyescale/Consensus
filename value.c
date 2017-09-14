@@ -6,6 +6,7 @@
 #include "registry.h"
 #include "kernel.h"
 #include "string_util.h"
+#include "output.h"
 
 #include "api.h"
 #include "narrative.h"
@@ -21,7 +22,7 @@ static int
 set_va_( char *va_name, int event, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> set_va:$$(%s) expression %s\n", va_name, context->identifier.id[ 1 ].ptr );
+	output( Debug, "set_va:$$(%s) expression %s", va_name, context->identifier.id[ 1 ].ptr );
 #endif
 	void *value;
 
@@ -31,9 +32,7 @@ set_va_( char *va_name, int event, _context *context )
 		char *name = context->identifier.id[ 1 ].ptr;
 		Narrative *narrative = lookupNarrative( CN.nil, name );
 		if ( narrative == NULL ) {
-			char *msg; asprintf( &msg, "narrative '%s' is not instantiated", name );
-			event = log_error( context, event, msg ); free( msg );
-			return event;
+			return output( Error, "narrative '%s' is not instantiated", name );
 		}
 
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
@@ -46,14 +45,12 @@ set_va_( char *va_name, int event, _context *context )
 		}
 	}
 	else if ( context->identifier.id[ 1 ].type != StringIdentifier ) {
-		return log_error( context, event, "expected argument in \"quotes\"" );
+		return output( Error, "expected argument in \"quotes\"" );
 	}
 	else {
 		void *value = string_extract( context->identifier.id[ 1 ].ptr );
 		if ( value == NULL ) {
-			char *msg; asprintf( &msg, "account '%s' cannot be set to (null) value", va_name );
-			event = log_error( context, event, msg ); free( msg );
-			return event;
+			return output( Error, "account '%s' cannot be set to (null) value", va_name );
 		}
 		for ( listItem *i = (listItem *) context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
@@ -67,19 +64,17 @@ int
 set_va( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> in set_va\n" );
+	output( Debug, "in set_va" );
 #endif
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( context->expression.results == NULL )
-		return log_error( context, event, "cannot assign value to (null) results" );
+		return output( Error, "cannot assign value to (null) results" );
 
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
-		char *msg; asprintf( &msg, "unknown value account name '%s'", va_name );
-		event = log_error( context, event, msg ); free( msg );
-		return event;
+		return output( Error, "unknown value account name '%s'", va_name );
 	}
 	return set_va_( va_name, event, context );
 }
@@ -91,39 +86,33 @@ int
 set_va_from_variable( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> in set_va_from_variable\n" );
+	output( Debug, "in set_va_from_variable" );
 #endif
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( context->expression.results == NULL )
-		return log_error( context, event, "cannot assign value to (null) results" );
+		return output( Error, "cannot assign value to (null) results" );
 
 	// check value account name
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
-		char *msg; asprintf( &msg, "unknown value account name '%s'", va_name );
-		event = log_error( context, event, msg ); free( msg );
-		return event;
+		return output( Error, "unknown value account name '%s'", va_name );
 	}
 	if ( strcmp( va_name, "narratives" ) ) {
-		return log_error( context, event, "only narrative accounts can be set from variable" );
+		return output( Error, "only narrative accounts can be set from variable" );
 	}
 
 	// check variable name & type
 	char *name = context->identifier.id[ 1 ].ptr;
 	registryEntry *entry = lookupVariable( context, name );
 	if ( entry == NULL ) {
-		char *msg; asprintf( &msg, "variable '%s' is not set", name );
-		event = log_error( context, event, msg ); free( msg );
-		return event;
+		return output( Error, "variable '%s' is not set", name );
 	}
 
 	VariableVA *variable = (VariableVA *) entry->value;
 	if ( variable->type != NarrativeVariable ) {
-		char *msg; asprintf( &msg, "variable '%s' is not a narrative variable", name );
-		event = log_error( context, event, msg ); free( msg );
-		return event;
+		return output( Error, "variable '%s' is not a narrative variable", name );
 	}
 
 	// extract the list of valid narratives from the passed list

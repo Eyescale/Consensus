@@ -298,7 +298,7 @@ int
 systemFrame( char *state, int e, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> entering systemFrame\n" );
+	output( Debug, "entering systemFrame" );
 #endif
 	// Check narratives to be deactivated - and deactivate them
 	for ( registryEntry *i = context->frame.log.narratives.deactivate; i!=NULL; i=i->next )
@@ -308,7 +308,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> systemFrame: invoking deactivateNarrative()\n" );
+			output( Debug, "systemFrame: invoking deactivateNarrative()" );
 #endif
 			deactivateNarrative( (Entity *) j->ptr, narrative );
 		}
@@ -325,7 +325,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			Entity *e = (Entity *) j->identifier;
 			Narrative *n = (Narrative *) j->value;
 #ifdef DEBUG
-			fprintf( stderr, "debug> systemFrame: invoking execute_narrative_actions()\n" );
+			output( Debug, "systemFrame: invoking execute_narrative_actions()" );
 #endif
 			execute_narrative_actions( n, context );
 			// check if the narrative reached 'exit'
@@ -346,7 +346,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			{
 				Occurrence *event = (Occurrence *) i->ptr;
 #ifdef DEBUG
-				fprintf( stderr, "debug> systemFrame: invoking search_and_register_actions()\n" );
+				output( Debug, "systemFrame: invoking search_and_register_actions()" );
 #endif
 				if ( event->registered ) {
 					event->registered = 0;	// no need to take the same route twice
@@ -364,7 +364,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> systemFrame: invoking search_and_register_events() %0x\n",
+			output( Debug, "systemFrame: invoking search_and_register_events() %0x",
 				(int) context->frame.log.entities.instantiated );
 #endif
 			Narrative *n = (Narrative *) j->value;
@@ -402,7 +402,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		{
 			Entity *e = (Entity *) j->ptr;
 #ifdef DEBUG
-			fprintf( stderr, "debug> systemFrame: invoking activateNarrative()\n" );
+			output( Debug, "systemFrame: invoking activateNarrative()" );
 #endif
 			Narrative *n = activateNarrative( e, narrative );
 			search_and_register_init( n, &n->root, context );

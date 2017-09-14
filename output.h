@@ -2,6 +2,14 @@
 #define OUTPUT_H
 
 typedef enum {
+	Error = 1,
+	Warning,
+	Info,
+	Debug
+}
+OutputType;
+
+typedef enum {
 	ExpressionAll,
 	ExpressionMark,
 	SubAll,
@@ -31,6 +39,7 @@ _action output_char;
 	output utilities	- public
 ---------------------------------------------------------------------------*/
 
+int	output( OutputType type, const char *format, ... );
 void	output_name( Entity *e, Expression *format, int base );
 int	output_expression( ExpressionOutput component, Expression *expression, int i, int shorty );
 void	prompt( _context *context );

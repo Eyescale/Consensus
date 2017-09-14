@@ -144,7 +144,9 @@ addIfNotThere( listItem **list, void *ptr )
                         continue;
                 }
                 if ( comparison == 0 ) {
-			// fprintf( stderr, "debug> addIfNotThere: Warning: result already registered\n" );
+#ifdef DEBUG
+			output( Debug, "addIfNotThere: Warning: result already registered" );
+#endif
                         return NULL;
                 }
                 break;

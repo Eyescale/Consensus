@@ -1,8 +1,18 @@
 
+Sep 14, 2017
+DONE	. fixed bugs in narrative.c: read_action_closure(), and remove prompt() from there
+DONE	. input.c: do not prompt when standard input is redirected
+DONE	. output.c: generalized output() to either Error, Warning, Info, Debug - and using var_args
+	NOTE
+		. There are still some fprintf( stderr, ... ) in there, which are used to communicate with users:
+			command.c: overwrite_narrative()
+			api.c: cn_instantiate_narrative(), cn_release_narrative()
+		  These will have to be removed, when implementing IPC (sockets)
+
 Sep 13, 2017
 DONE	. fixed bug in HCN output from command line
 DONE	. replace ? %: %[_] syntax with ? %[_]	=> change command.c, test/filter, doc/ref. manual
-	. move log_error() from kernel.c to output.c
+TODO	. move log_error() from kernel.c to output.c
 
 Mar 28, 2017
 DONE	. disabled requests for local event - cf. narrative.c: read_narrative_event()

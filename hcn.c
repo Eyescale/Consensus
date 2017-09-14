@@ -127,7 +127,7 @@ hcn_getc( FILE *file, _context *context )
 
 #ifdef DEBUG
 	char *state = context->hcn.state;
-	fprintf( stderr, "debug> entering hcn_getc: \"%s\"\n", state );
+	output( Debug, "entering hcn_getc: \"%s\"", state );
 #endif
 
 	do {
@@ -138,7 +138,7 @@ hcn_getc( FILE *file, _context *context )
 			if ( context->hcn.position == NULL ) {
 				context->hcn.position = context->hcn.buffer.ptr;
 #ifdef DEBUG
-				fprintf( stderr, "debug> hcn: reading from: \"%s\"\n", (char *) context->hcn.position );
+				output( Debug, "hcn: reading from: \"%s\"", (char *) context->hcn.position );
 #endif
 			}
 			event = (int ) (( char *) context->hcn.position++ )[ 0 ];
@@ -156,7 +156,7 @@ hcn_getc( FILE *file, _context *context )
 		do {
 			if ( !event ) event = fgetc( file );
 #ifdef DEBUG
-			fprintf( stderr, "debug>hcn_getc: \"%s\", '%c'\n", state, event );
+			output( Debug, "hcn_getc: \"%s\", '%c'", state, event );
 #endif
 			bgn_
 			on_( EOF )	hcn_do_( nothing, "" )

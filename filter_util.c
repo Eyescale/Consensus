@@ -36,8 +36,7 @@ set_filter( Expression *expression, _context *context )
 
 	registryEntry *entry = lookupVariable( context, identifier );
 	if ( entry == NULL ) {
-		char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
-		int retval = log_error( context, 0, msg ); free( msg );
+		output( Error, "variable '%%%s' not found", identifier );
 		context->expression.mode = ErrorMode;
 		return ErrorMode;
 	}
@@ -76,9 +75,8 @@ set_filter( Expression *expression, _context *context )
 		}
 		break;
 	case NarrativeVariable:
-		; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - "
+		output( Error, "'%%%s' is a narrative variable - "
 			"cannot be used as expression filter", identifier );
-		int retval = log_error( context, 0, msg ); free( msg );
 		context->expression.mode = ErrorMode;
 		return ErrorMode;
 	}

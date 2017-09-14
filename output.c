@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "database.h"
 #include "registry.h"
@@ -14,6 +15,54 @@
 #include "variables.h"
 
 // #define DEBUG
+
+/*---------------------------------------------------------------------------
+	output
+---------------------------------------------------------------------------*/
+int
+output( OutputType type,  const char *format, ... )
+{
+	int retval = 0;
+
+	if ( type == Error ) {
+		CN.context->error.flush_input = ( CN.context->input.event != '\n' );
+		retval = -1;
+	}
+
+	if ( format != NULL ) {
+		FILE *stream = stderr;
+		char *header;
+
+		switch ( type ) {
+		case Error:
+			if ( CN.context->error.flush_output ) {
+				stream = stdout;
+				CN.context->error.flush_output = 0;
+			}
+			header = "***** Error: ";
+			break;
+		case Warning:
+			header = "consensus> Warning : ";
+			break;
+		case Info:
+			header = "consensus> ";
+			break;
+		case Debug:
+			header = "debug> ";
+			break;
+		}
+		va_list ap;
+		va_start( ap, format );
+
+		fprintf( stream, "%s", header );
+		vfprintf( stream, format, ap );
+		fprintf( stream, "\n" );
+
+		va_end( ap );
+	}
+
+	return retval;
+}
 
 /*---------------------------------------------------------------------------
 	prompt
@@ -36,9 +85,9 @@ prompt( _context *context )
 		break;
 	case ExecutionMode:
 		if ( context->narrative.current ) {
-			StackVA *stack = (StackVA *) context->control.stack->next->ptr;
-			if ( stack->narrative.state.whole && !stack->narrative.state.then )
-				fprintf( stderr, ".../then_$ " );
+			StackVA *stack = (StackVA *) context->control.stack->ptr;
+			if ( stack->narrative.state.closure )
+				fprintf( stderr, "(then/.)?_ " );
 			else
 				fprintf( stderr, "in/on/do_$ " );
 		} else {
@@ -172,13 +221,13 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	// output body in all its various forms...
 	if ( sub[ 0 ].result.none ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> output_expression: no source...\n" );
+		output( Debug, "output_expression: no source..." );
 #endif
 		;	// do nothing here
 	}
 	else if ( sub[ 1 ].result.none ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> output_expression: no medium...\n" );
+		output( Debug, "output_expression: no medium..." );
 #endif
 		if ( sub[ 0 ].result.identifier.type == NullIdentifier ) {
 			if ( mark++ ) printf( ":" );
@@ -194,7 +243,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	}
 	else if ( test_shorty( expression ) ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> output_expression: found shorty...\n" );
+		output( Debug, "output_expression: found shorty..." );
 #endif
 		if ( mark++ ) printf( ": " );
 		if ( expression->result.output_swap && !sub[ 2 ].result.any ) {
@@ -208,7 +257,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	}
 	else if ( expression->result.output_swap ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> output_expression: output body - swap...\n" );
+		output( Debug, "output_expression: output body - swap..." );
 #endif
 		if ( mark++ ) printf( ": " );
 		output_expression( SubAll, expression, 2, 0 );
@@ -218,7 +267,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		output_expression( SubAll, expression, 0, 0 );
 	} else {
 #ifdef DEBUG
-		fprintf( stderr, "debug> output_expression: output body...\n" );
+		output( Debug, "output_expression: output body..." );
 #endif
 		if ( mark++ ) printf( ": " );
 		output_expression( SubAll, expression, 0, 0 );
@@ -396,7 +445,7 @@ output_variable_value( char *state, int event, char **next_state, _context *cont
 
 	context->error.flush_output = ( event != '\n' );
 #ifdef DEBUG
-	fprintf( stderr, "debug> > : %%%s\n", context->identifier.id[ 0 ].ptr );
+	output( Debug, "output_variable_value: %%%s", context->identifier.id[ 0 ].ptr );
 #endif
 	registryEntry *entry = lookupVariable( context, context->identifier.id[ 0 ].ptr );
 	if ( entry != NULL ) {
@@ -420,7 +469,7 @@ output_variator_value( char *state, int event, char **next_state, _context *cont
 
 	context->error.flush_output = ( event != '\n' );
 #ifdef DEBUG
-	fprintf( stderr, "debug> > : %%%s\n", variator_symbol );
+	output( Debug, "output_variator_value: %%%s", variator_symbol );
 #endif
 	registryEntry *entry = lookupVariable( context, variator_symbol );
 	if ( entry != NULL ) {
@@ -483,7 +532,7 @@ static void
 output_va_( char *va_name, int event, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> >: %%%s.%s\n", context->identifier.id[ 0 ].ptr, va_name );
+	output( Debug, "output_va_: %%%s.%s", context->identifier.id[ 0 ].ptr, va_name );
 #endif
 	listItem *i = context->expression.results;
 	if ( i == NULL ) return;
@@ -518,9 +567,7 @@ output_va( char *state, int event, char **next_state, _context *context )
 		return output_results( state, event, next_state, context );
 	}
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
-		char *msg; asprintf( &msg, "unknown value account name '%s'", va_name );
-		event = log_error( context, event, msg ); free( msg );
-		return event;
+		return output( Error, "unknown value account name '%s'", va_name );
 	}
 	output_va_( va_name, event, context );
 

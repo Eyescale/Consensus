@@ -56,7 +56,9 @@ registerByAddress( Registry *registry, void *address, void *value )
                 if ( comparison > 0 )
                 	break;
                 else if ( comparison == 0 ) {
-			// fprintf( stderr, "consensus> Warning: entry already registered\n" );
+#ifdef DEBUG
+			output( Debug, "registerByAddress: Warning: entry already registered" );
+#endif
                         return NULL;
                 }
                 last_r = r;
@@ -114,7 +116,9 @@ registerByName( Registry *registry, char *name, void *address )
                 }
                 if ( comparison == 0 )
                 {
-			fprintf( stderr, "consensus> Warning: entry already registered\n" );
+#ifdef DEBUG
+			output( Debug, "registerByName: Warning: entry already registered" );
+#endif
                         return r;
                 }
                 break;
@@ -131,7 +135,7 @@ registerByName( Registry *registry, char *name, void *address )
                 entry->next = r;
         }
 #ifdef DEBUG
-	fprintf( stderr, "debug> registerByName: %s, next: %0x from %0x\n", name, entry->next, *registry );
+	output( Debug, "registerByName: %s, next: %0x from %0x", name, entry->next, *registry );
 #endif
 
 	return entry;

@@ -6,6 +6,7 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
+#include "output.h"
 
 #include "api.h"
 #include "expression.h"
@@ -192,7 +193,7 @@ collapse( Expression *expression, int *flags, int i, int count, int sub_i )
 	else if ( count == 1 )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> collapse: collapsing %d\n", count );
+		output( Debug, "collapse: collapsing %d", count );
 #endif
 		bcopy( &e_sub[ sub_i ], &sub[ i ], sizeof( ExpressionSub ) );
 		free( e );
@@ -203,7 +204,7 @@ collapse( Expression *expression, int *flags, int i, int count, int sub_i )
 	else
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> collapse: collapsing %d\n", count );
+		output( Debug, "collapse: collapsing %d", count );
 #endif
 		expression->result.mark |= e->result.mark;
 		expression->result.output_swap = e->result.output_swap;
@@ -224,7 +225,7 @@ expression_collapse( Expression *expression )
 	int flags[ 3 ];
 
 #ifdef DEBUG
-	fprintf( stderr, " debug> expression_collapse: entering %0x\n", (int) expression );
+	output( Debug, "expression_collapse: entering %0x", (int) expression );
 #endif
 	if (( sub[ 3 ].e != NULL ) && !sub[ 3 ].result.any &&
 	     !sub[ 3 ].result.active && !sub[ 3 ].result.inactive && !sub[ 3 ].result.not &&
@@ -234,7 +235,7 @@ expression_collapse( Expression *expression )
 		flags[ 0 ] = 0;
 		flags[ 1 ] = 0;
 #ifdef DEBUG
-		fprintf( stderr, "debug> expression_collapse: collapsing whole...\n" );
+		output( Debug, "expression_collapse: collapsing whole..." );
 #endif
 		collapse( expression, flags, 3, 4, -1 );
 	}
@@ -251,7 +252,7 @@ expression_collapse( Expression *expression )
 		if ( e_sub[ 1 ].result.none && e_sub[ 3 ].result.any && !e->result.as_sub && !e->result.mark )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> expression_collapse: collapsing sub[ %d ]\n", i );
+			output( Debug, "expression_collapse: collapsing sub[ %d ]", i );
 #endif
 			flags[ 0 ] = sub[ i ].result.active || e_sub[ 0 ].result.active;
 			flags[ 1 ] = sub[ i ].result.inactive || e_sub[ 0 ].result.inactive;
@@ -272,7 +273,7 @@ expression_collapse( Expression *expression )
 		}
 		else if ( mark & 7 ) {
 #ifdef DEBUG
-			fprintf( stderr, "debug> expression_collapse: completing according to mark\n" );
+			output( Debug, "expression_collapse: completing according to mark" );
 #endif
 			for ( int i=0; i<3; i++ ) {
 				sub[ i ].result.any = 1;
@@ -299,7 +300,7 @@ expression_collapse( Expression *expression )
 			if ( sub[ 3 ].result.any )
 			{
 #ifdef DEBUG
-				fprintf( stderr, "debug> expression_collapse: collapsing whole...\n" );
+				output( Debug, "expression_collapse: collapsing whole..." );
 #endif
 				// in this case we replace the whole current expression with its sub[ 0 ]
 				collapse( expression, flags, 0, 4, -1 );
@@ -308,7 +309,7 @@ expression_collapse( Expression *expression )
 			else if ( sub[ 0 ].e->sub[ 3 ].result.any )
 			{
 #ifdef DEBUG
-				fprintf( stderr, "debug> expression_collapse: collapsing body...\n" );
+				output( Debug, "expression_collapse: collapsing body..." );
 #endif
 				// in this case we replace only the body of the current expression with sub[ 0 ]
 				collapse( expression, flags, 0, 3, -1 );
@@ -329,7 +330,7 @@ expression_collapse( Expression *expression )
 		{
 			// in this case we swap sub [ 0 ] and sub[ 3 ] - to be collapsed later
 #ifdef DEBUG
-			fprintf( stderr, "debug> collapse: swapping sub[ 0 ] and sub[ 3 ]\n", count );
+			output( Debug, "collapse: swapping sub[ 0 ] and sub[ 3 ]", count );
 #endif
 			bcopy( &sub[ 3 ], &sub[ 0 ], sizeof( ExpressionSub ) );
 			sub[ 0 ].result.active = flags[ 0 ];
@@ -340,7 +341,7 @@ expression_collapse( Expression *expression )
 		else
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> expression_collapse: collapsing whole...\n" );
+			output( Debug, "expression_collapse: collapsing whole..." );
 #endif
 			// in this case we replace the whole current expression with its sub[ 3 ]
 			collapse( expression, flags, 3, 4, -1 );
@@ -355,24 +356,24 @@ int
 instantiable( Expression *expression, _context *context )
 {
 	if ( expression->result.marked ) {
-		log_error( context, 0, "'?' is not instantiable" );
+		output( Error, "'?' is not instantiable" );
 		return 0;
 	}
 
 	ExpressionSub *sub = expression->sub;
 	if ( expression->result.as_sub || !sub[ 3 ].result.any ) {
-		log_error( context, 0, "instance designation is not allowed in instantiation mode" );
+		output( Error, "instance designation is not allowed in instantiation mode" );
 		return 0;
 	}
 
 	if ( sub[ 0 ].result.any || sub[ 1 ].result.any || sub[ 2 ].result.any ) {
-		log_error( context, 0, "'.' is not instantiable" );
+		output( Error, "'.' is not instantiable" );
 		return 0;
 	}
 
 	for ( int i=0; i<4; i++ ) {
 		if ( sub[ i ].result.active || sub[ i ].result.inactive || sub[ i ].result.not ) {
-			log_error( context, 0, "expression flags are not allowed in instantiation mode" );
+			output( Error, "expression flags are not allowed in instantiation mode" );
 			return 0;
 		}
 	}
@@ -397,8 +398,7 @@ instantiable( Expression *expression, _context *context )
 				entry = lookupVariable( context, identifier );
 			}
 			if ( entry == NULL ) {
-				char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
-				log_error( context, 0, msg ); free( msg );
+				output( Error, "variable '%%%s' not found", identifier );
 				return 0;
 			}
 			VariableVA *variable = (VariableVA *) entry->value;
@@ -407,8 +407,8 @@ instantiable( Expression *expression, _context *context )
 			case LiteralVariable:
 				break;
 			case NarrativeVariable:
-				; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
-				log_error( context, 0, msg ); free( msg );
+				output( Error, "'%%%s' is a narrative variable - "
+					"not allowed in expressions", identifier );
 				return 0;
 			case ExpressionVariable:
 				if ( !instantiable( ((listItem * ) variable->data.value )->ptr, context ) )
@@ -522,7 +522,7 @@ take_all( Expression *expression, int as_sub, listItem *results )
 	}
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> take_all: init done, as_sub=%d, count=%d, check_instance=%d\n", as_sub, count, check_instance );
+	output( Debug, "take_all: init done, as_sub=%d, count=%d, check_instance=%d", as_sub, count, check_instance );
 #endif
 
 	if ( CN.context->expression.mode == ReadMode )

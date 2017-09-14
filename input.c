@@ -72,7 +72,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 
 		// here we are in the execution part of a loop => abort
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
-		log_error( context, 0, "aborting loop..." );
+		output( Error, "aborting loop..." );
 		freeListItem( &stack->loop.index );
 		freeInstructionBlock( context );
 		stack->loop.begin = NULL;
@@ -104,7 +104,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 {
 	StreamVA *input;
 #ifdef DEBUG
-	fprintf( stderr, "debug> push_input: \"%s\"\n", identifier );
+	output( Debug, "push_input: \"%s\"", identifier );
 #endif
 	switch ( type ) {
 	case PipeInput:
@@ -112,13 +112,12 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		// check if stream is already in use
 		; registryEntry *stream = lookupByName( context->input.stream, identifier );
 		if ( stream != NULL ) {
-			char *msg; asprintf( &msg, "recursion in stream: \"%s\"", identifier );
-			int event = log_error( context, event, msg ); free( msg );
+			int event = output( Error, "recursion in stream: \"%s\"", identifier );
 			free( identifier );
 			return event;
 		}
 #ifdef DEBUG
-		fprintf( stderr, "opening stream: \"%s\"\n", identifier );
+		output( Debug, "opening stream: \"%s\"", identifier );
 #endif
 		// create and register new active stream
 		input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
@@ -129,9 +128,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 			fopen( identifier, "r " );
 		if ( input->ptr.file == NULL ) {
 			free( input );
-			char *msg; asprintf( &msg, "could not open stream: \"%s\"", identifier );
-			int event = log_error( context, event, msg ); free( msg );
-			return event;
+			return output( Error, "could not open stream: \"%s\"", identifier );
 		}
 		context->hcn.state = base;
 		registerByName( &context->input.stream, identifier, input );
@@ -141,9 +138,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 			// check if variable already in use - embedded strings
 			registryEntry *entry = lookupByName( context->input.string, identifier );
 			if ( entry != NULL ) {
-				char *msg; asprintf( &msg, "recursion in input variable: %%%s", identifier );
-				int event = log_error( context, 0, msg ); free( msg );
-				return event;
+				return output( Error, "recursion in input variable: %%%s", identifier );
 			}
 		}
 		// create and register new active stream
@@ -207,7 +202,7 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	StreamVA *input = (StreamVA *) context->input.stack->ptr;
 	int delta = context->control.level - input->level;
 	if ( delta > 0 ) {
-		event = log_error( context, 0, "reached premature EOF - restoring original stack level" );
+		event = output( Error, "reached premature EOF - restoring original stack level" );
 		while ( delta-- ) pop( state, event, next_state, context );
 	}
 	else event = 0;
@@ -216,7 +211,7 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	popListItem( &context->input.stack );
 
 	if ( context->input.stack == NULL ) {
-		context->control.prompt = 1;
+		context->control.prompt = context->control.terminal;
 	} else {
 		StreamVA *input = (StreamVA *) context->input.stack->ptr;
 		if ( input->mode.escape ) {
@@ -272,7 +267,7 @@ input( char *state, int event, char **next_state, _context *context )
 		{
 			if ( !strcmp( state, base ) ) prompt( context );
 			event = getchar( );
-			if ( event == '\n' ) context->control.prompt = 1;
+			if ( event == '\n' ) context->control.prompt = context->control.terminal;
 		}
 		else
 		{
@@ -287,7 +282,7 @@ input( char *state, int event, char **next_state, _context *context )
 					}
 					stream->position = stream->ptr.string;
 #ifdef DEBUG
-					fprintf( stderr, "debug> input: reading from \"%s\"\n", (char *) stream->position );
+					output( Debug, "input: reading from \"%s\"", (char *) stream->position );
 #endif
 				}
 				event = (int ) (( char *) stream->position++ )[ 0 ];
@@ -391,7 +386,7 @@ input( char *state, int event, char **next_state, _context *context )
 				free ( context->record.string.ptr );
 			}
 #ifdef DEBUG
-			fprintf( stderr, "debug> input read \"%s\"\n", context->record.string.ptr );
+			output( Debug, "input read \"%s\"", context->record.string.ptr );
 #endif
 			context->record.string.ptr = NULL;
 		}

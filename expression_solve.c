@@ -6,6 +6,7 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
+#include "output.h"
 
 #include "api.h"
 #include "expression.h"
@@ -18,22 +19,22 @@
 
 #ifdef DEBUG
 #define RETURN( value ) \
-	{ fprintf( stderr, "expression_solve: exiting - success=%d\n", value ); return value; }
+	{ output( Debug, "expression_solve: exiting - success=%d", value ); return value; }
 #define DEBUG_1	\
-	fprintf( stderr, "debug> solve: no sub-expression[ %d ], starting from '%s', any:%d, active:%d, inactive:%d, mark:%d\n", \
+	output( Debug, "solve: no sub-expression[ %d ], starting from '%s', any:%d, active:%d, inactive:%d, mark:%d", \
 	count, expression->sub[count].result.identifier.value, expression->sub[count].result.any, expression->sub[count].result.active, \
 	expression->sub[count].result.inactive, ( expression->result.mark & ( 1 << count ) ) >> count );
 #define DEBUG_2 \
-	fprintf( stderr, "\tsource: %0x, any:%d, active: %d, inactive:%d: mark:%d\n", (int) r_sub[0], \
+	output( Debug, "\tsource: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[0], \
 		expression->sub[0].result.any, expression->sub[0].result.active, expression->sub[0].result.inactive, \
 		expression->result.mark & 1 ); \
-	fprintf( stderr, "\tmedium: %0x, any:%d, active: %d, inactive:%d: mark:%d\n", (int) r_sub[1], \
+	output( Debug, "\tmedium: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[1], \
 		expression->sub[1].result.any, expression->sub[1].result.active, expression->sub[1].result.inactive, \
 		( expression->result.mark & 2 ) >> 1 ); \
-	fprintf( stderr, "\ttarget: %0x, any:%d, active: %d, inactive:%d: mark:%d\n", (int) r_sub[2], \
+	output( Debug, "\ttarget: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[2], \
 		expression->sub[2].result.any, expression->sub[2].result.active, expression->sub[2].result.inactive, \
 		( expression->result.mark & 4 ) >> 2 ); \
-	fprintf( stderr, "\tinstance: %0x, any:%d, active: %d, inactive:%d: mark:%d\n", (int) r_sub[3], \
+	output( Debug, "\tinstance: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[3], \
 		expression->sub[3].result.any, expression->sub[3].result.active, expression->sub[3].result.inactive, \
 		( expression->result.mark & 8 ) >> 3 );
 #else
@@ -211,7 +212,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 	ExpressionSub *sub = expression->sub;
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> sub_solve: entering count=%d\n", count );
+	output( Debug, "sub_solve: entering count=%d", count );
 #endif
 	listItem **sub_results = &sub[ count ].result.list;
 
@@ -235,9 +236,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				entry = lookupVariable( context, identifier );
 			}
 			if ( entry == NULL ) {
-				char *msg; asprintf( &msg, "variable '%%%s' not found", identifier );
-				int retval = log_error( context, 0, msg ); free( msg );
-				return retval;
+				return output( Error, "variable '%%%s' not found", identifier );
 			}
 			VariableVA *variable = (VariableVA *) entry->value;
 			switch ( variable->type ) {
@@ -316,9 +315,8 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				*sub_results = last_results;
 				break;
 			case NarrativeVariable:
-				; char *msg; asprintf( &msg, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
-				int retval = log_error( context, 0, msg ); free( msg );
-				return retval;
+				return output( Error, "'%%%s' is a narrative variable - "
+					"not allowed in expressions", identifier );
 			}
 		}
 		else if ( sub[ count ].e != NULL )	// residue
@@ -342,7 +340,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			break;
 		}
 		else {
-			return log_error( context, 0, "expression terms are incomplete" );
+			return output( Error, "expression terms are incomplete" );
 		}
 		break;
 	case QueryIdentifier:
@@ -362,7 +360,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		break;
 	case DefaultIdentifier:
 		if ( sub[ count ].result.identifier.value == NULL ) {
-			return log_error( context, 0, "expression terms are incomplete" );
+			return output( Error, "expression terms are incomplete" );
 		}
 		DEBUG_1;
 		char *identifier = sub[ count ].result.identifier.value;
@@ -381,25 +379,23 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			e = cn_new( strdup( identifier ) );
 			addItem( sub_results, e );
 #ifdef DEBUG
-			fprintf( stderr, "debug> set_sub_identifier[ %d ]: created new: '%s', addr: %0x\n",
+			output( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
 				count, identifier, (int) e );
 #endif
 		} else if ( !sub[ count ].result.not ) {
 			if ( context->expression.mode == EvaluateMode ) {
 				return 0;
 			} else {
-				char *msg; asprintf( &msg, "'%s' is not instantiated", identifier );
-				int retval = log_error( context, 0, msg ); free( msg );
-				return retval;
+				return output( Error, "'%s' is not instantiated", identifier );
 			}
 		}
 		break;
 	default:
 		if ( sub[ count ].e == NULL ) {
-			return log_error( context, 0, "expression terms are incomplete" );
+			return output( Error, "expression terms are incomplete" );
 		}
 #ifdef DEBUG_FULL
-		fprintf( stderr, "debug> recursing in SOLVE: count=%d, not=%d\n", count, sub[ count ].result.not );
+		output( Debug, "recursing in SOLVE: count=%d, not=%d", count, sub[ count ].result.not );
 #endif
 		filter_results( sub_results, expression, count, NULL, 0, results );
 		if (( results != NULL ) && ( *sub_results == NULL )) return 0;
@@ -413,7 +409,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			freeListItem( sub_results );
 		if ( success <= 0 ) return success;
 #ifdef DEBUG
-		fprintf( stderr, "debug> solve: returning - %0x [ %d ]\n", (int) sub[ count ].e, count );
+		output( Debug, "solve: returning - %0x [ %d ]", (int) sub[ count ].e, count );
 #endif
 		*sub_results = sub_e->result.list;
 		sub_e->result.list = NULL;
@@ -432,7 +428,7 @@ restore( Expression *expression, int restore_mode, listItem *results, _context *
 	if ( context->expression.mode == ReadMode )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> restoring mode & results - from ReadMode, to mode=%d...\n", restore_mode );
+		output( Debug, "restoring mode & results - from ReadMode, to mode=%d...", restore_mode );
 #endif
 		// Here we need to translate the resulting literals into entities
 		context->expression.mode = restore_mode;
@@ -451,7 +447,7 @@ restore( Expression *expression, int restore_mode, listItem *results, _context *
 	else
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> restoring mode & results - from mode=%d to ReadMode...\n", restore_mode );
+		output( Debug, "restoring mode & results - from mode=%d to ReadMode...", restore_mode );
 #endif
 
 		// Here we need to translate the resulting entities into literals
@@ -486,7 +482,7 @@ static listItem *
 first_candidate( listItem **sub, FlagSub *flag_sub, Expression *expression, listItem *results )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> first_candidate...\n" );
+	output( Debug, "first_candidate..." );
 #endif
 	if ( results != NULL ) return results;
 
@@ -530,12 +526,12 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 		if ( !test_as_sub( entity, as_sub ) )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> failed test_as_sub [ %d ]\n", as_sub );
+			output( Debug, "failed test_as_sub [ %d ]", as_sub );
 #endif
 			return 0;
 		}
 #ifdef DEBUG
-		fprintf( stderr, "debug> passed test_as_sub [ %d ]\n", as_sub );
+		output( Debug, "passed test_as_sub [ %d ]", as_sub );
 #endif
 		sub[ 3 ].ptr = entity;
 		sub[ 3 ].active = cn_is_active( entity );
@@ -563,7 +559,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	ExpressionSub *sub = expression->sub;
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> solve: entering - %0x\n", (int) expression );
+	output( Debug, "solve: entering - %0x", (int) expression );
 #endif
 
 	int restore_mode = context->expression.mode;
@@ -574,7 +570,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 
 	if ( sub[ 3 ].result.none || sub[ 3 ].result.any ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> solve: no or any sub[ %d ]\n", 3 );
+		output( Debug, "solve: no or any sub[ %d ]", 3 );
 #endif
 	} else {
 		int success = sub_solve( expression, 3, results, context );
@@ -590,7 +586,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	for ( int count = 0; count < 3; count ++ ) {
 		if ( sub[ count ].result.none || sub[ count ].result.any ) {
 #ifdef DEBUG
-			fprintf( stderr, "debug> solve: no or any sub[ %d ]\n", count );
+			output( Debug, "solve: no or any sub[ %d ]", count );
 #endif
 			continue;
 		}
@@ -616,7 +612,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			if ( e == NULL ) {
 				e = cn_instantiate( source, medium, target );
 #ifdef DEBUG
-				fprintf( stderr, "debug> solver: created new relationship instance: ( %0x, %0x, %0x ): %0x\n",
+				output( Debug, "solver: created new relationship instance: ( %0x, %0x, %0x ): %0x",
 					(int) source, (int) medium, (int) target, (int) e );
 #endif
 			}
@@ -630,7 +626,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	// 1. process special cases
 	// ------------------------
 #ifdef DEBUG
-	fprintf( stderr, "debug> solver: 1. checking special cases...\n" );
+	output( Debug, "solver: 1. checking special cases..." );
 #endif
 	// special cases: "?: a : b" or "?:b" or "?: *:b" or "*:b" or "b"
 	if ( sub[ 1 ].result.none ) {
@@ -669,7 +665,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	// 2. check that we have all the information we need
 	// -------------------------------------------------
 #ifdef DEBUG
-	fprintf( stderr, "debug> solver: 2. checking terms completion..\n" );
+	output( Debug, "solver: 2. checking terms completion.." );
 #endif
 	FlagSub flag_sub[ 4 ];
 	for ( int i=0; i<4; i++ ) {
@@ -687,7 +683,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		}
 		else if ( !flag_sub[ i ].any ) {
 #ifdef DEBUG
-			fprintf( stderr, "debug> solver: returning on count %d\n", i );
+			output( Debug, "solver: returning on count %d", i );
 #endif
 			return 0;
 		}
@@ -710,7 +706,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		if ( count < 4 )
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> solver: 3.1. special case - inverting all %d\n", count );
+			output( Debug, "solver: 3.1. special case - inverting all %d", count );
 #endif
 			int sub_count = ( count < 3 ) ? ( 1 << count ) : as_sub;
 			invert_results( &sub[ count ], sub_count, NULL );
@@ -719,7 +715,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		else	// special cases: [ .-.->. : . ] aka. [ ... ], .-.->[ ..? ] etc.
 		{
 #ifdef DEBUG
-			fprintf( stderr, "debug> solver: 3.2. special cases - taking all\n" );
+			output( Debug, "solver: 3.2. special cases - taking all" );
 #endif
 			count = ( expression->result.mark == 1 ) ? 0 :
 				( expression->result.mark == 2 ) ? 1 :
@@ -736,7 +732,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	listItem *sub_list[4], *candidate;
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> solver: 4. searching...\n" );
+	output( Debug, "solver: 4. searching..." );
 #endif
 	// initiate loop
 	void *r_sub[ 4 ];
@@ -747,12 +743,12 @@ solve( Expression *expression, int as_sub, listItem *results )
 	candidate = first_candidate( sub_list, flag_sub, expression, results );
 	if ( candidate == NULL ) {
 #ifdef DEBUG
-		fprintf( stderr, "NULL candidate\n" );
+		output( Debug, "NULL candidate" );
 #endif
 		return 0;
 	}
 #ifdef DEBUG
-	fprintf( stderr, " - %0x\n", (int) candidate->ptr );
+	output( Debug, " - %0x", (int) candidate->ptr );
 #endif
 	// execute loop
 	for ( ; ; ) {
@@ -773,13 +769,13 @@ solve( Expression *expression, int as_sub, listItem *results )
 		}
 		if ( !take ) {
 #ifdef DEBUG
-			fprintf( stderr, "debug> solver: wrong candidate\n" );
+			output( Debug, "solver: wrong candidate" );
 #endif
 			; // wrong candidate
 		}
 		else {
 #ifdef DEBUG
-			fprintf( stderr, "debug> solver: good one - calling addIfNotThere\n" );
+			output( Debug, "solver: good one - calling addIfNotThere" );
 #endif
 			addIfNotThere( &expression->result.list, candidate->ptr ); // eliminates doublons
 		}
@@ -802,7 +798,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			}
 			else {
 #ifdef DEBUG
-				fprintf( stderr, "debug> solver: returning\n" );
+				output( Debug, "solver: returning" );
 #endif
 				if ( restore_mode != context->expression.mode ) {
 					restore( expression, restore_mode, restore_results, context );
@@ -850,14 +846,14 @@ resolve( Expression *expression )
 		return 0;
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> resolve: entering\n" );
+	output( Debug, "resolve: entering" );
 #endif
 
 	int mark = expression->result.mark;
 	if ( mark )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> resolve: found mark=%d\n", mark );
+		output( Debug, "resolve: found mark=%d", mark );
 #endif
 		listItem *results = NULL;
 		if ( mark != 8 ) {
@@ -964,7 +960,7 @@ int
 expression_solve( Expression *expression, int as_sub, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> entering expression_solve: ReadMode=%d, expression=%0x...\n",
+	output( Debug, "entering expression_solve: ReadMode=%d, expression=%0x...",
 		(context->expression.mode == ReadMode), (int) expression );
 #endif
 	freeListItem( &context->expression.results );
@@ -976,7 +972,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 		restore_mode = set_filter( expression, context );
 #ifdef DEBUG
 		if ( restore_mode == ReadMode ) {
-			fprintf( stderr, "debug> expression_solve: set_filter() - just switched to ReadMode\n" );
+			output( Debug, "expression_solve: set_filter() - just switched to ReadMode" );
 		}
 #endif
 	}
@@ -987,7 +983,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	// in case of embedded expressions: check against infinite loop
 	for ( listItem *i = context->expression.stack; i!=NULL; i=i->next ) {
 		if ( expression == i->ptr ) {
-			return log_error( context, 0, "recursion in expression" );
+			return output( Error, "recursion in expression" );
 		}
 	}
 	addItem( &context->expression.stack, expression );
@@ -1000,7 +996,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	    ( expression->sub[ 3 ].result.any || expression->sub[ 3 ].result.none ) )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> going to take_all - as_sub: %d\n", as_sub );
+		output( Debug, "going to take_all - as_sub: %d", as_sub );
 #endif
 		as_sub = expression->result.as_sub | ( 1  <<  as_sub );
 		expression->result.list = take_all( expression, as_sub, context->expression.filter );
@@ -1022,7 +1018,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 
 	int filter_on = ( context->expression.mode == ReadMode );
 #ifdef DEBUG
-	if ( filter_on && ( success > 0 )) fprintf( stderr, "debug> expression_solve: filter on\n" );
+	if ( filter_on && ( success > 0 )) output( Debug, "expression_solve: filter on" );
 #endif
 	if ( filter_on && ( success > 0 )) {
 		success = rebuild_filtered_results( &expression->result.list, context );
@@ -1046,7 +1042,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	cleanup_results( expression );
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> exiting expression_solve - success=%d, mode=%d\n",
+	output( Debug, "exiting expression_solve - success=%d, mode=%d",
 		success, (context->expression.mode == ReadMode) );
 #endif
 	return success;

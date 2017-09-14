@@ -57,7 +57,7 @@ string_start( IdentifierVA *string, int event )
 	string->type = ( event == '\"' ) ? StringIdentifier : DefaultIdentifier;
 
 #ifdef DEBUG_2
-	fprintf( stderr, "string_start: '%c'\n", (char) event );
+	output( Debug, "string_start: '%c'", (char) event );
 #endif
 	listItem **list = &string->list;
 	union {
@@ -81,7 +81,7 @@ int
 string_append( IdentifierVA *string, int event )
 {
 #ifdef DEBUG_2
-	fprintf( stderr, "string_append: '%c'\n", (char) event );
+	output( Debug, "string_append: '%c'", (char) event );
 #endif
 	listItem **list = &string->list;
 	union {
@@ -104,7 +104,7 @@ char *
 string_finish( IdentifierVA *string )
 {
 #ifdef DEBUG_2
-	fprintf( stderr, "string_finish: '%c'\n", (char) event );
+	output( Debug, "string_finish: '%c'", (char) event );
 #endif
 	listItem **list = &string->list;
 	listItem *i, *next_i;

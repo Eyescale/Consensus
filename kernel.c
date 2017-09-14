@@ -10,6 +10,7 @@
 #include "kernel.h"
 
 #include "input.h"
+#include "output.h"
 #include "variables.h"
 
 // #define DEBUG
@@ -41,7 +42,7 @@ set_control_mode( ControlMode mode, int event, _context *context )
 	switch ( mode ) {
 	case FreezeMode:
 		if ( context->input.stack == NULL ) {
-			fprintf( stderr, "consensus> Warning: switching to passive mode - type in '/~' to alternate condition\n" );
+			output( Warning, "switching to passive mode - type in '/~' to alternate condition" );
 		}
 		context->freeze.level = context->control.level;
 		break;
@@ -50,35 +51,12 @@ set_control_mode( ControlMode mode, int event, _context *context )
 		break;
 	case ExecutionMode:
 		if (( context->control.mode == FreezeMode ) && ( context->input.stack == NULL )) {
-			fprintf( stderr, "consensus> back to active mode\n" );
+			output( Warning, "back to active mode" );
 		}
 		set_input_mode( OffRecordMode, event, context );
 		break;
 	}
 	context->control.mode = mode;
-}
-
-/*---------------------------------------------------------------------------
-	log_error	= utility
----------------------------------------------------------------------------*/
-int
-log_error( _context *context, int event, char *message )
-{
-	context->error.flush_input = ( context->input.event != '\n' );
-	if ( message != NULL ) {
-		// must flush output on stdout
-		if ( context->error.flush_output ) {
-			printf( "***** Error: " );
-			printf( "%s", message );
-			printf( "\n" );
-			context->error.flush_output = 0;
-		} else {
-			fprintf( stderr, "***** Error: " );
-			fprintf( stderr, "%s", message );
-			fprintf( stderr, "\n" );
-		}
-	}
-	return -1;
 }
 
 /*---------------------------------------------------------------------------
@@ -109,14 +87,11 @@ error( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
-	char *message = NULL;
 	if ( event == '\n' ) {
-		asprintf( &message, "in state \"%s\", instruction incomplete", state );
+		return output( Error, "in state \"%s\", instruction incomplete", state );
 	} else if ( event != 0 ) {
-		asprintf( &message, "in \"%s\", on '%c', syntax error", state, event );
+		return output( Error, "in \"%s\", on '%c', syntax error", state, event );
 	}
-	event = log_error( context, event, message );
-	free( message );
 	return event;
 }
 
@@ -130,9 +105,9 @@ warning( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	if ( event == '\n' ) {
-		fprintf( stderr, "consensus> Warning: \"%s\", instruction incomplete\n", state );
+		output( Warning, "\"%s\", instruction incomplete", state );
 	} else if ( event != 0 ) {
-		fprintf( stderr, "consensus> Warning: syntax error: in \"%s\", on '%c'\n", state, event );
+		output( Warning, "syntax error: in \"%s\", on '%c'", state, event );
 	}
 	return 0;
 }
@@ -157,7 +132,7 @@ push( char *state, int event, char **next_state, _context *context )
 	addItem( &context->control.stack, stack );
 
 #ifdef DEBUG
-	fprintf( stderr, "Consensus: push: from state=\"%s\" to state=\"%s\"\n", state, stack->next_state );
+	output( Debug, "Consensus: push: from state=\"%s\" to state=\"%s\"", state, stack->next_state );
 #endif
 	return 0;
 }
@@ -169,7 +144,7 @@ int
 pop( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	fprintf( stderr, "debug> kernel pop: from level=%d, state=\"%s\"\n", context->control.level, state );
+	output( Debug, "kernel pop: from level=%d, state=\"%s\"", context->control.level, state );
 #endif
 	if ( context_check( FreezeMode, 0, 0 ) ) {
 		if ( context->control.level == context->freeze.level ) {
@@ -183,7 +158,8 @@ pop( char *state, int event, char **next_state, _context *context )
 		StreamVA *input = (StreamVA *) context->input.stack->ptr;
 		if ( context->control.level == input->level ) {
 			input->mode.pop = 1;
-			return log_error( context, event, "attempt to pop control beyond authorized level - closing stream..." );
+			return output( Error, "attempt to pop control beyond authorized level - "
+				"closing stream..." );
 		}
 	}
 
@@ -205,7 +181,7 @@ pop( char *state, int event, char **next_state, _context *context )
 	}
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> kernel pop: to state=\"%s\"\n", state );
+	output( Debug, "kernel pop: to state=\"%s\"", state );
 #endif
 	return 0;
 }

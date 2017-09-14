@@ -51,7 +51,7 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 	registryEntry *entry;
 	if ( va->value == NULL ) {
 #ifdef DEBUG
-		fprintf( stderr, "debug> addNarrative(): first narrative ever - %s()\n", name );
+		output( Debug, "addNarrative(): first narrative ever - %s()", name );
 #endif
 		entry = newRegistryItem( name, narrative );
 		va->value = newRegistryItem( entity, entry );
@@ -59,7 +59,7 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 		entry = lookupByAddress( va->value, entity );
 		if ( entry == NULL ) {
 #ifdef DEBUG
-			fprintf( stderr, "debug> addNarrative(): first entity's narrative assignment - %s()\n", name );
+			output( Debug, "addNarrative(): first entity's narrative assignment - %s()", name );
 #endif
 			entry = newRegistryItem( name, narrative );
 			registerByAddress((Registry *) &va->value, entity, entry );
@@ -68,12 +68,12 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 			entry = lookupByName( *narratives, name );
 			if ( entry == NULL ) {
 #ifdef DEBUG
-				fprintf( stderr, "debug: addNarrative(): adding new entity's narrative - %s()\n", name );
+				output( Debug, "addNarrative(): adding new entity's narrative - %s()", name );
 #endif
 				entry = registerByName( narratives, name, narrative );
 			} else {
 #ifdef DEBUG
-				fprintf( stderr, "debug: addNarrative(): replacing entity's narrative - %s()\n", name );
+				output( Debug, "addNarrative(): replacing entity's narrative - %s()", name );
 #endif
 				removeFromNarrative((Narrative *) entry->value, entity );
 				entry->value = narrative;

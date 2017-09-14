@@ -34,7 +34,7 @@ command_execute( _action action, char **state, int event, char *next_state, _con
 	if ( action == push )
 	{
 #ifdef DEBUG
-		fprintf( stderr, "debug> parser: command: pushing from level %d\n", context->control.level );
+		output( Debug, "parser: command: pushing from level %d", context->control.level );
 #endif
 		event = push( *state, event, &next_state, context );
 		*state = base;
@@ -94,7 +94,7 @@ command_expression( char *state, int event, char **next_state, _context *context
 		return 0;
 
 	int retval = expression_solve( context->expression.ptr, 3, context );
-	if ( retval == -1 ) return log_error( context, event, NULL );
+	if ( retval == -1 ) return output( Error, NULL );
 
 	switch ( context->expression.mode ) {
 	case InstantiateMode:
@@ -207,7 +207,8 @@ overwrite_narrative( Entity *e, _context *context )
 	else if ( lookupByAddress( n->instances, e ) != NULL )
 	{
 		if ( e == CN.nil ) {
-			fprintf( stderr, "consensus> Warning: narrative '%s()' is already active - cannot overwrite\n", name );
+			fprintf( stderr, "consensus> Warning: narrative '%s()' is already active - "
+				"cannot overwrite\n", name );
 		} else {
 			fprintf( stderr, "consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
 			fprintf( stderr, ".%s()' is already active - cannot overwrite\n", name );
@@ -220,7 +221,7 @@ overwrite_narrative( Entity *e, _context *context )
 		if ( e == CN.nil ) {
 			fprintf( stderr, "consensus> Warning: narrative '%s()' already exists. ", name );
 		} else {
-			fprintf( stderr, "consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
+			fprintf( stderr, "Consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
 			fprintf( stderr, ".%s()' already exists. ", name );
 		}
 		do {
@@ -266,7 +267,7 @@ command_narrative( char *state, int event, char **next_state, _context *context 
 		read_narrative( state, event, next_state, context );
 		Narrative *narrative = context->narrative.current;
 		if ( narrative == NULL ) {
-			fprintf( stderr, "consensus> Warning: Narrative empty - not instantiated\n" );
+			output( Warning, "narrative empty - not instantiated" );
 			return 0;
 		}
 		int do_register = 0;
@@ -278,10 +279,10 @@ command_narrative( char *state, int event, char **next_state, _context *context 
 		}
 		if ( do_register ) {
 			registerNarrative( narrative, context );
-			fprintf( stderr, "consensus> narrative instantiated: %s()\n", narrative->name );
+			output( Info, "narrative instantiated: %s()", narrative->name );
 		} else {
 			freeNarrative( narrative );
-			fprintf( stderr, "consensus> Warning: no target entity - narrative not instantiated\n" );
+			output( Warning, "no target entity - narrative not instantiated" );
 		}
 		context->narrative.current = NULL;
 		break;
@@ -335,10 +336,10 @@ exit_narrative( char *state, int event, char **next_state, _context *context )
 			break;
 	case ExecutionMode:
 		if ( context->narrative.current == NULL ) {
-			return log_error( context, event, "'exit' command only supported in narrative mode" );
+			return output( Error, "'exit' command only supported in narrative mode" );
 		}
 		else if ( context->narrative.mode.action.block && ( context->control.mode == InstructionMode ) ) {
-			return log_error( context, event, "'exit' is not a supported instruction - use 'do exit' action instead" );
+			return output( Error, "'exit' is not a supported instruction - use 'do exit' action instead" );
 		}
 		context->narrative.current->deactivate = 1;
 	}
@@ -356,7 +357,7 @@ read_va( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	fprintf( stderr, "debug> read_va: in \"%s\", on '%c'\n", state, event );
+	output( Debug, "read_va: in \"%s\", on '%c'", state, event );
 #endif
 	bgn_
 	in_( base ) bgn_
@@ -455,7 +456,7 @@ flip_condition( char *state, int event, char **next_state, _context *context )
 			case ConditionPassive:
 				break;
 			case ConditionNone:
-				return log_error( context, event, "not in conditional execution mode" );
+				return output( Error, "not in conditional execution mode" );
 		}
 		break;
 	case ExecutionMode:
@@ -467,7 +468,7 @@ flip_condition( char *state, int event, char **next_state, _context *context )
 				stack->condition = ConditionActive;
 				break;
 			case ConditionNone:
-				return log_error( context, event, "not in conditional execution mode" );
+				return output( Error, "not in conditional execution mode" );
 		}
 		if ( stack->condition == ConditionPassive )
 			set_control_mode( FreezeMode, event, context );
@@ -540,7 +541,7 @@ command_push_input( InputType type, int event, _context *context )
 		; char *identifier;
 		if ( type == PipeInput ) {
 			if ( context->identifier.id[ 0 ].type != StringIdentifier ) {
-				return log_error( context, event, "expected argument in \"quotes\"" );
+				return output( Error, "expected argument in \"quotes\"" );
 			}
 			identifier = string_extract( context->identifier.id[ 0 ].ptr );
 		} else if ( context->expression.results != NULL ) {
@@ -583,7 +584,7 @@ command_pop( char *state, int event, char **next_state, _context *context )
 		}
 		if ( context->control.level != context->record.level ) {
 			if ( !strcmp( state, "/." ) ) {
-				return log_error( context, event, "'/.' only allowed to close instruction block..." );
+				return output( Error, "'/.' only allowed to close instruction block..." );
 			}
 			break;
 		}
@@ -592,7 +593,7 @@ command_pop( char *state, int event, char **next_state, _context *context )
 		if ( context->narrative.mode.action.block ) {
 			if ( context->record.instructions->next == NULL ) {
 				if ( !strcmp( state, "/." ) ) {
-					fprintf( stderr, "consensus> Warning: no action specified - will be removed from narrative...\n" );
+					output( Warning, "no action specified - will be removed from narrative..." );
 					freeInstructionBlock( context );
 				}
 				else {
@@ -675,7 +676,7 @@ command_pop( char *state, int event, char **next_state, _context *context )
 	}
 
 #ifdef DEBUG
-	fprintf( stderr, "debug> command_pop: to state=\"%s\"\n", state );
+	output( Debug, "command_pop: to state=\"%s\"", state );
 #endif
 	return ( do_pop ? event : 0 );
 }
@@ -731,7 +732,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 	event = input( state, event, NULL, context );
 
 #ifdef DEBUG
-	fprintf( stderr, "main: \"%s\", '%c'\n", state, event );
+	output( Debug, "main: \"%s\", '%c'", state, event );
 #endif
 
 	bgn_

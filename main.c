@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "registry.h"
@@ -41,7 +42,8 @@ main( int argc, char ** argv )
 
 	context.control.mode = ExecutionMode;
 	context.control.stack = newItem( &stack );
-	context.control.prompt = 1;
+	context.control.terminal = isatty( STDIN_FILENO );
+	context.control.prompt = context.control.terminal;
 	context.hcn.state = "";
 
 	return read_command( base, 0, &same, &context );
