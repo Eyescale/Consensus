@@ -137,7 +137,48 @@ duplicateNarrative( Occurrence *master, Occurrence *copy )
 		copy_sub->thread = copy;
 		copy_sub->type = master_sub->type;
 		copy_sub->registered = 0;
-		bcopy( &master_sub->va, &copy_sub->va, sizeof( OccurrenceVA ) );
+		memcpy( &copy_sub->va, &master_sub->va, sizeof( Occurrence ) );
+		switch ( master_sub->type ) {
+		case ConditionOccurrence:
+			for ( listItem *i = master_sub->va; i!=NULL; i=i->next ) {
+				if ( i->ptr == NULL ) continue;
+				ConditionVA *condition = (ConditionVA *) i->ptr;
+				ConditionVA *copy_va = (ConditionVA *) malloc( sizeof( ConditionVA ) );
+				memcpy( copy_va, condition, sizeof( ConditionVA ) );
+				addItem( &copy_sub->va, copy_va );
+			}
+			break;
+		case EventOccurrence:
+			for ( listItem *i = master_sub->va; i!=NULL; i=i->next ) {
+				if ( i->ptr == NULL ) continue;
+				EventVA *event = (EventVA *) i->ptr;
+				EventVA *copy_va = (EventVA *) malloc( sizeof( EventVA ) );
+				memcpy( copy_va, event, sizeof( EventVA ) );
+				addItem( &copy_sub->va, copy_va );
+			}
+			break;
+		case OtherwiseOccurrence:
+			for ( listItem *i = master_sub->va; i!=NULL; i=i->next ) {
+				if ( i->ptr == NULL ) continue;
+				Occurrence *copy_va = (Occurrence *) calloc( 1, sizeof( Occurrence ) );
+				duplicateNarrative( (Occurrence *) i->ptr, copy_va );
+				addItem( &copy_sub->va, copy_va );
+			}
+			break;
+		case ActionOccurrence:
+			for ( listItem *i = master_sub->va; i!=NULL; i=i->next ) {
+				if ( i->ptr == NULL ) continue;
+				ActionVA *action = (ActionVA *) i->ptr;
+				ActionVA *copy_va = (ActionVA *) malloc( sizeof( ActionVA ) );
+				memcpy( copy_va, action, sizeof( ActionVA ) );
+				addItem( &copy_sub->va, copy_va );
+			}
+			break;
+		case ThenOccurrence:
+			break;
+
+		}
+		reorderListItem( &copy_sub->va );
 		copy_sub->sub.n = NULL;
 		copy_sub->sub.num = 0;
 		duplicateNarrative( master_sub, copy_sub );
@@ -263,25 +304,40 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 		next_i = i->next;
 		if ( is_narrative_dangling( sub, sub_cut ) ) {
 			switch ( sub->type ) {
+			case OtherwiseOccurrence:
+				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
+					freeOccurrence( i->ptr );
+				}
+				break;
 			case ConditionOccurrence:
-				free( sub->va.condition.expression );
+				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
+					ConditionVA *condition = (ConditionVA *) i->ptr;
+					free( condition->expression );
+				}
 				break;
 			case EventOccurrence:
-				free( sub->va.event.identifier.name );
-				free( sub->va.event.expression );
+				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
+					EventVA *event = (EventVA *) sub->va->ptr;
+					free( event->identifier.name );
+					free( event->expression );
+				}
 				break;
 			case ActionOccurrence:
-				freeListItem( &sub->va.action.instructions );
+				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
+					ActionVA *action = (ActionVA *) sub->va->ptr;
+					freeListItem( &action->instructions );
+				}
 				break;
 			case ThenOccurrence:
 				break;
 			}
+			freeListItem( &sub->va );
 			clipListItem( list, i, last_i, next_i );
 			occurrence->sub.num--;
 		}
 		else last_i = i;
 #if 0
-		sub_cut = sub_cut || (( sub->type == ActionOccurrence ) && sub->va.action.exit );
+		sub_cut = sub_cut || (( sub->type == ActionOccurrence ) && ((ActionVA *) sub->va->ptr )->exit );
 #endif
 	}
 	if ( cut ) {
@@ -289,15 +345,18 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 	}
 	if ( occurrence->sub.num == 0 ) {
 		switch ( occurrence->type ) {
+		case OtherwiseOccurrence:
 		case ConditionOccurrence:
 		case EventOccurrence:
 		case ThenOccurrence:
 			return 1;
 			break;
 		case ActionOccurrence:
-			return ( occurrence->va.action.instructions == NULL );
-			break;
-		default:
+			for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+				ActionVA *action = (ActionVA *) i->ptr;
+				if ( action->instructions != NULL )
+					return 0;
+			}
 			return 1;
 		}
 	}
@@ -306,9 +365,10 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 /*---------------------------------------------------------------------------
 	freeNarrative	- recursive
 ---------------------------------------------------------------------------*/
-static void
+void
 freeOccurrence( Occurrence *occurrence )
 {
+	if ( occurrence == NULL ) return;
 	for ( listItem *i = occurrence->sub.n; i!=NULL; i=i->next )
 	{
 		freeOccurrence( i->ptr );
@@ -316,19 +376,40 @@ freeOccurrence( Occurrence *occurrence )
 	}
 	freeListItem( &occurrence->sub.n );
 	switch ( occurrence->type ) {
+	case OtherwiseOccurrence:
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			freeOccurrence( i->ptr );
+		}
+		break;
 	case ConditionOccurrence:
-		free( occurrence->va.condition.expression );
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			ConditionVA *condition = (ConditionVA *) i->ptr;
+			free( condition->expression );
+			free( condition );
+		}
 		break;
 	case EventOccurrence:
-		free( occurrence->va.event.identifier.name );
-		free( occurrence->va.event.expression );
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			EventVA *event = (EventVA *) i->ptr;
+			free( event->identifier.name );
+			free( event->expression );
+			free( event );
+		}
 		break;
 	case ActionOccurrence:
-		freeListItem( &occurrence->va.action.instructions );
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			ActionVA *action = (ActionVA *) occurrence->va->ptr;
+			freeListItem( &action->instructions );
+			free( action );
+		}
 		break;
 	case ThenOccurrence:
 		break;
 	}
+	freeListItem( &occurrence->va );
 }
 
 void

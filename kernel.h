@@ -1,6 +1,8 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
+#define IO_BUFFER_MAX_SIZE 1024
+
 /*---------------------------------------------------------------------------
 	types
 ---------------------------------------------------------------------------*/
@@ -28,15 +30,24 @@ typedef enum {
 EventType;
 
 typedef enum {
-	StreamInput,	// default: read from stdin
+	UserInput,	// default: read from stdin
 	HCNFileInput,
 	PipeInput,
-	StringInput,
+	ClientInput,
 	InstructionBlock,
-	LastInstruction,
-	APIStringInput
+	InstructionOne,
+	LastInstruction
 }
 InputType;
+
+typedef enum {
+	Text = 1,
+	Error,
+	Warning,
+	Info,
+	Debug
+}
+OutputType;
 
 typedef enum {
 	OffRecordMode,	// default: do not record input
@@ -81,7 +92,8 @@ typedef enum {
 ExpressionMode;
 
 typedef enum {
-	ConditionOccurrence = 1,
+	OtherwiseOccurrence = 1,
+	ConditionOccurrence,
 	EventOccurrence,
 	ActionOccurrence,
 	ThenOccurrence
@@ -126,15 +138,34 @@ typedef struct _Expression {
 Expression;
 typedef struct _ExpressionSub ExpressionSub;
 
-// Narrative
+// Occurrence
 // --------------------------------------------------
 
+typedef struct _Occurrence {
+	struct _Occurrence *thread;
+	OccurrenceType type;
+	unsigned int registered;
+	listItem *va;
+	int va_num;
+	struct {
+		listItem *n;
+		int num;
+	}
+	sub;
+}
+Occurrence;
+
 typedef struct {
+	Occurrence *occurrence;
+}
+OtherwiseVA;
+
+typedef struct _ConditionVA {
 	Expression *expression;
 }
 ConditionVA;
 
-typedef struct {
+typedef struct _EventVA {
 	struct {
 		IdentifierType type;
 		char *name;
@@ -159,24 +190,8 @@ typedef struct {
 }
 ActionVA;
 
-typedef struct _Occurrence {
-	struct _Occurrence *thread;
-	OccurrenceType type;
-	unsigned int registered;
-	union _OccurrenceVA {
-		ConditionVA condition;
-		EventVA event;
-		ActionVA action;
-	}
-	va;
-	struct {
-		listItem *n;
-		int num;
-	}
-	sub;
-}
-Occurrence;
-typedef union _OccurrenceVA OccurrenceVA;
+// Narrative
+// --------------------------------------------------
 
 typedef struct {
 	char *name;
@@ -209,10 +224,6 @@ typedef struct {
 	int level;
 	InputType type;
 	struct {
-		unsigned int instructions : 1;
-		unsigned int escape : 1;
-		unsigned int api : 1;
-		unsigned int variable : 1;
 		unsigned int pop : 1;
 	}
 	mode;
@@ -221,6 +232,7 @@ typedef struct {
 		char *string;
 	} ptr;
 	char *position;
+	int remainder;
 }
 StreamVA;
 
@@ -268,6 +280,7 @@ typedef struct {
 			unsigned int condition : 1;
 			unsigned int then : 1;
 			unsigned int whole : 1;
+			unsigned int otherwise : 1;
 		}
 		state;
 		EventVA event;
@@ -292,13 +305,6 @@ typedef struct {
 	struct {
 		int level;
 	} freeze;
-	struct {
-		listItem *stack;
-		registryEntry *stream;
-		registryEntry *string;
-		listItem *instruction;
-		int event;
-	} input;
 	struct {
 		int level;
 		IdentifierVA string;
@@ -360,11 +366,33 @@ typedef struct {
 				Registry deactivate;	// { ( narrative, { entity } ) }
 			} narratives;
 		} log;
+		int backlog;
 	} frame;
+	struct {
+		listItem *stack;
+		registryEntry *stream;
+		registryEntry *string;
+		listItem *instruction;
+		int event;
+	} input;
 	struct {
 		unsigned int flush_input;
 		unsigned int flush_output;
 	} error;
+	struct {
+		int query, broker, client;	// sockets
+		struct {
+			int current;
+			listItem *instantiated[ 3 ];
+			listItem *released[ 3 ];
+			listItem *activated[ 3 ];
+			listItem *deactivated[ 3 ];
+		} frame;
+		struct {
+			int size;
+			char ptr[ 2 ][ IO_BUFFER_MAX_SIZE ];
+		} buffer;
+	} io;
 }
 _context;
 

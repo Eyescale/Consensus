@@ -10,6 +10,7 @@
 #include "kernel.h"
 
 #include "input.h"
+#include "io.h"
 #include "command.h"
 #include "expression.h"
 #include "narrative.h"
@@ -18,86 +19,144 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
+	is_frame_log_empty
+---------------------------------------------------------------------------*/
+int
+is_frame_log_empty( _context *context )
+{
+	return (
+		( context->frame.log.entities.instantiated == NULL ) &&
+		( context->frame.log.entities.released == NULL ) &&
+		( context->frame.log.entities.activated == NULL ) &&
+		( context->frame.log.entities.deactivated == NULL ) &&
+		( context->frame.log.narratives.activate == NULL ) &&
+		( context->frame.log.narratives.deactivate == NULL )
+	);
+}
+
+/*---------------------------------------------------------------------------
 	search_and_register_events	- recursive
 ---------------------------------------------------------------------------*/
-static void
-test_and_register_event( Narrative *instance, listItem *log, Occurrence *occurrence, _context *context )
+static int
+test_condition_or_event( Narrative *instance, Occurrence *occurrence, Occurrence *thread, _context *context )
 {
-	if ( occurrence->registered || ( log == NULL ))
-		return;	// either registered already or no such events logged in this frame
-
-	context->expression.mode = ( occurrence->va.event.type.release ? ReadMode : EvaluateMode );
-	context->expression.filter = log;
-	int success = expression_solve( occurrence->va.event.expression, 3, context );
-	context->expression.filter = NULL;
-
-	if ( success <= 0 ) return;	// No matching events logged in this frame
-
-	// register results with event variable in instance->variables
-	char *identifier = occurrence->va.event.identifier.name;
-	if ( identifier != NULL ) {
-		VariableVA *variable;
-		registryEntry *entry = lookupByName( instance->variables, identifier );
-		if ( entry == NULL ) {
-			variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-			registerByName( &instance->variables, strdup( identifier ), variable );
+	switch ( occurrence->type ) {
+	case ConditionOccurrence:
+		if ( thread->type == EventOccurrence ) {
+			return 0;	// condition following event
 		}
-		else {
-			variable = (VariableVA *) entry->value;
-			freeVariableValue( variable );
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			ConditionVA *condition = (ConditionVA *) i->ptr;
+			context->expression.mode = EvaluateMode;
+			expression_solve( condition->expression, 3, context );
+			if ( context->expression.results == NULL ) {
+				return 0;
+			}
 		}
-		variable->type = ( occurrence->va.event.type.release ? LiteralVariable : EntityVariable );
-		variable->data.value = context->expression.results;
-		context->expression.results = NULL;
+		return 1;
+	case EventOccurrence:
+		break;
+	default:
+		return 0;
 	}
 
-	// register this occurrence in context->frame.events
-	occurrence->registered = 1;
-	addItem( &instance->frame.events, occurrence );
+	// test event
+	for ( listItem *i = occurrence->va; i!=NULL; i=i->next )
+	{
+		EventVA *event = (EventVA *) i->ptr;
+		if ( event->identifier.type == VariableIdentifier )
+			return 0;	// DO_LATER
+
+		if ( !event->type.notification )
+			return 0;	// DO_LATER
+
+		listItem *log = NULL;
+		if ( event->type.instantiate )
+			log = context->frame.log.entities.instantiated;
+		else if ( event->type.activate )
+			log = context->frame.log.entities.activated;
+		else if ( event->type.deactivate )
+			log = context->frame.log.entities.deactivated;
+		else if ( event->type.release )
+			log = context->frame.log.entities.released;
+		if ( log == NULL )
+			return 0;
+
+		context->expression.mode = ( event->type.release ? ReadMode : EvaluateMode );
+		context->expression.filter = log;
+		int success = expression_solve( event->expression, 3, context );
+		context->expression.filter = NULL;
+
+		if ( success <= 0 ) return 0;	// No matching events logged in this frame
+
+		// register results with event variable in instance->variables
+		char *identifier = event->identifier.name;
+		if ( identifier != NULL ) {
+			VariableVA *variable;
+			registryEntry *entry = lookupByName( instance->variables, identifier );
+			if ( entry == NULL ) {
+				variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
+				registerByName( &instance->variables, strdup( identifier ), variable );
+			}
+			else {
+				variable = (VariableVA *) entry->value;
+				freeVariableValue( variable );
+			}
+			variable->type = ( event->type.release ? LiteralVariable : EntityVariable );
+			variable->data.value = context->expression.results;
+			context->expression.results = NULL;
+		}
+	}
+	return 1;
 }
 
 static void
 search_and_register_events( Narrative *instance, Occurrence *thread, _context *context )
 {
+	int passed = 0;
 	for ( listItem *i = thread->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
 		switch ( occurrence->type ) {
 		case ConditionOccurrence:
-			if ( thread->type == EventOccurrence ) {
-				break;	// condition following event
-			}
-			context->expression.mode = EvaluateMode;
-			expression_solve( occurrence->va.condition.expression, 3, context );
-			if ( context->expression.results != NULL ) {
+			if (( passed = test_condition_or_event( instance, occurrence, thread, context ))) {
 				search_and_register_events( instance, occurrence, context );
 			}
 			break;
-
 		case EventOccurrence:
-			if ( occurrence->va.event.identifier.type == VariableIdentifier )
-				break;	// DO_LATER
-
-			if ( !occurrence->va.event.type.notification )
-				break;	// DO_LATER
-
-			listItem *log = NULL;
-			if ( occurrence->va.event.type.instantiate )
-				log = context->frame.log.entities.instantiated;
-			else if ( occurrence->va.event.type.activate )
-				log = context->frame.log.entities.activated;
-			else if ( occurrence->va.event.type.deactivate )
-				log = context->frame.log.entities.deactivated;
-			else if ( occurrence->va.event.type.release )
-				log = context->frame.log.entities.released;
-			test_and_register_event( instance, log, occurrence, context );
-
-			if ( occurrence->registered ) {
+			passed = 1;
+			if ( !occurrence->registered ) {
+				if (( passed = test_condition_or_event( instance, occurrence, thread, context ))) {
+					// register occurrence in context->frame.events
+					addItem( &instance->frame.events, occurrence );
+					occurrence->registered = 1;
+				}
+			}
+			if ( passed ) {
 				search_and_register_events( instance, occurrence, context );
 			}
 			break;
-
+		case OtherwiseOccurrence:
+			if ( passed )	// last pass's result
+				break;
+			passed = 1;	// this pass's result, so far
+			if ( !occurrence->registered ) {
+				for ( listItem *i=occurrence->va; i!=NULL; i=i->next ) {
+					passed = test_condition_or_event( instance, i->ptr, thread, context );
+					if ( !passed ) break;
+				}
+				if ( passed ) {
+					// register occurrence in context->frame.events
+					addItem( &instance->frame.events, occurrence );
+					occurrence->registered = 1;
+				}
+			}
+			if ( passed ) {
+				search_and_register_events( instance, occurrence, context );
+			}
+			break;
 		case ActionOccurrence:
+			passed = 0;	// no OtherwiseOccurrence after do
 			if ( thread->type == EventOccurrence ) {
 				break;	// action following event
 			}
@@ -105,6 +164,7 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 			break;
 
 		case ThenOccurrence:
+			passed = 0;	// no OtherwiseOccurrence after then
 			break;
 		}
 	}
@@ -121,16 +181,23 @@ search_and_register_init( Narrative *narrative, Occurrence *thread, _context *co
 			if ( thread->type == EventOccurrence ) {
 				break;	// condition following event
 			}
-			context->expression.mode = EvaluateMode;
-			expression_solve( occurrence->va.condition.expression, 3, context );
+			for ( listItem *i=occurrence->va; i!=NULL; i=i->next ) {
+				ConditionVA *condition = (ConditionVA *) i->ptr;
+				context->expression.mode = EvaluateMode;
+				expression_solve( condition->expression, 3, context );
+				if ( context->expression.results == NULL )
+					break;
+			}
 			if ( context->expression.results != NULL ) {
 				search_and_register_init( narrative, occurrence, context );
 			}
 			break;
 		case EventOccurrence:
-			if ( occurrence->va.event.type.init &&
-			     ( occurrence->va.event.identifier.name == NULL ) &&
-			     ( occurrence->va.event.expression == NULL ))
+			// init cannot be vectorized - so no need to loop
+			; EventVA *event = (EventVA *) occurrence->va->ptr;
+			if ( event->type.init &&
+			     ( event->identifier.name == NULL ) &&
+			     ( event->expression == NULL ))
 			{
 				occurrence->registered = 1;
 				addItem( &narrative->frame.events, occurrence );
@@ -149,7 +216,7 @@ search_and_register_init( Narrative *narrative, Occurrence *thread, _context *co
 static int
 test_upstream_events( Occurrence *event )
 {
-	for ( ; event->type==EventOccurrence; event=event->thread )
+	for ( ;( event->type==EventOccurrence ) || ( event->type == OtherwiseOccurrence ); event=event->thread )
 		if ( !event->registered ) return 0;
 	return 1;
 }
@@ -161,7 +228,7 @@ deregister_events( Occurrence *event )
 	for ( listItem *i = event->sub.n; i!=NULL; i=i->next )
 	{
 		event = (Occurrence *) i->ptr;
-		if ( event->type == EventOccurrence )
+		if (( event->type == EventOccurrence ) || ( event->type == OtherwiseOccurrence ))
 			deregister_events( event );
 	}
 }
@@ -199,12 +266,18 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 		Occurrence *occurrence = (Occurrence *) i->ptr;
 		switch ( occurrence->type ) {
 		case ConditionOccurrence:
-			context->expression.mode = EvaluateMode;
-			expression_solve( occurrence->va.condition.expression, 3, context );
+			for ( listItem *i=occurrence->va; i!=NULL; i=i->next ) {
+				ConditionVA *condition = (ConditionVA *) i->ptr;
+				context->expression.mode = EvaluateMode;
+				expression_solve( condition->expression, 3, context );
+				if ( context->expression.results == NULL )
+					break;
+			}
 			if ( context->expression.results != NULL ) {
 				search_and_register_actions( narrative, occurrence, context );
 			}
 			break;
+		case OtherwiseOccurrence:
 		case EventOccurrence:
 			if ( occurrence->registered ) {
 				occurrence->registered = 0; // no need to take the same route twice
@@ -214,7 +287,7 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 		case ActionOccurrence:
 			addItem( &narrative->frame.actions, occurrence );
 			break;
-		default:
+		case ThenOccurrence:
 			break;
 		}
 	}
@@ -239,11 +312,12 @@ execute_narrative_actions( Narrative *instance, _context *context )
 	for ( listItem *i = instance->frame.actions; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
-		listItem *instruction = occurrence->va.action.instructions;
+		ActionVA *action = (ActionVA *) occurrence->va->ptr;
+		listItem *instruction = action->instructions;
 		if ( instruction->next == NULL )
 		{
 			context->narrative.mode.action.one = 1;
-			push_input( NULL, instruction->ptr, APIStringInput, context );
+			push_input( NULL, instruction->ptr, InstructionOne, context );
 			int event = read_command( base, 0, &same, context );
 			pop_input( base, 0, NULL, context );
 			context->narrative.mode.action.one = 0;
@@ -292,7 +366,7 @@ execute_narrative_actions( Narrative *instance, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	frame
+	systemFrame
 ---------------------------------------------------------------------------*/
 int
 systemFrame( char *state, int e, char **next_state, _context *context )
@@ -333,6 +407,16 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 				deactivateNarrative( e, narrative );
 			}
 		}
+	}
+
+	// actions may generate new occurrences
+	if ( !is_frame_log_empty( context ) ) {
+		// the translation from occurrence to events is done below
+		// however it will take to more frames for the new occurrences
+		// to be 1. translated into actions, and 2. executed
+		context->frame.backlog = 2;
+	} else if ( context->frame.backlog ) {
+		context->frame.backlog--;
 	}
 
 	// translate events registered last frame into new actions, based on current conditions
@@ -377,10 +461,8 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 			freeListItem( &n->frame.then );
 		}
 	}
-	freeListItem( &context->frame.log.entities.instantiated );
-	freeListItem( &context->frame.log.entities.released );
-	freeListItem( &context->frame.log.entities.activated );
-	freeListItem( &context->frame.log.entities.deactivated );
+
+	io_save_changes( context );
 
 	// Keep only those events which the upstream events allow
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )

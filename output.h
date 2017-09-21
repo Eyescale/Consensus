@@ -2,14 +2,6 @@
 #define OUTPUT_H
 
 typedef enum {
-	Error = 1,
-	Warning,
-	Info,
-	Debug
-}
-OutputType;
-
-typedef enum {
 	ExpressionAll,
 	ExpressionMark,
 	SubAll,

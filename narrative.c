@@ -30,10 +30,12 @@ narrative_execute( _action action, char **state, int event, char *next_state, _c
 	if ( !strcmp( next_state, pop_state ) )
 	{
 		int pop_level = context->control.level;
+
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
 		if ( !stack->narrative.state.whole && ( context->narrative.level < pop_level )) {
 			output( Warning, "last narrative statement incomplete - will be truncated or removed..." );
 		}
+
 		listItem *s = context->control.stack;
 		for ( s=s->next, pop_level--; pop_level >= context->narrative.level; s=s->next, pop_level-- )
 		{
@@ -53,6 +55,7 @@ narrative_execute( _action action, char **state, int event, char *next_state, _c
 				break;
 			}
 		}
+
 		do { event = pop( *state, event, &next_state, context );
 		} while ( context->control.level > pop_level );
 
@@ -109,8 +112,8 @@ static void debug_stack( StackVA *stack, _action from )
 /*---------------------------------------------------------------------------
 	utility functions
 ---------------------------------------------------------------------------*/
-static int
-narrative_build( Occurrence *occurrence, int event, _context *context )
+static Occurrence *
+retrieve_narrative_thread( _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	Occurrence *thread = stack->narrative.thread;
@@ -119,19 +122,41 @@ narrative_build( Occurrence *occurrence, int event, _context *context )
 			thread = &context->narrative.current->root;
 		}
 		else {
-			thread = ((StackVA *) context->control.stack->next->ptr)->narrative.thread;
+			StackVA *s = (StackVA *) context->control.stack->next->ptr;
+			thread = s->narrative.thread;
 		}
 	}
-	occurrence->thread = thread;
+	return thread;
+}
+
+static int
+narrative_build( Occurrence *occurrence, int event, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+
+	// retrieve and set parent occurrence - aka. narrative thread
+	Occurrence *parent = retrieve_narrative_thread( context );
+	occurrence->thread = parent;
+
 #ifdef DEBUG
-	output( Debug, "building narrative: thread %0x", (int) thread );
+	output( Debug, "building narrative: thread %0x", (int) parent );
 #endif
-	addItem( &thread->sub.n, occurrence );
-	thread->sub.num++;
-	if (( occurrence->type == ActionOccurrence ) && (event == '\n' )) {
-		stack->narrative.thread = NULL;
+	if ( stack->narrative.state.otherwise ) {
+		// add occurrence to the "otherwise" parent's list
+		addItem( &parent->va, occurrence );
+		parent->va_num++;
+		stack->narrative.state.otherwise = 0;
 	} else {
-		stack->narrative.thread = occurrence;
+		// add occurrence to the normal parent's children list
+		addItem( &parent->sub.n, occurrence );
+		parent->sub.num++;
+
+		// update narrative thread - note: actions cannot have children
+		if (( occurrence->type == ActionOccurrence ) && (event == '\n' )) {
+			stack->narrative.thread = NULL;
+		} else {
+			stack->narrative.thread = occurrence;
+		}
 	}
 	return 0;
 }
@@ -181,8 +206,11 @@ narrative_on_init_on_( int event, _context *context )
 	for ( ; parent != NULL; parent=parent->thread ) {
 		if ( parent->type == ThenOccurrence )
 			break;
-		if (( parent->type == EventOccurrence ) && parent->va.event.type.init ) {
-			return output( Error, "narrative on-init-on sequence is not supported" );
+		if ( parent->type == EventOccurrence ) {
+			EventVA *e = (EventVA *) parent->va->ptr;
+			if ( e->type.init ) {
+				return output( Error, "narrative on-init-on sequence is not supported" );
+			}
 		}
 	}
 	return event;
@@ -236,13 +264,6 @@ read_narrative_in( char *state, int event, char **next_state, _context *context 
 }
 static int
 read_narrative_condition( char *state, int event, char **next_state, _context *context )
-/*
-	condition can be any expression, that is:
-		in ( expression )
-	with support for such special cases as
-		in ( %variable : ~. )		// variable null
-		in ( %variable : ? )		// variable not null
-*/
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
@@ -253,12 +274,61 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 }
 
 static int
+narrative_condition_begin( char *state, int event, char **next_state, _context *context )
+{
+	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
+	occurrence->type = ConditionOccurrence;
+
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	int backup = stack->narrative.state.otherwise;
+	event = narrative_build( occurrence, event, context );
+	stack->narrative.state.otherwise = backup;
+
+	return event;
+}
+
+static int
+narrative_condition_add( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	ConditionVA *condition = (ConditionVA *) calloc( 1, sizeof(ConditionVA) );
+	condition->expression = context->expression.ptr;
+	context->expression.ptr = NULL;
+	Occurrence *thread = retrieve_narrative_thread( context );
+	if ( stack->narrative.state.otherwise ) {
+		thread = thread->va->ptr;
+	}
+	addItem( &thread->va, condition );
+	thread->va_num++;
+	return 0;
+}
+
+static int
+narrative_condition_end( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	event = narrative_condition_add( state, event, next_state, context );
+	Occurrence *thread = retrieve_narrative_thread( context );
+	if ( stack->narrative.state.otherwise ) {
+		thread = thread->va->ptr;
+	}
+	reorderListItem( &thread->va );
+	stack->narrative.state.otherwise = 0;
+	return event;
+}
+
+static int
 set_narrative_condition( char *state, int event, char **next_state, _context *context )
 {
 	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
 	occurrence->type = ConditionOccurrence;
-	occurrence->va.condition.expression = context->expression.ptr;
+
+	ConditionVA *condition = (ConditionVA *) calloc( 1, sizeof(ConditionVA) );
+	addItem( &occurrence->va, condition );
+	occurrence->va_num++;
+	condition->expression = context->expression.ptr;
 	context->expression.ptr = NULL;
+
 	return narrative_build( occurrence, event, context );
 }
 
@@ -459,6 +529,49 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 }
 
 static int
+narrative_event_begin( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
+	occurrence->type = EventOccurrence;
+	int backup = stack->narrative.state.otherwise;
+	event = narrative_build( occurrence, event, context );
+	stack->narrative.state.otherwise = backup;
+	return event;
+}
+
+static int
+narrative_event_add( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	EventVA *e = (EventVA *) calloc( 1, sizeof(EventVA) );
+	memcpy( e, &stack->narrative.event, sizeof(EventVA) );
+	e->expression = context->expression.ptr;
+	context->expression.ptr = NULL;
+	Occurrence *thread = retrieve_narrative_thread( context );
+	if ( stack->narrative.state.otherwise ) {
+		thread = thread->va->ptr;
+	}
+	addItem( &thread->va, e );
+	thread->va_num++;
+	return 0;
+}
+
+static int
+narrative_event_end( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	event = narrative_event_add( state, event, next_state, context );
+	Occurrence *thread = retrieve_narrative_thread( context );
+	if ( stack->narrative.state.otherwise ) {
+		thread = thread->va->ptr;
+	}
+	reorderListItem( &thread->va );
+	stack->narrative.state.otherwise = 0;
+	return event;
+}
+
+static int
 set_narrative_event( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
@@ -473,10 +586,13 @@ set_narrative_event( char *state, int event, char **next_state, _context *contex
 #endif
 	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
 	occurrence->type = EventOccurrence;
-	bcopy( &stack->narrative.event, &occurrence->va.event, sizeof( EventVA ) );
 
-	occurrence->va.event.expression = context->expression.ptr;
+	EventVA *e = (EventVA *) calloc( 1, sizeof( EventVA ) );
+	memcpy( e, &stack->narrative.event, sizeof( EventVA ) );
+	e->expression = context->expression.ptr;
 	context->expression.ptr = NULL;
+	addItem( &occurrence->va, e );
+	occurrence->va_num++;
 
 	return narrative_build( occurrence, event, context );
 }
@@ -494,6 +610,60 @@ push_narrative_event( char *state, int event, char **next_state, _context *conte
 	event = push( state, event, next_state, context );
 	*next_state = base;
 	return event;
+}
+
+/*---------------------------------------------------------------------------
+	narrative_otherwise actions
+---------------------------------------------------------------------------*/
+static int
+push_narrative_otherwise( char *state, int event, char **next_state, _context *context )
+{
+	if ( event < 0 ) return event;
+
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	stack->narrative.state.otherwise = 0;
+
+	event = push( state, event, next_state, context );
+	*next_state = base;
+	return event;
+}
+
+static int
+set_narrative_otherwise( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+
+	// check acceptance conditions
+	if ( stack->narrative.state.otherwise || !stack->narrative.state.whole ) {
+		goto ERROR;
+	}
+	Occurrence *parent = retrieve_narrative_thread( context );
+	Occurrence *last = (Occurrence *) parent->sub.n->ptr;
+	if ( last->sub.num > 1 ) {
+		goto ERROR;
+	}
+	switch ( last->type ) {
+	case EventOccurrence:
+	case ConditionOccurrence:
+		break;
+	case OtherwiseOccurrence:
+		if ( last->va == NULL )
+			goto ERROR;
+		OtherwiseVA *otherwise = (OtherwiseVA *) last->va->ptr;
+		if ( otherwise->occurrence == NULL )
+			goto ERROR;
+		break;
+	default:
+		goto ERROR;
+	}
+
+	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
+	occurrence->type = OtherwiseOccurrence;
+	event = narrative_build( occurrence, event, context );
+	stack->narrative.state.otherwise = 1;
+	return event;
+ERROR:
+	return output( Error, "no narrative event or condition to alternate" );
 }
 
 /*---------------------------------------------------------------------------
@@ -562,6 +732,10 @@ restore_narrative_action( char *state, int event, char **next_state, _context *c
 static int
 set_narrative_then( char *state, int event, char **next_state, _context *context )
 {
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	if ( stack->narrative.state.otherwise ) {
+		return output( Error, NULL );
+	}
 	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
 	occurrence->type = ThenOccurrence;
 	return narrative_build( occurrence, event, context );
@@ -634,12 +808,13 @@ static int
 set_narrative_action( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	if ( !stack->narrative.state.action && !stack->narrative.state.then )
+	Occurrence *occurrence;
+
+	if ( !stack->narrative.state.then )
 	{
-#ifdef DEBUG2
+	#ifdef DEBUG2
 		debug_stack( stack, set_narrative_action );
-#endif
-		stack->narrative.state.action = 1;
+	#endif
 		int level = context->control.level;
 		for ( listItem *s = context->control.stack; level>=context->narrative.level; s=s->next, level-- )
 		{
@@ -648,24 +823,31 @@ set_narrative_action( char *state, int event, char **next_state, _context *conte
 			sptr->narrative.state.whole = 1;
 		}
 	}
-	else
-		stack->narrative.state.whole = 1;
+	stack->narrative.state.whole = 1;
+
+	occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
+	occurrence->type = ActionOccurrence;
 
 	listItem *instructions = context->record.instructions;
 	context->record.instructions = NULL;
 
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = ActionOccurrence;
-	occurrence->va.action.instructions = instructions;
-	int retval = narrative_build( occurrence, event, context );
-
+	ActionVA *action = (ActionVA *) calloc( 1, sizeof(ActionVA) );
+	action->instructions = instructions;
 	if (( instructions != NULL ) && !strcmp( instructions->ptr, "exit" )) {
 		stack->narrative.state.exit = 1;
-		occurrence->va.action.exit = 1;
+		action->exit = 1;
 	}
+	addItem( &occurrence->va, action );
+	occurrence->va_num++;
+
+	stack->narrative.state.otherwise = 0;
+	int retval = narrative_build( occurrence, event, context );
+
 	if ( stack->narrative.state.then && ( event == '\n' ) ) {
 		narrative_do_( nothing, pop_state );
 		*next_state = state;
+	} else if ( retval >= 0 ) {
+		stack->narrative.state.action = 1;
 	}
 	return retval;
 }
@@ -736,7 +918,7 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 
 		// now need to replace last instruction with "/."
 		if ( context->record.instructions->next != NULL ) {
-			char *string; asprintf( &string, "/.%c", '\n' );
+			char *string; asprintf( &string, "/.\n" );
 			addItem( &context->record.instructions, string );
 			listItem *next_i = context->record.instructions->next;
 			context->record.instructions->next = next_i->next;
@@ -893,6 +1075,22 @@ narrative_error( char *state, int event, char **next_state, _context *context )
 	else
 	{
 		narrative_do_( flush_input, same );
+		if ( !strcmp( state, "in (" ) || !strcmp( state, "on (" ) ) {
+			Occurrence *thread = retrieve_narrative_thread( context );
+			for ( listItem *i = thread->va; i!=NULL; i=i->next ) {
+				freeOccurrence( i->ptr );
+			}
+			freeListItem( &thread->va );
+			thread = thread->thread;
+			if (( thread != NULL ) && ( thread->sub.num > 0 )) {
+				free( thread->sub.n->ptr );
+				popListItem( &thread->sub.n );
+				thread->sub.num--;
+			}
+			StackVA *stack = (StackVA *) context->control.stack->ptr;
+			stack->narrative.state.otherwise = 0;
+			stack->narrative.thread = NULL;
+		}
 		*next_state = base;
 	}
 	return event;
@@ -939,14 +1137,28 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 		in_( "/" ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )
 			on_( '\t' )	narrative_do_( nop, same )
+			on_( '~' )	narrative_do_( nop, "/~" )
 			on_( '\n' )	narrative_do_( nothing, pop_state )
 			on_other	narrative_do_( error, base )
 			end
+			in_( "/~" ) bgn_
+				on_( ' ' )	narrative_do_( nop, same )
+				on_( '\t' )	narrative_do_( nop, same )
+				on_( '\n' )	narrative_do_( set_narrative_otherwise, same )
+						narrative_do_( push_narrative_otherwise, base )
+				on_( 'i' )	narrative_do_( set_narrative_otherwise, same )
+						narrative_do_( read_narrative_in, "in" )
+				on_( 'o' )	narrative_do_( set_narrative_otherwise, same )
+						narrative_do_( read_narrative_on, "on" )
+				on_( 'd' )	narrative_do_( set_narrative_otherwise, same )
+						narrative_do_( read_narrative_do, "do" )
+				on_other	narrative_do_( error, same )
+				end
 
 		in_( "in" ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )
 			on_( '\t' )	narrative_do_( nop, same )
-			on_( '(' )	narrative_do_( nop, "in (" )
+			on_( '(' )	narrative_do_( narrative_condition_begin, "in (" )
 			on_other	narrative_do_( read_narrative_condition, "in_" )
 			end
 			in_( "in_" ) bgn_
@@ -965,26 +1177,18 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 			in_( "in (" ) bgn_
 				on_( ' ' )	narrative_do_( nop, same )
 				on_( '\t' )	narrative_do_( nop, same )
-#if 1	// HACK
-				on_( '(' )	narrative_do_( nop, same )	// count++;
-				on_( ')' )	narrative_do_( nop, same )	// count--;
-#endif
 				on_other	narrative_do_( read_narrative_condition, "in (_" )
 				end
 				in_( "in (_" ) bgn_
 					on_( ' ' )	narrative_do_( nop, same )
 					on_( '\t' )	narrative_do_( nop, same )
-					on_( ')' )	narrative_do_( set_narrative_condition, "in (_)" )
-					on_( ',' )	narrative_do_( set_narrative_condition, "in (" )
+					on_( ',' )	narrative_do_( narrative_condition_add, "in (" )
+					on_( ')' )	narrative_do_( narrative_condition_end, "in (_)" )
 					on_other	narrative_do_( error, same )
 					end
 			in_( "in (_)" ) bgn_
 				on_( ' ' )	narrative_do_( nop, same )
 				on_( '\t' )	narrative_do_( nop, same )
-#if 1	// HACK
-				on_( ')' )	narrative_do_( nop, same )	// count__;
-				on_( ',' )	narrative_do_( nop, "on (" )	// count__;
-#endif
 				on_( '\n' )	narrative_do_( push_narrative_condition, base )
 				on_( 'i' )	narrative_do_( read_narrative_in, "in" )
 				on_( 'o' )	narrative_do_( read_narrative_on, "on" )
@@ -995,7 +1199,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 		in_( "on" ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )
 			on_( '\t' )	narrative_do_( nop, same )
-			on_( '(' )	narrative_do_( nop, "on (" )
+			on_( '(' )	narrative_do_( narrative_event_begin, "on (" )
 			on_other	narrative_do_( read_narrative_event, "on_" )
 			end
 			in_( "on_" ) bgn_
@@ -1014,26 +1218,18 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 			in_( "on (" ) bgn_
 				on_( ' ' )	narrative_do_( nop, same )
 				on_( '\t' )	narrative_do_( nop, same )
-#if 1	// HACK
-				on_( '(' )	narrative_do_( nop, same )	// count++;
-				on_( ')' )	narrative_do_( nop, same )	// count--;
-#endif
 				on_other	narrative_do_( read_narrative_event, "on (_" )
 				end
 				in_( "on (_" ) bgn_
 					on_( ' ' )	narrative_do_( nop, same )
 					on_( '\t' )	narrative_do_( nop, same )
-					on_( ')' )	narrative_do_( set_narrative_event, "on (_)" )
-					on_( ',' )	narrative_do_( set_narrative_event, "on (" )
+					on_( ',' )	narrative_do_( narrative_event_add, "on (" )
+					on_( ')' )	narrative_do_( narrative_event_end, "on (_)" )
 					on_other	narrative_do_( error, same )
 					end
 			in_( "on (_)" ) bgn_
 				on_( ' ' )	narrative_do_( nop, same )
 				on_( '\t' )	narrative_do_( nop, same )
-#if 1	// HACK
-				on_( ')' )	narrative_do_( nop, same )	// count__;
-				on_( ',' )	narrative_do_( nop, "on (" )	// count__;
-#endif
 				on_( '\n' )	narrative_do_( push_narrative_event, base )
 				on_( 'i' )	narrative_do_( read_narrative_in, "in" )
 				on_( 'o' )	narrative_do_( read_narrative_on, "on" )

@@ -8,11 +8,12 @@
 #include "kernel.h"
 #include "string_util.h"
 
+#include "input.h"
+#include "output.h"
+#include "io.h"
 #include "api.h"
 #include "command.h"
 #include "frame.h"
-#include "input.h"
-#include "output.h"
 #include "expression.h"
 #include "narrative.h"
 #include "variables.h"
@@ -501,7 +502,7 @@ push_loop( char *state, int event, char **next_state, _context *context )
 	}
 	else {
 		StreamVA *input = (StreamVA *) context->input.stack->ptr;
-		if ( input->mode.instructions ) {
+		if ( input->type == InstructionBlock ) {
 			// here we are about to start a loop within a loop
 			stack->loop.begin = context->input.instruction->next;
 		}
@@ -539,17 +540,24 @@ command_push_input( InputType type, int event, _context *context )
 		break;
 	case ExecutionMode:
 		; char *identifier;
-		if ( type == PipeInput ) {
+		switch ( type ) {
+		case HCNFileInput:
+			if ( context->expression.results != NULL ) {
+				Entity *entity = (Entity *) context->expression.results->ptr;
+				identifier = (char *) cn_va_get_value( entity, "hcn" );
+			}
+			push_input( identifier, NULL, HCNFileInput, context );
+			break;
+		case PipeInput:
 			if ( context->identifier.id[ 0 ].type != StringIdentifier ) {
 				return output( Error, "expected argument in \"quotes\"" );
 			}
 			identifier = string_extract( context->identifier.id[ 0 ].ptr );
-		} else if ( context->expression.results != NULL ) {
-			Entity *entity = (Entity *) context->expression.results->ptr;
-			identifier = (char *) cn_va_get_value( entity, "hcn" );
+			push_input( identifier, NULL, PipeInput, context );
+			break;
+		default:
+			return -1;
 		}
-		push_input( identifier, NULL, type, context );
-		break;
 	}
 	return 0;
 }
@@ -645,13 +653,13 @@ command_pop( char *state, int event, char **next_state, _context *context )
 				freeInstructionBlock( context );
 			}
 			else {
-				set_input( context->input.instruction->next, context );
+				set_instruction( context->input.instruction->next, context );
 			}
 		}
 		else {
 			popListItem( &stack->loop.index );
 			assign_variator_variable( stack->loop.index->ptr, 0, context );
-			set_input( stack->loop.begin, context );
+			set_instruction( stack->loop.begin, context );
 			*next_state = base;
 			do_pop = 0;
 		}
@@ -682,36 +690,14 @@ command_pop( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	system_frame
----------------------------------------------------------------------------*/
-static int
-system_frame( char *state, int event, char **next_state, _context *context )
-{
-	if ( context_check( 0, 0, ExecutionMode ) && !strcmp( state, base ) &&
-	   ( context->control.level == 0 ) && ( event == 0 )) {
-
-		// 1. translate occurrences into events
-		// 2. translate events into actions
-		// 3. execute actions
-		for ( int i=0; i<3; i++ ) {
-			command_do_( systemFrame, same );
-		}
-	}
-	return event;
-}
-
-/*---------------------------------------------------------------------------
 	command_error
 ---------------------------------------------------------------------------*/
 static int
 command_error( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->narrative.mode.action.one || context->narrative.mode.script )
-	{
+	if ( context->narrative.mode.action.one || context->narrative.mode.script ) {
 		*next_state = "";
-	}
-	else
-	{
+	} else {
 		command_do_( flush_input, same );
 		*next_state = base;
 	}
@@ -729,13 +715,14 @@ int
 read_command( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = input( state, event, NULL, context );
+	event = io_read( state, event, NULL, context );
 
 #ifdef DEBUG
 	output( Debug, "main: \"%s\", '%c'", state, event );
 #endif
 
 	bgn_
+	on_( 0 )	command_do_( nothing, "" )
 	on_( -1 )	command_do_( command_error, base )
 
 	in_( base ) bgn_
@@ -1309,9 +1296,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 								on_other	command_do_( error, base )
 								end
 	end
-
-	// invoke system frame upon each return to base
-	command_do_( system_frame, same )
 
 	}
 	while ( strcmp( state, "" ) );

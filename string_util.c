@@ -197,7 +197,7 @@ string_replace( char *expression, char *identifier, char *value )
 		int found = 1;
 		ptr2 = identifier;
 		for ( i=0; (i<n) && found; i++ ) {
-			// printf( "\ncomparing %c %c\n", ptr1[i], *ptr2 );
+			// output( Debug, "\ncomparing %c %c\n", ptr1[i], *ptr2 );
 			if ( ptr1[ i ] != *ptr2++ )
 				found = 0;
 		}

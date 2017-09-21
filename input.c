@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "registry.h"
@@ -13,13 +14,14 @@
 #include "output.h"
 
 // #define DEBUG
+#define BUG
 
 /*---------------------------------------------------------------------------
 	flush_input
 ---------------------------------------------------------------------------*/
 /*
 	flush_input is called upon error from e.g. read_command and read_narrative.
-	input (whether StreamInput or StringInput ) is assumed to be '\n'-terminated
+	input is assumed to be '\n'-terminated
 */
 void
 freeInstructionBlock( _context *context )
@@ -50,8 +52,16 @@ flush_input( char *state, int event, char **next_state, _context *context )
 	int do_flush = context_check( FreezeMode, 0, 0 ) || context->error.flush_input;
 
 	if ( do_flush && ( context->input.stack != NULL ) ) {
-		StreamVA *stream = (StreamVA *) context->input.stack->ptr;
-		do_flush = ( stream->type != StringInput );
+		StreamVA *input = (StreamVA *) context->input.stack->ptr;
+		switch ( input->type ) {
+		case InstructionBlock:
+		case InstructionOne:
+		case LastInstruction:
+			do_flush = 0;
+			break;
+		default:
+			break;
+		}
 	}
 
 	if ( do_flush ) do {
@@ -85,14 +95,14 @@ flush_input( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	set_input
+	set_instruction		- called from read_command()
 ---------------------------------------------------------------------------*/
 void
-set_input( listItem *src, _context *context )
+set_instruction( listItem *instruction, _context *context )
 {
-	context->input.instruction = src;
+	context->input.instruction = instruction;
 	StreamVA *input = context->input.stack->ptr;
-	input->ptr.string = context->input.instruction->ptr;
+	input->ptr.string = instruction->ptr;
 	input->position = NULL;
 }
 
@@ -116,13 +126,22 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 			free( identifier );
 			return event;
 		}
+		break;
+	default:
+		break;
+	}
+
+	// create and register new active stream
+	input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
+	input->level = context->control.level;
+	input->type = type;
+
+	switch ( type ) {
+	case HCNFileInput:
+	case PipeInput:
 #ifdef DEBUG
 		output( Debug, "opening stream: \"%s\"", identifier );
 #endif
-		// create and register new active stream
-		input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
-		input->level = context->control.level;
-		input->type = type;
 		input->ptr.file = ( type == PipeInput ) ?
 			popen( identifier, "r" ) :
 			fopen( identifier, "r " );
@@ -133,47 +152,51 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		context->hcn.state = base;
 		registerByName( &context->input.stream, identifier, input );
 		break;
-	default:
-		if ( identifier != NULL ) {
-			// check if variable already in use - embedded strings
-			registryEntry *entry = lookupByName( context->input.string, identifier );
-			if ( entry != NULL ) {
-				return output( Error, "recursion in input variable: %%%s", identifier );
-			}
+	case ClientInput:
+		input->position = NULL;
+		input->ptr.string = context->io.buffer.ptr[ 0 ];
+		input->ptr.string[ 0 ] = (char) 0;
+		input->remainder = 0;
+		int length;
+		read( context->io.client, &length, sizeof(length) );
+		if ( !length ) {
+			break;
+		} else if ( length > IO_BUFFER_MAX_SIZE ) {
+			int n = IO_BUFFER_MAX_SIZE - 1;
+			input->remainder = length - n;
+			input->ptr.string[ n ] = (char) 0;
+			length = n;
 		}
-		// create and register new active stream
-		input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
-		input->level = context->control.level;
+		read( context->io.client, input->ptr.string, length );
+		break;
+	case InstructionBlock:
+	case InstructionOne:
+	case LastInstruction:
+		input->position = NULL;
 		if ( context->narrative.mode.action.block ) {
 			input->level--;	// pop_input() will be called from outside in this case
 		}
-		input->type = StringInput;
-		input->position = NULL;
 		switch ( type ) {
 			case InstructionBlock:
-				input->mode.instructions = 1;
 				context->record.level = context->control.level;
 				listItem *first_instruction = (listItem *) src;
 				context->input.instruction = first_instruction;
 				input->ptr.string = first_instruction->ptr;
 				break;
+			case InstructionOne:
+				input->ptr.string = src;
+				break;
 			case LastInstruction:
-				input->mode.escape = 1;
-				listItem *last_instruction = context->record.instructions;
+				; listItem *last_instruction = context->record.instructions;
 				context->input.instruction = last_instruction;
 				context->record.instructions = last_instruction->next;
 				input->ptr.string = last_instruction->ptr;
 				break;
-			case APIStringInput:
-				input->mode.api = 1;
-				input->ptr.string = src;
-				break;
 			default: break;
 		}
-		if ( identifier != NULL ) {
-			input->mode.variable = 1;
-			registerByName( &context->input.string, identifier, input );
-		}
+		break;
+	default:
+		break;
 	}
 
 	// make stream current
@@ -183,7 +206,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	// instructions from stream
 	if ( context->input.stack->next != NULL ) {
 		input = (StreamVA *) context->input.stack->next->ptr;
-		if ( input->mode.escape ) {
+		if ( input->type == LastInstruction ) {
 			set_control_mode( InstructionMode, 0, context );
 		}
 	}
@@ -211,10 +234,12 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	popListItem( &context->input.stack );
 
 	if ( context->input.stack == NULL ) {
-		context->control.prompt = context->control.terminal;
+		if ( !context->io.client ) {
+			context->control.prompt = context->control.terminal;
+		}
 	} else {
 		StreamVA *input = (StreamVA *) context->input.stack->ptr;
-		if ( input->mode.escape ) {
+		if ( input->type == LastInstruction ) {
 			set_control_mode( ExecutionMode, 0, context );
 		}
 	}
@@ -266,100 +291,105 @@ input( char *state, int event, char **next_state, _context *context )
 		if ( context->input.stack == NULL )
 		{
 			if ( !strcmp( state, base ) ) prompt( context );
-			event = getchar( );
+			read( STDIN_FILENO, &event, 1 );
 			if ( event == '\n' ) context->control.prompt = context->control.terminal;
 		}
 		else
 		{
-			StreamVA *stream = (StreamVA *) context->input.stack->ptr;
+			StreamVA *input = (StreamVA *) context->input.stack->ptr;
 			int do_pop = 1;
-			if ( !stream->mode.pop ) switch ( stream->type ) {
-			case StringInput:
-				if ( stream->position == NULL ) {
-					if ( stream->mode.instructions && context->narrative.mode.output ) {
-						for ( int i=0; i<=context->control.level; i++ )
-							printf( "\t" );
-					}
-					stream->position = stream->ptr.string;
-#ifdef DEBUG
-					output( Debug, "input: reading from \"%s\"", (char *) stream->position );
-#endif
-				}
-				event = (int ) (( char *) stream->position++ )[ 0 ];
-				if ( event && ( context->narrative.mode.output )) {
-					printf( "%c", event );
-				}
-				do_pop = ( event == 0 );
-				break;
-			case StreamInput:
-				// DO_LATER
-				// special case: stream == stdin: :<< (??)
-				// would allow to reenter interactive mode even during
-				// pipe or hcn file input read
-				// must make sure we don't stack it up upon itself
-				break;
+			if ( !input->mode.pop ) switch ( input->type ) {
 			case HCNFileInput:
-				event = hcn_getc( stream->ptr.file, context );
+				event = hcn_getc( input->ptr.file, context );
 				do_pop = ( event == EOF );
 				break;
 			case PipeInput:
-				event = fgetc( stream->ptr.file );
+				event = fgetc( input->ptr.file );
 				do_pop = ( event == EOF );
+				break;
+			case ClientInput:
+			case InstructionBlock:
+			case InstructionOne:
+			case LastInstruction:
+				if ( input->position == NULL ) {
+					input->position = input->ptr.string;
+#ifdef DEBUG
+					output( Debug, "input: reading from \"%s\"", (char *) input->position );
+#endif
+					switch ( input->type ) {
+					case InstructionBlock:
+						if ( !context->narrative.mode.output ) break;
+						for ( int i=0; i<=context->control.level; i++ )
+							output( Text, "\t" );
+						break;
+					default:
+						break;
+					}
+				}
+				event = (int ) (( char *) input->position++ )[ 0 ];
+				if ( event && ( context->narrative.mode.output )) {
+					output( Text, "%c", event );
+				}
+				do_pop = ( event == 0 );
 				break;
 			default:
 				break;
 			}
 			if ( do_pop ) {
 				event = 0;
-				switch ( stream->type ) {
-				case StringInput:
-					if ( stream->mode.escape ) {
-	        				free( context->input.instruction->ptr );
-				        	freeItem( context->input.instruction );
-					        context->input.instruction = NULL;
-						set_control_mode( InstructionMode, event, context );
-					}
-					else if ( stream->mode.instructions ) {
-						context->input.instruction = context->input.instruction->next;
-						if ( context->input.instruction != NULL ) {
-							stream->ptr.string = context->input.instruction->ptr;
-							stream->position = NULL;
-						}
-						do_pop = 0;
-					}
-					else if ( stream->mode.api ) {
-						stream->position--;
-						return '\n';
-					}
-					else if ( stream->mode.variable ) {
-						registryEntry *entry = lookupByValue( context->input.string, stream );
-						if ( entry != NULL ) free( entry->identifier );
-						free( stream->ptr.string );
-					}
-					if ( stream->mode.variable ) {
-						deregisterByValue( &context->input.stream, stream );
-					}
-					break;
-				case StreamInput:
-					// DO_LATER
-					break;
+				switch ( input->type ) {
 				case HCNFileInput:
-					fclose ( stream->ptr.file );
-					deregisterByValue( &context->input.stream, stream );
+					fclose ( input->ptr.file );
+					deregisterByValue( &context->input.stream, input );
 					break;
 				case PipeInput:
-					pclose( stream->ptr.file );
-					registryEntry *entry = lookupByValue( context->input.stream, stream );
+					pclose( input->ptr.file );
+					registryEntry *entry = lookupByValue( context->input.stream, input );
 					free( entry->identifier );
-					deregisterByValue( &context->input.stream, stream );
+					deregisterByValue( &context->input.stream, input );
+					break;
+				case ClientInput:
+					; int length = input->remainder;
+					if ( !length ) {
+						read( context->io.client, &length, sizeof(length) );
+						if ( !length ) break;	// EOF
+					}
+					do_pop = 0;
+					input->position = NULL;
+					if ( length > IO_BUFFER_MAX_SIZE ) {
+						int n = IO_BUFFER_MAX_SIZE - 1;
+						input->remainder = length - n;
+						length = n;
+					} else {
+						input->remainder = 0;
+					}
+					read( context->io.client, input->ptr.string, length );
+					break;
+				case InstructionBlock:
+					context->input.instruction = context->input.instruction->next;
+					if ( context->input.instruction != NULL ) {
+						input->ptr.string = context->input.instruction->ptr;
+						input->position = NULL;
+					}
+					do_pop = 0;
+					break;
+				case InstructionOne:
+					input->position--;
+					return '\n';
+				case LastInstruction:
+	        			free( context->input.instruction->ptr );
+				       	freeItem( context->input.instruction );
+				        context->input.instruction = NULL;
+					set_control_mode( InstructionMode, event, context );
 					break;
 				default:
 					break;
 				}
 
 				if ( do_pop ) {
-					stream->mode.pop = 0;
+					input->mode.pop = 0;
 					event = pop_input( state, event, next_state, context );
+					if ( input->type == ClientInput ) return 0;
 				}
 			}
 		}

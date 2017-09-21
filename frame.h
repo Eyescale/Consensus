@@ -11,5 +11,7 @@ _action	systemFrame;
 	frame utilities	- public
 ---------------------------------------------------------------------------*/
 
+int	is_frame_log_empty( _context *context );
+
 
 #endif	// FRAME_H

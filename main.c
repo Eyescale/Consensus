@@ -8,7 +8,7 @@
 #include "registry.h"
 #include "kernel.h"
 
-#include "api.h"
+#include "io.h"
 #include "command.h"
 #include "variables.h"
 
@@ -24,7 +24,6 @@ main( int argc, char ** argv )
 	bzero( &context, sizeof(_context) );
 	CN.context = &context;
 
-	CN.this = newEntity( NULL, NULL, NULL );
 	CN.nil = newEntity( NULL, NULL, NULL );
 	CN.nil->sub[0] = CN.nil;
 	CN.nil->sub[1] = CN.nil;
@@ -40,12 +39,16 @@ main( int argc, char ** argv )
 	registerByName( &CN.VB, "url", NULL );
 	registerByName( &CN.VB, "narratives", NULL );
 
+	context.hcn.state = "";
 	context.control.mode = ExecutionMode;
 	context.control.stack = newItem( &stack );
 	context.control.terminal = isatty( STDIN_FILENO );
 	context.control.prompt = context.control.terminal;
-	context.hcn.state = "";
 
-	return read_command( base, 0, &same, &context );
+	io_open( &context );
+	int event = read_command( base, 0, &same, &context );
+	io_close( &context );
+
+	return event;
 }
 
