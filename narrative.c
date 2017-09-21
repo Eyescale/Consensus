@@ -989,6 +989,41 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 }
 
 /*---------------------------------------------------------------------------
+	read_narrative_else
+---------------------------------------------------------------------------*/
+static int
+read_narrative_else( char *state, int event, char **next_state, _context *context )
+{
+	state = "e";
+	do {
+		event = input( state, 0, NULL, context );
+		bgn_
+		in_( "e" ) bgn_
+			on_( 'l' )	narrative_do_( nop, "el" )
+			on_other	narrative_do_( error, "" )
+			end
+			in_( "el" ) bgn_
+				on_( 's' )	narrative_do_( nop, "els" )
+				on_other	narrative_do_( error, "" )
+				end
+				in_( "els" ) bgn_
+					on_( 'e' )	narrative_do_( nop, "else" )
+					on_other	narrative_do_( error, "" )
+					end
+					in_( "else" ) bgn_
+						on_( ' ' )	narrative_do_( nothing, "" )
+						on_( '\t' )	narrative_do_( nothing, "" )
+						on_( '\n' )	narrative_do_( nothing, "" )
+						on_other	narrative_do_( error, "" )
+						end
+		end
+	}
+	while ( strcmp( state, "" ) );
+
+	return event;
+}
+
+/*---------------------------------------------------------------------------
 	narrative_init
 ---------------------------------------------------------------------------*/
 static int
@@ -1129,6 +1164,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 			on_( '/' )	narrative_do_( nop, "/" )
 			on_( 'i' )	narrative_do_( read_narrative_in, "in" )
 			on_( 'o' )	narrative_do_( read_narrative_on, "on" )
+			on_( 'e' )	narrative_do_( read_narrative_else, "else" )
 			on_( 'd' )	narrative_do_( read_narrative_do, "do" )
 			on_( 't' )	narrative_do_( read_narrative_then, "then" )
 			on_other	narrative_do_( error, same)
@@ -1141,19 +1177,20 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 			on_( '\n' )	narrative_do_( nothing, pop_state )
 			on_other	narrative_do_( error, base )
 			end
-			in_( "/~" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( '\n' )	narrative_do_( set_narrative_otherwise, same )
-						narrative_do_( push_narrative_otherwise, base )
-				on_( 'i' )	narrative_do_( set_narrative_otherwise, same )
-						narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( set_narrative_otherwise, same )
-						narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( set_narrative_otherwise, same )
-						narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( error, same )
-				end
+
+		in_( "else" ) bgn_
+			on_( ' ' )	narrative_do_( nop, same )
+			on_( '\t' )	narrative_do_( nop, same )
+			on_( '\n' )	narrative_do_( set_narrative_otherwise, same )
+					narrative_do_( push_narrative_otherwise, base )
+			on_( 'i' )	narrative_do_( set_narrative_otherwise, same )
+					narrative_do_( read_narrative_in, "in" )
+			on_( 'o' )	narrative_do_( set_narrative_otherwise, same )
+					narrative_do_( read_narrative_on, "on" )
+			on_( 'd' )	narrative_do_( set_narrative_otherwise, same )
+					narrative_do_( read_narrative_do, "do" )
+			on_other	narrative_do_( error, same )
+			end
 
 		in_( "in" ) bgn_
 			on_( ' ' )	narrative_do_( nop, same )

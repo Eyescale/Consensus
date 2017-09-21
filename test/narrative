@@ -10,7 +10,7 @@
 				/
 			in that do !!Tata then do exit
 			/
-	in a-is->[ b<-has-c ]:d do
+	else in a-is->[ b<-has-c ]:d do
 		>:hello
 		?:?-is->toto
 			>:%?

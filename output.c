@@ -653,7 +653,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 {
 	switch( occurrence->type ) {
 	case OtherwiseOccurrence:
-		output( Text, "/~" );
+		output( Text, "else" );
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			output( Text, " " );
 			narrative_output_occurrence( (Occurrence *) i->ptr, level );
