@@ -544,6 +544,9 @@ static int
 narrative_event_add( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	if ( stack->narrative.event.type.init ) {
+		return output( Error, "Usage: 'on init' - parentheses not supported" );
+	}
 	EventVA *e = (EventVA *) calloc( 1, sizeof(EventVA) );
 	memcpy( e, &stack->narrative.event, sizeof(EventVA) );
 	e->expression = context->expression.ptr;
@@ -1070,7 +1073,7 @@ narrative_exit( char *state, int event, char **next_state, _context *context )
 	if ( narrative != NULL )
 	{
 		reorderNarrative( &narrative->root );
-		if ( is_narrative_dangling( &narrative->root, 0 ) )
+		if ( is_narrative_dangling( &narrative->root, 0 ) || !narrative->root.sub.num )
 		{
 			free( narrative->name );
 			free( narrative );
@@ -1110,7 +1113,7 @@ narrative_error( char *state, int event, char **next_state, _context *context )
 	else
 	{
 		narrative_do_( flush_input, same );
-		if ( !strcmp( state, "in (" ) || !strcmp( state, "on (" ) ) {
+		if ( !strncmp( state, "in (", 3 ) || !strncmp( state, "on (", 3 ) ) {
 			Occurrence *thread = retrieve_narrative_thread( context );
 			for ( listItem *i = thread->va; i!=NULL; i=i->next ) {
 				freeOccurrence( i->ptr );
