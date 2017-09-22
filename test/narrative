@@ -1,16 +1,16 @@
 
 	!! titi()
 	on init do ~.
-	in ?-is->toto in toto on :titi !!
+	in state:?-is->toto in :toto on :titi !!
 		do exit
 		then
-			in toto on event:that-is->true !*
+			in :toto on event :that-is->true !*
 				do >:tto
 				do >:tti
 				/
-			in that do !!Tata then do exit
+			in :that do !!Tata then do exit
 			/
-	else in a-is->[ b<-has-c ]:d do
+	else in :a-is->[ b<-has-c ]:d do
 		>:hello
 		?:?-is->toto
 			>:%?
@@ -25,7 +25,7 @@
 		
 		.
 
-	in tata on :toto !* do
+	in ( :tata, state2:toto ) on :toto !* do
 		>:what time is it?
 		/
 		then on :[ ?.. ]-is->bong !_
