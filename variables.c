@@ -50,6 +50,7 @@ freeVariableValue( VariableVA *variable )
 void
 freeVariables( registryEntry **variables )
 {
+	return;
 	registryEntry *next_e;
 	for ( registryEntry *entry = *variables; entry!=NULL; entry=next_e )
 	{
@@ -70,12 +71,68 @@ registryEntry *
 lookupVariable( _context *context, char *identifier )
 {
 	registryEntry *entry = NULL;
-	for ( listItem *s = context->control.stack; ( s!=NULL ) && ( entry==NULL ); s=s->next )
+	if ( context->narrative.current &&
+	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
 	{
-		StackVA *stack = (StackVA *) s->ptr;
-		entry = lookupByName( stack->variables, identifier );
+		Occurrence *i = context->narrative.action;
+		for ( ; ( i!=NULL ) && ( entry == NULL ); i=i->thread ) {
+			entry = lookupByName( i->variables, identifier ); 
+		}
+	}
+	// if we did not find it locally then we can check the program stack
+	if ( entry == NULL ) {
+		listItem *s = context->control.stack;
+		for ( ; ( s!=NULL ) && ( entry==NULL ); s=s->next ) {
+			StackVA *stack = (StackVA *) s->ptr;
+			entry = lookupByName( stack->variables, identifier );
+		}
 	}
 	return entry;
+}
+
+/*---------------------------------------------------------------------------
+	variable_fetch	- lookup only in current scope
+---------------------------------------------------------------------------*/
+Registry *
+variable_registry( _context *context )
+{
+	if ( context->narrative.current &&
+	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
+	{
+		Occurrence *occurrence = context->narrative.action;
+		return &occurrence->variables;
+	} else {
+		StackVA *stack = (StackVA *) context->control.stack->ptr;
+		return &stack->variables;
+	}
+}
+
+registryEntry *
+variable_fetch( char *identifier, _context *context )
+{
+	Registry *registry = variable_registry( context );
+	return lookupByName( *registry, identifier );
+}
+
+void
+variable_deregister( char *identifier, _context *context )
+{
+	Registry *registry = variable_registry( context );
+	deregisterByAddress( registry, identifier );
+}
+
+VariableVA *
+fetch_or_create_variable( char *identifier, int *created, _context *context )
+{
+	Registry *registry = variable_registry( context );
+	registryEntry *entry = lookupByName( *registry, identifier );
+	if ( entry == NULL ) {
+		VariableVA *variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
+		entry = registerByName( registry, identifier, variable );
+		*created = 1;
+	}
+	else *created = 0;
+	return entry->value;
 }
 
 /*---------------------------------------------------------------------------
@@ -91,15 +148,14 @@ variable_reset( char *state, int event, char **next_state, _context *context )
 		return output( Error, "variable names cannot be in \"quotes\"" );
 	}
 
-	// fetch or create identified variable in current scope
-	// ----------------------------------------------------
+	// fetch identified variable in current scope
+	// ------------------------------------------
 
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	char *identifier = context->identifier.id[ 0 ].ptr;
 	if ( !strcmp( identifier, this_symbol ) )
 		return 0;
 
-	registryEntry *entry = lookupByName( stack->variables, identifier );
+	registryEntry *entry = variable_fetch( identifier, context );
 	if ( entry == NULL ) return 0;
 
 	char *name = (char *) entry->identifier;
@@ -110,7 +166,7 @@ variable_reset( char *state, int event, char **next_state, _context *context )
 		freeVariableValue( variable );
 	free( variable );
 
-	deregisterByAddress( &stack->variables, name );
+	variable_deregister( name, context );
 	return 0;
 }
 
@@ -120,8 +176,7 @@ reset_variables( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	Registry *variables = &stack->variables;
+	Registry *variables = variable_registry( context );
 
 	registryEntry *r, *r_next, *r_last = NULL;
 	for ( r = *variables; r!=NULL; r=r_next )
@@ -162,13 +217,6 @@ assign_results( char *state, int event, char **next_state, _context *context )
 	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
 		return output( Error, "variable names cannot be in \"quotes\"" );
 	}
-
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	Entity *entity;
-
-	// fetch latest expression results
-	// -------------------------------------
-
 	if ( context->expression.results == NULL ) {
 		return output( Error, "cannot set variable to (null) results");
 	}
@@ -176,16 +224,34 @@ assign_results( char *state, int event, char **next_state, _context *context )
 	// fetch or create identified variable in current scope
 	// ----------------------------------------------------
 
-	VariableVA *variable;
-
-	registryEntry *entry = lookupByName( stack->variables, context->identifier.id[ 0 ].ptr );
-	if ( entry == NULL ) {
-		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &stack->variables, context->identifier.id[ 0 ].ptr, variable );
+	int created;
+	VariableVA *variable = fetch_or_create_variable( context->identifier.id[ 0 ].ptr, &created, context );
+	if ( created ) {
 		context->identifier.id[ 0 ].ptr = NULL;
 	}
+	else if ( context->assignment.mode == AssignmentAdd ) {
+		switch ( variable->type ) {
+			case EntityVariable:
+				if ( context->expression.mode == ReadMode )
+					goto ERROR;
+				break;
+			case LiteralVariable:
+				if ( context->expression.mode != ReadMode )
+					goto ERROR;
+				break;
+			default:
+				goto ERROR;
+		}
+		// add results to the variable's value - NOTE: will reverse results order
+		listItem *dst = variable->data.value;
+		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
+			dst->next = i;
+			variable->data.value = dst;
+		}
+		context->expression.results = NULL;
+		return 0;
+	}
 	else {
-		variable = (VariableVA *) entry->value;
 		freeVariableValue( variable );
 		free( context->identifier.id[ 0 ].ptr );
 		context->identifier.id[ 0 ].ptr = NULL;
@@ -196,6 +262,10 @@ assign_results( char *state, int event, char **next_state, _context *context )
 	context->expression.results = NULL;
 
 	return 0;
+ERROR:
+	context->assignment.mode = 0;
+	context->expression.results = NULL;
+	return output( Error, " " );
 }
 
 /*---------------------------------------------------------------------------
@@ -225,21 +295,13 @@ assign_va( char *state, int event, char **next_state, _context *context )
 	// fetch or create identified variable in current scope
 	// ----------------------------------------------------
 
-	VariableVA *variable;
-
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	registryEntry *entry = lookupByName( stack->variables, context->identifier.id[ 0 ].ptr );
-	if ( entry == NULL ) {
-		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &stack->variables, context->identifier.id[ 0 ].ptr, variable );
-		context->identifier.id[ 0 ].ptr = NULL;
-	}
-	else {
-		variable = (VariableVA *) entry->value;
+	int created;
+	VariableVA *variable = fetch_or_create_variable( context->identifier.id[ 0 ].ptr, &created, context );
+	if ( !created ) {
 		freeVariableValue( variable );
 		free( context->identifier.id[ 0 ].ptr );
-		context->identifier.id[ 0 ].ptr = NULL;
 	}
+	context->identifier.id[ 0 ].ptr = NULL;
 
 	// convert expression results into filter values
 	// ---------------------------------------------
@@ -285,21 +347,13 @@ assign_narrative( char *state, int event, char **next_state, _context *context )
 	// fetch or create identified variable in current scope
 	// ----------------------------------------------------
 
-	VariableVA *variable;
-
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	registryEntry *entry = lookupByName( stack->variables, context->identifier.id[ 0 ].ptr );
-	if ( entry == NULL ) {
-		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &stack->variables, context->identifier.id[ 0 ].ptr, variable );
-		context->identifier.id[ 0 ].ptr = NULL;
-	}
-	else {
-		variable = (VariableVA *) entry->value;
+	int created;
+	VariableVA *variable = fetch_or_create_variable( context->identifier.id[ 0 ].ptr, &created, context );
+	if ( !created ) {
 		freeVariableValue( variable );
 		free( context->identifier.id[ 0 ].ptr );
-		context->identifier.id[ 0 ].ptr = NULL;
 	}
+	context->identifier.id[ 0 ].ptr = NULL;
 
 	variable->type = NarrativeVariable;
 	char *name = context->identifier.id[ 1 ].ptr;
@@ -414,17 +468,10 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	// fetch or create identified variable in current scope
 	// ----------------------------------------------------
 
-	VariableVA *variable;
-
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	registryEntry *entry = lookupByName( stack->variables, identifier );
-	if ( entry == NULL ) {
-		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &stack->variables, identifier, variable );
+	int created;
+	VariableVA *variable = fetch_or_create_variable( context->identifier.id[ 0 ].ptr, &created, context );
+	if ( created ) {
 		context->identifier.id[ 0 ].ptr = NULL;
-	}
-	else {
-		variable = (VariableVA *) entry->value;
 	}
 
 	// assign variable's type and value

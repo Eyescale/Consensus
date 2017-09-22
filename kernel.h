@@ -100,6 +100,12 @@ typedef enum {
 }
 OccurrenceType;
 
+typedef enum {
+	AssignmentSet,
+	AssignmentAdd
+}
+AssignmentMode;
+
 /*---------------------------------------------------------------------------
 	structures
 ---------------------------------------------------------------------------*/
@@ -144,6 +150,7 @@ typedef struct _ExpressionSub ExpressionSub;
 typedef struct _Occurrence {
 	struct _Occurrence *thread;
 	OccurrenceType type;
+	registryEntry *variables;
 	unsigned int registered;
 	listItem *va;
 	int va_num;
@@ -161,6 +168,7 @@ typedef struct {
 OtherwiseVA;
 
 typedef struct _ConditionVA {
+	char *identifier;
 	Expression *expression;
 }
 ConditionVA;
@@ -303,6 +311,9 @@ typedef struct {
 		unsigned int contrary : 1;
 	} control;
 	struct {
+		int mode;
+	} assignment;
+	struct {
 		int level;
 	} freeze;
 	struct {
@@ -350,6 +361,7 @@ typedef struct {
 				char *ptr;
 			} identifier;
 		} backup;
+		Occurrence *action;
 		Narrative *current;
 		listItem *registered;
 	} narrative;

@@ -593,11 +593,18 @@ output_va_( char *va_name, int event, _context *context )
 int
 output_va( char *state, int event, char **next_state, _context *context )
 {
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
 	context->error.flush_output = ( event != '\n' );
 
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( !strcmp( va_name, "html" ) ) {
-		return push_input_hcn( state, event, next_state, context );
+		if ( context->expression.results != NULL ) {
+			Entity *entity = (Entity *) context->expression.results->ptr;
+			char *identifier = (char *) cn_va_get_value( entity, "hcn" );
+			return push_input( identifier, NULL, HCNFileInput, context );
+		}
 	}
 	if ( !strcmp( va_name, "literal" ) ) {
 		return output_results( state, event, next_state, context );
@@ -666,6 +673,10 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		}
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			ConditionVA *condition = (ConditionVA *) i->ptr;
+			if ( condition->identifier != NULL ) {
+				output( Text, "%s: ", condition->identifier );
+			}
+			else output( Text, ":" );
 			output_expression( ExpressionAll, condition->expression, -1, -1 );
 			if ( i->next != NULL ) {
 				output( Text, ", " );

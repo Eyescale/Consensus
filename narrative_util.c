@@ -385,6 +385,7 @@ freeOccurrence( Occurrence *occurrence )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			if ( i->ptr == NULL ) continue;
 			ConditionVA *condition = (ConditionVA *) i->ptr;
+			free( condition->identifier );
 			free( condition->expression );
 			free( condition );
 		}

@@ -267,8 +267,32 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
+	free( context->identifier.id[ 0 ].ptr );
+	context->identifier.id[ 0 ].ptr = NULL;
+
 	context->narrative.mode.condition = 1;
-	event = read_expression( state, event, next_state, context );
+	state = base;
+	do {
+		event = input( state, event, NULL, context );
+		bgn_
+		on_( -1 )	narrative_do_( nothing, "" )
+		in_( base ) bgn_
+			on_( ':' )	narrative_do_( nop, "identifier:" )
+			on_other	narrative_do_( read_0, "identifier" )
+			end
+			in_( "identifier" ) bgn_
+				on_( ' ' )	narrative_do_( nop, same )
+				on_( '\t' )	narrative_do_( nop, same )
+				on_( ':' )	narrative_do_( nop, "identifier:" )
+				on_other	narrative_do_( error, base )
+				end
+			in_( "identifier:" ) bgn_
+				on_any		narrative_do_( read_expression, "" )
+				end
+		end
+	}
+	while ( strcmp( state, "" ) );
+
 	context->narrative.mode.condition = 0;
 	return event;
 }
@@ -287,19 +311,30 @@ narrative_condition_begin( char *state, int event, char **next_state, _context *
 	return event;
 }
 
+static ConditionVA *
+newConditionVA( Occurrence *occurrence, _context *context )
+{
+	ConditionVA *condition = (ConditionVA *) calloc( 1, sizeof(ConditionVA) );
+	addItem( &occurrence->va, condition );
+	occurrence->va_num++;
+	condition->expression = context->expression.ptr;
+	context->expression.ptr = NULL;
+	if ( context->identifier.id[ 0 ].ptr != NULL ) {
+		condition->identifier = context->identifier.id[ 0 ].ptr;
+		context->identifier.id[ 0 ].ptr = NULL;
+	}
+	return condition;
+}
+
 static int
 narrative_condition_add( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	ConditionVA *condition = (ConditionVA *) calloc( 1, sizeof(ConditionVA) );
-	condition->expression = context->expression.ptr;
-	context->expression.ptr = NULL;
 	Occurrence *thread = retrieve_narrative_thread( context );
 	if ( stack->narrative.state.otherwise ) {
 		thread = thread->va->ptr;
 	}
-	addItem( &thread->va, condition );
-	thread->va_num++;
+	newConditionVA( thread, context );
 	return 0;
 }
 
@@ -307,14 +342,14 @@ static int
 narrative_condition_end( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	event = narrative_condition_add( state, event, next_state, context );
 	Occurrence *thread = retrieve_narrative_thread( context );
 	if ( stack->narrative.state.otherwise ) {
 		thread = thread->va->ptr;
 	}
+	newConditionVA( thread, context );
 	reorderListItem( &thread->va );
 	stack->narrative.state.otherwise = 0;
-	return event;
+	return 0;
 }
 
 static int
@@ -322,13 +357,7 @@ set_narrative_condition( char *state, int event, char **next_state, _context *co
 {
 	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
 	occurrence->type = ConditionOccurrence;
-
-	ConditionVA *condition = (ConditionVA *) calloc( 1, sizeof(ConditionVA) );
-	addItem( &occurrence->va, condition );
-	occurrence->va_num++;
-	condition->expression = context->expression.ptr;
-	context->expression.ptr = NULL;
-
+	newConditionVA( occurrence, context );
 	return narrative_build( occurrence, event, context );
 }
 
@@ -460,8 +489,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	bzero( &stack->narrative.event, sizeof( EventVA ) );
 	state = base;
-	do
-	{
+	do {
 		event = input( state, event, NULL, context );
 #ifdef DEBUG
 		output( Debug, "read_narrative_event: in \"%s\", on '%c'", state, event );
@@ -472,10 +500,10 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 			on_( ':' )	narrative_do_( nop, "identifier:" )
 			on_( '!' )	narrative_do_( set_event_request, "identifier: !" )
 			on_( '%' )	narrative_do_( nop, "%" )
-			on_other	narrative_do_( read_identifier, "identifier" )
+			on_other	narrative_do_( read_0, "identifier" )
 			end
 			in_( "%" ) bgn_
-				on_any	narrative_do_( read_identifier, "%identifier" )
+				on_any	narrative_do_( read_0, "%identifier" )
 				end
 				in_( "%identifier" ) bgn_
 					on_( ':' )	narrative_do_( set_event_variable, "identifier:" )

@@ -1,4 +1,11 @@
 
+Sep 22, 2017
+DONE	. support narrative condition variables: 'in variable: expression'
+DONE	. narrative and event variables are allocated on the occurrences themselves
+DONE	. support event and condition vectors: 'in ( var1:expr1, var2:expr2, ... )
+DONE	. support narrative otherwise: 'else in ( ... )'
+DONE	. support variable additive assignment: '> variable: %[ expr ]'
+
 Sep 14, 2017
 DONE	. fixed bugs in narrative.c: read_action_closure(), and remove prompt() from there
 DONE	. input.c: do not prompt when standard input is redirected

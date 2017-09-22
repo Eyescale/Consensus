@@ -7,9 +7,9 @@
 
 _action	input;
 _action	flush_input;
-_action	read_identifier;
-_action	read_argument;
-_action	read_va_identifier;
+_action	read_0;
+_action	read_1;
+_action	read_2;
 
 /*---------------------------------------------------------------------------
 	input utilities	- public

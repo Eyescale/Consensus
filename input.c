@@ -432,7 +432,7 @@ input( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	read_identifier, read_argument, read_va_identifier
+	read_0, read_1, read_2
 ---------------------------------------------------------------------------*/
 #define read_do_( a, s ) \
 	event = read_execute( a, &state, event, s, context );
@@ -467,7 +467,7 @@ identifier_finish( char *state, int event, char **next_state, _context *context 
 }
 
 int
-read_identifier( char *state, int event, char **next_state, _context *context )
+read_0( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, InstructionMode, ExecutionMode ) ) {
 		read_do_( flush_input, same );
@@ -502,19 +502,19 @@ read_identifier( char *state, int event, char **next_state, _context *context )
 }
 
 int
-read_argument( char *state, int event, char **next_state, _context *context )
+read_1( char *state, int event, char **next_state, _context *context )
 {
 	context->identifier.current = 1;
-	event = read_identifier( state, event, next_state, context );
+	event = read_0( state, event, next_state, context );
 	context->identifier.current = 0;
 	return event;
 }
 
 int
-read_va_identifier( char *state, int event, char **next_state, _context *context )
+read_2( char *state, int event, char **next_state, _context *context )
 {
 	context->identifier.current = 2;
-	event = read_identifier( state, event, next_state, context );
+	event = read_0( state, event, next_state, context );
 	context->identifier.current = 0;
 	return event;
 }
