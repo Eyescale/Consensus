@@ -107,10 +107,15 @@ string_finish( IdentifierVA *string )
 	output( Debug, "string_finish: '%c'", (char) event );
 #endif
 	listItem **list = &string->list;
-	listItem *i, *next_i;
+	listItem *i, *next_i, *backup = NULL;
 	int count = 0;
 
 	// remove trailing white space
+	i = *list;
+	if ((char) i->ptr == '\n' ) {
+		backup = i;
+		*list = i->next;
+	}	
 	for ( i = *list; i!=NULL; i=next_i ) {
 		switch ((char) i->ptr) {
 		case ' ':
@@ -122,6 +127,10 @@ string_finish( IdentifierVA *string )
 		default:
 			next_i = NULL;
 		}
+	}
+	if ( backup ) {
+		backup->next = *list;
+		*list = backup;
 	}
 
 	count = reorderListItem( list );

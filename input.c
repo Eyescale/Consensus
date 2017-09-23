@@ -287,6 +287,7 @@ input( char *state, int event, char **next_state, _context *context )
 	}
 
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	int comment_on = 0;
 	do {
 		if ( context->input.stack == NULL )
 		{
@@ -392,6 +393,19 @@ input( char *state, int event, char **next_state, _context *context )
 					if ( input->type == ClientInput ) return 0;
 				}
 			}
+		}
+
+		if ( !context->control.no_comment ) {
+			if ( event == '#' ) {
+				comment_on = 1;
+				event = 0;
+			} else if ( event == '\n' ) {
+				comment_on = 0;
+			} else if ( comment_on ) {
+				event = 0;
+			}
+		} else if ( event == '\n' ) {
+			context->control.no_comment = 0;
 		}
 	}
 	while ( event == 0 );

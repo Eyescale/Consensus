@@ -309,6 +309,7 @@ typedef struct {
 		unsigned int terminal : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
+		unsigned int no_comment : 1;
 	} control;
 	struct {
 		int mode;

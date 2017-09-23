@@ -12,9 +12,9 @@
 			/
 	else in :a-is->[ b<-has-c ]:d do
 		>:hello
-		?:?-is->toto
-			>:%?
-			/
+		?:?-is->toto		# Great to comment isn't it
+			>:%?		# That is... so long as you have
+			/		# something to say!
 		?%: a-is->b
 			>:tt
 			/~

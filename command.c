@@ -333,6 +333,7 @@ command_error( char *state, int event, char **next_state, _context *context )
 #define BRKOUT if ( context->narrative.mode.action.one ) command_do_( nothing, "" ) else
 #define BRKERR if ( context->narrative.mode.action.one ) command_do_( error, "" ) else
 #define RETURN ( context->narrative.mode.action.one ? out : base )
+#define NO_COMMENT if ( event != '\n' ) context->control.no_comment = 1;
 
 int
 read_command( char *state, int event, char **next_state, _context *context )
@@ -343,7 +344,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	output( Debug, "main: \"%s\", '%c'", state, event );
 #endif
-
 	bgn_
 	on_( 0 )	command_do_( nothing, "" )
 	on_( -1 )	command_do_( command_error, base )
@@ -362,6 +362,27 @@ read_command( char *state, int event, char **next_state, _context *context )
 		on_( 'e' )	command_do_( nop, "e" )
 		on_other	command_do_( error, base )
 		end
+
+	in_( "/" ) bgn_
+		on_( ' ' )	command_do_( nop, same )
+		on_( '\t' )	command_do_( nop, same )
+		on_( '~' )	command_do_( nop, "/~" )
+		on_( '\n' )	command_do_( command_pop, pop_state )
+		on_( '.' )	command_do_( nop, "/." )
+		on_other	command_do_( error, base )
+		end
+		in_( "/~" ) bgn_
+			on_( ' ' )	command_do_( nop, same )
+			on_( '\t' )	command_do_( nop, same )
+			on_( '\n' )	command_do_( flip_condition, base )
+			on_other	command_do_( error, base )
+			end
+		in_( "/." ) bgn_
+			on_( ' ' )	command_do_( nop, same )
+			on_( '\t' )	command_do_( nop, same )
+			on_( '\n' )	command_do_( command_pop, pop_state )
+			on_other	command_do_( error, base )
+			end
 
 	in_( "!" ) bgn_
 		on_( '!' )	command_do_( set_expression_mode, "!." )
@@ -486,21 +507,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_any	command_do_( output_variable_value, base )
 			end
 
-	in_( "/" ) bgn_
-		on_( '~' )	command_do_( nop, "/~" )
-		on_( '\n' )	command_do_( command_pop, pop_state )
-		on_( '.' )	command_do_( nop, "/." )
-		on_other	command_do_( error, base )
-		end
-		in_( "/~" ) bgn_
-			on_( '\n' )	command_do_( flip_condition, base )
-			on_other	command_do_( error, base )
-			end
-		in_( "/." ) bgn_
-			on_( '\n' )	command_do_( command_pop, pop_state )
-			on_other	command_do_( error, base )
-			end
-
 	in_( ">" ) bgn_
 		on_( ' ' )	command_do_( nop, same )
 		on_( '\t' )	command_do_( nop, same )
@@ -513,7 +519,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( ':' )	command_do_( set_assignment_mode, ": identifier :" )
 			on_other	command_do_( error, base )
 			end
-		in_( ">:" ) bgn_
+		in_( ">:" ) NO_COMMENT bgn_
 			on_( '\n' )	command_do_( output_char, RETURN )
 			on_( '%' )	command_do_( nop, ">: %" )
 			on_other	command_do_( output_char, same )
