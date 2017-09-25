@@ -26,13 +26,18 @@ _action output_va;
 _action output_hcn;
 _action output_mod;
 _action output_char;
+_action output_special_char;
 
 /*---------------------------------------------------------------------------
 	output utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	output( OutputType type, const char *format, ... );
-void	output_name( Entity *e, Expression *format, int base );
+int	output( OutputContentsType type, const char *format, ... );
+int	push_output( char *identifier, void *dst, OutputType type, _context *context );
+int	pop_output( _context *context );
+void	output_identifier( char *identifier );
+void	output_entity_name( Entity *e, Expression *format, int base );
+void	output_narrative_name( Entity *e, char *name );
 int	output_expression( ExpressionOutput component, Expression *expression, int i, int shorty );
 void	prompt( _context *context );
 void	narrative_output( Narrative *narrative, _context *context );

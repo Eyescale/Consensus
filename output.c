@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "registry.h"
@@ -30,8 +31,9 @@ static char *header_list[] =	// ordered as they appear below
 };
 
 int
-output( OutputType type,  const char *format, ... )
+output( OutputContentsType type, const char *format, ... )
 {
+	_context *context = CN.context;
 	int retval = 0;
 
 	if ( type == Error ) {
@@ -45,17 +47,25 @@ output( OutputType type,  const char *format, ... )
 	va_list ap;
 	va_start( ap, format );
 
-	if ( CN.context->io.client ) {
-		switch ( type ) {
-		case Error:
-		case Warning:
-		case Info:
-		case Debug:
+	if ( context->output.stack != NULL )
+	{
+		OutputVA *output = (OutputVA *) context->output.stack->ptr;
+		switch ( output->mode ) {
+		case PeerOutput:	// DO_LATER
 			break;
-		default:
-			io_write( CN.context, type, format, ap );
-			va_end( ap );
-			return retval;
+		case ClientOutput:
+			switch ( type ) {
+			case Error:
+			case Warning:
+			case Info:
+			case Debug:
+				break;
+			default:
+				io_write( context, type, format, ap );
+				va_end( ap );
+				return retval;
+			}
+			break;
 		}
 	}
 
@@ -98,6 +108,77 @@ output( OutputType type,  const char *format, ... )
 
 	va_end( ap );
 	return retval;
+}
+
+/*---------------------------------------------------------------------------
+	push_output
+---------------------------------------------------------------------------*/
+int
+push_output( char *identifier, void *dst, OutputType type, _context *context )
+{
+	switch ( type ) {
+	case ClientOutput:
+		break;
+	default:
+		return 0;	// DO_LATER
+	}
+
+	OutputVA *output = (OutputVA *) calloc( 1, sizeof(OutputVA) );
+	output->level = context->control.level;
+	output->mode = type;
+	output->socket = *(int *) dst;
+
+	addItem( &context->output.stack, output );
+
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	pop_output
+---------------------------------------------------------------------------*/
+int
+pop_output( _context *context )
+{
+	OutputVA *output = (OutputVA *) context->output.stack->ptr;
+
+	switch ( output->mode ) {
+	case ClientOutput:
+		// flush output buffer
+		io_flush( context );
+
+		// close connection
+		close( output->socket );
+		break;
+	default:
+		break;	// DO_LATER
+	}
+	free( output );
+	popListItem( &context->output.stack );
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	output_identifier
+---------------------------------------------------------------------------*/
+void
+output_identifier( char *identifier )
+{
+	do switch ( *identifier ) {
+		case ' ':
+			output( Text, "%s", "\\ " );
+			break;
+		case '\t':
+			output( Text, "%s", "\\\t" );
+			break;
+		case '\n':
+			output( Text, "%s", "\\n" );
+			break;
+		case '\0':
+			break;
+		default:
+			output( Text, "%c", *identifier );
+	}
+	while ( *identifier++ );
 }
 
 /*---------------------------------------------------------------------------
@@ -173,13 +254,14 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	case SubVariable:
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			output( Text, "%%%s", sub[ i ].result.identifier.value );
+			output( Text, "%%" );
+			output_identifier( sub[ i ].result.identifier.value );
 		}
 		return 1;
 	case SubIdentifier:
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			output( Text, "%s", sub[ i ].result.identifier.value );
+			output_identifier( sub[ i ].result.identifier.value );
 		}
 		return 1;
 	case SubNull:
@@ -347,7 +429,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 }
 
 void
-output_name( Entity *e, Expression *format, int base )
+output_entity_name( Entity *e, Expression *format, int base )
 {
 	if ( e == NULL ) {
 		if ( base ) output( Text,"(null)" );
@@ -359,35 +441,52 @@ output_name( Entity *e, Expression *format, int base )
 	}
 	char *name = cn_name( e );
 	if ( name != NULL ) {
-		output( Text, "%s", name );
+		output_identifier( name );
 		return;
 	}
 	if ( !base ) output( Text, "[ " );
 	if ( format == NULL )
 	{
-		output_name( e->sub[ 0 ], NULL, 0 );
+		output_entity_name( e->sub[ 0 ], NULL, 0 );
 		output( Text, "-" );
-		output_name( e->sub[ 1 ], NULL, 0 );
+		output_entity_name( e->sub[ 1 ], NULL, 0 );
 		output( Text, "->" );
-		output_name( e->sub[ 2 ], NULL, 0 );
+		output_entity_name( e->sub[ 2 ], NULL, 0 );
 	}
 	else if ( format->result.output_swap )
 	{
-		output_name( e->sub[ 2 ], format->sub[ 2 ].e, 0 );
+		output_entity_name( e->sub[ 2 ], format->sub[ 2 ].e, 0 );
 		output( Text, "<-" );
-		output_name( e->sub[ 1 ], format->sub[ 1 ].e, 0 );
+		output_entity_name( e->sub[ 1 ], format->sub[ 1 ].e, 0 );
 		output( Text, "-" );
-		output_name( e->sub[ 0 ], format->sub[ 0 ].e, 0 );
+		output_entity_name( e->sub[ 0 ], format->sub[ 0 ].e, 0 );
 	}
 	else
 	{
-		output_name( e->sub[ 0 ], format->sub[ 0 ].e, 0 );
+		output_entity_name( e->sub[ 0 ], format->sub[ 0 ].e, 0 );
 		output( Text, "-" );
-		output_name( e->sub[ 1 ], format->sub[ 1 ].e, 0 );
+		output_entity_name( e->sub[ 1 ], format->sub[ 1 ].e, 0 );
 		output( Text, "->" );
-		output_name( e->sub[ 2 ], format->sub[ 2 ].e, 0 );
+		output_entity_name( e->sub[ 2 ], format->sub[ 2 ].e, 0 );
 	}
 	if ( !base ) output( Text, " ]" );
+}
+
+void
+output_narrative_name( Entity *e, char *name )
+{
+	if ( e == CN.nil )
+	{
+		output_identifier( name );
+		output( Text, "()" );
+	}
+	else {
+		output( Text, "%%[ " );
+		output_entity_name( e, NULL, 1 );
+		output( Text, " ]." );
+		output_identifier( name );
+		output( Text, "()" );
+	}
 }
 
 static void
@@ -396,21 +495,18 @@ output_narrative_variable( registryEntry *r )
 	if ( r == NULL ) return;
 
 	Entity *e = (Entity *) r->identifier;
-	char *narrative = (char *) r->value;
+	char *name = (char *) r->value;
 	if ( r->next == NULL ) {
-		if ( r->identifier == CN.nil ) output( Text, "%s()", narrative );
-		else { output( Text, "%%[ " ); output_name( e, NULL, 1 ); output( Text, " ].%s()", narrative ); }
+		output_narrative_name( e, name );
 	}
 	else {
 		output( Text, "{ ");
-		if ( r->identifier == CN.nil ) output( Text, "%s()", narrative );
-		else output( Text, "%%[ %s ].%s()", cn_name( e ), narrative );
+		output_narrative_name( e, name );
 		for ( r=r->next; r!=NULL; r=r->next ) {
 			output( Text, ", " );
 			e = (Entity *) r->identifier;
-			narrative = (char *) r->value;
-			if ( r->identifier == CN.nil ) output( Text, "%s()", narrative );
-			else { output( Text, "%%[ " ); output_name( e, NULL, 1 ); output( Text, " ].%s()", narrative ); }
+			name = (char *) r->value;
+			output_narrative_name( e, name );
 		} 
 		output( Text, " }" );
 	}
@@ -421,15 +517,15 @@ output_entity_variable( listItem *i, Expression *format )
 {
 	if ( i == NULL ) return;
 	if ( i->next == NULL ) {
-		output_name( (Entity *) i->ptr, format, 1 );
+		output_entity_name( (Entity *) i->ptr, format, 1 );
 	}
 	else  {
 		output( Text, "{ " );
-		output_name( (Entity *) i->ptr, format, 1 );
+		output_entity_name( (Entity *) i->ptr, format, 1 );
 		for ( i = i->next; i!=NULL; i=i->next )
 		{
 			output( Text, ", " );
-			output_name( (Entity *) i->ptr, format, 1 );
+			output_entity_name( (Entity *) i->ptr, format, 1 );
 		}
 		output( Text, " }" );
 	}
@@ -524,6 +620,9 @@ output_results( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
+	if (( event == '\n' ) && ( context->expression.results == NULL ))
+		return 0;
+
 	context->error.flush_output = ( event != '\n' );
 	switch ( context->expression.mode ) {
 	case ReadMode:
@@ -551,16 +650,21 @@ output_va_value( void *value, int narrative_account )
 	if ( narrative_account ) {
 		registryEntry *i = (Registry) value;
 		if ( i->next == NULL ) {
-			output( Text, "%s()", (char *) i->identifier );
+			output_identifier( (char *) i->identifier );
+			output( Text, "()" );
 		} else {
-			output( Text, "{ %s()", (char *) i->identifier );
+			output( Text, "{ " );
+			output_identifier( (char *) i->identifier );
+			output( Text, "()" );
 			for ( i = i->next; i!=NULL; i=i->next ) {
-				output( Text, ", %s()", (char *) i->identifier );
+				output( Text, ", " );
+				output_identifier( (char *) i->identifier );
+				output( Text, "()" );
 			}
 			output( Text, " }" );
 		}
 	} else {
-		output( Text, "\"%s\"", (char *) value );
+		output_identifier( (char *) value );
 	}
 }
 
@@ -621,7 +725,7 @@ output_va( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	output_mod, output_char
+	output_mod, output_char, output_special_char
 ---------------------------------------------------------------------------*/
 int
 output_mod( char *state, int event, char **next_state, _context *context )
@@ -643,6 +747,23 @@ output_char( char *state, int event, char **next_state, _context *context )
 
 	context->error.flush_output = ( event != '\n' );
 	output( Text, "%c", event );
+	return 0;
+}
+
+int
+output_special_char( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	context->error.flush_output = ( event != '\n' );
+	switch ( event ) {
+	case 't': output( Text, "\t" ); break;
+	case 'n': output( Text, "\n" ); break;
+	default:
+		output( Text, "%c", event );
+	}
+
 	return 0;
 }
 
@@ -674,7 +795,8 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			ConditionVA *condition = (ConditionVA *) i->ptr;
 			if ( condition->identifier != NULL ) {
-				output( Text, "%s: ", condition->identifier );
+				output_identifier( condition->identifier );
+				output( Text, ": " );
 			}
 			else output( Text, ":" );
 			output_expression( ExpressionAll, condition->expression, -1, -1 );
@@ -696,7 +818,8 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			if ( event->identifier.name != NULL ) {
 				if ( event->identifier.type == VariableIdentifier )
 					output( Text, "%%" );
-				output( Text, "%s: ", event->identifier.name );
+				output_identifier( event->identifier.name );
+				output( Text, ": " );
 			} else if ( event->type.notification ) {
 				output( Text, ":" );
 			}

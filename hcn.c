@@ -49,7 +49,7 @@ hcn_CR( char *state, int event, char **next_state, _context *context )
 	string_start( &context->hcn.buffer, '>' );
 	string_append( &context->hcn.buffer, ':' );
 	string_append( &context->hcn.buffer, '\n' );
-	string_finish( &context->hcn.buffer );
+	string_finish( &context->hcn.buffer, 0 );
 	return 0;
 }
 static int
@@ -106,7 +106,7 @@ static int
 hcn_finish( char *state, int event, char **next_state, _context *context )
 {
 	string_append( &context->hcn.buffer, '\n' );
-	string_finish( &context->hcn.buffer);
+	string_finish( &context->hcn.buffer, 1 );
 	return 0;
 }
 static int

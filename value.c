@@ -44,11 +44,9 @@ set_va_( char *va_name, int event, _context *context )
 			addToNarrative( narrative, e );
 		}
 	}
-	else if ( context->identifier.id[ 1 ].type != StringIdentifier ) {
-		return output( Error, "expected argument in \"quotes\"" );
-	}
 	else {
-		void *value = string_extract( context->identifier.id[ 1 ].ptr );
+		void *value = context->identifier.id[ 1 ].ptr;
+		context->identifier.id[ 1 ].ptr = NULL;
 		if ( value == NULL ) {
 			return output( Error, "account '%s' cannot be set to (null) value", va_name );
 		}

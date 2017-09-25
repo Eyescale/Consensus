@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "database.h"
 #include "registry.h"
@@ -13,6 +14,26 @@
 #include "variables.h"
 
 // #define DEBUG
+
+volatile sig_atomic_t terminating = 0;
+static void
+termination_handler( int signum )
+{
+/*
+	Since this handler is established for more than one kind of signal, 
+	it might still get invoked recursively by delivery of some other kind
+	of signal.  Use a static variable to keep track of that.
+	http://www.gnu.org/software/libc/manual/html_node/Termination-in-Handler.html#Termination-in-Handler
+*/
+	if ( terminating ) {
+		raise( signum );
+		return;
+	}
+	terminating = 1;
+	io_close( CN.context );
+	signal( signum, SIG_DFL );
+	raise( signum );
+}
 
 /*---------------------------------------------------------------------------
 	main
@@ -44,6 +65,19 @@ main( int argc, char ** argv )
 	context.control.stack = newItem( &stack );
 	context.control.terminal = isatty( STDIN_FILENO );
 	context.control.prompt = context.control.terminal;
+
+	signal( SIGHUP, termination_handler );
+	signal( SIGINT, termination_handler );
+	signal( SIGKILL, termination_handler );
+	signal( SIGPIPE, termination_handler );
+	signal( SIGALRM, termination_handler );
+	signal( SIGTERM, termination_handler );
+	signal( SIGXCPU, termination_handler );
+	signal( SIGXFSZ, termination_handler );
+	signal( SIGVTALRM, termination_handler );
+	signal( SIGPROF, termination_handler );
+	signal( SIGUSR1, termination_handler );
+	signal( SIGUSR2, termination_handler );
 
 	io_open( &context );
 	int event = read_command( base, 0, &same, &context );

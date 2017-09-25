@@ -175,8 +175,8 @@ push_loop( char *state, int event, char **next_state, _context *context )
 		set_control_mode( InstructionMode, event, context );
 	}
 	else {
-		StreamVA *input = (StreamVA *) context->input.stack->ptr;
-		if ( input->type == InstructionBlock ) {
+		InputVA *input = (InputVA *) context->input.stack->ptr;
+		if ( input->mode == InstructionBlock ) {
 			// here we are about to start a loop within a loop
 			stack->loop.begin = context->input.instruction->next;
 		}
@@ -333,16 +333,16 @@ command_error( char *state, int event, char **next_state, _context *context )
 #define BRKOUT if ( context->narrative.mode.action.one ) command_do_( nothing, "" ) else
 #define BRKERR if ( context->narrative.mode.action.one ) command_do_( error, "" ) else
 #define RETURN ( context->narrative.mode.action.one ? out : base )
-#define NO_COMMENT if ( event != '\n' ) context->control.no_comment = 1;
+#define W_COMMENT if ( event != '\n' ) context->control.no_comment = 1;
 
 int
 read_command( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = io_read( state, event, NULL, context );
+	event = io_scan( state, event, NULL, context );
 
 #ifdef DEBUG
-	output( Debug, "main: \"%s\", '%c'", state, event );
+	output( Debug, "main: state=\"%s\", event='%c'", state, event );
 #endif
 	bgn_
 	on_( 0 )	command_do_( nothing, "" )
@@ -511,19 +511,44 @@ read_command( char *state, int event, char **next_state, _context *context )
 		on_( ' ' )	command_do_( nop, same )
 		on_( '\t' )	command_do_( nop, same )
 		on_( ':' )	command_do_( nop, ">:" )
-		on_other	command_do_( read_0, ">_" )
+		on_( '.' )	command_do_( nop, "> ." )
+		on_( '<' )	command_do_( read_address, ">< recipient >" )
+		on_other	command_do_( read_0, "> identifier" )
 		end
-		in_( ">_" ) bgn_
+		in_( "> ." ) bgn_
+			on_( '.' )	command_do_( nop, "> .." )
+			on_other	command_do_( error, base )
+			end
+			in_( "> .." ) bgn_
+				on_( ' ' )	command_do_( nop, same )
+				on_( '\t' )	command_do_( nop, same )
+				on_( ':' )	command_do_( set_output, ">:" )
+				on_other	command_do_( error, base )
+				end
+		in_( ">< recipient >" ) bgn_
+			on_( ':' )	command_do_( set_output, ">:" )
+			on_other	command_do_( error, base )
+			end
+		in_( "> identifier" ) bgn_
 			on_( ' ' )	command_do_( nop, same )
 			on_( '\t' )	command_do_( nop, same )
 			on_( ':' )	command_do_( set_assignment_mode, ": identifier :" )
 			on_other	command_do_( error, base )
 			end
-		in_( ">:" ) NO_COMMENT bgn_
+#if 0
+		in_( ">:" ) W_COMMENT bgn_	// disables subsequent '#' input removal
+#else
+		in_( ">:" ) bgn_
+#endif
+			on_( '\\' )	command_do_( nop, ">: \\" )
 			on_( '\n' )	command_do_( output_char, RETURN )
 			on_( '%' )	command_do_( nop, ">: %" )
 			on_other	command_do_( output_char, same )
 			end
+			in_( ">: \\" ) bgn_
+				on_( '\n' )	command_do_( output_char, RETURN )
+				on_other	command_do_( output_special_char, ">:" )
+				end
 			in_( ">: %" ) bgn_
 				on_( '?' )	command_do_( output_variator_value, ">:" )
 				on_( '.' )	command_do_( set_results_to_nil, ">: %[_]." )

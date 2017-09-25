@@ -62,7 +62,7 @@ io_close( _context *context )
 	io_write		- called from output()
 ---------------------------------------------------------------------------*/
 int
-io_write( _context *context, OutputType type, const char *format, va_list ap )
+io_write( _context *context, OutputContentsType type, const char *format, va_list ap )
 {
 	switch ( type ) {
 	case Text:
@@ -70,6 +70,8 @@ io_write( _context *context, OutputType type, const char *format, va_list ap )
 	default:
 		return 0;	// DO_LATER: Error, Warning etc.
 	}
+
+	OutputVA *output = (OutputVA *) context->output.stack->ptr;
 
 	char *str = NULL;
 	vasprintf( &str, format, ap );
@@ -91,8 +93,8 @@ io_write( _context *context, OutputType type, const char *format, va_list ap )
 		// flush previous packet
 		// ---------------------
 
-		write( context->io.client, &size, sizeof(size) );
-		write( context->io.client, buffer, size );
+		write( output->socket, &size, sizeof(size) );
+		write( output->socket, buffer, size );
 
 		// start new packet
 		// ----------------
@@ -109,8 +111,8 @@ io_write( _context *context, OutputType type, const char *format, va_list ap )
 	{
 		memcpy( buffer, data, n );
 		buffer[ n++ ] = (char) 0;
-		write( context->io.client, &n, sizeof(n) );
-		write( context->io.client, buffer, n-- );
+		write( output->socket, &n, sizeof(n) );
+		write( output->socket, buffer, n-- );
 	}
 
 	// expand latest packet from null-terminating character
@@ -125,18 +127,20 @@ io_write( _context *context, OutputType type, const char *format, va_list ap )
 }
 
 /*---------------------------------------------------------------------------
-	io_flush		- called from io_read()
+	io_flush		- called from pop_output()
 ---------------------------------------------------------------------------*/
-static int
+int
 io_flush( _context *context )
 {
+	OutputVA *output = (OutputVA *) context->output.stack->ptr;
+
 	// flush previous packet
 	// ---------------------
 
 	int size = context->io.buffer.size;
 	if ( size ) {
-		write( context->io.client, &size, sizeof(size) );
-		write( context->io.client, context->io.buffer.ptr[ 1 ], size );
+		write( output->socket, &size, sizeof(size) );
+		write( output->socket, context->io.buffer.ptr[ 1 ], size );
 		context->io.buffer.size = 0;
 		size = 0;
 	}
@@ -144,7 +148,7 @@ io_flush( _context *context )
 	// send closing packet
 	// -------------------
 
-	write( context->io.client, &size, sizeof( size ));
+	write( output->socket, &size, sizeof( size ));
 
 	return 0;
 }
@@ -169,7 +173,7 @@ io_save_changes( _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	io_notify_changes	- called from io_read()
+	io_notify_changes	- called from io_scan()
 ---------------------------------------------------------------------------*/
 static void
 io_notify_changes( _context *context )
@@ -185,11 +189,11 @@ io_notify_changes( _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	io_read		- called from read_command()
+	io_scan		- called from read_command()
 ---------------------------------------------------------------------------*/
 #define SUP( a, b ) ((a)>(b)?(a):(b))
 int
-io_read( char *state, int event, char **next_state, _context *context )
+io_scan( char *state, int event, char **next_state, _context *context )
 {
 	fd_set fds; int nfds = 1;
 	struct timeval timeout;
@@ -201,7 +205,7 @@ io_read( char *state, int event, char **next_state, _context *context )
 	{
 		FD_ZERO( &fds );
 		FD_SET( STDIN_FILENO, &fds );
-#if 0
+#ifdef DO_LATER
 		FD_SET( context->io.broker, &fds );
 #endif
 		FD_SET( context->io.query, &fds );
@@ -232,7 +236,7 @@ io_read( char *state, int event, char **next_state, _context *context )
 		
 		// if internal work to do or external change notifications
 		// -------------------------------------------------------
-#if 0
+#ifdef DO_LATER
 		if ( FD_ISSET( context->io.broker, &fds ) ) {
 			read and add inputs to frame log
 			context->frame.backlog = 3;
@@ -264,20 +268,15 @@ io_read( char *state, int event, char **next_state, _context *context )
 	
 				// accept connection
 				client_socket_fd = accept( context->io.query, (struct sockaddr *) &client_name, &client_name_len );
-				context->io.client = client_socket_fd;
+				push_output( NULL, &client_socket_fd, ClientOutput, context );
 
 				// read & execute command
 				push( base, 0, NULL, context );
-				push_input( NULL, NULL, ClientInput, context );
+				push_input( NULL, &client_socket_fd, ClientInput, context );
 				int event = read_command( base, 0, &same, context );
 				pop( base, 0, NULL, context );
 	
-				// flush results
-				io_flush( context );
-
-				// close connection
-				close( client_socket_fd );
-				context->io.client = 0;
+				pop_output( context );
 			}
 		}
 		else input_ready = 1;

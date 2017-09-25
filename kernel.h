@@ -41,13 +41,19 @@ typedef enum {
 InputType;
 
 typedef enum {
+	ClientOutput = 1,
+	PeerOutput
+}
+OutputType;
+
+typedef enum {
 	Text = 1,
 	Error,
 	Warning,
 	Info,
 	Debug
 }
-OutputType;
+OutputContentsType;
 
 typedef enum {
 	OffRecordMode,	// default: do not record input
@@ -101,8 +107,8 @@ typedef enum {
 OccurrenceType;
 
 typedef enum {
-	AssignmentSet,
-	AssignmentAdd
+	AssignSet,
+	AssignAdd
 }
 AssignmentMode;
 
@@ -218,11 +224,10 @@ typedef struct {
 }
 Narrative;
 
-// Input
+// Input & Output
 // --------------------------------------------------
 
 typedef struct {
-	IdentifierType type;
 	listItem *list;
 	char *ptr;
 }
@@ -230,19 +235,27 @@ IdentifierVA;
 
 typedef struct {
 	int level;
-	InputType type;
+	InputType mode;
 	struct {
 		unsigned int pop : 1;
 	}
-	mode;
+	state;
 	union {
 		FILE *file;
 		char *string;
 	} ptr;
+	int socket;
 	char *position;
 	int remainder;
 }
-StreamVA;
+InputVA;
+
+typedef struct {
+	int level;
+	int mode;
+	int socket;
+}
+OutputVA;
 
 // Variables
 // --------------------------------------------------
@@ -382,18 +395,24 @@ typedef struct {
 		int backlog;
 	} frame;
 	struct {
-		listItem *stack;
+		listItem *stack;	// current InputVA
 		registryEntry *stream;
-		registryEntry *string;
 		listItem *instruction;
-		int event;
+		int event, buffer;
 	} input;
+	struct {
+		listItem *stack;	// current OutputVA
+		struct {
+			char *session;
+			char *entity;
+		} target;
+	} output;
 	struct {
 		unsigned int flush_input;
 		unsigned int flush_output;
 	} error;
 	struct {
-		int query, broker, client;	// sockets
+		int query, broker;	// sockets
 		struct {
 			int current;
 			listItem *instantiated[ 3 ];

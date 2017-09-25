@@ -144,10 +144,6 @@ variable_reset( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
-		return output( Error, "variable names cannot be in \"quotes\"" );
-	}
-
 	// fetch identified variable in current scope
 	// ------------------------------------------
 
@@ -214,9 +210,6 @@ assign_results( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	output( Debug, "assign_results: %s : expression-results", context->identifier.id[ 0 ].ptr );
 #endif
-	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
-		return output( Error, "variable names cannot be in \"quotes\"" );
-	}
 	if ( context->expression.results == NULL ) {
 		return output( Error, "cannot set variable to (null) results");
 	}
@@ -229,32 +222,32 @@ assign_results( char *state, int event, char **next_state, _context *context )
 	if ( created ) {
 		context->identifier.id[ 0 ].ptr = NULL;
 	}
-	else if ( context->assignment.mode == AssignmentAdd ) {
-		switch ( variable->type ) {
-			case EntityVariable:
-				if ( context->expression.mode == ReadMode )
+	else switch ( context->assignment.mode ) {
+		case AssignAdd:
+			switch ( variable->type ) {
+				case EntityVariable:
+					if ( context->expression.mode == ReadMode )
+						goto ERROR;
+					break;
+				case LiteralVariable:
+					if ( context->expression.mode != ReadMode )
+						goto ERROR;
+					break;
+				default:
 					goto ERROR;
-				break;
-			case LiteralVariable:
-				if ( context->expression.mode != ReadMode )
-					goto ERROR;
-				break;
-			default:
-				goto ERROR;
-		}
-		// add results to the variable's value - NOTE: will reverse results order
-		listItem *dst = variable->data.value;
-		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
-			dst->next = i;
-			variable->data.value = dst;
-		}
-		context->expression.results = NULL;
-		return 0;
-	}
-	else {
-		freeVariableValue( variable );
-		free( context->identifier.id[ 0 ].ptr );
-		context->identifier.id[ 0 ].ptr = NULL;
+			}
+			// add results to the variable's value - NOTE: will reverse results order
+			listItem *dst = variable->data.value;
+			for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
+				dst->next = i;
+				variable->data.value = dst;
+			}
+			context->expression.results = NULL;
+			return 0;
+		default:
+			freeVariableValue( variable );
+			free( context->identifier.id[ 0 ].ptr );
+			context->identifier.id[ 0 ].ptr = NULL;
 	}
 
 	variable->type = ( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable;
@@ -281,9 +274,6 @@ assign_va( char *state, int event, char **next_state, _context *context )
 #endif
 	if ( context->expression.mode == ReadMode ) {
 		translateFromLiteral( &context->expression.results, 3, context );
-	}
-	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
-		return output( Error, "variable names cannot be in \"quotes\"" );
 	}
 	if ( context->expression.results == NULL ) {
 		return output( Error, "va assignment missing target entity" );
@@ -332,9 +322,6 @@ assign_narrative( char *state, int event, char **next_state, _context *context )
 #endif
 	if ( context->expression.mode == ReadMode ) {
 		translateFromLiteral( &context->expression.results, 3, context );
-	}
-	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
-		return output( Error, "variable names cannot be in \"quotes\"" );
 	}
 
 	if ( context->identifier.id[ 1 ].ptr == NULL ) {
@@ -442,9 +429,6 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	Expression *expression = context->expression.ptr;
 	if ( expression == NULL ) {
 		return output( Error, "cannot assign variable to (null) expression" );
-	}
-	if ( context->identifier.id[ 0 ].type != DefaultIdentifier ) {
-		return output( Error, "variable names cannot be in \"quotes\"" );
 	}
 
 #ifdef DEBUG

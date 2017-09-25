@@ -52,8 +52,8 @@ flush_input( char *state, int event, char **next_state, _context *context )
 	int do_flush = context_check( FreezeMode, 0, 0 ) || context->error.flush_input;
 
 	if ( do_flush && ( context->input.stack != NULL ) ) {
-		StreamVA *input = (StreamVA *) context->input.stack->ptr;
-		switch ( input->type ) {
+		InputVA *input = (InputVA *) context->input.stack->ptr;
+		switch ( input->mode ) {
 		case InstructionBlock:
 		case InstructionOne:
 		case LastInstruction:
@@ -101,7 +101,7 @@ void
 set_instruction( listItem *instruction, _context *context )
 {
 	context->input.instruction = instruction;
-	StreamVA *input = context->input.stack->ptr;
+	InputVA *input = context->input.stack->ptr;
 	input->ptr.string = instruction->ptr;
 	input->position = NULL;
 }
@@ -112,7 +112,7 @@ set_instruction( listItem *instruction, _context *context )
 int
 push_input( char *identifier, void *src, InputType type, _context *context )
 {
-	StreamVA *input;
+	InputVA *input;
 #ifdef DEBUG
 	output( Debug, "push_input: \"%s\"", identifier );
 #endif
@@ -132,9 +132,9 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	}
 
 	// create and register new active stream
-	input = (StreamVA *) calloc( 1, sizeof(StreamVA) );
+	input = (InputVA *) calloc( 1, sizeof(InputVA) );
 	input->level = context->control.level;
-	input->type = type;
+	input->mode = type;
 
 	switch ( type ) {
 	case HCNFileInput:
@@ -153,12 +153,13 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		registerByName( &context->input.stream, identifier, input );
 		break;
 	case ClientInput:
+		input->socket = *(int *) src;
 		input->position = NULL;
 		input->ptr.string = context->io.buffer.ptr[ 0 ];
 		input->ptr.string[ 0 ] = (char) 0;
 		input->remainder = 0;
 		int length;
-		read( context->io.client, &length, sizeof(length) );
+		read( input->socket, &length, sizeof(length) );
 		if ( !length ) {
 			break;
 		} else if ( length > IO_BUFFER_MAX_SIZE ) {
@@ -167,7 +168,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 			input->ptr.string[ n ] = (char) 0;
 			length = n;
 		}
-		read( context->io.client, input->ptr.string, length );
+		read( input->socket, input->ptr.string, length );
 		break;
 	case InstructionBlock:
 	case InstructionOne:
@@ -205,8 +206,8 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	// if we were in a for loop, reset control mode to record subsequent
 	// instructions from stream
 	if ( context->input.stack->next != NULL ) {
-		input = (StreamVA *) context->input.stack->next->ptr;
-		if ( input->type == LastInstruction ) {
+		input = (InputVA *) context->input.stack->next->ptr;
+		if ( input->mode == LastInstruction ) {
 			set_control_mode( InstructionMode, 0, context );
 		}
 	}
@@ -222,7 +223,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 int
 pop_input( char *state, int event, char **next_state, _context *context )
 {
-	StreamVA *input = (StreamVA *) context->input.stack->ptr;
+	InputVA *input = (InputVA *) context->input.stack->ptr;
 	int delta = context->control.level - input->level;
 	if ( delta > 0 ) {
 		event = output( Error, "reached premature EOF - restoring original stack level" );
@@ -234,12 +235,12 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	popListItem( &context->input.stack );
 
 	if ( context->input.stack == NULL ) {
-		if ( !context->io.client ) {
+		if ( context->output.stack == NULL ) {
 			context->control.prompt = context->control.terminal;
 		}
 	} else {
-		StreamVA *input = (StreamVA *) context->input.stack->ptr;
-		if ( input->type == LastInstruction ) {
+		InputVA *input = (InputVA *) context->input.stack->ptr;
+		if ( input->mode == LastInstruction ) {
 			set_control_mode( ExecutionMode, 0, context );
 		}
 	}
@@ -258,7 +259,7 @@ set_input_mode( RecordMode mode, int event, _context *context )
 		{
 			// remove the last event from the record
 			popListItem( &context->record.string.list );
-			string_finish( &context->record.string );
+			string_finish( &context->record.string, 1 );
 		}
 		context->record.mode = mode;
 		break;
@@ -280,6 +281,45 @@ set_input_mode( RecordMode mode, int event, _context *context )
 	input
 ---------------------------------------------------------------------------*/
 int
+skip_comment( int event, int *comment_on, int *backslash, _context *context )
+{
+	if ( context->input.buffer ) {
+		context->input.buffer = 0;
+	}
+	else if ( event == '\n' ) {
+		// overrules everything, backslash and all
+		/*
+		// not needed because these are local,
+		// but keep this for clarity
+		*comment_on = 0;
+		*backslash = 0;
+		*/
+		context->control.no_comment = 0;
+	}
+	else if ( *comment_on ) {
+		// ignore everything until '\n'
+		event = 0;
+	}
+	else if ( *backslash )
+	{
+		// ignore '#' and '\' if backslashed
+		context->input.buffer = event;
+		event = '\\';
+		*backslash = 0;
+	}
+	else if ( event == '\\' )
+	{
+		*backslash = 1;
+		event = 0;
+	}
+	else if (( event == '#' ) && !context->control.no_comment ) {
+		*comment_on = 1;
+		event = 0;
+	}
+	return event;
+}
+
+int
 input( char *state, int event, char **next_state, _context *context )
 {
 	if ( event != 0 ) {
@@ -287,9 +327,13 @@ input( char *state, int event, char **next_state, _context *context )
 	}
 
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	int comment_on = 0;
+	int comment_on = 0, backslash = 0;
 	do {
-		if ( context->input.stack == NULL )
+		if ( context->input.buffer )
+		{
+			event = context->input.buffer;
+		}
+		else if ( context->input.stack == NULL )
 		{
 			if ( !strcmp( state, base ) ) prompt( context );
 			read( STDIN_FILENO, &event, 1 );
@@ -297,9 +341,9 @@ input( char *state, int event, char **next_state, _context *context )
 		}
 		else
 		{
-			StreamVA *input = (StreamVA *) context->input.stack->ptr;
+			InputVA *input = (InputVA *) context->input.stack->ptr;
 			int do_pop = 1;
-			if ( !input->mode.pop ) switch ( input->type ) {
+			if ( !input->state.pop ) switch ( input->mode ) {
 			case HCNFileInput:
 				event = hcn_getc( input->ptr.file, context );
 				do_pop = ( event == EOF );
@@ -317,7 +361,7 @@ input( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 					output( Debug, "input: reading from \"%s\"", (char *) input->position );
 #endif
-					switch ( input->type ) {
+					switch ( input->mode ) {
 					case InstructionBlock:
 						if ( !context->narrative.mode.output ) break;
 						for ( int i=0; i<=context->control.level; i++ )
@@ -338,7 +382,7 @@ input( char *state, int event, char **next_state, _context *context )
 			}
 			if ( do_pop ) {
 				event = 0;
-				switch ( input->type ) {
+				switch ( input->mode ) {
 				case HCNFileInput:
 					fclose ( input->ptr.file );
 					deregisterByValue( &context->input.stream, input );
@@ -352,7 +396,7 @@ input( char *state, int event, char **next_state, _context *context )
 				case ClientInput:
 					; int length = input->remainder;
 					if ( !length ) {
-						read( context->io.client, &length, sizeof(length) );
+						read( input->socket, &length, sizeof(length) );
 						if ( !length ) break;	// EOF
 					}
 					do_pop = 0;
@@ -364,7 +408,7 @@ input( char *state, int event, char **next_state, _context *context )
 					} else {
 						input->remainder = 0;
 					}
-					read( context->io.client, input->ptr.string, length );
+					read( input->socket, input->ptr.string, length );
 					break;
 				case InstructionBlock:
 					context->input.instruction = context->input.instruction->next;
@@ -388,25 +432,14 @@ input( char *state, int event, char **next_state, _context *context )
 				}
 
 				if ( do_pop ) {
-					input->mode.pop = 0;
+					input->state.pop = 0;
 					event = pop_input( state, event, next_state, context );
-					if ( input->type == ClientInput ) return 0;
+					if ( input->mode == ClientInput ) return 0;
 				}
 			}
 		}
+		event = skip_comment( event, &comment_on, &backslash, context );
 
-		if ( !context->control.no_comment ) {
-			if ( event == '#' ) {
-				comment_on = 1;
-				event = 0;
-			} else if ( event == '\n' ) {
-				comment_on = 0;
-			} else if ( comment_on ) {
-				event = 0;
-			}
-		} else if ( event == '\n' ) {
-			context->control.no_comment = 0;
-		}
 	}
 	while ( event == 0 );
 
@@ -423,7 +456,7 @@ input( char *state, int event, char **next_state, _context *context )
 			string_append( &context->record.string, event );
 		}
 		if ( event == '\n' ) {
-			char *string = string_finish( &context->record.string );
+			char *string = string_finish( &context->record.string, 1 );
 			if ( strcmp((char *) context->record.string.ptr, "\n" ) ) {
 				addItem( &context->record.instructions, string );
 			} else {
@@ -476,7 +509,7 @@ identifier_append( char *state, int event, char **next_state, _context *context 
 static int
 identifier_finish( char *state, int event, char **next_state, _context *context )
 {
-	string_finish( &context->identifier.id[ context->identifier.current ] );
+	string_finish( &context->identifier.id[ context->identifier.current ], 0 );
 	return event;
 }
 
@@ -493,21 +526,53 @@ read_0( char *state, int event, char **next_state, _context *context )
 		event = input( state, event, NULL, context );
 		bgn_
 		in_( base ) bgn_
-			on_( '\"' )	read_do_( identifier_start, "string" )
+			on_( '\\' )	read_do_( nop, "\\" )
+			on_( '\"' )	read_do_( nop, "\"" )
 			on_separator	read_do_( error, "" )
 			on_other	read_do_( identifier_start, "identifier" )
 			end
-		in_( "string" ) bgn_
-			on_( '\"' )	read_do_( identifier_append, "string_" )
-			on_other	read_do_( identifier_append, same )
-			end
-		in_( "string_" ) bgn_
-			on_any		read_do_( identifier_finish, "" )
-			end
+			in_( "\\" ) bgn_
+				on_any	read_do_( identifier_start, "identifier" )
+				end
+			in_( "\"" ) bgn_
+				on_( '\\' )	read_do_( nop, "\"\\" )
+				on_other	read_do_( identifier_start, "\"identifier" )
+				end
+				in_( "\"\\" ) bgn_
+					on_( 't' )	event = '\t';
+							read_do_( identifier_start, "\"identifier" )
+					on_( 'n' )	event = '\n';
+							read_do_( identifier_start, "\"identifier" )
+					on_other	read_do_( identifier_start, "\"identifier" )
+					end
+				in_( "\"identifier" ) bgn_
+					on_( '\\' )	read_do_( nop, "\"identifier\\" )
+					on_( '\"' )	read_do_( nop, "\"identifier\"" )
+					on_other	read_do_( identifier_append, same )
+					end
+					in_( "\"identifier\\" ) bgn_
+						on_( 't' )	event = '\t';
+								read_do_( identifier_append, "\"identifier" )
+						on_( 'n' )	event = '\n';
+								read_do_( identifier_append, "\"identifier" )
+						on_other	read_do_( identifier_append, "\"identifier" )
+						end
+					in_( "\"identifier\"" ) bgn_
+						on_any read_do_( identifier_finish, "" )
+						end
 		in_( "identifier" ) bgn_
+			on_( '\\' )	read_do_( nop, "identifier\\" )
+			on_( '\"' )	read_do_( identifier_finish, "" )
 			on_separator	read_do_( identifier_finish, "" )
 			on_other	read_do_( identifier_append, same )
 			end
+			in_( "identifier\\" ) bgn_
+				on_( 't' )	event = '\t';
+						read_do_( identifier_append, "identifier" )
+				on_( 'n' )	event = '\n';
+						read_do_( identifier_append, "identifier" )
+				on_other	read_do_( identifier_append, "identifier" )
+				end
 		end
 	}
 	while ( strcmp( state, "" ) );

@@ -1,23 +1,25 @@
 
-	>: 1. creating & assigning narrative to variable
+>:1. creating & assigning narrative to variable
+>:
 	: variable : !! toto()
 		on init do exit
 		/
 	!! this-is->that
 	!! that-is->this
-	>:
-	>: 2. assigning $( narratives ) from variable:
+>:
+>:2. assigning $( narratives ) from variable:
 	: %[ this-is->that ].$( narratives ) : %variable
-	>:this-is->that has the following narratives:
-	>:%[ this-is->that ].$( narratives )
-	>:%[ this-is->that ].toto()
-	>:
-	>: 3. assigning $( narrative ) directly:
+>:
+>:   this-is->that has the following narratives:
+>:   %[ this-is->that ].$( narratives )
+>:   %[ this-is->that ].toto()
+>:
+>:3. assigning $( narrative ) directly:
 	: %[ that-is->this ].$( narratives ) : toto()
-	>:that-is->this has the following narratives:
-	>:%[ that-is->this ].$( narratives )
-	>:%[ that-is->this ].toto()
-	>:
-	>: 4. assigning existing narrative to variable:
+>:   that-is->this has the following narratives:
+>:   %[ that-is->this ].$( narratives )
+>:   %[ that-is->this ].toto()
+>:
+>:4. assigning existing narrative to variable:
 	: narrative : %[ that-is->this ].toto()
-	>: %\narrative	%narrative
+>:   %\narrative	%narrative

@@ -26,6 +26,6 @@
 >:     result(s)        %[ %variable ]
 : variable : [ [ [ ?:a-is->b ] ]-c->d ]
 >:3.2. expression       %variable
->:     result(s)        %[ %variable ]
+>:     result(s)        %[ %variable ](nothing expected)
 >:
 

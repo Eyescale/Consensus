@@ -176,7 +176,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	command narrative actions
 ---------------------------------------------------------------------------*/
 int
-overwrite_narrative( Entity *e, _context *context )
+override_narrative( Entity *e, _context *context )
 {
 	char *name = context->identifier.id[ 1 ].ptr;
 
@@ -187,40 +187,35 @@ overwrite_narrative( Entity *e, _context *context )
 	// if yes, then is that narrative already active?
 	else if ( lookupByAddress( n->instances, e ) != NULL )
 	{
-		if ( e == CN.nil ) {
-			fprintf( stderr, "consensus> Warning: narrative '%s()' is already active - "
-				"cannot overwrite\n", name );
-		} else {
-			fprintf( stderr, "consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
-			fprintf( stderr, ".%s()' is already active - cannot overwrite\n", name );
-		}
+		fprintf( stderr, "consensus> Warning: narrative '" );
+		output_narrative_name( e, name );
+		fprintf( stderr, "' is already active - cannot override\n" );
 		return 0;
 	}
 	else	// let's talk...
 	{
-		int overwrite = 0;
-		if ( e == CN.nil ) {
-			fprintf( stderr, "consensus> Warning: narrative '%s()' already exists. ", name );
-		} else {
-			fprintf( stderr, "Consensus> Warning: narrative %%'" ); output_name( e, NULL, 0 );
-			fprintf( stderr, ".%s()' already exists. ", name );
-		}
+		int override = 0;
+
+		fprintf( stderr, "consensus> Warning: narrative '" );
+		output_narrative_name( e, name );
+		fprintf( stderr, "' already exists. " );
+
 		do {
 			fprintf( stderr, "Overwrite? (y/n)_ " );
-			overwrite = getchar();
-			switch ( overwrite ) {
+			override = getchar();
+			switch ( override ) {
 			case 'y':
 			case 'n':
 				if ( getchar() == '\n' )
 					break;
 			default:
-				overwrite = 0;
+				override = 0;
 				while ( getchar() != '\n' );
 				break;
 			}
 		}
-		while ( !overwrite );
-		if ( overwrite == 'n' )
+		while ( !override );
+		if ( override == 'n' )
 			return 0;
 
 		removeNarrative( e, n );
@@ -239,7 +234,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		; listItem *last_i = NULL, *next_i;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
 			next_i = i->next;
-			if ( !overwrite_narrative(( Entity *) i->ptr, context ) )
+			if ( !override_narrative(( Entity *) i->ptr, context ) )
 			{
 				clipListItem( &context->expression.results, i, last_i, next_i );
 			}
@@ -380,10 +375,9 @@ input_command( char *state, int event, char **next_state, _context *context )
 	case ExecutionMode:
 		break;
 	}
-	if ( context->identifier.id[ 0 ].type != StringIdentifier ) {
-		return output( Error, "expected argument in \"quotes\"" );
-	}
-	char *identifier = string_extract( context->identifier.id[ 0 ].ptr );
+	char *identifier = context->identifier.id[ 0 ].ptr;
+	context->identifier.id[ 0 ].ptr = NULL;
+
 	return push_input( identifier, NULL, PipeInput, context );
 }
 
@@ -394,8 +388,34 @@ int
 set_assignment_mode( char *state, int event, char **next_state, _context *context )
 {
 	bgn_
-	in_( ">_" )	context->assignment.mode = AssignmentAdd;
-	in_other	context->assignment.mode = AssignmentSet;
+	in_( "> identifier" )	context->assignment.mode = AssignAdd;
+	in_other	context->assignment.mode = AssignSet;
 	end
+
 	return 0;
 }
+
+int
+set_output( char *state, int event, char **next_state, _context *context )
+{
+	if ( !strcmp( state, ">< recipient >" ) ) {
+	} else if ( !strcmp( state, "> .." ) ) {
+	} else {
+		return output( Debug, "set_output: target unknown" );
+	}
+
+	return 0;
+}
+
+int
+read_address( char *state, int event, char **next_state, _context *context )
+/*
+	address should be in the form "session/entity" or just "session"
+	for now we just use the target recipient's pid
+*/
+{
+	do_( read_0, same );
+	free( context->output.target.session );
+	return string_assign( &context->output.target.session, 0, context );
+}
+

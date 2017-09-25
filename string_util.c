@@ -54,8 +54,6 @@ is_separator( int event )
 int
 string_start( IdentifierVA *string, int event )
 {
-	string->type = ( event == '\"' ) ? StringIdentifier : DefaultIdentifier;
-
 #ifdef DEBUG_2
 	output( Debug, "string_start: '%c'", (char) event );
 #endif
@@ -101,52 +99,59 @@ string_append( IdentifierVA *string, int event )
 	string_finish
 ---------------------------------------------------------------------------*/
 char *
-string_finish( IdentifierVA *string )
+string_finish( IdentifierVA *string, int cleanup )
 {
 #ifdef DEBUG_2
 	output( Debug, "string_finish: '%c'", (char) event );
 #endif
 	listItem **list = &string->list;
-	listItem *i, *next_i, *backup = NULL;
+	listItem *i, *next_i;
 	int count = 0;
 
 	// remove trailing white space
-	i = *list;
-	if ((char) i->ptr == '\n' ) {
-		backup = i;
-		*list = i->next;
-	}	
-	for ( i = *list; i!=NULL; i=next_i ) {
-		switch ((char) i->ptr) {
-		case ' ':
-		case '\t':
-			next_i = i->next;
-			freeItem( i );
-			*list = next_i;
-			break;
-		default:
-			next_i = NULL;
+	if ( cleanup )
+	{
+		listItem *backup = NULL;
+		i = *list;
+		if ((char) i->ptr == '\n' ) {
+			backup = i;
+			*list = i->next;
+		}	
+		for ( i = *list; i!=NULL; i=next_i ) {
+			switch ((char) i->ptr) {
+			case ' ':
+			case '\t':
+				next_i = i->next;
+				freeItem( i );
+				*list = next_i;
+				break;
+			default:
+				next_i = NULL;
+			}
 		}
-	}
-	if ( backup ) {
-		backup->next = *list;
-		*list = backup;
+		if ( backup ) {
+			backup->next = *list;
+			*list = backup;
+		}
 	}
 
 	count = reorderListItem( list );
 
 	// remove leading white space
-	for ( i = *list; i!=NULL; i=next_i ) {
-		switch ((char) i->ptr) {
-		case ' ':
-		case '\t':
-			count--;
-			next_i = i->next;
-			freeItem( i );
-			*list = next_i;
-			break;
-		default:
-			next_i = NULL;
+	if ( cleanup )
+	{
+		for ( i = *list; i!=NULL; i=next_i ) {
+			switch ((char) i->ptr) {
+			case ' ':
+			case '\t':
+				count--;
+				next_i = i->next;
+				freeItem( i );
+				*list = next_i;
+				break;
+			default:
+				next_i = NULL;
+			}
 		}
 	}
 
@@ -159,6 +164,17 @@ string_finish( IdentifierVA *string )
 
 	freeListItem( list );
 	return string->ptr;
+}
+
+/*---------------------------------------------------------------------------
+	string_assign
+---------------------------------------------------------------------------*/
+int
+string_assign( char **target, int id, _context *context )
+{
+	*target = context->identifier.id[ id ].ptr;
+	context->identifier.id[ id ].ptr = NULL;
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -242,7 +258,7 @@ string_replace( char *expression, char *identifier, char *value )
 		for ( ; pos<n; pos++ ) {
 			string_append( &result, *ptr1++ );
 		}
-		return string_finish( &result );
+		return string_finish( &result, 0 );
 	}
 	else return expression;
 }

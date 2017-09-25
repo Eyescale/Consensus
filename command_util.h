@@ -15,6 +15,8 @@ _action read_expression;
 _action read_va;
 _action input_command;
 _action set_assignment_mode;
+_action set_output;
+_action read_address;
 
 /*---------------------------------------------------------------------------
 	utilities	- public

@@ -155,9 +155,9 @@ pop( char *state, int event, char **next_state, _context *context )
 		}
 	}
 	if ( context->input.stack != NULL ) {
-		StreamVA *input = (StreamVA *) context->input.stack->ptr;
+		InputVA *input = (InputVA *) context->input.stack->ptr;
 		if ( context->control.level == input->level ) {
-			input->mode.pop = 1;
+			input->state.pop = 1;
 			return output( Error, "attempt to pop control beyond authorized level - "
 				"closing stream..." );
 		}
