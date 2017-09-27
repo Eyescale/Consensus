@@ -211,14 +211,14 @@ io_scan( char *state, int event, char **next_state, _context *context )
 		FD_SET( context->io.query, &fds );
 		nfds = SUP( STDIN_FILENO, SUP( context->io.query, context->io.broker )) + 1;
 
-		// call select() - if not already working
+		// call select() - if not already at work
 		// --------------------------------------
 
 		if ( !is_frame_log_empty( context ) )
 			context->frame.backlog = 3;
 
 		if ( context->input.stack != NULL )
-			;
+			; // already at work
 		else if ( context->frame.backlog )
 		{
 			bzero( &timeout, sizeof( struct timeval ) );
@@ -267,7 +267,12 @@ io_scan( char *state, int event, char **next_state, _context *context )
 				int client_socket_fd;
 	
 				// accept connection
-				client_socket_fd = accept( context->io.query, (struct sockaddr *) &client_name, &client_name_len );
+				client_socket_fd = accept( context->io.query,
+					(struct sockaddr *) &client_name, &client_name_len );
+#if 1
+				// read { source, target, message }
+				// log notification - will be processed in systemFrame()
+#else
 				push_output( NULL, &client_socket_fd, ClientOutput, context );
 
 				// read & execute command
@@ -277,6 +282,7 @@ io_scan( char *state, int event, char **next_state, _context *context )
 				pop( base, 0, NULL, context );
 	
 				pop_output( context );
+#endif
 			}
 		}
 		else input_ready = 1;

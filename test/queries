@@ -1,17 +1,20 @@
 !~ .
-!! titi-is->toto
-!! titi-->toto
-!! titi-has->birthday
 >: 1. setup
 >:    !! titi-is->toto
 >:    !! titi-->toto
 >:    !! titi-has->birthday
+
+!! titi-is->toto
+!! titi-->toto
+!! titi-has->birthday
+
 >:
 >: 2. queries
 >:    titi-.->toto	%[ titi-.->toto ]
 >:    titi-~->toto	%[ titi-~->toto ]
 >:    titi-~is->. 	%[ titi-~is->. ]
 >:    titi-[ ~is:~ ]->.	%[ titi-[ ~is:~ ]->. ]
+>:    !!!:titi		%[ !!!:titi ]
 >:
 >:    .   	%[ . ]
 >:    ~   	%[ ~ ]

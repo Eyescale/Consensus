@@ -137,10 +137,11 @@ typedef struct _Expression {
 			listItem *list;
 		}
 		result;
+		void *super;
 	}
 	sub[ 4 ];
 	struct {
-		int as_sub, mark;
+		int as_sub, as_sup, mark;
 		unsigned int marked : 1;
 		unsigned int output_swap : 1;
 		listItem *list;
@@ -391,6 +392,7 @@ typedef struct {
 				Registry activate;	// { ( narrative, { entity } ) }
 				Registry deactivate;	// { ( narrative, { entity } ) }
 			} narratives;
+			Registry queries;	// { ( source, { message } ) }
 		} log;
 		int backlog;
 	} frame;

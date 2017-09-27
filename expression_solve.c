@@ -509,6 +509,12 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 	if ( CN.context->expression.mode == ReadMode )
 	{
 		ExpressionSub *entity = (ExpressionSub *) candidate->ptr;
+		if ( !test_as_sub( entity, 1, as_sub ) ) {
+#ifdef DEBUG
+			output( Debug, "failed test_as_sub [ %d ]", as_sub );
+#endif
+			return 0;
+		}
 		sub[ 3 ].ptr = entity;
 		sub[ 3 ].active = entity->result.active;
 		for ( int i=0; i<3; i++ ) {
@@ -523,7 +529,7 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 		}
 	} else {
 		Entity *entity = (Entity *) candidate->ptr;
-		if ( !test_as_sub( entity, as_sub ) )
+		if ( !test_as_sub( entity, 0, as_sub ) )
 		{
 #ifdef DEBUG
 			output( Debug, "failed test_as_sub [ %d ]", as_sub );
@@ -656,10 +662,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			expression->result.list = sub[ 0 ].result.list;
 			sub[ 0 ].result.list = NULL;
 		}
-		if ( restore_mode != context->expression.mode ) {
-			restore( expression, restore_mode, restore_results, context );
-		}
-		return ( expression->result.list == NULL ) ? 0 : 1;
+		goto RETURN_RESULTS;
 	}
 
 	// 2. check that we have all the information we need
@@ -673,11 +676,13 @@ solve( Expression *expression, int as_sub, listItem *results )
 		flag_sub[ i ].inactive = sub[ i ].result.inactive;
 		flag_sub[ i ].not = sub[ i ].result.not;
 		flag_sub[ i ].any = sub[ i ].result.any;
-	}
-	for ( int i=0; i<4; i++ ) {
+
 		if ( sub[ i ].result.list != NULL )
 			continue;
+
+		// here we don't have any result for sub i
 		if ( flag_sub[ i ].not ) {
+			// not nothing is anything
 			flag_sub[ i ].not = 0;
 			flag_sub[ i ].any = 1;
 		}
@@ -712,7 +717,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			invert_results( &sub[ count ], sub_count, NULL );
 			flag_sub[ count ].not = 0;
 		}
-		else	// special cases: [ .-.->. : . ] aka. [ ... ], .-.->[ ..? ] etc.
+		else	// special cases: [ .-.->. : . ], [ ... ], .-.->[ ..? ] etc.
 		{
 #ifdef DEBUG
 			output( Debug, "solver: 3.2. special cases - taking all" );
@@ -756,6 +761,11 @@ solve( Expression *expression, int as_sub, listItem *results )
 		CandidateSub c_sub[ 4 ];
 
 		int take = set_candidate_sub( c_sub, as_sub, candidate );
+		if ( flag_sub[ 0 ].any && flag_sub[ 1 ].any && flag_sub[ 2 ].any &&
+		     ( c_sub[ 0 ].ptr == NULL )) // e.g. expression [ ...: a ]
+		{
+			take = 0;
+		}
 		for ( int i=0; take && ( i < 4 ); i++ )
 		{
 			if ( ( flag_sub[ i ].active && !c_sub[ i ].active ) ||
@@ -800,15 +810,19 @@ solve( Expression *expression, int as_sub, listItem *results )
 #ifdef DEBUG
 				output( Debug, "solver: returning" );
 #endif
-				if ( restore_mode != context->expression.mode ) {
-					restore( expression, restore_mode, restore_results, context );
-				}
-				return ( expression->result.list == NULL ) ? 0 : 1;
+				goto RETURN_RESULTS;
 			}
 			candidate = first_candidate( sub_list, flag_sub, expression, results );
 		}
 		while( candidate == NULL );
 	}
+
+RETURN_RESULTS:
+	take_sup( expression );
+	if ( restore_mode != context->expression.mode ) {
+		restore( expression, restore_mode, restore_results, context );
+	}
+	return ( expression->result.list == NULL ) ? 0 : 1;
 }
 
 /*---------------------------------------------------------------------------
@@ -966,6 +980,9 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	freeListItem( &context->expression.results );
 	if ( expression == NULL ) RETURN( 0 );
 
+	// set traversal to ReadMode if filter is Literal Variable
+	// -------------------------------------------------------
+
 	int restore_mode = context->expression.mode;
 	if ( context->expression.filter == NULL ) {
 		if (( restore_mode == ReadMode ) && ( context->expression.stack == NULL )) RETURN( 0 );
@@ -980,13 +997,18 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	    (( context->expression.mode == InstantiateMode ) && !instantiable( expression, context ) ))
 		RETURN( -1 );
 
-	// in case of embedded expressions: check against infinite loop
+	// in case of embedded expressions: ward against infinite recursion
+	// ----------------------------------------------------------------
+
 	for ( listItem *i = context->expression.stack; i!=NULL; i=i->next ) {
 		if ( expression == i->ptr ) {
 			return output( Error, "recursion in expression" );
 		}
 	}
 	addItem( &context->expression.stack, expression );
+
+	// extract general expression results - i.e. as if no question mark
+	// ----------------------------------------------------------------
 
 	int success, do_resolve;
 	setup_results( expression );
@@ -1015,6 +1037,9 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	}
 
 	// invoke resolve() to extract marked results
+	// ------------------------------------------
+
+	// Notat that resolve must be called even in TestMode due to embedded expressions
 
 	int filter_on = ( context->expression.mode == ReadMode );
 #ifdef DEBUG
@@ -1023,7 +1048,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	if ( filter_on && ( success > 0 )) {
 		success = rebuild_filtered_results( &expression->result.list, context );
 	}
-	// resolve must be called even in TestMode due to embedded expressions
+
 	if ( do_resolve  && ( success > 0 )) {
 		success = resolve( expression );
 		if ( filter_on && ( success <= 0 )) {
@@ -1035,6 +1060,8 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	}
 
 	// pop expression from expression stack
+	// ------------------------------------
+
 	popListItem( &context->expression.stack );
 
 	context->expression.results = expression->result.list;

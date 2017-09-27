@@ -34,12 +34,22 @@ int
 output( OutputContentsType type, const char *format, ... )
 {
 	_context *context = CN.context;
-	int retval = 0;
+	int retval;
 
-	if ( type == Error ) {
+	switch ( type ) {
+	case Error:
 		CN.context->error.flush_input = ( CN.context->input.event != '\n' );
 		retval = -1;
+		break;
+	case Debug:
+		retval = -1;
+		break;
+	default:
+		retval = 0;
 	}
+
+	if ( type == Error ) {
+	} 
 	if ( format == NULL ) {
 		return retval;
 	}
@@ -224,7 +234,7 @@ test_shorty( Expression *expression )
 {
 	ExpressionSub *sub = expression->sub;
 	for ( int i=0; i<3; i++ ) {
-		int j = (i+1)%3, k=(j+1)%3;
+		int j = (i+1)%3, k=(i+2)%3;
 		if ( just_any( expression, i ) && ( just_any( expression, j ) || just_any( expression, k )))
 		{
 			return 1;
@@ -321,6 +331,12 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		output( Text, ( mark & 2 ) ? "?" : "." );
 		output( Text, ( mark & 4 ) ? "?" : "." );
 		return 1;
+	case ExpressionSup:
+		; int as_sup = expression->result.as_sup;
+		output( Text, ( as_sup & 1 ) ? "!" : "." );
+		output( Text, ( as_sup & 2 ) ? "!" : "." );
+		output( Text, ( as_sup & 4 ) ? "!" : "." );
+		return 0;
 	case ExpressionAll:
 		break;
 	}
@@ -333,8 +349,13 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		return 1;
 	}
 
-	// output instance mark
-	mark = output_expression( ExpressionMark, expression, -1, -1 );
+	if ( expression->result.as_sup ) {
+		// output super
+		mark = output_expression( ExpressionSup, expression, -1, -1 );
+	} else {
+		// output instance mark
+		mark = output_expression( ExpressionMark, expression, -1, -1 );
+	}
 
 	// output body in all its various forms...
 	if ( sub[ 0 ].result.none ) {

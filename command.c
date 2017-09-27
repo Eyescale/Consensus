@@ -395,7 +395,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( ' ' )	command_do_( nop, same )
 			on_( '\t' )	command_do_( nop, same )
 			on_( '%' )	command_do_( nop, "!. %" )
-			on_other	command_do_( read_expression, "!. expression" )
+			on_other	command_do_( parse_expression, "!. expression" )
 			end
 			in_( "!. expression" )
 				if ( context->narrative.mode.action.one ) bgn_
@@ -433,7 +433,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 			in_( "!. %" ) bgn_
 				on_( '[' )	command_do_( nop, "!. %[" )
-				on_other	command_do_( read_expression, "!. expression" )
+				on_other	command_do_( parse_expression, "!. expression" )
 				end
 				in_( "!. %[" ) bgn_
 					on_any	command_do_( evaluate_expression, "!. %[_" )
@@ -753,7 +753,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '%' )	command_do_( nop, ": identifier : %" )
 				on_( '\n' )	command_do_( error, base )
 				on_( '!' )	command_do_( nop, ": identifier : !" )
-				on_other	command_do_( read_expression, ": identifier : expression" )
+				on_other	command_do_( parse_expression, ": identifier : expression" )
 				end
 				in_( ": identifier : expression" ) bgn_
 					on_( ' ' )	command_do_( nop, same )
@@ -764,7 +764,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					end
 				in_( ": identifier : %" ) bgn_
 					on_( '[' )	command_do_( nop, ": identifier : %[" )
-					on_other	command_do_( read_expression, ": identifier : expression" )
+					on_other	command_do_( parse_expression, ": identifier : expression" )
 					end
 					in_( ": identifier : %[" ) bgn_
 						on_any	command_do_( evaluate_expression, ": identifier : %[_" )
@@ -798,13 +798,13 @@ read_command( char *state, int event, char **next_state, _context *context )
 										end
 				in_( ": identifier : !" ) bgn_
 					on_( '!' )	command_do_( set_expression_mode, same )
-							command_do_( read_expression, ": identifier : !." )
+							command_do_( parse_expression, ": identifier : !." )
 					on_( '~' )	command_do_( set_expression_mode, same )
-							command_do_( read_expression, ": identifier : !." )
+							command_do_( parse_expression, ": identifier : !." )
 					on_( '*' )	command_do_( set_expression_mode, same )
-							command_do_( read_expression, ": identifier : !." )
+							command_do_( parse_expression, ": identifier : !." )
 					on_( '_' )	command_do_( set_expression_mode, same )
-							command_do_( read_expression, ": identifier : !." )
+							command_do_( parse_expression, ": identifier : !." )
 					on_other	command_do_( error, base )
 					end
 					in_( ": identifier : !." ) bgn_

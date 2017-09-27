@@ -34,6 +34,18 @@ is_frame_log_empty( _context *context )
 	);
 }
 
+/*---------------------------------------------------------------------------
+	reorder_log
+---------------------------------------------------------------------------*/
+int
+reorder_log( _context *context )
+{
+	reorderListItem( &context->frame.log.entities.instantiated );
+	reorderListItem( &context->frame.log.entities.released );
+	reorderListItem( &context->frame.log.entities.activated );
+	reorderListItem( &context->frame.log.entities.deactivated );
+	return 0;
+}
 
 /*---------------------------------------------------------------------------
 	register_results
@@ -379,6 +391,8 @@ execute_narrative_actions( Narrative *instance, _context *context )
 int
 systemFrame( char *state, int e, char **next_state, _context *context )
 {
+	reorder_log( context );	// make fifo
+
 #ifdef DEBUG
 	output( Debug, "entering systemFrame" );
 #endif

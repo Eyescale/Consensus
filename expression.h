@@ -5,7 +5,7 @@
 	expression actions	- public
 ---------------------------------------------------------------------------*/
 
-_action parse_expression;
+_action read_expression;
 
 /*---------------------------------------------------------------------------
 	expression utilities	- public

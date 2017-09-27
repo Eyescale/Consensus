@@ -427,28 +427,57 @@ instantiable( Expression *expression, _context *context )
 	test_as_sub
 ---------------------------------------------------------------------------*/
 int
-test_as_sub( Entity *e, int as_sub )
+test_as_sub( void *eparam, int read_mode, int as_sub )
 {
-	if ( as_sub & 7 )
-	{
-		if ((( as_sub & 1 ) && ( e->as_sub[ 0 ] != NULL )) ||
-		    (( as_sub & 2 ) && ( e->as_sub[ 1 ] != NULL )) ||
-		    (( as_sub & 4 ) && ( e->as_sub[ 2 ] != NULL )))
+	if ( read_mode ) {
+#if 0	// DO_LATER
+		ExpressionSub *e = eparam;
+		if ( e->super == NULL ) return 0;
+		Expression *sup = ((ExpressionSub *) e->super )->e;
+		if ( as_sub & 7 )
 		{
-			return 1;
-		}
-		return 0;
-	}
-	if ( as_sub &  112 )
-	{
-		if ((( as_sub & 16 ) && ( e->as_sub[ 0 ] != NULL )) ||
-		    (( as_sub & 32 ) && ( e->as_sub[ 1 ] != NULL )) ||
-		    (( as_sub & 64 ) && ( e->as_sub[ 2 ] != NULL )))
-		{
+			if ((( as_sub & 1 ) && ( &sup->sub[ 0 ] == e )) ||
+			    (( as_sub & 2 ) && ( &sup->sub[ 1 ] == e )) ||
+			    (( as_sub & 4 ) && ( &sup->sub[ 2 ] == e )))
+			{
+				return 1;
+			}
 			return 0;
 		}
+		if ( as_sub &  112 )
+		{
+			if ((( as_sub & 16 ) && ( &sup->sub[ 0 ] == e )) ||
+			    (( as_sub & 32 ) && ( &sup->sub[ 1 ] == e )) ||
+			    (( as_sub & 64 ) && ( &sup->sub[ 2 ] == e )))
+			{
+				return 0;
+			}
+		}
+#endif	// DO_LATER
+		return 1;
+	} else {
+		Entity *e = eparam;
+		if ( as_sub & 7 )
+		{
+			if ((( as_sub & 1 ) && ( e->as_sub[ 0 ] != NULL )) ||
+			    (( as_sub & 2 ) && ( e->as_sub[ 1 ] != NULL )) ||
+			    (( as_sub & 4 ) && ( e->as_sub[ 2 ] != NULL )))
+			{
+				return 1;
+			}
+			return 0;
+		}
+		if ( as_sub &  112 )
+		{
+			if ((( as_sub & 16 ) && ( e->as_sub[ 0 ] != NULL )) ||
+			    (( as_sub & 32 ) && ( e->as_sub[ 1 ] != NULL )) ||
+			    (( as_sub & 64 ) && ( e->as_sub[ 2 ] != NULL )))
+			{
+				return 0;
+			}
+		}
+		return 1;
 	}
-	return 1;
 }
 
 /*---------------------------------------------------------------------------
@@ -466,6 +495,8 @@ invert_results( ExpressionSub *sub, int as_sub, listItem *results )
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
 			ExpressionSub *e = i->ptr;
+			if ( !test_as_sub( e, 1, as_sub ) )
+				continue;
 			if (( active && !e->result.active ) ||
 			    ( inactive && e->result.active ))
 				continue;
@@ -480,15 +511,13 @@ invert_results( ExpressionSub *sub, int as_sub, listItem *results )
 		{
 			Entity *e = (Entity *) i->ptr;
 
-			if ( !test_as_sub( e, as_sub ) )
+			if ( !test_as_sub( e, 0, as_sub ) )
 				continue;
 			if (( active && !cn_is_active(e) ) ||
 			    ( inactive && cn_is_active(e) ) )
 				continue;
 			if ( lookupItem( source, e ) == NULL )
-			{
 				addItem( &dest, e );
-			}
 		}
 	}
 	freeListItem( &sub->result.list );
@@ -530,6 +559,8 @@ take_all( Expression *expression, int as_sub, listItem *results )
 		for ( listItem *i = results; i!=NULL; i=i->next )
 		{
 			ExpressionSub *s = i->ptr;
+			if ( !test_as_sub( s, 1, as_sub ) )
+				continue;
 			if (( active[ 3 ] && !s->result.active ) ||
 			    ( inactive[ 3 ] && !s->result.inactive ))
 				continue;
@@ -558,7 +589,7 @@ take_all( Expression *expression, int as_sub, listItem *results )
 		for ( listItem *i = all; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
-			if ( !test_as_sub( e, as_sub ) )
+			if ( !test_as_sub( e, 0, as_sub ) )
 				continue;
 			if (( active[ 3 ] && !cn_is_active( e )) ||
 			    ( inactive[ 3 ] && cn_is_active( e )))
@@ -585,6 +616,49 @@ take_all( Expression *expression, int as_sub, listItem *results )
 }
 
 /*---------------------------------------------------------------------------
+	take_sup
+---------------------------------------------------------------------------*/
+void
+take_sup( Expression *expression )
+{
+	int as_sup = expression->result.as_sup;
+	if ( !as_sup ) return;
+
+	listItem *super = NULL;
+
+	if ( CN.context->expression.mode == ReadMode )
+	{
+		for ( listItem *i = expression->result.list; i!=NULL; i=i->next )
+		{
+			ExpressionSub *s = i->ptr;
+			for ( int j=0; j<3; j++ )
+			{
+				if ( !( as_sup & ( 1<< j ) ) )
+					continue;
+
+				addIfNotThere( &super, s->super );
+			}
+		}
+	} else {
+		for ( listItem *i = expression->result.list; i!=NULL; i=i->next )
+		{
+			Entity *e = (Entity *) i->ptr;
+			for ( int j=0; j<3; j++ )
+			{
+				if ( !( as_sup & ( 1<< j ) ) )
+					continue;
+
+				for ( listItem *k = e->as_sub[ j ]; k!=NULL; k=k->next ) {
+					addIfNotThere( &super, (Entity *) k->ptr );
+				}
+			}
+		}
+	}
+	freeListItem( &expression->result.list );
+	expression->result.list = super;
+}
+
+/*---------------------------------------------------------------------------
 	take_sub_results
 ---------------------------------------------------------------------------*/
 void
@@ -600,7 +674,8 @@ take_sub_results( ExpressionSub *sub, int as_sub )
 		{
 			ExpressionSub *e = i->ptr;
 			next_i = i->next;
-			if (( active && !e->result.active ) ||
+			if (( !test_as_sub( e, 1, as_sub ) ) ||
+			    ( active && !e->result.active ) ||
 			    ( inactive && e->result.active ))
 			{
 				clipListItem( list, i, last_i, next_i );
@@ -612,9 +687,9 @@ take_sub_results( ExpressionSub *sub, int as_sub )
 		{
 			Entity *e = i->ptr;
 			next_i = i->next;
-			if ( ( !test_as_sub( e, as_sub ) ) ||
-			     ( active && !cn_is_active( e ) ) ||
-			     ( inactive && cn_is_active( e ) ) )
+			if (( !test_as_sub( e, 0, as_sub ) ) ||
+			    ( active && !cn_is_active( e ) ) ||
+			    ( inactive && cn_is_active( e ) ) )
 			{
 				clipListItem( list, i, last_i, next_i );
 			}
@@ -643,18 +718,15 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 
 	// then we process the results
 	listItem *last_i = NULL, *next_i;
+	int read_mode = ( CN.context->expression.mode == ReadMode );
 	if ( sub0->result.not && sub3->result.not )
 	{
 		listItem *all = ( CN.context->expression.mode == ReadMode ) ?
 			results : ( results == NULL ) ? CN.DB : results;
 		for ( listItem *i = all; i!=NULL; i=i->next )
 		{
-			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
-			{
-				Entity *e = (Entity *) i->ptr;
-				if ( !test_as_sub( e, as_sub ) )
-					continue;
-			}
+			if ( !( as_sub & 8 ) && !test_as_sub( i->ptr, read_mode, as_sub ) )
+				continue;
 
 			if (( lookupItem( *list, i->ptr ) == NULL ) &&
 			    ( lookupItem( sub3->result.list, i->ptr ) == NULL ) )
@@ -674,10 +746,9 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
+			if ( !( as_sub & 8 ) )
 			{
-				Entity *e = (Entity *) i->ptr;
-				if ( !test_as_sub( e, as_sub ) )
+				if ( !test_as_sub( i->ptr, read_mode, as_sub ) )
 				{
 					clipListItem( list, i, last_i, next_i );
 				}
@@ -698,10 +769,9 @@ extract_sub_results( ExpressionSub *sub0, ExpressionSub *sub3, int as_sub, listI
 		for ( listItem *i = *list; i!=NULL; i=next_i )
 		{
 			next_i = i->next;
-			if (( CN.context->expression.mode != ReadMode ) && !( as_sub & 8 ))
+			if ( !( as_sub & 8 ) )
 			{
-				Entity *e = (Entity *) i->ptr;
-				if ( !test_as_sub( e, as_sub ) )
+				if ( !test_as_sub( i->ptr, read_mode, as_sub ) )
 				{
 					clipListItem( list, i, last_i, next_i );
 				}

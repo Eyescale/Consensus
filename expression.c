@@ -72,6 +72,29 @@ set_sub_expression( char *state, _context *context )
 }
 
 static int
+test_super( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->control.mode != ExecutionMode )
+		return 0;
+
+	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+	char *super;
+	switch ( expression->result.as_sup ) {
+		case 0: return 0;
+		case 1: super = "!.."; break;
+		case 2: super = ".!."; break;
+		case 3: super = "!!."; break;
+		case 4: super = "..!"; break;
+		case 5: super = "!.!"; break;
+		case 6: super = ".!!"; break;
+		case 7: super = "!!!"; break;
+		default: return output( Debug, "in test_super" );
+	}
+	return output( Error, "instance is not allowed after super ('%s') in expression", super );
+}
+
+static int
 expression_execute( _action action, char **state, int event, char *next_state, _context *context )
 {
 	int retval = 0;
@@ -123,6 +146,15 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 			if ( retval < 0 ) event = retval;
 			*state = next_state;
 		}
+	}
+	else if ( !strcmp( next_state, "source-medium->target:" ) ) {
+		int retval = test_super( *state, event, &next_state, context );
+		if ( !retval ) {
+			event = action( *state, event, &next_state, context );
+			if ( strcmp( next_state, same ) )
+				*state = next_state;
+		}
+		else event =  retval;
 	}
 	else
 	{
@@ -723,7 +755,6 @@ set_mark( char *state, int event, char **next_state, _context *context )
 
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
-	ExpressionSub *sub = expression->sub;
 
 	bgn_
 	in_( "?" ) 		expression->result.mark = 8;
@@ -764,6 +795,39 @@ set_mark( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	set_super
+---------------------------------------------------------------------------*/
+static int
+set_super( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->control.mode != ExecutionMode )
+		return 0;
+
+	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+
+	bgn_
+	in_( "!." ) bgn_
+		on_( '.' )	expression->result.as_sup = 1;
+		on_( '!' )	expression->result.as_sup = 5;
+		end
+	in_( ".!" ) bgn_
+		on_( '.' )	expression->result.as_sup = 2;
+		on_( '!' )	expression->result.as_sup = 6;
+		end
+	in_( "!!" ) bgn_
+		on_( '.' )	expression->result.as_sup = 3;
+		on_( '!' )	expression->result.as_sup = 7;
+		end
+	in_( ".." ) bgn_
+		on_( '!' )	expression->result.as_sup = 4;
+		end
+	end
+
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
 	read_shorty
 ---------------------------------------------------------------------------*/
 static int
@@ -778,7 +842,29 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 	bgn_
 	in_( base ) bgn_
 		on_( '?' )	expression_do_( nop, "?" )
+		on_( '!' )	expression_do_( nop, "!" )
 		end
+	in_( "!" ) bgn_
+		on_( '!' )	expression_do_( nop, "!!" )
+		on_( '.' )	expression_do_( nop, "!." )
+		on_other	expression_do_( error, "" )
+		end
+		in_( "!!" ) bgn_
+			on_( '!' )	expression_do_( set_super, "!_" )
+			on_( '.' )	expression_do_( set_super, "!_" )
+			on_other	expression_do_( error, "" )
+			end
+		in_( "!." ) bgn_
+			on_( '!' )	expression_do_( set_super, "!_" )
+			on_( '.' )	expression_do_( set_super, "!_" )
+			on_other	expression_do_( error, "" )
+			end
+		in_( "!_" ) bgn_
+			on_( ' ' )	expression_do_( nop, same )
+			on_( '\t' )	expression_do_( nop, same )
+			on_( ':' )	expression_do_( nop, base )
+			on_other	expression_do_( error, "" )
+			end
 	in_( "?" ) bgn_
 		on_( ' ' )	expression_do_( set_mark, "?_" )
 		on_( '\t' )	expression_do_( set_mark, "?_" )
@@ -873,6 +959,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			end
 	in_( "." ) bgn_
 		on_( '.' )	expression_do_( nop, ".." )
+		on_( '!' )	expression_do_( nop, ".!" )
 		on_( '?' )	expression_do_( nop, ".?" )
 		on_( '*' )	expression_do_( set_flag_active, ".*" )
 		on_( '_' )	expression_do_( set_flag_inactive, "._" )
@@ -928,9 +1015,15 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '?' )	expression_do_( set_mark, "?_" )
 			on_other	expression_do_( error, "" )
 			end
+		in_( ".!" ) bgn_
+			on_( '.' )	expression_do_( set_super, "!_" )
+			on_( '!' )	expression_do_( set_super, "!_" )
+			on_other	expression_do_( error, "" )
+			end
 		in_( ".." ) bgn_
 			on_( '.' )	expression_do_( set_shorty, "" )
 			on_( '?' )	expression_do_( set_mark, "?_" )
+			on_( '!' )	expression_do_( set_super, "!_" )
 			on_( '*' )	expression_do_( set_flag_active, "..*" )
 			on_( '_' )	expression_do_( set_flag_inactive, ".._" )
 			on_( '~' )	expression_do_( set_flag_not, "..~" )
@@ -977,7 +1070,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 					end
 		end
 
-		// return control to parse_expression after push or when mark set
+		// return control to read_expression after push or when mark set
 		if (( state == base ) || !strcmp( state, "source-" ) || !strcmp( state, "target<" ) || !strcmp( state, "source-medium->target" ))
 			{ *next_state = state; state = ""; }
 	}
@@ -1063,10 +1156,10 @@ parser_exit( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	parse_expression
+	read_expression
 ---------------------------------------------------------------------------*/
 int
-parse_expression( char *state, int event, char **next_state, _context *context )
+read_expression( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
 	output( Debug, "parser: entering" );
@@ -1082,7 +1175,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "parse_expression: in \"%s\", on '%c'", state, (event==-1)?'E':event );
+	output( Debug, "read_expression: in \"%s\", on '%c'", state, (event==-1)?'E':event );
 #endif
 
 	bgn_
@@ -1107,6 +1200,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 		on_( '.' )	expression_do_( nop, "." )
 		on_( '%' )	expression_do_( nop, "%" )
 		on_( '?' )	expression_do_( read_shorty, base )
+		on_( '!' )	expression_do_( read_shorty, base )
 		on_separator	expression_do_( nothing, pop_state )
 		on_other	expression_do_( read_1, "identifier" )
 		end
@@ -1164,6 +1258,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 			on_( '\n' )	expression_do_( set_source_any, pop_state )
 			on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
 			on_( '?' )	expression_do_( read_shorty, "source-medium->target" )
+			on_( '!' )	expression_do_( read_shorty, "source-medium->target" )
 			on_( '*' )	expression_do_( read_shorty, "source-medium->target" )
 			on_( '_' )	expression_do_( read_shorty, "source-medium->target" )
 			on_( '~' )	expression_do_( read_shorty, "source-medium->target" )
@@ -1656,7 +1751,7 @@ parse_expression( char *state, int event, char **next_state, _context *context )
 	expression_do_( parser_exit, same );
 
 #ifdef DEBUG
-	output( Debug, "exiting parse_expression '%c'", event );
+	output( Debug, "exiting read_expression '%c'", event );
 #endif
 
 	return event;

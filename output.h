@@ -3,6 +3,7 @@
 
 typedef enum {
 	ExpressionAll,
+	ExpressionSup,
 	ExpressionMark,
 	SubAll,
 	SubFlags,

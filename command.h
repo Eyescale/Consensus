@@ -5,8 +5,8 @@
 	command actions		- public
 ---------------------------------------------------------------------------*/
 
-_action read_expression;
 _action read_command;
+_action parse_expression;
 _action push_input_hcn;
 
 /*---------------------------------------------------------------------------

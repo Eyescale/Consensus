@@ -114,7 +114,7 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 		do_( flush_input, same );
 		return event;
 	case InstructionMode:
-		do_( parse_expression, same );
+		do_( read_expression, same );
 		return event;
 	case ExecutionMode:
 		break;
@@ -141,7 +141,7 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 					context->error.flush_output = 1;	// we want to output errors in the text
 	end
 
-	do_( parse_expression, same );
+	do_( read_expression, same );
 	if ( context->expression.mode != ErrorMode ) {
 		Expression *expression = context->expression.ptr;
 		context->expression.mode = EvaluateMode;
@@ -157,7 +157,7 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 }
 
 int
-read_expression( char *state, int event, char **next_state, _context *context )
+parse_expression( char *state, int event, char **next_state, _context *context )
 {
 	if ( context_check( FreezeMode, 0, 0 ) ) {
 		do_( flush_input, same );
@@ -166,7 +166,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 
 	// the mode may be needed by expression_op
 	int restore_mode = context->expression.mode;
-	do_( parse_expression, same );
+	do_( read_expression, same );
 	context->expression.mode = restore_mode;
 
 	return event;

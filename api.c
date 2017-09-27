@@ -133,8 +133,8 @@ cn_va_get_value( Entity *e, char *va_name )
 /*---------------------------------------------------------------------------
 	cn_expression
 ---------------------------------------------------------------------------*/
-Expression *
-cn_expression( Entity *e )
+static Expression *
+cn_e( Entity *e, ExpressionSub *super )
 {
 	if ( e == NULL ) return NULL;
 
@@ -142,6 +142,7 @@ cn_expression( Entity *e )
 	ExpressionSub *sub = expression->sub;
 	sub[ 3 ].result.any = 1;
 	sub[ 3 ].e = expression;
+	sub[ 3 ].super = super;
 
 	if ( e == CN.nil ) {
 		sub[ 0 ].result.identifier.type = NullIdentifier;
@@ -163,12 +164,18 @@ cn_expression( Entity *e )
 				sub[ i ].result.identifier.type = DefaultIdentifier;
 				sub[ i ].result.identifier.value = strdup( name );
 			} else {
-				sub[ i ].e = cn_expression( e->sub[ i ] );
+				sub[ i ].e = cn_e( e->sub[ i ], &sub[ 3 ] );
 				sub[ i ].result.none = ( sub[ i ].e == NULL );
 			}
 		}
 	}
 	return expression;
+}
+
+Expression *
+cn_expression( Entity *e )
+{
+	return cn_e( e, NULL );
 }
 
 /*---------------------------------------------------------------------------
