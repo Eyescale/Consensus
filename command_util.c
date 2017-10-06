@@ -2,14 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
-#include "string_util.h"
 
 #include "input.h"
+#include "input_util.h"
 #include "output.h"
+#include "io.h"
 #include "api.h"
 #include "expression.h"
 #include "narrative.h"
@@ -240,6 +243,11 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 			}
 			else last_i = i;
 		}
+		if ( context->expression.results == NULL ) {
+			output( Warning, "no target for narrative operation - returning" );
+			return 0;
+		}
+
 		read_narrative( state, event, next_state, context );
 		Narrative *narrative = context->narrative.current;
 		if ( narrative == NULL ) {
@@ -331,27 +339,27 @@ read_va( char *state, int event, char **next_state, _context *context )
 	event = 0;	// we know it is '$'
 	state = base;
 	do {
-	event = input( state, event, NULL, context );
+		event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "read_va: in \"%s\", on '%c'", state, event );
+		output( Debug, "read_va: in \"%s\", on '%c'", state, event );
 #endif
-	bgn_
-	in_( base ) bgn_
-		on_( '(' )	do_( nop, "(" )
-		on_other	do_( error, "" )
-		end
-		in_( "(" ) bgn_
-			on_( ' ' )	do_( nop, same )
-			on_( '\t' )	do_( nop, same )
-			on_other	do_( read_2, "(_" )
+		bgn_
+		in_( base ) bgn_
+			on_( '(' )	do_( nop, "(" )
+			on_other	do_( error, "" )
 			end
-			in_( "(_" ) bgn_
+			in_( "(" ) bgn_
 				on_( ' ' )	do_( nop, same )
 				on_( '\t' )	do_( nop, same )
-				on_( ')' )	do_( nop, "" )
-				on_other	do_( error, "" )
+				on_other	do_( read_2, "(_" )
 				end
-	end
+				in_( "(_" ) bgn_
+					on_( ' ' )	do_( nop, same )
+					on_( '\t' )	do_( nop, same )
+					on_( ')' )	do_( nop, "" )
+					on_other	do_( error, "" )
+					end
+		end
 	}
 	while ( strcmp( state, "" ) );
 
@@ -359,7 +367,7 @@ read_va( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	command input actions
+	command input actions	- DEPRECATED
 ---------------------------------------------------------------------------*/
 int
 input_command( char *state, int event, char **next_state, _context *context )
@@ -371,7 +379,7 @@ input_command( char *state, int event, char **next_state, _context *context )
 		// sets execution flag so that the last instruction is parsed again,
 		// but this time in execution mode
 		context->control.mode = ExecutionMode;
-		return push_input( NULL, NULL, LastInstruction, context );
+		return push_input( "", NULL, LastInstruction, context );
 	case ExecutionMode:
 		break;
 	}
@@ -385,37 +393,135 @@ input_command( char *state, int event, char **next_state, _context *context )
 	command output actions
 ---------------------------------------------------------------------------*/
 int
-set_assignment_mode( char *state, int event, char **next_state, _context *context )
+clear_output_mode( char *state, int event, char **next_state, _context *context )
 {
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
 	bgn_
-	in_( "> identifier" )	context->assignment.mode = AssignAdd;
-	in_other	context->assignment.mode = AssignSet;
+	in_( ">:" )
+	in_( ">:_" )
+	in_( ">: \\" )
+	in_( ">: %" )
+	in_( ">: %variable" )
+	in_( ">: %[_]" )
+	in_( ">: %[_].$" )
+	in_( ">: %[_].narrative(_)" )
+	in_other return 0;
 	end
 
+	if ( context->output.mode == AssignClient )
+	{
+		pop_output( context );
+	}
+	context->assignment.mode = AssignSet;
+	context->output.mode = 0;
 	return 0;
 }
 
 int
-set_output( char *state, int event, char **next_state, _context *context )
+set_output_mode( char *state, int event, char **next_state, _context *context )
 {
-	if ( !strcmp( state, ">< recipient >" ) ) {
-	} else if ( !strcmp( state, "> .." ) ) {
-	} else {
-		return output( Debug, "set_output: target unknown" );
+	// return 0;
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	AssignmentMode mode = AssignSet;
+	bgn_
+	in_( "> identifier" )	mode = AssignAdd;
+	in_( "> .." )		mode = AssignClient;
+	end
+
+	switch ( mode ) {
+	case AssignSet:
+	case AssignAdd:
+		context->assignment.mode = mode;
+		return 0;
+	case AssignClient:
+		push_output( "^^", &context->io.client, ClientOutput, context );
+		context->output.mode = mode;
+		return 0;
+	}
+}
+
+/*---------------------------------------------------------------------------
+	session_cmd
+---------------------------------------------------------------------------*/
+int
+session_cmd( char *state, int event, char **next_state, _context *context )
+{
+	char *path = context->identifier.id[ 1 ].ptr;
+	char *query = context->identifier.id[ 2 ].ptr;
+
+	int do_pipe = 0;
+	bgn_
+	in_( ">@session:_" )
+	in_( ">@session:_ >:" ) do_pipe = 1;
+	in_other
+		return output( Debug, "***** Error: lost in session_pipe()" );
+	end
+	char *q = NULL;
+	asprintf( &q, "%s\n", query );
+
+	// open connection
+	// ---------------
+	int socket_fd = io_connect( SessionConnection, path );
+
+	// send the query
+	// --------------
+	int remainder = 0, length = strlen( q );
+	io_write( socket_fd, q, length, &remainder );
+	io_flush( socket_fd, &remainder );
+
+	// read and output the results
+	// ---------------------------
+	char *buffer = context->io.input.buffer.ptr;
+	while (( length = io_read( socket_fd, buffer, &remainder )))
+	{
+		// length here includes terminating null character
+		if ( do_pipe ) write( STDOUT_FILENO, buffer, length-1 );
 	}
 
+	// close connection
+	// ----------------
+        close( socket_fd );
+
+	free( q );
 	return 0;
 }
 
+/*---------------------------------------------------------------------------
+	stream actions
+---------------------------------------------------------------------------*/
 int
-read_address( char *state, int event, char **next_state, _context *context )
-/*
-	address should be in the form "session/entity" or just "session"
-	for now we just use the target recipient's pid
-*/
+open_stream( char *state, int event, char **next_state, _context *context )
 {
-	do_( read_0, same );
-	free( context->output.target.session );
-	return string_assign( &context->output.target.session, 0, context );
+	char *path = context->identifier.id[ 1 ].ptr;
+	if ( path == NULL ) return output( Error, "no file specified" );
+	bgn_
+	in_( "!< file://path" )		event = cn_open( path, O_RDONLY );
+	in_( "!< file://path <" )	event = cn_open( path, O_RDONLY );
+	in_( "!< file://path >" )	event = cn_open( path, O_WRONLY );
+	in_( "!< file://path ><" )	event = cn_open( path, O_RDWR );
+	end
+	return event;
+}
+
+int
+input_story( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	char *identifier = context->identifier.id[ 1 ].ptr;
+	context->identifier.id[ 1 ].ptr = NULL;
+
+	return push_input( identifier, NULL, StreamInput, context );
+}
+
+int
+output_story( char *state, int event, char **next_state, _context *context )
+{
+	// DO_LATER
+	return 0;
 }
 

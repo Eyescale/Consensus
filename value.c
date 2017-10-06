@@ -5,7 +5,6 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
-#include "string_util.h"
 #include "output.h"
 
 #include "api.h"

@@ -11,7 +11,7 @@
 #include "api.h"
 #include "expression.h"
 #include "expression_util.h"
-#include "filter_util.h"
+#include "expression_filter.h"
 #include "variables.h"
 
 // #define DEBUG

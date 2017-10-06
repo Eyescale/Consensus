@@ -1,20 +1,27 @@
 #ifndef IO_H
 #define IO_H
 
+typedef enum {
+	SessionConnection = 1,
+	ServiceRequest
+}
+ConnectionType;
+
 /*---------------------------------------------------------------------------
-	ipc actions	- public
+	io actions	- public
 ---------------------------------------------------------------------------*/
 
 _action	io_scan;
 
 /*---------------------------------------------------------------------------
-	ipc utilities	- public
+	io utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	io_write( _context *context, OutputContentsType type, const char *format, va_list ap );
-int	io_flush( _context *context );
-int	io_open( _context *context );
-int	io_close( _context *context );
-void	io_save_changes( _context *context );
+int	io_init( _context *context );
+int	io_exit( _context *context );
+int	io_connect( ConnectionType type, char *path );
+int	io_read( int fd, char *buffer, int *remainder );
+int	io_write( int fd, char *string, int length, int *remainder );
+int	io_flush( int fd, int *remainder );
 
 #endif	// IO_H

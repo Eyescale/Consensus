@@ -1,4 +1,8 @@
 
+Sep 27, 2017
+DONE	. implement super in queries: '!!!:titi'
+DONE	. fix string logics / basckslash usage, etc.
+
 Sep 22, 2017
 DONE	. support narrative condition variables: 'in variable: expression'
 DONE	. narrative and event variables are allocated on the occurrences themselves

@@ -6,15 +6,14 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
-#include "string_util.h"
 
 #include "input.h"
+#include "input_util.h"
 #include "output.h"
 #include "expression.h"
 #include "expression_util.h"
 #include "api.h"
 
-#define FILTERED
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
@@ -1080,6 +1079,42 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	on_file
+---------------------------------------------------------------------------*/
+int
+on_file( char *state, int event, char **next_state, _context *context )
+{
+	if (( context->expression.ptr != NULL ) || strcmp( context->identifier.id[ 1 ].ptr, "file" ))
+		return -1;
+	return event;
+}
+
+static int
+expression_on_file( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+
+	if ( context->control.mode == ExecutionMode ) {
+		context->identifier.id[ 1 ].ptr = expression->sub[ 0 ].result.identifier.value;
+		expression->sub[ 0 ].result.identifier.value = NULL;
+	}
+	if (( context->expression.level != context->control.level ) ||
+	    ( strcmp( context->identifier.id[ 1 ].ptr, "file" )))
+	{
+		return -1;
+	}
+	if ( context->control.mode != ExecutionMode )
+		return 0;
+
+	freeExpression( expression );
+	context->expression.ptr = NULL;
+	stack->expression.ptr = NULL;
+
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
 	parser_init
 ---------------------------------------------------------------------------*/
 static int
@@ -1138,7 +1173,7 @@ parser_exit( char *state, int event, char **next_state, _context *context )
 	else if ( expression != NULL ) {
 		if ( expression->sub[ 0 ].result.none ) {
 			free( expression );
-			expression = NULL;
+			context->expression.ptr = NULL;
 		} else {
 			context->expression.ptr = expression;
 			expression->result.marked = context->expression.marked;
@@ -1219,6 +1254,9 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( read_1, "identifier" )
 			end
 		in_( "~" ) bgn_
+			on_( ' ' )	expression_do_( set_source_null, "source-medium->target" )
+			on_( '\t' )	expression_do_( set_source_null, "source-medium->target" )
+			on_( ':' )	expression_do_( set_source_null, "source-medium->target:" )
 			on_( '(' )	expression_do_( error, "" )
 			on_( ' ' )	expression_do_( nop, "~ " )
 			on_( '\t' )	expression_do_( nop, "~ " )
@@ -1433,9 +1471,9 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_other	expression_do_( read_1, "source-medium->identifier" )
 			end
 		in_( "source-medium->~" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
 			on_( ' ' )	expression_do_( set_target_null, "source-medium->target" )
 			on_( '\t' )	expression_do_( set_target_null, "source-medium->target" )
+			on_( '(' )	expression_do_( error, "" )
 			on_( ']' )	expression_do_( set_target_null, pop_state )
 			on_( '[' )	expression_do_( push, "source-medium->[]" )
 			on_( '%' )	expression_do_( nop, "source-medium->%" )
@@ -1668,6 +1706,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '[' )	expression_do_( push, "source-medium->target: []" )
 		on_( '.' )	expression_do_( set_instance_any, "source-medium->target: instance" )
 		on_( '%' )	expression_do_( nop, "source-medium->target: %" )
+		on_( '/' )	expression_do_( expression_on_file, "file:/" )
 		on_separator	expression_do_( nothing, pop_state )
 		on_other	expression_do_( read_1, "source-medium->target: identifier" )
 		end
@@ -1744,6 +1783,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( ']' )	expression_do_( nothing, pop_state )
 		on_other	expression_do_( nothing, pop_state )
 		end
+
+	in_( "file:/" ) bgn_
+		on_( '/' )	expression_do_( nop, "file://" )
+		on_other	expression_do_( error, "" )
+		end
+		in_( "file://" ) bgn_
+			on_any	expression_do_( nothing, pop_state )
+			end
 	end
 	}
 	while ( strcmp( state, "" ) );

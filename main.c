@@ -8,12 +8,11 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
+#include "output.h"
 
 #include "io.h"
 #include "command.h"
 #include "variables.h"
-
-// #define DEBUG
 
 volatile sig_atomic_t terminating = 0;
 static void
@@ -30,9 +29,15 @@ termination_handler( int signum )
 		return;
 	}
 	terminating = 1;
-	io_close( CN.context );
+	io_exit( CN.context );
 	signal( signum, SIG_DFL );
 	raise( signum );
+}
+
+static void
+suspension_handler( int signum )
+{
+	CN.context->control.stop = 1;
 }
 
 /*---------------------------------------------------------------------------
@@ -79,9 +84,11 @@ main( int argc, char ** argv )
 	signal( SIGUSR1, termination_handler );
 	signal( SIGUSR2, termination_handler );
 
-	io_open( &context );
+	signal( SIGTSTP, suspension_handler );
+
+	io_init( &context );
 	int event = read_command( base, 0, &same, &context );
-	io_close( &context );
+	io_exit( &context );
 
 	return event;
 }

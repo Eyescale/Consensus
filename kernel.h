@@ -1,7 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#define IO_BUFFER_MAX_SIZE 1024
+#define IO_BUFFER_MAX_SIZE 4
 
 /*---------------------------------------------------------------------------
 	types
@@ -15,11 +15,11 @@ typedef enum {
 ControlMode;
 
 typedef enum {
-	ConditionNone,
-	ConditionActive,
-	ConditionPassive
+	ClauseNone,
+	ClauseActive,
+	ClausePassive
 }
-ConditionState;
+ClauseState;
 
 typedef enum {
 	InstantiateEvent = 1,
@@ -33,6 +33,7 @@ typedef enum {
 	UserInput,	// default: read from stdin
 	HCNFileInput,
 	PipeInput,
+	StreamInput,
 	ClientInput,
 	InstructionBlock,
 	InstructionOne,
@@ -42,7 +43,7 @@ InputType;
 
 typedef enum {
 	ClientOutput = 1,
-	PeerOutput
+	IdentifierOutput
 }
 OutputType;
 
@@ -108,7 +109,8 @@ OccurrenceType;
 
 typedef enum {
 	AssignSet,
-	AssignAdd
+	AssignAdd,
+	AssignClient
 }
 AssignmentMode;
 
@@ -118,7 +120,6 @@ AssignmentMode;
 
 // Expression
 // --------------------------------------------------
-
 typedef struct _Expression {
 	struct _ExpressionSub {
 		struct _Expression *e;
@@ -153,7 +154,6 @@ typedef struct _ExpressionSub ExpressionSub;
 
 // Occurrence
 // --------------------------------------------------
-
 typedef struct _Occurrence {
 	struct _Occurrence *thread;
 	OccurrenceType type;
@@ -176,7 +176,7 @@ OtherwiseVA;
 
 typedef struct _ConditionVA {
 	char *identifier;
-	Expression *expression;
+	void *format;
 }
 ConditionVA;
 
@@ -187,6 +187,7 @@ typedef struct _EventVA {
 	}
 	identifier;
 	struct {
+		unsigned int stream: 1;
 		unsigned int instantiate : 1;
 		unsigned int release : 1;
 		unsigned int activate : 1;
@@ -195,7 +196,7 @@ typedef struct _EventVA {
 		unsigned int notification : 1;
 		unsigned int request : 1;
 	} type;
-	Expression *expression;
+	void *format;
 }
 EventVA;
 
@@ -207,7 +208,6 @@ ActionVA;
 
 // Narrative
 // --------------------------------------------------
-
 typedef struct {
 	char *name;
 	Occurrence root;
@@ -222,12 +222,12 @@ typedef struct {
 	Registry instances;	// { ( entity, narrative-instance ) }
 	unsigned int deactivate : 1;
 	unsigned int assigned : 1;
+	unsigned int initialized : 1;
 }
 Narrative;
 
 // Input & Output
 // --------------------------------------------------
-
 typedef struct {
 	listItem *list;
 	char *ptr;
@@ -235,32 +235,37 @@ typedef struct {
 IdentifierVA;
 
 typedef struct {
+	char *identifier;
 	int level;
 	InputType mode;
-	struct {
-		unsigned int pop : 1;
-	}
-	state;
+	int corrupted;
 	union {
 		FILE *file;
 		char *string;
+		int fd;
 	} ptr;
-	int socket;
+	int client;
 	char *position;
 	int remainder;
+	struct {
+		unsigned int prompt : 1;
+	} restore;
 }
 InputVA;
 
 typedef struct {
 	int level;
 	int mode;
-	int socket;
+	union {
+		int socket;
+		IdentifierVA *identifier;
+	} ptr;
+	int remainder;
 }
 OutputVA;
 
 // Variables
 // --------------------------------------------------
-
 typedef struct {
 	VariableType type;
 	struct {
@@ -273,17 +278,17 @@ VariableVA;
 
 // Stack
 // --------------------------------------------------
-
 typedef struct {
 	char *next_state;	// state to be restored upon pop
-	ConditionState condition;
 	registryEntry *variables;
+	struct {
+		ClauseState state;
+	} clause;
 	struct {
 		int base;
 		listItem *index;	// { entity }
 		listItem *begin;	// { instruction }
-	}
-	loop;
+	} loop;
 	struct {
 		Expression *ptr;
 		struct {
@@ -291,8 +296,7 @@ typedef struct {
 			unsigned int active : 1;
 			unsigned int inactive : 1;
 		} flags;
-	}
-	expression;
+	} expression;
 	struct {
 		struct {
 			unsigned int action : 1;
@@ -307,14 +311,31 @@ typedef struct {
 		state;
 		EventVA event;
 		Occurrence *thread;
-	}
-	narrative;
+	} narrative;
 }
 StackVA;
 
+// FrameLog
+// --------------------------------------------------
+typedef struct {
+	struct {
+		listItem *instantiated;	// { entity }
+		listItem *released;	// { entity-expression }
+		listItem *activated;	// { entity }
+		listItem *deactivated;	// { entity }
+	} entities;
+	struct {
+		listItem *instantiated;	// { entity }
+	} streams;
+	struct {
+		Registry activate;	// { ( narrative, { entity } ) }
+		Registry deactivate;	// { ( narrative, { entity } ) }
+	} narratives;
+}
+FrameLog;
+
 // Context
 // --------------------------------------------------
-
 typedef struct {
 	struct {
 		ControlMode mode;	// ExecutionMode or InstructionMode or FreezeMode
@@ -323,7 +344,7 @@ typedef struct {
 		unsigned int terminal : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
-		unsigned int no_comment : 1;
+		unsigned int stop : 1;
 	} control;
 	struct {
 		int mode;
@@ -381,29 +402,17 @@ typedef struct {
 		listItem *registered;
 	} narrative;
 	struct {
-		struct {
-			struct {
-				listItem *instantiated;	// { entity }
-				listItem *released;	// { entity-expression }
-				listItem *activated;	// { entity }
-				listItem *deactivated;	// { entity }
-			} entities;
-			struct {
-				Registry activate;	// { ( narrative, { entity } ) }
-				Registry deactivate;	// { ( narrative, { entity } ) }
-			} narratives;
-			Registry queries;	// { ( source, { message } ) }
-		} log;
+		FrameLog log;
 		int backlog;
 	} frame;
 	struct {
 		listItem *stack;	// current InputVA
-		registryEntry *stream;
 		listItem *instruction;
 		int event, buffer;
 	} input;
 	struct {
 		listItem *stack;	// current OutputVA
+		AssignmentMode mode;
 		struct {
 			char *session;
 			char *entity;
@@ -414,18 +423,24 @@ typedef struct {
 		unsigned int flush_output;
 	} error;
 	struct {
-		int query, broker;	// sockets
+		int operator, service, client;	// sockets
 		struct {
-			int current;
-			listItem *instantiated[ 3 ];
-			listItem *released[ 3 ];
-			listItem *activated[ 3 ];
-			listItem *deactivated[ 3 ];
-		} frame;
+			FrameLog log;
+			struct {
+				char ptr[ IO_BUFFER_MAX_SIZE ];
+			} buffer;
+		} input;
 		struct {
-			int size;
-			char ptr[ 2 ][ IO_BUFFER_MAX_SIZE ];
-		} buffer;
+			FrameLog log;
+			struct {
+				char ptr[ IO_BUFFER_MAX_SIZE ];
+			} buffer;
+		} output;
+		struct {
+			struct {
+				char ptr[ IO_BUFFER_MAX_SIZE ];
+			} buffer;
+		} pipe;
 	} io;
 }
 _context;
@@ -463,10 +478,10 @@ extern
 ---------------------------------------------------------------------------*/
 
 #ifdef KERNEL_C
-char *base = "base";
-char *same = "same";
-char *out = "out";
-char *pop_state = "pop";
+char *base = "base";
+char *same = "same";
+char *out = "out";
+char *pop_state = "pop";
 char *variator_symbol = "?";
 char *this_symbol = "!";
 #else

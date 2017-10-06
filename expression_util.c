@@ -221,6 +221,8 @@ collapse( Expression *expression, int *flags, int i, int count, int sub_i )
 void
 expression_collapse( Expression *expression )
 {
+	if ( expression == NULL ) return;
+
 	ExpressionSub *sub = expression->sub;
 	int flags[ 3 ];
 

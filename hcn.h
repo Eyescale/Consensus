@@ -10,7 +10,7 @@
 	hcn utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	hcn_getc( FILE *file, _context *context );
+int	hcn_getc( int fd, _context *context );
 
 
 #endif	// HCN_H

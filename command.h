@@ -6,8 +6,6 @@
 ---------------------------------------------------------------------------*/
 
 _action read_command;
-_action parse_expression;
-_action push_input_hcn;
 
 /*---------------------------------------------------------------------------
 	command utilities	- public

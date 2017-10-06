@@ -19,110 +19,158 @@
 
 // #define DEBUG
 
+#define SET_IO_SERVICE_PATH( name ) \
+	sprintf( name, "/tmp/consensus.%d.io", getpid() );
+#define SET_IO_SESSION_PATH( name, path ) \
+        sprintf( name, "/tmp/consensus.%s.io", path );
+#define GET_IO_SERVICE_PATH( name ) \
+	asprintf( name, "/tmp/consensus.%d.io", getpid() );
+
 /*---------------------------------------------------------------------------
-	io_open		- called from main()
+	io_init		- called from main()
 ---------------------------------------------------------------------------*/
 int
-io_open( _context *context )
+io_init( _context *context )
 {
+	// initialize buffers
+	// ------------------
+	context->io.input.buffer.ptr[ IO_BUFFER_MAX_SIZE - 1 ]	= '\0';
+	context->io.output.buffer.ptr[ IO_BUFFER_MAX_SIZE - 1 ]	= '\0';
+	context->io.pipe.buffer.ptr[ IO_BUFFER_MAX_SIZE - 1 ]	= '\0';
+	
+	// create io.service socket
+	// ------------------------
 	struct sockaddr_un name;
-	int client_sent_quit_message;
-
-	// Create io.query socket
-	context->io.query = socket( PF_LOCAL, SOCK_STREAM, 0 );
+	int service_socket = socket( PF_LOCAL, SOCK_STREAM, 0 );
 
 	// Indicate that this is a server
 	name.sun_family = AF_LOCAL;
-	sprintf( name.sun_path, "/tmp/consensus.%d.io", getpid() );
-	bind( context->io.query, (struct sockaddr *) &name, SUN_LEN (&name) );
+	SET_IO_SERVICE_PATH( name.sun_path );
+	bind( service_socket, (struct sockaddr *) &name, SUN_LEN (&name) );
 
-	// Listen for connections
-	listen( context->io.query, 5 );
+	context->io.service = service_socket;
+
+	// Listen for service requests
+	// ---------------------------
+	listen( context->io.service, 5 );
+
 	return 1;
 }
 
 /*---------------------------------------------------------------------------
-	io_close	- called from main()
+	io_exit		- called from main()
 ---------------------------------------------------------------------------*/
 int
-io_close( _context *context )
+io_exit( _context *context )
 {
 	char *socket_name;
 
-	asprintf( &socket_name, "/tmp/consensus.%d.io", getpid() );
-	close( context->io.query );
+	// close io.service socket
+	// -----------------------
+	GET_IO_SERVICE_PATH( &socket_name );
+	close( context->io.service );
 	unlink( socket_name );
-
 	free( socket_name );
+
 	return 1;
 }
 
+/*---------------------------------------------------------------------------
+	io_connect
+---------------------------------------------------------------------------*/
+int
+io_connect( ConnectionType type, char *path )
+{
+	// create the socket
+	int socket_fd = socket( PF_LOCAL, SOCK_STREAM, 0 );
+
+	// store the server’s name in the socket address
+	struct sockaddr_un name;
+	name.sun_family = AF_LOCAL;
+        SET_IO_SESSION_PATH( name.sun_path, path );
+
+	// connect the socket
+	connect( socket_fd, (struct sockaddr *) &name, SUN_LEN(&name) );
+
+	return socket_fd;
+}
+
+/*---------------------------------------------------------------------------
+	io_read
+---------------------------------------------------------------------------*/
+int
+io_read( int socket_fd, char *buffer, int *remainder )
+{
+	int length;
+#ifdef DEBUG
+	output( Debug, "io_read: fd=%d, remainder=%d", socket_fd, *remainder );
+#endif
+	// first read the size of the data to follow
+	if ( ! *remainder ) {
+		read( socket_fd, &length, sizeof(length) );
+		if ( !length ) return 0;
+	} else {
+		length = *remainder;
+	}
+
+	// then read the data itself
+	if ( length > IO_BUFFER_MAX_SIZE ) {
+		int n = IO_BUFFER_MAX_SIZE - 1;
+		read( socket_fd, buffer, n );
+		*remainder = length - n;
+		length = IO_BUFFER_MAX_SIZE;
+	} else {
+		*remainder = 0;
+		read( socket_fd, buffer, length );
+	}
+#ifdef DEBUG
+	output( Debug, "io_read: returning length: %d", length );
+#endif
+	return length;	// includes terminating null character
+}
 
 /*---------------------------------------------------------------------------
 	io_write		- called from output()
 ---------------------------------------------------------------------------*/
 int
-io_write( _context *context, OutputContentsType type, const char *format, va_list ap )
+io_write( int socket_fd, char *string, int length, int *remainder )
 {
-	switch ( type ) {
-	case Text:
-		break;
-	default:
-		return 0;	// DO_LATER: Error, Warning etc.
-	}
-
-	OutputVA *output = (OutputVA *) context->output.stack->ptr;
-
-	char *str = NULL;
-	vasprintf( &str, format, ap );
-	if ( str == NULL ) return 0;
-
-	int length = strlen( str );
-	if ( !length ) { free( str ); return 0; }
-
-	char *data = str;
-	char *buffer = context->io.buffer.ptr[ 1 ];
-
-	int size = context->io.buffer.size;
+	char *buffer = CN.context->io.output.buffer.ptr;
+	int size = *remainder;
 	if ( !size )
 	{
 		size = 1;	// as in null-terminating character
 	}
 	else if ( size + length > IO_BUFFER_MAX_SIZE )
 	{
-		// flush previous packet
-		// ---------------------
-
-		write( output->socket, &size, sizeof(size) );
-		write( output->socket, buffer, size );
+		// send previous packet
+		// --------------------
+		write( socket_fd, &size, sizeof(size) );
+		write( socket_fd, buffer, size );
 
 		// start new packet
 		// ----------------
-
 		size = 1;	// as in null-terminating character
 	}
 
-	// break down dataset in sizeable chunks
-	// -------------------------------------
-
+	// break down data in sizeable chunks
+	// ----------------------------------
 	length++;
 	int n = IO_BUFFER_MAX_SIZE - 1;
-	for ( ; length >= IO_BUFFER_MAX_SIZE; length-=n, data+=n )
+	for ( ; length >= IO_BUFFER_MAX_SIZE; length-=n, string+=n )
 	{
-		memcpy( buffer, data, n );
+		memcpy( buffer, string, n );
 		buffer[ n++ ] = (char) 0;
-		write( output->socket, &n, sizeof(n) );
-		write( output->socket, buffer, n-- );
+		write( socket_fd, &n, sizeof(n) );
+		write( socket_fd, buffer, n-- );
 	}
 
 	// expand latest packet from null-terminating character
 	// ----------------------------------------------------
-
 	size--;
-	memcpy( &buffer[ size ], data, length );
-	context->io.buffer.size = size + length;
+	memcpy( &buffer[ size ], string, length );
+	*remainder = size + length;
 
-	free( str );
 	return 0;
 }
 
@@ -130,62 +178,75 @@ io_write( _context *context, OutputContentsType type, const char *format, va_lis
 	io_flush		- called from pop_output()
 ---------------------------------------------------------------------------*/
 int
-io_flush( _context *context )
+io_flush( int socket_fd, int *remainder )
 {
-	OutputVA *output = (OutputVA *) context->output.stack->ptr;
+	char *buffer = CN.context->io.output.buffer.ptr;
 
 	// flush previous packet
 	// ---------------------
-
-	int size = context->io.buffer.size;
+	int size = *remainder;
 	if ( size ) {
-		write( output->socket, &size, sizeof(size) );
-		write( output->socket, context->io.buffer.ptr[ 1 ], size );
-		context->io.buffer.size = 0;
+		write( socket_fd, &size, sizeof(size) );
+		write( socket_fd, buffer, size );
+		*remainder = 0;
 		size = 0;
 	}
 
 	// send closing packet
 	// -------------------
-
-	write( output->socket, &size, sizeof( size ));
+	write( socket_fd, &size, sizeof( size ));
 
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	io_save_changes		- called from system_frame()
----------------------------------------------------------------------------*/
-void
-io_save_changes( _context *context )
-{
-	int i = context->io.frame.current;
-
-	context->io.frame.instantiated[ i ] = context->frame.log.entities.instantiated;
-	context->io.frame.released[ i ] = context->frame.log.entities.released;
-	context->io.frame.activated[ i ] = context->frame.log.entities.activated;
-	context->io.frame.deactivated[ i ] = context->frame.log.entities.deactivated;
-
-	context->frame.log.entities.instantiated = NULL;
-	context->frame.log.entities.released = NULL;
-	context->frame.log.entities.activated = NULL;
-	context->frame.log.entities.deactivated = NULL;
-}
-
-/*---------------------------------------------------------------------------
-	io_notify_changes	- called from io_scan()
+	io_notify_changes
 ---------------------------------------------------------------------------*/
 static void
 io_notify_changes( _context *context )
 {
-	// notify changes to broker - every three frames
+	FrameLog *log = &context->io.output.log;
 
-	for ( int i=0; i<3; i++ ) {
-		freeListItem( &context->io.frame.instantiated[ i ] );
-		freeListItem( &context->io.frame.released[ i ] );
-		freeListItem( &context->io.frame.activated[ i ] );
-		freeListItem( &context->io.frame.deactivated[ i ] );
-	}
+	// notify changes to operator
+#ifdef DO_LATER
+#endif	// DO_LATER
+
+	// free log
+	freeListItem( &log->streams.instantiated );
+	freeListItem( &log->entities.instantiated );
+	freeListItem( &log->entities.released );
+	freeListItem( &log->entities.activated );
+	freeListItem( &log->entities.deactivated );
+	freeRegistry( &log->narratives.activate );
+	freeRegistry( &log->narratives.deactivate );
+}
+
+/*---------------------------------------------------------------------------
+	io_accept
+---------------------------------------------------------------------------*/
+static int
+io_accept( ConnectionType request, _context *context )
+{
+	struct sockaddr_un client_name;
+	socklen_t client_name_len;
+	int socket_fd = accept( context->io.service,
+		(struct sockaddr *) &client_name, &client_name_len );
+
+	context->io.client = socket_fd;
+
+	// read & execute command
+	push( base, 0, NULL, context );
+	push_input( "", &socket_fd, ClientInput, context );
+	int event = read_command( base, 0, &same, context );
+	// input pops automatically upon closing packet
+	pop( base, 0, NULL, context );
+
+	// send closing packet
+	int size = 0;
+	write( socket_fd, &size, sizeof( size ));
+
+	close( socket_fd );
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -206,83 +267,65 @@ io_scan( char *state, int event, char **next_state, _context *context )
 		FD_ZERO( &fds );
 		FD_SET( STDIN_FILENO, &fds );
 #ifdef DO_LATER
-		FD_SET( context->io.broker, &fds );
+		FD_SET( context->io.operator, &fds );
 #endif
-		FD_SET( context->io.query, &fds );
-		nfds = SUP( STDIN_FILENO, SUP( context->io.query, context->io.broker )) + 1;
+		FD_SET( context->io.service, &fds );
+		nfds = SUP( STDIN_FILENO, SUP( context->io.service, context->io.operator )) + 1;
 
 		// call select() - if not already at work
 		// --------------------------------------
-
-		if ( !is_frame_log_empty( context ) )
-			context->frame.backlog = 3;
-
+		int frame_isset = ( context->frame.backlog || test_log( context, OCCURRENCES ) );
+#ifdef DEBUG
+		output( Debug, "frame_isset: %d - backlog:%d, log:%d", frame_isset,
+			context->frame.backlog, test_log( context, OCCURRENCES ));
+#endif
 		if ( context->input.stack != NULL )
 			; // already at work
-		else if ( context->frame.backlog )
-		{
+		else if ( frame_isset ) {
+			if ( !test_log( context, OCCURRENCES ) )
+				prompt( context );
+			// here we poll - no prompt
 			bzero( &timeout, sizeof( struct timeval ) );
 			select( nfds, &fds, NULL, NULL, &timeout );
-		}
-		else	// here we block
-		{
+		} else {
+			// here we block
 #ifdef DEBUG
-			fprintf( stderr, "BEFORE select: " );
-#else
-			prompt( context );
+			output( Debug, "BEFORE select: " );
 #endif
+			prompt( context );
 			select( nfds, &fds, NULL, NULL, NULL );
 		}
 		
-		// if internal work to do or external change notifications
-		// -------------------------------------------------------
+		// if external change notifications
+		// --------------------------------
 #ifdef DO_LATER
-		if ( FD_ISSET( context->io.broker, &fds ) ) {
+		if ( FD_ISSET( context->io.operator, &fds ) ) {
 			read and add inputs to frame log
-			context->frame.backlog = 3;
+			frame_isset = 1;
 		}
 #endif
 
-		if ( context->frame.backlog )
+		// if internal work to do
+		// ----------------------
+		if ( frame_isset )
 		{
 			// we always count to three, so that external change
 			// notifications can travel all the way to actions
-			for ( int i=0; i<3 && context->frame.backlog; i++ ) {
-				context->io.frame.current = i;
+			for ( int i=0; i<3; i++ ) {
 				event = systemFrame( state, event, next_state, context );
+				io_notify_changes( context );
+				if ( !context->frame.backlog )
+					break;
 			}
-			// send out internal change notifications
-			io_notify_changes( context );
 		}
 
-		// if not already working and no user input, take one command
-		// ----------------------------------------------------------
-
+		// if not already working and no user input pending
+		// ------------------------------------------------
 		if (( context->input.stack == NULL ) && !FD_ISSET( STDIN_FILENO, &fds ))
 		{
-			if ( FD_ISSET( context->io.query, &fds ) )
-			{
-				struct sockaddr_un client_name;
-		                socklen_t client_name_len;
-				int client_socket_fd;
-	
-				// accept connection
-				client_socket_fd = accept( context->io.query,
-					(struct sockaddr *) &client_name, &client_name_len );
-#if 1
-				// read { source, target, message }
-				// log notification - will be processed in systemFrame()
-#else
-				push_output( NULL, &client_socket_fd, ClientOutput, context );
-
-				// read & execute command
-				push( base, 0, NULL, context );
-				push_input( NULL, &client_socket_fd, ClientInput, context );
-				int event = read_command( base, 0, &same, context );
-				pop( base, 0, NULL, context );
-	
-				pop_output( context );
-#endif
+			// take one command
+			if ( FD_ISSET( context->io.service, &fds ) ) {
+				io_accept( ServiceRequest, context );
 			}
 		}
 		else input_ready = 1;

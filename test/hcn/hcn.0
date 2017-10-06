@@ -1,4 +1,0 @@
-
-	: test : "test"
-	: %test.hcn : "./test/test.hcn"
-

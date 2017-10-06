@@ -15,7 +15,22 @@
 #include "variables.h"
 
 // #define DEBUG
-#include "output.h"
+#define INIT
+// #include "output.h"
+
+/*---------------------------------------------------------------------------
+	narrative_active
+---------------------------------------------------------------------------*/
+int
+narrative_active( _context *context )
+{
+	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
+	{
+		Narrative *narrative = (Narrative *) i->ptr;
+		if (( narrative->instances )) return 1;
+	}
+	return 0;
+}
 
 /*---------------------------------------------------------------------------
 	registerNarrative
@@ -219,6 +234,9 @@ deactivateNarrative( Entity *entity, Narrative *narrative )
 	freeListItem( &instance->frame.actions );
 	freeListItem( &instance->frame.then );
 	if ( instance == narrative ) {
+#ifdef INIT
+		narrative->initialized = 0;
+#endif
 		narrative->deactivate = 0;
 		narrative->assigned = 0;
 		freeVariables( &narrative->variables );
@@ -312,14 +330,14 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 			case ConditionOccurrence:
 				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
 					ConditionVA *condition = (ConditionVA *) i->ptr;
-					free( condition->expression );
+					free( condition->format );
 				}
 				break;
 			case EventOccurrence:
 				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
 					EventVA *event = (EventVA *) sub->va->ptr;
 					free( event->identifier.name );
-					free( event->expression );
+					free( event->format );
 				}
 				break;
 			case ActionOccurrence:
@@ -386,7 +404,7 @@ freeOccurrence( Occurrence *occurrence )
 			if ( i->ptr == NULL ) continue;
 			ConditionVA *condition = (ConditionVA *) i->ptr;
 			free( condition->identifier );
-			free( condition->expression );
+			free( condition->format );
 			free( condition );
 		}
 		break;
@@ -395,7 +413,7 @@ freeOccurrence( Occurrence *occurrence )
 			if ( i->ptr == NULL ) continue;
 			EventVA *event = (EventVA *) i->ptr;
 			free( event->identifier.name );
-			free( event->expression );
+			free( event->format );
 			free( event );
 		}
 		break;

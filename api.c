@@ -3,14 +3,43 @@
 #include <string.h>
 #include <strings.h>
 #include <stdarg.h>
+#include <fcntl.h>
 
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
 
+#include "command.h"
 #include "api.h"
+#include "input.h"
 #include "output.h"
 #include "narrative.h"
+
+/*---------------------------------------------------------------------------
+	cn_dof
+---------------------------------------------------------------------------*/
+int
+cn_dof( char *format, ... )
+{
+	char *action;
+	va_list ap;
+	va_start( ap, format );
+	if ( *format ) {
+		vasprintf( &action, format, ap );
+	} else {
+		action = va_arg( ap, char * );
+	}
+	va_end( ap );
+
+	CN.context->narrative.mode.action.one = 1;
+	push_input( "", action, InstructionOne, CN.context );
+	int event = read_command( base, 0, &same, CN.context );
+	pop_input( base, 0, NULL, CN.context );
+	CN.context->narrative.mode.action.one = 0;
+
+	if ( *format ) free( action );
+	return event;
+}
 
 /*---------------------------------------------------------------------------
 	cn_entity
@@ -41,7 +70,8 @@ cn_new( char *name )
 	cn_va_set_value( e, "name", name );
 	registerByName( &CN.registry, name, e );
 	addItem( &CN.DB, e );
-	addItem( &CN.context->frame.log.entities.instantiated, e );
+	FrameLog *log = &CN.context->io.input.log;
+	addItem( &log->entities.instantiated, e );
 	return e;
 }
 
@@ -218,6 +248,128 @@ cn_is_active( Entity *e )
 }
 
 /*---------------------------------------------------------------------------
+	cn_getf
+---------------------------------------------------------------------------*/
+static Entity *
+vagetf( Entity **candidate, const char *format, va_list ap )
+{
+	Entity *sub[ 3 ], *e;
+	int count = 0, mark = 0;
+	while ( *format && ( count < 3 ) ) {
+		switch ( *format++ ) {
+		case '[':
+			e = vagetf( candidate, format, ap );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case '?':
+			mark = ++count;
+			break;
+		case '%':
+			sub[ count++ ] = va_arg( ap, Entity * );
+			break;
+		case '.':
+			; char *name = va_arg( ap, char * );
+			e = cn_entity( name );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case ']':
+			goto RETURN;
+		}
+	}
+RETURN:
+	if ( count < 3 ) {
+		output( Debug, "***** Error: vagetf: format inconsistent" );
+		return NULL;
+	}
+	if ( mark-- ) {
+		int j=( mark + 1 )%3, k=( mark + 2 )%3;
+		listItem *i;
+		for ( i=sub[ j ]->as_sub[ j ]; i!=NULL; i=i->next ) {
+			Entity *c = i->ptr;
+			if ( c->sub[ k ] == sub[ k ] ) {
+				sub[ mark ] = c->sub[ mark ];
+				*candidate = sub[ mark ];
+				break;
+			}
+		}
+		if ( i == NULL ) return NULL;
+	}
+	return cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+}
+
+Entity *
+cn_getf( const char *format, ... )
+{
+	Entity *e = NULL, *solve;
+	va_list ap;
+	va_start( ap, format );
+	solve = vagetf( &e, format, ap );
+	va_end( ap );
+	return ( solve = NULL ) ? NULL : e;
+}
+
+/*---------------------------------------------------------------------------
+	cn_instf
+---------------------------------------------------------------------------*/
+static Entity *
+vainstf( const char *format, va_list ap )
+{
+	Entity *sub[ 3 ], *e;
+	int count = 0;
+	while ( *format && ( count < 3 ) ) {
+		switch ( *format++ ) {
+		case '[':
+			e = vainstf( format, ap );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case '%':
+			sub[ count++ ] = va_arg( ap, Entity * );
+			break;
+		case '.':
+			; char *identifier = va_arg( ap, char * );
+			e = cn_entity( identifier );
+			if ( e == NULL )
+			{
+				identifier = strdup( identifier );
+				e = newEntity( NULL, NULL, NULL );
+				cn_va_set_value( e, "name", identifier );
+				registerByName( &CN.registry, identifier, e );
+				addItem( &CN.DB, e );
+			}
+			sub[ count++ ] = e;
+			break;
+		case ']':
+			goto RETURN;
+		}
+	}
+RETURN:
+	if ( count < 3 ) {
+		output( Debug, "***** Error: vasinstf: format inconsistent" );
+		return NULL;
+	}
+	e = cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+	if ( e == NULL ) {
+		e = newEntity( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+		addItem( &CN.DB, e );
+	}
+	return e;
+}
+
+Entity *
+cn_instf( const char *format, ... )
+{
+
+	va_list ap;
+	va_start( ap, format );
+	Entity *e = vainstf( format, ap );
+	va_end( ap );
+	return e;
+}
+
+/*---------------------------------------------------------------------------
 	cn_instantiate
 ---------------------------------------------------------------------------*/
 Entity *
@@ -225,7 +377,8 @@ cn_instantiate( Entity *source, Entity *medium, Entity *target )
 {
 	Entity *e = newEntity( source, medium, target );
 	addItem( &CN.DB, e );
-	addItem( &CN.context->frame.log.entities.instantiated, e );
+	FrameLog *log = &CN.context->io.input.log;
+	addItem( &log->entities.instantiated, e );
 	return e;
 }
 
@@ -247,7 +400,8 @@ cn_release( Entity *e )
 		}
 	}
 	Expression *expression = cn_expression( e );
-	addItem( &CN.context->frame.log.entities.released, &expression->sub[ 3 ] );
+	FrameLog *log = &CN.context->io.input.log;
+	addItem( &log->entities.released, &expression->sub[ 3 ] );
 	cn_free( e );
 }
 
@@ -259,7 +413,8 @@ cn_activate( Entity *e )
 {
 	if ( !cn_is_active( e ) ) {
 		e->state = 1;
-		addItem( &CN.context->frame.log.entities.activated, e );
+		FrameLog *log = &CN.context->io.input.log;
+		addItem( &log->entities.activated, e );
 		return 1;
 	}
 	else return 0;
@@ -273,7 +428,8 @@ cn_deactivate( Entity *e )
 {
 	if ( cn_is_active( e ) ) {
 		e->state = 0;
-		addItem( &CN.context->frame.log.entities.deactivated, e );
+		FrameLog *log = &CN.context->io.input.log;
+		addItem( &log->entities.deactivated, e );
 		return 1;
 	}
 	else return 0;
@@ -332,13 +488,14 @@ cn_activate_narrative( Entity *e, char *name )
 	if ( lookupByAddress( n->instances, e ) != NULL ) return 0;
 
 	// log narrative activation event - the actual activation is performed in systemFrame
-	Registry *log = &CN.context->frame.log.narratives.activate;
-	if ( *log == NULL ) {
-		CN.context->frame.log.narratives.activate = newRegistryItem( n, newItem( e ) );
+	FrameLog *log = &CN.context->io.input.log;
+	Registry *r = &log->narratives.activate;
+	if ( *r == NULL ) {
+		log->narratives.activate = newRegistryItem( n, newItem( e ) );
 	} else {
-		registryEntry *entry = lookupByAddress( *log, n );
+		registryEntry *entry = lookupByAddress( *r, n );
 		if ( entry == NULL ) {
-			registerByAddress( log, n, newItem(e) );
+			registerByAddress( r, n, newItem(e) );
 		} else {
 			addIfNotThere((listItem **) &entry->value, e );
 		}
@@ -359,16 +516,58 @@ cn_deactivate_narrative( Entity *e, char *name )
 	if ( lookupByAddress( n->instances, e ) == NULL ) return 0;
 
 	// log narrative deactivation event - the actual deactivation is performed in systemFrame
-	Registry *log = &CN.context->frame.log.narratives.deactivate;
-	if ( *log == NULL ) {
-		CN.context->frame.log.narratives.deactivate = newRegistryItem( n, newItem( e ) );
+	FrameLog *log = &CN.context->io.input.log;
+	Registry *r = &log->narratives.deactivate;
+	if ( *r == NULL ) {
+		log->narratives.deactivate = newRegistryItem( n, newItem( e ) );
 	} else {
-		registryEntry *entry = lookupByAddress( *log, n );
+		registryEntry *entry = lookupByAddress( *r, n );
 		if ( entry == NULL ) {
-			registerByAddress( log, n, newItem(e) );
+			registerByAddress( r, n, newItem(e) );
 		} else {
 			addIfNotThere((listItem **) &entry->value, e );
 		}
 	}
 	return 1;
+}
+
+/*---------------------------------------------------------------------------
+	cn_open
+---------------------------------------------------------------------------*/
+int
+cn_open( char *path, int oflags )
+{
+	// open stream
+	int fd = open( path, oflags );
+	if ( fd < 0 ) {
+		// log error	DO_LATER
+		return output( Warning, "file://%s - unable to open", path );
+	}
+	char *mode;
+	switch ( oflags ) {
+	case O_RDONLY: mode = "read_only"; break;
+	case O_WRONLY: mode = "write-only"; break;
+	case O_RDWR: mode = "read-write"; break;
+	}
+	// instantiate stream entity
+	/*
+		we don't want any event to be logged for this
+		particular instantiation, but we want to retrieve
+		the resulting entity. so we do it by hand...
+	*/
+	char *name;
+	asprintf( &name, "%d", fd );
+
+	Entity *e[ 5 ];
+	e[ 0 ] = cn_instf( "...", name, "is", "Stream" );
+	e[ 1 ] = cn_instf( "%..", e[0], "has", "Mode" );
+	e[ 2 ] = cn_instf( "..%", strdup( mode ), "is", e[1] );
+ 	e[ 3 ] = cn_instf( "%..", e[0], "has", "File" );
+ 	e[ 4 ] = cn_instf( "..%", strdup( path ), "is", e[3] );
+
+	free( name );
+
+	// log stream event
+	addItem( &CN.context->frame.log.streams.instantiated, e[0] );
+	return 0;
 }

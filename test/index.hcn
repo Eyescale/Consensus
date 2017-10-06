@@ -1,24 +1,18 @@
 <html>
 <body>
 <h1 style="text-align:center; font-weight:normal;">Welcome to Consensus!</h1>
-<< : dummy: "dumber" >>
-%dummy
-<<? %[ .-is-> ] >>
-	hello
+<< ?%: ?-is->Label >>
 	<ul>
-	<<? i : %o >>
-	<< : titi: "toto" >>
-	hi again
-	<< >: %titi >>
-	<li> <a href="consensus.cgi?label="%%">%%</a>
+	<< ? : ?-is->Label >>
+	<li> <a href="consensus.cgi?label=%?">%?</a>
 	<< / >>
-	</ul>
-<</~>>
+	< /ul >
+<< /~ >>
 	No label yet.
-<</>>
+<< / >>
 
 <form action="consensus.cgi" method="get">
-Create label: <input type="text" name="labelNew">
+Create label: <input type="text" name="new_label">
 <input type="submit" value="Send">
 </form>
 

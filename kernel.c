@@ -154,10 +154,13 @@ pop( char *state, int event, char **next_state, _context *context )
 			return 0;
 		}
 	}
+
 	if ( context->input.stack != NULL ) {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
-		if ( context->control.level == input->level ) {
-			input->state.pop = 1;
+		if ( !strcmp( input->identifier, "" ) )
+			;
+		else if ( context->control.level == input->level ) {
+			input->corrupted = 1;
 			return output( Error, "attempt to pop control beyond authorized level - "
 				"closing stream..." );
 		}

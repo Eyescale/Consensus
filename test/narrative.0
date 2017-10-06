@@ -12,9 +12,9 @@
 			/
 	else in :a-is->[ b<-has-c ]:d do
 		>:hello
-		?:?-is->toto		# Great to comment isn't it
-			>:%?		# That is... so long as you have
-			/		# something to say!
+		?:?-is->toto		# this is a comment
+			>:%?		# it is important to comment
+			/		# when you have something to say
 		?%: a-is->b
 			>:tt
 			/~
@@ -28,7 +28,7 @@
 	in ( :tata, state2:toto ) on :toto !* do
 		>:what time is it?
 		/
-		then on ( :[ ?.. ]-is->bong !_, event:occurrence!*)
+		then on :[ ?.. ]-is->bong !_
 			do !! titi
 			do !! toto
 			then do

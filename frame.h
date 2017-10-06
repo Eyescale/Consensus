@@ -1,6 +1,13 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+typedef enum {
+	OCCURRENCES,
+	THEN,
+	EVENTS,
+	ACTIONS
+} LogType;
+
 /*---------------------------------------------------------------------------
 	frame actions	- public
 ---------------------------------------------------------------------------*/
@@ -11,7 +18,7 @@ _action	systemFrame;
 	frame utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	is_frame_log_empty( _context *context );
+int	test_log( _context *context, LogType type );
 
 
 #endif	// FRAME_H

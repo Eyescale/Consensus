@@ -14,9 +14,12 @@ _action exit_narrative;
 _action parse_expression;
 _action read_va;
 _action input_command;
-_action set_assignment_mode;
-_action set_output;
-_action read_address;
+_action input_story;
+_action output_story;
+_action set_output_mode;
+_action clear_output_mode;
+_action open_stream;
+_action session_cmd;
 
 /*---------------------------------------------------------------------------
 	utilities	- public

@@ -11,6 +11,7 @@ _action	read_narrative;
 	narrative utilities	- public
 ---------------------------------------------------------------------------*/
 
+int	narrative_active( _context *context );
 void	registerNarrative( Narrative *narrative, _context *context );
 
 registryEntry *addNarrative( Entity *entity, char *name, Narrative *narrative );

@@ -1,5 +1,0 @@
-
-	: test : "test"
-	: %test.hcn : "./test/hcn.dir/j.hcn"
-	>:%test.html
-

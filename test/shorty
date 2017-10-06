@@ -2,35 +2,35 @@
 !~ .
 :<%("cat ./test/Patrick.DB" )
 
->: [ Fei.. ]                 %[ Fei.. ]
->: [ [ Fei.. ].. ]           %[ [ Fei.. ].. ]
->: ~[ ... ]                  %[ ~[ ... ] ]
->: .:~%\[ ??? ]               %[ .:~%[ ??? ] ]
+>:\ [ Fei.. ]                 %[ Fei.. ]
+>:\ [ [ Fei.. ].. ]           %[ [ Fei.. ].. ]
+>:\ ~[ ... ]                  %[ ~[ ... ] ]
+>:\ .:~%\[ ??? ]               %[ .:~%[ ??? ] ]
 >:
->: [ ..child ]               %[ ..child ]
->: ..[ child<-.. ]           %[ ..[ child<-.. ] ]
->: [ ?-.->[ child<-.. ] ]    %[ ?-.->[ child<-.. ] ]
->: [ ..[ ..child ] ]         %[ ..[ ..child ] ]
+>:\ [ ..child ]               %[ ..child ]
+>:\ ..[ child<-.. ]           %[ ..[ child<-.. ] ]
+>:\ [ ?-.->[ child<-.. ] ]    %[ ?-.->[ child<-.. ] ]
+>:\ [ ..[ ..child ] ]         %[ ..[ ..child ] ]
 >:
->: ?-.->[ child<-has-[ Patrick.. ] ]    %[ ?-.->[ child<-has-[ Patrick.. ] ] ]
->: ..[ child<-has-[ Patrick.. ] ]       %[ ..[ child<-has-[ Patrick.. ] ] ]
+>:\ ?-.->[ child<-has-[ Patrick.. ] ]    %[ ?-.->[ child<-has-[ Patrick.. ] ] ]
+>:\ ..[ child<-has-[ Patrick.. ] ]       %[ ..[ child<-has-[ Patrick.. ] ] ]
 >:
->: ?..                       %[ ?.. ]
->: .?.                       %[ .?. ]
->: ..?                       %[ ..? ]
->: ..[ [ ... ].. ]           %[ ..[ [ ... ].. ] ]
->: ..[ [ ?.. ].. ]           %[ ..[ [ ?.. ].. ] ]
->: ..[ [ .?. ].. ]           %[ ..[ [ .?. ].. ] ]
->: ..[ [ ..? ].. ]           %[ ..[ [ ..? ].. ] ]
+>:\ ?..                       %[ ?.. ]
+>:\ .?.                       %[ .?. ]
+>:\ ..?                       %[ ..? ]
+>:\ ..[ [ ... ].. ]           %[ ..[ [ ... ].. ] ]
+>:\ ..[ [ ?.. ].. ]           %[ ..[ [ ?.. ].. ] ]
+>:\ ..[ [ .?. ].. ]           %[ ..[ [ .?. ].. ] ]
+>:\ ..[ [ ..? ].. ]           %[ ..[ [ ..? ].. ] ]
 >:
->: variables
+>:\ variables
 : variable : [ [ [ [ ?.. ] ]<-has-[ [ c ] ] ]: d ]
->: test 1. Collapsing        %variable
+>:\ test 1. Collapsing        %variable
 : variable : [ .[ ..[ %variable ] ]. ]-[ ... ]->[ ?.. ]
->: test 2. Formatting        %variable
+>:\ test 2. Formatting        %variable
 : variable1 : [ ?:[ a-is->b: %[ ?.. ] ]:~%[ .?. ] ]
 : variable2 : [ ?:[ a-is->b: %[ ?.. ] ]: %[ .?. ] ]
->: test 3. as-sub            %variable1
->:                           %variable2
+>:\ test 3. as-sub            %variable1
+>:\                           %variable2
 >:
 

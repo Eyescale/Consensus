@@ -1,5 +1,0 @@
-<<? i : %o >>
-	hello
-	<< :titi:"toto" >>
-	%titi
-<</>>
