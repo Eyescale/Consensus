@@ -89,7 +89,7 @@ main( int argc, char ** argv )
 	// -----------------------
 
 #ifdef DUP_TEST
-	int fd = open( "toto", O_RDONLY );
+	int fd = open( "./test/toto", O_RDONLY );
 	close( STDIN_FILENO );
 	dup( fd );
 #endif
@@ -101,11 +101,35 @@ main( int argc, char ** argv )
 	context->control.mode = ExecutionMode;
 	context->control.terminal = isatty( STDIN_FILENO );
 	context->control.prompt = context->control.terminal;
+#ifdef CGI
+	context->control.cgi = ( argc == 1 );
 
-	io_init( context );
+	if ( context->control.cgi )
+	{
+		// 1. create the cgi cndb
+		// ----------------------
+
+		cgiInit();
+		for ( cgiFormEntry *i = cgiFormEntryFirst; i!=NULL; i=i->next )
+		{
+			Entity *entry = cn_setf( "%e-is->input", cn_new( NULL ) );
+			cn_setf( "%s-is->[ name<-has-%e ]", i->attr, entry );
+			cn_setf( "%s-is->[ value<-has-%e ]", i->value, entry );
+		}
+
+		// 2. load and activate the cgi story
+		// ----------------------------------
+
+		cn_readf( ":< \Nhttp://localhost/consensus/cgi.story" );
+		Narrative *cgi = lookupNarrative( CN.nil, "cgi" );
+		activateNarrative( CN.nil, cgi );
+	}
+#endif
 
 	// go live
 	// -------
+
+	io_init( context );
 
 	int event = 0;
 	char *state = base;
@@ -122,7 +146,7 @@ main( int argc, char ** argv )
 			output( Debug, "frame_isset: %d - backlog:%d, log:%d", frame_isset,
 				context->frame.backlog, test_log( context, OCCURRENCES ));
 #endif
-			io_scan( &fds, !frame_isset, context );
+			io_scan( &fds, !( frame_isset || context->control.cgi ), context );
 
 			// if external change notifications
 			// --------------------------------
@@ -171,7 +195,10 @@ main( int argc, char ** argv )
 	while ( strcmp( state, "" ) );
 
 	io_exit( context );
-
+#ifdef CGI
+	if ( context->control.cgi )
+		cgiExit();
+#endif
 	return event;
 }
 
