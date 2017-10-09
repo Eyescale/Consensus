@@ -223,7 +223,60 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		if ( *sub_results == NULL ) return 0;
 		break;
 	case VariableIdentifier:
-		if ( sub[ count ].result.identifier.value != NULL )
+		if ( context->expression.args != NULL )
+		{
+			// better have exactly the right arg count, here - otherwise
+			// "unpredictable results will happen"!
+
+			listItem *arg = context->expression.args;
+			char *identifier = sub[ count ].result.identifier.value;
+			sub[ count ].result.identifier.value = NULL;
+			switch ( identifier[ 0 ] ) {
+			case 's':
+				identifier = (char *) arg->ptr;
+				context->expression.args = arg->next;
+				if ( context->expression.mode == ReadMode ) {
+					filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
+					if ( *sub_results == NULL ) return 0;
+					break;
+				}
+				Entity *e = cn_entity( identifier );
+			       	if ( e != NULL )  {
+					filter_results( sub_results, expression, count, e, ENTITY, results );
+					if ( *sub_results == NULL ) return 0;
+				}
+				else if ( context->expression.mode == InstantiateMode )
+				{
+					e = cn_new( strdup( identifier ) );
+					addItem( sub_results, e );
+#ifdef DEBUG
+					output( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
+						count, identifier, (int) e );
+#endif
+				} else if ( !sub[ count ].result.not ) {
+					if ( context->expression.mode == EvaluateMode ) {
+						return 0;
+					} else {
+						return output( Error, "'%s' is not instantiated", identifier );
+					}
+				}
+				break;
+			case 'e':
+				e = (Entity *) arg->ptr;
+				context->expression.args = arg->next;
+				if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
+					context->expression.mode = EvaluateMode;
+					addItem( sub_results, e );
+					break;
+				}
+				filter_results( sub_results, expression, count, e, ENTITY, results );
+				if ( *sub_results == NULL ) return 0;
+				break;
+			default:
+				return output( Debug, "***** Error: expression_solve, unsupported format" );
+			}
+		}
+		else if ( sub[ count ].result.identifier.value != NULL )
 		{
 			char *identifier = sub[ count ].result.identifier.value;
 			registryEntry *entry;

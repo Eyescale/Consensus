@@ -261,6 +261,9 @@ typedef struct {
 		IdentifierVA *identifier;
 	} ptr;
 	int remainder;
+	struct {
+		unsigned int redirected : 1;
+	} restore;
 }
 OutputVA;
 
@@ -342,6 +345,7 @@ typedef struct {
 		listItem *stack;	// current StackVA
 		int level;
 		unsigned int terminal : 1;
+		unsigned int cgi : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
 		unsigned int stop : 1;
@@ -372,6 +376,7 @@ typedef struct {
 		ExpressionMode mode;
 		listItem *results;
 		listItem *filter;
+		listItem *args;
 		Expression *ptr;
 		listItem *stack;
 		int marked;
@@ -413,6 +418,7 @@ typedef struct {
 	struct {
 		listItem *stack;	// current OutputVA
 		AssignmentMode mode;
+		int redirected;
 		struct {
 			char *session;
 			char *entity;

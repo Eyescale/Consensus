@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/select.h>
 
 #include "database.h"
 #include "registry.h"
@@ -367,7 +368,24 @@ read_va( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	command input actions	- DEPRECATED
+	set_assignment_mode
+---------------------------------------------------------------------------*/
+int
+set_assignment_mode( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	bgn_
+	in_( "> identifier" )	context->assignment.mode = AssignAdd;
+	in_( ": identifier" )	context->assignment.mode = AssignSet;
+	end
+
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	command input action
 ---------------------------------------------------------------------------*/
 int
 input_command( char *state, int event, char **next_state, _context *context )
@@ -393,54 +411,42 @@ input_command( char *state, int event, char **next_state, _context *context )
 	command output actions
 ---------------------------------------------------------------------------*/
 int
-clear_output_mode( char *state, int event, char **next_state, _context *context )
+clear_output_target( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
-	bgn_
-	in_( ">:" )
-	in_( ">:_" )
-	in_( ">: \\" )
-	in_( ">: %" )
-	in_( ">: %variable" )
-	in_( ">: %[_]" )
-	in_( ">: %[_].$" )
-	in_( ">: %[_].narrative(_)" )
-	in_other return 0;
-	end
 
-	if ( context->output.mode == AssignClient )
+	if ( strcmp( state, ">:" ) &&
+	     strcmp( state, ">:_" ) &&
+	     strcmp( state, ">: \\" ) &&
+	     strcmp( state, ">: %" ) &&
+	     strcmp( state, ">: %variable" ) &&
+	     strcmp( state, ">: %[_]" ) &&
+	     strcmp( state, ">: %[_].$(_)" ) &&
+	     strcmp( state, ">: %[_].narrative(_)" ))
 	{
+		return 0;
+	}
+
+	if ( context->output.redirected ) {
 		pop_output( context );
 	}
-	context->assignment.mode = AssignSet;
-	context->output.mode = 0;
 	return 0;
 }
 
 int
-set_output_mode( char *state, int event, char **next_state, _context *context )
+set_output_target( char *state, int event, char **next_state, _context *context )
 {
 	// return 0;
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	AssignmentMode mode = AssignSet;
-	bgn_
-	in_( "> identifier" )	mode = AssignAdd;
-	in_( "> .." )		mode = AssignClient;
-	end
-
-	switch ( mode ) {
-	case AssignSet:
-	case AssignAdd:
-		context->assignment.mode = mode;
-		return 0;
-	case AssignClient:
+	if ( !strcmp( state, "> .." ) ) {
 		push_output( "^^", &context->io.client, ClientOutput, context );
-		context->output.mode = mode;
-		return 0;
+		context->output.redirected = 1;
 	}
+
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -455,7 +461,7 @@ session_cmd( char *state, int event, char **next_state, _context *context )
 	int do_pipe = 0;
 	bgn_
 	in_( ">@session:_" )
-	in_( ">@session:_ >:" ) do_pipe = 1;
+	in_( ">@session:_ | >:" ) do_pipe = 1;
 	in_other
 		return output( Debug, "***** Error: lost in session_pipe()" );
 	end

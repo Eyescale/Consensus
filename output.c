@@ -112,6 +112,7 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 {
 	OutputVA *output = (OutputVA *) calloc( 1, sizeof(OutputVA) );
 	output->level = context->control.level;
+	output->restore.redirected = context->output.redirected;
 	output->mode = type;
 	switch ( type ) {
 	case ClientOutput:
@@ -133,6 +134,7 @@ int
 pop_output( _context *context )
 {
 	OutputVA *output = (OutputVA *) context->output.stack->ptr;
+	context->output.redirected = output->restore.redirected;
 	switch ( output->mode ) {
 	case ClientOutput:
 		// flush output buffer
@@ -173,8 +175,12 @@ pop_output( _context *context )
 ---------------------------------------------------------------------------*/
 extern struct { int real, fake; } separator_table[];	// in input_util.c
 void
-output_identifier( char *identifier )
+output_identifier( char *identifier, int as_is )
 {
+	if ( as_is ) {
+		output( Text, "", identifier );
+		return;
+	}
 	IdentifierVA buffer = { NULL, NULL };
 	string_start( &buffer, 0 );
 
@@ -195,7 +201,7 @@ output_identifier( char *identifier )
 		if ( !special ) string_append( &buffer, *src );
 		else special = 0;
 	}
-	
+
 	string_finish( &buffer, 0 );
 	if ( has_special ) {
 		output( Text, "\"%s\"", buffer.ptr );
@@ -279,13 +285,13 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
 			output( Text, "", "%" );
-			output_identifier( sub[ i ].result.identifier.value );
+			output_identifier( sub[ i ].result.identifier.value, 0 );
 		}
 		return 1;
 	case SubIdentifier:
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			output_identifier( sub[ i ].result.identifier.value );
+			output_identifier( sub[ i ].result.identifier.value, 0 );
 		}
 		return 1;
 	case SubNull:
@@ -476,7 +482,7 @@ output_entity_name( Entity *e, Expression *format, int base )
 	}
 	char *name = cn_name( e );
 	if ( name != NULL ) {
-		output_identifier( name );
+		output_identifier( name, 0 );
 		return;
 	}
 	if ( !base ) output( Text, "", "[ " );
@@ -512,14 +518,14 @@ output_narrative_name( Entity *e, char *name )
 {
 	if ( e == CN.nil )
 	{
-		output_identifier( name );
+		output_identifier( name, 0 );
 		output( Text, "", "()" );
 	}
 	else {
 		output( Text, "", "%[ " );
 		output_entity_name( e, NULL, 1 );
 		output( Text, "", " ]." );
-		output_identifier( name );
+		output_identifier( name, 0 );
 		output( Text, "", "()" );
 	}
 }
@@ -685,21 +691,21 @@ output_va_value( void *value, int narrative_account )
 	if ( narrative_account ) {
 		registryEntry *i = (Registry) value;
 		if ( i->next == NULL ) {
-			output_identifier( (char *) i->identifier );
+			output_identifier( (char *) i->identifier, 0 );
 			output( Text, "", "()" );
 		} else {
 			output( Text, "", "{ " );
-			output_identifier( (char *) i->identifier );
+			output_identifier( (char *) i->identifier, 0 );
 			output( Text, "", "()" );
 			for ( i = i->next; i!=NULL; i=i->next ) {
 				output( Text, "", ", " );
-				output_identifier( (char *) i->identifier );
+				output_identifier( (char *) i->identifier, 0 );
 				output( Text, "", "()" );
 			}
 			output( Text, "", " }" );
 		}
 	} else {
-		output_identifier( (char *) value );
+		output_identifier( (char *) value, 0 );
 	}
 }
 
@@ -844,7 +850,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			ConditionVA *condition = (ConditionVA *) i->ptr;
 			if ( condition->identifier != NULL ) {
-				output_identifier( condition->identifier );
+				output_identifier( condition->identifier, 0 );
 				output( Text, "", ": " );
 			} else {
 				output( Text, "", ":" );
@@ -872,7 +878,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 				if ( event->identifier.type == VariableIdentifier )
 					output( Text, "", "%" );
 #endif	// DO_LATER
-				output_identifier( event->identifier.name );
+				output_identifier( event->identifier.name, 0 );
 			}
 			if ( !event->type.init ) output( Text, "", ": " );
 #ifdef DO_LATER
@@ -922,13 +928,13 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		break;
 	case ActionOccurrence:
 		; ActionVA *action = (ActionVA *) occurrence->va->ptr;
-		listItem *instruction = action->instructions;
-		if ( instruction->next == NULL )
+		listItem *instructions = action->instructions;
+		if ( instructions->next == NULL )
 		{
 			output( Text, "", "do " );
 			_context *context = CN.context;
 			context->control.mode = InstructionMode;
-			cn_dof( "", instruction->ptr );
+			cn_read( instructions->ptr, InstructionOne, base, 0 );
 			context->control.mode = ExecutionMode;
 		}
 		else
@@ -940,18 +946,12 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			push( base, 0, NULL, context );
 			context->control.level = level;
 			context->control.mode = InstructionMode;
-
-			context->narrative.mode.action.block = 1;
-			push_input( "", instruction, InstructionBlock, context );
-			int event = read_command( base, 0, &same, context );
-			pop_input( base, 0, NULL, context );
-
+			cn_read( instructions, InstructionBlock, base, 0 );
 			if ( context->control.level == level ) {
 				// returned from '/' - did not pop yet (expecting then)
 				pop( base, 0, NULL, context );
 			}
 			context->control.level = backup;
-			context->narrative.mode.action.block = 0;
 			context->control.mode = ExecutionMode;
 		}
 		break;

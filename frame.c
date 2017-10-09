@@ -13,7 +13,6 @@
 #include "api.h"
 #include "input.h"
 #include "output.h"
-#include "io.h"
 #include "command.h"
 #include "expression.h"
 #include "narrative.h"
@@ -437,16 +436,11 @@ execute_narrative_actions( Narrative *instance, _context *context )
 		ActionVA *action = (ActionVA *) occurrence->va->ptr;
 		listItem *instruction = action->instructions;
 		if ( instruction->next == NULL ) {
-			cn_dof( "", instruction->ptr );
+			cn_read( instruction->ptr, InstructionOne, base, 0 );
 		} else {
 			push( base, 0, NULL, context );
 			int level = context->control.level;
-
-			context->narrative.mode.action.block = 1;
-			push_input( "", instruction, InstructionBlock, context );
-			int event = read_command( base, 0, &same, context );
-			pop_input( base, 0, NULL, context );
-
+			cn_read( instruction, InstructionBlock, base, 0 );
 			if ( context->control.level == level ) {
 				// returned from '/' - did not pop yet (expecting then)
 				pop( base, 0, NULL, context );
@@ -456,7 +450,6 @@ execute_narrative_actions( Narrative *instance, _context *context )
 				}
 				break;
 			}
-			context->narrative.mode.action.block = 0;
 		}
 
 		if ( instance->deactivate )

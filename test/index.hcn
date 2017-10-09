@@ -1,14 +1,14 @@
 <html>
 <body>
-<h1 style="text-align:center; font-weight:normal;">Welcome to Consensus!</h1>
+<h1 style="text-align:center; font-weight:normal;"> Welcome to Consensus! </h1>
 << ?%: ?-is->Label >>
-	<ul>
+<ul>
 	<< ? : ?-is->Label >>
-	<li> <a href="consensus.cgi?label=%?">%?</a>
+\	<li> <a href="consensus.cgi?label=%?">%?</a>
 	<< / >>
-	< /ul >
+</ul>
 << /~ >>
-	No label yet.
+\	No label yet.
 << / >>
 
 <form action="consensus.cgi" method="get">

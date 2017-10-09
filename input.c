@@ -285,7 +285,7 @@ set_input_mode( RecordMode mode, int event, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	input
+	skip_comment
 ---------------------------------------------------------------------------*/
 int
 skip_comment( int event, int *comment_on, int *backslash, _context *context )
@@ -325,6 +325,9 @@ skip_comment( int event, int *comment_on, int *backslash, _context *context )
 	return event;
 }
 
+/*---------------------------------------------------------------------------
+	input
+---------------------------------------------------------------------------*/
 int
 input( char *state, int event, char **next_state, _context *context )
 {
@@ -382,7 +385,7 @@ input( char *state, int event, char **next_state, _context *context )
 				if ( event && ( context->narrative.mode.output )) {
 					output( Text, "%c", event );
 				}
-				do_pop = ( event == 0 );
+				do_pop = !event;
 				break;
 			default:
 				break;

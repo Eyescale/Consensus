@@ -19,7 +19,7 @@
 /*---------------------------------------------------------------------------
 	parser engine
 ---------------------------------------------------------------------------*/
-#define	expression_do_( a, s )	\
+#define	do_( a, s )	\
 	event = expression_execute( a, &state, event, s, context );
 
 static Expression *
@@ -637,53 +637,53 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 
 	bgn_
 	in_( "%" ) bgn_
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( '.' )	expression_do_( nop, "%[." )
-		on_( '?' )	expression_do_( nop, "%[?" )
-		on_other	expression_do_( error, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( '.' )	do_( nop, "%[." )
+		on_( '?' )	do_( nop, "%[?" )
+		on_other	do_( error, "" )
 		end
 	in_( "source-medium->target: %" ) bgn_
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( '.' )	expression_do_( nop, "%[." )
-		on_( '?' )	expression_do_( nop, "%[?" )
-		on_other	expression_do_( error, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( '.' )	do_( nop, "%[." )
+		on_( '?' )	do_( nop, "%[?" )
+		on_other	do_( error, "" )
 		end
 		in_( "%[." ) bgn_
-			on_( '.' )	expression_do_( nop, "%[.." )
-			on_( '?' )	expression_do_( nop, "%[.?" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( nop, "%[.." )
+			on_( '?' )	do_( nop, "%[.?" )
+			on_other	do_( error, "" )
 			end
 			in_( "%[.." ) bgn_
-				on_( '?' )	expression_do_( set_as_sub, "%[_" )
-				on_other	expression_do_( error, "" )
+				on_( '?' )	do_( set_as_sub, "%[_" )
+				on_other	do_( error, "" )
 				end
 			in_( "%[.?" ) bgn_
-				on_( '.' )	expression_do_( set_as_sub, "%[_" )
-				on_( '?' )	expression_do_( set_as_sub, "%[_" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_as_sub, "%[_" )
+				on_( '?' )	do_( set_as_sub, "%[_" )
+				on_other	do_( error, "" )
 				end
 		in_( "%[?" ) bgn_
-			on_( '.' )	expression_do_( nop, "%[?." )
-			on_( '?' )	expression_do_( nop, "%[??" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( nop, "%[?." )
+			on_( '?' )	do_( nop, "%[??" )
+			on_other	do_( error, "" )
 			end
 			in_( "%[?." ) bgn_
-				on_( '.' )	expression_do_( set_as_sub, "%[_" )
-				on_( '?' )	expression_do_( set_as_sub, "%[_" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_as_sub, "%[_" )
+				on_( '?' )	do_( set_as_sub, "%[_" )
+				on_other	do_( error, "" )
 				end
 			in_( "%[??" ) bgn_
-				on_( '.' )	expression_do_( set_as_sub, "%[_" )
-				on_( '?' )	expression_do_( set_as_sub, "%[_" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_as_sub, "%[_" )
+				on_( '?' )	do_( set_as_sub, "%[_" )
+				on_other	do_( error, "" )
 				end
 		in_( "%[_" ) bgn_
-			on_( ' ' )		expression_do_( nop, same )
-			on_( '\t' )		expression_do_( nop, same )
-			on_( ']' )		expression_do_( nop, "" )
-			on_other		expression_do_( error, "" )
+			on_( ' ' )		do_( nop, same )
+			on_( '\t' )		do_( nop, same )
+			on_( ']' )		do_( nop, "" )
+			on_other		do_( error, "" )
 			end
 	end
 	}
@@ -708,25 +708,25 @@ set_shorty( char *state, int event, char **next_state, _context *context )
 	ExpressionSub *sub = expression->sub;
 
 	bgn_
-	in_( ".." )		expression_do_( nop, same )
+	in_( ".." )		do_( nop, same )
 
-	in_( "[]." )		expression_do_( set_source_pop, same )
-	in_( "identifier." )	expression_do_( set_source_identifier, same )
-	in_( "%!." )		expression_do_( set_source_this, same )
-	in_( "%?." )		expression_do_( set_source_variator, same )
-	in_( "%identifier." )	expression_do_( set_source_variable, same )
+	in_( "[]." )		do_( set_source_pop, same )
+	in_( "identifier." )	do_( set_source_identifier, same )
+	in_( "%!." )		do_( set_source_this, same )
+	in_( "%?." )		do_( set_source_variator, same )
+	in_( "%identifier." )	do_( set_source_variable, same )
 
-	in_( ".[]" )		expression_do_( set_medium_pop, same )
-	in_( ".identifier" )	expression_do_( set_medium_identifier, same )
-	in_( ".%?" )		expression_do_( set_medium_variator, same )
-	in_( ".%!" )		expression_do_( set_medium_this, same )
-	in_( ".%identifier" )	expression_do_( set_medium_variable, same )
+	in_( ".[]" )		do_( set_medium_pop, same )
+	in_( ".identifier" )	do_( set_medium_identifier, same )
+	in_( ".%?" )		do_( set_medium_variator, same )
+	in_( ".%!" )		do_( set_medium_this, same )
+	in_( ".%identifier" )	do_( set_medium_variable, same )
 
-	in_( "..[]" )		EPUSH expression_do_( set_target_pop, same ) EPOP
-	in_( "..identifier" )	EPUSH expression_do_( set_target_identifier, same ) EPOP
-	in_( "..%?" )		EPUSH expression_do_( set_target_variator, same ) EPOP
-	in_( "..%!" )		EPUSH expression_do_( set_target_this, same ) EPOP
-	in_( "..%identifier" )	EPUSH expression_do_( set_target_variable, same ) EPOP
+	in_( "..[]" )		EPUSH do_( set_target_pop, same ) EPOP
+	in_( "..identifier" )	EPUSH do_( set_target_identifier, same ) EPOP
+	in_( "..%?" )		EPUSH do_( set_target_variator, same ) EPOP
+	in_( "..%!" )		EPUSH do_( set_target_this, same ) EPOP
+	in_( "..%identifier" )	EPUSH do_( set_target_variable, same ) EPOP
 	end
 
 	for ( int i=0; i<3; i++ ) {
@@ -840,232 +840,232 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 
 	bgn_
 	in_( base ) bgn_
-		on_( '?' )	expression_do_( nop, "?" )
-		on_( '!' )	expression_do_( nop, "!" )
+		on_( '?' )	do_( nop, "?" )
+		on_( '!' )	do_( nop, "!" )
 		end
 	in_( "!" ) bgn_
-		on_( '!' )	expression_do_( nop, "!!" )
-		on_( '.' )	expression_do_( nop, "!." )
-		on_other	expression_do_( error, "" )
+		on_( '!' )	do_( nop, "!!" )
+		on_( '.' )	do_( nop, "!." )
+		on_other	do_( error, "" )
 		end
 		in_( "!!" ) bgn_
-			on_( '!' )	expression_do_( set_super, "!_" )
-			on_( '.' )	expression_do_( set_super, "!_" )
-			on_other	expression_do_( error, "" )
+			on_( '!' )	do_( set_super, "!_" )
+			on_( '.' )	do_( set_super, "!_" )
+			on_other	do_( error, "" )
 			end
 		in_( "!." ) bgn_
-			on_( '!' )	expression_do_( set_super, "!_" )
-			on_( '.' )	expression_do_( set_super, "!_" )
-			on_other	expression_do_( error, "" )
+			on_( '!' )	do_( set_super, "!_" )
+			on_( '.' )	do_( set_super, "!_" )
+			on_other	do_( error, "" )
 			end
 		in_( "!_" ) bgn_
-			on_( ' ' )	expression_do_( nop, same )
-			on_( '\t' )	expression_do_( nop, same )
-			on_( ':' )	expression_do_( nop, base )
-			on_other	expression_do_( error, "" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( ':' )	do_( nop, base )
+			on_other	do_( error, "" )
 			end
 	in_( "?" ) bgn_
-		on_( ' ' )	expression_do_( set_mark, "?_" )
-		on_( '\t' )	expression_do_( set_mark, "?_" )
-		on_( ':' )	expression_do_( set_mark, base )
-		on_( ']' )	expression_do_( set_mark, "" )
-		on_( '-' )	expression_do_( set_source_mark, "source-" )
-		on_( '<' )	expression_do_( set_target_mark, "target<" )
-		on_( '|' )	expression_do_( nop, "?|" )
-		on_( '?' )	expression_do_( nop, "??" )
-		on_( '.' )	expression_do_( nop, "?." )
-		on_( '\n' )	expression_do_( set_mark, "" )
-		on_other	expression_do_( error, "" )
+		on_( ' ' )	do_( set_mark, "?_" )
+		on_( '\t' )	do_( set_mark, "?_" )
+		on_( ':' )	do_( set_mark, base )
+		on_( ']' )	do_( set_mark, "" )
+		on_( '-' )	do_( set_source_mark, "source-" )
+		on_( '<' )	do_( set_target_mark, "target<" )
+		on_( '|' )	do_( nop, "?|" )
+		on_( '?' )	do_( nop, "??" )
+		on_( '.' )	do_( nop, "?." )
+		on_( '\n' )	do_( set_mark, "" )
+		on_other	do_( error, "" )
 		end
 		in_( "?." ) bgn_
-			on_( '?' )	expression_do_( set_mark, "?_" )
-			on_( '.' )	expression_do_( set_mark, "?_" )
-			on_other	expression_do_( error, "" )
+			on_( '?' )	do_( set_mark, "?_" )
+			on_( '.' )	do_( set_mark, "?_" )
+			on_other	do_( error, "" )
 			end
 		in_( "??" ) bgn_
-			on_( '?' )	expression_do_( set_mark, "?_" )
-			on_( '.' )	expression_do_( set_mark, "?_" )
-			on_other	expression_do_( error, "" )
+			on_( '?' )	do_( set_mark, "?_" )
+			on_( '.' )	do_( set_mark, "?_" )
+			on_other	do_( error, "" )
 			end
 		in_( "?|" ) bgn_
-			on_( '?' )	expression_do_( nop, "?|?" )
-			on_( '.' )	expression_do_( nop, "?|." )
-			on_other	expression_do_( error, "" )
+			on_( '?' )	do_( nop, "?|?" )
+			on_( '.' )	do_( nop, "?|." )
+			on_other	do_( error, "" )
 			end
 			in_( "?|?" ) bgn_
-				on_( '?' )	expression_do_( nop, "?|??" )
-				on_( '.' )	expression_do_( nop, "?|?." )
-				on_other	expression_do_( error, "" )
+				on_( '?' )	do_( nop, "?|??" )
+				on_( '.' )	do_( nop, "?|?." )
+				on_other	do_( error, "" )
 				end
 				in_( "?|??" ) bgn_
-					on_( '?' )	expression_do_( set_mark, "?_" )
-					on_( '.' )	expression_do_( set_mark, "?_" )
-					on_other	expression_do_( error, "" )
+					on_( '?' )	do_( set_mark, "?_" )
+					on_( '.' )	do_( set_mark, "?_" )
+					on_other	do_( error, "" )
 					end
 				in_( "?|?." ) bgn_
-					on_( '?' )	expression_do_( set_mark, "?_" )
-					on_( '.' )	expression_do_( set_mark, "?_" )
-					on_other	expression_do_( error, "" )
+					on_( '?' )	do_( set_mark, "?_" )
+					on_( '.' )	do_( set_mark, "?_" )
+					on_other	do_( error, "" )
 					end
 			in_( "?|." ) bgn_
-				on_( '?' )	expression_do_( nop, "?|.?" )
-				on_( '.' )	expression_do_( nop, "?|.." )
-				on_other	expression_do_( error, "" )
+				on_( '?' )	do_( nop, "?|.?" )
+				on_( '.' )	do_( nop, "?|.." )
+				on_other	do_( error, "" )
 				end
 				in_( "?|.?" ) bgn_
-					on_( '?' )	expression_do_( set_mark, "?_" )
-					on_( '.' )	expression_do_( set_mark, "?_" )
-					on_other	expression_do_( error, "" )
+					on_( '?' )	do_( set_mark, "?_" )
+					on_( '.' )	do_( set_mark, "?_" )
+					on_other	do_( error, "" )
 					end
 				in_( "?|.." ) bgn_
-					on_( '?' )	expression_do_( set_mark, "?_" )
-					on_other	expression_do_( error, "" )
+					on_( '?' )	do_( set_mark, "?_" )
+					on_other	do_( error, "" )
 					end
 		in_( "?_" ) bgn_
-			on_( ' ' )	expression_do_( nop, same )
-			on_( '\t' )	expression_do_( nop, same )
-			on_( ':' )	expression_do_( nop, base )
-			on_( ']' )	expression_do_( nothing, base )
-			on_other	expression_do_( nothing, "source-medium->target" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( ':' )	do_( nop, base )
+			on_( ']' )	do_( nothing, base )
+			on_other	do_( nothing, "source-medium->target" )
 			end
 	in_( "[]" ) bgn_
-		on_( '.' )	expression_do_( nop, "[]." )
+		on_( '.' )	do_( nop, "[]." )
 		end
 		in_( "[]." ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 	in_( "identifier" ) bgn_
-		on_( '.' )	expression_do_( nop, "identifier." )
+		on_( '.' )	do_( nop, "identifier." )
 		end
 		in_( "identifier." ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 	in_( "%!" ) bgn_
-		on_( '.' )	expression_do_( nop, "%!." )
+		on_( '.' )	do_( nop, "%!." )
 		end
 		in_( "%!." ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 	in_( "%identifier" ) bgn_
-		on_( '.' )	expression_do_( nop, "%identifier." )
+		on_( '.' )	do_( nop, "%identifier." )
 		end
 		in_( "%identifier." ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 	in_( "." ) bgn_
-		on_( '.' )	expression_do_( nop, ".." )
-		on_( '!' )	expression_do_( nop, ".!" )
-		on_( '?' )	expression_do_( nop, ".?" )
-		on_( '*' )	expression_do_( set_flag_active, ".*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "._" )
-		on_( '~' )	expression_do_( set_flag_not, ".~" )
-		on_( '%' )	expression_do_( nop, ".%" )
-		on_( '[' )	expression_do_( push, ".[]" )
-		on_other	expression_do_( read_1, ".identifier" )
+		on_( '.' )	do_( nop, ".." )
+		on_( '!' )	do_( nop, ".!" )
+		on_( '?' )	do_( nop, ".?" )
+		on_( '*' )	do_( set_flag_active, ".*" )
+		on_( '_' )	do_( set_flag_inactive, "._" )
+		on_( '~' )	do_( set_flag_not, ".~" )
+		on_( '%' )	do_( nop, ".%" )
+		on_( '[' )	do_( push, ".[]" )
+		on_other	do_( read_1, ".identifier" )
 		end
 		in_( ".*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, ".~" )
-			on_( '%' )	expression_do_( nop, ".%" )
-			on_( '[' )	expression_do_( push, ".[]" )
-			on_other	expression_do_( read_1, ".identifier" )
+			on_( '~' )	do_( set_flag_not, ".~" )
+			on_( '%' )	do_( nop, ".%" )
+			on_( '[' )	do_( push, ".[]" )
+			on_other	do_( read_1, ".identifier" )
 			end
 		in_( "._" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, ".~" )
-			on_( '%' )	expression_do_( nop, ".%" )
-			on_( '[' )	expression_do_( push, ".[]" )
-			on_other	expression_do_( read_1, ".identifier" )
+			on_( '~' )	do_( set_flag_not, ".~" )
+			on_( '%' )	do_( nop, ".%" )
+			on_( '[' )	do_( push, ".[]" )
+			on_other	do_( read_1, ".identifier" )
 			end
 		in_( ".~" ) bgn_
-			on_( '%' )	expression_do_( nop, ".%" )
-			on_( '[' )	expression_do_( push, ".[]" )
-			on_other	expression_do_( read_1, ".identifier" )
+			on_( '%' )	do_( nop, ".%" )
+			on_( '[' )	do_( push, ".[]" )
+			on_other	do_( read_1, ".identifier" )
 			end
 		in_( ".[]" ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 		in_( ".identifier" ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
 			end
 		in_( ".%" ) bgn_
-			on_( '?' )	expression_do_( nop, ".%?" )
-			on_( '!' )	expression_do_( nop, ".%!" )
-			on_other	expression_do_( read_1, ".%identifier" )
+			on_( '?' )	do_( nop, ".%?" )
+			on_( '!' )	do_( nop, ".%!" )
+			on_other	do_( read_1, ".%identifier" )
 			end
 			in_( ".%?" ) bgn_
-				on_( '.' )	expression_do_( set_shorty, "" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_shorty, "" )
+				on_other	do_( error, "" )
 				end
 			in_( ".%!" ) bgn_
-				on_( '.' )	expression_do_( set_shorty, "" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_shorty, "" )
+				on_other	do_( error, "" )
 				end
 			in_( ".%identifier" ) bgn_
-				on_( '.' )	expression_do_( set_shorty, "" )
-				on_other	expression_do_( error, "" )
+				on_( '.' )	do_( set_shorty, "" )
+				on_other	do_( error, "" )
 				end
 		in_( ".?" ) bgn_
-			on_( '.' )	expression_do_( set_mark, "?_" )
-			on_( '?' )	expression_do_( set_mark, "?_" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_mark, "?_" )
+			on_( '?' )	do_( set_mark, "?_" )
+			on_other	do_( error, "" )
 			end
 		in_( ".!" ) bgn_
-			on_( '.' )	expression_do_( set_super, "!_" )
-			on_( '!' )	expression_do_( set_super, "!_" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_super, "!_" )
+			on_( '!' )	do_( set_super, "!_" )
+			on_other	do_( error, "" )
 			end
 		in_( ".." ) bgn_
-			on_( '.' )	expression_do_( set_shorty, "" )
-			on_( '?' )	expression_do_( set_mark, "?_" )
-			on_( '!' )	expression_do_( set_super, "!_" )
-			on_( '*' )	expression_do_( set_flag_active, "..*" )
-			on_( '_' )	expression_do_( set_flag_inactive, ".._" )
-			on_( '~' )	expression_do_( set_flag_not, "..~" )
-			on_( '%' )	expression_do_( nop, "..%" )
-			on_( '[' )	expression_do_( push, "..[]" )
-			on_other	expression_do_( read_1, "..identifier" )
+			on_( '.' )	do_( set_shorty, "" )
+			on_( '?' )	do_( set_mark, "?_" )
+			on_( '!' )	do_( set_super, "!_" )
+			on_( '*' )	do_( set_flag_active, "..*" )
+			on_( '_' )	do_( set_flag_inactive, ".._" )
+			on_( '~' )	do_( set_flag_not, "..~" )
+			on_( '%' )	do_( nop, "..%" )
+			on_( '[' )	do_( push, "..[]" )
+			on_other	do_( read_1, "..identifier" )
 			end
 			in_( "..*" ) bgn_
-				on_( '~' )	expression_do_( set_flag_not, "..~" )
-				on_( '%' )	expression_do_( nop, "..%" )
-				on_( '[' )	expression_do_( push, "..[]" )
-				on_other	expression_do_( read_1, "..identifier" )
+				on_( '~' )	do_( set_flag_not, "..~" )
+				on_( '%' )	do_( nop, "..%" )
+				on_( '[' )	do_( push, "..[]" )
+				on_other	do_( read_1, "..identifier" )
 				end
 			in_( ".._" ) bgn_
-				on_( '~' )	expression_do_( set_flag_not, "..~" )
-				on_( '%' )	expression_do_( nop, "..%" )
-				on_( '[' )	expression_do_( nop, "..[]" )
-				on_other	expression_do_( read_1, "..identifier" )
+				on_( '~' )	do_( set_flag_not, "..~" )
+				on_( '%' )	do_( nop, "..%" )
+				on_( '[' )	do_( nop, "..[]" )
+				on_other	do_( read_1, "..identifier" )
 				end
 			in_( "..~" ) bgn_
-				on_( '%' )	expression_do_( nop, "..%" )
-				on_( '[' )	expression_do_( nop, "..[]" )
-				on_other	expression_do_( read_1, "..identifier" )
+				on_( '%' )	do_( nop, "..%" )
+				on_( '[' )	do_( nop, "..[]" )
+				on_other	do_( read_1, "..identifier" )
 				end
 			in_( "..[]" ) bgn_
-				on_any		expression_do_( set_shorty, "" )
+				on_any		do_( set_shorty, "" )
 				end
 			in_( "..identifier" ) bgn_
-				on_any		expression_do_( set_shorty, "" )
+				on_any		do_( set_shorty, "" )
 				end
 			in_( "..%" ) bgn_
-				on_( '?' )	expression_do_( nop, "..%?" )
-				on_( '!' )	expression_do_( nop, "..%!" )
-				on_other	expression_do_( read_1, "..%identifier" )
+				on_( '?' )	do_( nop, "..%?" )
+				on_( '!' )	do_( nop, "..%!" )
+				on_other	do_( read_1, "..%identifier" )
 				end
 				in_( "..%?" ) bgn_
-					on_any	expression_do_( set_shorty, "" )
+					on_any	do_( set_shorty, "" )
 					end
 				in_( "..%!" ) bgn_
-					on_any	expression_do_( set_shorty, "" )
+					on_any	do_( set_shorty, "" )
 					end
 				in_( "..%identifier" ) bgn_
-					on_any	expression_do_( set_shorty, "" )
+					on_any	do_( set_shorty, "" )
 					end
 		end
 
@@ -1201,11 +1201,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 #endif
 	// set own state according to commander's state
 	bgn_
-	in_( "!. %" )			expression_do_( nothing, "%" )
-	in_( ": identifier : %" )	expression_do_( nothing, "%" )
-	in_other 			expression_do_( nothing, base )
+	in_( "!. %" )			do_( nothing, "%" )
+	in_( ": identifier : %" )	do_( nothing, "%" )
+	in_other 			do_( nothing, base )
 	end
-	expression_do_( parser_init, same )
+	do_( parser_init, same )
 
 	do {
 	event = input( state, event, NULL, context );
@@ -1215,587 +1215,587 @@ read_expression( char *state, int event, char **next_state, _context *context )
 
 	bgn_
 	// errors are handled in parser_exit
-	on_( -1 )	expression_do_( nothing, "" )
+	on_( -1 )	do_( nothing, "" )
 
 	// return control to read_shorty after pop
-	in_( ".[]" )	expression_do_( read_shorty, "source-medium->target" )
-	in_( "..[]" )	expression_do_( read_shorty, "source-medium->target" )
+	in_( ".[]" )	do_( read_shorty, "source-medium->target" )
+	in_( "..[]" )	do_( read_shorty, "source-medium->target" )
 
 	in_( base ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( '*' )	expression_do_( set_flag_active, "*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "_" )
-		on_( '~' )	expression_do_( set_flag_not, "~" )
-		on_( ']' )	expression_do_( nothing, pop_state )
-		on_( '[' )	expression_do_( push, "[]" )
-		on_( '-' )	expression_do_( set_source_null, "source-" )
-		on_( '<' )	expression_do_( set_target_null, "target<" )
-		on_( '.' )	expression_do_( nop, "." )
-		on_( '%' )	expression_do_( nop, "%" )
-		on_( '?' )	expression_do_( read_shorty, base )
-		on_( '!' )	expression_do_( read_shorty, base )
-		on_separator	expression_do_( nothing, pop_state )
-		on_other	expression_do_( read_1, "identifier" )
+		on_( '(' )	do_( error, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( '*' )	do_( set_flag_active, "*" )
+		on_( '_' )	do_( set_flag_inactive, "_" )
+		on_( '~' )	do_( set_flag_not, "~" )
+		on_( ']' )	do_( nothing, pop_state )
+		on_( '[' )	do_( push, "[]" )
+		on_( '-' )	do_( set_source_null, "source-" )
+		on_( '<' )	do_( set_target_null, "target<" )
+		on_( '.' )	do_( nop, "." )
+		on_( '%' )	do_( nop, "%" )
+		on_( '?' )	do_( read_shorty, base )
+		on_( '!' )	do_( read_shorty, base )
+		on_separator	do_( nothing, pop_state )
+		on_other	do_( read_1, "identifier" )
 		end
 		in_( "*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "~" )
-			on_( '[' )	expression_do_( push, "[]" )
-			on_( '.' )	expression_do_( nop, "." )
-			on_( '%' )	expression_do_( nop, "%" )
-			on_other	expression_do_( read_1, "identifier" )
+			on_( '~' )	do_( set_flag_not, "~" )
+			on_( '[' )	do_( push, "[]" )
+			on_( '.' )	do_( nop, "." )
+			on_( '%' )	do_( nop, "%" )
+			on_other	do_( read_1, "identifier" )
 			end
 		in_( "_" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "~" )
-			on_( '[' )	expression_do_( push, "[]" )
-			on_( '.' )	expression_do_( nop, "." )
-			on_( '%' )	expression_do_( nop, "%" )
-			on_other	expression_do_( read_1, "identifier" )
+			on_( '~' )	do_( set_flag_not, "~" )
+			on_( '[' )	do_( push, "[]" )
+			on_( '.' )	do_( nop, "." )
+			on_( '%' )	do_( nop, "%" )
+			on_other	do_( read_1, "identifier" )
 			end
 		in_( "~" ) bgn_
-			on_( ' ' )	expression_do_( set_source_null, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_null, "source-medium->target" )
-			on_( ':' )	expression_do_( set_source_null, "source-medium->target:" )
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( nop, "~ " )
-			on_( '\t' )	expression_do_( nop, "~ " )
-			on_( ']' )	expression_do_( set_source_null, pop_state )
-			on_( '[' )	expression_do_( push, "[]" )
-			on_( '-' )	expression_do_( set_source_null, "source-" )
-			on_( '<' )	expression_do_( set_target_null, "target<" )
-			on_( '.' )	expression_do_( nop, "~." )
-			on_( '%' )	expression_do_( nop, "%" )
-			on_separator	expression_do_( set_source_null, pop_state )
-			on_other	expression_do_( read_1, "identifier" )
+			on_( ' ' )	do_( set_source_null, "source-medium->target" )
+			on_( '\t' )	do_( set_source_null, "source-medium->target" )
+			on_( ':' )	do_( set_source_null, "source-medium->target:" )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( nop, "~ " )
+			on_( '\t' )	do_( nop, "~ " )
+			on_( ']' )	do_( set_source_null, pop_state )
+			on_( '[' )	do_( push, "[]" )
+			on_( '-' )	do_( set_source_null, "source-" )
+			on_( '<' )	do_( set_target_null, "target<" )
+			on_( '.' )	do_( nop, "~." )
+			on_( '%' )	do_( nop, "%" )
+			on_separator	do_( set_source_null, pop_state )
+			on_other	do_( read_1, "identifier" )
 			end
 			in_( "~." ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( '-' )	expression_do_( set_source_any, "source-" )
-				on_( '<' )	expression_do_( set_target_any, "target<" )
-				on_( ':' )	expression_do_( set_source_any, "source-medium->target:" )
-				on_( ' ' )	expression_do_( set_source_any, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_any, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_any, pop_state )
-				on_other	expression_do_( set_source_any, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( '-' )	do_( set_source_any, "source-" )
+				on_( '<' )	do_( set_target_any, "target<" )
+				on_( ':' )	do_( set_source_any, "source-medium->target:" )
+				on_( ' ' )	do_( set_source_any, "source-medium->target" )
+				on_( '\t' )	do_( set_source_any, "source-medium->target" )
+				on_( ']' )	do_( set_source_any, pop_state )
+				on_other	do_( set_source_any, pop_state )
 				end
 			in_( "~ " ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( nop, same )
-				on_( '\t' )	expression_do_( nop, same )
-				on_( ']' )	expression_do_( set_source_null, pop_state )
-				on_other	expression_do_( set_source_null, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( ']' )	do_( set_source_null, pop_state )
+				on_other	do_( set_source_null, pop_state )
 				end
 		in_( "." ) bgn_
-			on_( '-' )	expression_do_( set_source_any, "source-" )
-			on_( '<' )	expression_do_( set_target_any, "target<" )
-			on_( ':' )	expression_do_( set_source_any, "source-medium->target:" )
-			on_( ' ' )	expression_do_( set_source_any, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_any, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_any, pop_state )
-			on_( '\n' )	expression_do_( set_source_any, pop_state )
-			on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '?' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '!' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '*' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '_' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '~' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '%' )	expression_do_( read_shorty, "source-medium->target" )
-			on_( '[' )	expression_do_( read_shorty, "source-medium->target" )
-			on_other	expression_do_( read_shorty, "source-medium->target" )
+			on_( '-' )	do_( set_source_any, "source-" )
+			on_( '<' )	do_( set_target_any, "target<" )
+			on_( ':' )	do_( set_source_any, "source-medium->target:" )
+			on_( ' ' )	do_( set_source_any, "source-medium->target" )
+			on_( '\t' )	do_( set_source_any, "source-medium->target" )
+			on_( ']' )	do_( set_source_any, pop_state )
+			on_( '\n' )	do_( set_source_any, pop_state )
+			on_( '.' )	do_( read_shorty, "source-medium->target" )
+			on_( '?' )	do_( read_shorty, "source-medium->target" )
+			on_( '!' )	do_( read_shorty, "source-medium->target" )
+			on_( '*' )	do_( read_shorty, "source-medium->target" )
+			on_( '_' )	do_( read_shorty, "source-medium->target" )
+			on_( '~' )	do_( read_shorty, "source-medium->target" )
+			on_( '%' )	do_( read_shorty, "source-medium->target" )
+			on_( '[' )	do_( read_shorty, "source-medium->target" )
+			on_other	do_( read_shorty, "source-medium->target" )
 			end
 
 		in_( "[]" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( '-' )	expression_do_( set_source_pop, "source-" )
-			on_( '<' )	expression_do_( swap_source_target, "target<" )
-			on_( ':' )	expression_do_( set_source_pop, "source-medium->target:" )
-			on_( ' ' )	expression_do_( set_source_pop, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_pop, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_pop, pop_state )
-			on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-			on_other	expression_do_( set_source_pop, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( '-' )	do_( set_source_pop, "source-" )
+			on_( '<' )	do_( swap_source_target, "target<" )
+			on_( ':' )	do_( set_source_pop, "source-medium->target:" )
+			on_( ' ' )	do_( set_source_pop, "source-medium->target" )
+			on_( '\t' )	do_( set_source_pop, "source-medium->target" )
+			on_( ']' )	do_( set_source_pop, pop_state )
+			on_( '.' )	do_( read_shorty, "source-medium->target" )
+			on_other	do_( set_source_pop, pop_state )
 			end
 
 		in_( "identifier" ) bgn_
-			on_( '(' )	expression_do_( nothing, pop_state )
-			on_( '-' )	expression_do_( set_source_identifier, "source-" )
-			on_( '<' )	expression_do_( set_target_identifier, "target<" )
-			on_( ':' )	expression_do_( set_source_identifier, "source-medium->target:" )
-			on_( ' ' )	expression_do_( set_source_identifier, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_identifier, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_identifier, pop_state )
-			on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-			on_other	expression_do_( set_source_identifier, pop_state )
+			on_( '(' )	do_( nothing, pop_state )
+			on_( '-' )	do_( set_source_identifier, "source-" )
+			on_( '<' )	do_( set_target_identifier, "target<" )
+			on_( ':' )	do_( set_source_identifier, "source-medium->target:" )
+			on_( ' ' )	do_( set_source_identifier, "source-medium->target" )
+			on_( '\t' )	do_( set_source_identifier, "source-medium->target" )
+			on_( ']' )	do_( set_source_identifier, pop_state )
+			on_( '.' )	do_( read_shorty, "source-medium->target" )
+			on_other	do_( set_source_identifier, pop_state )
 			end
 
 		in_( "%" ) bgn_
-			on_( '!' )	expression_do_( nop, "%!" )
-			on_( '?' )	expression_do_( nop, "%?" )
-			on_other	expression_do_( read_1, "%identifier" )
+			on_( '!' )	do_( nop, "%!" )
+			on_( '?' )	do_( nop, "%?" )
+			on_other	do_( read_1, "%identifier" )
 			end
 			in_( "%!" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( '-' )	expression_do_( set_source_this, "source-" )
-				on_( '<' )	expression_do_( set_target_this, "target<" )
-				on_( ':' )	expression_do_( set_source_this, "source-medium->target:" )
-				on_( ' ' )	expression_do_( set_source_this, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_this, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_this, pop_state )
-				on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-				on_other	expression_do_( set_source_this, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( '-' )	do_( set_source_this, "source-" )
+				on_( '<' )	do_( set_target_this, "target<" )
+				on_( ':' )	do_( set_source_this, "source-medium->target:" )
+				on_( ' ' )	do_( set_source_this, "source-medium->target" )
+				on_( '\t' )	do_( set_source_this, "source-medium->target" )
+				on_( ']' )	do_( set_source_this, pop_state )
+				on_( '.' )	do_( read_shorty, "source-medium->target" )
+				on_other	do_( set_source_this, pop_state )
 				end
 			in_( "%?" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( '-' )	expression_do_( set_source_variator, "source-" )
-				on_( '<' )	expression_do_( set_target_variator, "target<" )
-				on_( ':' )	expression_do_( set_source_variator, "source-medium->target:" )
-				on_( ' ' )	expression_do_( set_source_variator, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_variator, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_variator, pop_state )
-				on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-				on_other	expression_do_( set_source_variator, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( '-' )	do_( set_source_variator, "source-" )
+				on_( '<' )	do_( set_target_variator, "target<" )
+				on_( ':' )	do_( set_source_variator, "source-medium->target:" )
+				on_( ' ' )	do_( set_source_variator, "source-medium->target" )
+				on_( '\t' )	do_( set_source_variator, "source-medium->target" )
+				on_( ']' )	do_( set_source_variator, pop_state )
+				on_( '.' )	do_( read_shorty, "source-medium->target" )
+				on_other	do_( set_source_variator, pop_state )
 				end
 			in_( "%identifier" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( '-' )	expression_do_( set_source_variable, "source-" )
-				on_( '<' )	expression_do_( set_target_variable, "target<" )
-				on_( ':' )	expression_do_( set_source_variable, "source-medium->target:" )
-				on_( ' ' )	expression_do_( set_source_variable, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_variable, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_variable, pop_state )
-				on_( '.' )	expression_do_( read_shorty, "source-medium->target" )
-				on_other	expression_do_( set_source_variable, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( '-' )	do_( set_source_variable, "source-" )
+				on_( '<' )	do_( set_target_variable, "target<" )
+				on_( ':' )	do_( set_source_variable, "source-medium->target:" )
+				on_( ' ' )	do_( set_source_variable, "source-medium->target" )
+				on_( '\t' )	do_( set_source_variable, "source-medium->target" )
+				on_( ']' )	do_( set_source_variable, pop_state )
+				on_( '.' )	do_( read_shorty, "source-medium->target" )
+				on_other	do_( set_source_variable, pop_state )
 				end
 
 	in_( "source-" ) bgn_
-		on_( '*' )	expression_do_( set_flag_active, "source-*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "source-_" )
-		on_( '~' )	expression_do_( set_flag_not, "source-~" )
-		on_( '[' )	expression_do_( push, "source-[]" )
-		on_( '-' )	expression_do_( set_medium_null, "source-medium-" )
-		on_( '.' )	expression_do_( nop, "source-." )
-		on_( '%' )	expression_do_( nop, "source-%" )
-		on_( '?' )	expression_do_( nop, "source-?" )
-		on_other	expression_do_( read_1, "source-identifier" )
+		on_( '*' )	do_( set_flag_active, "source-*" )
+		on_( '_' )	do_( set_flag_inactive, "source-_" )
+		on_( '~' )	do_( set_flag_not, "source-~" )
+		on_( '[' )	do_( push, "source-[]" )
+		on_( '-' )	do_( set_medium_null, "source-medium-" )
+		on_( '.' )	do_( nop, "source-." )
+		on_( '%' )	do_( nop, "source-%" )
+		on_( '?' )	do_( nop, "source-?" )
+		on_other	do_( read_1, "source-identifier" )
 		end
 		in_( "source-*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-~" )
-			on_( '[' )	expression_do_( push, "source-[]" )
-			on_( '.' )	expression_do_( nop, "source-." )
-			on_( '%' )	expression_do_( nop, "source-%" )
-			on_other	expression_do_( read_1, "source-identifier" )
+			on_( '~' )	do_( set_flag_not, "source-~" )
+			on_( '[' )	do_( push, "source-[]" )
+			on_( '.' )	do_( nop, "source-." )
+			on_( '%' )	do_( nop, "source-%" )
+			on_other	do_( read_1, "source-identifier" )
 			end
 		in_( "source-_" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-~" )
-			on_( '[' )	expression_do_( push, "source-[]" )
-			on_( '.' )	expression_do_( nop, "source-." )
-			on_( '%' )	expression_do_( nop, "source-%" )
-			on_other	expression_do_( read_1, "source-identifier" )
+			on_( '~' )	do_( set_flag_not, "source-~" )
+			on_( '[' )	do_( push, "source-[]" )
+			on_( '.' )	do_( nop, "source-." )
+			on_( '%' )	do_( nop, "source-%" )
+			on_other	do_( read_1, "source-identifier" )
 			end
 		in_( "source-~" ) bgn_
-			on_( '-' )	expression_do_( set_medium_null, "source-medium-" )
-			on_( '[' )	expression_do_( push, "source-[]" )
-			on_( '.' )	expression_do_( nop, "source-." )
-			on_( '%' )	expression_do_( nop, "source-%" )
-			on_other	expression_do_( read_1, "source-identifier" )
+			on_( '-' )	do_( set_medium_null, "source-medium-" )
+			on_( '[' )	do_( push, "source-[]" )
+			on_( '.' )	do_( nop, "source-." )
+			on_( '%' )	do_( nop, "source-%" )
+			on_other	do_( read_1, "source-identifier" )
 			end
 		in_( "source-?" ) bgn_
-			on_( '-' )	expression_do_( set_medium_mark, "source-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_mark, "source-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "source-[]" ) bgn_
-			on_( '-' )	expression_do_( set_medium_pop, "source-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_pop, "source-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "source-." ) bgn_
-			on_( '-' )	expression_do_( set_medium_any, "source-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_any, "source-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "source-identifier" ) bgn_
-			on_( '-' )	expression_do_( set_medium_identifier, "source-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_identifier, "source-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "source-%" ) bgn_
-			on_( '!' )	expression_do_( nop, "source-%!" )
-			on_( '?' )	expression_do_( nop, "source-%?" )
-			on_other	expression_do_( read_1, "source-%identifier" )
+			on_( '!' )	do_( nop, "source-%!" )
+			on_( '?' )	do_( nop, "source-%?" )
+			on_other	do_( read_1, "source-%identifier" )
 			end
 			in_( "source-%!" ) bgn_
-				on_( '-' )	expression_do_( set_medium_this, "source-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_this, "source-medium-" )
+				on_other	do_( error, "" )
 				end
 			in_( "source-%?" ) bgn_
-				on_( '-' )	expression_do_( set_medium_variator, "source-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_variator, "source-medium-" )
+				on_other	do_( error, "" )
 				end
 			in_( "source-%identifier" ) bgn_
-				on_( '-' )	expression_do_( set_medium_variable, "source-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_variable, "source-medium-" )
+				on_other	do_( error, "" )
 				end
 
 	in_( "source-medium-" ) bgn_
-		on_( '>' )	expression_do_( nop, "source-medium->" )
-		on_other	expression_do_( error, "" )
+		on_( '>' )	do_( nop, "source-medium->" )
+		on_other	do_( error, "" )
 		end
 
 	in_( "source-medium->" ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( '*' )	expression_do_( set_flag_active, "source-medium->*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "source-medium->_" )
-		on_( '~' )	expression_do_( set_flag_not, "source-medium->~" )
-		on_( ' ' )	expression_do_( set_target_null, "source-medium->target" )
-		on_( '\t' )	expression_do_( set_target_null, "source-medium->target" )
-		on_( ']' )	expression_do_( set_target_null, pop_state )
-		on_( '[' )	expression_do_( push, "source-medium->[]" )
-		on_( '%' )	expression_do_( nop, "source-medium->%" )
-		on_( '.' )	expression_do_( set_target_any, "source-medium->target" )
-		on_( '?' )	expression_do_( set_target_mark, "source-medium->target" )
-		on_( ':' )	expression_do_( set_target_null, "source-medium->target:" )
-		on_( '(' )	expression_do_( error, "" )
-		on_separator	expression_do_( set_target_null, pop_state )
-		on_other	expression_do_( read_1, "source-medium->identifier" )
+		on_( '(' )	do_( error, "" )
+		on_( '*' )	do_( set_flag_active, "source-medium->*" )
+		on_( '_' )	do_( set_flag_inactive, "source-medium->_" )
+		on_( '~' )	do_( set_flag_not, "source-medium->~" )
+		on_( ' ' )	do_( set_target_null, "source-medium->target" )
+		on_( '\t' )	do_( set_target_null, "source-medium->target" )
+		on_( ']' )	do_( set_target_null, pop_state )
+		on_( '[' )	do_( push, "source-medium->[]" )
+		on_( '%' )	do_( nop, "source-medium->%" )
+		on_( '.' )	do_( set_target_any, "source-medium->target" )
+		on_( '?' )	do_( set_target_mark, "source-medium->target" )
+		on_( ':' )	do_( set_target_null, "source-medium->target:" )
+		on_( '(' )	do_( error, "" )
+		on_separator	do_( set_target_null, pop_state )
+		on_other	do_( read_1, "source-medium->identifier" )
 		end
 		in_( "source-medium->*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-medium->~" )
-			on_( '[' )	expression_do_( push, "source-medium->[]" )
-			on_( '%' )	expression_do_( nop, "source-medium->%" )
-			on_( '.' )	expression_do_( set_target_any, "source-medium->target" )
-			on_other	expression_do_( read_1, "source-medium->identifier" )
+			on_( '~' )	do_( set_flag_not, "source-medium->~" )
+			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '%' )	do_( nop, "source-medium->%" )
+			on_( '.' )	do_( set_target_any, "source-medium->target" )
+			on_other	do_( read_1, "source-medium->identifier" )
 			end
 		in_( "source-medium->_" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-medium->~" )
-			on_( '[' )	expression_do_( push, "source-medium->[]" )
-			on_( '%' )	expression_do_( nop, "source-medium->%" )
-			on_( '.' )	expression_do_( set_target_any, "source-medium->target" )
-			on_other	expression_do_( read_1, "source-medium->identifier" )
+			on_( '~' )	do_( set_flag_not, "source-medium->~" )
+			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '%' )	do_( nop, "source-medium->%" )
+			on_( '.' )	do_( set_target_any, "source-medium->target" )
+			on_other	do_( read_1, "source-medium->identifier" )
 			end
 		in_( "source-medium->~" ) bgn_
-			on_( ' ' )	expression_do_( set_target_null, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_target_null, "source-medium->target" )
-			on_( '(' )	expression_do_( error, "" )
-			on_( ']' )	expression_do_( set_target_null, pop_state )
-			on_( '[' )	expression_do_( push, "source-medium->[]" )
-			on_( '%' )	expression_do_( nop, "source-medium->%" )
-			on_( '.' )	expression_do_( set_target_any, "source-medium->target" )
-			on_( ':' )	expression_do_( set_target_null, "source-medium->target:" )
-			on_separator	expression_do_( set_target_null, pop_state )
-			on_other	expression_do_( read_1, "source-medium->identifier" )
+			on_( ' ' )	do_( set_target_null, "source-medium->target" )
+			on_( '\t' )	do_( set_target_null, "source-medium->target" )
+			on_( '(' )	do_( error, "" )
+			on_( ']' )	do_( set_target_null, pop_state )
+			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '%' )	do_( nop, "source-medium->%" )
+			on_( '.' )	do_( set_target_any, "source-medium->target" )
+			on_( ':' )	do_( set_target_null, "source-medium->target:" )
+			on_separator	do_( set_target_null, pop_state )
+			on_other	do_( read_1, "source-medium->identifier" )
 			end
 		in_( "source-medium->[]" ) bgn_
-			on_( ' ' )	expression_do_( set_target_pop, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_target_pop, "source-medium->target" )
-			on_( ']' )	expression_do_( set_target_pop, pop_state )
-			on_( ':' )	expression_do_( set_target_pop, "source-medium->target:" )
-			on_other	expression_do_( set_target_pop, pop_state )
+			on_( ' ' )	do_( set_target_pop, "source-medium->target" )
+			on_( '\t' )	do_( set_target_pop, "source-medium->target" )
+			on_( ']' )	do_( set_target_pop, pop_state )
+			on_( ':' )	do_( set_target_pop, "source-medium->target:" )
+			on_other	do_( set_target_pop, pop_state )
 			end
 		in_( "source-medium->identifier" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_target_identifier, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_target_identifier, "source-medium->target" )
-			on_( ']' )	expression_do_( set_target_identifier, pop_state )
-			on_( ':' )	expression_do_( set_target_identifier, "source-medium->target:" )
-			on_other	expression_do_( set_target_identifier, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_target_identifier, "source-medium->target" )
+			on_( '\t' )	do_( set_target_identifier, "source-medium->target" )
+			on_( ']' )	do_( set_target_identifier, pop_state )
+			on_( ':' )	do_( set_target_identifier, "source-medium->target:" )
+			on_other	do_( set_target_identifier, pop_state )
 			end
 		in_( "source-medium->%" ) bgn_
-				on_( '!' )	expression_do_( nop, "source-medium->%!" )
-				on_( '?' )	expression_do_( nop, "source-medium->%?" )
-				on_other	expression_do_( read_1, "source-medium->%identifier" )
+				on_( '!' )	do_( nop, "source-medium->%!" )
+				on_( '?' )	do_( nop, "source-medium->%?" )
+				on_other	do_( read_1, "source-medium->%identifier" )
 				end
 				in_( "source-medium->%!" ) bgn_
-					on_( '(' )	expression_do_( error, "" )
-					on_( ' ' )	expression_do_( set_target_this, "source-medium->target" )
-					on_( '\t' )	expression_do_( set_target_this, "source-medium->target" )
-					on_( ']' )	expression_do_( set_target_this, pop_state )
-					on_( ':' )	expression_do_( set_target_this, "source-medium->target:" )
-					on_other	expression_do_( set_target_this, pop_state )
+					on_( '(' )	do_( error, "" )
+					on_( ' ' )	do_( set_target_this, "source-medium->target" )
+					on_( '\t' )	do_( set_target_this, "source-medium->target" )
+					on_( ']' )	do_( set_target_this, pop_state )
+					on_( ':' )	do_( set_target_this, "source-medium->target:" )
+					on_other	do_( set_target_this, pop_state )
 					end
 				in_( "source-medium->%?" ) bgn_
-					on_( '(' )	expression_do_( error, "" )
-					on_( ' ' )	expression_do_( set_target_variator, "source-medium->target" )
-					on_( '\t' )	expression_do_( set_target_variator, "source-medium->target" )
-					on_( ']' )	expression_do_( set_target_variator, pop_state )
-					on_( ':' )	expression_do_( set_target_variator, "source-medium->target:" )
-					on_other	expression_do_( set_target_variator, pop_state )
+					on_( '(' )	do_( error, "" )
+					on_( ' ' )	do_( set_target_variator, "source-medium->target" )
+					on_( '\t' )	do_( set_target_variator, "source-medium->target" )
+					on_( ']' )	do_( set_target_variator, pop_state )
+					on_( ':' )	do_( set_target_variator, "source-medium->target:" )
+					on_other	do_( set_target_variator, pop_state )
 					end
 				in_( "source-medium->%identifier" ) bgn_
-					on_( '(' )	expression_do_( error, "" )
-					on_( ' ' )	expression_do_( set_target_variable, "source-medium->target" )
-					on_( '\t' )	expression_do_( set_target_variable, "source-medium->target" )
-					on_( ']' )	expression_do_( set_target_variable, pop_state )
-					on_( ':' )	expression_do_( set_target_variable, "source-medium->target:" )
-					on_other	expression_do_( set_target_variable, pop_state )
+					on_( '(' )	do_( error, "" )
+					on_( ' ' )	do_( set_target_variable, "source-medium->target" )
+					on_( '\t' )	do_( set_target_variable, "source-medium->target" )
+					on_( ']' )	do_( set_target_variable, pop_state )
+					on_( ':' )	do_( set_target_variable, "source-medium->target:" )
+					on_other	do_( set_target_variable, pop_state )
 					end
 
 	in_( "target<" ) bgn_
-		on_( '-' )	expression_do_( nop, "target<-" )
-		on_other	expression_do_( error, "" )
+		on_( '-' )	do_( nop, "target<-" )
+		on_other	do_( error, "" )
 		end
 
 	in_( "target<-" ) bgn_
-		on_( '*' )	expression_do_( set_flag_active, "target<-*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "target<-_" )
-		on_( '~' )	expression_do_( set_flag_not, "target<-~" )
-		on_( '[' )	expression_do_( push, "target<-[]" )
-		on_( '-' )	expression_do_( set_medium_null, "target<-medium-" )
-		on_( '.' )	expression_do_( set_medium_any, "target<-." )
-		on_( '%' )	expression_do_( nop, "target<-%" )
-		on_( '?' )	expression_do_( nop, "target<-?" )
-		on_other	expression_do_( read_1, "target<-identifier" )
+		on_( '*' )	do_( set_flag_active, "target<-*" )
+		on_( '_' )	do_( set_flag_inactive, "target<-_" )
+		on_( '~' )	do_( set_flag_not, "target<-~" )
+		on_( '[' )	do_( push, "target<-[]" )
+		on_( '-' )	do_( set_medium_null, "target<-medium-" )
+		on_( '.' )	do_( set_medium_any, "target<-." )
+		on_( '%' )	do_( nop, "target<-%" )
+		on_( '?' )	do_( nop, "target<-?" )
+		on_other	do_( read_1, "target<-identifier" )
 		end
 		in_( "target<-*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "target<-~" )
-			on_( '[' )	expression_do_( push, "target<-[]" )
-			on_( '.' )	expression_do_( set_medium_any, "target<-medium" )
-			on_( '%' )	expression_do_( nop, "target<-%" )
-			on_other	expression_do_( read_1, "target<-identifier" )
+			on_( '~' )	do_( set_flag_not, "target<-~" )
+			on_( '[' )	do_( push, "target<-[]" )
+			on_( '.' )	do_( set_medium_any, "target<-medium" )
+			on_( '%' )	do_( nop, "target<-%" )
+			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-_" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "target<-~" )
-			on_( '[' )	expression_do_( push, "target<-[]" )
-			on_( '.' )	expression_do_( set_medium_any, "target<-medium" )
-			on_( '%' )	expression_do_( nop, "target<-%" )
-			on_other	expression_do_( read_1, "target<-identifier" )
+			on_( '~' )	do_( set_flag_not, "target<-~" )
+			on_( '[' )	do_( push, "target<-[]" )
+			on_( '.' )	do_( set_medium_any, "target<-medium" )
+			on_( '%' )	do_( nop, "target<-%" )
+			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-~" ) bgn_
-			on_( '[' )	expression_do_( push, "target<-[]" )
-			on_( '-' )	expression_do_( set_medium_null, "target<-medium-" )
-			on_( '.' )	expression_do_( set_medium_any, "target<-medium" )
-			on_( '%' )	expression_do_( nop, "target<-%" )
-			on_other	expression_do_( read_1, "target<-identifier" )
+			on_( '[' )	do_( push, "target<-[]" )
+			on_( '-' )	do_( set_medium_null, "target<-medium-" )
+			on_( '.' )	do_( set_medium_any, "target<-medium" )
+			on_( '%' )	do_( nop, "target<-%" )
+			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-?" ) bgn_
-			on_( '-' )	expression_do_( set_medium_mark, "target<-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_mark, "target<-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "target<-[]" ) bgn_
-			on_( '-' )	expression_do_( set_medium_pop, "target<-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_pop, "target<-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "target<-." ) bgn_
-			on_( '.' )	expression_do_( set_source_any, "source-medium->target" )
-			on_( '-' )	expression_do_( nop, "target<-.-" )
-			on_other	expression_do_( error, "" )
+			on_( '.' )	do_( set_source_any, "source-medium->target" )
+			on_( '-' )	do_( nop, "target<-.-" )
+			on_other	do_( error, "" )
 			end
 		in_( "target<-identifier" ) bgn_
-			on_( '-' )	expression_do_( set_medium_identifier, "target<-medium-" )
-			on_other	expression_do_( error, "" )
+			on_( '-' )	do_( set_medium_identifier, "target<-medium-" )
+			on_other	do_( error, "" )
 			end
 		in_( "target<-%" ) bgn_
-			on_( '!' )	expression_do_( nop, "target<-%!" )
-			on_( '?' )	expression_do_( nop, "target<-%?" )
-			on_other	expression_do_( read_1, "target<-%identifier" )
+			on_( '!' )	do_( nop, "target<-%!" )
+			on_( '?' )	do_( nop, "target<-%?" )
+			on_other	do_( read_1, "target<-%identifier" )
 			end
 			in_( "target<-%!" ) bgn_
-				on_( '-' )	expression_do_( set_medium_this, "target<-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_this, "target<-medium-" )
+				on_other	do_( error, "" )
 				end
 			in_( "target<-%?" ) bgn_
-				on_( '-' )	expression_do_( set_medium_variator, "target<-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_variator, "target<-medium-" )
+				on_other	do_( error, "" )
 				end
 			in_( "target<-%identifier" ) bgn_
-				on_( '-' )	expression_do_( set_medium_variable, "target<-medium-" )
-				on_other	expression_do_( error, "" )
+				on_( '-' )	do_( set_medium_variable, "target<-medium-" )
+				on_other	do_( error, "" )
 				end
 
 	in_( "target<-medium-" ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( '*' )	expression_do_( set_flag_active, "target<-medium-*" )
-		on_( '_' )	expression_do_( set_flag_inactive, "target<-medium-_" )
-		on_( '~' )	expression_do_( set_flag_not, "target<-medium-~" )
-		on_( ' ' )	expression_do_( set_source_null, "source-medium->target" )
-		on_( '\t' )	expression_do_( set_source_null, "source-medium->target" )
-		on_( ']' )	expression_do_( set_source_null, pop_state )
-		on_( '[' )	expression_do_( push, "target<-medium-[]" )
-		on_( '%' )	expression_do_( nop, "target<-medium-%" )
-		on_( '.' )	expression_do_( set_source_any, "source-medium->target" )
-		on_( '?' )	expression_do_( set_source_mark, "source-medium->target" )
-		on_( ':' )	expression_do_( set_source_null, "source-medium->target:" )
-		on_separator	expression_do_( set_source_null, pop_state )
-		on_other	expression_do_( read_1, "target<-medium-identifier" )
+		on_( '(' )	do_( error, "" )
+		on_( '*' )	do_( set_flag_active, "target<-medium-*" )
+		on_( '_' )	do_( set_flag_inactive, "target<-medium-_" )
+		on_( '~' )	do_( set_flag_not, "target<-medium-~" )
+		on_( ' ' )	do_( set_source_null, "source-medium->target" )
+		on_( '\t' )	do_( set_source_null, "source-medium->target" )
+		on_( ']' )	do_( set_source_null, pop_state )
+		on_( '[' )	do_( push, "target<-medium-[]" )
+		on_( '%' )	do_( nop, "target<-medium-%" )
+		on_( '.' )	do_( set_source_any, "source-medium->target" )
+		on_( '?' )	do_( set_source_mark, "source-medium->target" )
+		on_( ':' )	do_( set_source_null, "source-medium->target:" )
+		on_separator	do_( set_source_null, pop_state )
+		on_other	do_( read_1, "target<-medium-identifier" )
 		end
 		in_( "target<-medium-*" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "target<-medium-~" )
-			on_( '[' )	expression_do_( push, "target<-medium-[]" )
-			on_( '%' )	expression_do_( nop, "target<-medium-%" )
-			on_( '.' )	expression_do_( set_source_any, "source-medium->target" )
-			on_other	expression_do_( read_1, "target<-medium-identifier" )
+			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
+			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '%' )	do_( nop, "target<-medium-%" )
+			on_( '.' )	do_( set_source_any, "source-medium->target" )
+			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-_" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "target<-medium-~" )
-			on_( '[' )	expression_do_( push, "target<-medium-[]" )
-			on_( '%' )	expression_do_( nop, "target<-medium-%" )
-			on_( '.' )	expression_do_( set_source_any, "source-medium->target" )
-			on_other	expression_do_( read_1, "target<-medium-identifier" )
+			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
+			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '%' )	do_( nop, "target<-medium-%" )
+			on_( '.' )	do_( set_source_any, "source-medium->target" )
+			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-~" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_source_null, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_null, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_null, pop_state )
-			on_( '[' )	expression_do_( push, "target<-medium-[]" )
-			on_( '%' )	expression_do_( nop, "target<-medium-%" )
-			on_( '.' )	expression_do_( set_source_any, "source-medium->target" )
-			on_( ':' )	expression_do_( set_source_null, "source-medium->target:" )
-			on_separator	expression_do_( set_source_null, pop_state )
-			on_other	expression_do_( read_1, "target<-medium-identifier" )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_source_null, "source-medium->target" )
+			on_( '\t' )	do_( set_source_null, "source-medium->target" )
+			on_( ']' )	do_( set_source_null, pop_state )
+			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '%' )	do_( nop, "target<-medium-%" )
+			on_( '.' )	do_( set_source_any, "source-medium->target" )
+			on_( ':' )	do_( set_source_null, "source-medium->target:" )
+			on_separator	do_( set_source_null, pop_state )
+			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-[]" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_source_pop, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_pop, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_pop, pop_state )
-			on_( ':' )	expression_do_( set_source_pop, "source-medium->target:" )
-			on_other	expression_do_( set_source_pop, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_source_pop, "source-medium->target" )
+			on_( '\t' )	do_( set_source_pop, "source-medium->target" )
+			on_( ']' )	do_( set_source_pop, pop_state )
+			on_( ':' )	do_( set_source_pop, "source-medium->target:" )
+			on_other	do_( set_source_pop, pop_state )
 			end
 		in_( "target<-medium-identifier" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_source_identifier, "source-medium->target" )
-			on_( '\t' )	expression_do_( set_source_identifier, "source-medium->target" )
-			on_( ']' )	expression_do_( set_source_identifier, pop_state )
-			on_( ':' )	expression_do_( set_source_identifier, "source-medium->target:" )
-			on_other	expression_do_( set_source_identifier, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_source_identifier, "source-medium->target" )
+			on_( '\t' )	do_( set_source_identifier, "source-medium->target" )
+			on_( ']' )	do_( set_source_identifier, pop_state )
+			on_( ':' )	do_( set_source_identifier, "source-medium->target:" )
+			on_other	do_( set_source_identifier, pop_state )
 			end
 		in_( "target<-medium-%" ) bgn_
-			on_( '!' )	expression_do_( nop, "target<-medium-%!" )
-			on_( '?' )	expression_do_( nop, "target<-medium-%?" )
-			on_other	expression_do_( read_1, "target<-medium-%identifier" )
+			on_( '!' )	do_( nop, "target<-medium-%!" )
+			on_( '?' )	do_( nop, "target<-medium-%?" )
+			on_other	do_( read_1, "target<-medium-%identifier" )
 			end
 			in_( "target<-medium-%!" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_source_this, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_this, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_this, pop_state )
-				on_( ':' )	expression_do_( set_source_this, "source-medium->target:" )
-				on_other	expression_do_( set_source_this, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_source_this, "source-medium->target" )
+				on_( '\t' )	do_( set_source_this, "source-medium->target" )
+				on_( ']' )	do_( set_source_this, pop_state )
+				on_( ':' )	do_( set_source_this, "source-medium->target:" )
+				on_other	do_( set_source_this, pop_state )
 				end
 			in_( "target<-medium-%?" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_source_variator, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_variator, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_variator, pop_state )
-				on_( ':' )	expression_do_( set_source_variator, "source-medium->target:" )
-				on_other	expression_do_( set_source_variator, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_source_variator, "source-medium->target" )
+				on_( '\t' )	do_( set_source_variator, "source-medium->target" )
+				on_( ']' )	do_( set_source_variator, pop_state )
+				on_( ':' )	do_( set_source_variator, "source-medium->target:" )
+				on_other	do_( set_source_variator, pop_state )
 				end
 			in_( "target<-medium-%identifier" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_source_variable, "source-medium->target" )
-				on_( '\t' )	expression_do_( set_source_variable, "source-medium->target" )
-				on_( ']' )	expression_do_( set_source_variable, pop_state )
-				on_( ':' )	expression_do_( set_source_variable, "source-medium->target:" )
-				on_other	expression_do_( set_source_variable, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_source_variable, "source-medium->target" )
+				on_( '\t' )	do_( set_source_variable, "source-medium->target" )
+				on_( ']' )	do_( set_source_variable, pop_state )
+				on_( ':' )	do_( set_source_variable, "source-medium->target:" )
+				on_other	do_( set_source_variable, pop_state )
 				end
 
 	in_( "source-medium->target" ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( ']' )	expression_do_( nop, pop_state )
-		on_( ':' )	expression_do_( nop, "source-medium->target:" )
-		on_other	expression_do_( nothing, pop_state )
+		on_( '(' )	do_( error, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( ']' )	do_( nop, pop_state )
+		on_( ':' )	do_( nop, "source-medium->target:" )
+		on_other	do_( nothing, pop_state )
 		end
 
 	in_( "source-medium->target:" ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( '*' )	expression_do_( set_flag_active, "source-medium->target: *" )
-		on_( '_' )	expression_do_( set_flag_inactive, "source-medium->target: _" )
-		on_( '~' )	expression_do_( set_flag_not, "source-medium->target: ~" )
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( '[' )	expression_do_( push, "source-medium->target: []" )
-		on_( '.' )	expression_do_( set_instance_any, "source-medium->target: instance" )
-		on_( '%' )	expression_do_( nop, "source-medium->target: %" )
-		on_( '/' )	expression_do_( expression_on_file, "file:/" )
-		on_separator	expression_do_( nothing, pop_state )
-		on_other	expression_do_( read_1, "source-medium->target: identifier" )
+		on_( '(' )	do_( error, "" )
+		on_( '*' )	do_( set_flag_active, "source-medium->target: *" )
+		on_( '_' )	do_( set_flag_inactive, "source-medium->target: _" )
+		on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( '[' )	do_( push, "source-medium->target: []" )
+		on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
+		on_( '%' )	do_( nop, "source-medium->target: %" )
+		on_( '/' )	do_( expression_on_file, "file:/" )
+		on_separator	do_( nothing, pop_state )
+		on_other	do_( read_1, "source-medium->target: identifier" )
 		end
 		in_( "source-medium->target: *" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-medium->target: ~" )
-			on_( '[' )	expression_do_( push, "source-medium->target: []" )
-			on_( '.' )	expression_do_( set_instance_any, "source-medium->target: instance" )
-			on_( '%' )	expression_do_( nop, "source-medium->target: %" )
-			on_other	expression_do_( read_1, "source-medium->target: identifier" )
+			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
+			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
+			on_( '%' )	do_( nop, "source-medium->target: %" )
+			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: _" ) bgn_
-			on_( '~' )	expression_do_( set_flag_not, "source-medium->target: ~" )
-			on_( '[' )	expression_do_( push, "source-medium->target: []" )
-			on_( '.' )	expression_do_( set_instance_any, "source-medium->target: instance" )
-			on_( '%' )	expression_do_( nop, "source-medium->target: %" )
-			on_other	expression_do_( read_1, "source-medium->target: identifier" )
+			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
+			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
+			on_( '%' )	do_( nop, "source-medium->target: %" )
+			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: ~" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_instance_null, "source-medium->target: instance" )
-			on_( '\t' )	expression_do_( set_instance_null, "source-medium->target: instance" )
-			on_( '[' )	expression_do_( push, "source-medium->target: []" )
-			on_( '.' )	expression_do_( set_instance_any, "source-medium->target: instance" )
-			on_( '%' )	expression_do_( nop, "source-medium->target: %" )
-			on_separator	expression_do_( set_instance_null, pop_state )
-			on_other	expression_do_( read_1, "source-medium->target: identifier" )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_instance_null, "source-medium->target: instance" )
+			on_( '\t' )	do_( set_instance_null, "source-medium->target: instance" )
+			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
+			on_( '%' )	do_( nop, "source-medium->target: %" )
+			on_separator	do_( set_instance_null, pop_state )
+			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: []" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_instance_pop, "source-medium->target: instance" )
-			on_( '\t' )	expression_do_( set_instance_pop, "source-medium->target: instance" )
-			on_( ']' )	expression_do_( set_instance_pop, pop_state )
-			on_other	expression_do_( set_instance_pop, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_instance_pop, "source-medium->target: instance" )
+			on_( '\t' )	do_( set_instance_pop, "source-medium->target: instance" )
+			on_( ']' )	do_( set_instance_pop, pop_state )
+			on_other	do_( set_instance_pop, pop_state )
 			end
 		in_( "source-medium->target: %" ) bgn_
-			on_( '!' )	expression_do_( nop, "source-medium->target: %!" )
-			on_( '?' )	expression_do_( nop, "source-medium->target: %?" )
-			on_( '[' )	expression_do_( read_as_sub, "source-medium->target: instance" )
-			on_other	expression_do_( read_1, "source-medium->target: %identifier" )
+			on_( '!' )	do_( nop, "source-medium->target: %!" )
+			on_( '?' )	do_( nop, "source-medium->target: %?" )
+			on_( '[' )	do_( read_as_sub, "source-medium->target: instance" )
+			on_other	do_( read_1, "source-medium->target: %identifier" )
 			end
 			in_( "source-medium->target: %!" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_instance_this, "source-medium->target: instance" )
-				on_( '\t' )	expression_do_( set_instance_this, "source-medium->target: instance" )
-				on_( ']' )	expression_do_( set_instance_this, pop_state )
-				on_other	expression_do_( set_instance_this, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_instance_this, "source-medium->target: instance" )
+				on_( '\t' )	do_( set_instance_this, "source-medium->target: instance" )
+				on_( ']' )	do_( set_instance_this, pop_state )
+				on_other	do_( set_instance_this, pop_state )
 				end
 			in_( "source-medium->target: %?" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_instance_variator, "source-medium->target: instance" )
-				on_( '\t' )	expression_do_( set_instance_variator, "source-medium->target: instance" )
-				on_( ']' )	expression_do_( set_instance_variator, pop_state )
-				on_other	expression_do_( set_instance_variator, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_instance_variator, "source-medium->target: instance" )
+				on_( '\t' )	do_( set_instance_variator, "source-medium->target: instance" )
+				on_( ']' )	do_( set_instance_variator, pop_state )
+				on_other	do_( set_instance_variator, pop_state )
 				end
 			in_( "source-medium->target: %identifier" ) bgn_
-				on_( '(' )	expression_do_( error, "" )
-				on_( ' ' )	expression_do_( set_instance_variable, "source-medium->target: instance" )
-				on_( '\t' )	expression_do_( set_instance_variable, "source-medium->target: instance" )
-				on_( ']' )	expression_do_( set_instance_variable, pop_state )
-				on_other	expression_do_( set_instance_variable, pop_state )
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_instance_variable, "source-medium->target: instance" )
+				on_( '\t' )	do_( set_instance_variable, "source-medium->target: instance" )
+				on_( ']' )	do_( set_instance_variable, pop_state )
+				on_other	do_( set_instance_variable, pop_state )
 				end
 		in_( "source-medium->target: identifier" ) bgn_
-			on_( '(' )	expression_do_( error, "" )
-			on_( ' ' )	expression_do_( set_instance_identifier, "source-medium->target: instance" )
-			on_( '\t' )	expression_do_( set_instance_identifier, "source-medium->target: instance" )
-			on_( ']' )	expression_do_( set_instance_identifier, pop_state )
-			on_other	expression_do_( set_instance_identifier, pop_state )
+			on_( '(' )	do_( error, "" )
+			on_( ' ' )	do_( set_instance_identifier, "source-medium->target: instance" )
+			on_( '\t' )	do_( set_instance_identifier, "source-medium->target: instance" )
+			on_( ']' )	do_( set_instance_identifier, pop_state )
+			on_other	do_( set_instance_identifier, pop_state )
 			end
 
 	in_( "source-medium->target: instance" ) bgn_
-		on_( '(' )	expression_do_( error, "" )
-		on_( ' ' )	expression_do_( nop, same )
-		on_( '\t' )	expression_do_( nop, same )
-		on_( ']' )	expression_do_( nothing, pop_state )
-		on_other	expression_do_( nothing, pop_state )
+		on_( '(' )	do_( error, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		on_( ']' )	do_( nothing, pop_state )
+		on_other	do_( nothing, pop_state )
 		end
 
 	in_( "file:/" ) bgn_
-		on_( '/' )	expression_do_( nop, "file://" )
-		on_other	expression_do_( error, "" )
+		on_( '/' )	do_( nop, "file://" )
+		on_other	do_( error, "" )
 		end
 		in_( "file://" ) bgn_
-			on_any	expression_do_( nothing, pop_state )
+			on_any	do_( nothing, pop_state )
 			end
 	end
 	}
 	while ( strcmp( state, "" ) );
 
-	expression_do_( parser_exit, same );
+	do_( parser_exit, same );
 
 #ifdef DEBUG
 	output( Debug, "exiting read_expression '%c'", event );

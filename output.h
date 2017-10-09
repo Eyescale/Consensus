@@ -36,7 +36,7 @@ _action output_special_char;
 int	output( OutputContentsType type, const char *format, ... );
 int	push_output( char *identifier, void *dst, OutputType type, _context *context );
 int	pop_output( _context *context );
-void	output_identifier( char *identifier );
+void	output_identifier( char *identifier, int as_is );
 void	output_entity_name( Entity *e, Expression *format, int base );
 void	output_narrative_name( Entity *e, char *name );
 int	output_expression( ExpressionOutput component, Expression *expression, int i, int shorty );

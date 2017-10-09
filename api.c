@@ -11,34 +11,285 @@
 
 #include "command.h"
 #include "api.h"
+#include "expression.h"
 #include "input.h"
 #include "output.h"
 #include "narrative.h"
 
 /*---------------------------------------------------------------------------
-	cn_dof
+	cn_read
 ---------------------------------------------------------------------------*/
 int
-cn_dof( char *format, ... )
+cn_read( void *src, InputType type, char *state, int event )
 {
-	char *action;
-	va_list ap;
-	va_start( ap, format );
-	if ( *format ) {
-		vasprintf( &action, format, ap );
-	} else {
-		action = va_arg( ap, char * );
+	_context *context = CN.context;
+
+	// push input
+	switch ( type ) {
+	case InstructionBlock:
+		context->narrative.mode.action.block = 1;
+		if ((src)) push_input( "", src, InstructionBlock, context );
+		break;
+	case InstructionOne:
+		context->narrative.mode.action.one = 1;
+		if ((src)) push_input( "", src, InstructionOne, context );
+		break;
+	case ClientInput:
+		push_input( "", src, ClientInput, context );
+		break;
+	default:
+		break;
 	}
-	va_end( ap );
+
+	// read & execute command
+	char *next_state = same;
+	do {
+		event = read_command( state, event, &next_state, context );
+		state = next_state;
+	}
+	while ( strcmp( state, "" ) );
+
+
+	// pop input
+	switch ( type ) {
+	case InstructionBlock:
+		if ((src)) pop_input( base, 0, NULL, context );
+		context->narrative.mode.action.block = 0;
+		break;
+	case InstructionOne:
+		if ((src)) pop_input( base, 0, NULL, context );
+		CN.context->narrative.mode.action.one = 0;
+		break;
+	case ClientInput:
+		// input popped already upon closing packet
+		break;
+	default:
+		break;
+	}
+
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	cn_readf
+---------------------------------------------------------------------------*/
+int
+cn_readf( char *format, ... )
+{
+	char *action = NULL;
+	int event = 0;
+	if ((format))
+	{
+		va_list ap;
+		va_start( ap, format );
+		if ( *format )
+		{
+			vasprintf( &action, format, ap );
+			event = cn_read( action, InstructionOne, base, 0 );
+			free( action );
+		} else {
+			action = va_arg( ap, char * );
+			event = cn_read( action, InstructionOne, base, 0 );
+		}
+		va_end( ap );
+	}
+	else
+	{
+		// could do something here...
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	cn_opf
+---------------------------------------------------------------------------*/
+static Entity *
+vaopf( int op, char *format, va_list ap )
+{
+	_context *context = CN.context;
+	Entity *e = NULL;
+
+	listItem *arglist = NULL;
+	while ( *format ) {
+		switch ( *format++ ) {
+		case '%':
+			switch ( *format++ ) {
+			case 'e':
+				addItem( &arglist, va_arg(ap, Entity *));
+				break;
+			case 's':
+				addItem( &arglist, va_arg(ap, char *));
+				break;
+			default:
+				output( Debug, "***** Error: cn_setf(): unsupported format" );
+				goto RETURN;
+			}
+			break;
+		}
+	}
+	reorderListItem( &arglist );
 
 	CN.context->narrative.mode.action.one = 1;
-	push_input( "", action, InstructionOne, CN.context );
-	int event = read_command( base, 0, &same, CN.context );
-	pop_input( base, 0, NULL, CN.context );
+	push_input( "", format, InstructionOne, CN.context );
+	read_expression( base, 0, &same, context );
+	pop_input( base, 0, NULL, context );
 	CN.context->narrative.mode.action.one = 0;
 
-	if ( *format ) free( action );
-	return event;
+        if ( context->expression.mode == ErrorMode ) {
+		output( Warning, "cn_setf(): could not read expression" );
+		goto RETURN;
+	}
+
+        Expression *expression = context->expression.ptr;
+        context->expression.mode = op;
+	context->expression.args = arglist;
+        int retval = expression_solve( expression, 3, context );
+        if ( retval < 0 ) {
+		output( Warning, "cn_setf(): could not solve expression" );
+		goto RETURN;
+	}
+ 
+	if (( context->expression.results )) {
+		e = context->expression.results->ptr;
+		freeListItem( &context->expression.results );
+	}
+
+RETURN:
+	context->expression.args = NULL;
+	freeListItem( &arglist );
+	return e;
+}
+
+Entity *
+cn_setf( char *format, ... )
+{
+	va_list ap;
+	va_start( ap, format );
+	Entity *e = vaopf( InstantiateMode, format, ap );
+	va_end( ap );
+	return e;
+}
+
+/*---------------------------------------------------------------------------
+	cn_getf
+---------------------------------------------------------------------------*/
+static Entity *
+vagetf( Entity **candidate, const char *format, va_list ap )
+{
+	Entity *sub[ 3 ], *e;
+	int count = 0, mark = 0;
+	while ( *format && ( count < 3 ) ) {
+		switch ( *format++ ) {
+		case '[':
+			e = vagetf( candidate, format, ap );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case '?':
+			mark = ++count;
+			break;
+		case '%':
+			sub[ count++ ] = va_arg( ap, Entity * );
+			break;
+		case '.':
+			; char *name = va_arg( ap, char * );
+			e = cn_entity( name );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case ']':
+			goto RETURN;
+		}
+	}
+RETURN:
+	if ( count < 3 ) {
+		output( Debug, "***** Error: vagetf: format inconsistent" );
+		return NULL;
+	}
+	if ( mark-- ) {
+		int j=( mark + 1 )%3, k=( mark + 2 )%3;
+		listItem *i;
+		for ( i=sub[ j ]->as_sub[ j ]; i!=NULL; i=i->next ) {
+			Entity *c = i->ptr;
+			if ( c->sub[ k ] == sub[ k ] ) {
+				sub[ mark ] = c->sub[ mark ];
+				*candidate = sub[ mark ];
+				break;
+			}
+		}
+		if ( i == NULL ) return NULL;
+	}
+	return cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+}
+
+Entity *
+cn_getf( const char *format, ... )
+{
+	Entity *e = NULL, *solve;
+	va_list ap;
+	va_start( ap, format );
+	solve = vagetf( &e, format, ap );
+	va_end( ap );
+	return ( solve = NULL ) ? NULL : e;
+}
+
+/*---------------------------------------------------------------------------
+	cn_instf
+---------------------------------------------------------------------------*/
+static Entity *
+vainstf( const char *format, va_list ap )
+{
+	Entity *sub[ 3 ], *e;
+	int count = 0;
+	while ( *format && ( count < 3 ) ) {
+		switch ( *format++ ) {
+		case '[':
+			e = vainstf( format, ap );
+			if ( e == NULL ) return NULL;
+			sub[ count++ ] = e;
+			break;
+		case '%':
+			sub[ count++ ] = va_arg( ap, Entity * );
+			break;
+		case '.':
+			; char *identifier = va_arg( ap, char * );
+			e = cn_entity( identifier );
+			if ( e == NULL )
+			{
+				identifier = strdup( identifier );
+				e = newEntity( NULL, NULL, NULL );
+				cn_va_set_value( e, "name", identifier );
+				registerByName( &CN.registry, identifier, e );
+				addItem( &CN.DB, e );
+			}
+			sub[ count++ ] = e;
+			break;
+		case ']':
+			goto RETURN;
+		}
+	}
+RETURN:
+	if ( count < 3 ) {
+		output( Debug, "***** Error: vainstf: format inconsistent" );
+		return NULL;
+	}
+	e = cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+	if ( e == NULL ) {
+		e = newEntity( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+		addItem( &CN.DB, e );
+	}
+	return e;
+}
+
+Entity *
+cn_instf( const char *format, ... )
+{
+
+	va_list ap;
+	va_start( ap, format );
+	Entity *e = vainstf( format, ap );
+	va_end( ap );
+	return e;
 }
 
 /*---------------------------------------------------------------------------
@@ -49,6 +300,15 @@ cn_entity( char *name )
 {
 	registryEntry *entry = lookupByName( CN.registry, name );
 	return ( entry == NULL ) ? NULL : (Entity *) entry->value;
+}
+
+/*---------------------------------------------------------------------------
+	cn_is_active
+---------------------------------------------------------------------------*/
+int
+cn_is_active( Entity *e )
+{
+	return ( e->state == 1 ) ? 1 : 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -236,137 +496,6 @@ cn_instance( Entity *source, Entity *medium, Entity *target )
 	}
 
 	return NULL;
-}
-
-/*---------------------------------------------------------------------------
-	cn_is_active
----------------------------------------------------------------------------*/
-int
-cn_is_active( Entity *e )
-{
-	return ( e->state == 1 ) ? 1 : 0;
-}
-
-/*---------------------------------------------------------------------------
-	cn_getf
----------------------------------------------------------------------------*/
-static Entity *
-vagetf( Entity **candidate, const char *format, va_list ap )
-{
-	Entity *sub[ 3 ], *e;
-	int count = 0, mark = 0;
-	while ( *format && ( count < 3 ) ) {
-		switch ( *format++ ) {
-		case '[':
-			e = vagetf( candidate, format, ap );
-			if ( e == NULL ) return NULL;
-			sub[ count++ ] = e;
-			break;
-		case '?':
-			mark = ++count;
-			break;
-		case '%':
-			sub[ count++ ] = va_arg( ap, Entity * );
-			break;
-		case '.':
-			; char *name = va_arg( ap, char * );
-			e = cn_entity( name );
-			if ( e == NULL ) return NULL;
-			sub[ count++ ] = e;
-			break;
-		case ']':
-			goto RETURN;
-		}
-	}
-RETURN:
-	if ( count < 3 ) {
-		output( Debug, "***** Error: vagetf: format inconsistent" );
-		return NULL;
-	}
-	if ( mark-- ) {
-		int j=( mark + 1 )%3, k=( mark + 2 )%3;
-		listItem *i;
-		for ( i=sub[ j ]->as_sub[ j ]; i!=NULL; i=i->next ) {
-			Entity *c = i->ptr;
-			if ( c->sub[ k ] == sub[ k ] ) {
-				sub[ mark ] = c->sub[ mark ];
-				*candidate = sub[ mark ];
-				break;
-			}
-		}
-		if ( i == NULL ) return NULL;
-	}
-	return cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
-}
-
-Entity *
-cn_getf( const char *format, ... )
-{
-	Entity *e = NULL, *solve;
-	va_list ap;
-	va_start( ap, format );
-	solve = vagetf( &e, format, ap );
-	va_end( ap );
-	return ( solve = NULL ) ? NULL : e;
-}
-
-/*---------------------------------------------------------------------------
-	cn_instf
----------------------------------------------------------------------------*/
-static Entity *
-vainstf( const char *format, va_list ap )
-{
-	Entity *sub[ 3 ], *e;
-	int count = 0;
-	while ( *format && ( count < 3 ) ) {
-		switch ( *format++ ) {
-		case '[':
-			e = vainstf( format, ap );
-			if ( e == NULL ) return NULL;
-			sub[ count++ ] = e;
-			break;
-		case '%':
-			sub[ count++ ] = va_arg( ap, Entity * );
-			break;
-		case '.':
-			; char *identifier = va_arg( ap, char * );
-			e = cn_entity( identifier );
-			if ( e == NULL )
-			{
-				identifier = strdup( identifier );
-				e = newEntity( NULL, NULL, NULL );
-				cn_va_set_value( e, "name", identifier );
-				registerByName( &CN.registry, identifier, e );
-				addItem( &CN.DB, e );
-			}
-			sub[ count++ ] = e;
-			break;
-		case ']':
-			goto RETURN;
-		}
-	}
-RETURN:
-	if ( count < 3 ) {
-		output( Debug, "***** Error: vasinstf: format inconsistent" );
-		return NULL;
-	}
-	e = cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
-	if ( e == NULL ) {
-		e = newEntity( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
-		addItem( &CN.DB, e );
-	}
-	return e;
-}
-
-Entity *
-cn_instf( const char *format, ... )
-{
-
-	va_list ap;
-	va_start( ap, format );
-	Entity *e = vainstf( format, ap );
-	va_end( ap );
-	return e;
 }
 
 /*---------------------------------------------------------------------------

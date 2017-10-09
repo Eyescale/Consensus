@@ -16,8 +16,9 @@ _action read_va;
 _action input_command;
 _action input_story;
 _action output_story;
-_action set_output_mode;
-_action clear_output_mode;
+_action clear_output_target;
+_action set_output_target;
+_action set_assignment_mode;
 _action open_stream;
 _action session_cmd;
 

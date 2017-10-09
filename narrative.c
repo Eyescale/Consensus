@@ -8,6 +8,7 @@
 #include "registry.h"
 #include "kernel.h"
 
+#include "api.h"
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
@@ -855,9 +856,7 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 {
 	context->control.mode = InstructionMode;
 	set_input_mode( OnRecordMode, event, context );
-	context->narrative.mode.action.one = 1;
-	event = read_command( base, event, &same, context );
-	context->narrative.mode.action.one = 0;
+	event = cn_read( NULL, InstructionOne, base, event );
 	set_input_mode( OffRecordMode, event, context );
 	context->control.mode = ExecutionMode;
 
@@ -1025,11 +1024,9 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 
 	int level = context->control.level;
 
-	context->narrative.mode.action.block = 1;
 	set_control_mode( InstructionMode, event, context );
-	event = read_command( base, 0, &same, context );
+	event = cn_read( NULL, InstructionBlock, base, 0 );
 	set_control_mode( ExecutionMode, event, context );
-	context->narrative.mode.action.block = 0;
 
 	if ( event < 0 )
 		;

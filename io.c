@@ -11,6 +11,7 @@
 #include "registry.h"
 #include "kernel.h"
 
+#include "api.h"
 #include "output.h"
 #include "io.h"
 #include "frame.h"
@@ -202,7 +203,7 @@ io_flush( int socket_fd, int *remainder )
 /*---------------------------------------------------------------------------
 	io_notify_changes
 ---------------------------------------------------------------------------*/
-static void
+void
 io_notify_changes( _context *context )
 {
 	FrameLog *log = &context->io.output.log;
@@ -224,7 +225,7 @@ io_notify_changes( _context *context )
 /*---------------------------------------------------------------------------
 	io_accept
 ---------------------------------------------------------------------------*/
-static int
+int
 io_accept( ConnectionType request, _context *context )
 {
 	struct sockaddr_un client_name;
@@ -236,9 +237,7 @@ io_accept( ConnectionType request, _context *context )
 
 	// read & execute command
 	push( base, 0, NULL, context );
-	push_input( "", &socket_fd, ClientInput, context );
-	int event = read_command( base, 0, &same, context );
-	// input pops automatically upon closing packet
+	cn_read( &socket_fd, ClientInput, base, 0 );
 	pop( base, 0, NULL, context );
 
 	// send closing packet
@@ -253,84 +252,53 @@ io_accept( ConnectionType request, _context *context )
 	io_scan		- called from read_command()
 ---------------------------------------------------------------------------*/
 #define SUP( a, b ) ((a)>(b)?(a):(b))
-int
-io_scan( char *state, int event, char **next_state, _context *context )
+void
+io_scan( fd_set *fds, int block, _context *context )
 {
-	fd_set fds; int nfds = 1;
+	int nfds = 0;
 	struct timeval timeout;
-	int input_ready = 0;
 
-	if ( context_check( 0, 0, ExecutionMode ) && !strcmp( state, base ) &&
-	   ( context->control.level == 0 ) && ( event == 0 ))
-	do
-	{
-		FD_ZERO( &fds );
-		FD_SET( STDIN_FILENO, &fds );
-#ifdef DO_LATER
-		FD_SET( context->io.operator, &fds );
-#endif
-		FD_SET( context->io.service, &fds );
-		nfds = SUP( STDIN_FILENO, SUP( context->io.service, context->io.operator )) + 1;
-
-		// call select() - if not already at work
-		// --------------------------------------
-		int frame_isset = ( context->frame.backlog || test_log( context, OCCURRENCES ) );
-#ifdef DEBUG
-		output( Debug, "frame_isset: %d - backlog:%d, log:%d", frame_isset,
-			context->frame.backlog, test_log( context, OCCURRENCES ));
-#endif
-		if ( context->input.stack != NULL )
-			; // already at work
-		else if ( frame_isset ) {
-			if ( !test_log( context, OCCURRENCES ) )
-				prompt( context );
-			// here we poll - no prompt
-			bzero( &timeout, sizeof( struct timeval ) );
-			select( nfds, &fds, NULL, NULL, &timeout );
-		} else {
-			// here we block
-#ifdef DEBUG
-			output( Debug, "BEFORE select: " );
-#endif
-			prompt( context );
-			select( nfds, &fds, NULL, NULL, NULL );
-		}
-		
-		// if external change notifications
-		// --------------------------------
-#ifdef DO_LATER
-		if ( FD_ISSET( context->io.operator, &fds ) ) {
-			read and add inputs to frame log
-			frame_isset = 1;
-		}
-#endif
-
-		// if internal work to do
-		// ----------------------
-		if ( frame_isset )
-		{
-			// we always count to three, so that external change
-			// notifications can travel all the way to actions
-			for ( int i=0; i<3; i++ ) {
-				event = systemFrame( state, event, next_state, context );
-				io_notify_changes( context );
-				if ( !context->frame.backlog )
-					break;
-			}
-		}
-
-		// if not already working and no user input pending
-		// ------------------------------------------------
-		if (( context->input.stack == NULL ) && !FD_ISSET( STDIN_FILENO, &fds ))
-		{
-			// take one command
-			if ( FD_ISSET( context->io.service, &fds ) ) {
-				io_accept( ServiceRequest, context );
-			}
-		}
-		else input_ready = 1;
+	// set I/O descriptors for select() to scan
+	// ----------------------------------------
+	FD_ZERO( fds );
+	if ( !context->control.cgi ) {
+		FD_SET( STDIN_FILENO, fds );
+		nfds = SUP( nfds, STDIN_FILENO );
 	}
-	while ( !input_ready );
+#ifdef DO_LATER
+	FD_SET( context->io.operator, fds );
+	nfds = SUP( nfds, context->io.operator );
+#endif
+	FD_SET( context->io.service, fds );
+	nfds = SUP( nfds, context->io.service );
 
-	return ( event < 0 ) ? event : input( state, event, NULL, context );
+	nfds++;
+
+	// call select() - if not already at work
+	// --------------------------------------
+	if ( context->input.stack != NULL )
+	{
+		// already at work
+		// ---------------
+		;
+	}
+	else if ( block )
+	{
+		// here we block
+		// -------------
+#ifdef DEBUG
+		output( Debug, "BEFORE select: " );
+#endif
+		prompt( context );
+		select( nfds, fds, NULL, NULL, NULL );
+	}
+	else {
+		// here we poll
+		// ------------
+
+		if ( !test_log( context, OCCURRENCES ) )
+			prompt( context );
+		bzero( &timeout, sizeof( struct timeval ) );
+		select( nfds, fds, NULL, NULL, &timeout );
+	}
 }

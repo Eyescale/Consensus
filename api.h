@@ -5,9 +5,11 @@
 	API 		- public
 ---------------------------------------------------------------------------*/
 
-int	cn_dof( char *format, ... );
-Entity	*cn_instf( const char *format, ... );
+int	cn_read( void *src, InputType type, char *state, int event );
+int	cn_readf( char *format, ... );
+Entity	*cn_setf( char *format, ... );
 Entity	*cn_getf( const char *format, ... );
+Entity	*cn_instf( const char *format, ... );
 
 Entity	*cn_new( char *name );
 Entity	*cn_instantiate( Entity *source, Entity *medium, Entity *target );

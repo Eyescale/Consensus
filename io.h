@@ -11,14 +11,15 @@ ConnectionType;
 	io actions	- public
 ---------------------------------------------------------------------------*/
 
-_action	io_scan;
-
 /*---------------------------------------------------------------------------
 	io utilities	- public
 ---------------------------------------------------------------------------*/
 
 int	io_init( _context *context );
 int	io_exit( _context *context );
+void	io_scan( fd_set *fds, int block, _context *context );
+int	io_accept( ConnectionType request, _context *context );
+void	io_notify_changes( _context *context );
 int	io_connect( ConnectionType type, char *path );
 int	io_read( int fd, char *buffer, int *remainder );
 int	io_write( int fd, char *string, int length, int *remainder );
