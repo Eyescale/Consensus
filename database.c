@@ -197,11 +197,13 @@ listItem *catListItem( listItem *list1, listItem *list2 )
 	return list1;
 }
 
-void popListItem( listItem **list )
+void *popListItem( listItem **list )
 {
+	void *ptr = (*list)->ptr;
 	listItem *next_i = (*list)->next;
 	freeItem( *list );
 	*list = next_i;
+	return ptr;
 }
 
 void freeListItem( listItem **list )

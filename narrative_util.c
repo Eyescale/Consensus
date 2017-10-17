@@ -227,17 +227,21 @@ activateNarrative( Entity *entity, Narrative *narrative )
 void
 deactivateNarrative( Entity *entity, Narrative *narrative )
 {
-	Narrative *instance;
 	registryEntry *entry = lookupByAddress( narrative->instances, entity );
-	instance = (Narrative *) entry->value;
-	freeListItem( &instance->frame.events );
-	freeListItem( &instance->frame.actions );
-	freeListItem( &instance->frame.then );
+	Narrative *instance = (Narrative *) entry->value;
 	if ( instance == narrative ) {
-#ifdef INIT
-		narrative->initialized = 0;
-#endif
+		for ( listItem *i = narrative->frame.events; i!=NULL; i=i->next )
+			((Occurrence *) i->ptr )->registered = 0;
+		freeListItem( &narrative->frame.events );
+		for ( listItem *i = narrative->frame.actions; i!=NULL; i=i->next )
+			((Occurrence *) i->ptr )->registered = 0;
+		freeListItem( &narrative->frame.actions );
+		for ( listItem *i = narrative->frame.then; i!=NULL; i=i->next )
+			((Occurrence *) i->ptr )->registered = 0;
+		freeListItem( &narrative->frame.then );
+
 		narrative->deactivate = 0;
+		narrative->root.registered = 0;
 		narrative->assigned = 0;
 		freeVariables( &narrative->variables );
 	} else {
@@ -434,6 +438,9 @@ freeOccurrence( Occurrence *occurrence )
 void
 freeNarrative( Narrative *narrative )
 {
+	freeListItem( &narrative->frame.events );
+	freeListItem( &narrative->frame.actions );
+	freeListItem( &narrative->frame.then );
 	freeOccurrence( &narrative->root );
 	freeVariables( &narrative->variables );
 	free( narrative->name );

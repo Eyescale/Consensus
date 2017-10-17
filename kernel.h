@@ -1,7 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#define IO_BUFFER_MAX_SIZE 4
+#define IO_BUFFER_MAX_SIZE 1024
 
 /*---------------------------------------------------------------------------
 	types
@@ -33,7 +33,7 @@ typedef enum {
 	UserInput,	// default: read from stdin
 	HCNFileInput,
 	PipeInput,
-	StreamInput,
+	FileInput,
 	ClientInput,
 	InstructionBlock,
 	InstructionOne,
@@ -51,6 +51,7 @@ typedef enum {
 	Text = 1,
 	Error,
 	Warning,
+	Question,
 	Info,
 	Debug
 }
@@ -222,7 +223,6 @@ typedef struct {
 	Registry instances;	// { ( entity, narrative-instance ) }
 	unsigned int deactivate : 1;
 	unsigned int assigned : 1;
-	unsigned int initialized : 1;
 }
 Narrative;
 
@@ -289,7 +289,7 @@ typedef struct {
 	} clause;
 	struct {
 		int base;
-		listItem *index;	// { entity }
+		listItem *variator;	// { entity }
 		listItem *begin;	// { instruction }
 	} loop;
 	struct {
@@ -346,6 +346,8 @@ typedef struct {
 		int level;
 		unsigned int terminal : 1;
 		unsigned int cgi : 1;
+		unsigned int cgim : 1;	// cgi emulator mode
+		unsigned int anteprompt : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
 		unsigned int stop : 1;
@@ -411,9 +413,13 @@ typedef struct {
 		int backlog;
 	} frame;
 	struct {
+		int level;
 		listItem *stack;	// current InputVA
 		listItem *instruction;
-		int event, buffer;
+		int event;
+		IdentifierVA buffer;
+		char *position;
+		int eof;
 	} input;
 	struct {
 		listItem *stack;	// current OutputVA
@@ -516,7 +522,7 @@ _action	warning;
 	kernel utilities	- public
 ---------------------------------------------------------------------------*/
 
-void set_control_mode( ControlMode mode, int event, _context *context );
+void set_control_mode( ControlMode mode, _context *context );
 int context_check( int freeze, int instruct, int execute );
 
 

@@ -78,9 +78,8 @@ frame_start( _context *context )
 }
 
 static void
-register_init( Narrative *narrative )
+log_root( Narrative *narrative )
 {
-	narrative->initialized = 1;
 	// trigger next frame
 	narrative->root.registered = 1;
 	addItem( &narrative->frame.events, &narrative->root );
@@ -95,7 +94,6 @@ frame_finish( _context *context )
 	// update backlog counter for io_scan()
 	context->frame.backlog =
 		test_log( context, OCCURRENCES ) ? 3 :
-		test_log( context, THEN ) ? 3 :
 		test_log( context, EVENTS ) ? 2 :
 		test_log( context, ACTIONS ) ? 1 :
 		0 ;
@@ -157,11 +155,13 @@ test_condition( Occurrence *occurrence, _context *context )
 	test_event
 ---------------------------------------------------------------------------*/
 static int
-test_event( Occurrence *occurrence, _context *context )
+test_event( Narrative *instance, Occurrence *occurrence, _context *context )
 {
 	for ( listItem *i = occurrence->va; i!=NULL; i=i->next )
 	{
 		EventVA *event = (EventVA *) i->ptr;
+		if ( event->type.init )
+			return 0; // registered only once
 #ifndef DO_LATER
 		if ( !event->type.notification )
 			return 0;
@@ -237,7 +237,7 @@ test_condition_or_event( Narrative *instance, Occurrence *occurrence, Occurrence
 		}
 		return test_condition( occurrence, context );
 	case EventOccurrence:
-		return test_event( occurrence, context );
+		return test_event( instance, occurrence, context );
 		break;
 	default:
 		return 0;
@@ -247,10 +247,11 @@ test_condition_or_event( Narrative *instance, Occurrence *occurrence, Occurrence
 /*---------------------------------------------------------------------------
 	search_and_register_events	- recursive
 ---------------------------------------------------------------------------*/
-static void
+static int
 search_and_register_events( Narrative *instance, Occurrence *thread, _context *context )
 {
-	int passed = 0;
+	OccurrenceType last;
+	int passed = 1, todo = 0;
 	for ( listItem *i = thread->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
@@ -260,26 +261,48 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 				break;
 			passed = 1;	// this pass's result, so far
 			if ( !occurrence->registered ) {
-				for ( listItem *i=occurrence->va; i!=NULL; i=i->next ) {
+				listItem *i = occurrence->va;
+				// in case last was an EventOccurrence then this is an otherwise
+				// _event_. in case this event comes with conditions, the conditions
+				// will be evaluated later - during the next frame - but this
+				// occurrence must be registered as an event.
+				int do_test = 1;
+				if ( last == EventOccurrence ) {
+					if (( i != NULL ) &&
+					    ( ((Occurrence *) i->ptr )->type == ConditionOccurrence ))
+						{ do_test = 0; passed = 0; }
+				}
+				else {	// last was a ConditionOccurrence
+					if (( i != NULL ) &&
+					    ( ((Occurrence *) i->ptr )->type == EventOccurrence ))
+						last = EventOccurrence;
+				}
+				if ( do_test ) for ( ; i!=NULL; i=i->next ) {
 					passed = test_condition_or_event( instance, i->ptr, thread, context );
 					if ( !passed ) break;
 				}
-				if ( passed ) {
+				if ( passed || !do_test ) {
 					// register occurrence in context->frame.events
+					// conditions will have to be evaluated later
 					addItem( &instance->frame.events, occurrence );
 					occurrence->registered = 1;
 				}
 			}
+			// in case last was an EventOccurrence and this is an otherwise
+			// event with conditions, the conditions will be evaluated later
+			// - during the next frame - by search_and_register_actions
 			if ( passed ) {
-				search_and_register_events( instance, occurrence, context );
+				todo |= search_and_register_events( instance, occurrence, context );
 			}
 			break;
 		case ConditionOccurrence:
+			last = ConditionOccurrence;
 			if (( passed = test_condition_or_event( instance, occurrence, thread, context ))) {
-				search_and_register_events( instance, occurrence, context );
+				todo |= search_and_register_events( instance, occurrence, context );
 			}
 			break;
 		case EventOccurrence:
+			last = EventOccurrence;
 			passed = 1;
 			if ( !occurrence->registered ) {
 				if (( passed = test_condition_or_event( instance, occurrence, thread, context ))) {
@@ -289,54 +312,39 @@ search_and_register_events( Narrative *instance, Occurrence *thread, _context *c
 				}
 			}
 			if ( passed ) {
-				search_and_register_events( instance, occurrence, context );
+				todo |= search_and_register_events( instance, occurrence, context );
 			}
 			break;
 		case ActionOccurrence:
-			passed = 0;	// no 'otherwise' after do
-			if ( thread->type == EventOccurrence ) {
-				break;	// action following event
-			}
-			if ( instance->initialized ) {
-				addItem( &instance->frame.actions, occurrence );
-			}
+			passed = 1;	// preposterous
+			todo = 1;
 			break;
 
-		case ThenOccurrence:
-			passed = 0;	// no 'otherwise' after then
+		case ThenOccurrence: // should be impossible
+			passed = 1;	// preposterous
 			break;
 		}
 	}
+	return todo;
 }
 
 static void
 search_and_register_init( Narrative *narrative, _context *context )
 {
-	int found = 0;
 	for ( listItem *i = narrative->root.sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
 		switch ( occurrence->type ) {
 		case EventOccurrence:
 			; EventVA *event = (EventVA *) occurrence->va->ptr;
-			if ( event->type.init &&
-			     ( event->identifier.name == NULL ) &&
-			     ( event->format == NULL ))
-			{
-				found = 1;
+			if ( event->type.init ) {
 				occurrence->registered = 1;
 				addItem( &narrative->frame.events, occurrence );
 			}
 			break;
-		case ConditionOccurrence:
-		case ActionOccurrence:
-		case ThenOccurrence:
-		case OtherwiseOccurrence:
+		default:
 			break;
 		}
-	}
-	if ( !found ) {
-		register_init( narrative );
 	}
 }
 
@@ -391,26 +399,55 @@ filter_narrative_events( Narrative *narrative, _context *context )
 static void
 search_and_register_actions( Narrative *narrative, Occurrence *thread, _context *context )
 {
+	OccurrenceType last;
+	int passed = 1;
 	for ( listItem *i = thread->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
 		switch ( occurrence->type ) {
 		case ConditionOccurrence:
-			if ( test_condition( occurrence, context ) ) {
+			last = ConditionOccurrence;
+			passed = test_condition( occurrence, context );
+			if ( passed ) {
 				search_and_register_actions( narrative, occurrence, context );
 			}
 			break;
 		case OtherwiseOccurrence:
+			if ( passed )	// last pass's result
+				break;
+			passed = 1;	// this pass's result, so far
+			listItem *i = occurrence->va;
+			if ( i == NULL )
+				passed = (( last == ConditionOccurrence ) || occurrence->registered );
+			else if ( ((Occurrence *) i->ptr )->type == EventOccurrence )
+				passed = occurrence->registered;
+			// must evaluate otherwise conditions for this frame
+			else for ( ; i!=NULL; i=i->next ) {
+				passed = test_condition( i->ptr, context );
+				if ( !passed ) break;
+			}
+			if ( passed ) {
+				occurrence->registered = 0; // no need to take the same route twice
+				search_and_register_actions( narrative, occurrence, context );
+			}
+			break;
 		case EventOccurrence:
-			if ( occurrence->registered ) {
+			last = EventOccurrence;
+			passed = occurrence->registered;
+			if ( passed ) {
 				occurrence->registered = 0; // no need to take the same route twice
 				search_and_register_actions( narrative, occurrence, context );
 			}
 			break;
 		case ActionOccurrence:
-			addItem( &narrative->frame.actions, occurrence );
+			passed = 1;	// preposterous
+			if ( !occurrence->registered ) {
+				occurrence->registered = 1;
+				addItem( &narrative->frame.actions, occurrence );
+			}
 			break;
 		case ThenOccurrence:
+			passed = 1;	// preposterous
 			break;
 		}
 	}
@@ -426,49 +463,83 @@ execute_narrative_actions( Narrative *instance, _context *context )
 	context->narrative.current = instance;
 	context->narrative.level = context->control.level + 1;
 
-	// we must reorder the actions to execute them in FIFO order
+	// reorder the actions to execute them in FIFO order
 	reorderListItem( &instance->frame.actions );
 
 	for ( listItem *i = instance->frame.actions; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
+		if ( !occurrence->registered ) continue;
+
+		occurrence->registered = 0;
+
+		// set context current action for lookupVariable
 		context->narrative.action = occurrence;
-		ActionVA *action = (ActionVA *) occurrence->va->ptr;
-		listItem *instruction = action->instructions;
-		if ( instruction->next == NULL ) {
-			cn_read( instruction->ptr, InstructionOne, base, 0 );
-		} else {
-			push( base, 0, NULL, context );
-			int level = context->control.level;
-			cn_read( instruction, InstructionBlock, base, 0 );
-			if ( context->control.level == level ) {
-				// returned from '/' - did not pop yet (expecting then)
-				pop( base, 0, NULL, context );
-				for ( listItem *j = occurrence->sub.n; j!=NULL; j=j->next ) {
-					occurrence->registered = 1;
-					addItem( &instance->frame.then, j->ptr );
+
+		// execute action vector - currently singleton
+		for ( listItem *j = occurrence->va; j!=NULL; j=j->next )
+		{
+			ActionVA *action = j->ptr;
+			listItem *instructions = action->instructions;
+			if ( instructions->next == NULL ) {
+				cn_do( instructions->ptr );
+			} else {
+				push( base, 0, NULL, context );
+				int level = context->control.level;
+				cn_dol( instructions );
+				if ( context->control.level == level ) {
+					// returned from '/'
+					pop( base, 0, NULL, context );
 				}
-				break;
 			}
 		}
 
 		if ( instance->deactivate )
 			break;
 
-		// look for a ThenOccurrence sibling from parent thread
+		// action is done: remove parent ThenOcurrence from current narrative then list
 		for ( Occurrence *thread = occurrence->thread; thread!=NULL; thread=thread->thread )
 		{
-			int found = 0;
-			for ( listItem *j = thread->sub.n; j!=NULL; j=j->next ) {
-				Occurrence *sibling = (Occurrence *) j->ptr;
-				if (( sibling->type == ThenOccurrence ) && !sibling->registered ) {
-					sibling->registered = 1;
-					addItem( &instance->frame.then, sibling );
-					found = 1;
+			if ( thread->type != ThenOccurrence )
+				continue;
+
+			thread->registered = 0;
+			listItem *last_j = NULL, *next_j;
+			for ( listItem *j = instance->frame.then; j!=NULL; j=next_j ) {
+				next_j = j->next;
+				if ( j->ptr == thread ) {
+					clipListItem( &instance->frame.then, j, last_j, next_j );
 					break;
-				}
+				} else last_j = j;
 			}
-			if ( found ) break;
+			break; // no need to further loop
+		}
+
+		// look for a ThenOccurrence child - there would be at most one
+		Occurrence *then = ((occurrence->sub.n) ? occurrence->sub.n->ptr : NULL );
+
+		// failing that, look for a ThenOccurrence sibling from parent thread
+		for ( Occurrence *thread = occurrence->thread; (thread) && !(then); thread=thread->thread )
+		{
+			listItem *j = thread->sub.n;
+			// we know that 'then' occurrences are last born
+			while ( j->next != NULL ) j=j->next;
+			then = j->ptr;
+			if ( then->type != ThenOccurrence )
+				{ then = NULL; continue; }
+			if ( then->registered )
+				{ then = NULL; break; }
+			// verify that this sibling is not in fact our parent
+			for ( Occurrence *t = occurrence->thread; t!=thread; t=t->thread )
+				if ( t == then ) { then = NULL; break; }
+		}
+
+		// register that then if found and not already registered
+		if ( (then) && !then->registered ) {
+			then->registered = 1;
+			addItem( &instance->frame.then, then );
+			// one-time event in case there are unconditional actions following
+			addItem( &instance->frame.events, then );
 		}
 	}
 	context->narrative.level = 0;
@@ -483,7 +554,9 @@ execute_narrative_actions( Narrative *instance, _context *context )
 int
 systemFrame( char *state, int e, char **next_state, _context *context )
 {
+	static int frameNumber = 0;
 #ifdef DEBUG
+	outputf( Debug, "frame: #%d", frameNumber++ );
 	output( Debug, "entering systemFrame" );
 #endif
 	frame_start( context );
@@ -518,14 +591,11 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		{
 			Entity *e = (Entity *) j->identifier;
 			Narrative *n = (Narrative *) j->value;
-			next_j = j->next;
+			next_j = j->next; // needed in case of deactivation
 #ifdef DEBUG
 			output( Debug, "systemFrame: invoking execute_narrative_actions()" );
 #endif
 			execute_narrative_actions( n, context );
-			if ( !n->initialized && ( n->frame.then == NULL )) {
-				register_init( n );
-			}
 			// check if the narrative reached 'exit'
 			if ( n->deactivate ) {
 				deactivateNarrative( e, narrative );
@@ -558,9 +628,6 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 				}
 			}
 			freeListItem( &n->frame.events );
-
-			if ( !n->initialized && ( n->frame.actions == NULL ))
-				register_init( n );
 		}
 	}
 
@@ -574,16 +641,30 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
 		{
 			Narrative *n = (Narrative *) j->value;
-			if ( !n->initialized ) continue;
-
-			search_and_register_events( n, &n->root, context );
-			reorderListItem( &n->frame.then );
-			for ( listItem *j = n->frame.then; j!=NULL; j=j->next ) {
-				Occurrence *then = (Occurrence *) j->ptr;
-				search_and_register_events( n, then, context );
-				then->registered = 0;
+			if ((n->frame.then))
+			{
+				reorderListItem( &n->frame.then );
+				for ( listItem *j = n->frame.then; j!=NULL; j=j->next )
+				{
+					Occurrence *then = (Occurrence *) j->ptr;
+					search_and_register_events( n, then, context );
+					then->registered = 0;
+				}
 			}
-			freeListItem( &n->frame.then );
+			else
+			{
+				int todo = search_and_register_events( n, &n->root, context );
+
+				// in case we have found action(s) without trigger, then we must
+				// trigger the next frame's search_and_register_actions()
+				// Note that we could do the same for then occurrences - provided
+				// we wanted to stay in 'then' state unless explicitely specified.
+				// But for now execute_narrative_action() pops after execution.
+
+				if ( todo && !(n->frame.events) && !(n->frame.actions) ) {
+					search_and_register_actions( n, &n->root, context );
+				}
+			}
 		}
 	}
 
@@ -614,6 +695,10 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 #endif
 			Narrative *n = activateNarrative( e, narrative );
 			search_and_register_init( n, context );
+			// in case there is no init, trigger manually the next frame
+			if ( !(n->frame.events) ) {
+				log_root( n );
+			}
 		}
 		freeListItem( (listItem **) &i->value );
 	}

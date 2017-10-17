@@ -31,7 +31,7 @@ set_va_( char *va_name, int event, _context *context )
 		char *name = context->identifier.id[ 1 ].ptr;
 		Narrative *narrative = lookupNarrative( CN.nil, name );
 		if ( narrative == NULL ) {
-			return output( Error, "narrative '%s' is not instantiated", name );
+			return outputf( Error, "narrative '%s' is not instantiated", name );
 		}
 
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
@@ -47,7 +47,7 @@ set_va_( char *va_name, int event, _context *context )
 		void *value = context->identifier.id[ 1 ].ptr;
 		context->identifier.id[ 1 ].ptr = NULL;
 		if ( value == NULL ) {
-			return output( Error, "account '%s' cannot be set to (null) value", va_name );
+			return outputf( Error, "account '%s' cannot be set to (null) value", va_name );
 		}
 		for ( listItem *i = (listItem *) context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
@@ -71,7 +71,7 @@ set_va( char *state, int event, char **next_state, _context *context )
 
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
-		return output( Error, "unknown value account name '%s'", va_name );
+		return outputf( Error, "unknown value account name '%s'", va_name );
 	}
 	return set_va_( va_name, event, context );
 }
@@ -94,7 +94,7 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 	// check value account name
 	char *va_name = context->identifier.id[ 2 ].ptr;
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
-		return output( Error, "unknown value account name '%s'", va_name );
+		return outputf( Error, "unknown value account name '%s'", va_name );
 	}
 	if ( strcmp( va_name, "narratives" ) ) {
 		return output( Error, "only narrative accounts can be set from variable" );
@@ -104,12 +104,12 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 	char *name = context->identifier.id[ 1 ].ptr;
 	registryEntry *entry = lookupVariable( context, name );
 	if ( entry == NULL ) {
-		return output( Error, "variable '%s' is not set", name );
+		return outputf( Error, "variable '%s' is not set", name );
 	}
 
 	VariableVA *variable = (VariableVA *) entry->value;
 	if ( variable->type != NarrativeVariable ) {
-		return output( Error, "variable '%s' is not a narrative variable", name );
+		return outputf( Error, "variable '%s' is not a narrative variable", name );
 	}
 
 	// extract the list of valid narratives from the passed list

@@ -60,7 +60,7 @@ set_clause( int clause, char *state, int event, char **next_state, _context *con
 			( context->control.contrary ? ClausePassive : ClauseActive ) :
 			( context->control.contrary ? ClauseActive : ClausePassive );
 		if ( stack->clause.state == ClausePassive )
-			set_control_mode( FreezeMode, event, context );
+			set_control_mode( FreezeMode, context );
 	}
 	context->control.contrary = 0;
 	return 0;
@@ -89,7 +89,8 @@ flip_clause( char *state, int event, char **next_state, _context *context )
 		if ( context->control.level == context->freeze.level )
 		{
 			stack->clause.state = ClauseActive;
-			set_control_mode( ExecutionMode, event, context );
+			set_control_mode( ExecutionMode, context );
+			set_record_mode( OffRecordMode, event, context );
 		}
 		break;
 	case InstructionMode:
@@ -113,7 +114,7 @@ flip_clause( char *state, int event, char **next_state, _context *context )
 				return output( Error, "not in conditional execution mode" );
 		}
 		if ( stack->clause.state == ClausePassive )
-			set_control_mode( FreezeMode, event, context );
+			set_control_mode( FreezeMode, context );
 	}
 	return 0;
 }
@@ -130,7 +131,8 @@ set_loop( char *state, int event, char **next_state, _context *context )
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	if ( context->input.stack == NULL ) {
 		// here we are reading instructions from stdin
-		set_control_mode( InstructionMode, event, context );
+		set_control_mode( InstructionMode, context );
+		set_record_mode( RecordInstructionMode, event, context );
 	}
 	else {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
@@ -140,26 +142,58 @@ set_loop( char *state, int event, char **next_state, _context *context )
 		}
 		else {
 			// here we may be reading from a script
-			set_control_mode( InstructionMode, event, context );
+			set_control_mode( InstructionMode, context );
+			set_record_mode( RecordInstructionMode, event, context );
 		}
 	}
 	if ( context->expression.results == NULL ) {
-		set_control_mode( FreezeMode, event, context );
+		set_control_mode( FreezeMode, context );
 	}
 	else {
-		stack->loop.index = context->expression.results;
+		stack->loop.variator = context->expression.results;
 		context->expression.results = NULL;
 		int type = (( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable );
-		assign_variator_variable( stack->loop.index->ptr, type, context );
+		assign_variator_variable( stack->loop.variator->ptr, type, context );
 	}
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	pop2
+	command_push
 ---------------------------------------------------------------------------*/
 static int
-pop2( char *state, int event, char **next_state, _context *context )
+command_push( char *state, int event, char **next_state, _context *context )
+{
+#ifdef DEBUG
+	outputf( Debug, "parser: command: pushing from level %d", context->control.level );
+#endif
+	// special case: pushing a loop in interactive mode, but no result to loop over
+	if ( context_check( 0, 0, ExecutionMode ) && ( context->input.stack == NULL ) &&
+	     !strcmp( *next_state, loop ) && ( context->expression.results == NULL ))
+	{
+		*next_state = same; // nothing to push for in this case
+	}
+	else {
+		event = push( state, event, &base, context );
+		if ( !strcmp( *next_state, loop ) ) {
+			event = set_loop( state, event, next_state, context );
+		}
+		else if ( !strcmp( *next_state, expression_clause ) ) {
+			event = set_expression_clause( state, event, next_state, context );
+		}
+		else if ( !strcmp( *next_state, variable_clause ) ) {
+			event = set_variable_clause( state, event, next_state, context );
+		}
+		*next_state = base;
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	command_pop
+---------------------------------------------------------------------------*/
+static int
+command_pop( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	int do_pop = 1;
@@ -200,7 +234,7 @@ pop2( char *state, int event, char **next_state, _context *context )
 		// -------------------------------------------------------
 		// check that we do actually have recorded instructions to execute besides '/'
 		if ( context->record.instructions->next == NULL ) {
-			freeListItem( &stack->loop.index );
+			freeListItem( &stack->loop.variator );
 			freeInstructionBlock( context );
 		} else {
 			reorderListItem( &context->record.instructions );
@@ -210,12 +244,15 @@ pop2( char *state, int event, char **next_state, _context *context )
 			*next_state = base;
 			do_pop = 0;
 		}
-		set_control_mode( ExecutionMode, event, context );
+		set_control_mode( ExecutionMode, context );
+		set_record_mode( OffRecordMode, event, context );
 		break;
 	case ExecutionMode:
 		// popping during narrative block execution
 		// ----------------------------------------
-		if (( context->narrative.mode.action.block ) && ( context->control.level == context->narrative.level )) {
+		if (( context->narrative.mode.action.block ) &&
+		    ( context->control.level == context->narrative.level ))
+		{
 			if ( !strcmp( state, "/" ) ) {
 				*next_state = "";
 				do_pop = 0;
@@ -227,8 +264,8 @@ pop2( char *state, int event, char **next_state, _context *context )
 		if ( stack->loop.begin == NULL ) {
 			;	// not in a loop
 		}
-		else if ( stack->loop.index->next == NULL ) {
-			freeListItem( &stack->loop.index );
+		else if ( stack->loop.variator->next == NULL ) {
+			freeListItem( &stack->loop.variator );
 			if ( context->control.level == context->record.level ) {
 				pop_input( state, event, next_state, context );
 				freeInstructionBlock( context );
@@ -238,8 +275,8 @@ pop2( char *state, int event, char **next_state, _context *context )
 			}
 		}
 		else {
-			popListItem( &stack->loop.index );
-			assign_variator_variable( stack->loop.index->ptr, 0, context );
+			popListItem( &stack->loop.variator );
+			assign_variator_variable( stack->loop.variator->ptr, 0, context );
 			set_instruction( stack->loop.begin, context );
 			*next_state = base;
 			do_pop = 0;
@@ -266,19 +303,18 @@ pop2( char *state, int event, char **next_state, _context *context )
 	}
 
 #ifdef DEBUG
-	output( Debug, "pop2: state=\"%s\"", state );
+	outputf( Debug, "command_pop: state=\"%s\"", state );
 #endif
 	return ( do_pop ? event : 0 );
 }
 
 /*---------------------------------------------------------------------------
-	error2
+	command_err
 ---------------------------------------------------------------------------*/
 static int
-error2( char *state, int event, char **next_state, _context *context )
+command_err( char *state, int event, char **next_state, _context *context )
 {
-	int test = ( context->narrative.mode.action.one || context->narrative.mode.script );
-	if ( test ) {
+	if ( context->narrative.mode.action.one || context->narrative.mode.script ) {
 		*next_state = "";
 	} else if ( !strcmp( state, base ) ) {
 		event = flush_input( state, event, next_state, context );
@@ -288,6 +324,81 @@ error2( char *state, int event, char **next_state, _context *context )
 		*next_state = base;
 	}
 	return event;
+}
+
+/*---------------------------------------------------------------------------
+	command_pop_input
+---------------------------------------------------------------------------*/
+static int
+command_pop_input( char *state, int event, char **next_state, _context *context )
+{
+	if ((context->input.stack))
+	{
+		InputVA *input = context->input.stack->ptr;
+		switch ( input->mode ) {
+		case HCNFileInput:
+		case ClientInput:
+			event = pop_input( state, event, next_state, context );
+			*next_state = "";
+			return event;
+		case LastInstruction:
+        		free( context->input.instruction->ptr );
+			freeItem( context->input.instruction );
+			context->input.instruction = NULL;
+			set_control_mode( InstructionMode, context );
+			set_record_mode( RecordInstructionMode, event, context );
+			break;
+		default:
+			break;
+		}
+	}
+	event = pop_input( state, event, next_state, context );
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	command_init, command_exit	- called from outside
+---------------------------------------------------------------------------*/
+int
+command_init( void *src, InputType type, int *restore, _context *context )
+{
+	int event = restore[ 0 ];
+	restore[ 0 ] = context->input.level;
+	restore[ 1 ] = context->narrative.mode.action.one;
+	restore[ 2 ] = context->narrative.mode.action.block;
+
+	int retval = ((src) ? push_input( "", src, type, context ) : 0 );
+	if ( retval < 0 ) return retval;
+
+	switch ( type ) {
+	case InstructionOne:
+		context->narrative.mode.action.one = 1;
+		context->narrative.mode.action.block = 0;
+		break;
+	case InstructionBlock:
+		context->narrative.mode.action.one = 0;
+		context->narrative.mode.action.block = 1;
+		break;
+	default:
+		context->narrative.mode.action.one = 0;
+		context->narrative.mode.action.block = 0;
+		break;
+	}
+	return event;
+}
+
+int
+command_exit( char *state, int *restore, _context *context )
+{
+	if ( strcmp( state, "" ) )
+		return output( Debug, "***** Error: command_exit: state informed" );
+
+	while ( context->input.level > restore[ 0 ] ) {
+		pop_input( state, 0, &base, context );
+	}
+	context->narrative.mode.action.one = restore[ 1 ];
+	context->narrative.mode.action.block = restore[ 2 ];
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -311,14 +422,14 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "read_command: state=\"%s\", event='%c'", state, event );
+	outputf( Debug, "read_command: state=\"%s\", event='%c'", state, event );
 #endif
 	switch ( event ) {
-	case 0: // input() popped from ClientInput mode
-		do_( nothing, "" )
+	case 0: // input() reached EOF
+		do_( command_pop_input, base )
 		break;
 	case -1:
-		do_( error2, base )
+		do_( command_err, base )
 		break;
 	case ' ':
 	case '\t':
@@ -337,7 +448,9 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( "> ." )			do_( error, base )
 			in_( ":< \\" )			do_( error, base )
 			in_( ">:_" )			do_( output_char, ">:_" )
-			in_( ">: \\" )			do_( output_char, ">:_" )
+			in_( ">: \\" )			do_( output_special_char, ">:_" )
+			in_( ">: \"" )			do_( output_char, ">: \"" )
+			in_( ">: \"\\" )		do_( output_special_char, ">: \"" )
 			in_( ">: %variable" )		do_( output_variable_value, ">:_" )
 			in_( ">: %[_]" )		do_( output_results, ">:_" )
 			in_( ">: %[_].$(_)" )		do_( output_va, ">:_" )
@@ -347,11 +460,9 @@ read_command( char *state, int event, char **next_state, _context *context )
 				bgn_
 				in_( "!. %[_].narrative(_)" )	do_( narrative_op, out )
 				in_( "!. narrative(_)" )	do_( narrative_op, out )
-				in_( ">@session:_" )		do_( session_cmd, out )
-				in_( ">@session:_ | >:" )	do_( session_cmd, out )
-				in_( ":< \\Nfile://path" )	do_( input_story, out )
+				in_( ">@pid:_" )		do_( session_cmd, out )
+				in_( ">@pid:_ | >:" )		do_( session_cmd, out )
 				in_( ":~ identifier" )		do_( variable_reset, out )
-				in_( ":< %( string )" )		do_( input_command, out )
 				in_other			do_( nop, same )
 				end
 			} else {
@@ -384,7 +495,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 		in_( "/" ) bgn_
 			on_( '~' )	do_( nop, "/~" )
-			on_( '\n' )	do_( pop2, pop_state )
+			on_( '\n' )	do_( command_pop, pop_state )
 			on_( '.' )	do_( nop, "/." )
 			on_other	do_( error, base )
 			end
@@ -393,12 +504,15 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_other	do_( error, base )
 				end
 			in_( "/." ) bgn_
-				on_( '\n' )	do_( pop2, pop_state )
+				on_( '\n' )	do_( command_pop, pop_state )
 				on_other	do_( error, base )
 				end
 
 		in_( "!" ) bgn_
 			on_( '!' )	do_( set_expression_mode, "!." )
+#ifdef DO_LATER
+			on_( '<' )	do_( nop, "!<" )
+#endif
 			on_( '~' )	do_( set_expression_mode, "!." )
 			on_( '*' )	do_( set_expression_mode, "!." )
 			on_( '_' )	do_( set_expression_mode, "!." )
@@ -436,16 +550,16 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 				in_( "!. %[_].narrative(_)" ) bgn_
 					on_( '\n' )	do_( narrative_op, out )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
 				in_( "!. narrative(_)" ) bgn_
 					on_( '\n' )	do_( narrative_op, out )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
 				in_( "!. expression" ) bgn_
 					on_( '\n' )	do_( expression_op, out )
 					on_( '(' )	do_( set_results_to_nil, "!. narrative(" )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
 					in_( "!. narrative(" ) bgn_
 						on_( ')' )	do_( nop, "!. narrative(_)" )
@@ -467,31 +581,31 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_other	do_( read_0, "> identifier" )
 			end
 			in_( ">@" ) bgn_
-				on_any	do_( read_path, ">@session" )
+				on_any	do_( read_path, ">@pid" )
 				end
-				in_( ">@session" ) bgn_
-					on_( ':' )	do_( nop, ">@session:" )
+				in_( ">@pid" ) bgn_
+					on_( ':' )	do_( nop, ">@pid:" )
 					on_other	do_( error, base )
 					end
-				in_( ">@session:" ) bgn_
-					on_any	do_( read_2, ">@session:_" )
+				in_( ">@pid:" ) bgn_
+					on_any	do_( read_2, ">@pid:_" )
 					end
-				in_( ">@session:_" ) bgn_
-					on_( '|' )	do_( nop, ">@session:_ |" )
+				in_( ">@pid:_" ) bgn_
+					on_( '|' )	do_( nop, ">@pid:_ |" )
 					on_( '\n' )	do_( session_cmd, out )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
-				in_( ">@session:_ |" ) bgn_
-					on_( '>' )	do_( nop, ">@session:_ | >" )
-					on_other	do_( error2, out )
+				in_( ">@pid:_ |" ) bgn_
+					on_( '>' )	do_( nop, ">@pid:_ | >" )
+					on_other	do_( command_err, out )
 					end
-				in_( ">@session:_ | >" ) bgn_
-					on_( ':' )	do_( nop, ">@session:_ | >:" )
+				in_( ">@pid:_ | >" ) bgn_
+					on_( ':' )	do_( nop, ">@pid:_ | >:" )
 					on_other	do_( error, base )
 					end
-				in_( ">@session:_ | >:" ) bgn_
+				in_( ">@pid:_ | >:" ) bgn_
 					on_( '\n' )	do_( session_cmd, out )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
 			in_( "> ." ) bgn_
 				on_( '.' )	do_( nop, "> .." )
@@ -509,18 +623,29 @@ read_command( char *state, int event, char **next_state, _context *context )
 		in_( ">:" ) bgn_
 			on_( '\\' )	do_( nop, ">: \\" )
 			on_( '\n' )	do_( output_char, out )
+			on_( '|' )	do_( output_char, ">:_ |" )
 			on_( '%' )	do_( nop, ">: %" )
+			on_( '"' )	do_( nop, ">: \"" )
 			on_other	do_( output_char, ">:_" )
 			end
+			in_( ">: \\" ) bgn_
+				on_any	do_( output_special_char, ">:_" )
+				end
+			in_( ">: \"" ) bgn_
+				on_( '"' )	do_( nop, ">:_" )
+				on_( '\\' )	do_( nop, ">: \"\\" )
+				on_other	do_( output_char, same )
+				end
+				in_( ">: \"\\" ) bgn_
+					on_any	do_( output_special_char, ">: \"" )
+					end
 			in_( ">:_" ) bgn_
 				on_( '\\' )	do_( nop, ">: \\" )
 				on_( '\n' )	do_( output_char, out )
+				on_( '|' )	do_( output_char, ">:_ |" )
 				on_( '%' )	do_( nop, ">: %" )
+				on_( '"' )	do_( nop, ">: \"" )
 				on_other	do_( output_char, ">:_" )
-				end
-			in_( ">: \\" ) bgn_
-				on_( '\n' )	do_( output_char, out )
-				on_other	do_( output_special_char, ">:_" )
 				end
 			in_( ">: %" ) bgn_
 				on_( '?' )	do_( output_variator_value, ">:_" )
@@ -539,11 +664,15 @@ read_command( char *state, int event, char **next_state, _context *context )
 					end
 			in_( ">: %variable" ) bgn_
 				on_( '\n' )	do_( output_variable_value, out )
+				on_( '|' )	do_( output_variable_value, ">:_ |" )
+				on_( '"' )	do_( output_variable_value, ">: \"" )
 				on_other	do_( output_variable_value, ">:_" )
 				end
 			in_( ">: %[_]" ) bgn_
 				on_( '.' )	do_( nop, ">: %[_]." )
 				on_( '\n' )	do_( output_results, out )
+				on_( '|' )	do_( output_results, ">:_ |" )
+				on_( '"' )	do_( output_results, ">: \"" )
 				on_other	do_( output_results, ">:_" )
 				end
 				in_( ">: %[_]." ) bgn_
@@ -560,11 +689,18 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 			in_( ">: %[_].$(_)" ) bgn_
 				on_( '\n' )	do_( output_va, out )
+				on_( '|' )	do_( output_va, ">:_ |" )
+				on_( '"' )	do_( output_va, ">: \"" )
 				on_other	do_( output_va, ">:_" )
 				end
 			in_( ">: %[_].narrative(_)" ) bgn_
 				on_( '\n' )	do_( output_narrative, out )
+				on_( '|' )	do_( output_narrative, ">:_ |" )
+				on_( '"' )	do_( output_narrative, ">: \"" )
 				on_other	do_( output_narrative, ">:_" )
+				end
+			in_( ">:_ |" ) bgn_
+				on_any	do_( nothing, out )
 				end
 
 		in_( "?" ) bgn_
@@ -583,7 +719,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_any	do_( evaluate_expression, "? %: expression" )
 					end
 					in_( "? %: expression" ) bgn_
-						on_( '\n' )	do_( push, expression_clause )
+						on_( '\n' )	do_( command_push, expression_clause )
 						on_other	do_( error, base )
 						end
 				in_( "? %[" ) bgn_
@@ -594,11 +730,11 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_other	do_( error, base )
 						end
 						in_( "? %[_]" ) bgn_
-							on_( '\n' )	do_( push, expression_clause )
+							on_( '\n' )	do_( command_push, expression_clause )
 							on_other	do_( error, base )
 							end
 				in_( "? %variable" ) bgn_
-					on_( '\n' )	do_( push, variable_clause )
+					on_( '\n' )	do_( command_push, variable_clause )
 					on_other	do_( error, base )
 					end
 
@@ -616,7 +752,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 						end
 						in_( "?~ %: expression" ) bgn_
 							on_( '\n' )	do_( set_clause_to_contrary, same )
-									do_( push, expression_clause )
+									do_( command_push, expression_clause )
 							on_other	do_( error, base )
 							end
 		
@@ -629,12 +765,12 @@ read_command( char *state, int event, char **next_state, _context *context )
 							end
 							in_( "?~ %[_]" ) bgn_
 								on_( '\n' )	do_( set_clause_to_contrary, same )
-										do_( push, expression_clause )
+										do_( command_push, expression_clause )
 								on_other	do_( error, base )
 										end
 					in_( "?~ %variable" ) bgn_
 						on_( '\n' )	do_( set_clause_to_contrary, same )
-								do_( push, variable_clause )
+								do_( command_push, variable_clause )
 						on_other	do_( error, base )
 						end
 
@@ -649,7 +785,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_other	do_( evaluate_expression, "? identifier: expression" )
 					end
 					in_( "? identifier: expression" ) bgn_
-						on_( '\n' )	do_( push, loop )
+						on_( '\n' )	do_( command_push, loop )
 						on_other	do_( error, base )
 						end
 					in_( "? identifier: %" ) bgn_
@@ -664,7 +800,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 							on_other	do_( error, base )
 							end
 						in_( "? identifier: %[_]" ) bgn_
-							on_( '\n' )	do_( push, loop )
+							on_( '\n' )	do_( command_push, loop )
 							on_other	do_( error, base )
 							end
 		in_( ":" ) bgn_
@@ -810,7 +946,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 				in_( ":~ identifier" ) bgn_
 					on_( '\n' )	do_( variable_reset, out )
-					on_other	do_( error2, out )
+					on_other	do_( command_err, out )
 					end
 
 			in_( ":<" ) bgn_
@@ -830,8 +966,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_any	do_( read_path, ":< \\Nfile://path" )
 						end
 					in_( ":< \\Nfile://path" ) bgn_
-						on_( '\n' )	do_( input_story, out )
-						on_other	do_( error2, out )
+						on_( '\n' )	do_( input_story, base )
+						on_other	do_( command_err, out )
 						end
 				in_( ":< %" ) bgn_
 						on_( '(' )	do_( nop, ":< %(" )
@@ -845,8 +981,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_other	do_( error, base )
 						end
 					in_( ":< %( string )" ) bgn_
-						on_( '\n' )	do_( input_command, out )
-						on_other	do_( error2, out )
+						on_( '\n' )	do_( input_command, base )
+						on_other	do_( command_err, out )
 						end
 		end
 	}
@@ -862,32 +998,10 @@ read_command( char *state, int event, char **next_state, _context *context )
 	{
 		_action *action = i->ptr;
 		*next_state = j->ptr;
-		if ( (*action) == push )
-		{
-#ifdef DEBUG
-			output( Debug, "parser: command: pushing from level %d", context->control.level );
-#endif
-			// special case: pushing a loop in interactive mode, but no result to loop over
-			if ( context_check( 0, 0, ExecutionMode ) && ( context->input.stack == NULL ) &&
-			     !strcmp( *next_state, loop ) && ( context->expression.results == NULL ))
-				; // nothing to push for in this case
-			else {
-				event = push( state, event, &base, context );
-				state = base;
-				if ( !strcmp( *next_state, loop ) ) {
-					event = set_loop( state, event, next_state, context );
-				}
-				else if ( !strcmp( *next_state, expression_clause ) ) {
-					event = set_expression_clause( state, event, next_state, context );
-				}
-				else if ( !strcmp( *next_state, variable_clause ) ) {
-					event = set_variable_clause( state, event, next_state, context );
-				}
-			}
-		}
-		else if ( !strcmp( *next_state, out ) )
+		if ( !strcmp( *next_state, out ) )
 		{
 			if ( context->narrative.mode.action.one ) {
+				if ( event == '|' ) event = 0;
 				(*action)( state, event, next_state, context );
 				clear_output_target( state, event, next_state, context );
 				state = "";

@@ -34,7 +34,7 @@ listItem *addIfNotThere( listItem **list, void *ptr );
 void removeIfThere( listItem **list, void *ptr );
 void freeItem( listItem *item );
 listItem *catListItem( listItem *list1, listItem *list2 );
-void popListItem( listItem **item );
+void *popListItem( listItem **item );
 void freeListItem( listItem **item );
 int reorderListItem( listItem **item );
 

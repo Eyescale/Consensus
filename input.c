@@ -86,7 +86,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 		// here we are in the execution part of a loop => abort
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
 		output( Error, "aborting loop..." );
-		freeListItem( &stack->loop.index );
+		freeListItem( &stack->loop.variator );
 		freeInstructionBlock( context );
 		stack->loop.begin = NULL;
 		pop_input( state, event, next_state, context );
@@ -117,20 +117,23 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 {
 	InputVA *input;
 #ifdef DEBUG
-	output( Debug, "push_input: \"%s\"", identifier );
+	if ((src)) outputf( Debug, "push_input: \"%s\"", (char*) src );
+	else output( Debug, "push_input: NULL" );
 #endif
 	switch ( type ) {
 	case PipeInput:
 	case HCNFileInput:
-	case StreamInput:
+	case FileInput:
+		identifier = src;
 		// check if stream is already in use
 		for ( listItem *i=context->input.stack; i!=NULL; i=i->next )
 		{
 			input = (InputVA *) i->ptr;
 			if ( strcmp( input->identifier, identifier ) )
 				continue;
+			int event = outputf( Error, "recursion in stream: \"%s\"", identifier );
 			free( identifier );
-			return output( Error, "recursion in stream: \"%s\"", identifier );
+			return event;
 		}
 		break;
 	default:
@@ -140,33 +143,24 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	// create and register new active stream
 	input = (InputVA *) calloc( 1, sizeof(InputVA) );
 	input->identifier = identifier;
-	input->level = context->control.level;
-	input->restore.prompt = ( context->control.prompt ? 1 : 0 );
 	input->mode = type;
+	input->level = context->control.level;
+	input->restore.prompt = context->control.prompt;
 
-#ifdef DEBUG
-	output( Debug, "opening stream: \"%s\"", identifier );
-#endif
+	int failed = 0;
 	switch ( type ) {
 	case HCNFileInput:
-	case PipeInput:
-	case StreamInput:
-		; int failed = 0;
-		if ( type == HCNFileInput ) {
-			input->ptr.fd = open( identifier, O_RDONLY );
-			failed = ( input->ptr.fd < 0 );
-		} else if ( type == PipeInput ) {
-			input->ptr.file = popen( identifier, "r" );
-			failed = ( input->ptr.file == NULL );
-		} else {
-			input->ptr.fd = open( identifier, O_RDONLY );
-			failed = ( input->ptr.file < 0 );
-		}
-		if ( failed ) {
-			free( input );
-			return output( Error, "could not open stream: \"%s\"", identifier );
-		}
 		context->hcn.state = base;
+		input->ptr.fd = open( identifier, O_RDONLY );
+		failed = ( input->ptr.fd < 0 );
+		break;
+	case PipeInput:
+		input->ptr.file = popen( identifier, "r" );
+		failed = ( input->ptr.file == NULL );
+		break;
+	case FileInput:
+		input->ptr.fd = open( identifier, O_RDONLY );
+		failed = ( input->ptr.fd < 0 );
 		break;
 	case ClientInput:
 		input->client = *(int *) src;
@@ -176,41 +170,42 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		input->position = NULL;
 		break;
 	case InstructionBlock:
-	case InstructionOne:
-	case LastInstruction:
+		context->record.level = context->control.level;
+		listItem *first_instruction = (listItem *) src;
+		context->input.instruction = first_instruction;
+		input->ptr.string = first_instruction->ptr;
 		input->position = NULL;
-		switch ( type ) {
-			case InstructionBlock:
-				context->record.level = context->control.level;
-				listItem *first_instruction = (listItem *) src;
-				context->input.instruction = first_instruction;
-				input->ptr.string = first_instruction->ptr;
-				break;
-			case InstructionOne:
-				input->ptr.string = src;
-				break;
-			case LastInstruction:
-				; listItem *last_instruction = context->record.instructions;
-				context->input.instruction = last_instruction;
-				context->record.instructions = last_instruction->next;
-				input->ptr.string = last_instruction->ptr;
-				break;
-			default: break;
-		}
+		break;
+	case InstructionOne:
+		input->ptr.string = src;
+		input->position = NULL;
+		break;
+	case LastInstruction:
+		; listItem *last_instruction = context->record.instructions;
+		context->input.instruction = last_instruction;
+		context->record.instructions = last_instruction->next;
+		input->ptr.string = last_instruction->ptr;
+		input->position = NULL;
 		break;
 	default:
 		break;
 	}
+	if ( failed ) {
+		free( input );
+		return outputf( Error, "could not open stream: \"%s\"", identifier );
+	}
 
 	// make stream current
 	addItem( &context->input.stack, input );
+	context->input.level++;
 
 	// if we were in a for loop, reset control mode to record subsequent
 	// instructions from stream
-	if ( context->input.stack->next != NULL ) {
+	if (( context->input.stack->next )) {
 		input = (InputVA *) context->input.stack->next->ptr;
 		if ( input->mode == LastInstruction ) {
-			set_control_mode( InstructionMode, 0, context );
+			set_control_mode( InstructionMode, context );
+			set_record_mode( RecordInstructionMode, 0, context );
 		}
 	}
 
@@ -225,6 +220,9 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 int
 pop_input( char *state, int event, char **next_state, _context *context )
 {
+#ifdef DEBUG
+	output( Debug, "pop_input: popping" );
+#endif
 	InputVA *input = (InputVA *) context->input.stack->ptr;
 	int delta = context->control.level - input->level;
 	if ( delta > 0 ) {
@@ -235,8 +233,15 @@ pop_input( char *state, int event, char **next_state, _context *context )
 
 	context->control.prompt = input->restore.prompt;
 	switch ( input->mode ) {
+	case HCNFileInput:
+		close ( input->ptr.fd );
+		break;
 	case PipeInput:
-	case StreamInput:
+		pclose( input->ptr.file );
+		free( input->identifier );
+		break;
+	case FileInput:
+		close( input->ptr.fd );
 		free( input->identifier );
 		break;
 	default:
@@ -244,21 +249,23 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	}
 	free( input );
 	popListItem( &context->input.stack );
+	context->input.level--;
 
 	if ( context->input.stack != NULL ) {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
 		if ( input->mode == LastInstruction ) {
-			set_control_mode( ExecutionMode, 0, context );
+			set_control_mode( ExecutionMode, context );
+			set_record_mode( OffRecordMode, 0, context );
 		}
 	}
 	return event;
 }
 
 /*---------------------------------------------------------------------------
-	set_input_mode
+	set_record_mode
 ---------------------------------------------------------------------------*/
 void
-set_input_mode( RecordMode mode, int event, _context *context )
+set_record_mode( RecordMode mode, int event, _context *context )
 {
 	switch ( mode ) {
 	case OffRecordMode:
@@ -285,42 +292,178 @@ set_input_mode( RecordMode mode, int event, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	recordC
+---------------------------------------------------------------------------*/
+static void
+recordC( int event, _context *context )
+{
+	if ( event < 0 ) return;
+	context->input.event = event;
+
+	// record instruction or expression if needed
+	switch( context->record.mode ) {
+	case RecordInstructionMode:
+		if ( context->record.string.list == NULL ) {
+			string_start( &context->record.string, event );
+		} else {
+			string_append( &context->record.string, event );
+		}
+		if ( event == '\n' ) {
+			char *string = string_finish( &context->record.string, 1 );
+#ifdef DEBUG
+			outputf( Debug, "recordC: recording \"%s\"", string );
+#endif
+			if ( strcmp( string, "\n" ) ) {
+				addItem( &context->record.instructions, string );
+			} else {
+				free ( string );
+			}
+			context->record.string.ptr = NULL;
+		}
+		break;
+	case OnRecordMode:
+		string_append( &context->record.string, event );
+		break;
+	case OffRecordMode:
+		break;
+	}
+}
+
+/*---------------------------------------------------------------------------
 	skip_comment
 ---------------------------------------------------------------------------*/
+#define COMMENT		0
+#define BACKSLASH	1
+#define STRING		2
+
 int
-skip_comment( int event, int *comment_on, int *backslash, _context *context )
+skip_comment( int event, int *mode, _context *context )
 {
-	if ( context->input.buffer ) {
-		context->input.buffer = 0;
+	if ((context->input.position)) {
+		if ( !event ) {
+			context->input.position = NULL;
+			string_start( &context->input.buffer, 0 );
+			if ( context->input.eof ) {
+				context->input.eof = 0;
+				return EOF;
+			}
+			return 0;
+		}
+		return event;
+	}
+	else if ( !event ) {
+		return 0;
+	}
+	else if ( event == EOF ) {
+		string_finish( &context->input.buffer, 1 );
+		context->input.position = context->input.buffer.ptr;
+		if ((context->input.position)) {
+			context->input.eof = 1;
+			return 0;
+		}
+		return EOF;
 	}
 	else if ( event == '\n' ) {
-		// overrules everything, backslash and all
-		/*
-		// not needed because these are local,
-		// but keep this for clarity
-		*comment_on = 0;
-		*backslash = 0;
-		*/
-	}
-	else if ( *comment_on ) {
-		// ignore everything until '\n'
-		event = 0;
-	}
-	else if ( *backslash )
-	{
-		// ignore '#' and '\' if backslashed
-		context->input.buffer = event;
-		event = '\\';
-		*backslash = 0;
+		if ( mode[ BACKSLASH ] ) {
+			mode[ BACKSLASH ] = 0;
+			if ( context->control.prompt ) {
+				context->control.prompt = 0;
+				fprintf( stderr, "$\t" );
+			}
+			return 0;
+		}
+		else if ( mode[ STRING ] ) {
+			string_append( &context->input.buffer, '\\' );
+			string_append( &context->input.buffer, 'n' );
+			if ( context->control.prompt ) {
+				context->control.prompt = 0;
+				fprintf( stderr, "$\t" );
+			}
+			return 0;
+		}
+		else {
+			string_append( &context->input.buffer, '\n' );
+			string_finish( &context->input.buffer, 1 );
+			context->input.position = context->input.buffer.ptr;
+			return 0;
+		}
 	}
 	else if ( event == '\\' )
 	{
-		*backslash = 1;
-		event = 0;
+		mode[ BACKSLASH ] = 1;
+		return 0;
+	}
+	else if ( mode[ COMMENT ] ) {
+		// ignore everything until '\n'
+		mode[ BACKSLASH ] = 0;
+		return 0;
+	}
+	else if ( mode[ BACKSLASH ] )
+	{
+		mode[ BACKSLASH ] = 0;
+		// ignore '#' and '\' if backslashed
+		string_append( &context->input.buffer, '\\' );
+		string_append( &context->input.buffer, event );
+		return 0;
+	}
+	else if ( event == '\t' ) {
+		if ( mode[ STRING ] ) {
+			string_append( &context->input.buffer, '\\' );
+			string_append( &context->input.buffer, 't' );
+			return 0;
+		}
+	}
+	else if ( event == '\"' ) {
+		mode[ STRING ] = !mode[ STRING ];
 	}
 	else if ( event == '#' ) {
-		*comment_on = 1;
-		event = 0;
+		mode[ COMMENT ] = 1;
+		return 0;
+	}
+	string_append( &context->input.buffer, event );
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	sgetc
+---------------------------------------------------------------------------*/
+static int
+sgetc( InputVA *input, _context *context )
+{
+	if ( input->position == NULL ) {
+#ifdef DEBUG
+		output( Debug, "sgetc: reading from \"%s\"", (char *) input->ptr.string );
+#endif
+		input->position = input->ptr.string;
+		if ( context->narrative.mode.output && ( input->mode == InstructionBlock ))
+			for ( int i=0; i<=context->control.level; i++ )
+				output( Text, "\t" );
+	}
+	int event = (int) (( char *) input->position++ )[ 0 ];
+	if ( event )
+	{
+		if ( context->narrative.mode.output )
+			outputf( Text, "%c", event );
+	}
+	else {
+		switch ( input->mode ) {
+		case ClientInput:
+			if ( io_read( input->client, input->ptr.string, &input->remainder ) )
+			{
+				input->position = input->ptr.string;
+				event = (int) (( char *) input->position++ )[ 0 ];
+			}
+			break;
+		case InstructionBlock:
+			context->input.instruction = context->input.instruction->next;
+			if ( context->input.instruction != NULL ) {
+				input->ptr.string = context->input.instruction->ptr;
+				input->position = NULL;
+			}
+			break;
+		default:
+			break;
+		}
 	}
 	return event;
 }
@@ -336,144 +479,77 @@ input( char *state, int event, char **next_state, _context *context )
 	}
 
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	int comment_on = 0, backslash = 0;
+	int mode[ 3 ] = { 0, 0, 0 };
 	do {
-		if ( context->input.buffer )
+		if ((context->input.position))
 		{
-			event = context->input.buffer;
+			event = (int) ((char *) context->input.position++ )[ 0 ];
 		}
 		else if ( context->input.stack == NULL )
 		{
-			if ( !strcmp( state, base ) ) prompt( context );
+			if ( context->control.cgi || context->control.cgim ) {
+				// should be impossible
+				return -1;
+			}
+			if ( !strcmp( state, base ) ) {
+				prompt( context );
+			}
+			context->control.anteprompt = 0;
 			read( STDIN_FILENO, &event, 1 );
-			if ( event == '\n' ) context->control.prompt = context->control.terminal;
+			if ( event == '\n' ) {
+				context->control.prompt = context->control.terminal &&
+					!( context->control.cgi || context->control.cgim );
+			}
 		}
-		else
+		else if ( !context->input.eof )
 		{
 			InputVA *input = (InputVA *) context->input.stack->ptr;
-			int do_pop = 1;
-			if ( input->corrupted )
-				; // user tried to pop control stack beyond input level
+			if ( input->corrupted ) {
+				// user tried to pop control stack beyond input level
+				input->corrupted = 0;
+				event = pop_input( state, event, next_state, context );
+			}
 			else switch ( input->mode ) {
 			case HCNFileInput:
 				event = hcn_getc( input->ptr.fd, context );
-				do_pop = !event;
+				if ( !event ) event = EOF;
 				break;
 			case PipeInput:
 				event = fgetc( input->ptr.file );
-				do_pop = ( event == EOF );
 				break;
-			case StreamInput:
-				; char buf;
-				do_pop = !read( input->ptr.fd, &buf, 1 );
-				event = buf;
+			case FileInput:
+				if ( !read( input->ptr.fd, &event, 1 ) )
+					event = EOF;
 				break;
 			case ClientInput:
-			case InstructionOne:
-			case InstructionBlock:
 			case LastInstruction:
-				if ( input->position == NULL ) {
-					input->position = input->ptr.string;
-#ifdef DEBUG
-					output( Debug, "input: reading from \"%s\"", (char *) input->position );
-#endif
-					if ( context->narrative.mode.output && ( input->mode == InstructionBlock ))
-						for ( int i=0; i<=context->control.level; i++ )
-							output( Text, "", "\t" );
-				}
-				event = (int ) (( char *) input->position++ )[ 0 ];
-				if ( event && ( context->narrative.mode.output )) {
-					output( Text, "%c", event );
-				}
-				do_pop = !event;
+			case InstructionOne:
+				event = sgetc( input, context );
+				if ( !event ) event = EOF;
+				break;
+			case InstructionBlock:
+				event = sgetc( input, context );
 				break;
 			default:
 				break;
 			}
-			if ( do_pop ) {
-				event = 0;
-				switch ( input->mode ) {
-				case HCNFileInput:
-					close ( input->ptr.fd );
-					break;
-				case PipeInput:
-					pclose( input->ptr.file );
-					break;
-				case StreamInput:
-					close( input->ptr.fd );
-					break;
-				case ClientInput:
-					input->position = NULL;
-					do_pop = !io_read( input->client, input->ptr.string, &input->remainder );
-					if ( do_pop ) {
-						input->corrupted = 0;
-						pop_input( state, event, next_state, context );
-						return 0;
-					}
-					break;
-				case InstructionBlock:
-					context->input.instruction = context->input.instruction->next;
-					if ( context->input.instruction != NULL ) {
-						input->ptr.string = context->input.instruction->ptr;
-						input->position = NULL;
-					}
-					do_pop = 0;
-					break;
-				case InstructionOne:
-					// input->position--;
-					return '\n';
-				case LastInstruction:
-	        			free( context->input.instruction->ptr );
-				       	freeItem( context->input.instruction );
-				        context->input.instruction = NULL;
-					set_control_mode( InstructionMode, event, context );
-					break;
-				default:
-					break;
-				}
-
-				if ( do_pop ) {
-					input->corrupted = 0;
-					event = pop_input( state, event, next_state, context );
-				}
-			}
 		}
-		event = skip_comment( event, &comment_on, &backslash, context );
+		event = skip_comment( event, mode, context );
 
 	}
-	while ( event == 0 );
+	while ( !event );
 
-	context->input.event = event;
-
-	// record instruction or expression if needed
-
-	if ( event > 0 ) switch( context->record.mode ) {
-	case RecordInstructionMode:
-		if ( context->record.string.list == NULL ) {
-			string_start( &context->record.string, event );
+	if ( event == EOF ) {
+		InputVA *input = (InputVA *) context->input.stack->ptr;
+		switch ( input->mode ) {
+		case InstructionOne:
+			return '\n';
+		default:
+			return 0;
 		}
-		else {
-			string_append( &context->record.string, event );
-		}
-		if ( event == '\n' ) {
-			char *string = string_finish( &context->record.string, 1 );
-			if ( strcmp((char *) context->record.string.ptr, "\n" ) ) {
-				addItem( &context->record.instructions, string );
-			} else {
-				free ( context->record.string.ptr );
-			}
-#ifdef DEBUG
-			output( Debug, "input read \"%s\"", context->record.string.ptr );
-#endif
-			context->record.string.ptr = NULL;
-		}
-		break;
-	case OnRecordMode:
-		string_append( &context->record.string, event );
-		break;
-	case OffRecordMode:
-		break;
 	}
+
+	recordC( event, context );
 
 	return event;
 }

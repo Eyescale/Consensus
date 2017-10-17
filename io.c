@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <xlocale.h>
 
 #include "database.h"
 #include "registry.h"
@@ -82,6 +83,9 @@ io_exit( _context *context )
 int
 io_connect( ConnectionType type, char *path )
 {
+	if ( atoi( path ) == getpid() )
+		return output( Error, ">@ short-circuit" );
+
 	// create the socket
 	int socket_fd = socket( PF_LOCAL, SOCK_STREAM, 0 );
 
@@ -179,7 +183,7 @@ io_write( int socket_fd, char *string, int length, int *remainder )
 	io_flush		- called from pop_output()
 ---------------------------------------------------------------------------*/
 int
-io_flush( int socket_fd, int *remainder )
+io_flush( int socket_fd, int *remainder, int stop )
 {
 	char *buffer = CN.context->io.output.buffer.ptr;
 
@@ -195,7 +199,8 @@ io_flush( int socket_fd, int *remainder )
 
 	// send closing packet
 	// -------------------
-	write( socket_fd, &size, sizeof( size ));
+	if ( stop )
+		write( socket_fd, &size, sizeof( size ));
 
 	return 0;
 }
@@ -253,18 +258,29 @@ io_accept( ConnectionType request, _context *context )
 ---------------------------------------------------------------------------*/
 #define SUP( a, b ) ((a)>(b)?(a):(b))
 void
-io_scan( fd_set *fds, int block, _context *context )
+io_scan( fd_set *fds, int blocking, _context *context )
 {
 	int nfds = 0;
 	struct timeval timeout;
 
+	if ( context->control.terminal && !(context->input.stack) &&
+	     !context->control.anteprompt &&
+	     !context->control.cgi && !context->control.cgim )
+	{
+		context->control.prompt = 1;
+	}
+
 	// set I/O descriptors for select() to scan
 	// ----------------------------------------
 	FD_ZERO( fds );
-	if ( !context->control.cgi ) {
+	if ( !context->control.cgi && !context->control.cgim ) {
 		FD_SET( STDIN_FILENO, fds );
 		nfds = SUP( nfds, STDIN_FILENO );
+	} else {
+		// never block in cgi mode
+		blocking = 0;
 	}
+
 #ifdef DO_LATER
 	FD_SET( context->io.operator, fds );
 	nfds = SUP( nfds, context->io.operator );
@@ -282,7 +298,7 @@ io_scan( fd_set *fds, int block, _context *context )
 		// ---------------
 		;
 	}
-	else if ( block )
+	else if ( blocking )
 	{
 		// here we block
 		// -------------

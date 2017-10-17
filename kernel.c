@@ -37,7 +37,7 @@ context_check( int freeze, int instruct, int execute )
 	set_control_mode	- utility
 ---------------------------------------------------------------------------*/
 void
-set_control_mode( ControlMode mode, int event, _context *context )
+set_control_mode( ControlMode mode, _context *context )
 {
 	switch ( mode ) {
 	case FreezeMode:
@@ -47,13 +47,11 @@ set_control_mode( ControlMode mode, int event, _context *context )
 		context->freeze.level = context->control.level;
 		break;
 	case InstructionMode:
-		set_input_mode( RecordInstructionMode, event, context );
 		break;
 	case ExecutionMode:
 		if (( context->control.mode == FreezeMode ) && ( context->input.stack == NULL )) {
 			output( Warning, "back to active mode" );
 		}
-		set_input_mode( OffRecordMode, event, context );
 		break;
 	}
 	context->control.mode = mode;
@@ -88,9 +86,9 @@ error( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	if ( event == '\n' ) {
-		return output( Error, "in state \"%s\", instruction incomplete", state );
+		return outputf( Error, "in state \"%s\", instruction incomplete", state );
 	} else if ( event != 0 ) {
-		return output( Error, "in \"%s\", on '%c', syntax error", state, event );
+		return outputf( Error, "in \"%s\", on '%c', syntax error", state, event );
 	}
 	return event;
 }
@@ -105,9 +103,9 @@ warning( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	if ( event == '\n' ) {
-		output( Warning, "\"%s\", instruction incomplete", state );
+		outputf( Warning, "\"%s\", instruction incomplete", state );
 	} else if ( event != 0 ) {
-		output( Warning, "syntax error: in \"%s\", on '%c'", state, event );
+		outputf( Warning, "syntax error: in \"%s\", on '%c'", state, event );
 	}
 	return 0;
 }
@@ -148,7 +146,7 @@ pop( char *state, int event, char **next_state, _context *context )
 #endif
 	if ( context_check( FreezeMode, 0, 0 ) ) {
 		if ( context->control.level == context->freeze.level ) {
-			set_control_mode( ExecutionMode, event, context );
+			set_control_mode( ExecutionMode, context );
 		} else {
 			context->control.level--;
 			return 0;

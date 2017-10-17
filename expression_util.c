@@ -387,9 +387,12 @@ instantiable( Expression *expression, _context *context )
 		}
 		else switch ( sub[ i ].result.identifier.type ) {
 		case VariableIdentifier:
-			; char *identifier = sub[ i ].result.identifier.value;
-			if ( identifier == NULL )
+			if (( context->expression.args ))
 				break;
+
+			char *identifier = sub[ i ].result.identifier.value;
+			if ( identifier == NULL ) break;
+
 			registryEntry *entry;
 			if ( sub[ i ].result.lookup ) {
 				listItem *stack = context->control.stack;
@@ -400,7 +403,7 @@ instantiable( Expression *expression, _context *context )
 				entry = lookupVariable( context, identifier );
 			}
 			if ( entry == NULL ) {
-				output( Error, "variable '%%%s' not found", identifier );
+				outputf( Error, "instantiable: variable '%%%s' not found", identifier );
 				return 0;
 			}
 			VariableVA *variable = (VariableVA *) entry->value;
@@ -409,7 +412,7 @@ instantiable( Expression *expression, _context *context )
 			case LiteralVariable:
 				break;
 			case NarrativeVariable:
-				output( Error, "'%%%s' is a narrative variable - "
+				outputf( Error, "'%%%s' is a narrative variable - "
 					"not allowed in expressions", identifier );
 				return 0;
 			case ExpressionVariable:

@@ -90,7 +90,7 @@ test_super( char *state, int event, char **next_state, _context *context )
 		case 7: super = "!!!"; break;
 		default: return output( Debug, "in test_super" );
 	}
-	return output( Error, "instance is not allowed after super ('%s') in expression", super );
+	return outputf( Error, "instance is not allowed after super ('%s') in expression", super );
 }
 
 static int
@@ -101,7 +101,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	if ( action == push )
 	{
 #ifdef DEBUG
-		output( Debug, "parser: pushing from level %d", context->control.level );
+		outputf( Debug, "parser: pushing from level %d", context->control.level );
 #endif
 		Expression *e = ( context->control.mode == ExecutionMode ) ?
 			set_sub_expression( *state, context ) : NULL;
@@ -121,7 +121,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		else if ( context->control.level == context->expression.level )
 		{
 #ifdef DEBUG
-			output( Debug, "parser: popping from base level %d", context->control.level );
+			outputf( Debug, "parser: popping from base level %d", context->control.level );
 #endif
 			if ( context->control.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
@@ -134,7 +134,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		else
 		{
 #ifdef DEBUG
-			output( Debug, "parser: popping from level %d", context->control.level );
+			outputf( Debug, "parser: popping from level %d", context->control.level );
 #endif
 			if ( context->control.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
@@ -632,7 +632,7 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 	{
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "read_as_sub: in \"%s\", on '%c'", state, event );
+	outputf( Debug, "read_as_sub: in \"%s\", on '%c'", state, event );
 #endif
 
 	bgn_
@@ -835,7 +835,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
+	outputf( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
 #endif
 
 	bgn_
@@ -1121,7 +1121,7 @@ static int
 parser_init( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "parser_init: setting parser level to %d", context->control.level );
+	outputf( Debug, "parser_init: setting parser level to %d", context->control.level );
 #endif
 	context->expression.level = context->control.level;
 	context->expression.mode = ReadMode;
@@ -1155,7 +1155,7 @@ static int
 parser_exit( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "parser_exit: on the way: returning event=%d in mode=%d...", event, context->expression.mode );
+	outputf( Debug, "parser_exit: on the way: returning event='%c' in mode=%d...", event, context->expression.mode );
 #endif
 	if (( event < 0 ) || ( context->expression.mode == ErrorMode ))
 		pop_all( state, event, next_state, context );
@@ -1210,7 +1210,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	do {
 	event = input( state, event, NULL, context );
 #ifdef DEBUG
-	output( Debug, "read_expression: in \"%s\", on '%c'", state, (event==-1)?'E':event );
+	outputf( Debug, "read_expression: in \"%s\", on '%c'", state, event );
 #endif
 
 	bgn_
@@ -1798,7 +1798,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	do_( parser_exit, same );
 
 #ifdef DEBUG
-	output( Debug, "exiting read_expression '%c'", event );
+	outputf( Debug, "exiting read_expression '%c'", event );
 #endif
 
 	return event;

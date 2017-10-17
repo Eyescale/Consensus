@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "database.h"
 #include "registry.h"
@@ -223,18 +224,23 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		if ( *sub_results == NULL ) return 0;
 		break;
 	case VariableIdentifier:
-		if ( context->expression.args != NULL )
+		if ((context->expression.args))
 		{
+			char *identifier = sub[ count ].result.identifier.value;
+			sub[ count ].result.identifier.value = NULL;
+
 			// better have exactly the right arg count, here - otherwise
 			// "unpredictable results will happen"!
 
 			listItem *arg = context->expression.args;
-			char *identifier = sub[ count ].result.identifier.value;
-			sub[ count ].result.identifier.value = NULL;
-			switch ( identifier[ 0 ] ) {
+			char *fmt;
+			long ndx = strtol( identifier, &fmt, 10 );
+			while ( ndx-- && (arg)) arg = arg->next;
+			if ( arg == NULL ) return -1;
+
+			switch ( *fmt ) {
 			case 's':
 				identifier = (char *) arg->ptr;
-				context->expression.args = arg->next;
 				if ( context->expression.mode == ReadMode ) {
 					filter_results( sub_results, expression, count, identifier, IDENTIFIER, results );
 					if ( *sub_results == NULL ) return 0;
@@ -250,20 +256,19 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 					e = cn_new( strdup( identifier ) );
 					addItem( sub_results, e );
 #ifdef DEBUG
-					output( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
+					outputf( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
 						count, identifier, (int) e );
 #endif
 				} else if ( !sub[ count ].result.not ) {
 					if ( context->expression.mode == EvaluateMode ) {
 						return 0;
 					} else {
-						return output( Error, "'%s' is not instantiated", identifier );
+						return outputf( Error, "'%s' is not instantiated", identifier );
 					}
 				}
 				break;
 			case 'e':
 				e = (Entity *) arg->ptr;
-				context->expression.args = arg->next;
 				if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
 					context->expression.mode = EvaluateMode;
 					addItem( sub_results, e );
@@ -289,7 +294,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				entry = lookupVariable( context, identifier );
 			}
 			if ( entry == NULL ) {
-				return output( Error, "variable '%%%s' not found", identifier );
+				return outputf( Error, "expression_solve: variable '%%%s' not found", identifier );
 			}
 			VariableVA *variable = (VariableVA *) entry->value;
 			switch ( variable->type ) {
@@ -368,7 +373,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				*sub_results = last_results;
 				break;
 			case NarrativeVariable:
-				return output( Error, "'%%%s' is a narrative variable - "
+				return outputf( Error, "'%%%s' is a narrative variable - "
 					"not allowed in expressions", identifier );
 			}
 		}
@@ -439,7 +444,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			if ( context->expression.mode == EvaluateMode ) {
 				return 0;
 			} else {
-				return output( Error, "'%s' is not instantiated", identifier );
+				return outputf( Error, "'%s' is not instantiated", identifier );
 			}
 		}
 		break;

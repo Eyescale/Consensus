@@ -191,39 +191,44 @@ override_narrative( Entity *e, _context *context )
 	// if yes, then is that narrative already active?
 	else if ( lookupByAddress( n->instances, e ) != NULL )
 	{
-		fprintf( stderr, "consensus> Warning: narrative '" );
-		output_narrative_name( e, name );
-		fprintf( stderr, "' is already active - cannot override\n" );
+#ifdef DO_LATER
+		// output in full: %[ e ].name() - cf. output_narrative_name()
+#endif
+		outputf( Warning, "narrative '%s' is active - cannot overwrite", name );
 		return 0;
 	}
-	else	// let's talk...
+	else if ( !context->control.cgi && !context->control.cgim )	// let's talk...
 	{
-		int override = 0;
-
-		fprintf( stderr, "consensus> Warning: narrative '" );
-		output_narrative_name( e, name );
-		fprintf( stderr, "' already exists. " );
-
+#ifdef DO_LATER
+		// output in full: %[ e ].name() - cf. output_narrative_name()
+#endif
+		outputf( Question, "narrative '%s' already exists. Overwrite ? (y/n)_ ", name );
+		int overwrite = 0;
 		do {
-			fprintf( stderr, "Overwrite? (y/n)_ " );
-			override = getchar();
-			switch ( override ) {
+			overwrite = getchar();
+			switch ( overwrite ) {
+			case '\n':
+				overwrite = 0;
+				break;
 			case 'y':
 			case 'n':
 				if ( getchar() == '\n' )
 					break;
 			default:
-				override = 0;
+				overwrite = 0;
 				while ( getchar() != '\n' );
 				break;
 			}
 		}
-		while ( !override );
-		if ( override == 'n' )
+		while ( overwrite ? 0 : !outputf( Question, "Overwrite ? (y/n)_ " ) );
+		if ( overwrite == 'n' )
 			return 0;
 
 		removeNarrative( e, n );
 	}
+	else
+		return 0;
+
 	return 1;
 }
 
@@ -264,7 +269,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		}
 		if ( do_register ) {
 			registerNarrative( narrative, context );
-			output( Info, "narrative instantiated: %s()", narrative->name );
+			outputf( Info, "narrative instantiated: %s()", narrative->name );
 		} else {
 			freeNarrative( narrative );
 			output( Warning, "no target entity - narrative not instantiated" );
@@ -392,11 +397,11 @@ input_command( char *state, int event, char **next_state, _context *context )
 {
 	switch ( context->control.mode ) {
 	case FreezeMode:
-		break;
+		return 0;
 	case InstructionMode:
 		// sets execution flag so that the last instruction is parsed again,
 		// but this time in execution mode
-		context->control.mode = ExecutionMode;
+		set_control_mode( ExecutionMode, context );
 		return push_input( "", NULL, LastInstruction, context );
 	case ExecutionMode:
 		break;
@@ -404,7 +409,7 @@ input_command( char *state, int event, char **next_state, _context *context )
 	char *identifier = context->identifier.id[ 0 ].ptr;
 	context->identifier.id[ 0 ].ptr = NULL;
 
-	return push_input( identifier, NULL, PipeInput, context );
+	return push_input( "", identifier, PipeInput, context );
 }
 
 /*---------------------------------------------------------------------------
@@ -437,7 +442,6 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 int
 set_output_target( char *state, int event, char **next_state, _context *context )
 {
-	// return 0;
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
@@ -445,7 +449,6 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 		push_output( "^^", &context->io.client, ClientOutput, context );
 		context->output.redirected = 1;
 	}
-
 	return 0;
 }
 
@@ -460,10 +463,10 @@ session_cmd( char *state, int event, char **next_state, _context *context )
 
 	int do_pipe = 0;
 	bgn_
-	in_( ">@session:_" )
-	in_( ">@session:_ | >:" ) do_pipe = 1;
+	in_( ">@pid:_" )
+	in_( ">@pid:_ | >:" ) do_pipe = 1;
 	in_other
-		return output( Debug, "***** Error: lost in session_pipe()" );
+		return output( Debug, "***** Error: lost in session_cmd()" );
 	end
 	char *q = NULL;
 	asprintf( &q, "%s\n", query );
@@ -471,12 +474,13 @@ session_cmd( char *state, int event, char **next_state, _context *context )
 	// open connection
 	// ---------------
 	int socket_fd = io_connect( SessionConnection, path );
+	if ( socket_fd < 0 ) return socket_fd;
 
 	// send the query
 	// --------------
 	int remainder = 0, length = strlen( q );
 	io_write( socket_fd, q, length, &remainder );
-	io_flush( socket_fd, &remainder );
+	io_flush( socket_fd, &remainder, 1 );
 
 	// read and output the results
 	// ---------------------------
@@ -521,7 +525,7 @@ input_story( char *state, int event, char **next_state, _context *context )
 	char *identifier = context->identifier.id[ 1 ].ptr;
 	context->identifier.id[ 1 ].ptr = NULL;
 
-	return push_input( identifier, NULL, StreamInput, context );
+	return push_input( "", identifier, FileInput, context );
 }
 
 int

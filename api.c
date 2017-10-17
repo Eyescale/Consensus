@@ -24,57 +24,26 @@ cn_read( void *src, InputType type, char *state, int event )
 {
 	_context *context = CN.context;
 
-	// push input
-	switch ( type ) {
-	case InstructionBlock:
-		context->narrative.mode.action.block = 1;
-		if ((src)) push_input( "", src, InstructionBlock, context );
-		break;
-	case InstructionOne:
-		context->narrative.mode.action.one = 1;
-		if ((src)) push_input( "", src, InstructionOne, context );
-		break;
-	case ClientInput:
-		push_input( "", src, ClientInput, context );
-		break;
-	default:
-		break;
-	}
-
-	// read & execute command
+	int restore[ 3 ];
+	restore[ 0 ] = event;
 	char *next_state = same;
+
+	event = command_init( src, type, restore, context );
 	do {
 		event = read_command( state, event, &next_state, context );
 		state = next_state;
 	}
 	while ( strcmp( state, "" ) );
-
-
-	// pop input
-	switch ( type ) {
-	case InstructionBlock:
-		if ((src)) pop_input( base, 0, NULL, context );
-		context->narrative.mode.action.block = 0;
-		break;
-	case InstructionOne:
-		if ((src)) pop_input( base, 0, NULL, context );
-		CN.context->narrative.mode.action.one = 0;
-		break;
-	case ClientInput:
-		// input popped already upon closing packet
-		break;
-	default:
-		break;
-	}
+	command_exit( state, restore, context );
 
 	return event;
 }
 
 /*---------------------------------------------------------------------------
-	cn_readf
+	cn_do, cn_dol, cn_dof
 ---------------------------------------------------------------------------*/
 int
-cn_readf( char *format, ... )
+cn_dof( const char *format, ... )
 {
 	char *action = NULL;
 	int event = 0;
@@ -100,64 +69,103 @@ cn_readf( char *format, ... )
 	return event;
 }
 
+int
+cn_do( char *action )
+{
+	return cn_dof( "", action );
+}
+
+int
+cn_dol( listItem *actions )
+{
+	return cn_read( actions, InstructionBlock, base, 0 );
+}
+
 /*---------------------------------------------------------------------------
-	cn_opf
+	cn_setf, cn_getf, cn_testf
 ---------------------------------------------------------------------------*/
 static Entity *
 vaopf( int op, char *format, va_list ap )
 {
 	_context *context = CN.context;
-	Entity *e = NULL;
+	Entity *result = NULL;
 
 	listItem *arglist = NULL;
-	while ( *format ) {
-		switch ( *format++ ) {
+	char *reformat = NULL;
+	int argnum = 0;
+
+	for ( char *fmt = format; *fmt; fmt++ )
+	{
+		switch ( *fmt ) {
 		case '%':
-			switch ( *format++ ) {
+			switch ( *++fmt ) {
 			case 'e':
 				addItem( &arglist, va_arg(ap, Entity *));
+				if ((reformat)) {
+					char *old = reformat;
+					asprintf( &reformat, "%s%%%de", old, argnum++ );
+					free( old );
+				} else {
+					asprintf( &reformat, "%%%de", argnum++ );
+				}
 				break;
 			case 's':
 				addItem( &arglist, va_arg(ap, char *));
+				if ((reformat)) {
+					char *old = reformat;
+					asprintf( &reformat, "%s%%%ds", old, argnum++ );
+					free( old );
+				} else {
+					asprintf( &reformat, "%%%ds", argnum++ );
+				}
 				break;
 			default:
-				output( Debug, "***** Error: cn_setf(): unsupported format" );
+				output( Debug, "***** Error: vaopf(): unsupported format" );
 				goto RETURN;
+			}
+			break;
+		default:
+			if ((reformat)) {
+				char *old = reformat;
+				asprintf( &reformat, "%s%c", old, *fmt );
+				free( old );
+			} else {
+				asprintf( &reformat, "%c", *fmt );
 			}
 			break;
 		}
 	}
 	reorderListItem( &arglist );
 
-	CN.context->narrative.mode.action.one = 1;
-	push_input( "", format, InstructionOne, CN.context );
+	push_input( "", reformat, InstructionOne, context );
 	read_expression( base, 0, &same, context );
 	pop_input( base, 0, NULL, context );
-	CN.context->narrative.mode.action.one = 0;
 
         if ( context->expression.mode == ErrorMode ) {
-		output( Warning, "cn_setf(): could not read expression" );
+		output( Warning, "vaopf(): could not read expression" );
 		goto RETURN;
 	}
 
-        Expression *expression = context->expression.ptr;
         context->expression.mode = op;
 	context->expression.args = arglist;
-        int retval = expression_solve( expression, 3, context );
+        int retval = expression_solve( context->expression.ptr, 3, context );
+	context->expression.args = NULL;
+
         if ( retval < 0 ) {
-		output( Warning, "cn_setf(): could not solve expression" );
+		output( Warning, "vaopf(): could not solve expression" );
 		goto RETURN;
 	}
  
 	if (( context->expression.results )) {
-		e = context->expression.results->ptr;
+		result = context->expression.results->ptr;
 		freeListItem( &context->expression.results );
 	}
 
 RETURN:
-	context->expression.args = NULL;
+	free( reformat );
 	freeListItem( &arglist );
-	return e;
+	context->expression.args = NULL;
+	return result;
 }
 
 Entity *
@@ -573,9 +581,10 @@ cn_instantiate_narrative( Entity *e, Narrative *narrative )
 	// does e already have a narrative with the same name?
 	Narrative *n = lookupNarrative( e, narrative->name );
 	if ( n != NULL ) {
-		fprintf( stderr, "consensus> Warning: narrative '" );
-		output_narrative_name( e, narrative->name );
-		fprintf( stderr, "' already exists - cannot instantiate\n" );
+#ifdef DO_LATER
+		// output in full: %[ e ].name() - cf. output_narrative_name()
+#endif
+		outputf( Warning, "narrative '%s' already exists - cannot instantiate", narrative->name );
 		return 0;
 	}
 	addNarrative( e, narrative->name, narrative );
@@ -594,9 +603,10 @@ cn_release_narrative( Entity *e, char *name )
 
 	//check if the requested narrative instance is active
 	if ( lookupByAddress( n->instances, e ) != NULL ) {
-		fprintf( stderr, "consensus> Warning: narrative '" );
-		output_narrative_name( e, name );
-		fprintf( stderr, "' is currently active - cannot release\n" );
+#ifdef DO_LATER
+		// output in full: %[ e ].name() - cf. output_narrative_name()
+#endif
+		outputf( Warning, "narrative '%s' is currently active - cannot release", name );
 		return 0;
 	}
 	removeNarrative( e, n );
@@ -670,7 +680,7 @@ cn_open( char *path, int oflags )
 	int fd = open( path, oflags );
 	if ( fd < 0 ) {
 		// log error	DO_LATER
-		return output( Warning, "file://%s - unable to open", path );
+		return outputf( Warning, "file://%s - unable to open", path );
 	}
 	char *mode;
 	switch ( oflags ) {

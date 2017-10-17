@@ -1,19 +1,15 @@
-#ifndef COMMAND_H
-#define COMMAND_H
+#ifndef PATH_H
+#define PATH_H
 
 /*---------------------------------------------------------------------------
-	command actions		- public
+	path actions		- public
 ---------------------------------------------------------------------------*/
 
-_action read_command;
-
+_action	read_path;
 
 /*---------------------------------------------------------------------------
-	command utilities	- public
+	path utilities		- public
 ---------------------------------------------------------------------------*/
 
-int	command_init( void *src, InputType type, int *restore, _context *context );
-int	command_exit( char *state, int *restore, _context *context );
 
-
-#endif	// COMMAND_H
+#endif	// PATH_H

@@ -6,10 +6,18 @@
 ---------------------------------------------------------------------------*/
 
 int	cn_read( void *src, InputType type, char *state, int event );
-int	cn_readf( char *format, ... );
+int	cn_dof( const char *format, ... );
+int	cn_do( char *action );
+int	cn_dol( listItem *actions );
 Entity	*cn_setf( char *format, ... );
-Entity	*cn_getf( const char *format, ... );
-Entity	*cn_instf( const char *format, ... );
+
+#ifdef DO_LATER
+listItem *cn_getf( char *format, ... );
+int	cn_testf( listItem **results, char *format, ... );
+#else
+Entity	*cn_getf( const char *format, ... );	// to be deprecated
+Entity	*cn_instf( const char *format, ... );	// to be deprecated
+#endif
 
 Entity	*cn_new( char *name );
 Entity	*cn_instantiate( Entity *source, Entity *medium, Entity *target );

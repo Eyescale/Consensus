@@ -23,6 +23,6 @@ void	io_notify_changes( _context *context );
 int	io_connect( ConnectionType type, char *path );
 int	io_read( int fd, char *buffer, int *remainder );
 int	io_write( int fd, char *string, int length, int *remainder );
-int	io_flush( int fd, int *remainder );
+int	io_flush( int fd, int *remainder, int stop );
 
 #endif	// IO_H

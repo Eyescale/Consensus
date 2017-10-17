@@ -24,7 +24,7 @@
 /*---------------------------------------------------------------------------
 	narrative engine
 ---------------------------------------------------------------------------*/
-#define narrative_do_( a, s )  \
+#define do_( a, s )  \
 	event = narrative_execute( a, &state, event, s, context );
 /*
    stack->narrative.state.whole		true if an action has been specified at a higher stack level
@@ -271,14 +271,14 @@ read_narrative_in( char *state, int event, char **next_state, _context *context 
 		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "i" ) bgn_
-			on_( 'n' )	narrative_do_( nop, "in" )
-			on_other	narrative_do_( error, "" )
+			on_( 'n' )	do_( nop, "in" )
+			on_other	do_( error, "" )
 			end
 			in_( "in" ) bgn_
-				on_( ' ' )	narrative_do_( nothing, "" )
-				on_( '\t' )	narrative_do_( nothing, "" )
-				on_( '(' )	narrative_do_( nothing, "" )
-				on_other	narrative_do_( error, "" )
+				on_( ' ' )	do_( nothing, "" )
+				on_( '\t' )	do_( nothing, "" )
+				on_( '(' )	do_( nothing, "" )
+				on_other	do_( error, "" )
 				end
 		end
 	}
@@ -299,19 +299,20 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 	do {
 		event = input( state, event, NULL, context );
 		bgn_
-		on_( -1 )	narrative_do_( nothing, "" )
+		on_( 0 )	do_( error, "" )
+		on_( -1 )	do_( nothing, "" )
 		in_( base ) bgn_
-			on_( ':' )	narrative_do_( nop, "identifier:" )
-			on_other	narrative_do_( read_0, "identifier" )
+			on_( ':' )	do_( nop, "identifier:" )
+			on_other	do_( read_0, "identifier" )
 			end
 			in_( "identifier" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( ':' )	narrative_do_( nop, "identifier:" )
-				on_other	narrative_do_( error, base )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( ':' )	do_( nop, "identifier:" )
+				on_other	do_( error, base )
 				end
 			in_( "identifier:" ) bgn_
-				on_any		narrative_do_( read_expression, "" )
+				on_any		do_( read_expression, "" )
 				end
 		end
 	}
@@ -411,23 +412,23 @@ read_narrative_on( char *state, int event, char **next_state, _context *context 
 		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "o" ) bgn_
-			on_( 'n' )	narrative_do_( nop, "on" )
-			on_other	narrative_do_( error, "" )
+			on_( 'n' )	do_( nop, "on" )
+			on_other	do_( error, "" )
 			end
 			in_( "on" ) bgn_
-				on_( ' ' )	narrative_do_( nothing, "" )
-				on_( '\t' )	narrative_do_( nothing, "" )
-				on_( '(' )	narrative_do_( nothing, "" )
-				on_other	narrative_do_( error, "" )
+				on_( ' ' )	do_( nothing, "" )
+				on_( '\t' )	do_( nothing, "" )
+				on_( '(' )	do_( nothing, "" )
+				on_other	do_( error, "" )
 				end
 		end
 	}
 	while ( strcmp( state, "" ) );
 
-	if  ( event != -1 ) {
+	if  ( event > 0 ) {
 		event = narrative_on_in_on_( event, context );
 	}
-	if ( event != -1 ) {
+	if ( event > 0 ) {
 		event = narrative_on_init_on_( event, context );
 	}
 	return event;
@@ -499,7 +500,7 @@ check_init_event( char *state, int event, char **next_state, _context *context )
 		}
 	}
 	else {
-		event = output( Error, "unspecified event for identifier '%s'", context->identifier.id[ 0 ].ptr );
+		event = outputf( Error, "unspecified event for identifier '%s'", context->identifier.id[ 0 ].ptr );
 	}
 	return event;
 }
@@ -520,73 +521,74 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 		output( Debug, "read_narrative_event: in \"%s\", on '%c'", state, event );
 #endif
 		bgn_
-		on_( -1 )	narrative_do_( error, "" )
+		on_( 0 )	do_( error, "" )
+		on_( -1 )	do_( error, "" )
 		in_( base ) bgn_
-			on_( ':' )	narrative_do_( nop, "identifier:" )
+			on_( ':' )	do_( nop, "identifier:" )
 #ifdef DO_LATER
-			on_( '!' )	narrative_do_( set_event_request, "identifier: !" )
-			on_( '%' )	narrative_do_( nop, "%" )
+			on_( '!' )	do_( set_event_request, "identifier: !" )
+			on_( '%' )	do_( nop, "%" )
 #endif	// DO_LATER
-			on_other	narrative_do_( read_0, "identifier" )
+			on_other	do_( read_0, "identifier" )
 			end
 			in_( "identifier" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( ':' )	narrative_do_( set_event_identifier, "identifier:" )
-				on_other	narrative_do_( check_init_event, "" )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( ':' )	do_( set_event_identifier, "identifier:" )
+				on_other	do_( check_init_event, "" )
 				end
 				in_( "identifier:" ) bgn_
-					on_( ' ' )	narrative_do_( nop, same )
-					on_( '\t' )	narrative_do_( nop, same )
+					on_( ' ' )	do_( nop, same )
+					on_( '\t' )	do_( nop, same )
 #ifdef DO_LATER
-					on_( '!' )	narrative_do_( set_event_request, "identifier: !" )
+					on_( '!' )	do_( set_event_request, "identifier: !" )
 #endif	// DO_LATER
-					on_other	narrative_do_( read_expression, "identifier: expression" )
+					on_other	do_( read_expression, "identifier: expression" )
 					end
 					in_( "identifier: expression" ) bgn_
-						on_( ' ' )	narrative_do_( nop, same )
-						on_( '\t' )	narrative_do_( nop, same )
-						on_( '!' )	narrative_do_( set_event_notification, "identifier: expression !" )
-						on_other	narrative_do_( on_file, "identifier: file://" )
+						on_( ' ' )	do_( nop, same )
+						on_( '\t' )	do_( nop, same )
+						on_( '!' )	do_( set_event_notification, "identifier: expression !" )
+						on_other	do_( on_file, "identifier: file://" )
 						end
 					in_( "identifier: file://" ) bgn_
-						on_any	narrative_do_( read_path, "identifier: file://path" )
+						on_any	do_( read_path, "identifier: file://path" )
 						end
 						in_( "identifier: file://path" ) bgn_
-							on_( ' ' )	narrative_do_( nop, same )
-							on_( '\t' )	narrative_do_( nop, same )
-							on_( '!' )	narrative_do_( set_event_notification, "identifier: file://path !" )
+							on_( ' ' )	do_( nop, same )
+							on_( '\t' )	do_( nop, same )
+							on_( '!' )	do_( set_event_notification, "identifier: file://path !" )
 							end
 							in_( "identifier: file://path !" ) bgn_
-								on_( '<' )	narrative_do_( set_event_type, "" )
-								on_other	narrative_do_( error, base )
+								on_( '<' )	do_( set_event_type, "" )
+								on_other	do_( error, base )
 								end
 					in_( "identifier: expression !" ) bgn_
-						on_( '!' )	narrative_do_( set_event_type, "" )
-						on_( '~' )	narrative_do_( set_event_type, "" )
-						on_( '*' )	narrative_do_( set_event_type, "" )
-						on_( '_' )	narrative_do_( set_event_type, "" )
-						on_other	narrative_do_( error, base )
+						on_( '!' )	do_( set_event_type, "" )
+						on_( '~' )	do_( set_event_type, "" )
+						on_( '*' )	do_( set_event_type, "" )
+						on_( '_' )	do_( set_event_type, "" )
+						on_other	do_( error, base )
 						end
 #ifdef DO_LATER
 					in_( "identifier: !" )	bgn_
-						on_( '!' )	narrative_do_( set_event_type, "identifier: !." )
-						on_( '~' )	narrative_do_( set_event_type, "identifier: !." )
-						on_( '*' )	narrative_do_( set_event_type, "identifier: !." )
-						on_( '_' )	narrative_do_( set_event_type, "identifier: !." )
-						on_other	narrative_do_( error, base )
+						on_( '!' )	do_( set_event_type, "identifier: !." )
+						on_( '~' )	do_( set_event_type, "identifier: !." )
+						on_( '*' )	do_( set_event_type, "identifier: !." )
+						on_( '_' )	do_( set_event_type, "identifier: !." )
+						on_other	do_( error, base )
 						end
 						in_( "identifier: !." ) bgn_
-							on_any	narrative_do_( read_expression, "" )
+							on_any	do_( read_expression, "" )
 							end
 			in_( "%" ) bgn_
-				on_any	narrative_do_( read_0, "%identifier" )
+				on_any	do_( read_0, "%identifier" )
 				end
 				in_( "%identifier" ) bgn_
-					on_( ':' )	narrative_do_( set_event_variable, "identifier:" )
-					on_( ' ' )	narrative_do_( set_event_variable, "identifier" )
-					on_( '\t' )	narrative_do_( set_event_variable, "identifier" )
-					on_other	narrative_do_( error, base )
+					on_( ':' )	do_( set_event_variable, "identifier:" )
+					on_( ' ' )	do_( set_event_variable, "identifier" )
+					on_( '\t' )	do_( set_event_variable, "identifier" )
+					on_other	do_( error, base )
 					end
 #endif	// DO_LATER
 		end
@@ -763,15 +765,15 @@ read_narrative_then( char *state, int event, char **next_state, _context *contex
 	}
 	int read_from_base = !strcmp( state, base );
 	event = 0;
-	narrative_do_( on_token, "hen\0then" );
+	do_( on_token, "hen\0then" );
 	bgn_
 	in_( "then" ) do {
 		event = input( state, 0, NULL, context );
 		bgn_
-			on_( ' ' )      narrative_do_( nothing, "" )
-			on_( '\t' )     narrative_do_( nothing, "" )
-			on_( '\n' )     narrative_do_( nothing, "" )
-			on_other        narrative_do_( error, "" )
+			on_( ' ' )      do_( nothing, "" )
+			on_( '\t' )     do_( nothing, "" )
+			on_( '\n' )     do_( nothing, "" )
+			on_other        do_( error, "" )
 			end
 		}
 		while ( strcmp( state, "" ) );
@@ -793,7 +795,7 @@ read_narrative_then( char *state, int event, char **next_state, _context *contex
 static int
 restore_narrative_action( char *state, int event, char **next_state, _context *context )
 {
-	narrative_do_( error, same );
+	do_( error, same );
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	stack->narrative.state.action = 1;
 	return -1;
@@ -835,14 +837,14 @@ read_narrative_do( char *state, int event, char **next_state, _context *context 
 		event = input( state, 0, NULL, context );
 		bgn_
 		in_( "d" ) bgn_
-			on_( 'o' )	narrative_do_( nop, "do" )
-			on_other	narrative_do_( error, "" )
+			on_( 'o' )	do_( nop, "do" )
+			on_other	do_( error, "" )
 			end
 			in_( "do" ) bgn_
-				on_( ' ' )	narrative_do_( nothing, "" )
-				on_( '\t' )	narrative_do_( nothing, "" )
-				on_( '\n' )	narrative_do_( nothing, "" )
-				on_other	narrative_do_( error, "" )
+				on_( ' ' )	do_( nothing, "" )
+				on_( '\t' )	do_( nothing, "" )
+				on_( '\n' )	do_( nothing, "" )
+				on_other	do_( error, "" )
 				end
 		end
 	}
@@ -854,11 +856,14 @@ read_narrative_do( char *state, int event, char **next_state, _context *context 
 static int
 read_narrative_action( char *state, int event, char **next_state, _context *context )
 {
-	context->control.mode = InstructionMode;
-	set_input_mode( OnRecordMode, event, context );
+	struct { int control; } backup;
+	backup.control = context->control.mode;
+
+	set_control_mode( InstructionMode, context );
+	set_record_mode( OnRecordMode, event, context );
 	event = cn_read( NULL, InstructionOne, base, event );
-	set_input_mode( OffRecordMode, event, context );
-	context->control.mode = ExecutionMode;
+	set_record_mode( OffRecordMode, event, context );
+	set_control_mode( backup.control, context );
 
 #ifdef DEBUG
 	output( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.ptr, event );
@@ -918,7 +923,7 @@ set_narrative_action( char *state, int event, char **next_state, _context *conte
 	int retval = narrative_build( occurrence, event, context );
 
 	if ( stack->narrative.state.then && ( event == '\n' ) ) {
-		narrative_do_( nothing, pop_state );
+		do_( nothing, pop_state );
 		*next_state = state;
 	} else if ( retval >= 0 ) {
 		stack->narrative.state.action = 1;
@@ -935,42 +940,41 @@ read_action_closure( char *state, int event, char **next_state, _context *contex
 	do {
 		event = input( state, 0, NULL, context );
 		bgn_
-		on_( -1 )	narrative_do_( nothing, "" )
+		on_( 0 )	do_( error, "" )
+		on_( -1 )	do_( nothing, "" )
 		in_( base ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '\n' )	narrative_do_( nop, same )
-			on_( '.' )	narrative_do_( nop, "." )
-			on_( 't' )	narrative_do_( nop, "t" )
-			on_other	narrative_do_( nop, "flush" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '\n' )	do_( nop, same )
+			on_( '.' )	do_( nop, "." )
+			on_( 't' )	do_( nop, "t" )
+			on_other	do_( nop, "flush" )
 			end
 			in_( "t" ) bgn_
-				on_( 'h' )	narrative_do_( nop, "th" )
-				on_other	narrative_do_( nop, "flush" )
+				on_( 'h' )	do_( nop, "th" )
+				on_other	do_( nop, "flush" )
 				end
 				in_( "th" ) bgn_
-					on_( 'e' )	narrative_do_( nop, "the" )
-					on_other	narrative_do_( nop, "flush" )
+					on_( 'e' )	do_( nop, "the" )
+					on_other	do_( nop, "flush" )
 					end
 					in_( "the" ) bgn_
-						on_( 'n' )	narrative_do_( nop, "then" )
-						on_other	narrative_do_( nop, "flush" )
+						on_( 'n' )	do_( nop, "then" )
+						on_other	do_( nop, "flush" )
 						end
 						in_( "then" ) bgn_
-#if 1
-							on_( ' ' )	narrative_do_( nothing, "" )
-							on_( '\t' )	narrative_do_( nothing, "" )
-#endif
-							on_( '\n' )	narrative_do_( nothing, "" )
-							on_other	narrative_do_( nop, "flush" )
+							on_( ' ' )	do_( nothing, "" )
+							on_( '\t' )	do_( nothing, "" )
+							on_( '\n' )	do_( nothing, "" )
+							on_other	do_( nop, "flush" )
 							end
 			in_( "." ) bgn_
-				on_( '\n' )	narrative_do_( pop, "" ) state = "";
-				on_other	narrative_do_( nop, "flush" )
+				on_( '\n' )	do_( pop, "" ) state = "";
+				on_other	do_( nop, "flush" )
 				end
 			in_( "flush" ) bgn_
-				on_( '\n' )	narrative_do_( nop, base )
-				on_other	narrative_do_( nop, same )
+				on_( '\n' )	do_( nop, base )
+				on_other	do_( nop, same )
 				end
 		end
 	}
@@ -1022,22 +1026,26 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 	event = push( state, event, next_state, context );
 	*next_state = base;
 
-	int level = context->control.level;
+	struct { int control, level; } backup;
+	backup.control = context->control.mode;
+	backup.level = context->control.level;
 
-	set_control_mode( InstructionMode, event, context );
+	set_control_mode( InstructionMode, context );
+	set_record_mode( RecordInstructionMode, event, context );
 	event = cn_read( NULL, InstructionBlock, base, 0 );
-	set_control_mode( ExecutionMode, event, context );
+	set_record_mode( OffRecordMode, event, context );
+	set_control_mode( backup.control, context );
 
 	if ( event < 0 )
 		;
-	else if ( context->control.level == level ) {
+	else if ( context->control.level == backup.level ) {
 		// returned from '/' - did not pop yet
 		event = read_action_closure( base, event, next_state, context );
 	}
 
 	if ( event < 0 )
 		;
-	else if ( context->control.level < level ) {
+	else if ( context->control.level < backup.level ) {
 		// returned from '/.' - did pop already
 		// set this stack level to action
 		reorderListItem( &context->record.instructions );
@@ -1065,15 +1073,15 @@ push_narrative_action( char *state, int event, char **next_state, _context *cont
 static int
 read_narrative_else( char *state, int event, char **next_state, _context *context )
 {
-	narrative_do_( on_token, "else\0else" );
+	do_( on_token, "else\0else" );
 	bgn_
 	in_( "else" ) do {
 		event = input( state, 0, NULL, context );
 		bgn_
-			on_( ' ' )	narrative_do_( nothing, "" )
-			on_( '\t' )	narrative_do_( nothing, "" )
-			on_( '\n' )	narrative_do_( nothing, "" )
-			on_other	narrative_do_( error, "" )
+			on_( ' ' )	do_( nothing, "" )
+			on_( '\t' )	do_( nothing, "" )
+			on_( '\n' )	do_( nothing, "" )
+			on_other	do_( error, "" )
 			end
 		}
 		while ( strcmp( state, "" ) );
@@ -1168,7 +1176,7 @@ narrative_error( char *state, int event, char **next_state, _context *context )
 	}
 	else
 	{
-		narrative_do_( flush_input, same );
+		do_( flush_input, same );
 		if ( !strncmp( state, "in (", 3 ) || !strncmp( state, "on (", 3 ) ) {
 			Occurrence *thread = retrieve_narrative_thread( context );
 			for ( listItem *i = thread->va; i!=NULL; i=i->next ) {
@@ -1206,165 +1214,167 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 		break;
 	}
 
-	narrative_do_( narrative_init, base );
+	do_( narrative_init, base );
 
 	while( strcmp( state, "" ) )
 	{
 		event = input( state, event, NULL, context );
 #ifdef DEBUG
-		output( Debug, "narrative: in \"%s\", on '%c'", state, event );
+		outputf( Debug, "narrative: in \"%s\", on '%c'", state, event );
 #endif
 		bgn_
-		on_( -1 )	narrative_do_( narrative_error, base )
+		on_( 0 )	output( Error, "reached premature EOF - restoring original stack level" );
+				do_( narrative_error, "" )
+		on_( -1 )	do_( narrative_error, base )
 		in_( base ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '\n' )	narrative_do_( nop, same )
-			on_( '/' )	narrative_do_( nop, "/" )
-			on_( 'i' )	narrative_do_( read_narrative_in, "in" )
-			on_( 'o' )	narrative_do_( read_narrative_on, "on" )
-			on_( 'e' )	narrative_do_( read_narrative_else, "else" )
-			on_( 'd' )	narrative_do_( read_narrative_do, "do" )
-			on_( 't' )	narrative_do_( read_narrative_then, "then" )
-			on_other	narrative_do_( error, same)
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '\n' )	do_( nop, same )
+			on_( '/' )	do_( nop, "/" )
+			on_( 'i' )	do_( read_narrative_in, "in" )
+			on_( 'o' )	do_( read_narrative_on, "on" )
+			on_( 'e' )	do_( read_narrative_else, "else" )
+			on_( 'd' )	do_( read_narrative_do, "do" )
+			on_( 't' )	do_( read_narrative_then, "then" )
+			on_other	do_( error, same)
 			end
 
 		in_( "/" ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '~' )	narrative_do_( nop, "/~" )
-			on_( '\n' )	narrative_do_( nothing, pop_state )
-			on_other	narrative_do_( error, base )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '~' )	do_( nop, "/~" )
+			on_( '\n' )	do_( nothing, pop_state )
+			on_other	do_( error, base )
 			end
 
 		in_( "else" ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '\n' )	narrative_do_( set_narrative_otherwise, same )
-					narrative_do_( push_narrative_otherwise, base )
-			on_( 'i' )	narrative_do_( set_narrative_otherwise, same )
-					narrative_do_( read_narrative_in, "in" )
-			on_( 'o' )	narrative_do_( set_narrative_otherwise, same )
-					narrative_do_( read_narrative_on, "on" )
-			on_( 'd' )	narrative_do_( set_narrative_otherwise, same )
-					narrative_do_( read_narrative_do, "do" )
-			on_other	narrative_do_( error, same )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '\n' )	do_( set_narrative_otherwise, same )
+					do_( push_narrative_otherwise, base )
+			on_( 'i' )	do_( set_narrative_otherwise, same )
+					do_( read_narrative_in, "in" )
+			on_( 'o' )	do_( set_narrative_otherwise, same )
+					do_( read_narrative_on, "on" )
+			on_( 'd' )	do_( set_narrative_otherwise, same )
+					do_( read_narrative_do, "do" )
+			on_other	do_( error, same )
 			end
 
 		in_( "in" ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '(' )	narrative_do_( narrative_condition_begin, "in (" )
-			on_other	narrative_do_( read_narrative_condition, "in_" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '(' )	do_( narrative_condition_begin, "in (" )
+			on_other	do_( read_narrative_condition, "in_" )
 			end
 			in_( "in_" ) bgn_
-				on_( ' ' )	narrative_do_( set_narrative_condition, "in (_)" )
-				on_( '\t' )	narrative_do_( set_narrative_condition, "in (_)" )
-				on_( '\n' )	narrative_do_( set_narrative_condition, same )
-						narrative_do_( push_narrative_condition, base )
-				on_( 'i' )	narrative_do_( set_narrative_condition, same )
-						narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( set_narrative_condition, same )
-						narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( set_narrative_condition, same )
-						narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( error, same )
+				on_( ' ' )	do_( set_narrative_condition, "in (_)" )
+				on_( '\t' )	do_( set_narrative_condition, "in (_)" )
+				on_( '\n' )	do_( set_narrative_condition, same )
+						do_( push_narrative_condition, base )
+				on_( 'i' )	do_( set_narrative_condition, same )
+						do_( read_narrative_in, "in" )
+				on_( 'o' )	do_( set_narrative_condition, same )
+						do_( read_narrative_on, "on" )
+				on_( 'd' )	do_( set_narrative_condition, same )
+						do_( read_narrative_do, "do" )
+				on_other	do_( error, same )
 				end
 			in_( "in (" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_other	narrative_do_( read_narrative_condition, "in (_" )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_other	do_( read_narrative_condition, "in (_" )
 				end
 				in_( "in (_" ) bgn_
-					on_( ' ' )	narrative_do_( nop, same )
-					on_( '\t' )	narrative_do_( nop, same )
-					on_( ',' )	narrative_do_( narrative_condition_add, "in (" )
-					on_( ')' )	narrative_do_( narrative_condition_end, "in (_)" )
-					on_other	narrative_do_( error, same )
+					on_( ' ' )	do_( nop, same )
+					on_( '\t' )	do_( nop, same )
+					on_( ',' )	do_( narrative_condition_add, "in (" )
+					on_( ')' )	do_( narrative_condition_end, "in (_)" )
+					on_other	do_( error, same )
 					end
 			in_( "in (_)" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( '\n' )	narrative_do_( push_narrative_condition, base )
-				on_( 'i' )	narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( error, same )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( '\n' )	do_( push_narrative_condition, base )
+				on_( 'i' )	do_( read_narrative_in, "in" )
+				on_( 'o' )	do_( read_narrative_on, "on" )
+				on_( 'd' )	do_( read_narrative_do, "do" )
+				on_other	do_( error, same )
 				end
 
 		in_( "on" ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '(' )	narrative_do_( narrative_event_begin, "on (" )
-			on_other	narrative_do_( read_narrative_event, "on_" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '(' )	do_( narrative_event_begin, "on (" )
+			on_other	do_( read_narrative_event, "on_" )
 			end
 			in_( "on_" ) bgn_
-				on_( ' ' )	narrative_do_( set_narrative_event, "on (_)" )
-				on_( '\t' )	narrative_do_( set_narrative_event, "on (_)" )
-				on_( '\n' )	narrative_do_( set_narrative_event, same )
-						narrative_do_( push_narrative_event, base )
-				on_( 'i' )	narrative_do_( set_narrative_event, same )
-						narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( set_narrative_event, same )
-						narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( set_narrative_event, same )
-						narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( error, same )
+				on_( ' ' )	do_( set_narrative_event, "on (_)" )
+				on_( '\t' )	do_( set_narrative_event, "on (_)" )
+				on_( '\n' )	do_( set_narrative_event, same )
+						do_( push_narrative_event, base )
+				on_( 'i' )	do_( set_narrative_event, same )
+						do_( read_narrative_in, "in" )
+				on_( 'o' )	do_( set_narrative_event, same )
+						do_( read_narrative_on, "on" )
+				on_( 'd' )	do_( set_narrative_event, same )
+						do_( read_narrative_do, "do" )
+				on_other	do_( error, same )
 				end
 			in_( "on (" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_other	narrative_do_( read_narrative_event, "on (_" )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_other	do_( read_narrative_event, "on (_" )
 				end
 				in_( "on (_" ) bgn_
-					on_( ' ' )	narrative_do_( nop, same )
-					on_( '\t' )	narrative_do_( nop, same )
-					on_( ',' )	narrative_do_( narrative_event_add, "on (" )
-					on_( ')' )	narrative_do_( narrative_event_end, "on (_)" )
-					on_other	narrative_do_( error, same )
+					on_( ' ' )	do_( nop, same )
+					on_( '\t' )	do_( nop, same )
+					on_( ',' )	do_( narrative_event_add, "on (" )
+					on_( ')' )	do_( narrative_event_end, "on (_)" )
+					on_other	do_( error, same )
 					end
 			in_( "on (_)" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( '\n' )	narrative_do_( push_narrative_event, base )
-				on_( 'i' )	narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( error, same )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( '\n' )	do_( push_narrative_event, base )
+				on_( 'i' )	do_( read_narrative_in, "in" )
+				on_( 'o' )	do_( read_narrative_on, "on" )
+				on_( 'd' )	do_( read_narrative_do, "do" )
+				on_other	do_( error, same )
 				end
 
 		in_( "do" ) bgn_
-			on_( ' ' )	narrative_do_( nop, same )
-			on_( '\t' )	narrative_do_( nop, same )
-			on_( '\n' )	narrative_do_( push_narrative_action, base )
-			on_other	narrative_do_( read_narrative_action, "do_" )
+			on_( ' ' )	do_( nop, same )
+			on_( '\t' )	do_( nop, same )
+			on_( '\n' )	do_( push_narrative_action, base )
+			on_other	do_( read_narrative_action, "do_" )
 			end
 			in_( "do_" ) bgn_
-				on_( ' ' )	narrative_do_( nop, same )
-				on_( '\t' )	narrative_do_( nop, same )
-				on_( '\n' )	narrative_do_( set_narrative_action, base )
-				on_( 't' )	narrative_do_( set_narrative_action, same )
-						narrative_do_( read_narrative_then, "then" )
-				on_other	narrative_do_( error, same )
+				on_( ' ' )	do_( nop, same )
+				on_( '\t' )	do_( nop, same )
+				on_( '\n' )	do_( set_narrative_action, base )
+				on_( 't' )	do_( set_narrative_action, same )
+						do_( read_narrative_then, "then" )
+				on_other	do_( error, same )
 				end
 
 		in_( "then" ) bgn_
-			on_( ' ' )	narrative_do_( set_narrative_then, "then_" )
-			on_( '\t' )	narrative_do_( set_narrative_then, "then_" )
-			on_( '\n' )	narrative_do_( set_narrative_then, same )
-					narrative_do_( push_narrative_then, base )
-			on_other	narrative_do_( restore_narrative_action, base )
+			on_( ' ' )	do_( set_narrative_then, "then_" )
+			on_( '\t' )	do_( set_narrative_then, "then_" )
+			on_( '\n' )	do_( set_narrative_then, same )
+					do_( push_narrative_then, base )
+			on_other	do_( restore_narrative_action, base )
 			end
 			in_( "then_" ) bgn_
-				on_( 'i' )	narrative_do_( read_narrative_in, "in" )
-				on_( 'o' )	narrative_do_( read_narrative_on, "on" )
-				on_( 'd' )	narrative_do_( read_narrative_do, "do" )
-				on_other	narrative_do_( restore_narrative_action, base )
+				on_( 'i' )	do_( read_narrative_in, "in" )
+				on_( 'o' )	do_( read_narrative_on, "on" )
+				on_( 'd' )	do_( read_narrative_do, "do" )
+				on_other	do_( restore_narrative_action, base )
 				end
 		end
 	}
 
-	narrative_do_( narrative_exit, same );
+	do_( narrative_exit, same );
 	return event;
 }
 
