@@ -16,6 +16,15 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
+	ttyu	- utility
+---------------------------------------------------------------------------*/
+int
+ttyu( _context *context )
+{
+	return ( context->control.terminal && !context->control.cgi && !context->control.cgim );
+}
+
+/*---------------------------------------------------------------------------
 	context_check	- utility
 ---------------------------------------------------------------------------*/
 int
@@ -158,9 +167,10 @@ pop( char *state, int event, char **next_state, _context *context )
 		if ( !strcmp( input->identifier, "" ) )
 			;
 		else if ( context->control.level == input->level ) {
-			input->corrupted = 1;
-			return output( Error, "attempt to pop control beyond authorized level - "
-				"closing stream..." );
+			input->malicious = 1;
+			output( Warning, "attempt to pop control beyond "
+				"authorized level - closing connection..." );
+			return 0;
 		}
 	}
 

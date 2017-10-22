@@ -23,33 +23,12 @@
 
 #include "cgic.h"
 
-// #define DEBUG
-// #define CGIDEBUG
+#define CN_CGI_STORY_PATH \
+	"/Library/WebServer/Documents/consensus/cgi.story"
+#define CN_HCN_HOME_PATH \
+	"/Library/WebServer/Documents/consensus/hcn/Home.hcn"
 
-/*---------------------------------------------------------------------------
-        CGI debug utilities
----------------------------------------------------------------------------*/
-#ifndef CGIDEBUG
-#define CGIDBGBGN
-#define CGIDBGSTEP( a, b )
-#define CGIDBGBRK
-#define	CGIDebug( a )
-#else
-int cgiCounter = 1;
-void CGIDebug( char *a )
-{
-	static int first=1;
-	if ( first ) {
-		printf( "Content-type: text/html\n\n" );
-		first = 0;
-	}
-	printf( "%s<BR>\n", a );
-}
-#define CGIDBGSTEP( a, b ) \
-	{ CGIDebug( a ); if (b) goto CGI_OUT; }
-#define CGIDBGBRK \
-	{ if ( !cgiCounter-- ) CGIDBGSTEP( "timeout", 1 ); }
-#endif
+// #define DEBUG
 
 /*---------------------------------------------------------------------------
 	signal handlers
@@ -83,17 +62,24 @@ suspension_handler( int signum )
 }
 
 /*---------------------------------------------------------------------------
-	read_arg
+	clarg, clargv
 ---------------------------------------------------------------------------*/
-static int
+int
 clarg( int argc, char *argv[], char *value )
 {
-	for ( int i=1; i<argc; )
-	{
-		if ( !strcmp( argv[ i++ ], value ) )
+	for ( int i=1; i<argc; i++ )
+		if ( !strcmp( argv[ i ], value ) )
 			return 1;
-	}
 	return 0;
+}
+char *
+clargv( int argc, char *argv[], char *option )
+{
+	argc--;
+	for ( int i=1; i<argc; )
+		if ( !strcmp( argv[ i++ ], option ) )
+			return argv[ i ];
+	return NULL;
 }
 
 /*---------------------------------------------------------------------------
@@ -117,8 +103,8 @@ main( int argc, char *argv[] )
 
 	signal( SIGTSTP, suspension_handler );
 
-	// initialize CN data
-	// ------------------
+	// initialize system data
+	// ----------------------
 
 	CN.nil = newEntity( NULL, NULL, NULL );
 	CN.nil->sub[0] = CN.nil;
@@ -138,14 +124,21 @@ main( int argc, char *argv[] )
 
 	_context *context = CN.context;
 
-	context->control.stack = newItem( calloc(1,sizeof(StackVA)) );
+	StackVA *stack = calloc( 1, sizeof( StackVA ) );
+	stack->next_state = "";
+	context->control.stack = newItem( stack );
 	context->hcn.state = "";
 	context->control.mode = ExecutionMode;
 	context->control.terminal = isatty( STDIN_FILENO );
 	context->control.cgi = (( argc == 1 ) && !context->control.terminal );
 	context->control.cgim = clarg( argc, argv, "-mcgi" );
-	context->control.prompt = context->control.terminal &&
-		!( context->control.cgi || context->control.cgim );
+	context->control.prompt = ttyu( context );
+	context->control.operator = clarg( argc, argv, "-moperator" );
+	context->session.identifier = clargv( argc, argv, "-msession" );
+	context->control.session = ((context->session.identifier) ? 1 : 0);
+
+	// initialize CNDB data
+	// --------------------
 
 	if ( context->control.cgi || context->control.cgim )
 	{
@@ -166,8 +159,19 @@ main( int argc, char *argv[] )
 			cn_setf( "%s-is->[ value<-has-[ entry<-is-%e ] ]", i->value, entry );
 		}
 		// 2. load and activate the cgi story
-		cn_do( ":< \\Nfile:/Library/WebServer/Documents/consensus/cgi.story" );
+		cn_dof( ":< file:%s", CN_CGI_STORY_PATH );
 		cn_activate_narrative( CN.nil, "cgi" );
+	}
+	else if ( !context->control.operator )
+	{
+		char *hcn = clargv( argc, argv, "-mhcn" );
+		if ((hcn)) cn_dof( ": %%.$( hcn ) : \"%s\"", hcn );
+		else cn_dof( ": %%.$( hcn ) : \"%s\"", CN_HCN_HOME_PATH );
+
+#ifdef DO_LATER
+		char *story = clargv( argc, argv, "-mstory" );
+		if ((story)) cn_dof( ":< file:%s", story );
+#endif
 	}
 
 	// go live
@@ -180,32 +184,27 @@ main( int argc, char *argv[] )
 	int restore[ 3 ] = { 0, 0, 0 };
 	int event = command_init( NULL, UserInput, restore, context );
 	do {
-		CGIDBGBRK
 		if (( event == 0 ) && !strcmp( state, base ) && context_check( 0, 0, ExecutionMode ) &&
 		    ( context->control.level == 0 ))	// DO_LATER: replace this last condition
 		{
-			CGIDBGSTEP( "in loop", 0 )
-
 			// scan internal and external sensors
 			// ----------------------------------
 			fd_set fds;
 			int frame_isset = ( context->frame.backlog || test_log( context, OCCURRENCES ) );
 #ifdef DEBUG
-			output( Debug, "frame_isset: %d - backlog:%d, log:%d", frame_isset,
+			outputf( Text, "frame_isset: %d - backlog:%d, log:%d<BR>", frame_isset,
 				context->frame.backlog, test_log( context, OCCURRENCES ));
 #endif
-			CGIDBGSTEP( "io_scan: before", 0 );
 			io_scan( &fds, !frame_isset, context );
 
 			// if external change notifications
 			// --------------------------------
 #ifdef DO_LATER
-			if ( FD_ISSET( context->io.operator, &fds ) ) {
+			if ( FD_ISSET( context->io.bulletin, &fds ) ) {
 				read and add inputs to frame log
 				frame_isset = 1;
 			}
 #endif
-			CGIDBGSTEP( "io_scan: after", 0 );
 			// if internal work to do
 			// ----------------------
 			if ( frame_isset )
@@ -215,7 +214,7 @@ main( int argc, char *argv[] )
 				for ( int i=0; i<3; i++ ) {
 					event = systemFrame( state, event, NULL, context );
 					// notify outside observers
-					io_notify_changes( context );
+					io_inform( context );
 					if ( !context->frame.backlog )
 						break;	// optimization
 				}
@@ -228,17 +227,23 @@ main( int argc, char *argv[] )
 				event = read_command( state, event, &next_state, context );
 				state = next_state;
 			}
+			// otherwise if cgi request
+			// ------------------------
+			else if ( context->control.operator && FD_ISSET( context->io.cgiport, &fds ) )
+			{
+				// take one command
+				io_accept( context->io.cgiport, context );
+			}
 			// otherwise if service request
 			// ----------------------------
 			else if ( FD_ISSET( context->io.service, &fds ) )
 			{
 				// take one command
-				io_accept( ServiceRequest, context );
+				io_accept( context->io.service, context );
 			}
 		}
 		else	// when life is simple...
 		{
-			CGIDBGSTEP( "in normal", 0 );
 			event = read_command( state, event, &next_state, context );
 			state = next_state;
 		}
@@ -251,8 +256,5 @@ main( int argc, char *argv[] )
 	io_exit( context );
 	// cgiExit();
 	return event;
-CGI_OUT:
-	CGIDebug( "out" );
-        return 1;
 }
 

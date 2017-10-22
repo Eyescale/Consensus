@@ -35,15 +35,19 @@ typedef enum {
 	PipeInput,
 	FileInput,
 	ClientInput,
+	SessionInput,
+	SessionPipeOutInput,
+	SessionPipeInput,
 	InstructionBlock,
 	InstructionOne,
-	LastInstruction
+	InstructionInline
 }
 InputType;
 
 typedef enum {
 	ClientOutput = 1,
-	IdentifierOutput
+	SessionOutput,
+	StringOutput
 }
 OutputType;
 
@@ -51,7 +55,7 @@ typedef enum {
 	Text = 1,
 	Error,
 	Warning,
-	Question,
+	Enquiry,
 	Info,
 	Debug
 }
@@ -77,6 +81,7 @@ typedef enum {
 	EntityVariable = 1,
 	ExpressionVariable,
 	LiteralVariable,
+	StringVariable,
 	NarrativeVariable,
 }
 VariableType;
@@ -118,6 +123,16 @@ AssignmentMode;
 /*---------------------------------------------------------------------------
 	structures
 ---------------------------------------------------------------------------*/
+
+// Session
+// --------------------------------------------------
+typedef struct {
+	char *path;
+	pid_t pid;
+	int genitor;	// socket connection (transient)
+	pid_t operator;
+}
+SessionVA;
 
 // Expression
 // --------------------------------------------------
@@ -238,7 +253,7 @@ typedef struct {
 	char *identifier;
 	int level;
 	InputType mode;
-	int corrupted;
+	int malicious;
 	union {
 		FILE *file;
 		char *string;
@@ -248,6 +263,10 @@ typedef struct {
 	char *position;
 	int remainder;
 	struct {
+		struct {
+			listItem *instructions;
+			int mode;
+		} record;
 		unsigned int prompt : 1;
 	} restore;
 }
@@ -256,14 +275,16 @@ InputVA;
 typedef struct {
 	int level;
 	int mode;
-	union {
-		int socket;
-		IdentifierVA *identifier;
-	} ptr;
-	int remainder;
 	struct {
 		unsigned int redirected : 1;
 	} restore;
+	struct {
+		char *identifier;
+	} variable;
+	struct {
+		int socket;
+	} ptr;
+	int remainder;
 }
 OutputVA;
 
@@ -347,6 +368,8 @@ typedef struct {
 		unsigned int terminal : 1;
 		unsigned int cgi : 1;
 		unsigned int cgim : 1;	// cgi emulator mode
+		unsigned int operator : 1;
+		unsigned int session : 1;
 		unsigned int anteprompt : 1;
 		unsigned int prompt : 1;
 		unsigned int contrary : 1;
@@ -380,6 +403,7 @@ typedef struct {
 		listItem *filter;
 		listItem *args;
 		Expression *ptr;
+		char *scheme;
 		listItem *stack;
 		int marked;
 		int do_resolve;
@@ -425,35 +449,29 @@ typedef struct {
 		listItem *stack;	// current OutputVA
 		AssignmentMode mode;
 		int redirected;
-		struct {
-			char *session;
-			char *entity;
-		} target;
+		int marked;
+		listItem *slist;
+		IdentifierVA string;
 	} output;
 	struct {
 		unsigned int flush_input;
 		unsigned int flush_output;
 	} error;
 	struct {
-		int operator, service, client;	// sockets
+		int bulletin, cgiport, service, client;	// sockets
 		struct {
 			FrameLog log;
 			struct {
 				char ptr[ IO_BUFFER_MAX_SIZE ];
 			} buffer;
-		} input;
-		struct {
-			FrameLog log;
-			struct {
-				char ptr[ IO_BUFFER_MAX_SIZE ];
-			} buffer;
-		} output;
-		struct {
-			struct {
-				char ptr[ IO_BUFFER_MAX_SIZE ];
-			} buffer;
-		} pipe;
+		} input, output;
 	} io;
+	struct {
+		Registry sessions, pid;
+	} operator;
+	struct {
+		char *identifier;
+	} session;
 }
 _context;
 
@@ -468,7 +486,7 @@ extern
 		Entity *this, *nil;
 		listItem *DB;
 		Registry VB;		// registry of value accounts
-		Registry registry;	// registry of named entities
+		Registry names;		// base entity names
 	} CN;
 
 /*---------------------------------------------------------------------------
@@ -524,6 +542,7 @@ _action	warning;
 
 void set_control_mode( ControlMode mode, _context *context );
 int context_check( int freeze, int instruct, int execute );
+int ttyu( _context *context );
 
 
 #endif	// KERNEL_H

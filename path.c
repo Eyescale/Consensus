@@ -21,7 +21,7 @@
 /*---------------------------------------------------------------------------
 	execution engine
 ---------------------------------------------------------------------------*/
-#define path_do_( a, s ) \
+#define do_( a, s ) \
 	event = path_execute( a, &state, event, s, context );
 
 static int
@@ -31,6 +31,22 @@ path_execute( _action action, char **state, int event, char *next_state, _contex
 	if ( strcmp( next_state, same ) )
 		*state = next_state;
 	return event;
+}
+
+/*---------------------------------------------------------------------------
+	read_STEP	- local utility
+---------------------------------------------------------------------------*/
+static void
+read_STEP( _context * context )
+{
+	if ( context->output.slist == NULL )
+		return;
+
+	listItem **list = &context->output.slist;
+	context->identifier.id[ STEP ].ptr = popListItem( list );
+	for ( listItem *i = *list; i!=NULL; i=i->next )
+		free( i->ptr );
+	freeListItem( list );
 }
 
 /*---------------------------------------------------------------------------
@@ -52,16 +68,19 @@ va2s( char *state, int event, char **next_state, _context *context )
 	VariableVA *variable = entry->value;
 	listItem *list = NULL;
 	switch ( variable->type ) {
+	case StringVariable:
 	case NarrativeVariable:
+		event = outputf( Error, "read_path: unsupported variable type - '%%%s'", identifier );
 		free( identifier );
-		return outputf( Error, "read_path: variable '%%%s' holds narrative(s) - cannot form path", identifier );
+		return event;
 	case EntityVariable:
 		// take only the first item in the list of entities
 		list = variable->data.value;
 		if ( list != NULL ) {
-			push_output( "", &context->identifier.id[ STEP ], IdentifierOutput, context );
+			push_output( "", NULL, StringOutput, context );
 			output_entity_name( list->ptr, NULL, 1 );
-			pop_output( context );
+			pop_output( context, 0 );
+			read_STEP( context );
 		}
 		break;
 	case ExpressionVariable:
@@ -74,9 +93,10 @@ va2s( char *state, int event, char **next_state, _context *context )
 		}
 		// take only the first item in the list of results
 		if ( list != NULL ) {
-			push_output( "", &context->identifier.id[ STEP ], IdentifierOutput, context );
+			push_output( "", NULL, StringOutput, context );
 			output_entity_name( list->ptr, NULL, 1 );
-			pop_output( context );
+			pop_output( context, 0 );
+			read_STEP( context );
 		}
 		break;
 	case LiteralVariable:
@@ -84,9 +104,10 @@ va2s( char *state, int event, char **next_state, _context *context )
 		list = variable->data.value;
 		if ( list != NULL ) {
 			ExpressionSub *s = (ExpressionSub *) list->ptr;
-			push_output( "", &context->identifier.id[ STEP ], IdentifierOutput, context );
+			push_output( "", NULL, StringOutput, context );
 			output_expression( ExpressionAll, s->e, -1, -1 );
-			pop_output( context );
+			pop_output( context, 0 );
+			read_STEP( context );
 		}
 		break;
 	}
@@ -109,9 +130,10 @@ xr2s( char *state, int event, char **next_state, _context *context )
 
 	// take only the first item in the list of results
 	if ( context->expression.results != NULL ) {
-		push_output( "", &context->identifier.id[ STEP ], IdentifierOutput, context );
+		push_output( "", NULL, StringOutput, context );
 		output_entity_name( context->expression.results->ptr, NULL, 1 );
-		pop_output( context );
+		pop_output( context, 0 );
+		read_STEP( context );
 	}
 	return event;
 }
@@ -122,16 +144,17 @@ xr2s( char *state, int event, char **next_state, _context *context )
 static int
 xeval( char *state, int event, char **next_state, _context *context )
 {
-	// read_expression uses read_1 for parsing
 	char *backup = context->identifier.id[ STEP ].ptr;
-	path_do_( read_expression, same );
-	if ( !context_check( 0, 0, ExecutionMode ) || ( context->expression.mode == ErrorMode ))
-		goto RETURN;
+	context->identifier.id[ STEP ].ptr = NULL;
 
-	context->expression.mode = EvaluateMode;
-	int retval = expression_solve( context->expression.ptr, 3, context );
-	if ( retval < 0 ) event = retval;
-RETURN:
+	event = read_expression( state, event, &same, context );
+	if ( context_check( 0, 0, ExecutionMode ) && ( context->expression.mode != ErrorMode ))
+	{
+		context->expression.mode = EvaluateMode;
+		int retval = expression_solve( context->expression.ptr, 3, context );
+		if ( retval < 0 ) event = retval;
+	}
+
 	free( context->identifier.id[ STEP ].ptr );
 	context->identifier.id[ STEP ].ptr = backup;
 	return event;
@@ -208,7 +231,7 @@ int
 read_path( char *state, int event, char **next_state, _context *context )
 {
 	if ( context_check( FreezeMode, 0, 0 ) ) {
-		path_do_( flush_input, same );
+		event = flush_input( state, event, &same, context );
 		return event;
 	}
 
@@ -225,59 +248,59 @@ read_path( char *state, int event, char **next_state, _context *context )
 		outputf( Debug, "read_path: in \"%s\", on '%c'", state, event );
 #endif
 		bgn_
-		on_( -1 )	path_do_( nothing, "" )
+		on_( -1 )	do_( nothing, "" )
 		in_( base ) bgn_
-			on_( '/' )	path_do_( nop, "/" )
-			on_( '%' )	path_do_( nop, "%" )
-			on_( '-' )	path_do_( build_path, base )
-			on_( '.' )	path_do_( build_path, base )
-			on_separator	path_do_( nothing, "" )
-			on_other	path_do_( read_2, "step" )
+			on_( '/' )	do_( nop, "/" )
+			on_( '%' )	do_( nop, "%" )
+			on_( '-' )	do_( build_path, base )
+			on_( '.' )	do_( build_path, base )
+			on_separator	do_( nothing, "" )
+			on_other	do_( read_2, "step" )
 			end
 			in_( "step" ) bgn_
-				on_any	path_do_( build_path, base )
+				on_any	do_( build_path, base )
 				end
 			in_( "/" ) bgn_
-				on_( '/' )	path_do_( nop, base )
-				on_( '%' )	path_do_( nop, "/%" )
-				on_( '.' )	path_do_( build_path, base )
-				on_( '-' )	path_do_( build_path, base )
-				on_other	path_do_( read_2, "/step" )
+				on_( '/' )	do_( nop, base )
+				on_( '%' )	do_( nop, "/%" )
+				on_( '.' )	do_( build_path, base )
+				on_( '-' )	do_( build_path, base )
+				on_other	do_( read_2, "/step" )
 				end
 				in_( "/step" ) bgn_
-					on_any	path_do_( build_path, base )
+					on_any	do_( build_path, base )
 					end
 				in_( "/%" ) bgn_
-					on_( '[' )	path_do_( xeval, "/%[_" )
-					on_other	path_do_( read_2, "/%variable" )
+					on_( '[' )	do_( xeval, "/%[_" )
+					on_other	do_( read_2, "/%variable" )
 					end
 					in_( "/%[_" ) bgn_
-						on_( ' ' )	path_do_( nop, same )
-						on_( '\t' )	path_do_( nop, same )
-						on_( ']' )	path_do_( nop, "/%[_]" )
-						on_other	path_do_( error, "" )
+						on_( ' ' )	do_( nop, same )
+						on_( '\t' )	do_( nop, same )
+						on_( ']' )	do_( nop, "/%[_]" )
+						on_other	do_( error, "" )
 						end
 					in_( "/%variable" ) bgn_
-						on_any	path_do_( va2s, "/step" )
+						on_any	do_( va2s, "/step" )
 						end
 					in_( "/%[_]" ) bgn_
-						on_any	path_do_( xr2s, "/step" )
+						on_any	do_( xr2s, "/step" )
 						end
 			in_( "%" ) bgn_
-				on_( '[' )	path_do_( xeval, "%[_" )
-				on_other	path_do_( read_2, "%variable" )
+				on_( '[' )	do_( xeval, "%[_" )
+				on_other	do_( read_2, "%variable" )
 				end
 				in_( "/%[_" ) bgn_
-					on_( ' ' )	path_do_( nop, same )
-					on_( '\t' )	path_do_( nop, same )
-					on_( ']' )	path_do_( nop, "/%[_]" )
-					on_other	path_do_( error, "" )
+					on_( ' ' )	do_( nop, same )
+					on_( '\t' )	do_( nop, same )
+					on_( ']' )	do_( nop, "/%[_]" )
+					on_other	do_( error, "" )
 					end
 				in_( "%variable" ) bgn_
-					on_any	path_do_( va2s, "step" )
+					on_any	do_( va2s, "step" )
 					end
 				in_( "%[_]" ) bgn_
-					on_any	path_do_( xr2s, "step" )
+					on_any	do_( xr2s, "step" )
 					end
 		end
 	}

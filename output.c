@@ -61,27 +61,32 @@ outputf( OutputContentsType type, const char *format, ... )
 			anteprompt( context );
 			vfprintf( stdout, ( *format ? format : "%s" ), ap );
 		}
-		else if ( output->mode == ClientOutput )
+		else
 		{
 			char *str = NULL;
 			if ( *format ) {
 				vasprintf( &str, format, ap );
-				if ( str == NULL ) return 0;
 			} else {
 				str = va_arg( ap, char * );
 			}
-			int length = strlen( str );
-			if ( !length ) { free( str ); return 0; }
-
-			io_write( output->ptr.socket, str, length, &output->remainder );
+			if ( !strcmp( str, "" ) ) {
+				va_end( ap );
+				free( str );
+				return 0;
+			}
+			switch ( output->mode ) {
+			case SessionOutput:
+			case ClientOutput:
+				io_write( output->ptr.socket, str, strlen( str ), &output->remainder );
+				break;
+			case StringOutput:
+				; listItem **slist = &context->output.slist;
+				IdentifierVA *identifier = &context->output.string;
+				for ( char *ptr = str; *ptr; ptr++ )
+					slist_append( slist, identifier, *ptr, 1 );
+				break;
+			}
 			if ( *format ) free( str );
-		}
-		else if ( output->mode == IdentifierOutput )
-		{
-			IdentifierVA *string = output->ptr.identifier;
-			char *str = NULL;
-			vasprintf( &str, ( *format ? format : "%s" ), ap );
-			addItem( &string->list, str );
 		}
 	}
 	else	// type is not Text
@@ -91,7 +96,7 @@ outputf( OutputContentsType type, const char *format, ... )
 
 		switch ( type ) {
 		case Error:
-			if ( CN.context->error.flush_output ) {
+			if ( context->error.flush_output ) {
 				// output in the text
 				stream = stdout;
 				CN.context->error.flush_output = 0;
@@ -108,12 +113,12 @@ outputf( OutputContentsType type, const char *format, ... )
 		}
 
 		anteprompt( context );
-		if ( type != Question ) {
+		if ( type == Enquiry ) {
+			vfprintf( stream, ( *format ? format : "%s" ), ap );
+		} else {
 			fprintf( stream, "%s", header );
 			vfprintf( stream, ( *format ? format : "%s" ), ap );
 			fprintf( stream, "\n" );
-		} else {
-			vfprintf( stream, ( *format ? format : "%s" ), ap );
 		}
 	}
 	va_end( ap );
@@ -131,12 +136,24 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 	output->restore.redirected = context->output.redirected;
 	output->mode = type;
 	switch ( type ) {
+	case SessionOutput:
+		; char *path = dst;
+		output->ptr.socket = io_call( path, context );
+		if ( output->ptr.socket < 0 ) {
+			free( output );
+			return outputf( Error, "'%s': could not open connection", path );
+		}
+		context->output.redirected = 1;
+		break;
 	case ClientOutput:
 		output->ptr.socket = *(int *) dst;
+		context->output.redirected = 1;
 		break;
-	case IdentifierOutput:
-		output->ptr.identifier = (IdentifierVA *) dst;
-		string_start( output->ptr.identifier, 0 );
+	case StringOutput:
+		for ( listItem *i=context->output.slist; i!=NULL; i=i->next )
+			free( i->ptr );
+		freeListItem( &context->output.slist );
+		context->output.redirected = 1;
 		break;
 	}
 	addItem( &context->output.stack, output );
@@ -147,38 +164,21 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 	pop_output
 ---------------------------------------------------------------------------*/
 int
-pop_output( _context *context )
+pop_output( _context *context, int terminate )
 {
 	OutputVA *output = (OutputVA *) context->output.stack->ptr;
 	context->output.redirected = output->restore.redirected;
 	switch ( output->mode ) {
-	case ClientOutput:
-		// flush output buffer
-		io_flush( output->ptr.socket, &output->remainder, 0 );
+	case SessionOutput:
+		io_flush( output->ptr.socket, &output->remainder, context );
+		if ( terminate ) io_close( IO_CALL, output->ptr.socket, "" );
 		break;
-	case IdentifierOutput:
-		; IdentifierVA *string = output->ptr.identifier;
-		// count total string size while reordering list
-		int size = 0;
-		listItem *i, *next_i, *last_i = NULL;
-		for ( i = string->list; i!=NULL; i=next_i )
-		{
-			next_i = i->next;
-			i->next = last_i;
-			last_i = i;
-			size += strlen( (char *) i->ptr );
-		}
-		string->list = last_i;
-		// now allocate and inform string->ptr
-		string->ptr = (char *) malloc( size + 1 );
-		char *dst = string->ptr;
-		for ( i = last_i; i!=NULL; i=i->next )
-		{
-			for ( char *src = i->ptr; *src; *dst++ = *src++ ) ;
-			free( i->ptr );
-		}
-		*dst = 0;
-		freeListItem( &string->list );
+	case ClientOutput:
+		io_flush( output->ptr.socket, &output->remainder, context );
+		break;
+	case StringOutput:
+		slist_close( &context->output.slist, &context->output.string );
+		reorderListItem( &context->output.slist );
 		break;
 	}
 	free( output );
@@ -196,13 +196,21 @@ output_identifier( char *identifier, int as_is )
 		output( Text, identifier );
 		return;
 	}
-	IdentifierVA buffer = { NULL, NULL };
-	string_start( &buffer, 0 );
+	IdentifierVA buffer;
+	bzero( &buffer, sizeof( IdentifierVA ) );
 
+	string_start( &buffer, 0 );
 	int special = 0, has_special = 0;
 	for ( char *src = identifier; *src; src++ )
 	{
-		for ( int i = 0; i < num_separators(); i++ ) {
+		if ( *src == '"' ) {
+			has_special = 1;
+			string_append( &buffer, '\\' );
+			string_append( &buffer, '"' );
+			special = 1;
+		}
+		else for ( int i = 0; i < num_separators(); i++ )
+		{
 			if ( *src == separator_table[ i ].real ) {
 				has_special = 1;
 				if ( separator_table[ i ].fake ) {
@@ -216,8 +224,8 @@ output_identifier( char *identifier, int as_is )
 		if ( !special ) string_append( &buffer, *src );
 		else special = 0;
 	}
-
 	string_finish( &buffer, 0 );
+
 	if ( has_special ) {
 		outputf( Text, "\"%s\"", buffer.ptr );
 	} else {
@@ -232,9 +240,7 @@ output_identifier( char *identifier, int as_is )
 void
 anteprompt( _context *context )
 {
-	if ( context->control.terminal && (context->input.stack) &&
-	     context->control.anteprompt &&
-	     !context->control.cgi && !context->control.cgim )
+	if ( ttyu( context ) && context->control.anteprompt && (context->input.stack))
 	{
 		context->control.anteprompt = 0;
 		fprintf( stderr, "\n" );
@@ -563,7 +569,7 @@ output_narrative_variable( registryEntry *r )
 {
 	if ( r == NULL ) return;
 
-	Entity *e = (Entity *) r->identifier;
+	Entity *e = (Entity *) r->identifier.address;
 	char *name = (char *) r->value;
 	if ( r->next == NULL ) {
 		output_narrative_name( e, name );
@@ -573,7 +579,7 @@ output_narrative_variable( registryEntry *r )
 		output_narrative_name( e, name );
 		for ( r=r->next; r!=NULL; r=r->next ) {
 			output( Text, ", " );
-			e = (Entity *) r->identifier;
+			e = (Entity *) r->identifier.address;
 			name = (char *) r->value;
 			output_narrative_name( e, name );
 		} 
@@ -620,6 +626,23 @@ output_literal_variable( listItem *i, Expression *format )
 }
 
 static void
+output_string_variable( listItem *i )
+{
+	if ( i == NULL ) return;
+	if ( i->next == NULL ) {
+		output_identifier((char *) i->ptr, 0 );
+	} else {
+		output( Text, "{ " );
+		output_identifier((char *) i->ptr, 0 );
+		for ( i=i->next; i!=NULL; i=i->next ) {
+			output( Text, ", " );
+			output_identifier((char *) i->ptr, 0 );
+		} 
+		output( Text, " }" );
+	}
+}
+
+static void
 output_value( VariableVA *variable )
 {
 	switch ( variable->type ) {
@@ -635,6 +658,9 @@ output_value( VariableVA *variable )
 	case LiteralVariable:
 		output_literal_variable( (listItem *) variable->data.value, NULL );
 		break;
+	case StringVariable:
+		output_string_variable( (listItem *) variable->data.value );
+		break;
 	}
 }
 
@@ -642,23 +668,22 @@ int
 output_variable_value( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	if ( event == '|' ) event = '\n';
-	context->error.flush_output = ( event != '\n' );
 #ifdef DEBUG
 	outputf( Debug, "output_variable_value: %%%s", context->identifier.id[ 0 ].ptr );
 #endif
 	registryEntry *entry = lookupVariable( context, context->identifier.id[ 0 ].ptr );
-	if ( entry != NULL ) {
+	if ( entry != NULL )
+	{
+		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
+		context->output.marked = 1;
+		*next_state = ">:_";
 	}
-	free( context->identifier.id[ 0 ].ptr );
-	context->identifier.id[ 0 ].ptr = NULL;
+	else *next_state = ( context->output.marked ? ">:_" : ">:" );
 
-	if ( event != '"' )
-		outputf( Text, "%c", event );
-	return 0;
+	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -668,17 +693,22 @@ int
 output_variator_value( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	context->error.flush_output = ( event != '\n' );
 #ifdef DEBUG
 	outputf( Debug, "output_variator_value: %%%s", variator_symbol );
 #endif
 	registryEntry *entry = lookupVariable( context, variator_symbol );
-	if ( entry != NULL ) {
+	if ( entry != NULL )
+	{
+		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
+		context->output.marked = 1;
+		*next_state = ">:_";
 	}
-	return 0;
+	else *next_state = ( context->output.marked ? ">:_" : ">:" );
+
+	return event;
 }
 
 
@@ -689,25 +719,25 @@ int
 output_results( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	if ( event == '|' ) event = '\n';
-	if (( event == '\n' ) && ( context->expression.results == NULL ))
-		return 0;
-
-	context->error.flush_output = ( event != '\n' );
-	switch ( context->expression.mode ) {
-	case ReadMode:
-		output_literal_variable( context->expression.results, context->expression.ptr );
-		freeLiteral( &context->expression.results );
-		break;
-	default:
-		output_entity_variable( context->expression.results, context->expression.ptr );
+	if (( context->expression.results ))
+	{
+		context->error.flush_output = ( event != '\n' );
+		switch ( context->expression.mode ) {
+		case ReadMode:
+			output_literal_variable( context->expression.results, context->expression.ptr );
+			freeLiteral( &context->expression.results );
+			break;
+		default:
+			output_entity_variable( context->expression.results, context->expression.ptr );
+		}
+		context->output.marked = 1;
+		*next_state = ">:_";
 	}
+	else *next_state = ( context->output.marked ? ">:_" : ">:" );
 
-	if ( event != '"' )
-		outputf( Text, "%c", event );
-	return 0;
+	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -723,15 +753,15 @@ output_va_value( void *value, int narrative_account )
 	if ( narrative_account ) {
 		registryEntry *i = (Registry) value;
 		if ( i->next == NULL ) {
-			output_identifier( (char *) i->identifier, 0 );
+			output_identifier( (char *) i->identifier.name, 0 );
 			output( Text, "()" );
 		} else {
 			output( Text, "{ " );
-			output_identifier( (char *) i->identifier, 0 );
+			output_identifier( (char *) i->identifier.name, 0 );
 			output( Text, "()" );
 			for ( i = i->next; i!=NULL; i=i->next ) {
 				output( Text, ", " );
-				output_identifier( (char *) i->identifier, 0 );
+				output_identifier( (char *) i->identifier.name, 0 );
 				output( Text, "()" );
 			}
 			output( Text, " }" );
@@ -779,21 +809,20 @@ output_html( char *state, int event, char **next_state, _context *context )
 #else
 		cn_read( identifier, HCNFileInput, base, 0 );
 #endif
+		context->output.marked = 1;
+		*next_state = ">:_";
 	}
-	if (( event != '\n' ) && ( event != '"' )) {
-		outputf( Text, "%c", event );
-	}
-	return 0;
+	else *next_state = ( context->output.marked ? ">:_" : ">:" );
 
+	return event;
 }
 
 int
 output_va( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	if ( event == '|' ) event = '\n';
 	context->error.flush_output = ( event != '\n' );
 
 	char *va_name = context->identifier.id[ 2 ].ptr;
@@ -806,30 +835,36 @@ output_va( char *state, int event, char **next_state, _context *context )
 	if ( lookupByName( CN.VB, va_name ) == NULL ) {
 		return outputf( Error, "unknown value account name '%s'", va_name );
 	}
-	output_va_( va_name, event, context );
 
-	if (( event != '\n' ) && ( event != '"' )) {
-		outputf( Text, "%c", event );
+	if (( context->expression.results )) {
+		output_va_( va_name, event, context );
+		context->output.marked = 1;
+		*next_state = ">:_";
 	}
-	return 0;
+	else *next_state = ( context->output.marked ? ">:_" : ">:" );
+
+	return event;
 }
 
 /*---------------------------------------------------------------------------
-	output_mod, output_char, output_special_char
+	output_mod
 ---------------------------------------------------------------------------*/
 int
 output_mod( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
 	context->error.flush_output = ( event != '\n' );
 	output( Text, "%" );
-	if ( event != '\\' )
-		outputf( Text, "%c", event );
-	return 0;
+	context->output.marked = 1;
+	*next_state = ">:_";
+	return event;
 }
 
+/*---------------------------------------------------------------------------
+	output_char
+---------------------------------------------------------------------------*/
 int
 output_char( char *state, int event, char **next_state, _context *context )
 {
@@ -837,11 +872,14 @@ output_char( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	context->error.flush_output = ( event != '\n' );
-	if ( event == '|' ) event = '\n';
-	outputf( Text, "%c", event );
+	outputf( Text, "%c", ( event == '|' ? '\n' : event ));
+	context->output.marked = 1;
 	return 0;
 }
 
+/*---------------------------------------------------------------------------
+	output_special_char
+---------------------------------------------------------------------------*/
 int
 output_special_char( char *state, int event, char **next_state, _context *context )
 {
@@ -849,26 +887,14 @@ output_special_char( char *state, int event, char **next_state, _context *contex
 		return 0;
 
 	context->error.flush_output = ( event != '\n' );
-#if 0
 	switch ( event ) {
-	case 't': output( Text, "\t" ); break;
 	case 'n': output( Text, "\n" ); break;
+	case 't': output( Text, "\t" ); break;
+	case '\0': break;
 	default:
 		outputf( Text, "%c", event );
 	}
-#else
-	int special = 0;
-	for ( int i = 0; i < num_separators(); i++ ) {
-		if ( event != separator_table[ i ].fake )
-			continue;
-		special = 1;
-		outputf( Text, "%c", separator_table[ i ].real );
-		break;
-	}
-	if ( !special )
-		outputf( Text, "%c", event );
-#endif
-
+	context->output.marked = 1;
 	return 0;
 }
 
@@ -1087,7 +1113,7 @@ narrative_output( Narrative *narrative, _context *context )
 	backup.mode = context->narrative.mode.output;
 	context->narrative.mode.output = 1;
 
-	if ( context->input.stack == NULL )
+	if (( context->input.stack == NULL ) && !context->output.redirected )
 	{
 		for ( int i=0; i<75; i++ ) fprintf( stderr, "-" );
 		fprintf( stderr, "\n" );
@@ -1110,9 +1136,8 @@ int
 output_narrative( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	if ( event == '|' ) event = '\n';
 	context->error.flush_output = ( event != '\n' );
 	char *name = context->identifier.id[ 1 ].ptr;
 	for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
@@ -1124,8 +1149,9 @@ output_narrative( char *state, int event, char **next_state, _context *context )
 		if ( entry == NULL ) continue;
 		narrative_output((Narrative *) entry->value, context );
 	}
-	if (( event != '\n' ) && ( event != '"' ))
-		outputf( Text, "%c", event );
-	return 0;
+
+	context->output.marked = 1;
+	*next_state = ">:_";
+	return event;
 }
 

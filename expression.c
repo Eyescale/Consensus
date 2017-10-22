@@ -353,6 +353,25 @@ set_sub_this( int count, int event, _context *context )
 	return 0;
 }
 
+static int
+test_scheme( char *state, int event, char **next_state, _context *context )
+{
+	if ( strcmp( state, "identifier" ) || strcmp( *next_state, "source-medium->target:" ))
+		return 0;
+
+	char *identifier = context->identifier.id[ 1 ].ptr;
+ 	if ( strcmp( identifier, "file" ) && strcmp( identifier, "session" ) )
+		return 0;
+
+	if ( context->expression.level != context->control.level )
+		return outputf( Error, "term '%s:' in expression is reserved", identifier );
+
+	context->expression.scheme = identifier;
+	context->identifier.id[ 1 ].ptr = NULL;
+	*next_state = "";
+	return event;
+}
+
 /*---------------------------------------------------------------------------
 	source actions
 ---------------------------------------------------------------------------*/
@@ -380,7 +399,8 @@ set_source_any( char *state, int event, char **next_state, _context *context )
 static int
 set_source_identifier( char *state, int event, char **next_state, _context *context )
 {
-	return set_sub_identifier( 0, event, context );
+	int retval = test_scheme( state, event, next_state, context );
+	return ( retval ? retval : set_sub_identifier( 0, event, context ) );
 }
 static int
 set_source_variable( char *state, int event, char **next_state, _context *context )
@@ -1079,42 +1099,6 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	on_file
----------------------------------------------------------------------------*/
-int
-on_file( char *state, int event, char **next_state, _context *context )
-{
-	if (( context->expression.ptr != NULL ) || strcmp( context->identifier.id[ 1 ].ptr, "file" ))
-		return -1;
-	return event;
-}
-
-static int
-expression_on_file( char *state, int event, char **next_state, _context *context )
-{
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	Expression *expression = stack->expression.ptr;
-
-	if ( context->control.mode == ExecutionMode ) {
-		context->identifier.id[ 1 ].ptr = expression->sub[ 0 ].result.identifier.value;
-		expression->sub[ 0 ].result.identifier.value = NULL;
-	}
-	if (( context->expression.level != context->control.level ) ||
-	    ( strcmp( context->identifier.id[ 1 ].ptr, "file" )))
-	{
-		return -1;
-	}
-	if ( context->control.mode != ExecutionMode )
-		return 0;
-
-	freeExpression( expression );
-	context->expression.ptr = NULL;
-	stack->expression.ptr = NULL;
-
-	return 0;
-}
-
-/*---------------------------------------------------------------------------
 	parser_init
 ---------------------------------------------------------------------------*/
 static int
@@ -1127,6 +1111,8 @@ parser_init( char *state, int event, char **next_state, _context *context )
 	context->expression.mode = ReadMode;
 	context->expression.marked = 0;
 
+	free( context->expression.scheme );
+	context->expression.scheme = NULL;
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
 	context->expression.filter = NULL;
@@ -1706,7 +1692,6 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '[' )	do_( push, "source-medium->target: []" )
 		on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 		on_( '%' )	do_( nop, "source-medium->target: %" )
-		on_( '/' )	do_( expression_on_file, "file:/" )
 		on_separator	do_( nothing, pop_state )
 		on_other	do_( read_1, "source-medium->target: identifier" )
 		end
@@ -1783,14 +1768,6 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( ']' )	do_( nothing, pop_state )
 		on_other	do_( nothing, pop_state )
 		end
-
-	in_( "file:/" ) bgn_
-		on_( '/' )	do_( nop, "file://" )
-		on_other	do_( error, "" )
-		end
-		in_( "file://" ) bgn_
-			on_any	do_( nothing, pop_state )
-			end
 	end
 	}
 	while ( strcmp( state, "" ) );

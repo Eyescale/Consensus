@@ -267,7 +267,7 @@ vainstf( const char *format, va_list ap )
 				identifier = strdup( identifier );
 				e = newEntity( NULL, NULL, NULL );
 				cn_va_set_value( e, "name", identifier );
-				registerByName( &CN.registry, identifier, e );
+				registerByName( &CN.names, identifier, e );
 				addItem( &CN.DB, e );
 			}
 			sub[ count++ ] = e;
@@ -306,7 +306,7 @@ cn_instf( const char *format, ... )
 Entity *
 cn_entity( char *name )
 {
-	registryEntry *entry = lookupByName( CN.registry, name );
+	registryEntry *entry = lookupByName( CN.names, name );
 	return ( entry == NULL ) ? NULL : (Entity *) entry->value;
 }
 
@@ -336,7 +336,7 @@ cn_new( char *name )
 {
 	Entity *e = newEntity( NULL, NULL, NULL );
 	cn_va_set_value( e, "name", name );
-	registerByName( &CN.registry, name, e );
+	registerByName( &CN.names, name, e );
 	addItem( &CN.DB, e );
 	FrameLog *log = &CN.context->io.input.log;
 	addItem( &log->entities.instantiated, e );
@@ -371,7 +371,7 @@ cn_free( Entity *e )
 
 	// remove entity from name registry
 
-	deregisterByValue( &CN.registry, e );
+	deregisterByValue( &CN.names, e );
 
 	// close all value accounts associated with this entity
 

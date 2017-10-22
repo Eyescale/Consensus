@@ -116,7 +116,7 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 	registryEntry *value = NULL;
 	for ( registryEntry *i = (Registry) variable->data.value; i!=NULL; i=i->next )
 	{
-		Narrative *narrative = lookupNarrative( (Entity *) i->identifier, (char *) i->value );
+		Narrative *narrative = lookupNarrative( (Entity *) i->identifier.address, (char *) i->value );
 		if ( narrative != NULL ) {
 			registerByName( &value, narrative->name, narrative );
 		}

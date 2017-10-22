@@ -568,7 +568,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	// Check entity narratives to be deactivated - and deactivate them
 	for ( registryEntry *i = log->narratives.deactivate; i!=NULL; i=i->next )
 	{
-		Narrative *narrative = (Narrative *) i->identifier;
+		Narrative *narrative = (Narrative *) i->identifier.address;
 		listItem *entities = (listItem *) i->value;
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{
@@ -589,7 +589,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 		Narrative *narrative = (Narrative *) i->ptr;
 		for ( registryEntry *j = narrative->instances, *next_j; j!=NULL; j=next_j )
 		{
-			Entity *e = (Entity *) j->identifier;
+			Entity *e = (Entity *) j->identifier.address;
 			Narrative *n = (Narrative *) j->value;
 			next_j = j->next; // needed in case of deactivation
 #ifdef DEBUG
@@ -685,7 +685,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	// Check narratives to be activated - and activate them
 	for ( registryEntry *i = log->narratives.activate; i!=NULL; i=i->next )
 	{
-		Narrative *narrative = (Narrative *) i->identifier;
+		Narrative *narrative = (Narrative *) i->identifier.address;
 		listItem *entities = (listItem *) i->value;
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{

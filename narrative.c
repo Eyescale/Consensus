@@ -546,20 +546,21 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 					on_other	do_( read_expression, "identifier: expression" )
 					end
 					in_( "identifier: expression" ) bgn_
+						on_( ':' )	do_( nop, "identifier: scheme:" )
 						on_( ' ' )	do_( nop, same )
 						on_( '\t' )	do_( nop, same )
 						on_( '!' )	do_( set_event_notification, "identifier: expression !" )
-						on_other	do_( on_file, "identifier: file://" )
+						on_other	do_( error, base )
 						end
-					in_( "identifier: file://" ) bgn_
-						on_any	do_( read_path, "identifier: file://path" )
+					in_( "identifier: scheme:" ) bgn_
+						on_any	do_( read_path, "identifier: scheme://path" )
 						end
-						in_( "identifier: file://path" ) bgn_
+						in_( "identifier: scheme://path" ) bgn_
 							on_( ' ' )	do_( nop, same )
 							on_( '\t' )	do_( nop, same )
-							on_( '!' )	do_( set_event_notification, "identifier: file://path !" )
+							on_( '!' )	do_( set_event_notification, "identifier: scheme://path !" )
 							end
-							in_( "identifier: file://path !" ) bgn_
+							in_( "identifier: scheme://path !" ) bgn_
 								on_( '<' )	do_( set_event_type, "" )
 								on_other	do_( error, base )
 								end

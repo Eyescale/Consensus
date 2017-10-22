@@ -3,7 +3,11 @@
 
 typedef struct _registryEntry
 {
-        void *identifier;
+	union {
+		char *name;
+		void *address;
+		int index;
+	} identifier;
         void *value;
         struct _registryEntry *next;
 }
@@ -13,9 +17,11 @@ typedef registryEntry * Registry;
 
 registryEntry *newRegistryItem( void *identifier, void *value );
 registryEntry *registerByName( Registry *registry, char *name, void *address );
-registryEntry *registerByAddress( Registry *registry, void *address, void *value );
 registryEntry *lookupByName( Registry registry, char *name );
+registryEntry *registerByAddress( Registry *registry, void *address, void *value );
 registryEntry *lookupByAddress( Registry registry, void *address );
+registryEntry *registerByIndex( Registry *registry, int ndx, void *value );
+registryEntry *lookupByIndex( Registry registry, int ndx );
 registryEntry *lookupByValue( Registry registry, void *value );
 
 Registry copyRegistry( Registry registry );

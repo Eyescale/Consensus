@@ -17,7 +17,7 @@ SRCS =	main.c command.c command_util.c \
 	frame.c api.c kernel.c database.c registry.c \
 	cgic.c
 
-CFLAGS = -DCGI_DEV
+CFLAGS = -DCGI_DEV -DSYNC_ALL
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 MAIN = consensus
 

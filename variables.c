@@ -41,6 +41,11 @@ freeVariableValue( VariableVA *variable )
 	case EntityVariable:
 		freeListItem( (listItem **) &variable->data.value );
 		break;
+	case StringVariable:
+		for ( listItem *i = variable->data.value; i!=NULL; i=i->next )
+			free( i->ptr );
+		freeListItem( (listItem **) &variable->data.value );
+		break;
 	case LiteralVariable:
 		freeLiteral( (listItem **) &variable->data.value );
 		break;
@@ -55,7 +60,7 @@ freeVariables( registryEntry **variables )
 	for ( registryEntry *entry = *variables; entry!=NULL; entry=next_e )
 	{
 		next_e = entry->next;
-		char *name = entry->identifier;
+		char *name = entry->identifier.name;
 		if (( name != variator_symbol ) && ( name != this_symbol ))
 			free( name );
 		VariableVA *variable = (VariableVA *) entry->value;
@@ -154,7 +159,7 @@ variable_reset( char *state, int event, char **next_state, _context *context )
 	registryEntry *entry = variable_fetch( identifier, context );
 	if ( entry == NULL ) return 0;
 
-	char *name = (char *) entry->identifier;
+	char *name = entry->identifier.name;
 
 	if ( name != variator_symbol ) free( name );
 	VariableVA *variable = (VariableVA *) entry->value;
@@ -178,7 +183,7 @@ reset_variables( char *state, int event, char **next_state, _context *context )
 	for ( r = *variables; r!=NULL; r=r_next )
 	{
 		r_next = r->next;
-		char *name = r->identifier;
+		char *name = r->identifier.name;
 		if ( !strcmp( name, this_symbol ) )
 			continue;
 
@@ -497,7 +502,7 @@ assign_expression( char *state, int event, char **next_state, _context *context 
 	assign_variator_variable
 ---------------------------------------------------------------------------*/
 void
-assign_variator_variable( Entity *index, int type, _context *context )
+assign_variator_variable( void *value, int type, _context *context )
 {
 #ifdef DEBUG
 	output( Debug, "assigning index to variator variable" );
@@ -517,6 +522,43 @@ assign_variator_variable( Entity *index, int type, _context *context )
 		freeVariableValue( variable );
 		if ( type ) variable->type = type;
 	}
-	addItem( (listItem **) &variable->data.value, index );
+	if ( type == StringVariable ) {
+		variable->data.value = value;
+	} else {
+		addItem( (listItem **) &variable->data.value, value );
+	}
+}
+
+/*---------------------------------------------------------------------------
+	assign_variable
+---------------------------------------------------------------------------*/
+void
+assign_variable( char **identifier, void *value, int type, _context *context )
+{
+#ifdef DEBUG
+	outputf( Debug, "assigning value to variable '%s'", identifier );
+#endif
+	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	registryEntry *entry;
+
+	VariableVA *variable;
+	entry = lookupByName( stack->variables, *identifier );
+	if ( entry == NULL ) {
+		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
+		variable->type = type;
+		registerByName( &stack->variables, *identifier, variable );
+	}
+	else {
+		variable = (VariableVA *) entry->value;
+		free( *identifier );
+		freeVariableValue( variable );
+		if ( type ) variable->type = type;
+	}
+	*identifier = NULL;
+	if ( type == StringVariable ) {
+		variable->data.value = value;
+	} else {
+		addItem( (listItem **) &variable->data.value, value );
+	}
 }
 

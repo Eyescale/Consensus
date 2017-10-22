@@ -197,12 +197,12 @@ override_narrative( Entity *e, _context *context )
 		outputf( Warning, "narrative '%s' is active - cannot overwrite", name );
 		return 0;
 	}
-	else if ( !context->control.cgi && !context->control.cgim )	// let's talk...
+	else if ( ttyu( context ) )	// let's talk...
 	{
 #ifdef DO_LATER
 		// output in full: %[ e ].name() - cf. output_narrative_name()
 #endif
-		outputf( Question, "narrative '%s' already exists. Overwrite ? (y/n)_ ", name );
+		outputf( Enquiry, "narrative '%s' already exists. Overwrite ? (y/n)_ ", name );
 		int overwrite = 0;
 		do {
 			overwrite = getchar();
@@ -220,7 +220,7 @@ override_narrative( Entity *e, _context *context )
 				break;
 			}
 		}
-		while ( overwrite ? 0 : !outputf( Question, "Overwrite ? (y/n)_ " ) );
+		while ( overwrite ? 0 : !outputf( Enquiry, "Overwrite ? (y/n)_ " ) );
 		if ( overwrite == 'n' )
 			return 0;
 
@@ -250,7 +250,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 			else last_i = i;
 		}
 		if ( context->expression.results == NULL ) {
-			output( Warning, "no target for narrative operation - returning" );
+			output( Warning, "no target for narrative operation - ignoring" );
 			return 0;
 		}
 
@@ -402,7 +402,7 @@ input_command( char *state, int event, char **next_state, _context *context )
 		// sets execution flag so that the last instruction is parsed again,
 		// but this time in execution mode
 		set_control_mode( ExecutionMode, context );
-		return push_input( "", NULL, LastInstruction, context );
+		return push_input( "", NULL, InstructionInline, context );
 	case ExecutionMode:
 		break;
 	}
@@ -416,86 +416,216 @@ input_command( char *state, int event, char **next_state, _context *context )
 	command output actions
 ---------------------------------------------------------------------------*/
 int
-clear_output_target( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
-
-	if ( strcmp( state, ">:" ) &&
-	     strcmp( state, ">:_" ) &&
-	     strcmp( state, ">: \\" ) &&
-	     strcmp( state, ">: %" ) &&
-	     strcmp( state, ">: %variable" ) &&
-	     strcmp( state, ">: %[_]" ) &&
-	     strcmp( state, ">: %[_].$(_)" ) &&
-	     strcmp( state, ">: %[_].narrative(_)" ))
-	{
-		return 0;
-	}
-
-	if ( context->output.redirected ) {
-		pop_output( context );
-	}
-	return 0;
-}
-
-int
 set_output_target( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	if ( !strcmp( state, "> .." ) ) {
+	if ( !strcmp( state, ": identifier" ) ) {
+#if 1
+		push_output( "^^", NULL, StringOutput, context );
+		OutputVA *output = context->output.stack->ptr;
+		output->variable.identifier = context->identifier.id[ 0 ].ptr;
+		context->identifier.id[ 0 ].ptr = NULL;
+#else
+		char *variable = context->identifier.id[ 0 ].ptr;
+		context->identifier.id[ 0 ].prt = NULL;
+		push_output( "^^", variable, StringOutput, context );
+#endif
+	}
+	else if ( !strcmp( state, ">@session" ) ) {
+		char *path = context->identifier.id[ 1 ].ptr;
+		push_output( "^^", path, SessionOutput, context );
+	}
+	else if ( !strcmp( state, "> .." ) ) {
 		push_output( "^^", &context->io.client, ClientOutput, context );
-		context->output.redirected = 1;
+	}
+	return 0;
+}
+
+int
+output_pipe( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return event;
+	if ( !context->output.redirected )
+		return output( Error, "pipe format not supported" );
+
+	OutputVA *output = context->output.stack->ptr;
+	int *fd = &output->ptr.socket;
+	pop_output( context, 0 );
+	push_input( "", fd, SessionPipeInput, context );
+
+	return event;
+}
+
+int
+output_pipe_in( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+	if ( !context->output.redirected )
+		return output( Error, "pipe format not supported - use ':<' instead" );
+
+	OutputVA *output = context->output.stack->ptr;
+	int *fd = &output->ptr.socket;
+	pop_output( context, 0 );
+	push_input( "", fd, SessionInput, context );
+
+	return 0;
+}
+
+int
+output_pipe_out( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+	if ( !context->output.redirected )
+		return output( Error, "pipe format not supported" );
+
+	OutputVA *output = context->output.stack->ptr;
+	int *fd = &output->ptr.socket;
+	pop_output( context, 0 );
+	push_input( "^^", fd, SessionPipeOutInput, context );
+
+	return 0;
+}
+
+int
+clear_output_target( char *state, int event, char **next_state, _context *context )
+{
+	context->output.marked = 0;
+
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+	if ( !context->output.redirected )
+		return 0;
+
+	OutputVA *output = context->output.stack->ptr;
+	switch ( output->mode ) {
+	case SessionOutput:
+		pop_output( context, 1 );
+		break;
+	case ClientOutput:
+		pop_output( context, 0 );
+		break;
+	case StringOutput:
+		; char *identifier = output->variable.identifier;
+		pop_output( context, 0 );
+		if (( context->output.slist )) {
+			assign_variable( &identifier, context->output.slist, StringVariable, context );
+			context->output.slist = NULL;
+		} else {
+			free( identifier );
+		}
+		break;
 	}
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	session_cmd
+	handle_iam
 ---------------------------------------------------------------------------*/
 int
-session_cmd( char *state, int event, char **next_state, _context *context )
+handle_iam( char *state, int event, char **next_state, _context *context )
 {
+	if ( !context->control.operator )
+		return output( Warning, "iam notification: wrong address" );
+
 	char *path = context->identifier.id[ 1 ].ptr;
-	char *query = context->identifier.id[ 2 ].ptr;
+	char *pid = context->identifier.id[ 2 ].ptr;
 
-	int do_pipe = 0;
-	bgn_
-	in_( ">@pid:_" )
-	in_( ">@pid:_ | >:" ) do_pipe = 1;
-	in_other
-		return output( Debug, "***** Error: lost in session_cmd()" );
-	end
-	char *q = NULL;
-	asprintf( &q, "%s\n", query );
+	registryEntry *entry = lookupByName( context->operator.sessions, path );
+	if ( entry == NULL )
+		return outputf( Warning, "iam notification: path unknown: '%s'", path );
 
-	// open connection
-	// ---------------
-	int socket_fd = io_connect( SessionConnection, path );
-	if ( socket_fd < 0 ) return socket_fd;
+	SessionVA *session = entry->value;
+	if ( session->pid != atoi( pid ) )
+		return outputf( Warning, "iam notification: '%s': unable to authenticate - ignoring", path );
 
-	// send the query
-	// --------------
-	int remainder = 0, length = strlen( q );
-	io_write( socket_fd, q, length, &remainder );
-	io_flush( socket_fd, &remainder, 1 );
+	if ( session->genitor >= 0 ) {
+		char *news;
+		asprintf( &news, "< operator >: \\Nsession:%s !!", path );
 
-	// read and output the results
-	// ---------------------------
-	char *buffer = context->io.input.buffer.ptr;
-	while (( length = io_read( socket_fd, buffer, &remainder )))
-	{
-		// length here includes terminating null character
-		if ( do_pipe ) write( STDOUT_FILENO, buffer, length-1 );
+		int remainder = 0, length = strlen( news );
+		io_write( session->genitor, news, length, &remainder );
+		io_flush( session->genitor, &remainder, context );
+		io_close( IO_CALL, session->genitor, "" );
+
+		free( news );
+		session->genitor = -1;
+	}
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	scheme_op
+---------------------------------------------------------------------------*/
+static int
+create_session( char *path, _context *context )
+{
+	// verify that a session with that name does not already exists
+	registryEntry *entry = lookupByName( context->operator.sessions, path );
+	if ( entry != NULL ) {
+#ifdef LATER
+		// must notify genitor
+#endif
+		return outputf( Error, "session %s already exists - cannot create", path );
 	}
 
-	// close connection
-	// ----------------
-        close( socket_fd );
+#ifdef DO_LATER
+	// create session directory under /Library/WebServer/Documents/consensus/
+#endif
 
-	free( q );
+	SessionVA *session = calloc( 1, sizeof(SessionVA) );
+	session->path = path;
+	session->operator = getpid();
+	session->genitor = context->io.client;
+	session->pid = fork();
+	if ( !session->pid ) {
+		// child session will call io_init() and register itself
+		char *cn = "/Library/WebServer/CGI-Executables/consensus";
+#ifdef DO_LATER
+		// additional optional arguments: "-hcn", filename, "-story", filename
+#endif
+		execlp( cn, cn, "-msession", path, NULL );
+		// execlp should not return at all, but in case:
+		// here we are in the child process. We must send back a message to operator.
+		// but actually operator should catch exit() with SIGCHLD.
+		outputf( Error, "execlp: failure to create session %s", path );
+		exit( -1 );
+	}
+	registerByName( &context->operator.sessions, session->path, session );
+	registerByIndex( &context->operator.pid, session->pid, session );
+	return 0;
+}
+
+int
+scheme_op( char *state, int event, char **next_state, _context *context )
+{
+	char *scheme = context->expression.scheme;
+	if ( !strcmp( scheme, "session" ) )
+	{
+		if ( !context->control.operator )
+			return output( Error, "session operation not authorized" );
+		else if ( context->expression.mode != InstantiateMode )
+			return outputf( Warning, "session operation not supported - ignoring", scheme );
+
+		if ( !context_check( 0, 0, ExecutionMode ) )
+			return 0;
+
+		switch ( context->expression.mode ) {
+		case InstantiateMode:
+			; char *path = context->identifier.id[ 1 ].ptr;
+			context->identifier.id[ 1 ].ptr = NULL;
+			event = create_session( path, context );
+			if ( event ) free( path );
+			break;
+		default:
+			break;
+		}
+	}
+	else outputf( Warning, "%s scheme operation not supported - ignoring", scheme );
 	return 0;
 }
 

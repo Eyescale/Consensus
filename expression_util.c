@@ -411,6 +411,10 @@ instantiable( Expression *expression, _context *context )
 			case EntityVariable:
 			case LiteralVariable:
 				break;
+			case StringVariable:
+				outputf( Error, "'%%%s' is a string variable - "
+					"not allowed in expressions", identifier );
+				return 0;
 			case NarrativeVariable:
 				outputf( Error, "'%%%s' is a narrative variable - "
 					"not allowed in expressions", identifier );

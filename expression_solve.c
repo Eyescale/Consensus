@@ -372,6 +372,9 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				if ( last_results == NULL ) return 0;
 				*sub_results = last_results;
 				break;
+			case StringVariable:
+				return outputf( Error, "'%%%s' is a string variable - "
+					"not allowed in expressions", identifier );
 			case NarrativeVariable:
 				return outputf( Error, "'%%%s' is a narrative variable - "
 					"not allowed in expressions", identifier );

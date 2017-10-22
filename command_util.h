@@ -16,11 +16,15 @@ _action read_va;
 _action input_command;
 _action input_story;
 _action output_story;
-_action clear_output_target;
 _action set_output_target;
+_action output_pipe;
+_action output_pipe_in;
+_action output_pipe_out;
+_action clear_output_target;
 _action set_assignment_mode;
 _action open_stream;
-_action session_cmd;
+_action scheme_op;
+_action handle_iam;
 
 /*---------------------------------------------------------------------------
 	utilities	- public
