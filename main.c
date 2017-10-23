@@ -134,8 +134,8 @@ main( int argc, char *argv[] )
 	context->control.cgim = clarg( argc, argv, "-mcgi" );
 	context->control.prompt = ttyu( context );
 	context->control.operator = clarg( argc, argv, "-moperator" );
-	context->session.identifier = clargv( argc, argv, "-msession" );
-	context->control.session = ((context->session.identifier) ? 1 : 0);
+	context->session.path = clargv( argc, argv, "-msession" );
+	context->control.session = ((context->session.path) ? 1 : 0);
 
 	// initialize CNDB data
 	// --------------------

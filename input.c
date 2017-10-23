@@ -175,7 +175,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		// no break
 	case ClientInput:
 	case SessionInput:
-	case SessionPipeOutInput:
+	case SessionPipeInputOut:
 		input->client = *(int *) src;
 		input->ptr.string = context->io.input.buffer.ptr;
 		input->ptr.string[ 0 ] = (char) 0;
@@ -258,11 +258,11 @@ pop_input( char *state, int event, char **next_state, _context *context )
 		close( input->ptr.fd );
 		free( input->identifier );
 		break;
-	case SessionPipeOutInput:
-		io_close ( IO_CALL, input->ptr.fd, "" );
+	case SessionPipeInputOut:
+		io_close ( IO_QUERY, input->ptr.fd, "" );
 		break;
 	case SessionPipeInput:
-		io_close ( IO_CALL, input->ptr.fd, "" );
+		io_close ( IO_QUERY, input->ptr.fd, "" );
 		slist_close( &context->record.instructions, &context->record.string );
 		reorderListItem( &context->record.instructions );
 		assign_variator_variable( context->record.instructions, StringVariable, context );
@@ -480,14 +480,6 @@ sgetc( InputVA *input, _context *context )
 				event = (int) (( char *) input->position++ )[ 0 ];
 			}
 			break;
-			; int length = io_read( input->client, input->ptr.string, &input->remainder );
-			if ( !length ) {
-				event = EOF;
-			} else {
-				output( Text, input->ptr.string );
-				event = 0;
-			}
-			break;
 		case InstructionBlock:
 			context->input.instruction = context->input.instruction->next;
 			if ( context->input.instruction != NULL ) {
@@ -566,7 +558,7 @@ input( char *state, int event, char **next_state, _context *context )
 				event = sgetc( input, context );
 				if ( !event ) event = EOF;
 				break;
-			case SessionPipeOutInput:
+			case SessionPipeInputOut:
 				event = ( io_read( input->client, input->ptr.string, &input->remainder ) ?
 					output( Text, input->ptr.string ) : EOF );
 				break;

@@ -17,7 +17,7 @@ _action input_command;
 _action input_story;
 _action output_story;
 _action set_output_target;
-_action output_pipe;
+_action output_backfeed;
 _action output_pipe_in;
 _action output_pipe_out;
 _action clear_output_target;

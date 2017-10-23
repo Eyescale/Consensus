@@ -188,20 +188,20 @@ static int
 reset_flags( _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	stack->expression.flags.not = 0;
-	stack->expression.flags.active = 0;
-	stack->expression.flags.inactive = 0;
+	stack->expression.flag.not = 0;
+	stack->expression.flag.active = 0;
+	stack->expression.flag.inactive = 0;
 	return 0;
 }
 static void
 set_flags( StackVA *stack, Expression *expression, int count )
 {
-	expression->sub[ count ].result.not = stack->expression.flags.not;
-	expression->sub[ count ].result.active = stack->expression.flags.active;
-	expression->sub[ count ].result.inactive = stack->expression.flags.inactive;
-	stack->expression.flags.not = 0;
-	stack->expression.flags.active = 0;
-	stack->expression.flags.inactive = 0;
+	expression->sub[ count ].result.not = stack->expression.flag.not;
+	expression->sub[ count ].result.active = stack->expression.flag.active;
+	expression->sub[ count ].result.inactive = stack->expression.flag.inactive;
+	stack->expression.flag.not = 0;
+	stack->expression.flag.active = 0;
+	stack->expression.flag.inactive = 0;
 }
 
 static int
@@ -209,11 +209,11 @@ set_sub_mark( int count, int event, _context *context )
 {
 	if (( count == 3 ) && ( event == ':' )) {
 		StackVA *stack = (StackVA*) context->control.stack->ptr;
-		if ( stack->expression.flags.not )
+		if ( stack->expression.flag.not )
 			return output( Error, "extraneous '~' in expression" );
-		if ( stack->expression.flags.active )
+		if ( stack->expression.flag.active )
 			return output( Error, "extraneous '*' in expression" );
-		if ( stack->expression.flags.inactive )
+		if ( stack->expression.flag.inactive )
 			return output( Error, "extraneous '_' in expression" );
 	}
 	if ( context->expression.marked ) {
@@ -255,13 +255,13 @@ set_sub_any( int count, int event, _context *context )
 
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
 	Expression *expression = stack->expression.ptr;
-	if ( stack->expression.flags.not ) {
+	if ( stack->expression.flag.not ) {
 		expression->sub[ count ].result.identifier.type = NullIdentifier;
 		expression->sub[ count ].result.any = 0;
 		expression->sub[ count ].result.none = 0;
-		stack->expression.flags.not = 0;
-		stack->expression.flags.active = 0;
-		if ( stack->expression.flags.inactive ) {
+		stack->expression.flag.not = 0;
+		stack->expression.flag.active = 0;
+		if ( stack->expression.flag.inactive ) {
 			return output( Error, "(nil) is always active" );
 		}
 	} else {
@@ -570,36 +570,36 @@ static int
 set_flag_not( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
-	if ( stack->expression.flags.not ) {
+	if ( stack->expression.flag.not ) {
 		return output( Error, "redundant '~' in expression" );
 	}
-	stack->expression.flags.not = 1;
+	stack->expression.flag.not = 1;
 	return 0;
 }
 static int
 set_flag_active( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
-	if ( stack->expression.flags.not ) {
+	if ( stack->expression.flag.not ) {
 		return output( Error, "'*' must precede '~' in expression" );
 	}
-	if ( stack->expression.flags.inactive ) {
+	if ( stack->expression.flag.inactive ) {
 		return output( Error, "conflicting '_' and '*' in expression" );
 	}
-	stack->expression.flags.active = 1;
+	stack->expression.flag.active = 1;
 	return 0;
 }
 static int
 set_flag_inactive( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->control.stack->ptr;
-	if ( stack->expression.flags.not ) {
+	if ( stack->expression.flag.not ) {
 		return output( Error, "'_' must precede '~' in expression" );
 	}
-	if ( stack->expression.flags.active ) {
+	if ( stack->expression.flag.active ) {
 		return output( Error, "conflicting '*' and '_' in expression" );
 	}
-	stack->expression.flags.inactive = 1;
+	stack->expression.flag.inactive = 1;
 	return 0;
 }
 
@@ -1126,9 +1126,9 @@ parser_init( char *state, int event, char **next_state, _context *context )
 		expression->sub[ i ].result.none = 1;	// none meaning: none specified
 
 	stack->expression.ptr = expression;
-	stack->expression.flags.not = 0;
-	stack->expression.flags.active = 0;
-	stack->expression.flags.inactive = 0;
+	stack->expression.flag.not = 0;
+	stack->expression.flag.active = 0;
+	stack->expression.flag.inactive = 0;
 
 	return event;
 

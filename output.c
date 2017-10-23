@@ -133,28 +133,29 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 {
 	OutputVA *output = (OutputVA *) calloc( 1, sizeof(OutputVA) );
 	output->level = context->control.level;
-	output->restore.redirected = context->output.redirected;
+	output->restore.flag.redirected = context->output.flag.redirected;
+	output->restore.flag.query = context->output.flag.query;
 	output->mode = type;
 	switch ( type ) {
 	case SessionOutput:
-		; char *path = dst;
-		output->ptr.socket = io_call( path, context );
+		output->ptr.socket = io_query((char *) dst, context );
 		if ( output->ptr.socket < 0 ) {
 			free( output );
-			return outputf( Error, "'%s': could not open connection", path );
+			return outputf( Error, "'%s': could not open connection", (char *) dst );
 		}
-		context->output.redirected = 1;
+		context->output.flag.query = 1;
+		context->output.flag.redirected = 1;
 		break;
 	case ClientOutput:
 		output->ptr.socket = *(int *) dst;
-		context->output.redirected = 1;
+		context->output.flag.redirected = 1;
 		break;
 	case StringOutput:
 		output->variable.identifier = dst;
 		for ( listItem *i=context->output.slist; i!=NULL; i=i->next )
 			free( i->ptr );
 		freeListItem( &context->output.slist );
-		context->output.redirected = 1;
+		context->output.flag.redirected = 1;
 		break;
 	}
 	addItem( &context->output.stack, output );
@@ -168,11 +169,12 @@ int
 pop_output( _context *context, int terminate )
 {
 	OutputVA *output = (OutputVA *) context->output.stack->ptr;
-	context->output.redirected = output->restore.redirected;
+	context->output.flag.redirected = output->restore.flag.redirected;
+	context->output.flag.query = output->restore.flag.query;
 	switch ( output->mode ) {
 	case SessionOutput:
 		io_flush( output->ptr.socket, &output->remainder, context );
-		if ( terminate ) io_close( IO_CALL, output->ptr.socket, "" );
+		if ( terminate ) io_close( IO_QUERY, output->ptr.socket, "" );
 		break;
 	case ClientOutput:
 		io_flush( output->ptr.socket, &output->remainder, context );
@@ -687,7 +689,7 @@ output_variable_value( char *state, int event, char **next_state, _context *cont
 	{
 		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
-		context->output.marked = 1;
+		context->output.flag.marked = 1;
 	}
 	return event;
 }
@@ -709,7 +711,7 @@ output_variator_value( char *state, int event, char **next_state, _context *cont
 	{
 		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
-		context->output.marked = 1;
+		context->output.flag.marked = 1;
 	}
 	return event;
 }
@@ -735,7 +737,7 @@ output_results( char *state, int event, char **next_state, _context *context )
 		default:
 			output_entity_variable( context->expression.results, context->expression.ptr );
 		}
-		context->output.marked = 1;
+		context->output.flag.marked = 1;
 	}
 	return event;
 }
@@ -809,7 +811,7 @@ output_html( char *state, int event, char **next_state, _context *context )
 #else
 		cn_read( identifier, HCNFileInput, base, 0 );
 #endif
-		context->output.marked = 1;
+		context->output.flag.marked = 1;
 	}
 	return event;
 }
@@ -835,7 +837,7 @@ output_va( char *state, int event, char **next_state, _context *context )
 
 	if (( context->expression.results )) {
 		output_va_( va_name, event, context );
-		context->output.marked = 1;
+		context->output.flag.marked = 1;
 	}
 	return event;
 }
@@ -851,7 +853,7 @@ output_mod( char *state, int event, char **next_state, _context *context )
 
 	context->error.flush_output = ( event != '\n' );
 	output( Text, "%" );
-	context->output.marked = 1;
+	context->output.flag.marked = 1;
 	return event;
 }
 
@@ -862,21 +864,20 @@ int
 output_char( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return (( event == '\n' ) ? event : 0 );
 
 	switch ( event ) {
-	case '|':
-		event = '\n';
 	case ' ':
 	case '\t':
 	case '\n':
-		if ( !context->output.marked ) break;
+	case '|':
+		if ( !context->output.flag.marked ) break;
 	default:
 		context->error.flush_output = ( event != '\n' );
-		outputf( Text, "%c", event );
-		context->output.marked = 1;
+		outputf( Text, "%c", (( event == '|' ) ? '\n' : event ) );
+		context->output.flag.marked = 1;
 	}
-	return 0;
+	return (( event == '\n' ) ? event : 0 );
 }
 
 /*---------------------------------------------------------------------------
@@ -886,7 +887,7 @@ int
 output_special_char( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return (( event == 'n' ) ? '\n' : 0 );
 
 	context->error.flush_output = ( event != '\n' );
 	switch ( event ) {
@@ -896,7 +897,7 @@ output_special_char( char *state, int event, char **next_state, _context *contex
 	default:
 		outputf( Text, "%c", event );
 	}
-	context->output.marked = ( event != 'n' );
+	context->output.flag.marked = ( event != 'n' );
 	return (( event == 'n' ) ? '\n' : 0 );
 }
 
@@ -1115,7 +1116,7 @@ narrative_output( Narrative *narrative, _context *context )
 	backup.mode = context->narrative.mode.output;
 	context->narrative.mode.output = 1;
 
-	if (( context->input.stack == NULL ) && !context->output.redirected )
+	if (( context->input.stack == NULL ) && !context->output.flag.redirected )
 	{
 		for ( int i=0; i<75; i++ ) fprintf( stderr, "-" );
 		fprintf( stderr, "\n" );
@@ -1153,7 +1154,7 @@ output_narrative( char *state, int event, char **next_state, _context *context )
 		marked = 1;
 		narrative_output((Narrative *) entry->value, context );
 	}
-	context->output.marked = marked;
+	context->output.flag.marked = marked;
 	return event;
 }
 

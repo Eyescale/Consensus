@@ -432,56 +432,54 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 	}
 	else if ( !strcmp( state, "> .." ) ) {
 		push_output( "^^", &context->io.client, ClientOutput, context );
+		context->io.sync = 1;
 	}
 	return 0;
 }
 
 int
-output_pipe( char *state, int event, char **next_state, _context *context )
+output_backfeed( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return event;
-	if ( !context->output.redirected )
+		return 0;
+
+	if ( context->output.flag.query && !context->output.flag.marked ) {
+		context->io.sync = 1;
+		output( Text, ">..:" );
+	} else {
+		return output_char( state, event, next_state, context );
+	}
+	return 0;
+}
+
+static int
+output_pipe( InputType into, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+	if ( !context->output.flag.redirected )
 		return output( Error, "pipe format not supported" );
 
 	OutputVA *output = context->output.stack->ptr;
 	int *fd = &output->ptr.socket;
 	pop_output( context, 0 );
-	push_input( "", fd, SessionPipeInput, context );
+	context->io.sync = 0;
+	context->output.flag.marked = 0;
+	push_input( "", fd, into, context );
 
-	return event;
+	return 0;
 }
 
 int
 output_pipe_in( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
-	if ( !context->output.redirected )
-		return output( Error, "pipe format not supported - use ':<' instead" );
-
-	OutputVA *output = context->output.stack->ptr;
-	int *fd = &output->ptr.socket;
-	pop_output( context, 0 );
-	push_input( "", fd, SessionInput, context );
-
-	return 0;
+	return output_pipe( SessionInput, context );
 }
 
 int
 output_pipe_out( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
-	if ( !context->output.redirected )
-		return output( Error, "pipe format not supported" );
-
-	OutputVA *output = context->output.stack->ptr;
-	int *fd = &output->ptr.socket;
-	pop_output( context, 0 );
-	push_input( "^^", fd, SessionPipeOutInput, context );
-
-	return 0;
+	return output_pipe( SessionPipeInputOut, context );
 }
 
 int
@@ -490,8 +488,8 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	context->output.marked = 0;
-	if ( !context->output.redirected )
+	context->output.flag.marked = 0;
+	if ( !context->output.flag.redirected )
 		return 0;
 
 	OutputVA *output = context->output.stack->ptr;
@@ -510,42 +508,7 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 }
 
 /*---------------------------------------------------------------------------
-	handle_iam
----------------------------------------------------------------------------*/
-int
-handle_iam( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context->control.operator )
-		return output( Warning, "iam notification: wrong address" );
-
-	char *path = context->identifier.id[ 1 ].ptr;
-	char *pid = context->identifier.id[ 2 ].ptr;
-
-	registryEntry *entry = lookupByName( context->operator.sessions, path );
-	if ( entry == NULL )
-		return outputf( Warning, "iam notification: path unknown: '%s'", path );
-
-	SessionVA *session = entry->value;
-	if ( session->pid != atoi( pid ) )
-		return outputf( Warning, "iam notification: '%s': unable to authenticate - ignoring", path );
-
-	if ( session->genitor >= 0 ) {
-		char *news;
-		asprintf( &news, "< operator >: \\Nsession:%s !!", path );
-
-		int remainder = 0, length = strlen( news );
-		io_write( session->genitor, news, length, &remainder );
-		io_flush( session->genitor, &remainder, context );
-		io_close( IO_CALL, session->genitor, "" );
-
-		free( news );
-		session->genitor = -1;
-	}
-	return 0;
-}
-
-/*---------------------------------------------------------------------------
-	scheme_op
+	create_session
 ---------------------------------------------------------------------------*/
 static int
 create_session( char *path, _context *context )
@@ -566,15 +529,14 @@ create_session( char *path, _context *context )
 	SessionVA *session = calloc( 1, sizeof(SessionVA) );
 	session->path = path;
 	session->operator = getpid();
-	session->genitor = context->io.client;
+	session->genitor.query = context->io.client;
 	session->pid = fork();
 	if ( !session->pid ) {
 		// child session will call io_init() and register itself
-		char *cn = "/Library/WebServer/CGI-Executables/consensus";
 #ifdef DO_LATER
 		// additional optional arguments: "-hcn", filename, "-story", filename
 #endif
-		execlp( cn, cn, "-msession", path, NULL );
+		execlp( CN_EXE_PATH, CN_EXE_PATH, "-msession", path, NULL );
 		// execlp should not return at all, but in case:
 		// here we are in the child process. We must send back a message to operator.
 		// but actually operator should catch exit() with SIGCHLD.
@@ -583,9 +545,52 @@ create_session( char *path, _context *context )
 	}
 	registerByName( &context->operator.sessions, session->path, session );
 	registerByIndex( &context->operator.pid, session->pid, session );
+
+	// leave genitor hanging until session's iam notification
+	if ( context->io.client )
+		context->io.sync = 0;
 	return 0;
 }
 
+/*---------------------------------------------------------------------------
+	handle_iam
+---------------------------------------------------------------------------*/
+int
+handle_iam( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context->control.operator )
+		return output( Warning, "iam event: wrong address" );
+
+	char *path = context->identifier.id[ 1 ].ptr;
+	char *pid = context->identifier.id[ 2 ].ptr;
+
+	registryEntry *entry = lookupByName( context->operator.sessions, path );
+	if ( entry == NULL )
+		return outputf( Warning, "iam notification: path unknown: '%s'", path );
+
+	SessionVA *session = entry->value;
+	if ( session->pid != atoi( pid ) )
+		return outputf( Warning, "iam event: unable to authenticate: '%s' - ignoring", path );
+
+	if ( session->genitor.query > 0 )
+	{
+		char *news;
+		asprintf( &news, "< operator >: session:%s !!", path );
+
+		int fd = session->genitor.query, remainder = 0, length = strlen( news );
+		io_write( fd, news, length, &remainder );
+		io_flush( fd, &remainder, context );
+		io_close( IO_QUERY, fd, "" );
+		session->genitor.query = 0;
+
+		free( news );
+	}
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	scheme_op
+---------------------------------------------------------------------------*/
 int
 scheme_op( char *state, int event, char **next_state, _context *context )
 {

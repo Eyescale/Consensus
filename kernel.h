@@ -1,7 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-#define IO_BUFFER_MAX_SIZE 1024
+#include "config.h"
 
 /*---------------------------------------------------------------------------
 	types
@@ -36,7 +36,7 @@ typedef enum {
 	FileInput,
 	ClientInput,
 	SessionInput,
-	SessionPipeOutInput,
+	SessionPipeInputOut,
 	SessionPipeInput,
 	InstructionBlock,
 	InstructionOne,
@@ -129,7 +129,9 @@ AssignmentMode;
 typedef struct {
 	char *path;
 	pid_t pid;
-	int genitor;	// socket connection (transient)
+	struct {
+		int query; // socket connection (transient)
+	} genitor;
 	pid_t operator;
 }
 SessionVA;
@@ -276,7 +278,10 @@ typedef struct {
 	int level;
 	int mode;
 	struct {
-		unsigned int redirected : 1;
+		struct {
+			unsigned int redirected : 1;
+			unsigned int query : 1;
+		} flag;
 	} restore;
 	struct {
 		char *identifier;
@@ -319,7 +324,7 @@ typedef struct {
 			unsigned int not : 1;
 			unsigned int active : 1;
 			unsigned int inactive : 1;
-		} flags;
+		} flag;
 	} expression;
 	struct {
 		struct {
@@ -448,8 +453,11 @@ typedef struct {
 	struct {
 		listItem *stack;	// current OutputVA
 		AssignmentMode mode;
-		int redirected;
-		int marked;
+		struct {
+			unsigned int redirected : 1;
+			unsigned int marked : 1;
+			unsigned int query : 1;
+		} flag;
 		listItem *slist;
 		IdentifierVA string;
 	} output;
@@ -465,12 +473,13 @@ typedef struct {
 				char ptr[ IO_BUFFER_MAX_SIZE ];
 			} buffer;
 		} input, output;
+		int sync;
 	} io;
 	struct {
 		Registry sessions, pid;
 	} operator;
 	struct {
-		char *identifier;
+		char *path;
 	} session;
 }
 _context;

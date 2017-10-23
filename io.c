@@ -24,14 +24,6 @@
 
 // #define DEBUG
 
-#define IO_OPERATOR_PATH	"/tmp/cn-operator.io"
-#define IO_SERVICE_PATH		"/tmp/cn-service.%d.io"
-#define IO_BULLETIN_PATH	"/tmp/cn-bulletin.%d.io"
-#define IO_PEER_PATH		"/tmp/cn-service.%s.io"
-
-#define IO_PORT	1
-#define IO_CALL	2
-
 /*---------------------------------------------------------------------------
 	io_open, io_close
 ---------------------------------------------------------------------------*/
@@ -49,7 +41,7 @@ io_open( int type, char *format, ... )
 
 	socket_fd = socket( PF_LOCAL, SOCK_STREAM, 0 );
 	switch ( type ) {
-	case IO_CALL:
+	case IO_QUERY:
 		connect( socket_fd, (struct sockaddr *) &socket_name, SUN_LEN(&socket_name) );
 		break;
 	case IO_PORT:
@@ -66,14 +58,15 @@ io_open( int type, char *format, ... )
 void
 io_close( int type, int socket_fd, char *format, ... )
 {
+	_context *context = CN.context;
 	switch ( type ) {
-	case IO_CALL:
-#ifdef SYNC_CALL
-		; int remainder = 0;
-		char *buffer = CN.context->io.input.buffer.ptr;
-		while ( io_read( socket_fd, buffer, &remainder ) )
-			;
-#endif
+	case IO_QUERY:
+		if ( context->io.sync ) {
+			int remainder = 0;
+			char *buffer = context->io.input.buffer.ptr;
+			while ( io_read( socket_fd, buffer, &remainder ) )
+				;
+		}
 		close( socket_fd );
 		break;
 	case IO_PORT:
@@ -118,23 +111,8 @@ io_init( _context *context )
 		context->io.bulletin = io_open( IO_PORT, IO_BULLETIN_PATH, getpid() );
 		context->io.service = io_open( IO_PORT, IO_SERVICE_PATH, getpid() );
 
-		// notify parent of existence
-#ifdef DO_LATER
-		cn_dof( ">@ operator: < session:%s >: %d @", context->session.identifier, getpid() );
-			would require %.$( identifier ), %.$( pid )
-#else
-		int socket_fd = io_open( IO_CALL, IO_BULLETIN_PATH, getppid() );
-
-		char *iam;
-		asprintf( &iam, "< session:%s >: %d @", context->session.identifier, getpid() );
-
-		int remainder = 0, length = strlen( iam );
-		io_write( socket_fd, iam, length, &remainder );
-		io_flush( socket_fd, &remainder, context );
-
-		free( iam );
-		io_close( IO_CALL, socket_fd, "" );
-#endif
+		// send iam notification
+		cn_dof( ">@ operator:\\< session:%s >: %d @", context->session.path, getpid() );
 	}
 	else
 	{
@@ -229,7 +207,7 @@ io_inform( _context *context )
 
 	// notify changes to operator
 #ifdef DO_LATER
-	cn_dof( ">@ operator: < session: %s @ %d >: %s", context->session.identifier, getpid(), change(s) );
+	cn_dof( ">@ operator:\\< session: %s @ %d >: %s", context->session.path, getpid(), change(s) );
 	Q: why not inform subscribers directly ? Right now we leave the dispatching to the operator
 #endif	// DO_LATER
 
@@ -249,9 +227,12 @@ io_inform( _context *context )
 int
 io_accept( int fd, _context *context )
 {
+	struct { int sync; } backup;
+	backup.sync = context->io.sync;
+	context->io.sync = 0;
+
 	struct sockaddr_un client_name;
 	socklen_t client_name_len;
-
 	int socket_fd = accept( fd, (struct sockaddr *) &client_name, &client_name_len );
 
 	context->io.client = socket_fd;
@@ -261,18 +242,19 @@ io_accept( int fd, _context *context )
 	cn_read( &socket_fd, ClientInput, base, 0 );
 	pop( base, 0, NULL, context );
 
-#ifdef SYNC_CALL
-	// send closing packet
-	int size = 0;
-	write( socket_fd, &size, sizeof( size ));
-#endif
-
+	// send closing packet if required
+	if ( context->io.sync ) {
+		int size = 0;
+		write( socket_fd, &size, sizeof( size ));
+	}
 	close( socket_fd );
+
+	context->io.sync = backup.sync;
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	io_call
+	io_query
 ---------------------------------------------------------------------------*/
 static int
 isanumber( char *string )
@@ -285,76 +267,34 @@ isanumber( char *string )
 }
 
 int
-io_call( char *path, _context *context )
+io_query( char *path, _context *context )
 {
 	if ( isanumber( path ) ) {
 		if ( atoi( path ) == getpid() )
 			return outputf( Error, ">@ %s: short-circuit", path );
 
-		return io_open( IO_CALL, IO_PEER_PATH, path );
+		return io_open( IO_QUERY, IO_PEER_PATH, path );
 	}
 	else if ( !strcmp( path, "operator" ) ) {
 		if ( context->control.operator )
 			return output( Error, ">@ operator: short-circuit" );
 
 		if ( context->control.session )
-			return io_open( IO_CALL, IO_SERVICE_PATH, getppid() );
+			return io_open( IO_QUERY, IO_SERVICE_PATH, getppid() );
 		else
-			return io_open( IO_CALL, IO_OPERATOR_PATH );
+			return io_open( IO_QUERY, IO_OPERATOR_PATH );
 	}
 	else	// target is a peer session
 	{
-		// query pid of the session associated with path from operator
-#ifdef DO_LATER
-		cn_dof( ">@ %%[ session:%s ].$( pid )", path );
-		// the response should be in the variator variable
-		return io_open( IO_CALL, IO_PEER_PATH, ??? );
-#else
-		int socket_fd;
-		if ( context->control.session )
-			socket_fd = io_open( IO_CALL, IO_SERVICE_PATH, getppid() );
-		else
-			socket_fd = io_open( IO_CALL, IO_OPERATOR_PATH );
+		// query operator the pid of the session associated with path
+		context->io.sync = 1;
+		cn_dof( ">@ operator:< session:%s", path );
 
-		char *q;
-		asprintf( &q, ">..:%%[ session:%s ].$( pid )", path );
-		int remainder = 0, length = strlen( q );
-		io_write( socket_fd, q, length, &remainder );
-		io_flush( socket_fd, &remainder, context );
-
-		// read the response
-
-		IdentifierVA *pid = calloc( 1, sizeof(IdentifierVA) );
-		string_start( pid, 0 );
-		char *buffer = context->io.input.buffer.ptr;
-		do {
-			length = io_read( socket_fd, buffer, &remainder ) - 1;
-			if ( !length ) {
-				string_finish( pid, 0 );
-				free( pid->ptr );
-				free( pid );
-				io_close( IO_CALL, socket_fd, "" );
-				return outputf( Error, "session unknown: %s", path );
-			}
-			for ( int i=0; i<length; i++ )
-				string_append( pid, buffer[ i ] );
-		}
-		while ( remainder );
-		string_finish( pid, 1 );
-
-		// wait for operator's closing packet
-		while ( io_read( socket_fd, buffer, &remainder ) )
-			;
-		io_close( IO_CALL, socket_fd, "" );
-
-		// set socket path according to response pid
-
-		socket_fd = io_open( IO_CALL, IO_PEER_PATH, pid->ptr );
-		free( pid->ptr );
-		free( pid );
-		return socket_fd;
-
-#endif	// DO_LATER
+		char *pid = context->identifier.id[ 0 ].ptr;
+		if ( atoi( pid ) == getpid() )
+			return outputf( Error, ">@ %s: short-circuit", path );
+		
+		return io_open( IO_QUERY, IO_PEER_PATH, pid );
 	}
 }
 
