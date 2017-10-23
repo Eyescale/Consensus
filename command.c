@@ -484,6 +484,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 		bgn_
 		in_( base ) bgn_
 			on_( '\n' )	do_( nop, same )
+			on_( '|' )	do_( service_sync, same )
 			on_( ':' )	do_( nop, ":" )
 			on_( '>' )	do_( nop, ">" )
 			on_( '<' )	do_( nop, "<" )
@@ -714,7 +715,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( ">:_ |" ) bgn_
 				on_( ':' )	do_( nop, ">:_ | :" );
 				on_( '>' )	do_( nop, ">:_ | >" );
-				on_other	do_( nothing, out )
+				on_other	do_( output_sync, out )
 				end
 				in_( ">:_ | :" ) bgn_
 					on_( '<' )	do_( output_pipe_in, ">:_ | :<" )

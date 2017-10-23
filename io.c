@@ -61,11 +61,30 @@ io_close( int type, int socket_fd, char *format, ... )
 	_context *context = CN.context;
 	switch ( type ) {
 	case IO_QUERY:
-		if ( context->io.sync ) {
+		if ( context->io.query.sync ) {
+#if 0
 			int remainder = 0;
 			char *buffer = context->io.input.buffer.ptr;
 			while ( io_read( socket_fd, buffer, &remainder ) )
 				;
+#else
+			int remainder = 0;
+			char *buffer = context->io.input.buffer.ptr;
+			listItem **results = &context->io.query.results;
+			for ( listItem *i = *results; i!=NULL; i=i->next )
+				free( i->ptr );
+			freeListItem( results );
+			IdentifierVA dst;
+			bzero( &dst, sizeof( IdentifierVA ) );
+			while ( io_read( socket_fd, buffer, &remainder ) )
+				for ( char *ptr = buffer; *ptr; ptr++ )
+					slist_append( results, &dst, *ptr, 1 );
+			slist_close( results, &dst );
+			if (( *results ))
+				for ( listItem *i = *results; i!=NULL; i=i->next )
+					outputf( Debug, "io_close: received: %s", (char *) i->ptr );
+#endif
+			context->io.query.sync = 0;
 		}
 		close( socket_fd );
 		break;
@@ -228,8 +247,8 @@ int
 io_accept( int fd, _context *context )
 {
 	struct { int sync; } backup;
-	backup.sync = context->io.sync;
-	context->io.sync = 0;
+	backup.sync = context->io.query.sync;
+	context->io.query.sync = 0;
 
 	struct sockaddr_un client_name;
 	socklen_t client_name_len;
@@ -243,13 +262,13 @@ io_accept( int fd, _context *context )
 	pop( base, 0, NULL, context );
 
 	// send closing packet if required
-	if ( context->io.sync ) {
+	if ( context->io.query.sync ) {
 		int size = 0;
 		write( socket_fd, &size, sizeof( size ));
 	}
 	close( socket_fd );
 
-	context->io.sync = backup.sync;
+	context->io.query.sync = backup.sync;
 	return 0;
 }
 
@@ -287,7 +306,7 @@ io_query( char *path, _context *context )
 	else	// target is a peer session
 	{
 		// query operator the pid of the session associated with path
-		context->io.sync = 1;
+		context->io.query.sync = 1;
 		cn_dof( ">@ operator:< session:%s", path );
 
 		char *pid = context->identifier.id[ 0 ].ptr;

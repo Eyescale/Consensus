@@ -432,7 +432,7 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 	}
 	else if ( !strcmp( state, "> .." ) ) {
 		push_output( "^^", &context->io.client, ClientOutput, context );
-		context->io.sync = 1;
+		context->io.query.sync = 1;
 	}
 	return 0;
 }
@@ -444,7 +444,7 @@ output_backfeed( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	if ( context->output.flag.query && !context->output.flag.marked ) {
-		context->io.sync = 1;
+		context->io.query.sync = 1;
 		output( Text, ">..:" );
 	} else {
 		return output_char( state, event, next_state, context );
@@ -457,16 +457,45 @@ output_pipe( InputType into, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
+
+	context->output.flag.marked = 0;
 	if ( !context->output.flag.redirected )
 		return output( Error, "pipe format not supported" );
 
 	OutputVA *output = context->output.stack->ptr;
 	int *fd = &output->ptr.socket;
 	pop_output( context, 0 );
-	context->io.sync = 0;
-	context->output.flag.marked = 0;
+	context->io.query.sync = 0;
 	push_input( "", fd, into, context );
+	return 0;
+}
 
+int
+service_sync( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0,0, ExecutionMode ) )
+		return 0;
+	if (( context->input.stack )) {
+		InputVA *input = context->input.stack->ptr;
+		if ( input->mode == ClientInput )
+			context->io.query.sync = 1;
+	}
+	return 0;
+}
+
+int
+output_sync( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0,0, ExecutionMode ) )
+		return 0;
+
+	context->output.flag.marked = 0;
+	if ( !context->output.flag.redirected )
+		return 0;
+
+	context->io.query.sync = 1;
+	output( Text, "|" );
+	pop_output( context, 1 );
 	return 0;
 }
 
@@ -548,7 +577,7 @@ create_session( char *path, _context *context )
 
 	// leave genitor hanging until session's iam notification
 	if ( context->io.client )
-		context->io.sync = 0;
+		context->io.query.sync = 0;
 	return 0;
 }
 

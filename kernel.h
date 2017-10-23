@@ -473,7 +473,11 @@ typedef struct {
 				char ptr[ IO_BUFFER_MAX_SIZE ];
 			} buffer;
 		} input, output;
-		int sync;
+		struct {
+			listItem *results;
+			int sync;
+		}
+		query;
 	} io;
 	struct {
 		Registry sessions, pid;
