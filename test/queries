@@ -8,21 +8,21 @@
 !! titi-->toto
 !! titi-has->birthday
 
->:
+>:\n
 >:\ 2. queries
 >:\    titi-.->toto	%[ titi-.->toto ]
 >:\    titi-~->toto	%[ titi-~->toto ]
 >:\    titi-~is->. 	%[ titi-~is->. ]
 >:\    titi-[ ~is:~ ]->.	%[ titi-[ ~is:~ ]->. ]
 >:\    !!!:titi		%[ !!!:titi ]
->:
+>:\n
 >:\    .   	%[ . ]
 >:\    ~   	%[ ~ ]
 >:\    .-.->.	%[ .-.->. ]
 >:\    [ ?:~ ]	%[ [ ?:~ ] ]
 >:\    ..?  	%[ ..? ]
 >:\    .-[ ?:~ ]->. %[ .-[ ?:~ ]->. ]
->:
+>:\n
 : variable : .-.->? : [ .-is->toto ]
 >:3. variable
 >:3.1. expression       %variable
@@ -30,5 +30,5 @@
 : variable : [ [ [ ?:a-is->b ] ]-c->d ]
 >:3.2. expression       %variable
 >:\     result(s)        %[ %variable ](nothing expected)
->:
+>:\n
 

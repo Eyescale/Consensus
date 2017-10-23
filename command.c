@@ -403,6 +403,18 @@ command_exit( char *state, int *restore, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	check_out	- local
+---------------------------------------------------------------------------*/
+static int
+check_out( char *state, int event, char **next_state, _context *context )
+{
+	*next_state = strcmp( state, out ) ? same :
+		( ( context->narrative.mode.action.one ) ? "" : base );
+
+	return event;
+}
+
+/*---------------------------------------------------------------------------
 	read_command
 ---------------------------------------------------------------------------*/
 #define do_( a, s ) \
@@ -418,13 +430,19 @@ read_command( char *state, int event, char **next_state, _context *context )
 	listItem *states = NULL;
 
 	// ---------------------------------------------------------------
-	// 1. Read and translate one event into actions and target states:
+	// 1. translate input into event
 	// ---------------------------------------------------------------
 
 	event = input( state, event, NULL, context );
+
 #ifdef DEBUG
 	outputf( Debug, "read_command: state=\"%s\", event='%c'", state, event );
 #endif
+
+	// ---------------------------------------------------------------
+	// 2. translate event into actions and target states
+	// ---------------------------------------------------------------
+
 	switch ( event ) {
 	case 0: // input() reached EOF
 		do_( command_pop_input, base )
@@ -447,14 +465,15 @@ read_command( char *state, int event, char **next_state, _context *context )
 			bgn_
 			in_( "> ." )			do_( error, base )
 			in_( ":< \\" )			do_( error, base )
-			in_( ">:_" )			do_( output_char, ">:_" )
-			in_( ">: \\" )			do_( output_special_char, ">:_" )
-			in_( ">: \"" )			do_( output_char, ">: \"" )
-			in_( ">: %?" )			do_( output_variator_value, ">:_" )
-			in_( ">: %variable" )		do_( output_variable_value, ">:_" )
-			in_( ">: %[_]" )		do_( output_results, ">:_" )
-			in_( ">: %[_].$(_)" )		do_( output_va, ">:_" )
-			in_( ">: %[_].narrative(_)" )	do_( output_narrative, ">:_" )
+			in_( ">:" )			do_( output_char, same )
+			in_( ">: \\" )			do_( output_special_char, ">:" )
+			in_( ">: \"" )			do_( output_char, same )
+			in_( ">: \"\\" )		do_( output_special_char, ">: \"" )
+			in_( ">: %?" )			do_( output_variator_value, ">:" )
+			in_( ">: %variable" )		do_( output_variable_value, ">:" )
+			in_( ">: %[_]" )		do_( output_results, ">:" )
+			in_( ">: %[_].$(_)" )		do_( output_va, ">:" )
+			in_( ">: %[_].narrative(_)" )	do_( output_narrative, ">:" )
 			in_other			do_( nop, same )
 			end
 		}
@@ -596,48 +615,42 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( ':' )	do_( set_assignment_mode, ": identifier :" )
 				on_other	do_( error, base )
 				end
+
 		in_( ">:" ) bgn_
+			on_( '\n' )	do_( output_char, same )
+					do_( clear_output_target, out )
+			on_( '|' )	do_( output_char, ">:_ |" )
 			on_( '\\' )	do_( nop, ">: \\" )
-			on_( '\n' )	do_( nop, out )
-			on_( '|' )	do_( nop, out )
 			on_( '%' )	do_( nop, ">: %" )
 			on_( '"' )	do_( nop, ">: \"" )
-			on_other	do_( output_char, ">:_" )
+			on_other	do_( output_char, same )
 			end
-			in_( ">:_" ) bgn_
-				on_( '\\' )	do_( nop, ">: \\" )
-				on_( '\n' )	do_( output_char, out )
-				on_( '|' )	do_( output_char, ">:_ |" )
-				on_( '%' )	do_( nop, ">: %" )
-				on_( '"' )	do_( nop, ">: \"" )
-				on_other	do_( output_char, ">:_" )
-				end
 			in_( ">: \\" ) bgn_
-				on_( 'n' )	do_( output_special_char, base )
-				on_other	do_( output_special_char, ">:_" )
+				on_( '\n' )	do_( nop, ">:" )
+				on_other	do_( output_special_char, ">:" )
 				end
 			in_( ">: \"" ) bgn_
-				on_( '"' )	do_( nop, ">:_" )
+				on_( '"' )	do_( nop, ">:" )
 				on_( '\\' )	do_( nop, ">: \"\\" )
-				on_( '\n' )	do_( nop, same )
 				on_other	do_( output_char, same )
 				end
 				in_( ">: \"\\" ) bgn_
-					on_any	do_( output_special_char, ">: \"" )
+					on_( '\n' )	do_( nop, ">: \"" )
+					on_other	do_( output_special_char, ">: \"" )
 					end
 			in_( ">: %" ) bgn_
 				on_( '?' )	do_( nop, ">: %?" )
 				on_( '.' )	do_( set_results_to_nil, ">: %[_]." )
 				on_( '[' )	do_( nop, ">: %[" )
-				on_( '\n' )	do_( output_mod, ">:_" )
-				on_separator	do_( output_mod, ">:_" )
+				on_( '\n' )	do_( output_mod, ">:" )
+				on_separator	do_( output_mod, ">:" )
 				on_other	do_( read_0, ">: %variable" )
 				end
 				in_( ">: %?" ) bgn_
-					on_( '\n' )	do_( output_variator_value, ">:_" )
+					on_( '\n' )	do_( output_variator_value, ">:" )
 					on_( '|' )	do_( output_variator_value, ">:_ |" )
 					on_( '"' )	do_( output_variator_value, ">: \"" )
-					on_other	do_( output_variator_value, ">:_" )
+					on_other	do_( output_variator_value, ">:" )
 					end
 				in_( ">: %[" ) bgn_
 					on_any	do_( evaluate_expression, ">: %[_" )
@@ -647,17 +660,17 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_other	do_( error, base )
 					end
 			in_( ">: %variable" ) bgn_
-				on_( '\n' )	do_( output_variable_value, ">:_" )
+				on_( '\n' )	do_( output_variable_value, ">:" )
 				on_( '|' )	do_( output_variable_value, ">:_ |" )
 				on_( '"' )	do_( output_variable_value, ">: \"" )
-				on_other	do_( output_variable_value, ">:_" )
+				on_other	do_( output_variable_value, ">:" )
 				end
 			in_( ">: %[_]" ) bgn_
 				on_( '.' )	do_( nop, ">: %[_]." )
-				on_( '\n' )	do_( output_results, ">:_" )
+				on_( '\n' )	do_( output_results, ">:" )
 				on_( '|' )	do_( output_results, ">:_ |" )
 				on_( '"' )	do_( output_results, ">: \"" )
-				on_other	do_( output_results, ">:_" )
+				on_other	do_( output_results, ">:" )
 				end
 				in_( ">: %[_]." ) bgn_
 					on_( '$' )	do_( read_va, ">: %[_].$(_)" )
@@ -672,16 +685,16 @@ read_command( char *state, int event, char **next_state, _context *context )
 						on_other	do_( error, base )
 						end
 			in_( ">: %[_].$(_)" ) bgn_
-				on_( '\n' )	do_( output_va, ">:_" )
+				on_( '\n' )	do_( output_va, ">:" )
 				on_( '|' )	do_( output_va, ">:_ |" )
 				on_( '"' )	do_( output_va, ">: \"" )
-				on_other	do_( output_va, ">:_" )
+				on_other	do_( output_va, ">:" )
 				end
 			in_( ">: %[_].narrative(_)" ) bgn_
-				on_( '\n' )	do_( output_narrative, ">:_" )
+				on_( '\n' )	do_( output_narrative, ">:" )
 				on_( '|' )	do_( output_narrative, ">:_ |" )
 				on_( '"' )	do_( output_narrative, ">: \"" )
-				on_other	do_( output_narrative, ">:_" )
+				on_other	do_( output_narrative, ">:" )
 				end
 			in_( ">:_ |" ) bgn_
 				on_( ':' )	do_( nop, ">:_ | :" );
@@ -1015,8 +1028,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 	}
 
 	// -----------------------------------------------------------
-	// 2. event has been translated into actions and target states
-	//    Now execute actions:
+	// 3. execute actions
 	// -----------------------------------------------------------
 
 	reorderListItem( &actions );
@@ -1025,23 +1037,20 @@ read_command( char *state, int event, char **next_state, _context *context )
 	{
 		_action *action = i->ptr;
 		*next_state = j->ptr;
-		if ( !strcmp( *next_state, out ) )
-		{
-			if ( context->narrative.mode.action.one ) {
-				(*action)( state, event, next_state, context );
-				clear_output_target( state, event, next_state, context );
-				state = "";
-			} else {
-				event = (*action)( state, event, next_state, context );
-				clear_output_target( state, event, next_state, context );
-				state = base;
-			}
-		}
-		else
-		{
-			event = (*action)( state, event, next_state, context );
-			if ( strcmp( *next_state, same ) ) state = *next_state;
-		}
+
+		int retval = (*action)( state, event, next_state, context );
+		if ( strcmp( *next_state, same ) ) state = *next_state;
+
+		check_out( state, retval, next_state, context );
+		if ( strcmp( *next_state, same ) ) state = *next_state;
+
+		// In case the action did actually check out, ignore its
+		// returned value but report the triggering event back
+		// to the caller
+
+		if ( !strcmp( state, "" ) ) break;
+
+		event = retval;
 	}
 	freeListItem( &states );
 	freeListItem( &actions );

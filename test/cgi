@@ -1,0 +1,35 @@
+
+	!! cgi()
+	on init
+		in :"session"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Home.hcn"
+			>: %.$( html )
+			/.
+		else in :"edit"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Edit.hcn"
+			>: %.$( html )
+			/.
+		else in :"add1"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Edit.hcn"
+			>: %.$( html )
+			/.
+		else in :"remove1"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Edit.hcn"
+			>: %.$( html )
+			/.
+		else in :"add2"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Edit.hcn"
+			>: %.$( html )
+			/.
+		else in :"remove2"-is->[ name<-has-[ entry.. ] ] do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Edit.hcn"
+			>: %.$( html )
+			/.
+		else do
+			: %.$( hcn ) : "/Library/WebServer/Documents/consensus/hcn/Welcome.hcn"
+			>: %.$( html )
+			/.
+		/
+	then
+		do exit
+		/

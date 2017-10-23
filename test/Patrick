@@ -1,5 +1,5 @@
 
-	:< \Nfile:"test/Patrick.DB"
+	:< file://test/Patrick.DB
 
 	>:\ %[ ?-is->[ child<-has-%Patrick ] ] are Patrick's children
 	?:?-is->[ child<-has-%Patrick ]

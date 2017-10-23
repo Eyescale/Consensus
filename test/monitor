@@ -17,7 +17,7 @@
 			>:\	monitor() >>>>> entities released: %e_released
 			>:\	monitor() >>>>> entities remaining: %[ . ]
 			!! %e_released-is->tata
-			>:
+			>:\n
 			>:\	~ ACTION-GENERATED EVENT ~
 			/.
 		/
@@ -40,4 +40,4 @@
 	!~ titi
 
 	!_ monitor()
-	>:
+	>:\n

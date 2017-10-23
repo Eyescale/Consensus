@@ -422,16 +422,9 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 		return 0;
 
 	if ( !strcmp( state, ": identifier" ) ) {
-#if 1
-		push_output( "^^", NULL, StringOutput, context );
-		OutputVA *output = context->output.stack->ptr;
-		output->variable.identifier = context->identifier.id[ 0 ].ptr;
-		context->identifier.id[ 0 ].ptr = NULL;
-#else
 		char *variable = context->identifier.id[ 0 ].ptr;
-		context->identifier.id[ 0 ].prt = NULL;
+		context->identifier.id[ 0 ].ptr = NULL;
 		push_output( "^^", variable, StringOutput, context );
-#endif
 	}
 	else if ( !strcmp( state, ">@session" ) ) {
 		char *path = context->identifier.id[ 1 ].ptr;
@@ -494,10 +487,10 @@ output_pipe_out( char *state, int event, char **next_state, _context *context )
 int
 clear_output_target( char *state, int event, char **next_state, _context *context )
 {
-	context->output.marked = 0;
-
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
+
+	context->output.marked = 0;
 	if ( !context->output.redirected )
 		return 0;
 
@@ -510,14 +503,7 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 		pop_output( context, 0 );
 		break;
 	case StringOutput:
-		; char *identifier = output->variable.identifier;
 		pop_output( context, 0 );
-		if (( context->output.slist )) {
-			assign_variable( &identifier, context->output.slist, StringVariable, context );
-			context->output.slist = NULL;
-		} else {
-			free( identifier );
-		}
 		break;
 	}
 	return 0;

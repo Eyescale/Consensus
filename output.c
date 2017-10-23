@@ -150,6 +150,7 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 		context->output.redirected = 1;
 		break;
 	case StringOutput:
+		output->variable.identifier = dst;
 		for ( listItem *i=context->output.slist; i!=NULL; i=i->next )
 			free( i->ptr );
 		freeListItem( &context->output.slist );
@@ -179,6 +180,14 @@ pop_output( _context *context, int terminate )
 	case StringOutput:
 		slist_close( &context->output.slist, &context->output.string );
 		reorderListItem( &context->output.slist );
+		char *identifier = output->variable.identifier;
+		if (( context->output.slist )) {
+			assign_variable( &identifier, context->output.slist, StringVariable, context );
+			context->output.slist = NULL;
+		} else {
+			free( identifier );
+		}
+		output->variable.identifier = NULL;
 		break;
 	}
 	free( output );
@@ -679,10 +688,7 @@ output_variable_value( char *state, int event, char **next_state, _context *cont
 		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
 		context->output.marked = 1;
-		*next_state = ">:_";
 	}
-	else *next_state = ( context->output.marked ? ">:_" : ">:" );
-
 	return event;
 }
 
@@ -704,10 +710,7 @@ output_variator_value( char *state, int event, char **next_state, _context *cont
 		context->error.flush_output = ( event != '\n' );
 		output_value( (VariableVA *) entry->value );
 		context->output.marked = 1;
-		*next_state = ">:_";
 	}
-	else *next_state = ( context->output.marked ? ">:_" : ">:" );
-
 	return event;
 }
 
@@ -733,10 +736,7 @@ output_results( char *state, int event, char **next_state, _context *context )
 			output_entity_variable( context->expression.results, context->expression.ptr );
 		}
 		context->output.marked = 1;
-		*next_state = ">:_";
 	}
-	else *next_state = ( context->output.marked ? ">:_" : ">:" );
-
 	return event;
 }
 
@@ -810,10 +810,7 @@ output_html( char *state, int event, char **next_state, _context *context )
 		cn_read( identifier, HCNFileInput, base, 0 );
 #endif
 		context->output.marked = 1;
-		*next_state = ">:_";
 	}
-	else *next_state = ( context->output.marked ? ">:_" : ">:" );
-
 	return event;
 }
 
@@ -839,10 +836,7 @@ output_va( char *state, int event, char **next_state, _context *context )
 	if (( context->expression.results )) {
 		output_va_( va_name, event, context );
 		context->output.marked = 1;
-		*next_state = ">:_";
 	}
-	else *next_state = ( context->output.marked ? ">:_" : ">:" );
-
 	return event;
 }
 
@@ -858,7 +852,6 @@ output_mod( char *state, int event, char **next_state, _context *context )
 	context->error.flush_output = ( event != '\n' );
 	output( Text, "%" );
 	context->output.marked = 1;
-	*next_state = ">:_";
 	return event;
 }
 
@@ -871,9 +864,18 @@ output_char( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	context->error.flush_output = ( event != '\n' );
-	outputf( Text, "%c", ( event == '|' ? '\n' : event ));
-	context->output.marked = 1;
+	switch ( event ) {
+	case '|':
+		event = '\n';
+	case ' ':
+	case '\t':
+	case '\n':
+		if ( !context->output.marked ) break;
+	default:
+		context->error.flush_output = ( event != '\n' );
+		outputf( Text, "%c", event );
+		context->output.marked = 1;
+	}
 	return 0;
 }
 
@@ -894,8 +896,8 @@ output_special_char( char *state, int event, char **next_state, _context *contex
 	default:
 		outputf( Text, "%c", event );
 	}
-	context->output.marked = 1;
-	return 0;
+	context->output.marked = ( event != 'n' );
+	return (( event == 'n' ) ? '\n' : 0 );
 }
 
 /*---------------------------------------------------------------------------
@@ -1140,6 +1142,7 @@ output_narrative( char *state, int event, char **next_state, _context *context )
 
 	context->error.flush_output = ( event != '\n' );
 	char *name = context->identifier.id[ 1 ].ptr;
+	int marked = 0;
 	for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 	{
 		Entity *e = (Entity *) i->ptr;
@@ -1147,11 +1150,10 @@ output_narrative( char *state, int event, char **next_state, _context *context )
 		if ( narratives == NULL ) continue;
 		registryEntry *entry = lookupByName( narratives, name );
 		if ( entry == NULL ) continue;
+		marked = 1;
 		narrative_output((Narrative *) entry->value, context );
 	}
-
-	context->output.marked = 1;
-	*next_state = ">:_";
+	context->output.marked = marked;
 	return event;
 }
 
