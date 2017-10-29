@@ -5,7 +5,7 @@
 * To run, just launch ./consensus
 * after the prompt, you can type e.g. the command
 ```
-    consensus$ :< file:test/full
+    :< file:test/full
 ```
 * that should get you started!
 * documentation is under way...
