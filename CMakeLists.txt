@@ -8,24 +8,29 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include(Extra)
 
 extra_application(Consensus SOURCES
+	api.c
+	cgic.c
+	command.c
+	command_util.c
+	database.c
+	expression.c
+	expression_filter.c
 	expression_solve.c
-  api.c
-  command.c
-  database.c
-  expression_solve.c
-  expression_util.c
-  expression.c
-  filter_util.c
-  frame.c
-  hcn.c
-  input.c
-  kernel.c
-  main.c
-  narrative_util.c
-  narrative.c
-  output.c
-  registry.c
-  string_util.c
-  value.c
-  variables.c
+	expression_util.c
+	frame.c
+	hcn.c
+	input.c
+	input_util.c
+	io.c
+	kernel.c
+	main.c
+	narrative.c
+	narrative_util.c
+	output.c
+	output_util.c
+	path.c
+	registry.c
+	value.c
+	variable.c
+	variable_util.c
 )
