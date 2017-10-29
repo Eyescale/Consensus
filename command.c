@@ -892,7 +892,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( '<' )	do_( nop, ":<" )
 			on_( '~' )	do_( nop, ":~" )
 #ifdef SUBVAR
-			on_other	do_( read_identifier_path, ": identifier" )
+			on_other	do_( read_variable_id, ": identifier" )
 #else
 			on_other	do_( read_0, ": identifier" )
 #endif

@@ -340,10 +340,10 @@ exit_command( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	read_identifier_path
+	read_variable_id
 ---------------------------------------------------------------------------*/
 int
-read_identifier_path( char *state, int event, char **next_state, _context *context )
+read_variable_id( char *state, int event, char **next_state, _context *context )
 {
 	char *np = NULL, *path = NULL;
 	state = base;

@@ -1015,7 +1015,11 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		in_( ".%" ) bgn_
 			on_( '?' )	do_( nop, ".%?" )
 			on_( '!' )	do_( nop, ".%!" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, ".%identifier" )
+#else
 			on_other	do_( read_1, ".%identifier" )
+#endif
 			end
 			in_( ".%?" ) bgn_
 				on_( '.' )	do_( set_shorty, "" )
@@ -1076,7 +1080,11 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			in_( "..%" ) bgn_
 				on_( '?' )	do_( nop, "..%?" )
 				on_( '!' )	do_( nop, "..%!" )
+#ifdef SUBVAR
+				on_other	do_( read_variable_ref, "..%identifier" )
+#else
 				on_other	do_( read_1, "..%identifier" )
+#endif
 				end
 				in_( "..%?" ) bgn_
 					on_any	do_( set_shorty, "" )
@@ -1318,7 +1326,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "%" ) bgn_
 			on_( '!' )	do_( nop, "%!" )
 			on_( '?' )	do_( nop, "%?" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, "%identifier" )
+#else
 			on_other	do_( read_1, "%identifier" )
+#endif
 			end
 			in_( "%!" ) bgn_
 				on_( '(' )	do_( error, "" )
@@ -1405,7 +1417,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-%" ) bgn_
 			on_( '!' )	do_( nop, "source-%!" )
 			on_( '?' )	do_( nop, "source-%?" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, "source-%identifier" )
+#else
 			on_other	do_( read_1, "source-%identifier" )
+#endif
 			end
 			in_( "source-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "source-medium-" )
@@ -1486,7 +1502,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->%" ) bgn_
 				on_( '!' )	do_( nop, "source-medium->%!" )
 				on_( '?' )	do_( nop, "source-medium->%?" )
+#ifdef SUBVAR
+				on_other	do_( read_variable_ref, "source-medium->%identifier" )
+#else
 				on_other	do_( read_1, "source-medium->%identifier" )
+#endif
 				end
 				in_( "source-medium->%!" ) bgn_
 					on_( '(' )	do_( error, "" )
@@ -1570,7 +1590,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-%" ) bgn_
 			on_( '!' )	do_( nop, "target<-%!" )
 			on_( '?' )	do_( nop, "target<-%?" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, "target<-%identifier" )
+#else
 			on_other	do_( read_1, "target<-%identifier" )
+#endif
 			end
 			in_( "target<-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "target<-medium-" )
@@ -1646,7 +1670,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-medium-%" ) bgn_
 			on_( '!' )	do_( nop, "target<-medium-%!" )
 			on_( '?' )	do_( nop, "target<-medium-%?" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, "target<-medium-%identifier" )
+#else
 			on_other	do_( read_1, "target<-medium-%identifier" )
+#endif
 			end
 			in_( "target<-medium-%!" ) bgn_
 				on_( '(' )	do_( error, "" )
@@ -1730,7 +1758,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "source-medium->target: %!" )
 			on_( '?' )	do_( nop, "source-medium->target: %?" )
 			on_( '[' )	do_( read_as_sub, "source-medium->target: instance" )
+#ifdef SUBVAR
+			on_other	do_( read_variable_ref, "source-medium->target: %identifier" )
+#else
 			on_other	do_( read_1, "source-medium->target: %identifier" )
+#endif
 			end
 			in_( "source-medium->target: %!" ) bgn_
 				on_( '(' )	do_( error, "" )

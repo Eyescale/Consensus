@@ -12,7 +12,7 @@ _action evaluate_expression;
 _action narrative_op;
 _action exit_command;
 _action parse_expression;
-_action read_identifier_path;
+_action read_variable_id;
 _action read_va;
 _action input_inline;
 _action input_story;
