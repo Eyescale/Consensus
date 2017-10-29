@@ -36,8 +36,8 @@ typedef enum {
 	FileInput,
 	ClientInput,
 	SessionInput,
-	SessionPipeInputOut,
-	SessionPipeInput,
+	SessionInputInVariator,
+	SessionInputOut,
 	InstructionBlock,
 	InstructionOne,
 	InstructionInline
@@ -129,9 +129,7 @@ AssignmentMode;
 typedef struct {
 	char *path;
 	pid_t pid;
-	struct {
-		int query; // socket connection (transient)
-	} genitor;
+	int genitor; // socket connection (transient)
 	pid_t operator;
 }
 SessionVA;
@@ -175,7 +173,7 @@ typedef struct _ExpressionSub ExpressionSub;
 typedef struct _Occurrence {
 	struct _Occurrence *thread;
 	OccurrenceType type;
-	registryEntry *variables;
+	Registry variables;
 	unsigned int registered;
 	listItem *va;
 	int va_num;
@@ -229,7 +227,7 @@ ActionVA;
 typedef struct {
 	char *name;
 	Occurrence root;
-	registryEntry *variables;
+	Registry variables;
 	struct {
 		listItem *events;
 		listItem *actions;
@@ -255,22 +253,28 @@ typedef struct {
 	char *identifier;
 	int level;
 	InputType mode;
-	int malicious;
 	union {
 		FILE *file;
 		char *string;
 		int fd;
 	} ptr;
 	int client;
-	char *position;
 	int remainder;
+	IdentifierVA buffer;
+	char *position;
 	struct {
+		SessionVA *created;
+	} session;
+	struct {
+		char *position;
+		IdentifierVA *buffer;
 		struct {
 			listItem *instructions;
 			int mode;
 		} record;
 		unsigned int prompt : 1;
 	} restore;
+	unsigned int malicious : 1;
 }
 InputVA;
 
@@ -278,10 +282,8 @@ typedef struct {
 	int level;
 	int mode;
 	struct {
-		struct {
-			unsigned int redirected : 1;
-			unsigned int query : 1;
-		} flag;
+		unsigned int redirected : 1;
+		unsigned int query : 1;
 	} restore;
 	struct {
 		char *identifier;
@@ -295,13 +297,10 @@ OutputVA;
 
 // Variables
 // --------------------------------------------------
-typedef struct {
+typedef struct VariableVA_ {
 	VariableType type;
-	struct {
-		int ref;
-		void *value;
-	}
-	data;
+	void *value;
+	Registry sub;
 }
 VariableVA;
 
@@ -309,13 +308,13 @@ VariableVA;
 // --------------------------------------------------
 typedef struct {
 	char *next_state;	// state to be restored upon pop
-	registryEntry *variables;
+	Registry variables;
 	struct {
 		ClauseState state;
 	} clause;
 	struct {
 		int base;
-		listItem *variator;	// { entity }
+		listItem *candidates;	// { entity }
 		listItem *begin;	// { instruction }
 	} loop;
 	struct {
@@ -369,11 +368,13 @@ typedef struct {
 	struct {
 		ControlMode mode;	// ExecutionMode or InstructionMode or FreezeMode
 		listItem *stack;	// current StackVA
+		StackVA stackbase;
 		int level;
 		unsigned int terminal : 1;
 		unsigned int cgi : 1;
 		unsigned int cgim : 1;	// cgi emulator mode
 		unsigned int operator : 1;
+		unsigned int operator_absent : 1;
 		unsigned int session : 1;
 		unsigned int anteprompt : 1;
 		unsigned int prompt : 1;
@@ -446,20 +447,20 @@ typedef struct {
 		listItem *stack;	// current InputVA
 		listItem *instruction;
 		int event;
-		IdentifierVA buffer;
-		char *position;
+		struct {
+			IdentifierVA base, *current;
+			char *position;
+		} buffer;
 		int eof;
 	} input;
 	struct {
 		listItem *stack;	// current OutputVA
 		AssignmentMode mode;
-		struct {
-			unsigned int redirected : 1;
-			unsigned int marked : 1;
-			unsigned int query : 1;
-		} flag;
 		listItem *slist;
 		IdentifierVA string;
+		unsigned int redirected : 1;
+		unsigned int marked : 1;
+		unsigned int query : 1;
 	} output;
 	struct {
 		unsigned int flush_input;
@@ -475,12 +476,13 @@ typedef struct {
 		} input, output;
 		struct {
 			listItem *results;
-			int sync;
+			unsigned int sync : 1;
+			unsigned int leave_open : 1;
 		}
 		query;
 	} io;
 	struct {
-		Registry sessions, pid;
+		Registry *sessions, *pid;
 	} operator;
 	struct {
 		char *path;
@@ -498,8 +500,8 @@ extern
 		_context *context;
 		Entity *this, *nil;
 		listItem *DB;
-		Registry VB;		// registry of value accounts
-		Registry names;		// base entity names
+		Registry *VB;		// registry of value accounts
+		Registry *names;	// base entity names
 	} CN;
 
 /*---------------------------------------------------------------------------
@@ -546,8 +548,6 @@ _action	nothing;
 _action	nop;
 _action	push;
 _action	pop;
-_action	error;
-_action	warning;
 
 /*---------------------------------------------------------------------------
 	kernel utilities	- public

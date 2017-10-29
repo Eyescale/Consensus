@@ -9,7 +9,8 @@
 
 #include "api.h"
 #include "narrative.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 #include "value.h"
 
 // #define DEBUG
@@ -38,7 +39,9 @@ set_va_( char *va_name, int event, _context *context )
 		{
 			Entity *e = (Entity *) i->ptr;
 			// reset each of these entities' narratives value account to that single narrative
-			cn_va_set_value( e, va_name, newRegistryItem( narrative->name, narrative ) );
+			Registry *registry = newRegistry( IndexedByName );
+			registryRegister( registry, narrative->name, narrative );
+			cn_va_set( e, va_name, registry );
 			// register each of the passed entities to the narrative's list of entities
 			addToNarrative( narrative, e );
 		}
@@ -51,7 +54,7 @@ set_va_( char *va_name, int event, _context *context )
 		}
 		for ( listItem *i = (listItem *) context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
-			cn_va_set_value( e, va_name, value );
+			cn_va_set( e, va_name, value );
 		}
 	}
 	return 0;
@@ -70,7 +73,7 @@ set_va( char *state, int event, char **next_state, _context *context )
 		return output( Error, "cannot assign value to (null) results" );
 
 	char *va_name = context->identifier.id[ 2 ].ptr;
-	if ( lookupByName( CN.VB, va_name ) == NULL ) {
+	if ( registryLookup( CN.VB, va_name ) == NULL ) {
 		return outputf( Error, "unknown value account name '%s'", va_name );
 	}
 	return set_va_( va_name, event, context );
@@ -93,7 +96,7 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 
 	// check value account name
 	char *va_name = context->identifier.id[ 2 ].ptr;
-	if ( lookupByName( CN.VB, va_name ) == NULL ) {
+	if ( registryLookup( CN.VB, va_name ) == NULL ) {
 		return outputf( Error, "unknown value account name '%s'", va_name );
 	}
 	if ( strcmp( va_name, "narratives" ) ) {
@@ -112,31 +115,27 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 		return outputf( Error, "variable '%s' is not a narrative variable", name );
 	}
 
-	// extract the list of valid narratives from the passed list
-	registryEntry *value = NULL;
-	for ( registryEntry *i = (Registry) variable->data.value; i!=NULL; i=i->next )
+	Registry *narratives = variable->value;
+	Registry *copy = newRegistry( IndexedByName );
+	for ( registryEntry *r = narratives->value; r!=NULL; r=r->next )
 	{
-		Narrative *narrative = lookupNarrative( (Entity *) i->identifier.address, (char *) i->value );
-		if ( narrative != NULL ) {
-			registerByName( &value, narrative->name, narrative );
-		}
+		Entity *e = r->index.address;
+		char *n = r->value;
+		Narrative *narrative = lookupNarrative( e, n );
+		if (( narrative ))
+			registryRegister( copy, narrative->name, narrative );
 	}
-	if ( value == NULL ) return 0;
+	if ( copy->value == NULL ) {
+		free( copy );
+		return 0;
+	}
 
-	listItem *narratives = (listItem *) variable->data.value;
-	for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
+	for ( listItem *i = context->expression.results; i!=NULL; i=i->next, copy=registryDuplicate(copy) )
 	{
 		Entity *e = (Entity *) i->ptr;
-		// reset each of these entities' narratives value account to the list
-		cn_va_set_value( e, va_name, value );
-
-		// register each of the passed entities to the narrative's list of entities
-		for ( registryEntry *j = value; j!=NULL; j=j->next ) {
+		cn_va_set( e, va_name, copy );
+		for ( registryEntry *j = copy->value; j!=NULL; j=j->next ) {
 			addToNarrative((Narrative *) j->value, e );
-		}
-
-		if ( i->next != NULL ) {
-			value = copyRegistry( value );
 		}
 	}
 	return 0;

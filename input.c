@@ -16,7 +16,8 @@
 #include "io.h"
 #include "hcn.h"
 #include "output.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 
@@ -54,6 +55,7 @@ int
 flush_input( char *state, int event, char **next_state, _context *context )
 {
 	int do_flush = context_check( FreezeMode, 0, 0 ) || context->error.flush_input;
+	context->error.flush_input = 0;
 
 	if ( do_flush && ( context->input.stack != NULL ) ) {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
@@ -87,7 +89,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 		// here we are in the execution part of a loop => abort
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
 		output( Error, "aborting loop..." );
-		freeListItem( &stack->loop.variator );
+		freeListItem( &stack->loop.candidates );
 		freeInstructionBlock( context );
 		stack->loop.begin = NULL;
 		pop_input( state, event, next_state, context );
@@ -151,6 +153,10 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	input->mode = type;
 	input->level = context->control.level;
 	input->restore.prompt = context->control.prompt;
+	input->restore.position = context->input.buffer.position;
+	input->restore.buffer = context->input.buffer.current;
+	context->input.buffer.position = NULL;
+	context->input.buffer.current = &input->buffer;
 
 	int failed = 0;
 	switch ( type ) {
@@ -167,15 +173,15 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		input->ptr.fd = open( identifier, O_RDONLY );
 		failed = ( input->ptr.fd < 0 );
 		break;
-	case SessionPipeInput:
+	case SessionInputInVariator:
 		input->restore.record.mode = context->record.mode;
 		input->restore.record.instructions = context->record.instructions;
 		context->record.mode = RecordInstructionMode;
 		context->record.instructions = NULL;
 		// no break
+	case SessionInputOut:
 	case ClientInput:
 	case SessionInput:
-	case SessionPipeInputOut:
 		input->client = *(int *) src;
 		input->ptr.string = context->io.input.buffer.ptr;
 		input->ptr.string[ 0 ] = (char) 0;
@@ -186,11 +192,11 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		context->record.level = context->control.level;
 		listItem *first_instruction = (listItem *) src;
 		context->input.instruction = first_instruction;
-		input->ptr.string = first_instruction->ptr;
+		input->ptr.string = (char *) first_instruction->ptr;
 		input->position = NULL;
 		break;
 	case InstructionOne:
-		input->ptr.string = src;
+		input->ptr.string = (char *) src;
 		input->position = NULL;
 		break;
 	case InstructionInline:
@@ -198,7 +204,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		context->record.instructions = last_instruction->next;
 		last_instruction->next = NULL;
 		context->input.instruction = last_instruction;
-		input->ptr.string = last_instruction->ptr;
+		input->ptr.string = (char *) last_instruction->ptr;
 		input->position = NULL;
 		break;
 	default:
@@ -246,6 +252,8 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	else event = 0;
 
 	context->control.prompt = input->restore.prompt;
+	context->input.buffer.position = input->restore.position;
+	context->input.buffer.current = input->restore.buffer;
 	switch ( input->mode ) {
 	case HCNFileInput:
 		close ( input->ptr.fd );
@@ -258,16 +266,16 @@ pop_input( char *state, int event, char **next_state, _context *context )
 		close( input->ptr.fd );
 		free( input->identifier );
 		break;
-	case SessionPipeInputOut:
-		io_close ( IO_QUERY, input->ptr.fd, "" );
-		break;
-	case SessionPipeInput:
-		io_close ( IO_QUERY, input->ptr.fd, "" );
+	case SessionInputInVariator:
+		io_close ( IO_QUERY, input->client, "" );
 		slist_close( &context->record.instructions, &context->record.string );
 		reorderListItem( &context->record.instructions );
-		assign_variator_variable( context->record.instructions, StringVariable, context );
+		assign_variable( &variator_symbol, context->record.instructions, StringVariable, context );
 		context->record.instructions = input->restore.record.instructions;
 		context->record.mode = input->restore.record.mode;
+		break;
+	case SessionInputOut:
+		io_close ( IO_QUERY, input->client, "" );
 		break;
 	case InstructionInline:
         	free( context->input.instruction->ptr );
@@ -356,10 +364,10 @@ recordC( int event, int as_string, _context *context )
 int
 skip_comment( int event, int *mode, _context *context )
 {
-	if ((context->input.position)) {
+	if ((context->input.buffer.position)) {
 		if ( !event ) {
-			context->input.position = NULL;
-			string_start( &context->input.buffer, 0 );
+			context->input.buffer.position = NULL;
+			string_start( context->input.buffer.current, 0 );
 			if ( context->input.eof ) {
 				context->input.eof = 0;
 				return EOF;
@@ -372,9 +380,9 @@ skip_comment( int event, int *mode, _context *context )
 		return 0;
 	}
 	else if ( event == EOF ) {
-		string_finish( &context->input.buffer, 1 );
-		context->input.position = context->input.buffer.ptr;
-		if ((context->input.position)) {
+		string_finish( context->input.buffer.current, 1 );
+		context->input.buffer.position = context->input.buffer.current->ptr;
+		if ((context->input.buffer.position)) {
 			context->input.eof = 1;
 			return 0;
 		}
@@ -390,8 +398,8 @@ skip_comment( int event, int *mode, _context *context )
 			return 0;
 		}
 		else if ( mode[ STRING ] ) {
-			string_append( &context->input.buffer, '\\' );
-			string_append( &context->input.buffer, 'n' );
+			string_append( context->input.buffer.current, '\\' );
+			string_append( context->input.buffer.current, 'n' );
 			if ( context->control.prompt ) {
 				context->control.prompt = 0;
 				fprintf( stderr, "$\t" );
@@ -399,9 +407,9 @@ skip_comment( int event, int *mode, _context *context )
 			return 0;
 		}
 		else {
-			string_append( &context->input.buffer, '\n' );
-			string_finish( &context->input.buffer, 1 );
-			context->input.position = context->input.buffer.ptr;
+			string_append( context->input.buffer.current, '\n' );
+			string_finish( context->input.buffer.current, 1 );
+			context->input.buffer.position = context->input.buffer.current->ptr;
 			return 0;
 		}
 	}
@@ -411,8 +419,8 @@ skip_comment( int event, int *mode, _context *context )
 			mode[ BACKSLASH ] = 0;
 			if ( mode[ COMMENT ] )
 				return 0;
-			string_append( &context->input.buffer, '\\' );
-			string_append( &context->input.buffer, event );
+			string_append( context->input.buffer.current, '\\' );
+			string_append( context->input.buffer.current, event );
 			return 0;
 		}
 		mode[ BACKSLASH ] = 1;
@@ -427,14 +435,14 @@ skip_comment( int event, int *mode, _context *context )
 	{
 		mode[ BACKSLASH ] = 0;
 		// ignore '#' and '\' if backslashed
-		string_append( &context->input.buffer, '\\' );
-		string_append( &context->input.buffer, event );
+		string_append( context->input.buffer.current, '\\' );
+		string_append( context->input.buffer.current, event );
 		return 0;
 	}
 	else if ( event == '\t' ) {
 		if ( mode[ STRING ] ) {
-			string_append( &context->input.buffer, '\\' );
-			string_append( &context->input.buffer, 't' );
+			string_append( context->input.buffer.current, '\\' );
+			string_append( context->input.buffer.current, 't' );
 			return 0;
 		}
 	}
@@ -445,7 +453,7 @@ skip_comment( int event, int *mode, _context *context )
 		mode[ COMMENT ] = 1;
 		return 0;
 	}
-	string_append( &context->input.buffer, event );
+	string_append( context->input.buffer.current, event );
 	return 0;
 }
 
@@ -507,14 +515,14 @@ input( char *state, int event, char **next_state, _context *context )
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	int mode[ 3 ] = { 0, 0, 0 };
 	do {
-		if ((context->input.position))
+		if ((context->input.buffer.position))
 		{
-			event = (int) ((char *) context->input.position++ )[ 0 ];
+			event = (int) ((char *) context->input.buffer.position++ )[ 0 ];
 		}
 		else if ( context->input.stack == NULL )
 		{
-			if ( context->control.cgi || context->control.cgim )
-				return -1; // should be impossible
+			if ( context->control.cgi || context->control.cgim || context->control.session )
+				return output( Debug, "input: wrong mode" ); // should be impossible
 
 			if ( !strcmp( state, base ) ) {
 				prompt( context );
@@ -558,11 +566,7 @@ input( char *state, int event, char **next_state, _context *context )
 				event = sgetc( input, context );
 				if ( !event ) event = EOF;
 				break;
-			case SessionPipeInputOut:
-				event = ( io_read( input->client, input->ptr.string, &input->remainder ) ?
-					output( Text, input->ptr.string ) : EOF );
-				break;
-			case SessionPipeInput:
+			case SessionInputInVariator:
 				event = io_read( input->client, input->ptr.string, &input->remainder );
 				if ( !event ) event = EOF;
 				else {
@@ -570,6 +574,10 @@ input( char *state, int event, char **next_state, _context *context )
 						recordC( *ptr++, 1, context );
 					event = 0;
 				}
+				break;
+			case SessionInputOut:
+				event = ( io_read( input->client, input->ptr.string, &input->remainder ) ?
+					output( Text, input->ptr.string ) : EOF );
 				break;
 			case InstructionBlock:
 				event = sgetc( input, context );

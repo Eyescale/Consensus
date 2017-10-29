@@ -325,8 +325,7 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 static int
 narrative_condition_begin( char *state, int event, char **next_state, _context *context )
 {
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = ConditionOccurrence;
+	Occurrence *occurrence = newOccurrence( ConditionOccurrence );
 
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	int backup = stack->narrative.state.otherwise;
@@ -380,7 +379,7 @@ narrative_condition_end( char *state, int event, char **next_state, _context *co
 static int
 set_narrative_condition( char *state, int event, char **next_state, _context *context )
 {
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
+	Occurrence *occurrence = newOccurrence( ConditionOccurrence );
 	occurrence->type = ConditionOccurrence;
 	set_condition_value( occurrence, context );
 	return narrative_build( occurrence, event, context );
@@ -604,8 +603,7 @@ static int
 narrative_event_begin( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = EventOccurrence;
+	Occurrence *occurrence = newOccurrence( EventOccurrence );
 	int backup = stack->narrative.state.otherwise;
 	event = narrative_build( occurrence, event, context );
 	stack->narrative.state.otherwise = backup;
@@ -675,8 +673,7 @@ set_narrative_event( char *state, int event, char **next_state, _context *contex
 	stack->narrative.event.type.deactivate, stack->narrative.event.type.notification, stack->narrative.event.type.request,
 	stack->narrative.event.type.init );
 #endif
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = EventOccurrence;
+	Occurrence *occurrence = newOccurrence( EventOccurrence );
 	set_event_value( occurrence, &stack->narrative.event, context );
 
 	return narrative_build( occurrence, event, context );
@@ -742,8 +739,7 @@ set_narrative_otherwise( char *state, int event, char **next_state, _context *co
 		goto ERROR;
 	}
 
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = OtherwiseOccurrence;
+	Occurrence *occurrence = newOccurrence( OtherwiseOccurrence );
 	event = narrative_build( occurrence, event, context );
 	stack->narrative.state.otherwise = 1;
 	return event;
@@ -809,8 +805,7 @@ set_narrative_then( char *state, int event, char **next_state, _context *context
 	if ( stack->narrative.state.otherwise ) {
 		return output( Error, NULL );
 	}
-	Occurrence *occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = ThenOccurrence;
+	Occurrence *occurrence = newOccurrence( ThenOccurrence );
 	return narrative_build( occurrence, event, context );
 }
 
@@ -912,8 +907,7 @@ set_narrative_action( char *state, int event, char **next_state, _context *conte
 	}
 	stack->narrative.state.whole = 1;
 
-	occurrence = (Occurrence *) calloc( 1, sizeof(Occurrence) );
-	occurrence->type = ActionOccurrence;
+	occurrence = newOccurrence( ActionOccurrence );
 	ActionVA *action = set_action_value( occurrence, context );
 
 	if (( action->instructions != NULL ) && !strcmp( action->instructions->ptr, "exit" )) {
@@ -1104,7 +1098,7 @@ narrative_init( char *state, int event, char **next_state, _context *context )
 	context->narrative.backup.expression.results = context->expression.results;
 	context->expression.results = NULL;
 
-	Narrative *narrative = (Narrative *) calloc( 1, sizeof( Narrative ) );
+	Narrative *narrative = newNarrative();
 	narrative->name = context->identifier.id[ 1 ].ptr;
 	context->identifier.id[ 1 ].ptr = NULL;
 	context->narrative.current = narrative;

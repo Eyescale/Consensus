@@ -1,28 +1,23 @@
-#ifndef VARIABLES_H
-#define VARIABLES_H
+#ifndef VARIABLE_H
+#define VARIABLE_H
 
 /*---------------------------------------------------------------------------
 	variables actions		- public
 ---------------------------------------------------------------------------*/
 
-_action	reset_variables;
 _action	variable_reset;
+_action	reset_variables;
 _action	assign_results;
+_action	assign_va;
 _action	assign_narrative;
 _action	assign_expression;
-_action	assign_va;
 
 /*---------------------------------------------------------------------------
 	variables utilities	- public
 ---------------------------------------------------------------------------*/
 
-registryEntry *lookupVariable( _context *context, char *identifier );
-
 void	set_this_variable( Registry *variables, Entity *this_value );
-void	freeVariableValue( VariableVA *variable );
-void	freeVariables( registryEntry **variables );
-void	assign_variator_variable( void *value, int type, _context *context );
 void	assign_variable( char **identifier, void *value, int type, _context *context );
 
 
-#endif	// VARIABLES_H
+#endif	// VARIABLE_H

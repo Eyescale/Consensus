@@ -5,6 +5,12 @@
 	narrative utilities	- private
 ---------------------------------------------------------------------------*/
 
+Narrative *newNarrative( void );
+void freeNarrative( Narrative *narrative );
+
+Occurrence *newOccurrence( OccurrenceType type );
+void freeOccurrence( Occurrence *occurrence );
+
 void	reorderNarrative( Occurrence *occurrence );
 int	is_narrative_dangling( Occurrence *occurrence, int out );
 void	deregisterNarrative( Narrative *narrative, _context *context );

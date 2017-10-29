@@ -12,8 +12,8 @@ OBJDIR = .ofiles
 SRCS =	main.c command.c command_util.c \
 	narrative.c narrative_util.c \
 	expression.c expression_util.c expression_solve.c expression_filter.c \
-	path.c value.c variables.c \
-	io.c input.c input_util.c hcn.c output.c \
+	path.c value.c variable.c variable_util.c \
+	io.c input.c input_util.c hcn.c output.c output_util.c \
 	frame.c api.c kernel.c database.c registry.c \
 	cgic.c
 

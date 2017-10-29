@@ -1,34 +1,38 @@
 #ifndef REGISTRY_H
 #define REGISTRY_H
 
+#define RTYPE( r )	(r)->index.value
+
 typedef struct _registryEntry
 {
 	union {
 		char *name;
 		void *address;
-		int index;
-	} identifier;
+		int value;
+	} index;
         void *value;
         struct _registryEntry *next;
 }
 registryEntry;
 
-typedef registryEntry * Registry;
+typedef enum {
+	IndexedByAddress = 0, // default
+	IndexedByName,
+	IndexedByNumber
+} RegistryType;
 
-registryEntry *newRegistryItem( void *identifier, void *value );
-registryEntry *registerByName( Registry *registry, char *name, void *address );
-registryEntry *lookupByName( Registry registry, char *name );
-registryEntry *registerByAddress( Registry *registry, void *address, void *value );
-registryEntry *lookupByAddress( Registry registry, void *address );
-registryEntry *registerByIndex( Registry *registry, int ndx, void *value );
-registryEntry *lookupByIndex( Registry registry, int ndx );
-registryEntry *lookupByValue( Registry registry, void *value );
+void freeRegistryEntry( RegistryType type, registryEntry *entry );
 
-Registry copyRegistry( Registry registry );
+typedef registryEntry Registry;
 
-void	deregisterByValue( Registry *registry, void *ptr );
-void	deregisterByAddress( Registry *registry, void *ptr );
-void	freeRegistryItem( registryEntry *r );
-void	freeRegistry( Registry *r );
+Registry *newRegistry( RegistryType type );
+void freeRegistry( Registry **registry );
+void emptyRegistry( Registry *registry );
+Registry *registryDuplicate( Registry *registry );
+
+registryEntry *registryRegister( Registry *registry, void *name, void *value );
+void registryDeregister( Registry *registry, void *name, ... );
+registryEntry *registryLookup( Registry *registry, void *name, ... );
+
 
 #endif	// REGISTRY_H

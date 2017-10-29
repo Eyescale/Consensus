@@ -10,9 +10,11 @@
 #include "kernel.h"
 
 #include "api.h"
+#include "output.h"
 #include "narrative.h"
 #include "narrative_util.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 #define INIT
@@ -27,7 +29,7 @@ narrative_active( _context *context )
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
-		if (( narrative->instances )) return 1;
+		if (( narrative->instances.value )) return 1;
 	}
 	return 0;
 }
@@ -60,43 +62,35 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 	add narrative to entity's narrative value account
 */
 {
-	registryEntry *va = lookupByName( CN.VB, "narratives" );
-	if ( va == NULL ) return NULL;
-
-	registryEntry *entry;
-	if ( va->value == NULL ) {
+	registryEntry *entry = registryLookup( CN.VB, "narratives" );
+	Registry *narratives = (Registry *) entry->value;
+	entry = registryLookup( narratives, entity );
+	if ( entry == NULL ) {
 #ifdef DEBUG
-		output( Debug, "addNarrative(): first narrative ever - %s()", name );
+		output( Debug, "addNarrative(): first entity's narrative assignment - %s()", name );
 #endif
-		entry = newRegistryItem( name, narrative );
-		va->value = newRegistryItem( entity, entry );
-	} else {
-		entry = lookupByAddress( va->value, entity );
+		Registry *registry = newRegistry( IndexedByName );
+		registryRegister( registry, name, narrative );
+		registryRegister( narratives, entity, registry );
+	}
+	else
+	{
+		Registry *entity_narratives = (Registry *) entry->value;
+		entry = registryLookup( entity_narratives, name );
 		if ( entry == NULL ) {
 #ifdef DEBUG
-			output( Debug, "addNarrative(): first entity's narrative assignment - %s()", name );
+			output( Debug, "addNarrative(): adding new entity's narrative - %s()", name );
 #endif
-			entry = newRegistryItem( name, narrative );
-			registerByAddress((Registry *) &va->value, entity, entry );
+			entry = registryRegister( entity_narratives, name, narrative );
 		} else {
-			Registry *narratives = (Registry *) &entry->value;
-			entry = lookupByName( *narratives, name );
-			if ( entry == NULL ) {
 #ifdef DEBUG
-				output( Debug, "addNarrative(): adding new entity's narrative - %s()", name );
+			output( Debug, "addNarrative(): replacing entity's narrative - %s()", name );
 #endif
-				entry = registerByName( narratives, name, narrative );
-			} else {
-#ifdef DEBUG
-				output( Debug, "addNarrative(): replacing entity's narrative - %s()", name );
-#endif
-				removeFromNarrative((Narrative *) entry->value, entity );
-				entry->value = narrative;
-			}
+			removeFromNarrative((Narrative *) entry->value, entity );
+			entry->value = narrative;
 		}
 	}
-
-	registerByAddress( &narrative->entities, entity, NULL );
+	registryRegister( &narrative->entities, entity, NULL );
 	return entry;
 }
 
@@ -107,14 +101,16 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 void
 removeNarrative( Entity *entity, Narrative *narrative )
 {
-	registryEntry *entry = lookupByName( CN.VB, "narratives" );
+	registryEntry *entry = registryLookup( CN.VB, "narratives" );
+	Registry *narratives = (Registry *) entry->value;
+	entry = registryLookup( narratives, entity );
 	if ( entry == NULL ) return;
-	Registry *va = (Registry *) &entry->value;
-	entry = lookupByAddress( *va, entity );
 
-	if ( entry == NULL ) return;
+	Registry *entity_narratives = (Registry *) entry->value;
+	int type = RTYPE( entity_narratives );
+
 	registryEntry *last_r = NULL, *next_r;
-	for ( registryEntry *r = (Registry) entry->value; r!=NULL; r=next_r )
+	for ( registryEntry *r = entity_narratives->value; r!=NULL; r=next_r )
 	{
 		Narrative *n = (Narrative *) r->value;
 		next_r = r->next;
@@ -123,14 +119,14 @@ removeNarrative( Entity *entity, Narrative *narrative )
 			removeFromNarrative( n, entity );
 			if ( last_r == NULL ) {
 				if ( next_r == NULL ) {
-					deregisterByAddress( va, entity );
+					free( entity_narratives );
+					registryDeregister( narratives, entity );
 				} else {
 					entry->value = next_r;
 				}
-			} else {
-				last_r->next = next_r;
 			}
-			freeRegistryItem( r );
+			else last_r->next = next_r;
+			freeRegistryEntry( type, r );
 			return;
 		}
 		last_r = r;
@@ -146,11 +142,10 @@ duplicateNarrative( Occurrence *master, Occurrence *copy )
 	for ( listItem *i=master->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *master_sub = (Occurrence *) i->ptr;
-		Occurrence *copy_sub = (Occurrence *) malloc( sizeof( Occurrence ) );
+		Occurrence *copy_sub = newOccurrence( master_sub->type );
 		addItem( &copy->sub.n, copy_sub );
 		copy->sub.num++;
 		copy_sub->thread = copy;
-		copy_sub->type = master_sub->type;
 		copy_sub->registered = 0;
 		memcpy( &copy_sub->va, &master_sub->va, sizeof( Occurrence ) );
 		switch ( master_sub->type ) {
@@ -175,8 +170,9 @@ duplicateNarrative( Occurrence *master, Occurrence *copy )
 		case OtherwiseOccurrence:
 			for ( listItem *i = master_sub->va; i!=NULL; i=i->next ) {
 				if ( i->ptr == NULL ) continue;
-				Occurrence *copy_va = (Occurrence *) calloc( 1, sizeof( Occurrence ) );
-				duplicateNarrative( (Occurrence *) i->ptr, copy_va );
+				Occurrence *occurrence = i->ptr;
+				Occurrence *copy_va = newOccurrence( occurrence->type );
+				duplicateNarrative( occurrence, copy_va );
 				addItem( &copy_sub->va, copy_va );
 			}
 			break;
@@ -205,19 +201,19 @@ Narrative *
 activateNarrative( Entity *entity, Narrative *narrative )
 {
 	Narrative *instance;
-	registryEntry *entry = lookupByAddress( narrative->entities, entity );
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
 	// entry->value is the pseudo used by this entity to refer to that narrative
 	if (( entry->value == NULL ) && !narrative->assigned ) {
 		instance = narrative;
 		narrative->assigned = 1;
 	} else {
-		instance = (Narrative *) calloc( 1, sizeof( Narrative ) );
+		instance = newNarrative();
 		duplicateNarrative( &narrative->root, &instance->root );
 		instance->name = ( entry->value == NULL ) ?
 			narrative->name : (char *) entry->value;
 	}
 	set_this_variable( &instance->variables, entity );
-	registerByAddress( &narrative->instances, entity, instance );
+	registryRegister( &narrative->instances, entity, instance );
 	return instance;
 }
 
@@ -227,7 +223,7 @@ activateNarrative( Entity *entity, Narrative *narrative )
 void
 deactivateNarrative( Entity *entity, Narrative *narrative )
 {
-	registryEntry *entry = lookupByAddress( narrative->instances, entity );
+	registryEntry *entry = registryLookup( &narrative->instances, entity );
 	Narrative *instance = (Narrative *) entry->value;
 	if ( instance == narrative ) {
 		for ( listItem *i = narrative->frame.events; i!=NULL; i=i->next )
@@ -248,7 +244,7 @@ deactivateNarrative( Entity *entity, Narrative *narrative )
 		instance->name = NULL;
 		freeNarrative( instance );
 	}
-	deregisterByValue( &narrative->instances, instance );
+	registryDeregister( &narrative->instances, NULL, instance );
 }
 
 /*---------------------------------------------------------------------------
@@ -257,8 +253,9 @@ deactivateNarrative( Entity *entity, Narrative *narrative )
 Narrative *
 lookupNarrative( Entity *entity, char *name )
 {
-	Registry narratives = cn_va_get_value( entity, "narratives" );
-	registryEntry *entry = lookupByName( narratives, name );
+	Registry *narratives = cn_va_get( entity, "narratives" );
+	if ( narratives == NULL ) return NULL;
+	registryEntry *entry = registryLookup( narratives, name );
 	return ( entry == NULL ) ? NULL : entry->value;
 }
 
@@ -268,13 +265,14 @@ lookupNarrative( Entity *entity, char *name )
 registryEntry *
 addToNarrative( Narrative *narrative, Entity *entity )
 {
-	registryEntry *entry = lookupByAddress( narrative->entities, entity );
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
 	if ( entry != NULL ) {
 		// free the alias previously referring to that narrative
 		free( entry->value );
 		entry->value = NULL;
-	} else {
-		entry = registerByAddress( &narrative->entities, entity, NULL );
+	}
+	else {
+		entry = registryRegister( &narrative->entities, entity, NULL );
 	}
 	return entry;
 }
@@ -285,15 +283,16 @@ addToNarrative( Narrative *narrative, Entity *entity )
 void
 removeFromNarrative( Narrative *narrative, Entity *entity )
 {
-	registryEntry *entry = lookupByAddress( narrative->entities, entity );
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
 	if ( entry == NULL ) return;
 	// free the name by which this entity referred to that narrative
 	free( entry->value );
-	deregisterByAddress( &narrative->entities, entity );
-	if ( narrative->entities == NULL ) {
+	registryDeregister( &narrative->entities, entity );
+	if ( narrative->entities.value == NULL ) {
 		deregisterNarrative( narrative, CN.context );
 	}
 }
+
 /*---------------------------------------------------------------------------
 	reorderNarrative	- recursive
 ---------------------------------------------------------------------------*/
@@ -384,8 +383,29 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 	}
 	return 0;
 }
+
 /*---------------------------------------------------------------------------
-	freeNarrative	- recursive
+	newOccurrence, newNarrative
+---------------------------------------------------------------------------*/
+Occurrence *
+newOccurrence( OccurrenceType type )
+{
+	Occurrence *occurrence = calloc( 1, sizeof(Occurrence) );
+	RTYPE( &occurrence->variables ) = IndexedByName;
+	occurrence->type = type;
+	return occurrence;
+}
+
+Narrative *
+newNarrative( void )
+{
+	Narrative *narrative = calloc( 1, sizeof(Narrative) );
+	RTYPE( &narrative->variables ) = IndexedByName;
+	return narrative;
+}
+
+/*---------------------------------------------------------------------------
+	freeOccurrence, freeNarrative	- recursive
 ---------------------------------------------------------------------------*/
 void
 freeOccurrence( Occurrence *occurrence )
@@ -396,6 +416,7 @@ freeOccurrence( Occurrence *occurrence )
 		freeOccurrence( i->ptr );
 		free( i->ptr );
 	}
+	freeVariables( &occurrence->variables );
 	freeListItem( &occurrence->sub.n );
 	switch ( occurrence->type ) {
 	case OtherwiseOccurrence:

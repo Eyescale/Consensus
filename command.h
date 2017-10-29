@@ -13,7 +13,7 @@ _action read_command;
 ---------------------------------------------------------------------------*/
 
 int	command_init( void *src, InputType type, int *restore, _context *context );
-int	command_exit( char *state, int *restore, _context *context );
+int	command_exit( char *state, int event, int *restore, _context *context );
 
 
 #endif	// COMMAND_H

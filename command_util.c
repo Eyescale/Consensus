@@ -4,7 +4,6 @@
 #include <strings.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/select.h>
 
 #include "database.h"
 #include "registry.h"
@@ -17,7 +16,9 @@
 #include "api.h"
 #include "expression.h"
 #include "narrative.h"
-#include "variables.h"
+#include "narrative_util.h"
+#include "variable.h"
+#include "variable_util.h"
 #include "value.h"
 
 // #define DEBUG
@@ -189,7 +190,7 @@ override_narrative( Entity *e, _context *context )
 	if ( n == NULL ) return 1;
 
 	// if yes, then is that narrative already active?
-	else if ( lookupByAddress( n->instances, e ) != NULL )
+	else if ( registryLookup( &n->instances, e ) != NULL )
 	{
 #ifdef DO_LATER
 		// output in full: %[ e ].name() - cf. output_narrative_name()
@@ -316,28 +317,69 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 }
 
 int
-exit_narrative( char *state, int event, char **next_state, _context *context )
+exit_command( char *state, int event, char **next_state, _context *context )
 {
-	switch ( context->control.mode ) {
-	case FreezeMode:
+	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
 		return 0;
+
+	switch ( context->control.mode ) {
 	case InstructionMode:
-		if ( context->narrative.mode.action.one )
-			break;
+		if ( (context->narrative.current) && !context->narrative.mode.action.one )
+			return output( Error, "'exit' not supported in instruction block - "
+				"use 'do exit' action instead" );
+		break;
 	case ExecutionMode:
-		if ( context->narrative.current == NULL ) {
-			return output( Error, "'exit' command only supported in narrative mode" );
+		if (( context->narrative.current )) {
+			context->narrative.current->deactivate = 1;
 		}
-		else if ( context->narrative.mode.action.block && ( context->control.mode == InstructionMode ) ) {
-			return output( Error, "'exit' is not a supported instruction - use 'do exit' action instead" );
-		}
-		context->narrative.current->deactivate = 1;
+		break;
+	default:
+		break;
 	}
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	read_identifier_path
+---------------------------------------------------------------------------*/
+int
+read_identifier_path( char *state, int event, char **next_state, _context *context )
+{
+	char *np = NULL, *path = NULL;
+	state = base;
+	do {
+		bgn_
+		in_( base ) bgn_
+			on_any	do_( read_0, "step" )
+			end
+		in_( "step" ) bgn_
+			on_( -1 )	do_( nothing, "" )
+			on_other
+				if ((path)) {
+					asprintf( &np, "%s.%s", path, context->identifier.id[ 0 ].ptr );
+					free( path ); path = np; np = NULL;
+				}
+				else {
+					path = context->identifier.id[ 0 ].ptr;
+					context->identifier.id[ 0 ].ptr = NULL;
+				}
+				bgn_
+				on_( '.' )	do_( nop, base )
+				on_other	do_( nothing, "" )
+				end
+			end
+		end
+	}
+	while ( strcmp( state, "" ) );
+
+	free( context->identifier.id[ 0 ].ptr );
+	context->identifier.id[ 0 ].ptr = path;
+
 	return event;
 }
 
 /*---------------------------------------------------------------------------
-	command va actions
+	read_va
 ---------------------------------------------------------------------------*/
 int
 read_va( char *state, int event, char **next_state, _context *context )
@@ -390,10 +432,10 @@ set_assignment_mode( char *state, int event, char **next_state, _context *contex
 }
 
 /*---------------------------------------------------------------------------
-	command input action
+	input_inline action
 ---------------------------------------------------------------------------*/
 int
-input_command( char *state, int event, char **next_state, _context *context )
+input_inline( char *state, int event, char **next_state, _context *context )
 {
 	switch ( context->control.mode ) {
 	case FreezeMode:
@@ -413,6 +455,45 @@ input_command( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
+	stream actions
+---------------------------------------------------------------------------*/
+int
+open_stream( char *state, int event, char **next_state, _context *context )
+{
+	char *path = context->identifier.id[ 1 ].ptr;
+	if ( path == NULL ) return output( Error, "no file specified" );
+	bgn_
+	in_( "!< file://path" )		event = cn_open( path, O_RDONLY );
+	in_( "!< file://path <" )	event = cn_open( path, O_RDONLY );
+	in_( "!< file://path >" )	event = cn_open( path, O_WRONLY );
+	in_( "!< file://path ><" )	event = cn_open( path, O_RDWR );
+	end
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	story actions
+---------------------------------------------------------------------------*/
+int
+input_story( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0, 0, ExecutionMode ) )
+		return 0;
+
+	char *identifier = context->identifier.id[ 1 ].ptr;
+	context->identifier.id[ 1 ].ptr = NULL;
+
+	return push_input( "", identifier, FileInput, context );
+}
+
+int
+output_story( char *state, int event, char **next_state, _context *context )
+{
+	// DO_LATER
+	return 0;
+}
+
+/*---------------------------------------------------------------------------
 	command output actions
 ---------------------------------------------------------------------------*/
 int
@@ -424,26 +505,67 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 	if ( !strcmp( state, ": identifier" ) ) {
 		char *variable = context->identifier.id[ 0 ].ptr;
 		context->identifier.id[ 0 ].ptr = NULL;
-		push_output( "^^", variable, StringOutput, context );
+		event = push_output( "^^", variable, StringOutput, context );
 	}
 	else if ( !strcmp( state, ">@session" ) ) {
 		char *path = context->identifier.id[ 1 ].ptr;
-		push_output( "^^", path, SessionOutput, context );
+		context->identifier.id[ 1 ].ptr = NULL;
+		event = push_output( "^^", path, SessionOutput, context );
+		free( path );
 	}
 	else if ( !strcmp( state, "> .." ) ) {
-		push_output( "^^", &context->io.client, ClientOutput, context );
-		context->io.query.sync = 1;
+		event = push_output( "^^", &context->io.client, ClientOutput, context );
+		if ( !event ) context->io.query.sync = 1;
+	}
+	return event;
+}
+
+int
+sync_delivery( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0,0, ExecutionMode ) )
+		return 0;
+	if (( context->input.stack )) {
+		InputVA *input = context->input.stack->ptr;
+		if (( input->mode == ClientInput ) && ( input->session.created ))
+		{
+			// genitor wants to sync on iam
+			input->session.created->genitor = context->io.client;
+			context->io.query.sync = 0;
+			context->io.query.leave_open = 1;
+		}
+		else context->io.query.sync = 1;
 	}
 	return 0;
 }
 
 int
-output_backfeed( char *state, int event, char **next_state, _context *context )
+sync_output( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context_check( 0,0, ExecutionMode ) )
+		return 0;
+	if ( !context->output.marked )
+		return '\n';
+
+	output( Text, "\n" );
+	context->output.marked = 0;
+	if ( !context->output.redirected )
+		return 0;
+	if  ( context->io.query.sync )
+		return 0;
+
+	context->io.query.sync = 1;
+	output( Text, "|" );
+	return 0;
+}
+
+int
+backfeed_output( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	if ( context->output.flag.query && !context->output.flag.marked ) {
+	if ( context->output.query && !context->output.marked ) {
 		context->io.query.sync = 1;
 		output( Text, ">..:" );
 	} else {
@@ -453,73 +575,43 @@ output_backfeed( char *state, int event, char **next_state, _context *context )
 }
 
 static int
-output_pipe( InputType into, _context *context )
+pipe_output( InputType into, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	context->output.flag.marked = 0;
-	if ( !context->output.flag.redirected )
-		return output( Error, "pipe format not supported" );
+	context->output.marked = 0;
+	if ( !context->output.redirected )
+		return 0;
 
 	OutputVA *output = context->output.stack->ptr;
 	int *fd = &output->ptr.socket;
 	pop_output( context, 0 );
-	context->io.query.sync = 0;
 	push_input( "", fd, into, context );
 	return 0;
 }
 
 int
-service_sync( char *state, int event, char **next_state, _context *context )
+pipe_output_in( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0,0, ExecutionMode ) )
-		return 0;
-	if (( context->input.stack )) {
-		InputVA *input = context->input.stack->ptr;
-		if ( input->mode == ClientInput )
-			context->io.query.sync = 1;
-	}
-	return 0;
+	return pipe_output( SessionInput, context );
 }
 
 int
-output_sync( char *state, int event, char **next_state, _context *context )
+pipe_output_out( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0,0, ExecutionMode ) )
-		return 0;
-
-	context->output.flag.marked = 0;
-	if ( !context->output.flag.redirected )
-		return 0;
-
-	context->io.query.sync = 1;
-	output( Text, "|" );
-	pop_output( context, 1 );
-	return 0;
-}
-
-int
-output_pipe_in( char *state, int event, char **next_state, _context *context )
-{
-	return output_pipe( SessionInput, context );
-}
-
-int
-output_pipe_out( char *state, int event, char **next_state, _context *context )
-{
-	return output_pipe( SessionPipeInputOut, context );
+	return pipe_output( SessionInputOut, context );
 }
 
 int
 clear_output_target( char *state, int event, char **next_state, _context *context )
 {
 	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
-	context->output.flag.marked = 0;
-	if ( !context->output.flag.redirected )
-		return 0;
+	context->output.marked = 0;
+	if ( !context->output.redirected )
+		return event;
 
 	OutputVA *output = context->output.stack->ptr;
 	switch ( output->mode ) {
@@ -533,7 +625,7 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 		pop_output( context, 0 );
 		break;
 	}
-	return 0;
+	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -543,7 +635,7 @@ static int
 create_session( char *path, _context *context )
 {
 	// verify that a session with that name does not already exists
-	registryEntry *entry = lookupByName( context->operator.sessions, path );
+	registryEntry *entry = registryLookup( context->operator.sessions, path );
 	if ( entry != NULL ) {
 #ifdef LATER
 		// must notify genitor
@@ -558,26 +650,29 @@ create_session( char *path, _context *context )
 	SessionVA *session = calloc( 1, sizeof(SessionVA) );
 	session->path = path;
 	session->operator = getpid();
-	session->genitor.query = context->io.client;
 	session->pid = fork();
 	if ( !session->pid ) {
 		// child session will call io_init() and register itself
 #ifdef DO_LATER
 		// additional optional arguments: "-hcn", filename, "-story", filename
 #endif
-		execlp( CN_EXE_PATH, CN_EXE_PATH, "-msession", path, NULL );
+		char *exe = context->session.path;
+		execlp( exe, exe, "-msession", path, (char *)0 );
+
 		// execlp should not return at all, but in case:
 		// here we are in the child process. We must send back a message to operator.
 		// but actually operator should catch exit() with SIGCHLD.
 		outputf( Error, "execlp: failure to create session %s", path );
 		exit( -1 );
 	}
-	registerByName( &context->operator.sessions, session->path, session );
-	registerByIndex( &context->operator.pid, session->pid, session );
+	registryRegister( context->operator.sessions, session->path, session );
+	registryRegister( context->operator.pid, &session->pid, session );
 
-	// leave genitor hanging until session's iam notification
-	if ( context->io.client )
-		context->io.query.sync = 0;
+	if (( context->input.stack )) {
+		// carry session in case genitor wants to sink
+		InputVA *input = context->input.stack->ptr;
+		input->session.created = session;
+	}
 	return 0;
 }
 
@@ -593,7 +688,7 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 	char *path = context->identifier.id[ 1 ].ptr;
 	char *pid = context->identifier.id[ 2 ].ptr;
 
-	registryEntry *entry = lookupByName( context->operator.sessions, path );
+	registryEntry *entry = registryLookup( context->operator.sessions, path );
 	if ( entry == NULL )
 		return outputf( Warning, "iam notification: path unknown: '%s'", path );
 
@@ -601,16 +696,18 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 	if ( session->pid != atoi( pid ) )
 		return outputf( Warning, "iam event: unable to authenticate: '%s' - ignoring", path );
 
-	if ( session->genitor.query > 0 )
+	if ( session->genitor )
 	{
 		char *news;
 		asprintf( &news, "< operator >: session:%s !!", path );
 
-		int fd = session->genitor.query, remainder = 0, length = strlen( news );
+		int fd = session->genitor;
+		int remainder = 0, length = strlen( news );
 		io_write( fd, news, length, &remainder );
 		io_flush( fd, &remainder, context );
-		io_close( IO_QUERY, fd, "" );
-		session->genitor.query = 0;
+		write( fd, &remainder, sizeof( remainder ) );
+		close( fd );
+		session->genitor = 0;
 
 		free( news );
 	}
@@ -650,38 +747,34 @@ scheme_op( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	stream actions
+	cgi_entry actions
 ---------------------------------------------------------------------------*/
 int
-open_stream( char *state, int event, char **next_state, _context *context )
+cgi_entry_bgn( char *state, int event, char **next_state, _context *context )
 {
-	char *path = context->identifier.id[ 1 ].ptr;
-	if ( path == NULL ) return output( Error, "no file specified" );
-	bgn_
-	in_( "!< file://path" )		event = cn_open( path, O_RDONLY );
-	in_( "!< file://path <" )	event = cn_open( path, O_RDONLY );
-	in_( "!< file://path >" )	event = cn_open( path, O_WRONLY );
-	in_( "!< file://path ><" )	event = cn_open( path, O_RDWR );
-	end
-	return event;
-}
-
-int
-input_story( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context_check( 0, 0, ExecutionMode ) )
-		return 0;
-
-	char *identifier = context->identifier.id[ 1 ].ptr;
-	context->identifier.id[ 1 ].ptr = NULL;
-
-	return push_input( "", identifier, FileInput, context );
-}
-
-int
-output_story( char *state, int event, char **next_state, _context *context )
-{
-	// DO_LATER
 	return 0;
 }
 
+int
+cgi_entry_add( char *state, int event, char **next_state, _context *context )
+{
+	return 0;
+}
+
+int
+cgi_entry_end( char *state, int event, char **next_state, _context *context )
+{
+	return 0;
+}
+
+int
+read_cgi_entry( char *state, int event, char **next_state, _context *context )
+{
+	return 0;
+}
+
+int
+set_cgi_entry( char *state, int event, char **next_state, _context *context )
+{
+	return 0;
+}

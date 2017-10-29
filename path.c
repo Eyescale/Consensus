@@ -12,7 +12,9 @@
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
-#include "variables.h"
+#include "output_util.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 #define PATH	1
@@ -75,7 +77,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 		return event;
 	case EntityVariable:
 		// take only the first item in the list of entities
-		list = variable->data.value;
+		list = variable->value;
 		if ( list != NULL ) {
 			push_output( "", NULL, StringOutput, context );
 			output_entity_name( list->ptr, NULL, 1 );
@@ -85,7 +87,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 		break;
 	case ExpressionVariable:
 		// take only the first item in the list of expressions
-		list = variable->data.value;
+		list = variable->value;
 		if ( list != NULL ) {
 			context->expression.mode = EvaluateMode;
 	                expression_solve( list->ptr, 3, context );
@@ -101,7 +103,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 		break;
 	case LiteralVariable:
 		// take only the first item in the list of literals
-		list = variable->data.value;
+		list = variable->value;
 		if ( list != NULL ) {
 			ExpressionSub *s = (ExpressionSub *) list->ptr;
 			push_output( "", NULL, StringOutput, context );

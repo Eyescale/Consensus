@@ -24,6 +24,4 @@ Narrative *lookupNarrative( Entity *entity, char *name );
 Narrative *activateNarrative( Entity *entity, Narrative *narrative );
 void	deactivateNarrative( Entity *entity, Narrative *narrative );
 
-void freeNarrative( Narrative *narrative );
-
 #endif	// NARRATIVE_H

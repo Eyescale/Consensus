@@ -10,7 +10,8 @@
 
 #include "api.h"
 #include "expression.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 #include "expression_util.h"
 
 // #define DEBUG
@@ -420,7 +421,7 @@ instantiable( Expression *expression, _context *context )
 					"not allowed in expressions", identifier );
 				return 0;
 			case ExpressionVariable:
-				if ( !instantiable( ((listItem * ) variable->data.value )->ptr, context ) )
+				if ( !instantiable( ((listItem * ) variable->value )->ptr, context ) )
 					return 0;
 				break;
 			}

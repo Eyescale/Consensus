@@ -7,6 +7,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #include "database.h"
@@ -19,14 +20,10 @@
 #include "frame.h"
 #include "io.h"
 #include "command.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 #include "cgic.h"
-
-#define CN_CGI_STORY_PATH \
-	"/Library/WebServer/Documents/consensus/cgi.story"
-#define CN_HCN_HOME_PATH \
-	"/Library/WebServer/Documents/consensus/hcn/Home.hcn"
 
 // #define DEBUG
 
@@ -112,10 +109,14 @@ main( int argc, char *argv[] )
 	CN.nil->sub[2] = CN.nil;
 	CN.nil->state = 1;	// always on
 
-	registerByName( &CN.VB, "name", NULL );
-	registerByName( &CN.VB, "hcn", NULL );
-	registerByName( &CN.VB, "url", NULL );
-	registerByName( &CN.VB, "narratives", NULL );
+	CN.VB = newRegistry( IndexedByName );
+
+	registryRegister( CN.VB, "name", newRegistry(IndexedByAddress) );
+	registryRegister( CN.VB, "hcn", newRegistry(IndexedByAddress) );
+	registryRegister( CN.VB, "url", newRegistry(IndexedByAddress) );
+	registryRegister( CN.VB, "narratives", newRegistry(IndexedByAddress) );
+
+	CN.names = newRegistry( IndexedByName );
 
 	// initialize context data
 	// -----------------------
@@ -124,18 +125,31 @@ main( int argc, char *argv[] )
 
 	_context *context = CN.context;
 
-	StackVA *stack = calloc( 1, sizeof( StackVA ) );
-	stack->next_state = "";
-	context->control.stack = newItem( stack );
+	RTYPE( &context->control.stackbase.variables ) = IndexedByName;
+	context->control.stackbase.next_state = "";
+	context->control.stack = newItem( &context->control.stackbase );
+	context->input.buffer.current = &context->input.buffer.base;
 	context->hcn.state = "";
 	context->control.mode = ExecutionMode;
 	context->control.terminal = isatty( STDIN_FILENO );
 	context->control.cgi = (( argc == 1 ) && !context->control.terminal );
 	context->control.cgim = clarg( argc, argv, "-mcgi" );
-	context->control.prompt = ttyu( context );
 	context->control.operator = clarg( argc, argv, "-moperator" );
-	context->session.path = clargv( argc, argv, "-msession" );
-	context->control.session = ((context->session.path) ? 1 : 0);
+	struct stat buf;
+	context->control.operator_absent = stat( IO_OPERATOR_PATH, &buf );
+	if ( context->control.operator ) {
+		if ( !context->control.operator_absent )
+			return outputf( Error, "operator already registered" );
+		context->session.path = argv[ 0 ];
+		context->operator.pid = newRegistry( IndexedByNumber );
+		context->operator.sessions = newRegistry( IndexedByName );
+	} else {
+		if ( context->control.operator_absent )
+			output( Warning, "operator is out of order" );
+		context->session.path = clargv( argc, argv, "-msession" );
+		context->control.session = ((context->session.path) ? 1 : 0);
+	}
+	context->control.prompt = ttyu( context );
 
 	// initialize CNDB data
 	// --------------------
@@ -167,7 +181,6 @@ main( int argc, char *argv[] )
 		char *hcn = clargv( argc, argv, "-mhcn" );
 		if ((hcn)) cn_dof( ": %%.$( hcn ) : \"%s\"", hcn );
 		else cn_dof( ": %%.$( hcn ) : \"%s\"", CN_HCN_HOME_PATH );
-
 #ifdef DO_LATER
 		char *story = clargv( argc, argv, "-mstory" );
 		if ((story)) cn_dof( ":< file:%s", story );
@@ -252,7 +265,7 @@ main( int argc, char *argv[] )
 	}
 	while ( strcmp( state, "" ) );
 
-	command_exit( state, restore, context );
+	command_exit( state, event, restore, context );
 	io_exit( context );
 	// cgiExit();
 	return event;

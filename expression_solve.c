@@ -13,29 +13,30 @@
 #include "expression.h"
 #include "expression_util.h"
 #include "expression_filter.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 #define MEMOPT
 
 #ifdef DEBUG
 #define RETURN( value ) \
-	{ output( Debug, "expression_solve: exiting - success=%d", value ); return value; }
+	{ outputf( Debug, "expression_solve: exiting - success=%d", value ); return value; }
 #define DEBUG_1	\
-	output( Debug, "solve: no sub-expression[ %d ], starting from '%s', any:%d, active:%d, inactive:%d, mark:%d", \
+	outputf( Debug, "solve: no sub-expression[ %d ], starting from '%s', any:%d, active:%d, inactive:%d, mark:%d", \
 	count, expression->sub[count].result.identifier.value, expression->sub[count].result.any, expression->sub[count].result.active, \
 	expression->sub[count].result.inactive, ( expression->result.mark & ( 1 << count ) ) >> count );
 #define DEBUG_2 \
-	output( Debug, "\tsource: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[0], \
+	outputf( Debug, "\tsource: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[0], \
 		expression->sub[0].result.any, expression->sub[0].result.active, expression->sub[0].result.inactive, \
 		expression->result.mark & 1 ); \
-	output( Debug, "\tmedium: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[1], \
+	outputf( Debug, "\tmedium: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[1], \
 		expression->sub[1].result.any, expression->sub[1].result.active, expression->sub[1].result.inactive, \
 		( expression->result.mark & 2 ) >> 1 ); \
-	output( Debug, "\ttarget: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[2], \
+	outputf( Debug, "\ttarget: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[2], \
 		expression->sub[2].result.any, expression->sub[2].result.active, expression->sub[2].result.inactive, \
 		( expression->result.mark & 4 ) >> 2 ); \
-	output( Debug, "\tinstance: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[3], \
+	outputf( Debug, "\tinstance: %0x, any:%d, active: %d, inactive:%d: mark:%d", (int) r_sub[3], \
 		expression->sub[3].result.any, expression->sub[3].result.active, expression->sub[3].result.inactive, \
 		( expression->result.mark & 8 ) >> 3 );
 #else
@@ -213,7 +214,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 	ExpressionSub *sub = expression->sub;
 
 #ifdef DEBUG
-	output( Debug, "sub_solve: entering count=%d", count );
+	outputf( Debug, "sub_solve: entering count=%d", count );
 #endif
 	listItem **sub_results = &sub[ count ].result.list;
 
@@ -301,12 +302,12 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			case EntityVariable:
 				if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
 					context->expression.mode = EvaluateMode;
-					for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+					for ( listItem *i = (listItem *) variable->value; i!=NULL; i=i->next ) {
 						addItem( sub_results, i->ptr );
 					}
 					break;
 				}
-				for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+				for ( listItem *i = (listItem *) variable->value; i!=NULL; i=i->next ) {
 					filter_results( sub_results, expression, count, i->ptr, ENTITY, results );
 				}
 				if ( *sub_results == NULL ) return 0;
@@ -318,7 +319,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				listItem *restore_filter = context->expression.filter;
 				context->expression.filter = *sub_results;
 				int sub_count = sub[ 1 ].result.none ? 3 : count;
-				success = expression_solve( ((listItem *) variable->data.value )->ptr, sub_count, context );
+				success = expression_solve( ((listItem *) variable->value )->ptr, sub_count, context );
 				context->expression.filter = restore_filter;
 #ifdef MEMOPT
 				if ( sub_count != 3 )
@@ -331,7 +332,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			case LiteralVariable:
 				if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode != ReadMode ))) {
 					context->expression.mode = ReadMode;
-					for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+					for ( listItem *i = (listItem *) variable->value; i!=NULL; i=i->next ) {
 						addItem( sub_results, i->ptr );
 					}
 					break;
@@ -343,7 +344,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				sub_count = sub[ 1 ].result.none ? 3 : count;
 				if ( context->expression.mode == ReadMode )
 				{
-					for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+					for ( listItem *i = (listItem *) variable->value; i!=NULL; i=i->next ) {
 						ExpressionSub *s = (ExpressionSub *) i->ptr;
 						success = solve( s->e, sub_count, *sub_results );
 						if ( success > 0 ) {
@@ -355,7 +356,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				else {
 					restore_filter = context->expression.filter;
 					context->expression.filter = *sub_results;
-					for ( listItem *i = (listItem *) variable->data.value; i!=NULL; i=i->next ) {
+					for ( listItem *i = (listItem *) variable->value; i!=NULL; i=i->next ) {
 						ExpressionSub *s = (ExpressionSub *) i->ptr;
 						success = expression_solve( s->e, sub_count, context );
 						if ( success > 0 ) {
@@ -440,7 +441,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			e = cn_new( strdup( identifier ) );
 			addItem( sub_results, e );
 #ifdef DEBUG
-			output( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
+			outputf( Debug, "set_sub_identifier[ %d ]: created new: '%s', addr: %0x",
 				count, identifier, (int) e );
 #endif
 		} else if ( !sub[ count ].result.not ) {
@@ -456,7 +457,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			return output( Error, "expression terms are incomplete" );
 		}
 #ifdef DEBUG_FULL
-		output( Debug, "recursing in SOLVE: count=%d, not=%d", count, sub[ count ].result.not );
+		outputf( Debug, "recursing in SOLVE: count=%d, not=%d", count, sub[ count ].result.not );
 #endif
 		filter_results( sub_results, expression, count, NULL, 0, results );
 		if (( results != NULL ) && ( *sub_results == NULL )) return 0;
@@ -470,7 +471,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			freeListItem( sub_results );
 		if ( success <= 0 ) return success;
 #ifdef DEBUG
-		output( Debug, "solve: returning - %0x [ %d ]", (int) sub[ count ].e, count );
+		outputf( Debug, "solve: returning - %0x [ %d ]", (int) sub[ count ].e, count );
 #endif
 		*sub_results = sub_e->result.list;
 		sub_e->result.list = NULL;
@@ -489,7 +490,7 @@ restore( Expression *expression, int restore_mode, listItem *results, _context *
 	if ( context->expression.mode == ReadMode )
 	{
 #ifdef DEBUG
-		output( Debug, "restoring mode & results - from ReadMode, to mode=%d...", restore_mode );
+		outputf( Debug, "restoring mode & results - from ReadMode, to mode=%d...", restore_mode );
 #endif
 		// Here we need to translate the resulting literals into entities
 		context->expression.mode = restore_mode;
@@ -508,7 +509,7 @@ restore( Expression *expression, int restore_mode, listItem *results, _context *
 	else
 	{
 #ifdef DEBUG
-		output( Debug, "restoring mode & results - from mode=%d to ReadMode...", restore_mode );
+		outputf( Debug, "restoring mode & results - from mode=%d to ReadMode...", restore_mode );
 #endif
 
 		// Here we need to translate the resulting entities into literals
@@ -572,7 +573,7 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 		ExpressionSub *entity = (ExpressionSub *) candidate->ptr;
 		if ( !test_as_sub( entity, 1, as_sub ) ) {
 #ifdef DEBUG
-			output( Debug, "failed test_as_sub [ %d ]", as_sub );
+			outputf( Debug, "failed test_as_sub [ %d ]", as_sub );
 #endif
 			return 0;
 		}
@@ -593,12 +594,12 @@ set_candidate_sub( CandidateSub *sub, int as_sub, listItem *candidate )
 		if ( !test_as_sub( entity, 0, as_sub ) )
 		{
 #ifdef DEBUG
-			output( Debug, "failed test_as_sub [ %d ]", as_sub );
+			outputf( Debug, "failed test_as_sub [ %d ]", as_sub );
 #endif
 			return 0;
 		}
 #ifdef DEBUG
-		output( Debug, "passed test_as_sub [ %d ]", as_sub );
+		outputf( Debug, "passed test_as_sub [ %d ]", as_sub );
 #endif
 		sub[ 3 ].ptr = entity;
 		sub[ 3 ].active = cn_is_active( entity );
@@ -626,7 +627,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	ExpressionSub *sub = expression->sub;
 
 #ifdef DEBUG
-	output( Debug, "solve: entering - %0x", (int) expression );
+	outputf( Debug, "solve: entering - %0x", (int) expression );
 #endif
 
 	int restore_mode = context->expression.mode;
@@ -637,7 +638,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 
 	if ( sub[ 3 ].result.none || sub[ 3 ].result.any ) {
 #ifdef DEBUG
-		output( Debug, "solve: no or any sub[ %d ]", 3 );
+		outputf( Debug, "solve: no or any sub[ %d ]", 3 );
 #endif
 	} else {
 		int success = sub_solve( expression, 3, results, context );
@@ -653,7 +654,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 	for ( int count = 0; count < 3; count ++ ) {
 		if ( sub[ count ].result.none || sub[ count ].result.any ) {
 #ifdef DEBUG
-			output( Debug, "solve: no or any sub[ %d ]", count );
+			outputf( Debug, "solve: no or any sub[ %d ]", count );
 #endif
 			continue;
 		}
@@ -679,7 +680,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 			if ( e == NULL ) {
 				e = cn_instantiate( source, medium, target );
 #ifdef DEBUG
-				output( Debug, "solver: created new relationship instance: ( %0x, %0x, %0x ): %0x",
+				outputf( Debug, "solver: created new relationship instance: ( %0x, %0x, %0x ): %0x",
 					(int) source, (int) medium, (int) target, (int) e );
 #endif
 			}
@@ -749,7 +750,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		}
 		else if ( !flag_sub[ i ].any ) {
 #ifdef DEBUG
-			output( Debug, "solver: returning on count %d", i );
+			outputf( Debug, "solver: returning on count %d", i );
 #endif
 			return 0;
 		}
@@ -772,7 +773,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		if ( count < 4 )
 		{
 #ifdef DEBUG
-			output( Debug, "solver: 3.1. special case - inverting all %d", count );
+			outputf( Debug, "solver: 3.1. special case - inverting all %d", count );
 #endif
 			int sub_count = ( count < 3 ) ? ( 1 << count ) : as_sub;
 			invert_results( &sub[ count ], sub_count, NULL );
@@ -814,7 +815,7 @@ solve( Expression *expression, int as_sub, listItem *results )
 		return 0;
 	}
 #ifdef DEBUG
-	output( Debug, " - %0x", (int) candidate->ptr );
+	outputf( Debug, " - %0x", (int) candidate->ptr );
 #endif
 	// execute loop
 	for ( ; ; ) {
@@ -928,7 +929,7 @@ resolve( Expression *expression )
 	if ( mark )
 	{
 #ifdef DEBUG
-		output( Debug, "resolve: found mark=%d", mark );
+		outputf( Debug, "resolve: found mark=%d", mark );
 #endif
 		listItem *results = NULL;
 		if ( mark != 8 ) {
@@ -1035,7 +1036,7 @@ int
 expression_solve( Expression *expression, int as_sub, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "entering expression_solve: ReadMode=%d, expression=%0x...",
+	outputf( Debug, "entering expression_solve: ReadMode=%d, expression=%0x...",
 		(context->expression.mode == ReadMode), (int) expression );
 #endif
 	freeListItem( &context->expression.results );
@@ -1079,7 +1080,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	    ( expression->sub[ 3 ].result.any || expression->sub[ 3 ].result.none ) )
 	{
 #ifdef DEBUG
-		output( Debug, "going to take_all - as_sub: %d", as_sub );
+		outputf( Debug, "going to take_all - as_sub: %d", as_sub );
 #endif
 		as_sub = expression->result.as_sub | ( 1  <<  as_sub );
 		expression->result.list = take_all( expression, as_sub, context->expression.filter );
@@ -1130,7 +1131,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	cleanup_results( expression );
 
 #ifdef DEBUG
-	output( Debug, "exiting expression_solve - success=%d, mode=%d",
+	outputf( Debug, "exiting expression_solve - success=%d, mode=%d",
 		success, (context->expression.mode == ReadMode) );
 #endif
 	return success;

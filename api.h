@@ -32,8 +32,8 @@ Entity	*cn_instance( Entity *source, Entity *medium, Entity *target );
 int	cn_is_active( Entity *e );
 void	cn_free( Entity *e );
 
-void	*cn_va_get_value( Entity *e, char *va_name );
-registryEntry *cn_va_set_value( Entity *e, char *va_name, void *value );
+void	*cn_va_get( Entity *e, char *va_name );
+registryEntry *cn_va_set( Entity *e, char *va_name, void *value );
 
 int	cn_instantiate_narrative( Entity *e, Narrative *n );
 int	cn_activate_narrative( Entity *e, char *name );

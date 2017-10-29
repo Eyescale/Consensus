@@ -16,7 +16,8 @@
 #include "command.h"
 #include "expression.h"
 #include "narrative.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 
@@ -35,8 +36,8 @@ test_log( _context *context, LogType type )
 			( log->entities.released ) ||
 			( log->entities.activated ) ||
 			( log->entities.deactivated ) ||
-			( log->narratives.activate ) ||
-			( log->narratives.deactivate )
+			( log->narratives.activate.value ) ||
+			( log->narratives.deactivate.value )
 		);
 	case EVENTS:
 		for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next ) {
@@ -117,17 +118,17 @@ register_results( Occurrence *occurrence, char *identifier, _context *context )
 	if ( identifier == NULL ) return;
 
 	VariableVA *variable;
-	registryEntry *entry = lookupByName( occurrence->variables, identifier );
+	registryEntry *entry = registryLookup( &occurrence->variables, identifier );
 	if ( entry == NULL ) {
 		variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-		registerByName( &occurrence->variables, strdup( identifier ), variable );
+		registryRegister( &occurrence->variables, strdup( identifier ), variable );
 	}
 	else {
 		variable = (VariableVA *) entry->value;
 		freeVariableValue( variable );
 	}
 	variable->type = ( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable;
-	variable->data.value = context->expression.results;
+	variable->value = context->expression.results;
 	context->expression.results = NULL;
 }
 
@@ -465,7 +466,6 @@ execute_narrative_actions( Narrative *instance, _context *context )
 
 	// reorder the actions to execute them in FIFO order
 	reorderListItem( &instance->frame.actions );
-
 	for ( listItem *i = instance->frame.actions; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
@@ -566,9 +566,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	output( Debug, "frame: 1. deactivate narratives" );
 #endif
 	// Check entity narratives to be deactivated - and deactivate them
-	for ( registryEntry *i = log->narratives.deactivate; i!=NULL; i=i->next )
+	for ( registryEntry *i = log->narratives.deactivate.value; i!=NULL; i=i->next )
 	{
-		Narrative *narrative = (Narrative *) i->identifier.address;
+		Narrative *narrative = (Narrative *) i->index.address;
 		listItem *entities = (listItem *) i->value;
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{
@@ -587,9 +587,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
-		for ( registryEntry *j = narrative->instances, *next_j; j!=NULL; j=next_j )
+		for ( registryEntry *j = narrative->instances.value, *next_j; j!=NULL; j=next_j )
 		{
-			Entity *e = (Entity *) j->identifier.address;
+			Entity *e = (Entity *) j->index.address;
 			Narrative *n = (Narrative *) j->value;
 			next_j = j->next; // needed in case of deactivation
 #ifdef DEBUG
@@ -611,7 +611,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
-		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
+		for ( registryEntry *j = narrative->instances.value; j!=NULL; j=j->next )
 		{
 			Narrative *n = (Narrative *) j->value;
 			// reorder the events to parse them in FIFO order
@@ -638,7 +638,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
-		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
+		for ( registryEntry *j = narrative->instances.value; j!=NULL; j=j->next )
 		{
 			Narrative *n = (Narrative *) j->value;
 			if ((n->frame.then))
@@ -672,7 +672,7 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
-		for ( registryEntry *j = narrative->instances; j!=NULL; j=j->next )
+		for ( registryEntry *j = narrative->instances.value; j!=NULL; j=j->next )
 		{
 			Narrative *n = (Narrative *) j->value;
 			filter_narrative_events( n, context );
@@ -683,9 +683,9 @@ systemFrame( char *state, int e, char **next_state, _context *context )
 	output( Debug, "frame: 5. activate narratives" );
 #endif
 	// Check narratives to be activated - and activate them
-	for ( registryEntry *i = log->narratives.activate; i!=NULL; i=i->next )
+	for ( registryEntry *i = log->narratives.activate.value; i!=NULL; i=i->next )
 	{
-		Narrative *narrative = (Narrative *) i->identifier.address;
+		Narrative *narrative = (Narrative *) i->index.address;
 		listItem *entities = (listItem *) i->value;
 		for ( listItem *j = entities; j!=NULL; j=j->next )
 		{

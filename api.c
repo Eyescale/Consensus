@@ -29,13 +29,13 @@ cn_read( void *src, InputType type, char *state, int event )
 	char *next_state = same;
 
 	event = command_init( src, type, restore, context );
+	if ( event < 0 ) return event;
 	do {
 		event = read_command( state, event, &next_state, context );
 		state = next_state;
 	}
 	while ( strcmp( state, "" ) );
-	command_exit( state, restore, context );
-
+	event = command_exit( state, event, restore, context );
 	return event;
 }
 
@@ -266,8 +266,8 @@ vainstf( const char *format, va_list ap )
 			{
 				identifier = strdup( identifier );
 				e = newEntity( NULL, NULL, NULL );
-				cn_va_set_value( e, "name", identifier );
-				registerByName( &CN.names, identifier, e );
+				cn_va_set( e, "name", identifier );
+				registryRegister( CN.names, identifier, e );
 				addItem( &CN.DB, e );
 			}
 			sub[ count++ ] = e;
@@ -306,7 +306,7 @@ cn_instf( const char *format, ... )
 Entity *
 cn_entity( char *name )
 {
-	registryEntry *entry = lookupByName( CN.names, name );
+	registryEntry *entry = registryLookup( CN.names, name );
 	return ( entry == NULL ) ? NULL : (Entity *) entry->value;
 }
 
@@ -325,7 +325,7 @@ cn_is_active( Entity *e )
 char *
 cn_name( Entity *e )
 {
-	return (char *) cn_va_get_value( e, "name" );
+	return (char *) cn_va_get( e, "name" );
 }
 
 /*---------------------------------------------------------------------------
@@ -335,8 +335,8 @@ Entity *
 cn_new( char *name )
 {
 	Entity *e = newEntity( NULL, NULL, NULL );
-	cn_va_set_value( e, "name", name );
-	registerByName( &CN.names, name, e );
+	cn_va_set( e, "name", name );
+	registryRegister( CN.names, name, e );
 	addItem( &CN.DB, e );
 	FrameLog *log = &CN.context->io.input.log;
 	addItem( &log->entities.instantiated, e );
@@ -353,30 +353,33 @@ cn_free( Entity *e )
 
 	// free entity's name, hcn and url strings
 
-	name = cn_va_get_value( e, "name" );
+	name = cn_va_get( e, "name" );
 	free( name );
-	name = cn_va_get_value( e, "hcn" );
+	name = cn_va_get( e, "hcn" );
 	free( name );
-	name = cn_va_get_value( e, "url" );
+	name = cn_va_get( e, "url" );
 	free( name );
 
 	// remove all entity's narratives
 
-	Registry narratives = cn_va_get_value( e, "narratives" );
-	for ( registryEntry *r = narratives; r!=NULL; r=r->next )
-	{
-		Narrative *n = (Narrative *) r->value;
-		removeNarrative( e, n );
+	Registry *entity_narratives = cn_va_get( e, "narratives" );
+	if (( entity_narratives )) {
+		for ( registryEntry *r = entity_narratives->value; r!=NULL; r=r->next )
+		{
+			Narrative *n = (Narrative *) r->value;
+			removeNarrative( e, n );
+		}
 	}
 
-	// remove entity from name registry
+	// remove entity from name registry (deregister by value)
 
-	deregisterByValue( &CN.names, e );
+	registryDeregister( CN.names, NULL, e );
 
 	// close all value accounts associated with this entity
 
-	for ( registryEntry *r = CN.VB; r!=NULL; r=r->next ) {
-		deregisterByAddress( (Registry *) &r->value, e );
+	for ( registryEntry *r = CN.VB->value; r!=NULL; r=r->next ) {
+		Registry *registry = r->value;
+		registryDeregister( registry, e );
 	}
 
 	// finally remove entity from CN.DB
@@ -386,44 +389,48 @@ cn_free( Entity *e )
 }
 
 /*---------------------------------------------------------------------------
-	cn_va_set_value
+	cn_va_set
 ---------------------------------------------------------------------------*/
 registryEntry *
-cn_va_set_value( Entity *e, char *va_name, void *value )
+cn_va_set( Entity *e, char *va_name, void *value )
 {
 	if ( value == NULL ) return NULL;
-	registryEntry *entry = lookupByName( CN.VB, va_name );
-	if ( entry == NULL ) return NULL;
-	Registry *va = (Registry *) &entry->value;
-	entry = lookupByAddress( *va, e );
-	if ( entry == NULL ) {
-		return registerByAddress( va, e, value );
-	} else if ( !strcmp( va_name, "narratives" ) ) {
+
+	registryEntry *entry = registryLookup( CN.VB, va_name );
+	Registry *va = (Registry *) entry->value;
+	entry = registryLookup( va, e );
+	if ( entry == NULL )
+	{
+		return registryRegister( va, e, value );
+	}
+	else if ( !strcmp( va_name, "narratives" ) )
+	{
+		Registry *entity_narratives = entry->value;
 		// deregister entity from all previous narratives
-		for (registryEntry *i = (Registry) entry->value; i!=NULL; i=i->next )
+		for (registryEntry *i = entity_narratives->value; i!=NULL; i=i->next )
 		{
 			Narrative *n = (Narrative *) i->value;
 			removeFromNarrative( n, e );
 		}
 		// reset value account
-		freeRegistry((Registry *) &entry->value );
-	} else {
-		free( entry->value );
+		freeRegistry((Registry **) &entry->value );
 	}
+	else free( entry->value );
 	entry->value = value;
 	return entry;
 }
 
 /*---------------------------------------------------------------------------
-	cn_va_get_value
+	cn_va_get
 ---------------------------------------------------------------------------*/
 void *
-cn_va_get_value( Entity *e, char *va_name )
+cn_va_get( Entity *e, char *va_name )
 {
-	registryEntry *va = lookupByName( CN.VB, va_name );
-	if ( va == NULL ) return NULL;
-	registryEntry *entry = lookupByAddress((Registry) va->value, e );
+	registryEntry *entry = registryLookup( CN.VB, va_name );
+	Registry *va = (Registry *) entry->value;
+	entry = registryLookup( va, e );
 	if ( entry == NULL ) return NULL;
+
 	return entry->value;
 
 }
@@ -432,7 +439,7 @@ cn_va_get_value( Entity *e, char *va_name )
 	cn_expression
 ---------------------------------------------------------------------------*/
 static Expression *
-cn_e( Entity *e, ExpressionSub *super )
+cn_x( Entity *e, ExpressionSub *super )
 {
 	if ( e == NULL ) return NULL;
 
@@ -462,7 +469,7 @@ cn_e( Entity *e, ExpressionSub *super )
 				sub[ i ].result.identifier.type = DefaultIdentifier;
 				sub[ i ].result.identifier.value = strdup( name );
 			} else {
-				sub[ i ].e = cn_e( e->sub[ i ], &sub[ 3 ] );
+				sub[ i ].e = cn_x( e->sub[ i ], &sub[ 3 ] );
 				sub[ i ].result.none = ( sub[ i ].e == NULL );
 			}
 		}
@@ -473,7 +480,7 @@ cn_e( Entity *e, ExpressionSub *super )
 Expression *
 cn_expression( Entity *e )
 {
-	return cn_e( e, NULL );
+	return cn_x( e, NULL );
 }
 
 /*---------------------------------------------------------------------------
@@ -602,7 +609,7 @@ cn_release_narrative( Entity *e, char *name )
 	if ( n == NULL ) return 0;
 
 	//check if the requested narrative instance is active
-	if ( lookupByAddress( n->instances, e ) != NULL ) {
+	if ( registryLookup( &n->instances, e ) != NULL ) {
 #ifdef DO_LATER
 		// output in full: %[ e ].name() - cf. output_narrative_name()
 #endif
@@ -624,21 +631,18 @@ cn_activate_narrative( Entity *e, char *name )
 	if ( n == NULL ) return 0;
 
 	// check if the requested narrative instance already exists
-	if ( lookupByAddress( n->instances, e ) != NULL ) return 0;
+	if (( registryLookup( &n->instances, e ) )) return 0;
 
 	// log narrative activation event - the actual activation is performed in systemFrame
 	FrameLog *log = &CN.context->io.input.log;
-	Registry *r = &log->narratives.activate;
-	if ( *r == NULL ) {
-		log->narratives.activate = newRegistryItem( n, newItem( e ) );
+	Registry *registry = &log->narratives.activate;
+	registryEntry *entry = registryLookup( registry, n );
+	if ( entry == NULL ) {
+		registryRegister( registry, n, newItem(e) );
 	} else {
-		registryEntry *entry = lookupByAddress( *r, n );
-		if ( entry == NULL ) {
-			registerByAddress( r, n, newItem(e) );
-		} else {
-			addIfNotThere((listItem **) &entry->value, e );
-		}
+		addIfNotThere((listItem **) &entry->value, e );
 	}
+
 	return 1;
 }
 
@@ -652,21 +656,18 @@ cn_deactivate_narrative( Entity *e, char *name )
 	if ( n == NULL ) return 0;
 
 	// check if the requested narrative instance actually exists
-	if ( lookupByAddress( n->instances, e ) == NULL ) return 0;
+	if ( registryLookup( &n->instances, e ) == NULL ) return 0;
 
 	// log narrative deactivation event - the actual deactivation is performed in systemFrame
 	FrameLog *log = &CN.context->io.input.log;
 	Registry *r = &log->narratives.deactivate;
-	if ( *r == NULL ) {
-		log->narratives.deactivate = newRegistryItem( n, newItem( e ) );
+	registryEntry *entry = registryLookup( r, n );
+	if ( entry == NULL ) {
+		registryRegister( r, n, newItem(e) );
 	} else {
-		registryEntry *entry = lookupByAddress( *r, n );
-		if ( entry == NULL ) {
-			registerByAddress( r, n, newItem(e) );
-		} else {
-			addIfNotThere((listItem **) &entry->value, e );
-		}
+		addIfNotThere((listItem **) &entry->value, e );
 	}
+
 	return 1;
 }
 

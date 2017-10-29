@@ -9,6 +9,7 @@
 
 #include "input.h"
 #include "input_util.h"
+#include "output.h"
 
 // #define DEBUG
 

@@ -61,29 +61,12 @@ io_close( int type, int socket_fd, char *format, ... )
 	_context *context = CN.context;
 	switch ( type ) {
 	case IO_QUERY:
-		if ( context->io.query.sync ) {
-#if 0
+		if ( context->io.query.sync )
+		{
+			// read closing packet
 			int remainder = 0;
 			char *buffer = context->io.input.buffer.ptr;
-			while ( io_read( socket_fd, buffer, &remainder ) )
-				;
-#else
-			int remainder = 0;
-			char *buffer = context->io.input.buffer.ptr;
-			listItem **results = &context->io.query.results;
-			for ( listItem *i = *results; i!=NULL; i=i->next )
-				free( i->ptr );
-			freeListItem( results );
-			IdentifierVA dst;
-			bzero( &dst, sizeof( IdentifierVA ) );
-			while ( io_read( socket_fd, buffer, &remainder ) )
-				for ( char *ptr = buffer; *ptr; ptr++ )
-					slist_append( results, &dst, *ptr, 1 );
-			slist_close( results, &dst );
-			if (( *results ))
-				for ( listItem *i = *results; i!=NULL; i=i->next )
-					outputf( Debug, "io_close: received: %s", (char *) i->ptr );
-#endif
+			io_read( socket_fd, buffer, &remainder );
 			context->io.query.sync = 0;
 		}
 		close( socket_fd );
@@ -175,7 +158,7 @@ io_scan( fd_set *fds, int blocking, _context *context )
 	if ( context->control.cgi || context->control.cgim )
 		return;	// CGI does not listen to anyone
 
-	if ( context->control.terminal &&  !context->control.anteprompt && !(context->input.stack) )
+	if ( ttyu( context ) &&  !context->control.anteprompt && !(context->input.stack) )
 		context->control.prompt = 1;
 
 	if (( context->input.stack ))
@@ -186,8 +169,11 @@ io_scan( fd_set *fds, int blocking, _context *context )
 
 	int nfds = 0;
 
-	FD_SET( STDIN_FILENO, fds );
-	nfds = SUP( nfds, STDIN_FILENO );
+	if ( !context->control.session )
+	{
+		FD_SET( STDIN_FILENO, fds );
+		nfds = SUP( nfds, STDIN_FILENO );
+	}
 
 	FD_SET( context->io.bulletin, fds );
 	nfds = SUP( nfds, context->io.bulletin );
@@ -236,8 +222,8 @@ io_inform( _context *context )
 	freeListItem( &log->entities.released );
 	freeListItem( &log->entities.activated );
 	freeListItem( &log->entities.deactivated );
-	freeRegistry( &log->narratives.activate );
-	freeRegistry( &log->narratives.deactivate );
+	emptyRegistry( &log->narratives.activate );
+	emptyRegistry( &log->narratives.deactivate );
 }
 
 /*---------------------------------------------------------------------------
@@ -266,7 +252,11 @@ io_accept( int fd, _context *context )
 		int size = 0;
 		write( socket_fd, &size, sizeof( size ));
 	}
-	close( socket_fd );
+	if ( context->io.query.leave_open ) {
+		context->io.query.leave_open = 0;
+	}
+	else close( socket_fd );
+
 
 	context->io.query.sync = backup.sync;
 	return 0;
@@ -294,6 +284,8 @@ io_query( char *path, _context *context )
 
 		return io_open( IO_QUERY, IO_PEER_PATH, path );
 	}
+	else if ( context->control.operator_absent )
+			;
 	else if ( !strcmp( path, "operator" ) ) {
 		if ( context->control.operator )
 			return output( Error, ">@ operator: short-circuit" );
@@ -305,16 +297,24 @@ io_query( char *path, _context *context )
 	}
 	else	// target is a peer session
 	{
-		// query operator the pid of the session associated with path
-		context->io.query.sync = 1;
-		cn_dof( ">@ operator:< session:%s", path );
+		// query operator the session descriptor associated with path
+#ifdef DEBUG
+		output( Debug, "io_query: contacting operator" );
+		cn_dof( ">@ operator:< \\%%[ session:%s ]", path );
+		output( Debug, "io_query: operator over" );
+#else
+		int retval = cn_dof( ">@ operator:< \\%%[ session:%s ]", path );
+#endif
+		if (( context->io.query.results )) {
+			char *pid = context->io.query.results->ptr;
+			if ( atoi( pid ) == getpid() )
+				return outputf( Error, ">@ %s: short-circuit", path );
 
-		char *pid = context->identifier.id[ 0 ].ptr;
-		if ( atoi( pid ) == getpid() )
-			return outputf( Error, ">@ %s: short-circuit", path );
-		
-		return io_open( IO_QUERY, IO_PEER_PATH, pid );
+			return io_open( IO_QUERY, IO_PEER_PATH, pid );
+		}
 	}
+	outputf( Error, "'%s': could not connect", path );
+	return 0;
 }
 
 /*---------------------------------------------------------------------------

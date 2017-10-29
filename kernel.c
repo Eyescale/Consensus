@@ -11,7 +11,8 @@
 
 #include "input.h"
 #include "output.h"
-#include "variables.h"
+#include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
 
@@ -21,7 +22,10 @@
 int
 ttyu( _context *context )
 {
-	return ( context->control.terminal && !context->control.cgi && !context->control.cgim );
+	return ( context->control.terminal &&
+		!context->control.cgi &&
+		!context->control.cgim &&
+		!context->control.session );
 }
 
 /*---------------------------------------------------------------------------
@@ -86,40 +90,6 @@ nop( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	error	- action
----------------------------------------------------------------------------*/
-int
-error( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
-		return 0;
-
-	if ( event == '\n' ) {
-		return outputf( Error, "in state \"%s\", instruction incomplete", state );
-	} else if ( event != 0 ) {
-		return outputf( Error, "in \"%s\", on '%c', syntax error", state, event );
-	}
-	return event;
-}
-
-/*---------------------------------------------------------------------------
-	warning	- action
----------------------------------------------------------------------------*/
-int
-warning( char *state, int event, char **next_state, _context *context )
-{
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
-		return 0;
-
-	if ( event == '\n' ) {
-		outputf( Warning, "\"%s\", instruction incomplete", state );
-	} else if ( event != 0 ) {
-		outputf( Warning, "syntax error: in \"%s\", on '%c'", state, event );
-	}
-	return 0;
-}
-
-/*---------------------------------------------------------------------------
 	push	- action
 ---------------------------------------------------------------------------*/
 int
@@ -136,6 +106,7 @@ push( char *state, int event, char **next_state, _context *context )
 	context->control.level++;
 
 	stack = (StackVA *) calloc( 1, sizeof(StackVA) );
+	RTYPE( &stack->variables ) = IndexedByName;
 	addItem( &context->control.stack, stack );
 
 #ifdef DEBUG

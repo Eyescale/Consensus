@@ -1,26 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "database.h"
 #include "registry.h"
 
 static registryEntry *freeRegistryItemList = NULL;
 
-#define NAME 0
-#define INDEX 1
-#define ADDRESS 2
-
-#define COMPARE	\
-	(( type == NAME ) ? strcmp( r->identifier.name, name ) : \
-	 ( type == INDEX ) ? r->identifier.index - *(int *) name : \
-	 (int) ( (intptr_t) r->identifier.address - (intptr_t) name ))
+// #define DEBUG
 
 /*---------------------------------------------------------------------------
-	newRegistryEntry
+	compare		- local utility
+---------------------------------------------------------------------------*/
+static int
+compare( RegistryType type, registryEntry *entry, void *name )
+{
+	switch ( type ) {
+	case IndexedByName:
+		return strcmp( entry->index.name, (char *) name );
+	case IndexedByNumber:
+		return ( entry->index.value - *(int *) name );
+	case IndexedByAddress:
+		return ( (intptr_t) entry->index.address - (intptr_t) name );
+	}
+}
+
+/*---------------------------------------------------------------------------
+	newRegistryEntry, freeRegistryEntry	- local
 ---------------------------------------------------------------------------*/
 static registryEntry *
-newRegistryEntry( int type, void *name, void *value )
+newRegistryEntry( RegistryType type, void *name, void *value )
 {
         registryEntry *r;
         if ( freeRegistryItemList == NULL )
@@ -31,25 +41,77 @@ newRegistryEntry( int type, void *name, void *value )
                 freeRegistryItemList = r->next;
 		r->next = NULL;
         }
-	if ( type == INDEX ) r->identifier.index = *(int *) name;
-	else r->identifier.address = name;
+	switch ( type ) {
+	case IndexedByNumber:
+		r->index.value = *(int *) name;
+		break;
+	default:
+		r->index.address = name;
+	}
         r->value = value;
         return r;
 }
 
-/*---------------------------------------------------------------------------
-	registerBy
----------------------------------------------------------------------------*/
-static registryEntry *
-registerBy( int type, Registry *registry, void *name, void *value )
+void
+freeRegistryEntry( RegistryType type, registryEntry *r )
 {
-	if (( type == NAME ) && ( name == NULL ))
+	r->value = NULL;
+	switch ( type ) {
+	case IndexedByNumber:
+		r->index.value = 0;
+		break;
+	default:
+		r->index.address = NULL;
+		break;
+	}
+        r->next = freeRegistryItemList;
+        freeRegistryItemList = r;
+}
+
+/*---------------------------------------------------------------------------
+	newRegistry, freeRegistry
+---------------------------------------------------------------------------*/
+Registry *
+newRegistry( RegistryType type )
+{
+	return newRegistryEntry( IndexedByNumber, &type, NULL );
+}
+
+void
+emptyRegistry( Registry *registry )
+{
+	RegistryType type = RTYPE( registry );
+	registryEntry *next_r;
+	for ( registryEntry *r=registry->value; r!=NULL; r=next_r )
+	{
+		next_r = r->next;
+		freeRegistryEntry( type, r );
+	}
+	registry->value = NULL;
+}
+
+void
+freeRegistry( Registry **registry )
+{
+	emptyRegistry( *registry );
+	freeRegistryEntry( IndexedByNumber, *registry );
+	*registry = NULL;
+}
+
+/*---------------------------------------------------------------------------
+	registryRegister
+---------------------------------------------------------------------------*/
+registryEntry *
+registryRegister( Registry *registry, void *name, void *value )
+{
+	RegistryType type = RTYPE( registry );
+	if (( type == IndexedByName ) && ( name == NULL ))
 		return NULL;
 
         registryEntry *entry, *r, *last_r = NULL;
-        for ( r=*registry; r!=NULL; r=r->next )
+        for ( r=registry->value; r!=NULL; r=r->next )
         {
-		int comparison = COMPARE;
+		int comparison = compare( type, r, name );
                 if ( comparison < 0 )
                 {
                         last_r = r;
@@ -58,45 +120,56 @@ registerBy( int type, Registry *registry, void *name, void *value )
                 if ( comparison == 0 )
                 {
 #ifdef DEBUG
-			output( Debug, "registerBy: Warning: entry already registered" );
+			fprintf( stderr, "registryRegister: Warning: entry already registered\n" );
 #endif
                         return r;
                 }
                 break;
         }
         entry = newRegistryEntry( type, name, value );
-        if ( last_r == NULL )
-        {
-                entry->next = *registry;
-                *registry = entry;
-        }
-        else
+        if (( last_r ))
         {
                 last_r->next = entry;
                 entry->next = r;
         }
+        else {
+		entry->next = registry->value;
+		registry->value = entry;
+	}
 	return entry;
 }
 
 /*---------------------------------------------------------------------------
-	deregisterBy
+	registryDeregister
 ---------------------------------------------------------------------------*/
-static void
-deregisterBy( int type, Registry *registry, void *name )
+void
+registryDeregister( Registry *registry, void *name, ... )
 {
+	RegistryType type = RTYPE( registry );
         registryEntry *r, *r_next, *r_last = NULL;
-        for ( r=*registry; r!=NULL; r=r_next )
+
+        for ( r=registry->value; r!=NULL; r=r_next )
         {
 		r_next = r->next;
-		int comparison = COMPARE;
-                if ( !comparison )
+		int comparison;
+		if (( name )) {
+			comparison = compare( type, r, name );
+			if ( comparison > 0 ) return;
+		}
+		else {
+			va_list ap;
+			va_start( ap, name );
+			comparison = !( r->value == va_arg( ap, void * ) );
+			va_end( ap );
+		}
+		if ( !comparison )
                 {
                         if ( r_last == NULL )
-                                *registry = r_next;
+                                registry->value = r_next;
                         else
                                 r_last->next = r_next;
 
-                        freeRegistryItem( r );
+                        freeRegistryEntry( type, r );
                         return;
                 }
                 r_last = r;
@@ -104,176 +177,65 @@ deregisterBy( int type, Registry *registry, void *name )
 }
 
 /*---------------------------------------------------------------------------
-	lookupBy
+	registryLookup
 ---------------------------------------------------------------------------*/
-static registryEntry *
-lookupBy( int type, Registry registry, void *name )
+registryEntry *
+registryLookup( Registry *registry, void *name, ... )
 {
-	if (( registry == NULL ) || (( type == NAME ) && ( name == NULL )))
+	RegistryType type = RTYPE( registry );
+	if (( type == IndexedByName ) && ( name == NULL ))
 		return NULL;
 
-        for ( registryEntry *r=registry; r!=NULL; r=r->next )
+        for ( registryEntry *r=registry->value; r!=NULL; r=r->next )
         {
-		int comparison = COMPARE;
-                if ( comparison > 0 )
-                        return NULL;
-                if ( comparison == 0 )
-                        return r;
+		int comparison;
+		if (( name )) {
+			comparison = compare( type, r, name );
+			if ( comparison > 0 ) return NULL;
+		}
+		else {
+			va_list ap;
+			va_start( ap, name );
+			comparison = !( r->value == va_arg( ap, void * ) );
+			va_end( ap );
+		}
+                if ( !comparison ) return r;
         }
         return NULL;
 }
 
 /*---------------------------------------------------------------------------
-	registerByName
+	registryDuplicate
 ---------------------------------------------------------------------------*/
-registryEntry *
-registerByName( Registry *registry, char *name, void *value )
+Registry *registryDuplicate( Registry *registry )
 {
-	return registerBy( NAME, registry, name, value );
-}
+	int type = RTYPE( registry );
+	Registry *copy = newRegistry( type );
 
-/*---------------------------------------------------------------------------
-	lookupByName
----------------------------------------------------------------------------*/
-registryEntry *
-lookupByName( Registry registry, char *name )
-{
-	return lookupBy( NAME, registry, name );
-}
-
-/*---------------------------------------------------------------------------
-	registerByIndex
----------------------------------------------------------------------------*/
-registryEntry *
-registerByIndex( Registry *registry, int ndx, void *value )
-{
-	return registerBy( INDEX, registry, &ndx, value );
-}
-
-/*---------------------------------------------------------------------------
-	lookupByIndex
----------------------------------------------------------------------------*/
-registryEntry *
-lookupByIndex( Registry registry, int ndx )
-{
-	return lookupBy( INDEX, registry, &ndx );
-}
-
-/*---------------------------------------------------------------------------
-	registerByAddress
----------------------------------------------------------------------------*/
-registryEntry *
-registerByAddress( Registry *registry, void *address, void *value )
-{
-	return registerBy( ADDRESS, registry, address, value );
-}
-
-/*---------------------------------------------------------------------------
-	lookupByAddress
----------------------------------------------------------------------------*/
-registryEntry *
-lookupByAddress( Registry registry, void *address )
-{
-	return lookupBy( ADDRESS, registry, address );
-}
-
-/*---------------------------------------------------------------------------
-	deregisterByAddress
----------------------------------------------------------------------------*/
-void
-deregisterByAddress( Registry *registry, void *address )
-{
-	deregisterBy( ADDRESS, registry, address );
-}
-
-/*---------------------------------------------------------------------------
-	lookupByValue
----------------------------------------------------------------------------*/
-registryEntry *
-lookupByValue( Registry registry, void *value )
-{
-        registryEntry *r;
-
-        for ( r=registry; r!=NULL; r=r->next )
-        {
-                if ( r->value == value )
-                        return r;
-        }
-        return NULL;
-}
-
-/*---------------------------------------------------------------------------
-	deregisterByValue
----------------------------------------------------------------------------*/
-void
-deregisterByValue( Registry *registry, void *value )
-{
-        registryEntry *r, *r_next, *r_last = NULL;
-        for ( r=*registry; r!=NULL; r=r_next )
-        {
-		r_next = r->next;
-                if ( r->value == value )
-                {
-                        if ( r_last == NULL )
-                                *registry = r_next;
-                        else
-                                r_last->next = r_next;
-
-                        freeRegistryItem( r );
-                        return;
-                }
-                r_last = r;
-        }
-}
-
-/*---------------------------------------------------------------------------
-	newRegistryItem
----------------------------------------------------------------------------*/
-registryEntry *
-newRegistryItem( void *identifier, void *value )
-{
-	return newRegistryEntry( ADDRESS, identifier, value );
-}
-
-/*---------------------------------------------------------------------------
-	freeRegistryItem
----------------------------------------------------------------------------*/
-void freeRegistryItem( registryEntry *r )
-{
-	r->value = NULL;
-	r->identifier.address = NULL;
-        r->next = freeRegistryItemList;
-        freeRegistryItemList = r;
-}
-
-
-/*---------------------------------------------------------------------------
-	freeRegistry
----------------------------------------------------------------------------*/
-void freeRegistry( Registry *registry )
-{
-	registryEntry *i, *next_i;
-	for ( i=*registry; i!=NULL; i=next_i )
-	{
-		next_i = i->next;
-		freeRegistryItem( i );
-	}
-	*registry = NULL;
-}
-
-/*---------------------------------------------------------------------------
-	copyRegistry
----------------------------------------------------------------------------*/
-Registry copyRegistry( Registry registry )
-{
 	// copy entries in the same order
-	registryEntry *j = registry;
-	registry = newRegistryItem( j->identifier.address, j->value );
-	registryEntry *jlast = registry;
-	for ( j = j->next; j!=NULL; j=j->next ) {
-		registryEntry *jnext = newRegistryItem( j->identifier.address, j->value );
+	registryEntry *j = registry->value;
+	switch ( type ) {
+	case IndexedByNumber:
+		copy->value = newRegistryEntry( type, &j->index.value, j->value );
+		break;
+	default:
+		copy->value = newRegistryEntry( type, j->index.address, j->value );
+		break;
+	}
+	registryEntry *jlast = copy->value, *jnext;
+	for ( j = j->next; j!=NULL; j=j->next )
+	{
+		switch ( type ) {
+		case IndexedByNumber:
+			jnext = newRegistryEntry( type, &j->index.value, j->value );
+			break;
+		default:
+			jnext = newRegistryEntry( type, j->index.address, j->value );
+			break;
+		}
 		jlast->next = jnext;
 		jlast = jnext;
 	}
-	return registry;
+
+	return copy;
 }
