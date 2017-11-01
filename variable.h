@@ -11,6 +11,8 @@ _action	assign_results;
 _action	assign_va;
 _action	assign_narrative;
 _action	assign_expression;
+_action	read_variable_id;
+_action	read_variable_ref;
 
 /*---------------------------------------------------------------------------
 	variables utilities	- public

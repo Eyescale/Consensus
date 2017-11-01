@@ -198,21 +198,33 @@ ConditionVA;
 
 typedef struct _EventVA {
 	struct {
-		IdentifierType type;
+		IdentifierType type;	// variable or default
 		char *name;
-	}
-	identifier;
+	} identifier;
+	void *format;	// expression or path
+#ifdef SOURCE
 	struct {
+		struct {
+			char *identifier;
+		} variable;
+		void *format;	// path
+		struct {
+			unsigned int stream : 1;
+			unsigned int session : 1;
+		} type;
+	} source;
+#endif
+	struct {
+		unsigned int notification : 1;
+		unsigned int request : 1;
 		unsigned int stream: 1;
+		unsigned int session: 1;
 		unsigned int instantiate : 1;
 		unsigned int release : 1;
 		unsigned int activate : 1;
 		unsigned int deactivate : 1;
 		unsigned int init : 1;
-		unsigned int notification : 1;
-		unsigned int request : 1;
 	} type;
-	void *format;
 }
 EventVA;
 
@@ -274,7 +286,7 @@ typedef struct {
 		} record;
 		unsigned int prompt : 1;
 	} restore;
-	unsigned int malicious : 1;
+	unsigned int shed : 1;
 }
 InputVA;
 
@@ -394,7 +406,8 @@ typedef struct {
 		RecordMode mode;
 	} record;
 	struct {
-		IdentifierVA id[ 3 ];
+		IdentifierVA id[ 4 ];
+		char *path;
 		int current;
 	} identifier;
 	struct {
@@ -446,7 +459,6 @@ typedef struct {
 		int level;
 		listItem *stack;	// current InputVA
 		listItem *instruction;
-		int event;
 		struct {
 			IdentifierVA base, *current;
 			char *position;

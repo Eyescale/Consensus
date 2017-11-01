@@ -19,13 +19,14 @@ int	is_separator( int event );
 int	string_start( IdentifierVA *string, int event );
 int	string_append( IdentifierVA *string, int event );
 char *	string_finish( IdentifierVA *string, int cleanup );
-void	slist_append( listItem **slist, IdentifierVA *identifier, int event, int as_string );
-void	slist_close( listItem **slist, IdentifierVA *identifier );
+listItem *string_expand( char *string, char **next_pos );
+void	slist_append( listItem **slist, IdentifierVA *identifier, int event, int as_string, int cleanup );
+void	slist_close( listItem **slist, IdentifierVA *identifier, int cleanup );
 
 // unused
 char *	string_extract( char *identifier );
 char *	string_replace( char *expression, char *identifier, char *value );
-listItem *stringify( listItem *string );
+listItem *stringify( listItem *string, int cleanup );
 
 
 #endif	// INPUT_UTIL_H

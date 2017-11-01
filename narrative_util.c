@@ -17,8 +17,6 @@
 #include "variable_util.h"
 
 // #define DEBUG
-#define INIT
-// #include "output.h"
 
 /*---------------------------------------------------------------------------
 	narrative_active
@@ -67,7 +65,7 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 	entry = registryLookup( narratives, entity );
 	if ( entry == NULL ) {
 #ifdef DEBUG
-		output( Debug, "addNarrative(): first entity's narrative assignment - %s()", name );
+		outputf( Debug, "addNarrative(): first entity's narrative assignment - %s()", name );
 #endif
 		Registry *registry = newRegistry( IndexedByName );
 		registryRegister( registry, name, narrative );
@@ -79,12 +77,12 @@ addNarrative( Entity *entity, char *name, Narrative *narrative )
 		entry = registryLookup( entity_narratives, name );
 		if ( entry == NULL ) {
 #ifdef DEBUG
-			output( Debug, "addNarrative(): adding new entity's narrative - %s()", name );
+			outputf( Debug, "addNarrative(): adding new entity's narrative - %s()", name );
 #endif
 			entry = registryRegister( entity_narratives, name, narrative );
 		} else {
 #ifdef DEBUG
-			output( Debug, "addNarrative(): replacing entity's narrative - %s()", name );
+			outputf( Debug, "addNarrative(): replacing entity's narrative - %s()", name );
 #endif
 			removeFromNarrative((Narrative *) entry->value, entity );
 			entry->value = narrative;
@@ -107,7 +105,6 @@ removeNarrative( Entity *entity, Narrative *narrative )
 	if ( entry == NULL ) return;
 
 	Registry *entity_narratives = (Registry *) entry->value;
-	int type = RTYPE( entity_narratives );
 
 	registryEntry *last_r = NULL, *next_r;
 	for ( registryEntry *r = entity_narratives->value; r!=NULL; r=next_r )
@@ -119,14 +116,15 @@ removeNarrative( Entity *entity, Narrative *narrative )
 			removeFromNarrative( n, entity );
 			if ( last_r == NULL ) {
 				if ( next_r == NULL ) {
-					free( entity_narratives );
 					registryDeregister( narratives, entity );
+					// Registries are indexed by type
+					freeRegistryEntry( IndexedByNumber, entity_narratives );
 				} else {
-					entry->value = next_r;
+					entity_narratives->value = next_r;
 				}
 			}
 			else last_r->next = next_r;
-			freeRegistryEntry( type, r );
+			freeRegistryEntry( IndexedByAddress, r );
 			return;
 		}
 		last_r = r;

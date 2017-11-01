@@ -285,19 +285,10 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		else if ( sub[ count ].result.identifier.value != NULL )
 		{
 			char *identifier = sub[ count ].result.identifier.value;
-			registryEntry *entry;
-			if ( sub[ count ].result.lookup ) {
-				listItem *stack = context->control.stack;
-				context->control.stack = stack->next;
-				entry = lookupVariable( context, identifier );
-				context->control.stack = stack;
-			} else {
-				entry = lookupVariable( context, identifier );
+			VariableVA *variable = lookupVariable( context, identifier, sub[ count ].result.lookup );
+			if ( variable == NULL ) {
+				return outputf( Error, "expression_solve: variable '%s' not found", identifier );
 			}
-			if ( entry == NULL ) {
-				return outputf( Error, "expression_solve: variable '%%%s' not found", identifier );
-			}
-			VariableVA *variable = (VariableVA *) entry->value;
 			switch ( variable->type ) {
 			case EntityVariable:
 				if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
@@ -374,7 +365,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 				*sub_results = last_results;
 				break;
 			case StringVariable:
-				return outputf( Error, "'%%%s' is a string variable - "
+				return outputf( Error, "expression_solve: '%%%s' is a string variable - "
 					"not allowed in expressions", identifier );
 			case NarrativeVariable:
 				return outputf( Error, "'%%%s' is a narrative variable - "

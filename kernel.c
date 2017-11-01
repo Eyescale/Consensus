@@ -138,9 +138,8 @@ pop( char *state, int event, char **next_state, _context *context )
 		if ( !strcmp( input->identifier, "" ) )
 			;
 		else if ( context->control.level == input->level ) {
-			input->malicious = 1;
-			output( Warning, "attempt to pop control beyond "
-				"authorized level - closing connection..." );
+			input->shed = 1;
+			output( Warning, "attempt to pop control beyond authorized level - closing stream..." );
 			return 0;
 		}
 	}

@@ -35,14 +35,12 @@ set_filter( Expression *expression, _context *context )
 	if ( identifier == NULL )
 		return restore_mode;
 
-	registryEntry *entry = lookupVariable( context, identifier );
-	if ( entry == NULL ) {
-		outputf( Error, "set_filter: variable '%%%s' not found", identifier );
+	VariableVA *variable = lookupVariable( context, identifier, 0 );
+	if ( variable == NULL ) {
+		outputf( Error, "set_filter: variable '%s' not found", identifier );
 		context->expression.mode = ErrorMode;
 		return ErrorMode;
 	}
-
-	VariableVA *variable = (VariableVA *) entry->value;
 	switch ( variable->type ) {
 	case ExpressionVariable:
 		expression = ((listItem *) variable->value )->ptr;

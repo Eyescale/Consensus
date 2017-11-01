@@ -70,7 +70,7 @@ set_clause( int clause, char *state, int event, char **next_state, _context *con
 static int
 set_variable_clause( char *state, int event, char **next_state, _context *context )
 {
-	int clause = ( lookupVariable( context, context->identifier.id[ 0 ].ptr ) != NULL );
+	int clause = ( lookupVariable( context, NULL, 0 ) != NULL );
 	return set_clause( clause, state, event, next_state, context );
 }
 
@@ -317,10 +317,11 @@ command_err( char *state, int event, char **next_state, _context *context )
 		*next_state = out;
 	}
 	else {
-		if ( !context->error.flush_input ) {
+		if ( context->error.flush_input ) {
 			error( state, event, next_state, context );
+			flush_input( state, event, next_state, context );
 		}
-		event = flush_input( state, event, next_state, context );
+		event = 0;
 		*next_state = base;
 	}
 	return event;
@@ -696,6 +697,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_other	do_( output_special_char, ">:" )
 				end
 			in_( ">: \"" ) bgn_
+				on_( '\n' )	do_( nop, same )
 				on_( '"' )	do_( nop, ">:" )
 				on_( '\\' )	do_( nop, ">: \"\\" )
 				on_( '<' )	do_( backfeed_output, same )
@@ -716,7 +718,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '[' )	do_( nop, ">: %[" )
 				on_( '\n' )	do_( output_mod, ">:" )
 				on_separator	do_( output_mod, ">:" )
-				on_other	do_( read_0, ">: %variable" )
+				on_other	do_( read_variable_ref, ">: %variable" )
 				end
 				in_( ">: %?" ) bgn_
 					on_any	do_( output_variator_value, ">:" )
@@ -796,7 +798,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( "? %" ) bgn_
 				on_( ':' )	do_( nop, "? %:" )
 				on_( '[' )	do_( nop, "? %[" )
-				on_other	do_( read_0, "? %variable" )
+				on_other	do_( read_variable_ref, "? %variable" )
 				end
 				in_( "? %:" ) bgn_
 					on_any	do_( evaluate_expression, "? %: expression" )
@@ -828,7 +830,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				in_( "?~ %" ) bgn_
 					on_( ':' )	do_( nop, "?~ %:" )
 					on_( '[' )	do_( nop, "?~ %[" )
-					on_other	do_( read_0, "?~ %variable" )
+					on_other	do_( read_variable_ref, "?~ %variable" )
 					end
 					in_( "?~ %:" ) bgn_
 						on_any	do_( evaluate_expression, "?~ %: expression" )
@@ -891,11 +893,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( '%' )	do_( nop, ": %" )
 			on_( '<' )	do_( nop, ":<" )
 			on_( '~' )	do_( nop, ":~" )
-#ifdef SUBVAR
 			on_other	do_( read_variable_id, ": identifier" )
-#else
-			on_other	do_( read_0, ": identifier" )
-#endif
 			end
 			in_( ": identifier" ) bgn_
 				on_( '\n' )	do_( command_err, base )
@@ -1087,11 +1085,13 @@ read_command( char *state, int event, char **next_state, _context *context )
 		if ( strcmp( *next_state, same ) ) state = *next_state;
 
 		// In case the action did actually check out, ignore its
-		// returned value but report the triggering event back
-		// to the caller
+		// returned value - unless it's an error - and report the
+		// triggering event back to the caller
 
-		if ( !strcmp( state, "" ) ) break;
-
+		if ( !strcmp( state, "" ) ) {
+			if ( retval < 0 ) event = retval;
+			break;
+		}
 		event = retval;
 	}
 	freeListItem( &states );

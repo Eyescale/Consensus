@@ -189,6 +189,9 @@ void freeItem( listItem *item )
 
 listItem *catListItem( listItem *list1, listItem *list2 )
 {
+	if ( list1 == NULL )
+		return list2;
+
 	if ( list2 != NULL ) {
 		listItem *j = list1;
 		while ( j->next != NULL ) j=j->next;

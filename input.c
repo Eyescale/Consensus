@@ -70,6 +70,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 		}
 	}
 
+	// DO_LATER: there is a better way to flush now that input is bufferized
 	if ( do_flush ) do {
 		event = input( state, 0, NULL, context );
 	} while ( event != '\n' );
@@ -88,12 +89,15 @@ flush_input( char *state, int event, char **next_state, _context *context )
 
 		// here we are in the execution part of a loop => abort
 		StackVA *stack = (StackVA *) context->control.stack->ptr;
-		output( Error, "aborting loop..." );
-		freeListItem( &stack->loop.candidates );
-		freeInstructionBlock( context );
-		stack->loop.begin = NULL;
-		pop_input( state, event, next_state, context );
-		pop( state, event, next_state, context );
+		if (( stack->loop.candidates ))
+		{
+			output( Error, "aborting loop..." );
+			freeListItem( &stack->loop.candidates );
+			freeInstructionBlock( context );
+			stack->loop.begin = NULL;
+			pop_input( state, event, next_state, context );
+			pop( state, event, next_state, context );
+		}
 		break;
 	}
 
@@ -155,8 +159,6 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	input->restore.prompt = context->control.prompt;
 	input->restore.position = context->input.buffer.position;
 	input->restore.buffer = context->input.buffer.current;
-	context->input.buffer.position = NULL;
-	context->input.buffer.current = &input->buffer;
 
 	int failed = 0;
 	switch ( type ) {
@@ -214,6 +216,8 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		free( input );
 		return outputf( Error, "could not open stream: \"%s\"", identifier );
 	}
+	context->input.buffer.position = NULL;
+	context->input.buffer.current = &input->buffer;
 
 	// make stream current
 	addItem( &context->input.stack, input );
@@ -268,7 +272,7 @@ pop_input( char *state, int event, char **next_state, _context *context )
 		break;
 	case SessionInputInVariator:
 		io_close ( IO_QUERY, input->client, "" );
-		slist_close( &context->record.instructions, &context->record.string );
+		slist_close( &context->record.instructions, &context->record.string, 1 );
 		reorderListItem( &context->record.instructions );
 		assign_variable( &variator_symbol, context->record.instructions, StringVariable, context );
 		context->record.instructions = input->restore.record.instructions;
@@ -308,13 +312,13 @@ set_record_mode( RecordMode mode, int event, _context *context )
 	case OffRecordMode:
 		if ( context->record.mode == OnRecordMode )
 		{
-			// remove the last event from the record
+			// remove the last event '\n' from the record
 			popListItem( &context->record.string.list );
 			string_finish( &context->record.string, 1 );
 		}
 		else if ( context->record.mode == RecordInstructionMode )
 		{
-			slist_close( &context->record.instructions, &context->record.string );
+			slist_close( &context->record.instructions, &context->record.string, 0 );
 		}
 		context->record.mode = mode;
 		break;
@@ -338,13 +342,10 @@ set_record_mode( RecordMode mode, int event, _context *context )
 static void
 recordC( int event, int as_string, _context *context )
 {
-	if ( event < 0 ) return;
-	context->input.event = event;
-
 	// record instruction or expression if needed
 	switch( context->record.mode ) {
 	case RecordInstructionMode:
-		slist_append( &context->record.instructions, &context->record.string, event, as_string );
+		slist_append( &context->record.instructions, &context->record.string, event, as_string, 1 );
 		break;
 	case OnRecordMode:
 		string_append( &context->record.string, event );
@@ -355,14 +356,14 @@ recordC( int event, int as_string, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	skip_comment
+	bufferize
 ---------------------------------------------------------------------------*/
 #define COMMENT		0
 #define BACKSLASH	1
 #define STRING		2
 
 int
-skip_comment( int event, int *mode, _context *context )
+bufferize( int event, int *mode, _context *context )
 {
 	if ((context->input.buffer.position)) {
 		if ( !event ) {
@@ -543,8 +544,8 @@ input( char *state, int event, char **next_state, _context *context )
 		else if ( !context->input.eof )
 		{
 			InputVA *input = (InputVA *) context->input.stack->ptr;
-			if ( input->malicious ) {
-				// user tried to pop control stack beyond input level
+			if ( input->shed ) {
+				// e.g. user tried to pop control stack beyond input level
 				event = EOF;
 			}
 			else switch ( input->mode ) {
@@ -586,12 +587,13 @@ input( char *state, int event, char **next_state, _context *context )
 				break;
 			}
 		}
-		event = skip_comment( event, mode, context );
+		event = bufferize( event, mode, context );
 
 	}
 	while ( !event );
 
 	if ( event == EOF ) {
+		context->error.flush_input = 0;
 		InputVA *input = (InputVA *) context->input.stack->ptr;
 		switch ( input->mode ) {
 		case InstructionOne:
@@ -601,6 +603,7 @@ input( char *state, int event, char **next_state, _context *context )
 		}
 	}
 
+	context->error.flush_input = ( event != '\n' );
 	recordC( event, 0, context );
 
 	return event;

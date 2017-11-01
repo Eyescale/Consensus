@@ -21,6 +21,12 @@
 
 // #define DEBUG
 
+#if 0		// in case of StringVariable
+#define NOQ	1
+#else
+#define NOQ	0
+#endif
+
 /*---------------------------------------------------------------------------
 	output_identifier
 ---------------------------------------------------------------------------*/
@@ -29,43 +35,61 @@ extern struct {
 } separator_table[];	// in input_util.c
 
 void
-output_identifier( char *identifier, int as_is )
+output_identifier( char *identifier, int noq )
 {
-	if ( as_is ) {
-		output( Text, identifier );
-		return;
-	}
-	IdentifierVA buffer;
-	bzero( &buffer, sizeof( IdentifierVA ) );
+	_context *context = CN.context;
+	IdentifierVA buffer = { NULL, NULL };
+	int as_string = 0;
 
-	string_start( &buffer, 0 );
-	int special = 0, has_special = 0;
+	if (( context->output.stack )) {
+		OutputVA *output = context->output.stack->ptr;
+		if ( output->mode == StringOutput )
+			as_string = 1;
+	}
+	int has_special = 0;
 	for ( char *src = identifier; *src; src++ )
 	{
-		if ( *src == '"' ) {
+		switch ( *src ) {
+		case '"':
 			has_special = 1;
 			string_append( &buffer, '\\' );
-			string_append( &buffer, '"' );
-			special = 1;
-		}
-		else for ( int i = 0; i < num_separators(); i++ )
-		{
-			if ( *src == separator_table[ i ].real ) {
-				has_special = 1;
-				if ( separator_table[ i ].fake ) {
-					string_append( &buffer, '\\' );
-					string_append( &buffer, separator_table[ i ].fake );
-					special = 1;
-				}
+			string_append( &buffer, *src );
+			break;
+		case '\n':
+			has_special = 1;
+			string_append( &buffer, '\\' );
+			string_append( &buffer, 'n' );
+			break;
+		case '\\':
+			has_special = 1;
+			switch ( src[ 1 ] ) {
+			case 0:
+				break;
+			case '"':
+			case 'n':
+				src++;
+				string_append( &buffer, '\\' );
+				string_append( &buffer, *src );
+				break;
+			case 't':
+				src++;
+				string_append( &buffer, '\t' );
+				break;
+			default:
+				string_append( &buffer, '\\' );
 				break;
 			}
+			break;
+		default:
+			if ( is_separator( *src ) ) {
+				has_special = 1;
+				if ( as_string ) string_append( &buffer, '\\' );
+			}
+			string_append( &buffer, *src );
 		}
-		if ( !special ) string_append( &buffer, *src );
-		else special = 0;
 	}
 	string_finish( &buffer, 0 );
-
-	if ( has_special ) {
+	if ( has_special && !( noq || as_string )) {
 		outputf( Text, "\"%s\"", buffer.ptr );
 	} else {
 		output( Text, buffer.ptr );
@@ -424,21 +448,24 @@ output_string_variable( listItem *i )
 {
 	if ( i == NULL ) return;
 	if ( i->next == NULL ) {
-		output_identifier((char *) i->ptr, 0 );
+		output_identifier((char *) i->ptr, NOQ );
 	} else {
 		output( Text, "{ " );
-		output_identifier((char *) i->ptr, 0 );
+		output_identifier((char *) i->ptr, NOQ );
 		for ( i=i->next; i!=NULL; i=i->next ) {
 			output( Text, ", " );
-			output_identifier((char *) i->ptr, 0 );
+			output_identifier((char *) i->ptr, NOQ );
 		} 
 		output( Text, " }" );
 	}
 }
 
-void
+int
 output_variable_value_( VariableVA *variable )
 {
+	if ( variable->value == NULL )
+		return 0;
+
 	switch ( variable->type ) {
 	case NarrativeVariable:
 		output_narrative_variable( (Registry *) variable->value );
@@ -456,6 +483,7 @@ output_variable_value_( VariableVA *variable )
 		output_string_variable( (listItem *) variable->value );
 		break;
 	}
+	return 1;
 }
 
 /*---------------------------------------------------------------------------

@@ -15,6 +15,7 @@
 #include "command.h"
 #include "output.h"
 #include "output_util.h"
+#include "path.h"
 #include "io.h"
 #include "variable.h"
 #include "variable_util.h"
@@ -167,14 +168,13 @@ pop_output( _context *context, int terminate )
 			freeListItem( results );
 	
 			// read new results, including result terminating packet
-			IdentifierVA dst;
-			bzero( &dst, sizeof( IdentifierVA ) );
+			IdentifierVA dst = { NULL, NULL };
 			int remainder = 0;
 			char *buffer = context->io.input.buffer.ptr;
 			while ( io_read( output->ptr.socket, buffer, &remainder ) )
 				for ( char *ptr = buffer; *ptr; ptr++ )
-					slist_append( results, &dst, *ptr, 1 );
-			slist_close( results, &dst );
+					slist_append( results, &dst, *ptr, 1, 0 );
+			slist_close( results, &dst, 0 );
 #ifdef DEBUG
 			if (( *results ))
 				for ( listItem *i = *results; i!=NULL; i=i->next )
@@ -187,12 +187,21 @@ pop_output( _context *context, int terminate )
 		io_flush( output->ptr.socket, &output->remainder, context );
 		break;
 	case StringOutput:
-		slist_close( &context->output.slist, &context->output.string );
+		slist_close( &context->output.slist, &context->output.string, 0 );
 		reorderListItem( &context->output.slist );
 		char *identifier = output->variable.identifier;
 		if (( context->output.slist )) {
-			assign_variable( &identifier, context->output.slist, StringVariable, context );
-			context->output.slist = NULL;
+			listItem *i = context->output.slist;
+#ifdef EXPAND
+			if ( i->next == NULL ) {
+				i = string_expand( i->ptr, NULL );
+				assign_variable( &identifier, i, StringVariable, context );
+			} else
+#endif
+			{
+				assign_variable( &identifier, i, StringVariable, context );
+				context->output.slist = NULL;
+			}
 		} else {
 			free( identifier );
 		}
@@ -212,7 +221,7 @@ static char *header_list[] =	// ordered as they appear below
 	"***** Error: ",
 	"Error: ",
 	"Warning: ",
-	"consensus> ",
+	"consensus: ",
 	"debug> "
 };
 
@@ -221,12 +230,7 @@ outputf( OutputContentsType type, const char *format, ... )
 {
 	_context *context = CN.context;
 	int retval = (( type == Error ) || ( type == Debug ) ? -1 : 0 );
-	if ( format == NULL ) {
-		return retval;	// e.g. output( Error, NULL );
-	}
-	if ( type == Error ) {
-		context->error.flush_input = ( context->input.event != '\n' );
-	}
+	if ( format == NULL ) return retval;	// e.g. outputf( Error, NULL );
 
 	va_list ap;
 	va_start( ap, format );
@@ -262,7 +266,7 @@ outputf( OutputContentsType type, const char *format, ... )
 				; listItem **slist = &context->output.slist;
 				IdentifierVA *identifier = &context->output.string;
 				for ( char *ptr = str; *ptr; ptr++ )
-					slist_append( slist, identifier, *ptr, 1 );
+					slist_append( slist, identifier, *ptr, 1, 0 );
 				break;
 			}
 			if ( *format ) free( str );
@@ -335,7 +339,7 @@ output_( int type, int event, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return retval;
 
-	registryEntry *entry;
+	VariableVA *variable;
 	char *path, *va_name;
 	context->error.flush_output = ( event != '\n' );
 	int marked = 1;
@@ -373,29 +377,29 @@ output_( int type, int event, _context *context )
 #ifdef DEBUG
 		outputf( Debug, "output_variator_value: %%%s", variator_symbol );
 #endif
-		entry = lookupVariable( context, variator_symbol );
-		if ( entry == NULL ) return retval;
-
-		output_variable_value_( (VariableVA *) entry->value );
+		variable = lookupVariable( context, variator_symbol, 0 );
+		if ( variable == NULL ) return retval;
+		marked = output_variable_value_( variable );
 		break;
 
 	case VariableValue:
 #ifdef DEBUG
-		outputf( Debug, "output_variable_value: %%%s", context->identifier.id[ 0 ].ptr );
+		outputf( Debug, "output_variable_value: %%%s", context->identifier.id[ 1 ].ptr );
 #endif
-		entry = lookupVariable( context, context->identifier.id[ 0 ].ptr );
-		if ( entry == NULL ) return retval;
-
-		output_variable_value_( (VariableVA *) entry->value );
+		path = context->identifier.id[ 1 ].ptr;
+		context->identifier.id[ 1 ].ptr = NULL;
+		variable = lookupVariable( context, path, 0 );
+		free( path );
+		if ( variable == NULL ) return retval;
+		marked = output_variable_value_( variable );
 		break;
 
 	case SchemeDescriptor:
-		path = context->identifier.id[ 1 ].ptr;
+		path = context->identifier.path;
 		if ( !context->control.operator )
 			return outputf( Error, "misdirected: >:%%[ scheme:%s ] - not operator", path  );
-		entry = registryLookup( context->operator.sessions, path );
-		if ( entry == NULL )
-			return retval;
+		registryEntry *entry = registryLookup( context->operator.sessions, path );
+		if ( entry == NULL ) return retval;
 		SessionVA *session = entry->value;
 		outputf( Text, "%d", session->pid );
 		break;

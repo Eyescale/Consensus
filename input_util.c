@@ -17,10 +17,12 @@ struct {
 	int real, fake;
 }
 separator_table[] = {
-	{ '\0', '0' },
 	{ '\t', 't' },
 	{ '\n', 'n' },
+#if 1
 	{ '\\', '\\' },
+#endif
+	{ '\0', 0 },
 	{ -1, 0 },
 	{ ' ', 0 },
 	{ '-', 0 },
@@ -131,8 +133,12 @@ string_finish( IdentifierVA *string, int cleanup )
 			case ' ':
 			case '\t':
 				next_i = i->next;
-				freeItem( i );
-				*list = next_i;
+				if (( next_i ) && ((char) next_i->ptr == '\\' ))
+					next_i = NULL;
+				else {
+					freeItem( i );
+					*list = next_i;
+				}
 				break;
 			default:
 				next_i = NULL;
@@ -176,13 +182,114 @@ string_finish( IdentifierVA *string, int cleanup )
 }
 
 /*---------------------------------------------------------------------------
+	string_expand
+---------------------------------------------------------------------------*/
+static listItem *
+expand_s( listItem **base, listItem **sub )
+{
+	listItem *results = NULL;
+
+	if ( *sub == NULL )
+		return *base;
+	if ( *base == NULL ) {
+		results = *sub;
+		*sub = NULL;
+		return results;
+	}
+	for ( listItem *i = *base; i!=NULL; i=i->next ) {
+		for ( listItem *j = *sub; j!=NULL; j=j->next ) {
+			char *ns;
+			asprintf( &ns, "%s%s", i->ptr, j->ptr );
+			addItem( &results, ns );
+		}
+		free( i->ptr );
+	}
+	freeListItem( base );
+
+	for ( listItem *i = *sub; i!=NULL; i=i->next )
+		free( i->ptr );
+	freeListItem( sub );
+
+	return results;
+}
+
+static listItem *
+expand_b( listItem **base, IdentifierVA *buffer )
+{
+	listItem *results = NULL;
+
+	string_finish( buffer, 0 );
+	if (( buffer->ptr )) {
+		listItem *sub = newItem( buffer->ptr );
+		results = (*base) ? expand_s( base, &sub ) : sub;
+		buffer->ptr = NULL;
+	}
+	else results = *base;
+	return results;
+}
+
+listItem *
+string_expand( char *identifier, char **next_pos )
+{
+	listItem *backlog = NULL;
+	listItem *results = NULL;
+	listItem *sub_results = NULL;
+	IdentifierVA buffer = { NULL, NULL };
+	for ( char *src = identifier; ; src++ ) {
+		switch ( *src ) {
+		case 0:
+		case '}':
+		case ',':
+			backlog = expand_b( &backlog, &buffer );
+			results = catListItem( results, backlog );
+			switch ( *src ) {
+			case 0:
+			case '}':
+				if (( next_pos )) *next_pos = src;
+				return results;
+			}
+			backlog = NULL;
+			break;
+		case '\\':
+			switch ( src[ 1 ] ) {
+			case 0:
+				string_append( &buffer, '\\' );
+				break;
+			case '"':
+			case 'n':
+			case 't':
+				string_append( &buffer, '\\' );
+				// no break
+			default:
+				src++;
+				string_append( &buffer, *src );
+			}
+			break;
+		case ' ':
+			break;
+		case '{':
+			backlog = expand_b( &backlog, &buffer );
+			sub_results = string_expand( src + 1, &src );
+			backlog = expand_s( &backlog, &sub_results );
+			if ( *src == (char) 0 ) {
+				if (( next_pos )) *next_pos = src;
+				return catListItem( results, backlog );
+			}
+			break;
+		default:
+			string_append( &buffer, *src );
+		}
+	}
+}
+
+/*---------------------------------------------------------------------------
 	stringify
 ---------------------------------------------------------------------------*/
 void
-slist_close( listItem **slist, IdentifierVA *dst )
+slist_close( listItem **slist, IdentifierVA *dst, int cleanup )
 {
 	if (( dst->list )) {
-		char *str = string_finish( dst, 1 );
+		char *str = string_finish( dst, 0 );
 		if ( strcmp( str, "\n" ) ) {
 			addItem( slist, str );
 		}
@@ -191,25 +298,24 @@ slist_close( listItem **slist, IdentifierVA *dst )
 	}
 }
 void
-slist_append( listItem **slist, IdentifierVA *dst, int event, int as_string )
+slist_append( listItem **slist, IdentifierVA *dst, int event, int as_string, int cleanup )
 {
 	if ( dst->list == NULL ) {
 		string_start( dst, event );
 	} else if (( event != '\n' ) || !as_string ) {
 		string_append( dst, event );
 	}
-	if ( event == '\n' ) slist_close( slist, dst );
+	if ( event == '\n' ) slist_close( slist, dst, cleanup );
 }
 listItem *
-stringify( listItem *src )
+stringify( listItem *src, int cleanup )
 {
 	listItem *results = NULL;
-	IdentifierVA dst;
-	bzero( &dst, sizeof( IdentifierVA ) );
+	IdentifierVA dst = { NULL, NULL };
 	for ( listItem *i = src; i!=NULL; i=i->next )
 		for ( char *ptr = i->ptr; *ptr; ptr++ )
-			slist_append( &results, &dst, *ptr, 1 );
-	slist_close( &results, &dst );
+			slist_append( &results, &dst, *ptr, 1, cleanup );
+	slist_close( &results, &dst, cleanup );
 	return results;
 }
 

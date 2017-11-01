@@ -349,31 +349,29 @@ cn_new( char *name )
 void
 cn_free( Entity *e )
 {
-	void *name;
+	// remove all entity's narratives
+
+	Registry *entity_narratives = cn_va_get( e, "narratives" );
+	if (( entity_narratives )) {
+		for ( registryEntry *r = entity_narratives->value, *next_r; r!=NULL; r=next_r )
+		{
+			next_r = r->next;
+			removeNarrative( e, (Narrative *) r->value );
+		}
+	}
+
+	// remove entity from name registry
+
+	char *name = cn_va_get( e, "name" );
+	registryDeregister( CN.names, name );
 
 	// free entity's name, hcn and url strings
 
-	name = cn_va_get( e, "name" );
 	free( name );
 	name = cn_va_get( e, "hcn" );
 	free( name );
 	name = cn_va_get( e, "url" );
 	free( name );
-
-	// remove all entity's narratives
-
-	Registry *entity_narratives = cn_va_get( e, "narratives" );
-	if (( entity_narratives )) {
-		for ( registryEntry *r = entity_narratives->value; r!=NULL; r=r->next )
-		{
-			Narrative *n = (Narrative *) r->value;
-			removeNarrative( e, n );
-		}
-	}
-
-	// remove entity from name registry (deregister by value)
-
-	registryDeregister( CN.names, NULL, e );
 
 	// close all value accounts associated with this entity
 

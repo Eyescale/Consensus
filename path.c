@@ -17,8 +17,6 @@
 #include "variable_util.h"
 
 // #define DEBUG
-#define PATH	1
-#define STEP	2
 
 /*---------------------------------------------------------------------------
 	execution engine
@@ -45,7 +43,7 @@ read_STEP( _context * context )
 		return;
 
 	listItem **list = &context->output.slist;
-	context->identifier.id[ STEP ].ptr = popListItem( list );
+	context->identifier.id[ 2 ].ptr = popListItem( list );
 	for ( listItem *i = *list; i!=NULL; i=i->next )
 		free( i->ptr );
 	freeListItem( list );
@@ -60,19 +58,20 @@ va2s( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return event;
 
-	char *identifier = context->identifier.id[ STEP ].ptr;
-	registryEntry *entry = lookupVariable( context, identifier );
-	if ( entry == NULL ) {
-		return outputf( Error, "read_path: variable '%%%s' is empty - cannot form path", identifier );
-	}
-	context->identifier.id[ STEP ].ptr = NULL;
+	char *identifier = context->identifier.id[ 1 ].ptr;
+	context->identifier.id[ 1 ].ptr = NULL;
 
-	VariableVA *variable = entry->value;
+	VariableVA *variable = lookupVariable( context, identifier, 0 );
+	if ( variable == NULL ) {
+		free( identifier );
+		return outputf( Error, "read_path: variable '%s' not found - cannot form path", identifier );
+	}
 	listItem *list = NULL;
+
 	switch ( variable->type ) {
 	case StringVariable:
 	case NarrativeVariable:
-		event = outputf( Error, "read_path: unsupported variable type - '%%%s'", identifier );
+		event = outputf( Error, "read_path: unsupported variable type - '%s'", identifier );
 		free( identifier );
 		return event;
 	case EntityVariable:
@@ -113,7 +112,6 @@ va2s( char *state, int event, char **next_state, _context *context )
 		}
 		break;
 	}
-
 	free( identifier );
 	return event;
 }
@@ -127,8 +125,8 @@ xr2s( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return event;
 
-	free( context->identifier.id[ STEP ].ptr );
-	context->identifier.id[ STEP ].ptr = NULL;
+	free( context->identifier.id[ 2 ].ptr );
+	context->identifier.id[ 2 ].ptr = NULL;
 
 	// take only the first item in the list of results
 	if ( context->expression.results != NULL ) {
@@ -146,8 +144,8 @@ xr2s( char *state, int event, char **next_state, _context *context )
 static int
 xeval( char *state, int event, char **next_state, _context *context )
 {
-	char *backup = context->identifier.id[ STEP ].ptr;
-	context->identifier.id[ STEP ].ptr = NULL;
+	char *backup = context->identifier.id[ 2 ].ptr;
+	context->identifier.id[ 2 ].ptr = NULL;
 
 	event = read_expression( state, event, &same, context );
 	if ( context_check( 0, 0, ExecutionMode ) && ( context->expression.mode != ErrorMode ))
@@ -157,8 +155,8 @@ xeval( char *state, int event, char **next_state, _context *context )
 		if ( retval < 0 ) event = retval;
 	}
 
-	free( context->identifier.id[ STEP ].ptr );
-	context->identifier.id[ STEP ].ptr = backup;
+	free( context->identifier.id[ 2 ].ptr );
+	context->identifier.id[ 2 ].ptr = backup;
 	return event;
 }
 
@@ -171,8 +169,8 @@ build_path( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return event;
 
-	char *path = context->identifier.id[ PATH ].ptr;
-	char *step = context->identifier.id[ STEP ].ptr;
+	char *path = context->identifier.path;
+	char *step = context->identifier.id[ 2 ].ptr;
 #ifdef DEBUG
 	outputf( Debug, "build_path: path=%s, step=%s", path, step );
 #endif
@@ -215,10 +213,11 @@ build_path( char *state, int event, char **next_state, _context *context )
 			end
 		end
 	}
-	free( context->identifier.id[ PATH ].ptr );
-	free( context->identifier.id[ STEP ].ptr );
-	context->identifier.id[ PATH ].ptr = path;
-	context->identifier.id[ STEP ].ptr = NULL;
+	free( context->identifier.id[ 2 ].ptr );
+	context->identifier.id[ 2 ].ptr = NULL;
+
+	free( context->identifier.path );
+	context->identifier.path = path;
 
 	if (( event == '.' ) || ( event == '-' ))
 		event = 0;
@@ -237,11 +236,11 @@ read_path( char *state, int event, char **next_state, _context *context )
 		return event;
 	}
 
-	// the full path shall be built into context->identifier.id[ PATH ]
-	// reading each step into context->identifier.id[ STEP ]
+	// the full path shall be built into context->identifier.path
+	// reading each step into context->identifier.id[ 2 ]
 
-	free( context->identifier.id[ PATH ].ptr );
-	context->identifier.id[ PATH ].ptr = NULL;
+	free( context->identifier.path );
+	context->identifier.path = NULL;
 
 	state = base;
 	do {
@@ -274,7 +273,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 					end
 				in_( "/%" ) bgn_
 					on_( '[' )	do_( xeval, "/%[_" )
-					on_other	do_( read_2, "/%variable" )
+					on_other	do_( read_variable_ref, "/%variable" )
 					end
 					in_( "/%[_" ) bgn_
 						on_( ' ' )	do_( nop, same )
@@ -290,7 +289,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 						end
 			in_( "%" ) bgn_
 				on_( '[' )	do_( xeval, "%[_" )
-				on_other	do_( read_2, "%variable" )
+				on_other	do_( read_variable_ref, "%variable" )
 				end
 				in_( "/%[_" ) bgn_
 					on_( ' ' )	do_( nop, same )
@@ -308,11 +307,11 @@ read_path( char *state, int event, char **next_state, _context *context )
 	}
 	while ( strcmp( state, "" ) );
 
-	free( context->identifier.id[ STEP ].ptr );
-	context->identifier.id[ STEP ].ptr = NULL;
+	free( context->identifier.id[ 2 ].ptr );
+	context->identifier.id[ 2 ].ptr = NULL;
 
 #ifdef DEBUG
-	outputf( Debug, "read_path: returning %s", context->identifier.id[ PATH ].ptr );
+	outputf( Debug, "read_path: returning %s", context->identifier.path.ptr );
 #endif
 	return event;
 }

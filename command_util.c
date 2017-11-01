@@ -80,7 +80,7 @@ expression_op( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	int retval = expression_solve( context->expression.ptr, 3, context );
-	if ( retval == -1 ) return output( Error, NULL );
+	if ( retval == -1 ) return outputf( Error, NULL );
 
 	switch ( context->expression.mode ) {
 	case InstantiateMode:
@@ -195,7 +195,7 @@ override_narrative( Entity *e, _context *context )
 #ifdef DO_LATER
 		// output in full: %[ e ].name() - cf. output_narrative_name()
 #endif
-		outputf( Warning, "narrative '%s' is active - cannot overwrite", name );
+		outputf( Warning, "narrative '%s' is active - cannot override", name );
 		return 0;
 	}
 	else if ( ttyu( context ) )	// let's talk...
@@ -204,27 +204,27 @@ override_narrative( Entity *e, _context *context )
 		// output in full: %[ e ].name() - cf. output_narrative_name()
 #endif
 		outputf( Enquiry, "narrative '%s' already exists. Overwrite ? (y/n)_ ", name );
-		int overwrite = 0;
+		int override = 0;
 		do {
-			overwrite = getchar();
-			switch ( overwrite ) {
+			override = getchar();
+			switch ( override ) {
 			case '\n':
-				overwrite = 0;
+				override = 0;
 				break;
 			case 'y':
 			case 'n':
 				if ( getchar() == '\n' )
 					break;
 			default:
-				overwrite = 0;
+				override = 0;
 				while ( getchar() != '\n' );
 				break;
 			}
 		}
-		while ( overwrite ? 0 : !outputf( Enquiry, "Overwrite ? (y/n)_ " ) );
-		if ( overwrite == 'n' )
+		while ( override ? 0 : !outputf( Enquiry, "Overwrite ? (y/n)_ " ) );
+		if ( override == 'n' ) {
 			return 0;
-
+		}
 		removeNarrative( e, n );
 	}
 	else
@@ -242,7 +242,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 	switch ( context->expression.mode ) {
 	case InstantiateMode:
 		; listItem *last_i = NULL, *next_i;
-		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
+		for ( listItem *i = context->expression.results; i!=NULL; i=next_i ) {
 			next_i = i->next;
 			if ( !override_narrative(( Entity *) i->ptr, context ) )
 			{
@@ -252,10 +252,16 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		}
 		if ( context->expression.results == NULL ) {
 			output( Warning, "no target for narrative operation - ignoring" );
+			if (( context->input.stack )) {
+				output( Info, "closing stream..." );
+		                InputVA *input = (InputVA *) context->input.stack->ptr;
+				input->shed = 1;
+			}
 			return 0;
 		}
 
 		read_narrative( state, event, next_state, context );
+
 		Narrative *narrative = context->narrative.current;
 		if ( narrative == NULL ) {
 			output( Warning, "narrative empty - not instantiated" );
@@ -271,6 +277,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		if ( do_register ) {
 			registerNarrative( narrative, context );
 			outputf( Info, "narrative instantiated: %s()", narrative->name );
+
 		} else {
 			freeNarrative( narrative );
 			output( Warning, "no target entity - narrative not instantiated" );
@@ -337,45 +344,6 @@ exit_command( char *state, int event, char **next_state, _context *context )
 		break;
 	}
 	return 0;
-}
-
-/*---------------------------------------------------------------------------
-	read_variable_id
----------------------------------------------------------------------------*/
-int
-read_variable_id( char *state, int event, char **next_state, _context *context )
-{
-	char *np = NULL, *path = NULL;
-	state = base;
-	do {
-		bgn_
-		in_( base ) bgn_
-			on_any	do_( read_0, "step" )
-			end
-		in_( "step" ) bgn_
-			on_( -1 )	do_( nothing, "" )
-			on_other
-				if ((path)) {
-					asprintf( &np, "%s.%s", path, context->identifier.id[ 0 ].ptr );
-					free( path ); path = np; np = NULL;
-				}
-				else {
-					path = context->identifier.id[ 0 ].ptr;
-					context->identifier.id[ 0 ].ptr = NULL;
-				}
-				bgn_
-				on_( '.' )	do_( nop, base )
-				on_other	do_( nothing, "" )
-				end
-			end
-		end
-	}
-	while ( strcmp( state, "" ) );
-
-	free( context->identifier.id[ 0 ].ptr );
-	context->identifier.id[ 0 ].ptr = path;
-
-	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -460,7 +428,7 @@ input_inline( char *state, int event, char **next_state, _context *context )
 int
 open_stream( char *state, int event, char **next_state, _context *context )
 {
-	char *path = context->identifier.id[ 1 ].ptr;
+	char *path = context->identifier.path;
 	if ( path == NULL ) return output( Error, "no file specified" );
 	bgn_
 	in_( "!< file://path" )		event = cn_open( path, O_RDONLY );
@@ -480,10 +448,10 @@ input_story( char *state, int event, char **next_state, _context *context )
 	if ( !context_check( 0, 0, ExecutionMode ) )
 		return 0;
 
-	char *identifier = context->identifier.id[ 1 ].ptr;
-	context->identifier.id[ 1 ].ptr = NULL;
+	char *path = context->identifier.path;
+	context->identifier.path = NULL;
 
-	return push_input( "", identifier, FileInput, context );
+	return push_input( "", path, FileInput, context );
 }
 
 int
@@ -508,8 +476,8 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 		event = push_output( "^^", variable, StringOutput, context );
 	}
 	else if ( !strcmp( state, ">@session" ) ) {
-		char *path = context->identifier.id[ 1 ].ptr;
-		context->identifier.id[ 1 ].ptr = NULL;
+		char *path = context->identifier.path;
+		context->identifier.path = NULL;
 		event = push_output( "^^", path, SessionOutput, context );
 		free( path );
 	}
@@ -669,7 +637,7 @@ create_session( char *path, _context *context )
 	registryRegister( context->operator.pid, &session->pid, session );
 
 	if (( context->input.stack )) {
-		// carry session in case genitor wants to sink
+		// carry session in case genitor wants to sync
 		InputVA *input = context->input.stack->ptr;
 		input->session.created = session;
 	}
@@ -685,7 +653,7 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 	if ( !context->control.operator )
 		return output( Warning, "iam event: wrong address" );
 
-	char *path = context->identifier.id[ 1 ].ptr;
+	char *path = context->identifier.path;
 	char *pid = context->identifier.id[ 2 ].ptr;
 
 	registryEntry *entry = registryLookup( context->operator.sessions, path );
@@ -733,8 +701,8 @@ scheme_op( char *state, int event, char **next_state, _context *context )
 
 		switch ( context->expression.mode ) {
 		case InstantiateMode:
-			; char *path = context->identifier.id[ 1 ].ptr;
-			context->identifier.id[ 1 ].ptr = NULL;
+			; char *path = context->identifier.path;
+			context->identifier.path = NULL;
 			event = create_session( path, context );
 			if ( event ) free( path );
 			break;

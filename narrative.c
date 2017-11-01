@@ -803,7 +803,7 @@ set_narrative_then( char *state, int event, char **next_state, _context *context
 {
 	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	if ( stack->narrative.state.otherwise ) {
-		return output( Error, NULL );
+		return outputf( Error, NULL );
 	}
 	Occurrence *occurrence = newOccurrence( ThenOccurrence );
 	return narrative_build( occurrence, event, context );

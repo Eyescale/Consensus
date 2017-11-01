@@ -393,31 +393,20 @@ instantiable( Expression *expression, _context *context )
 
 			char *identifier = sub[ i ].result.identifier.value;
 			if ( identifier == NULL ) break;
-
-			registryEntry *entry;
-			if ( sub[ i ].result.lookup ) {
-				listItem *stack = context->control.stack;
-				context->control.stack = stack->next;
-				entry = lookupVariable( context, identifier );
-				context->control.stack = stack;
-			} else {
-				entry = lookupVariable( context, identifier );
-			}
-			if ( entry == NULL ) {
-				outputf( Error, "instantiable: variable '%%%s' not found", identifier );
+			VariableVA *variable = lookupVariable( context, identifier, sub[ i ].result.lookup );
+			if ( variable == NULL ) {
+				outputf( Error, "instantiable: variable '%s' not found", identifier );
 				return 0;
 			}
-			VariableVA *variable = (VariableVA *) entry->value;
 			switch ( variable->type ) {
 			case EntityVariable:
 			case LiteralVariable:
 				break;
 			case StringVariable:
-				outputf( Error, "'%%%s' is a string variable - "
-					"not allowed in expressions", identifier );
+				outputf( Error, "'%s' is a string variable - not instantiable", identifier );
 				return 0;
 			case NarrativeVariable:
-				outputf( Error, "'%%%s' is a narrative variable - "
+				outputf( Error, "'%s' is a narrative variable - "
 					"not allowed in expressions", identifier );
 				return 0;
 			case ExpressionVariable:
@@ -440,7 +429,7 @@ int
 test_as_sub( void *eparam, int read_mode, int as_sub )
 {
 	if ( read_mode ) {
-#if 0	// DO_LATER
+#ifdef DO_LATER
 		ExpressionSub *e = eparam;
 		if ( e->super == NULL ) return 0;
 		Expression *sup = ((ExpressionSub *) e->super )->e;

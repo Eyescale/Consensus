@@ -32,7 +32,7 @@ set_va_( char *va_name, int event, _context *context )
 		char *name = context->identifier.id[ 1 ].ptr;
 		Narrative *narrative = lookupNarrative( CN.nil, name );
 		if ( narrative == NULL ) {
-			return outputf( Error, "narrative '%s' is not instantiated", name );
+			return outputf( Error, "narrative '%s' is not instantiated - cannot assign", name );
 		}
 
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
@@ -105,12 +105,10 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 
 	// check variable name & type
 	char *name = context->identifier.id[ 1 ].ptr;
-	registryEntry *entry = lookupVariable( context, name );
-	if ( entry == NULL ) {
+	VariableVA *variable = lookupVariable( context, name, 0 );
+	if ( variable == NULL ) {
 		return outputf( Error, "variable '%s' is not set", name );
 	}
-
-	VariableVA *variable = (VariableVA *) entry->value;
 	if ( variable->type != NarrativeVariable ) {
 		return outputf( Error, "variable '%s' is not a narrative variable", name );
 	}

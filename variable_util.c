@@ -5,6 +5,8 @@
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
+#include "input.h"
+#include "input_util.h"
 #include "output.h"
 
 #include "api.h"
@@ -13,33 +15,6 @@
 #include "narrative.h"
 
 // #define DEBUG
-
-#ifdef SUBVAR
-Variable *
-variableLookup( Registry *registry, char *identifier, int event, int create )
-{
-	registryEntry *entry;
-	push_input( "", identifier, InstructionOne, context );
-	do {
-		event = read_0( base, event, &same, context );
-		identifier = context->identifier.id[ 0 ].ptr;
-		entry = registryLookup( registry, identifier );
-		if ( entry == NULL ) {
-			if ( !create ) return NULL;
-			variable = (VariableVA *) calloc( 1, sizeof(VariableVA) );
-			registryRegister( registry, identifier, variable );
-			RTYPE( &variable->sub ) = IndexedByName;
-			registry = &variable->sub;
-		} else {
-			variable = (VariableVA *) entry->value;
-			registry = &variable->sub;
-		}
-	}
-	while ( event == '.' );
-	pop_input( base, 0, NULL, context );
-	return variable;
-}
-#endif
 
 /*---------------------------------------------------------------------------
 	newVariable
@@ -59,6 +34,8 @@ newVariable( Registry *registry, char *identifier )
 void
 freeVariableValue( VariableVA *variable )
 {
+	freeVariables( &variable->sub );
+
 	switch ( variable->type ) {
 	case NarrativeVariable:
 		freeRegistry((Registry **) &variable->value );
@@ -118,46 +95,103 @@ variable_registry( _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	lookupVariable
+	fetchVariable	- retrieve or create variable based on context
 ---------------------------------------------------------------------------*/
-registryEntry *
-lookupVariable( _context *context, char *identifier )
+VariableVA *
+fetchVariable( _context *context, char *identifier, int do_create )
 {
-	registryEntry *entry = NULL;
-	if ( context->narrative.current &&
-	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
+	VariableVA *variable = NULL;
+	Registry *registry;
+	registryEntry *entry;
+	char *path;
+
+	if ( identifier == NULL ) {
+		path = context->identifier.id[ 0 ].ptr;
+		registry = variable_registry( context );
+	}
+	else if ( strncmp( identifier, variator_symbol, strlen(variator_symbol) ) )
 	{
-		Occurrence *i = context->narrative.action;
-		for ( ; ( i!=NULL ) && ( entry == NULL ); i=i->thread ) {
-			entry = registryLookup( &i->variables, identifier ); 
+		path = identifier;
+		registry = variable_registry( context );
+	}
+	else	// variator
+	{
+		registry = variable_registry( context );
+		entry = registryLookup( registry, variator_symbol );
+		if ( entry == NULL ) {
+			if ( do_create ) {
+				variable = newVariable( registry, variator_symbol );
+			}
+			else return NULL;
+		}
+		else variable = (VariableVA *) entry->value;
+
+		identifier += strlen( variator_symbol );
+		if ( *identifier++ != '.' )
+			return variable;
+
+		path = identifier;
+		registry = &variable->sub;
+	}
+
+	int event;
+	IdentifierVA buffer = { NULL, NULL };
+	do {
+		while (((event=*path++)) && ( event != '.' ))
+			string_append( &buffer, event );
+
+		string_finish( &buffer, 0 );
+		if ( buffer.ptr == NULL )
+			continue;
+
+		entry = registryLookup( registry, buffer.ptr );
+		variable = do_create ?
+			( (entry) ? entry->value : newVariable( registry, buffer.ptr ) ):
+			( (entry) ? entry->value : NULL );
+
+		if ((entry)) free( buffer.ptr );
+		else if ( do_create ) buffer.ptr = NULL;
+		else { free( buffer.ptr ); event = 0; }
+
+		if ( event == '.' ) {
+			registry = &variable->sub;
 		}
 	}
-	// if we did not find it locally then we can check the program stack
-	if ( entry == NULL ) {
-		listItem *s = context->control.stack;
-		for ( ; ( s!=NULL ) && ( entry==NULL ); s=s->next ) {
-			StackVA *stack = (StackVA *) s->ptr;
-			entry = registryLookup( &stack->variables, identifier );
-		}
-	}
-	return entry;
+	while ( event );
+
+	return variable;
 }
 
 /*---------------------------------------------------------------------------
-	fetchVariable	- fetch or create variable based on context
+	lookupVariable
 ---------------------------------------------------------------------------*/
 VariableVA *
-fetchVariable( _context *context )
+lookupVariable( _context *context, char *identifier, int up )
 {
-	VariableVA *variable;
-	char *identifier = context->identifier.id[ 0 ].ptr;
-	Registry *registry = variable_registry( context );
-	registryEntry *entry = registryLookup( registry, identifier );
-	if ( entry == NULL ) {
-		variable = newVariable( registry, identifier );
-		context->identifier.id[ 0 ].ptr = NULL;
+	VariableVA *variable = NULL;
+	if ( context->narrative.current &&
+	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
+	{
+		Occurrence *action = context->narrative.action;
+		for ( Occurrence *i = action; i!=NULL; i=i->thread )
+		{
+			context->narrative.action = i;
+			variable = fetchVariable( context, identifier, 0 );
+			if (( variable )) break;
+		}
+		context->narrative.action = action;
 	}
-	else variable = entry->value;
+	// if we did not find it locally then we can check the program stack
+	if ( variable == NULL ) {
+		listItem *stack = context->control.stack;
+		for ( listItem *s = (up?stack->next:stack); s!=NULL; s=s->next )
+		{
+			context->control.stack = s;
+			variable = fetchVariable( context, identifier, 0 );
+			if (( variable )) break;
+		}
+		context->control.stack = stack;
+	}
 	return variable;
 }
 

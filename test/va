@@ -7,7 +7,7 @@
 	!! this-is->that
 	!! that-is->this
 >:\n
->:2. assigning $( narratives ) from variable:
+>:2. assigning \%[_].$( narratives ) from variable:
 	: %[ this-is->that ].$( narratives ) : %variable
 >:\	this-is->that has the following narratives:
 >:\	%[ this-is->that ].$( narratives )
