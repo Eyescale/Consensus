@@ -5,7 +5,7 @@
 	input actions	- public
 ---------------------------------------------------------------------------*/
 
-_action	input;
+_action	read_input;
 _action	flush_input;
 _action	pop_input;
 

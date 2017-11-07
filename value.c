@@ -8,7 +8,7 @@
 #include "output.h"
 
 #include "api.h"
-#include "narrative.h"
+#include "narrative_util.h"
 #include "variable.h"
 #include "variable_util.h"
 #include "value.h"
@@ -66,7 +66,7 @@ set_va( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	output( Debug, "in set_va" );
 #endif
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( context->expression.results == NULL )
@@ -88,7 +88,7 @@ set_va_from_variable( char *state, int event, char **next_state, _context *conte
 #ifdef DEBUG
 	output( Debug, "in set_va_from_variable" );
 #endif
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( context->expression.results == NULL )

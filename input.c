@@ -54,7 +54,7 @@ freeLastInstruction( _context *context )
 int
 flush_input( char *state, int event, char **next_state, _context *context )
 {
-	int do_flush = context_check( FreezeMode, 0, 0 ) || context->error.flush_input;
+	int do_flush = command_mode( FreezeMode, 0, 0 ) || context->error.flush_input;
 	context->error.flush_input = 0;
 
 	if ( do_flush && ( context->input.stack != NULL ) ) {
@@ -72,10 +72,10 @@ flush_input( char *state, int event, char **next_state, _context *context )
 
 	// DO_LATER: there is a better way to flush now that input is bufferized
 	if ( do_flush ) do {
-		event = input( state, 0, NULL, context );
+		event = read_input( state, 0, NULL, context );
 	} while ( event != '\n' );
 
-	switch ( context->control.mode ) {
+	switch ( context->command.mode ) {
 	case FreezeMode:
 		break;
 	case InstructionMode:
@@ -88,7 +88,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 			break;
 
 		// here we are in the execution part of a loop => abort
-		StackVA *stack = (StackVA *) context->control.stack->ptr;
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
 		if (( stack->loop.candidates ))
 		{
 			output( Error, "aborting loop..." );
@@ -143,8 +143,11 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 			return event;
 		}
 		break;
-	case SessionInput:
 	case ClientInput:
+		push( base, 0, &same, context ); // protect variables
+		identifier = "@"; // to prevent malicious popping
+		break;
+	case SessionOutputPipe:
 		identifier = "@"; // to prevent malicious popping
 		break;
 	default:
@@ -155,10 +158,11 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	input = (InputVA *) calloc( 1, sizeof(InputVA) );
 	input->identifier = identifier;
 	input->mode = type;
-	input->level = context->control.level;
-	input->restore.prompt = context->control.prompt;
+	input->level = context->command.level;
+	input->restore.prompt = context->output.prompt;
 	input->restore.position = context->input.buffer.position;
 	input->restore.buffer = context->input.buffer.current;
+	input->restore.flush = context->error.flush_input;
 
 	int failed = 0;
 	switch ( type ) {
@@ -175,15 +179,21 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		input->ptr.fd = open( identifier, O_RDONLY );
 		failed = ( input->ptr.fd < 0 );
 		break;
-	case SessionInputInVariator:
+	case SessionOutputPipeInVariator:
 		input->restore.record.mode = context->record.mode;
 		input->restore.record.instructions = context->record.instructions;
 		context->record.mode = RecordInstructionMode;
 		context->record.instructions = NULL;
 		// no break
-	case SessionInputOut:
 	case ClientInput:
-	case SessionInput:
+		input->client = io_open( IO_TICKET, src );
+		input->ptr.string = context->io.input.buffer.ptr;
+		input->ptr.string[ 0 ] = (char) 0;
+		input->remainder = 0;
+		input->position = NULL;
+		break;
+	case SessionOutputPipe:
+	case SessionOutputPipeOut:
 		input->client = *(int *) src;
 		input->ptr.string = context->io.input.buffer.ptr;
 		input->ptr.string[ 0 ] = (char) 0;
@@ -191,7 +201,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 		input->position = NULL;
 		break;
 	case InstructionBlock:
-		context->record.level = context->control.level;
+		context->record.level = context->command.level;
 		listItem *first_instruction = (listItem *) src;
 		context->input.instruction = first_instruction;
 		input->ptr.string = (char *) first_instruction->ptr;
@@ -223,18 +233,18 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	addItem( &context->input.stack, input );
 	context->input.level++;
 
-	// if we were in a for loop, reset control mode to record subsequent
+	// if we were in a for loop, reset command mode to record subsequent
 	// instructions from stream
 	if (( context->input.stack->next )) {
 		input = (InputVA *) context->input.stack->next->ptr;
 		if ( input->mode == InstructionInline ) {
-			set_control_mode( InstructionMode, context );
+			set_command_mode( InstructionMode, context );
 			set_record_mode( RecordInstructionMode, 0, context );
 		}
 	}
 
 	// no prompt in these modes
-	context->control.prompt = 0;
+	context->output.prompt = 0;
 	return 0;
 }
 
@@ -248,17 +258,20 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	output( Debug, "pop_input: popping" );
 #endif
 	InputVA *input = (InputVA *) context->input.stack->ptr;
-	int delta = context->control.level - input->level;
+	int delta = context->command.level - input->level;
 	if ( delta > 0 ) {
 		event = output( Error, "reached premature EOF - restoring original stack level" );
 		while ( delta-- ) pop( state, event, next_state, context );
 	}
 	else event = 0;
 
-	context->control.prompt = input->restore.prompt;
+	context->output.prompt = input->restore.prompt;
 	context->input.buffer.position = input->restore.position;
 	context->input.buffer.current = input->restore.buffer;
-	switch ( input->mode ) {
+	context->error.flush_input = input->restore.flush;
+
+	int mode = input->mode;
+	switch ( mode ) {
 	case HCNFileInput:
 		close ( input->ptr.fd );
 		break;
@@ -270,16 +283,20 @@ pop_input( char *state, int event, char **next_state, _context *context )
 		close( input->ptr.fd );
 		free( input->identifier );
 		break;
-	case SessionInputInVariator:
-		io_close ( IO_QUERY, input->client, "" );
+	case SessionOutputPipeInVariator:
+		io_close( IO_QUERY, input->client, "" );
 		slist_close( &context->record.instructions, &context->record.string, 1 );
 		reorderListItem( &context->record.instructions );
 		assign_variable( &variator_symbol, context->record.instructions, StringVariable, context );
 		context->record.instructions = input->restore.record.instructions;
 		context->record.mode = input->restore.record.mode;
 		break;
-	case SessionInputOut:
-		io_close ( IO_QUERY, input->client, "" );
+	case ClientInput:
+		io_close( IO_TICKET, input->client, "" );
+		break;
+	case SessionOutputPipe:
+	case SessionOutputPipeOut:
+		io_close( IO_QUERY, input->client, "" );
 		break;
 	case InstructionInline:
         	free( context->input.instruction->ptr );
@@ -292,13 +309,17 @@ pop_input( char *state, int event, char **next_state, _context *context )
 	popListItem( &context->input.stack );
 	context->input.level--;
 
+	if ( mode == ClientInput )
+		pop( base, 0, &same, context );
+
 	if ( context->input.stack != NULL ) {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
 		if ( input->mode == InstructionInline ) {
-			set_control_mode( ExecutionMode, context );
+			set_command_mode( ExecutionMode, context );
 			set_record_mode( OffRecordMode, 0, context );
 		}
 	}
+
 	return event;
 }
 
@@ -330,7 +351,7 @@ set_record_mode( RecordMode mode, int event, _context *context )
 		}
 		break;
 	case RecordInstructionMode:
-                context->record.level = context->control.level;
+                context->record.level = context->command.level;
 		context->record.mode = mode;
 		break;
 	}
@@ -392,8 +413,8 @@ bufferize( int event, int *mode, _context *context )
 	else if ( event == '\n' ) {
 		if ( mode[ BACKSLASH ] ) {
 			mode[ BACKSLASH ] = 0;
-			if ( context->control.prompt ) {
-				context->control.prompt = 0;
+			if ( context->output.prompt ) {
+				context->output.prompt = 0;
 				fprintf( stderr, "$\t" );
 			}
 			return 0;
@@ -401,8 +422,8 @@ bufferize( int event, int *mode, _context *context )
 		else if ( mode[ STRING ] ) {
 			string_append( context->input.buffer.current, '\\' );
 			string_append( context->input.buffer.current, 'n' );
-			if ( context->control.prompt ) {
-				context->control.prompt = 0;
+			if ( context->output.prompt ) {
+				context->output.prompt = 0;
 				fprintf( stderr, "$\t" );
 			}
 			return 0;
@@ -466,11 +487,11 @@ sgetc( InputVA *input, _context *context )
 {
 	if ( input->position == NULL ) {
 #ifdef DEBUG
-		output( Debug, "sgetc: reading from \"%s\"", (char *) input->ptr.string );
+		outputf( Debug, "sgetc: reading from \"%s\"", (char *) input->ptr.string );
 #endif
 		input->position = input->ptr.string;
 		if ( context->narrative.mode.output && ( input->mode == InstructionBlock ))
-			for ( int i=0; i<=context->control.level; i++ )
+			for ( int i=0; i<=context->command.level; i++ )
 				output( Text, "\t" );
 	}
 	int event = (int) (( char *) input->position++ )[ 0 ];
@@ -482,7 +503,7 @@ sgetc( InputVA *input, _context *context )
 	else {
 		switch ( input->mode ) {
 		case ClientInput:
-		case SessionInput:
+		case SessionOutputPipe:
 			if ( io_read( input->client, input->ptr.string, &input->remainder ) )
 			{
 				input->position = input->ptr.string;
@@ -504,16 +525,14 @@ sgetc( InputVA *input, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	input
+	read_input
 ---------------------------------------------------------------------------*/
 int
-input( char *state, int event, char **next_state, _context *context )
+read_input( char *state, int event, char **next_state, _context *context )
 {
 	if ( event != 0 ) {
 		return event;
 	}
-
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
 	int mode[ 3 ] = { 0, 0, 0 };
 	do {
 		if ((context->input.buffer.position))
@@ -528,7 +547,7 @@ input( char *state, int event, char **next_state, _context *context )
 			if ( !strcmp( state, base ) ) {
 				prompt( context );
 			}
-			context->control.anteprompt = 0;
+			context->output.anteprompt = 0;
 
 			read( STDIN_FILENO, &event, 1 );
 
@@ -536,7 +555,7 @@ input( char *state, int event, char **next_state, _context *context )
 			case 0:
 				return 0;
 			case '\n':
-				context->control.prompt = ttyu( context );
+				context->output.prompt = ttyu( context );
 			default:
 				break;
 			}
@@ -561,13 +580,13 @@ input( char *state, int event, char **next_state, _context *context )
 					event = EOF;
 				break;
 			case ClientInput:
-			case SessionInput:
+			case SessionOutputPipe:
 			case InstructionInline:
 			case InstructionOne:
 				event = sgetc( input, context );
 				if ( !event ) event = EOF;
 				break;
-			case SessionInputInVariator:
+			case SessionOutputPipeInVariator:
 				event = io_read( input->client, input->ptr.string, &input->remainder );
 				if ( !event ) event = EOF;
 				else {
@@ -576,7 +595,7 @@ input( char *state, int event, char **next_state, _context *context )
 					event = 0;
 				}
 				break;
-			case SessionInputOut:
+			case SessionOutputPipeOut:
 				event = ( io_read( input->client, input->ptr.string, &input->remainder ) ?
 					output( Text, input->ptr.string ) : EOF );
 				break;

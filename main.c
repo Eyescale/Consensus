@@ -14,7 +14,7 @@
 #include "registry.h"
 #include "kernel.h"
 #include "output.h"
-#include "narrative.h"
+#include "narrative_util.h"
 
 #include "api.h"
 #include "frame.h"
@@ -125,12 +125,14 @@ main( int argc, char *argv[] )
 
 	_context *context = CN.context;
 
-	RTYPE( &context->control.stackbase.variables ) = IndexedByName;
-	context->control.stackbase.next_state = "";
-	context->control.stack = newItem( &context->control.stackbase );
+	RTYPE( &context->command.stackbase.variables ) = IndexedByName;
+	context->command.stackbase.next_state = "";
+	context->command.stack = newItem( &context->command.stackbase );
+	context->command.mode = ExecutionMode;
+	context->frame.log.backbuffer = &context->frame.log.buffer[ 0 ];
+	context->frame.log.frontbuffer = &context->frame.log.buffer[ 1 ];
 	context->input.buffer.current = &context->input.buffer.base;
 	context->hcn.state = "";
-	context->control.mode = ExecutionMode;
 	context->control.terminal = isatty( STDIN_FILENO );
 	context->control.cgi = (( argc == 1 ) && !context->control.terminal );
 	context->control.cgim = clarg( argc, argv, "-mcgi" );
@@ -149,10 +151,10 @@ main( int argc, char *argv[] )
 		context->session.path = clargv( argc, argv, "-msession" );
 		context->control.session = ((context->session.path) ? 1 : 0);
 	}
-	context->control.prompt = ttyu( context );
+	context->output.prompt = ttyu( context );
 
-	// initialize CNDB data
-	// --------------------
+	// initialize CNDB and IO data
+	// ---------------------------
 
 	if ( context->control.cgi || context->control.cgim )
 	{
@@ -167,13 +169,12 @@ main( int argc, char *argv[] )
 
 		// 1. create the cgi data name-value pairs
 		for ( cgiFormEntry *i = cgiFormEntryFirst; i!=NULL; i=i->next )
-		{
-			Entity *entry = cn_setf( "%s-nvp->%s", i->attr, i->value );
-			cn_setf( "%s-is->[ name<-has-[ entry<-is-%e ] ]", i->attr, entry );
-			cn_setf( "%s-is->[ value<-has-[ entry<-is-%e ] ]", i->value, entry );
-		}
+			cn_setf( "%s-is->%s", i->value, i->attr );
+
 		// 2. load and activate the cgi story
+		context->frame.updating = 1;
 		cn_dof( ":< file:%s", CN_CGI_STORY_PATH );
+		context->frame.updating = 0;
 		cn_activate_narrative( CN.nil, "cgi" );
 	}
 	else if ( !context->control.operator )
@@ -187,87 +188,29 @@ main( int argc, char *argv[] )
 #endif
 	}
 
+	io_init( context );
+
 	// go live
 	// -------
 
-	io_init( context );
-
-	char *state = base;
-	char *next_state = same;
-	int restore[ 3 ] = { 0, 0, 0 };
-	int event = command_init( NULL, UserInput, restore, context );
-	do {
-		if (( event == 0 ) && !strcmp( state, base ) && context_check( 0, 0, ExecutionMode ) &&
-		    ( context->control.level == 0 ))	// DO_LATER: replace this last condition
-		{
-			// scan internal and external sensors
-			// ----------------------------------
-			fd_set fds;
-			int frame_isset = ( context->frame.backlog || test_log( context, OCCURRENCES ) );
-#ifdef DEBUG
-			outputf( Text, "frame_isset: %d - backlog:%d, log:%d<BR>", frame_isset,
-				context->frame.backlog, test_log( context, OCCURRENCES ));
-#endif
-			io_scan( &fds, !frame_isset, context );
-
-			// if external change notifications
-			// --------------------------------
-#ifdef DO_LATER
-			if ( FD_ISSET( context->io.bulletin, &fds ) ) {
-				read and add inputs to frame log
-				frame_isset = 1;
-			}
-#endif
-			// if internal work to do
-			// ----------------------
-			if ( frame_isset )
-			{
-				// make it triple, so that occurrences and events can travel
-				// all the way to actions - and those executed
-				for ( int i=0; i<3; i++ ) {
-					event = systemFrame( state, event, NULL, context );
-					// notify outside observers
-					io_inform( context );
-					if ( !context->frame.backlog )
-						break;	// optimization
-				}
-			}
-
-			// if stdin or other internal input pending
-			// ----------------------------------------
-			if ( FD_ISSET( STDIN_FILENO, &fds ) || (context->input.stack) )
-			{
-				event = read_command( state, event, &next_state, context );
-				state = next_state;
-			}
-			// otherwise if cgi request
-			// ------------------------
-			else if ( context->control.operator && FD_ISSET( context->io.cgiport, &fds ) )
-			{
-				// take one command
-				io_accept( context->io.cgiport, context );
-			}
-			// otherwise if service request
-			// ----------------------------
-			else if ( FD_ISSET( context->io.service, &fds ) )
-			{
-				// take one command
-				io_accept( context->io.service, context );
-			}
-		}
-		else	// when life is simple...
-		{
-			event = read_command( state, event, &next_state, context );
-			state = next_state;
-		}
-		if (( context->control.cgi || context->control.cgim ) && !narrative_active( context ))
-			state = "";
+	int event = 0;
+	if ( context->control.cgi || context->control.cgim )
+	{
+		do { event = frame_update( base, event, &same, context ); }
+		while ( narrative_active( context ) );
 	}
-	while ( strcmp( state, "" ) );
+	else
+	{
+		event = command_read( NULL, UserInput, base, event, context );
+	}
 
-	command_exit( state, event, restore, context );
+	// exit gracefully
+	// ---------------
+
 	io_exit( context );
-	// cgiExit();
+#ifdef DO_LATER
+	cgiExit();	// does not exist yet
+#endif
 	return event;
 }
 

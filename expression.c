@@ -26,7 +26,7 @@
 static Expression *
 set_sub_expression( char *state, _context *context )
 {
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	ExpressionSub *sub = expression->sub;
 
@@ -74,10 +74,10 @@ set_sub_expression( char *state, _context *context )
 static int
 test_super( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return 0;
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	char *super;
 	switch ( expression->result.as_sup ) {
@@ -102,31 +102,31 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	if ( action == push )
 	{
 #ifdef DEBUG
-		outputf( Debug, "parser: pushing from level %d", context->control.level );
+		outputf( Debug, "parser: pushing from level %d", context->command.level );
 #endif
-		Expression *e = ( context->control.mode == ExecutionMode ) ?
+		Expression *e = ( context->command.mode == ExecutionMode ) ?
 			set_sub_expression( *state, context ) : NULL;
 
 		event = push( *state, event, &next_state, context );
 		*state = base;
 
-		StackVA *stack = (StackVA *) context->control.stack->ptr;
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
 		stack->expression.ptr = e;
 	}
 	else if ( !strcmp( next_state, pop_state ) )
 	{
-		if ( ( event != ']' ) && ( context->control.level != context->expression.level ) )
+		if ( ( event != ']' ) && ( context->command.level != context->expression.level ) )
 		{
 			event = error( *state, event, &next_state, context );
 		}
-		else if ( context->control.level == context->expression.level )
+		else if ( context->command.level == context->expression.level )
 		{
 #ifdef DEBUG
-			outputf( Debug, "parser: popping from base level %d", context->control.level );
+			outputf( Debug, "parser: popping from base level %d", context->command.level );
 #endif
-			if ( context->control.mode == ExecutionMode ) {
+			if ( context->command.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
-				StackVA *stack = (StackVA *) context->control.stack->ptr;
+				StackVA *stack = (StackVA *) context->command.stack->ptr;
 				expression_collapse( stack->expression.ptr );
 				if ( retval < 0 ) context->expression.mode = ErrorMode;
 			}
@@ -135,11 +135,11 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		else
 		{
 #ifdef DEBUG
-			outputf( Debug, "parser: popping from level %d", context->control.level );
+			outputf( Debug, "parser: popping from level %d", context->command.level );
 #endif
-			if ( context->control.mode == ExecutionMode ) {
+			if ( context->command.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
-				StackVA *stack = (StackVA *) context->control.stack->ptr;
+				StackVA *stack = (StackVA *) context->command.stack->ptr;
 				expression_collapse( stack->expression.ptr );
 			}
 			event = pop( *state, event, &next_state, context );
@@ -163,9 +163,9 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 			*state = next_state;
 	}
 	// just so that we can output the expression the way it was entered...
-	if ( !strcmp( next_state, "target<" ) && ( context->control.mode == ExecutionMode ))
+	if ( !strcmp( next_state, "target<" ) && ( context->command.mode == ExecutionMode ))
 	{
-		StackVA *stack = (StackVA*) context->control.stack->ptr;
+		StackVA *stack = (StackVA*) context->command.stack->ptr;
 		Expression *expression = stack->expression.ptr;
 		expression->result.output_swap = 1;
 	}
@@ -175,7 +175,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 static int
 pop_all( char *state, int event, char **next_state, _context *context )
 {
-	while ( context->control.level != context->expression.level )
+	while ( context->command.level != context->expression.level )
 		pop( state, event, next_state, context );
 
 	context->expression.mode = ErrorMode;
@@ -188,7 +188,7 @@ pop_all( char *state, int event, char **next_state, _context *context )
 static int
 reset_flags( _context *context )
 {
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	stack->expression.flag.not = 0;
 	stack->expression.flag.active = 0;
 	stack->expression.flag.inactive = 0;
@@ -209,7 +209,7 @@ static int
 set_sub_mark( int count, int event, _context *context )
 {
 	if (( count == 3 ) && ( event == ':' )) {
-		StackVA *stack = (StackVA*) context->control.stack->ptr;
+		StackVA *stack = (StackVA*) context->command.stack->ptr;
 		if ( stack->expression.flag.not )
 			return output( Error, "extraneous '~' in expression" );
 		if ( stack->expression.flag.active )
@@ -221,10 +221,10 @@ set_sub_mark( int count, int event, _context *context )
 		return output( Error, "too many '?''s" );
 	}
 	context->expression.marked = 1;
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.any = 1;
 	expression->sub[ count ].result.none = 0;
@@ -236,10 +236,10 @@ set_sub_mark( int count, int event, _context *context )
 static int
 set_sub_null( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = NullIdentifier;
 	expression->sub[ count ].result.any = 0;
@@ -251,10 +251,10 @@ set_sub_null( int count, int event, _context *context )
 static int
 set_sub_any( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	if ( stack->expression.flag.not ) {
 		expression->sub[ count ].result.identifier.type = NullIdentifier;
@@ -276,11 +276,11 @@ set_sub_any( int count, int event, _context *context )
 static int
 set_sub_identifier( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode ) {
+	if ( context->command.mode != ExecutionMode ) {
 		return reset_flags( context );
 	}
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = DefaultIdentifier;
 	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
@@ -294,10 +294,10 @@ set_sub_identifier( int count, int event, _context *context )
 static int
 set_sub_variable( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
 	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
@@ -311,10 +311,10 @@ set_sub_variable( int count, int event, _context *context )
 static int
 set_sub_pop( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
@@ -325,10 +325,10 @@ set_sub_pop( int count, int event, _context *context )
 static int
 set_sub_variator( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
 	expression->sub[ count ].result.identifier.value = variator_symbol;
@@ -341,10 +341,10 @@ set_sub_variator( int count, int event, _context *context )
 static int
 set_sub_this( int count, int event, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
 	expression->sub[ count ].result.identifier.value = this_symbol;
@@ -364,7 +364,7 @@ test_scheme( char *state, int event, char **next_state, _context *context )
  	if ( strcmp( identifier, "file" ) && strcmp( identifier, "session" ) )
 		return 0;
 
-	if ( context->expression.level != context->control.level )
+	if ( context->expression.level != context->command.level )
 		return outputf( Error, "term '%s:' in expression is reserved", identifier );
 
 	context->expression.scheme = identifier;
@@ -469,10 +469,10 @@ set_medium_this( char *state, int event, char **next_state, _context *context )
 static int
 swap_source_target( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return set_sub_pop( 2, event, context );
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	bcopy( &expression->sub[ 0 ], &expression->sub[ 2 ], sizeof( ExpressionSub ) );
 	bzero( &expression->sub[ 0 ], sizeof( ExpressionSub ) );
@@ -570,7 +570,7 @@ set_instance_this( char *state, int event, char **next_state, _context *context 
 static int
 set_flag_not( char *state, int event, char **next_state, _context *context )
 {
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	if ( stack->expression.flag.not ) {
 		return output( Error, "redundant '~' in expression" );
 	}
@@ -580,7 +580,7 @@ set_flag_not( char *state, int event, char **next_state, _context *context )
 static int
 set_flag_active( char *state, int event, char **next_state, _context *context )
 {
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	if ( stack->expression.flag.not ) {
 		return output( Error, "'*' must precede '~' in expression" );
 	}
@@ -593,7 +593,7 @@ set_flag_active( char *state, int event, char **next_state, _context *context )
 static int
 set_flag_inactive( char *state, int event, char **next_state, _context *context )
 {
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	if ( stack->expression.flag.not ) {
 		return output( Error, "'_' must precede '~' in expression" );
 	}
@@ -610,10 +610,10 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 static int
 set_as_sub( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return 0;
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 
 	bgn_
@@ -651,7 +651,7 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 	event = 0;
 	do
 	{
-	event = input( state, event, NULL, context );
+	event = read_input( state, event, NULL, context );
 #ifdef DEBUG
 	outputf( Debug, "read_as_sub: in \"%s\", on '%c'", state, event );
 #endif
@@ -721,10 +721,10 @@ read_as_sub( char *state, int event, char **next_state, _context *context )
 static int
 set_shorty( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return 0;
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	ExpressionSub *sub = expression->sub;
 
@@ -770,10 +770,10 @@ set_mark( char *state, int event, char **next_state, _context *context )
 		return output( Error, "'?' too many question marks" );
 	}
 	context->expression.marked = 1;
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return 0;
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 
 	bgn_
@@ -820,10 +820,10 @@ set_mark( char *state, int event, char **next_state, _context *context )
 static int
 set_super( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return 0;
 
-	StackVA *stack = (StackVA*) context->control.stack->ptr;
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 
 	bgn_
@@ -854,7 +854,7 @@ static int
 read_shorty( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = input( state, event, NULL, context );
+	event = read_input( state, event, NULL, context );
 #ifdef DEBUG
 	outputf( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
 #endif
@@ -1106,9 +1106,9 @@ static int
 parser_init( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	outputf( Debug, "parser_init: setting parser level to %d", context->control.level );
+	outputf( Debug, "parser_init: setting parser level to %d", context->command.level );
 #endif
-	context->expression.level = context->control.level;
+	context->expression.level = context->command.level;
 	context->expression.mode = ReadMode;
 	context->expression.marked = 0;
 
@@ -1117,10 +1117,10 @@ parser_init( char *state, int event, char **next_state, _context *context )
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
 	context->expression.filter = NULL;
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return event;
 
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	Expression *expression = (Expression *) calloc( 1, sizeof(Expression) );
 	expression->sub[ 3 ].result.any = 1;
 	for ( int i=0; i<3; i++ )
@@ -1147,10 +1147,10 @@ parser_exit( char *state, int event, char **next_state, _context *context )
 	if (( event < 0 ) || ( context->expression.mode == ErrorMode ))
 		pop_all( state, event, next_state, context );
 
-	if ( context->control.mode != ExecutionMode )
+	if ( context->command.mode != ExecutionMode )
 		return event;
 
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	if ( context->expression.mode == ErrorMode )
 	{
@@ -1195,7 +1195,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	do_( parser_init, same )
 
 	do {
-	event = input( state, event, NULL, context );
+	event = read_input( state, event, NULL, context );
 #ifdef DEBUG
 	outputf( Debug, "read_expression: in \"%s\", on '%c'", state, event );
 #endif

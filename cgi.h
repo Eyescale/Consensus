@@ -1,18 +1,18 @@
-#ifndef VALUE_H
-#define VALUE_H
+#ifndef CGI_H
+#define CGI_H
 
 /*---------------------------------------------------------------------------
-	value actions		- public
+	actions		- public
 ---------------------------------------------------------------------------*/
 
-_action read_va;
-_action set_va;
-_action set_va_from_variable;
+_action read_cgi_output_session;
+_action cgi_scheme_op_pipe;
+_action read_cgi_input;
 
 /*---------------------------------------------------------------------------
-	value utilities	- public
+	utilities	- public
 ---------------------------------------------------------------------------*/
 
+int cgi_output_session( char *session );
 
-
-#endif	// VALUE_H
+#endif	// CGI_H

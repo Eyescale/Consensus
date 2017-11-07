@@ -5,10 +5,9 @@
 	API 		- public
 ---------------------------------------------------------------------------*/
 
-int	cn_read( void *src, InputType type, char *state, int event );
 int	cn_dof( const char *format, ... );
 int	cn_do( char *action );
-int	cn_dol( listItem *actions );
+int	cn_dob( listItem *actions );
 Entity	*cn_setf( char *format, ... );
 
 #ifdef DO_LATER

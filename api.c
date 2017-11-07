@@ -11,40 +11,21 @@
 
 #include "command.h"
 #include "api.h"
+#include "io.h"
+#include "frame.h"
 #include "expression.h"
+#include "expression_util.h"
 #include "input.h"
 #include "output.h"
-#include "narrative.h"
+#include "narrative_util.h"
 
 /*---------------------------------------------------------------------------
-	cn_read
----------------------------------------------------------------------------*/
-int
-cn_read( void *src, InputType type, char *state, int event )
-{
-	_context *context = CN.context;
-
-	int restore[ 3 ];
-	restore[ 0 ] = event;
-	char *next_state = same;
-
-	event = command_init( src, type, restore, context );
-	if ( event < 0 ) return event;
-	do {
-		event = read_command( state, event, &next_state, context );
-		state = next_state;
-	}
-	while ( strcmp( state, "" ) );
-	event = command_exit( state, event, restore, context );
-	return event;
-}
-
-/*---------------------------------------------------------------------------
-	cn_do, cn_dol, cn_dof
+	cn_do, cn_dob, cn_dof
 ---------------------------------------------------------------------------*/
 int
 cn_dof( const char *format, ... )
 {
+	_context *context = CN.context;
 	char *action = NULL;
 	int event = 0;
 	if ((format))
@@ -54,11 +35,11 @@ cn_dof( const char *format, ... )
 		if ( *format )
 		{
 			vasprintf( &action, format, ap );
-			event = cn_read( action, InstructionOne, base, 0 );
+			event = command_read( action, InstructionOne, base, 0, context );
 			free( action );
 		} else {
 			action = va_arg( ap, char * );
-			event = cn_read( action, InstructionOne, base, 0 );
+			event = command_read( action, InstructionOne, base, 0, context );
 		}
 		va_end( ap );
 	}
@@ -70,16 +51,11 @@ cn_dof( const char *format, ... )
 }
 
 int
-cn_do( char *action )
-{
-	return cn_dof( "", action );
-}
-
+cn_dob( listItem *actions )
+	{ return command_read( actions, InstructionBlock, base, 0, CN.context ); }
 int
-cn_dol( listItem *actions )
-{
-	return cn_read( actions, InstructionBlock, base, 0 );
-}
+cn_do( char *action )
+	{ return cn_dof( "", action ); }
 
 /*---------------------------------------------------------------------------
 	cn_setf, cn_getf, cn_testf
@@ -338,7 +314,7 @@ cn_new( char *name )
 	cn_va_set( e, "name", name );
 	registryRegister( CN.names, name, e );
 	addItem( &CN.DB, e );
-	FrameLog *log = &CN.context->io.input.log;
+	FrameLog *log = CN.context->frame.log.backbuffer;
 	addItem( &log->entities.instantiated, e );
 	return e;
 }
@@ -364,12 +340,13 @@ cn_free( Entity *e )
 
 	char *name = cn_va_get( e, "name" );
 	registryDeregister( CN.names, name );
+	free( name );
 
 	// free entity's name, hcn and url strings
 
-	free( name );
 	name = cn_va_get( e, "hcn" );
 	free( name );
+
 	name = cn_va_get( e, "url" );
 	free( name );
 
@@ -425,11 +402,9 @@ void *
 cn_va_get( Entity *e, char *va_name )
 {
 	registryEntry *entry = registryLookup( CN.VB, va_name );
-	Registry *va = (Registry *) entry->value;
-	entry = registryLookup( va, e );
 	if ( entry == NULL ) return NULL;
-
-	return entry->value;
+	entry = registryLookup( entry->value, e );
+	return ( entry == NULL ) ? NULL : entry->value;
 
 }
 
@@ -437,7 +412,7 @@ cn_va_get( Entity *e, char *va_name )
 	cn_expression
 ---------------------------------------------------------------------------*/
 static Expression *
-cn_x( Entity *e, ExpressionSub *super )
+cn_express( Entity *e, ExpressionSub *super )
 {
 	if ( e == NULL ) return NULL;
 
@@ -467,7 +442,7 @@ cn_x( Entity *e, ExpressionSub *super )
 				sub[ i ].result.identifier.type = DefaultIdentifier;
 				sub[ i ].result.identifier.value = strdup( name );
 			} else {
-				sub[ i ].e = cn_x( e->sub[ i ], &sub[ 3 ] );
+				sub[ i ].e = cn_express( e->sub[ i ], &sub[ 3 ] );
 				sub[ i ].result.none = ( sub[ i ].e == NULL );
 			}
 		}
@@ -478,7 +453,7 @@ cn_x( Entity *e, ExpressionSub *super )
 Expression *
 cn_expression( Entity *e )
 {
-	return cn_x( e, NULL );
+	return cn_express( e, NULL );
 }
 
 /*---------------------------------------------------------------------------
@@ -519,7 +494,7 @@ cn_instantiate( Entity *source, Entity *medium, Entity *target )
 {
 	Entity *e = newEntity( source, medium, target );
 	addItem( &CN.DB, e );
-	FrameLog *log = &CN.context->io.input.log;
+	FrameLog *log = CN.context->frame.log.backbuffer;
 	addItem( &log->entities.instantiated, e );
 	return e;
 }
@@ -542,7 +517,7 @@ cn_release( Entity *e )
 		}
 	}
 	Expression *expression = cn_expression( e );
-	FrameLog *log = &CN.context->io.input.log;
+	FrameLog *log = CN.context->frame.log.backbuffer;
 	addItem( &log->entities.released, &expression->sub[ 3 ] );
 	cn_free( e );
 }
@@ -555,7 +530,7 @@ cn_activate( Entity *e )
 {
 	if ( !cn_is_active( e ) ) {
 		e->state = 1;
-		FrameLog *log = &CN.context->io.input.log;
+		FrameLog *log = CN.context->frame.log.backbuffer;
 		addItem( &log->entities.activated, e );
 		return 1;
 	}
@@ -570,7 +545,7 @@ cn_deactivate( Entity *e )
 {
 	if ( cn_is_active( e ) ) {
 		e->state = 0;
-		FrameLog *log = &CN.context->io.input.log;
+		FrameLog *log = CN.context->frame.log.backbuffer;
 		addItem( &log->entities.deactivated, e );
 		return 1;
 	}
@@ -632,7 +607,7 @@ cn_activate_narrative( Entity *e, char *name )
 	if (( registryLookup( &n->instances, e ) )) return 0;
 
 	// log narrative activation event - the actual activation is performed in systemFrame
-	FrameLog *log = &CN.context->io.input.log;
+	FrameLog *log = CN.context->frame.log.backbuffer;
 	Registry *registry = &log->narratives.activate;
 	registryEntry *entry = registryLookup( registry, n );
 	if ( entry == NULL ) {
@@ -657,7 +632,7 @@ cn_deactivate_narrative( Entity *e, char *name )
 	if ( registryLookup( &n->instances, e ) == NULL ) return 0;
 
 	// log narrative deactivation event - the actual deactivation is performed in systemFrame
-	FrameLog *log = &CN.context->io.input.log;
+	FrameLog *log = CN.context->frame.log.backbuffer;
 	Registry *r = &log->narratives.deactivate;
 	registryEntry *entry = registryLookup( r, n );
 	if ( entry == NULL ) {
@@ -706,6 +681,7 @@ cn_open( char *path, int oflags )
 	free( name );
 
 	// log stream event
-	addItem( &CN.context->frame.log.streams.instantiated, e[0] );
+	FrameLog *log = CN.context->frame.log.backbuffer;
+	addItem( &log->streams.instantiated, e[0] );
 	return 0;
 }

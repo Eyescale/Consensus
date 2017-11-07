@@ -11,17 +11,4 @@ _action	read_narrative;
 	narrative utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	narrative_active( _context *context );
-void	registerNarrative( Narrative *narrative, _context *context );
-
-registryEntry *addNarrative( Entity *entity, char *name, Narrative *narrative );
-void	removeNarrative( Entity *entity, Narrative *narrative );
-
-registryEntry *addToNarrative( Narrative *narrative, Entity *entity );
-void	removeFromNarrative( Narrative *narrative, Entity *entity );
-
-Narrative *lookupNarrative( Entity *entity, char *name );
-Narrative *activateNarrative( Entity *entity, Narrative *narrative );
-void	deactivateNarrative( Entity *entity, Narrative *narrative );
-
 #endif	// NARRATIVE_H

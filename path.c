@@ -9,6 +9,7 @@
 
 #include "path.h"
 #include "expression.h"
+#include "expression_util.h"
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
@@ -55,7 +56,7 @@ read_STEP( _context * context )
 static int
 va2s( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
 	char *identifier = context->identifier.id[ 1 ].ptr;
@@ -122,7 +123,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 static int
 xr2s( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
 	free( context->identifier.id[ 2 ].ptr );
@@ -148,7 +149,7 @@ xeval( char *state, int event, char **next_state, _context *context )
 	context->identifier.id[ 2 ].ptr = NULL;
 
 	event = read_expression( state, event, &same, context );
-	if ( context_check( 0, 0, ExecutionMode ) && ( context->expression.mode != ErrorMode ))
+	if ( command_mode( 0, 0, ExecutionMode ) && ( context->expression.mode != ErrorMode ))
 	{
 		context->expression.mode = EvaluateMode;
 		int retval = expression_solve( context->expression.ptr, 3, context );
@@ -166,7 +167,7 @@ xeval( char *state, int event, char **next_state, _context *context )
 static int
 build_path( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
 	char *path = context->identifier.path;
@@ -231,7 +232,7 @@ build_path( char *state, int event, char **next_state, _context *context )
 int
 read_path( char *state, int event, char **next_state, _context *context )
 {
-	if ( context_check( FreezeMode, 0, 0 ) ) {
+	if ( command_mode( FreezeMode, 0, 0 ) ) {
 		event = flush_input( state, event, &same, context );
 		return event;
 	}
@@ -244,7 +245,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 
 	state = base;
 	do {
-		event = input( state, event, NULL, context );
+		event = read_input( state, event, NULL, context );
 #ifdef DEBUG
 		outputf( Debug, "read_path: in \"%s\", on '%c'", state, event );
 #endif

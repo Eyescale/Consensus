@@ -12,8 +12,7 @@ _action read_command;
 	command utilities	- public
 ---------------------------------------------------------------------------*/
 
-int	command_init( void *src, InputType type, int *restore, _context *context );
-int	command_exit( char *state, int event, int *restore, _context *context );
+int	command_read( void *src, InputType type, char *state, int event, _context *context );
 
 
 #endif	// COMMAND_H

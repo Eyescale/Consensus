@@ -30,6 +30,40 @@ just_any( Expression *expression, int i )
 }
 
 /*---------------------------------------------------------------------------
+	makeLiteral
+---------------------------------------------------------------------------*/
+/*
+	assumptions: the passed expression is literal-ready, ie.
+	. sub[ 3 ].result.any = 1
+	. for i in { 0, 1, 2 }: sub [ i ].result.identifier.type is either
+		. NullIdentifier
+		. DefaultIdentifier
+		. 0 - in which case this sub is assumed to have subs
+*/
+static Expression *
+make_literal( Expression *expression, ExpressionSub *super )
+{
+	if ( expression == NULL ) return NULL;
+
+	ExpressionSub *sub = expression->sub;
+	sub[ 3 ].e = expression;
+	sub[ 3 ].super = super;
+
+	for ( int i=0; i<3; i++ ) {
+		if ( sub[ i ].result.identifier.type )
+			continue;
+		make_literal( sub[ i ].e, &sub[ 3 ] );
+	}
+	return expression;
+}
+
+Expression *
+makeLiteral( Expression *expression )
+{
+	return make_literal( expression, NULL );
+}
+
+/*---------------------------------------------------------------------------
 	freeLiteral
 ---------------------------------------------------------------------------*/
 void

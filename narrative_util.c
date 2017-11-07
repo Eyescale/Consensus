@@ -195,6 +195,31 @@ duplicateNarrative( Occurrence *master, Occurrence *copy )
 	reorderListItem( &copy->sub.n );
 }
 
+static void
+search_and_register_init( Narrative * instance )
+{
+	for ( listItem *i = instance->root.sub.n; i!=NULL; i=i->next )
+	{
+		Occurrence *occurrence = (Occurrence *) i->ptr;
+		switch ( occurrence->type ) {
+		case EventOccurrence:
+			; EventVA *event = (EventVA *) occurrence->va->ptr;
+			if ( event->type == InitEvent ) {
+				occurrence->registered = 1;
+				addItem( &instance->frame.events, occurrence );
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	// in case there is no init, trigger manually the next frame
+	if ( !(instance->frame.events) ) {
+		instance->root.registered = 1;
+		addItem( &instance->frame.events, &instance->root );
+	}
+}
+
 Narrative *
 activateNarrative( Entity *entity, Narrative *narrative )
 {
@@ -212,6 +237,7 @@ activateNarrative( Entity *entity, Narrative *narrative )
 	}
 	set_this_variable( &instance->variables, entity );
 	registryRegister( &narrative->instances, entity, instance );
+	search_and_register_init( instance );
 	return instance;
 }
 
@@ -251,9 +277,11 @@ deactivateNarrative( Entity *entity, Narrative *narrative )
 Narrative *
 lookupNarrative( Entity *entity, char *name )
 {
-	Registry *narratives = cn_va_get( entity, "narratives" );
-	if ( narratives == NULL ) return NULL;
-	registryEntry *entry = registryLookup( narratives, name );
+	registryEntry *entry = registryLookup( CN.VB, "narratives" );
+	if ( entry == NULL ) return NULL;
+	entry = registryLookup( entry->value, entity );
+	if ( entry == NULL ) return NULL;
+	entry = registryLookup( entry->value, name );
 	return ( entry == NULL ) ? NULL : entry->value;
 }
 
@@ -337,7 +365,7 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 			case EventOccurrence:
 				for ( listItem *i = sub->va; i!=NULL; i=i->next ) {
 					EventVA *event = (EventVA *) sub->va->ptr;
-					free( event->identifier.name );
+					free( event->identifier );
 					free( event->format );
 				}
 				break;
@@ -435,7 +463,7 @@ freeOccurrence( Occurrence *occurrence )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			if ( i->ptr == NULL ) continue;
 			EventVA *event = (EventVA *) i->ptr;
-			free( event->identifier.name );
+			free( event->identifier );
 			free( event->format );
 			free( event );
 		}

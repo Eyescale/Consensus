@@ -12,7 +12,7 @@ typedef enum {
 	InstructionMode,
 	FreezeMode
 }
-ControlMode;
+CommandMode;
 
 typedef enum {
 	ClauseNone,
@@ -25,9 +25,19 @@ typedef enum {
 	InstantiateEvent = 1,
 	ReleaseEvent,
 	ActivateEvent,
-	DeactivateEvent
+	DeactivateEvent,
+	InitEvent,
+	StreamEvent
 }
 EventType;
+
+typedef enum {
+	FileScheme = 1,
+	SessionScheme,
+	OperatorScheme,
+	CGIScheme,
+}
+SchemeType;
 
 typedef enum {
 	UserInput,	// default: read from stdin
@@ -35,9 +45,9 @@ typedef enum {
 	PipeInput,
 	FileInput,
 	ClientInput,
-	SessionInput,
-	SessionInputInVariator,
-	SessionInputOut,
+	SessionOutputPipe,
+	SessionOutputPipeInVariator,
+	SessionOutputPipeOut,
 	InstructionBlock,
 	InstructionOne,
 	InstructionInline
@@ -197,34 +207,13 @@ typedef struct _ConditionVA {
 ConditionVA;
 
 typedef struct _EventVA {
+	char *identifier;
 	struct {
-		IdentifierType type;	// variable or default
-		char *name;
-	} identifier;
-	void *format;	// expression or path
-#ifdef SOURCE
-	struct {
-		struct {
-			char *identifier;
-		} variable;
-		void *format;	// path
-		struct {
-			unsigned int stream : 1;
-			unsigned int session : 1;
-		} type;
+		SchemeType scheme;
+		char *path;
 	} source;
-#endif
-	struct {
-		unsigned int notification : 1;
-		unsigned int request : 1;
-		unsigned int stream: 1;
-		unsigned int session: 1;
-		unsigned int instantiate : 1;
-		unsigned int release : 1;
-		unsigned int activate : 1;
-		unsigned int deactivate : 1;
-		unsigned int init : 1;
-	} type;
+	void *format;	// expression or path
+	EventType type;
 }
 EventVA;
 
@@ -285,6 +274,7 @@ typedef struct {
 			int mode;
 		} record;
 		unsigned int prompt : 1;
+		unsigned int flush : 1;
 	} restore;
 	unsigned int shed : 1;
 }
@@ -358,6 +348,7 @@ StackVA;
 // FrameLog
 // --------------------------------------------------
 typedef struct {
+	Registry external;
 	struct {
 		listItem *instantiated;	// { entity }
 		listItem *released;	// { entity-expression }
@@ -378,27 +369,35 @@ FrameLog;
 // --------------------------------------------------
 typedef struct {
 	struct {
-		ControlMode mode;	// ExecutionMode or InstructionMode or FreezeMode
-		listItem *stack;	// current StackVA
-		StackVA stackbase;
-		int level;
 		unsigned int terminal : 1;
 		unsigned int cgi : 1;
 		unsigned int cgim : 1;	// cgi emulator mode
 		unsigned int operator : 1;
 		unsigned int operator_absent : 1;
 		unsigned int session : 1;
-		unsigned int anteprompt : 1;
-		unsigned int prompt : 1;
-		unsigned int contrary : 1;
 		unsigned int stop : 1;
 	} control;
 	struct {
+		Registry *sessions, *pid;
+	} operator;
+	struct {
+		char *path;
+	} session;
+	struct {
+		CommandMode mode;	// ExecutionMode or InstructionMode or FreezeMode
+		listItem *stack;	// current StackVA
+		StackVA stackbase;
+		int level;
+		struct {
+			int level;
+		} freeze;
+		unsigned int one : 1;
+		unsigned int block : 1;
+		unsigned int contrary : 1;
+	} command;
+	struct {
 		int mode;
 	} assignment;
-	struct {
-		int level;
-	} freeze;
 	struct {
 		int level;
 		IdentifierVA string;
@@ -430,14 +429,8 @@ typedef struct {
 	struct {
 		int level;
 		struct {
-			unsigned int condition : 1;
-			unsigned int event : 1;
-			struct {
-				unsigned int one : 1;
-				unsigned int block : 1;
-			} action;
+			unsigned int editing : 1;
 			unsigned int output : 1;
-			unsigned int script : 1;
 		} mode;
 		struct {
 			struct {
@@ -447,13 +440,18 @@ typedef struct {
 				char *ptr;
 			} identifier;
 		} backup;
-		Occurrence *action;
 		Narrative *current;
+		Occurrence *occurrence;	// current
 		listItem *registered;
 	} narrative;
 	struct {
-		FrameLog log;
+		struct {
+			FrameLog cgi;
+			FrameLog buffer[ 2 ];
+			FrameLog *backbuffer, *frontbuffer;
+		} log;
 		int backlog;
+		unsigned int updating : 1;
 	} frame;
 	struct {
 		int level;
@@ -470,18 +468,19 @@ typedef struct {
 		AssignmentMode mode;
 		listItem *slist;
 		IdentifierVA string;
+		unsigned int anteprompt : 1;
+		unsigned int prompt : 1;
 		unsigned int redirected : 1;
 		unsigned int marked : 1;
 		unsigned int query : 1;
 	} output;
 	struct {
-		unsigned int flush_input;
-		unsigned int flush_output;
+		unsigned int flush_input : 1;
+		unsigned int flush_output : 1;
 	} error;
 	struct {
 		int bulletin, cgiport, service, client;	// sockets
 		struct {
-			FrameLog log;
 			struct {
 				char ptr[ IO_BUFFER_MAX_SIZE ];
 			} buffer;
@@ -490,15 +489,11 @@ typedef struct {
 			listItem *results;
 			unsigned int sync : 1;
 			unsigned int leave_open : 1;
-		}
-		query;
+		} query;
+		struct {
+			unsigned int sync : 1;
+		} restore;
 	} io;
-	struct {
-		Registry *sessions, *pid;
-	} operator;
-	struct {
-		char *path;
-	} session;
 }
 _context;
 
@@ -565,9 +560,10 @@ _action	pop;
 	kernel utilities	- public
 ---------------------------------------------------------------------------*/
 
-void set_control_mode( ControlMode mode, _context *context );
-int context_check( int freeze, int instruct, int execute );
 int ttyu( _context *context );
+
+void set_command_mode( CommandMode mode, _context *context );
+int command_mode( int freeze, int instruct, int execute );
 
 
 #endif	// KERNEL_H

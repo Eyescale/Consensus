@@ -28,19 +28,28 @@
 	io_open, io_close
 ---------------------------------------------------------------------------*/
 int
-io_open( int type, char *format, ... )
+io_open( int type, void *fmt, ... )
 {
+	_context *context = CN.context;
 	struct sockaddr_un socket_name;
 	int socket_fd;
-	socket_name.sun_family = AF_LOCAL;
 
-	va_list ap;
-	va_start( ap, format );
-	vsprintf( socket_name.sun_path, format, ap );
-	va_end( ap );
+	if ( type != IO_TICKET ) {
+		socket_name.sun_family = AF_LOCAL;
+		va_list ap;
+		va_start( ap, (char *) fmt );
+		vsprintf( socket_name.sun_path, (char *) fmt, ap );
+		va_end( ap );
+		socket_fd = socket( PF_LOCAL, SOCK_STREAM, 0 );
+	}
 
-	socket_fd = socket( PF_LOCAL, SOCK_STREAM, 0 );
 	switch ( type ) {
+	case IO_TICKET:
+		context->io.restore.sync = context->io.query.sync;
+		context->io.query.sync = 0;
+		socklen_t socket_name_len;
+		socket_fd = accept( *( int *) fmt, (struct sockaddr *) &socket_name, &socket_name_len );
+		break;
 	case IO_QUERY:
 		connect( socket_fd, (struct sockaddr *) &socket_name, SUN_LEN(&socket_name) );
 		break;
@@ -48,9 +57,6 @@ io_open( int type, char *format, ... )
 		bind( socket_fd, (struct sockaddr *) &socket_name, SUN_LEN (&socket_name) );
 		listen( socket_fd, 5 );
 		break;
-	default:
-		output( Debug, "Error: io_open() - no type specified" );
-		return -1;
 	}
 	return socket_fd;
 }
@@ -60,6 +66,19 @@ io_close( int type, int socket_fd, char *format, ... )
 {
 	_context *context = CN.context;
 	switch ( type ) {
+	case IO_TICKET:
+		if ( context->io.query.leave_open ) {
+			context->io.query.leave_open = 0;
+			break;
+		}
+		// send closing packet if required
+		if ( context->io.query.sync ) {
+			int size = 0;
+			write( socket_fd, &size, sizeof( size ));
+		}
+		close( socket_fd );
+		context->io.query.sync = context->io.restore.sync;
+		break;
 	case IO_QUERY:
 		if ( context->io.query.sync )
 		{
@@ -96,8 +115,8 @@ io_init( _context *context )
 	context->io.input.buffer.ptr[ IO_BUFFER_MAX_SIZE - 1 ]	= '\0';
 	context->io.output.buffer.ptr[ IO_BUFFER_MAX_SIZE - 1 ]	= '\0';
 	
-	// initialize change and service sockets
-	// -------------------------------------
+	// initialize bulletin and service sockets
+	// ---------------------------------------
 
 	if ( context->control.cgi || context->control.cgim )
 		return 0;
@@ -150,116 +169,84 @@ io_exit( _context *context )
 	io_scan		- called from read_command()
 ---------------------------------------------------------------------------*/
 #define SUP( a, b ) ((a)>(b)?(a):(b))
-void
-io_scan( fd_set *fds, int blocking, _context *context )
+int
+io_scan( char *state, int event, char **next_state, _context *context )
 {
-	FD_ZERO( fds );
-
-	if ( context->control.cgi || context->control.cgim )
-		return;	// CGI does not listen to anyone
-
-	if ( ttyu( context ) &&  !context->control.anteprompt && !(context->input.stack) )
-		context->control.prompt = 1;
-
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return event;
+	if ( event || strcmp( state, base ) )
+		return event;
 	if (( context->input.stack ))
-		return; // already at work
+		return event;
+	if ( context->control.cgi || context->control.cgim )
+		return event;	// CGI does not listen to anyone
 
-	// set I/O descriptors and call select()
-	// -------------------------------------
+	// set I/O descriptors
+	// -------------------
+	fd_set fds;
+	FD_ZERO( &fds );
 
 	int nfds = 0;
 
-	if ( !context->control.session )
-	{
-		FD_SET( STDIN_FILENO, fds );
+	if ( !context->control.session ) {
+		FD_SET( STDIN_FILENO, &fds );
 		nfds = SUP( nfds, STDIN_FILENO );
 	}
 
-	FD_SET( context->io.bulletin, fds );
+	FD_SET( context->io.bulletin, &fds );
 	nfds = SUP( nfds, context->io.bulletin );
 
-	FD_SET( context->io.service, fds );
+	FD_SET( context->io.service, &fds );
 	nfds = SUP( nfds, context->io.service );
 
-	if ( context->control.operator )
-	{
-		FD_SET( context->io.cgiport, fds );
+	if ( context->control.operator ) {
+		FD_SET( context->io.cgiport, &fds );
 		nfds = SUP( nfds, context->io.cgiport );
-
 	}
 
 	nfds++;
 
-	if ( blocking ) {
-		prompt( context );
-		select( nfds, fds, NULL, NULL, NULL );
-	} else {
+	// call select
+	// -----------
+	context->output.prompt |= ( ttyu( context ) && !context->output.anteprompt );
+	int occurrence_pending = test_log( context, OCCURRENCES );
+
+	if ( context->frame.backlog || occurrence_pending )
+	{
 		struct timeval timeout;
 		bzero( &timeout, sizeof( struct timeval ) );
-		if ( !test_log( context, OCCURRENCES ) )
-			prompt( context );
-		select( nfds, fds, NULL, NULL, &timeout );
+		if ( !occurrence_pending ) prompt( context );
+		select( nfds, &fds, NULL, NULL, &timeout );
 	}
+	else	// blocking
+	{
+		prompt( context );
+		select( nfds, &fds, NULL, NULL, NULL );
+	}
+
+	// override input channel if required
+	// ----------------------------------
+	if ( FD_ISSET( STDIN_FILENO, &fds ) )
+		;
+	else if ( context->control.operator && FD_ISSET( context->io.cgiport, &fds ) )
+		push_input( "", &context->io.cgiport, ClientInput, context );
+	else if ( FD_ISSET( context->io.service, &fds ) )
+		push_input( "", &context->io.service, ClientInput, context );
+
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	io_inform
+	io_notify
 ---------------------------------------------------------------------------*/
 void
-io_inform( _context *context )
+io_notify( FrameLog *log, _context *context )
 {
-	FrameLog *log = &context->io.output.log;
-
 	// notify changes to operator
 #ifdef DO_LATER
-	cn_dof( ">@ operator:\\< session: %s @ %d >: %s", context->session.path, getpid(), change(s) );
+	cn_dof( ">@ operator:\\< session:%s @ %d >: %s", context->session.path, getpid(), change(s) );
 	Q: why not inform subscribers directly ? Right now we leave the dispatching to the operator
 #endif	// DO_LATER
-
-	// free log
-	freeListItem( &log->streams.instantiated );
-	freeListItem( &log->entities.instantiated );
-	freeListItem( &log->entities.released );
-	freeListItem( &log->entities.activated );
-	freeListItem( &log->entities.deactivated );
-	emptyRegistry( &log->narratives.activate );
-	emptyRegistry( &log->narratives.deactivate );
-}
-
-/*---------------------------------------------------------------------------
-	io_accept
----------------------------------------------------------------------------*/
-int
-io_accept( int fd, _context *context )
-{
-	struct { int sync; } backup;
-	backup.sync = context->io.query.sync;
-	context->io.query.sync = 0;
-
-	struct sockaddr_un client_name;
-	socklen_t client_name_len;
-	int socket_fd = accept( fd, (struct sockaddr *) &client_name, &client_name_len );
-
-	context->io.client = socket_fd;
-
-	// read & execute command
-	push( base, 0, NULL, context );
-	cn_read( &socket_fd, ClientInput, base, 0 );
-	pop( base, 0, NULL, context );
-
-	// send closing packet if required
-	if ( context->io.query.sync ) {
-		int size = 0;
-		write( socket_fd, &size, sizeof( size ));
-	}
-	if ( context->io.query.leave_open ) {
-		context->io.query.leave_open = 0;
-	}
-	else close( socket_fd );
-
-
-	context->io.query.sync = backup.sync;
-	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -279,17 +266,19 @@ int
 io_query( char *path, _context *context )
 {
 	if ( isanumber( path ) ) {
-		if ( atoi( path ) == getpid() )
+		if ( atoi( path ) == getpid() ) {
 			return outputf( Error, ">@ %s: short-circuit", path );
-
+		}
 		return io_open( IO_QUERY, IO_PEER_PATH, path );
 	}
 	else if ( context->control.operator_absent )
-			;
+	{
+		return output( Error, "operator out of order" );
+	}
 	else if ( !strcmp( path, "operator" ) ) {
-		if ( context->control.operator )
+		if ( context->control.operator ) {
 			return output( Error, ">@ operator: short-circuit" );
-
+		}
 		if ( context->control.session )
 			return io_open( IO_QUERY, IO_SERVICE_PATH, getppid() );
 		else
@@ -298,23 +287,17 @@ io_query( char *path, _context *context )
 	else	// target is a peer session
 	{
 		// query operator the session descriptor associated with path
-#ifdef DEBUG
-		output( Debug, "io_query: contacting operator" );
-		cn_dof( ">@ operator:< \\%%[ session:%s ]", path );
-		output( Debug, "io_query: operator over" );
-#else
 		int retval = cn_dof( ">@ operator:< \\%%[ session:%s ]", path );
-#endif
+
 		if (( context->io.query.results )) {
 			char *pid = context->io.query.results->ptr;
-			if ( atoi( pid ) == getpid() )
+			if ( atoi( pid ) == getpid() ) {
 				return outputf( Error, ">@ %s: short-circuit", path );
-
+			}
 			return io_open( IO_QUERY, IO_PEER_PATH, pid );
 		}
 	}
-	outputf( Error, "'%s': could not connect", path );
-	return 0;
+	return outputf( Error, "'%s': session unknown", path );
 }
 
 /*---------------------------------------------------------------------------
@@ -400,7 +383,7 @@ io_write( int socket_fd, char *string, int length, int *remainder )
 	io_flush
 ---------------------------------------------------------------------------*/
 int
-io_flush( int socket_fd, int *remainder, _context *context )
+io_flush( int socket_fd, int *remainder, int eot, _context *context )
 {
 	char *buffer = context->io.output.buffer.ptr;
 
@@ -414,9 +397,37 @@ io_flush( int socket_fd, int *remainder, _context *context )
 		size = 0;
 	}
 
-	// send closing packet
-	// -------------------
+	// send data closing packet
+	// ------------------------
 	write( socket_fd, &size, sizeof( size ));
+
+	// end transmission if required, ONLY in case of SessionOutput
+	// -----------------------------------------------------------
+	if ( !eot ) return 0;
+
+	if ( context->io.query.sync )
+	{
+		// free previous query results
+		listItem **results = &context->io.query.results;
+		for ( listItem *i = *results; i!=NULL; i=i->next )
+			free( i->ptr );
+		freeListItem( results );
+
+		// read new results, including result terminating packet
+		IdentifierVA dst = { NULL, NULL };
+		int remainder = 0;
+		char *buffer = context->io.input.buffer.ptr;
+		while ( io_read( socket_fd, buffer, &remainder ) )
+			for ( char *ptr = buffer; *ptr; ptr++ )
+				slist_append( results, &dst, *ptr, 1, 0 );
+		slist_close( results, &dst, 0 );
+#ifdef DEBUG
+		if (( *results ))
+			for ( listItem *i = *results; i!=NULL; i=i->next )
+				outputf( Debug, "io_flush: received: %s", (char *) i->ptr );
+#endif
+	}
+	io_close( IO_QUERY, socket_fd, "" );
 
 	return 0;
 }

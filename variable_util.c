@@ -11,8 +11,8 @@
 
 #include "api.h"
 #include "variable_util.h"
-#include "expression.h"
-#include "narrative.h"
+#include "expression_util.h"
+#include "narrative_util.h"
 
 // #define DEBUG
 
@@ -83,13 +83,12 @@ freeVariables( Registry *variables )
 Registry *
 variable_registry( _context *context )
 {
-	if ( context->narrative.current &&
-	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
+	if ( context->narrative.current && !context->narrative.mode.editing )
 	{
-		Occurrence *occurrence = context->narrative.action;
+		Occurrence *occurrence = context->narrative.occurrence;
 		return &occurrence->variables;
 	} else {
-		StackVA *stack = (StackVA *) context->control.stack->ptr;
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
 		return &stack->variables;
 	}
 }
@@ -169,28 +168,27 @@ VariableVA *
 lookupVariable( _context *context, char *identifier, int up )
 {
 	VariableVA *variable = NULL;
-	if ( context->narrative.current &&
-	    ( context->narrative.mode.action.one || context->narrative.mode.action.block ))
+	if ( context->narrative.current && !context->narrative.mode.editing )
 	{
-		Occurrence *action = context->narrative.action;
-		for ( Occurrence *i = action; i!=NULL; i=i->thread )
+		Occurrence *occurrence = context->narrative.occurrence;
+		for ( Occurrence *i = occurrence; i!=NULL; i=i->thread )
 		{
-			context->narrative.action = i;
+			context->narrative.occurrence = i;
 			variable = fetchVariable( context, identifier, 0 );
 			if (( variable )) break;
 		}
-		context->narrative.action = action;
+		context->narrative.occurrence = occurrence;
 	}
 	// if we did not find it locally then we can check the program stack
 	if ( variable == NULL ) {
-		listItem *stack = context->control.stack;
+		listItem *stack = context->command.stack;
 		for ( listItem *s = (up?stack->next:stack); s!=NULL; s=s->next )
 		{
-			context->control.stack = s;
+			context->command.stack = s;
 			variable = fetchVariable( context, identifier, 0 );
 			if (( variable )) break;
 		}
-		context->control.stack = stack;
+		context->command.stack = stack;
 	}
 	return variable;
 }

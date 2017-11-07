@@ -11,7 +11,7 @@
 #include "api.h"
 #include "input.h"
 #include "input_util.h"
-#include "expression.h"
+#include "expression_util.h"
 #include "command.h"
 #include "output.h"
 #include "output_util.h"
@@ -28,9 +28,10 @@
 int
 error( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
+	flush_input( base, 0, &same, context );
 	if ( event == '\n' ) {
 		return outputf( Error, "in state \"%s\", instruction incomplete", state );
 	} else if ( event != 0 ) {
@@ -45,7 +46,7 @@ error( char *state, int event, char **next_state, _context *context )
 int
 warning( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
 	if ( event == '\n' ) {
@@ -62,10 +63,10 @@ warning( char *state, int event, char **next_state, _context *context )
 void
 anteprompt( _context *context )
 {
-	if ( ttyu( context ) && context->control.anteprompt && (context->input.stack))
+	if ( ttyu( context ) && context->output.anteprompt && (context->input.stack))
 	{
-		context->control.anteprompt = 0;
 		fprintf( stderr, "\n" );
+		context->output.anteprompt = 0;
 	}
 }
 
@@ -75,14 +76,14 @@ anteprompt( _context *context )
 void
 prompt( _context *context )
 {
-	if ( !context->control.prompt )
+	if ( !context->output.prompt )
 		return;
 
-	context->control.prompt = 0;
-	context->control.anteprompt = 1;
+	context->output.prompt = 0;
+	context->output.anteprompt = 1;
 
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	switch ( context->control.mode ) {
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	switch ( context->command.mode ) {
 	case FreezeMode:
 		fprintf( stderr, "(/~) ?_ " );
 		break;
@@ -91,7 +92,7 @@ prompt( _context *context )
 		break;
 	case ExecutionMode:
 		if ( context->narrative.current ) {
-			StackVA *stack = (StackVA *) context->control.stack->ptr;
+			StackVA *stack = (StackVA *) context->command.stack->ptr;
 			if ( stack->narrative.state.closure )
 				fprintf( stderr, "(then/.)?_ " );
 			else
@@ -105,7 +106,7 @@ prompt( _context *context )
 		}
 		break;
 	}
-	for ( int i=0; i < context->control.level; i++ )
+	for ( int i=0; i < context->command.level; i++ )
 		fprintf( stderr, "\t" );
 }
 
@@ -116,7 +117,7 @@ int
 push_output( char *identifier, void *dst, OutputType type, _context *context )
 {
 	OutputVA *output = (OutputVA *) calloc( 1, sizeof(OutputVA) );
-	output->level = context->control.level;
+	output->level = context->command.level;
 	output->restore.redirected = context->output.redirected;
 	output->restore.query = context->output.query;
 	output->mode = type;
@@ -150,41 +151,17 @@ push_output( char *identifier, void *dst, OutputType type, _context *context )
 	pop_output
 ---------------------------------------------------------------------------*/
 int
-pop_output( _context *context, int terminate )
+pop_output( _context *context, int eot )
 {
 	OutputVA *output = (OutputVA *) context->output.stack->ptr;
 	context->output.redirected = output->restore.redirected;
 	context->output.query = output->restore.query;
 	switch ( output->mode ) {
 	case SessionOutput:
-		io_flush( output->ptr.socket, &output->remainder, context );
-		if ( !terminate )
-			break;
-		if ( context->io.query.sync ) {
-			// free previous query results
-			listItem **results = &context->io.query.results;
-			for ( listItem *i = *results; i!=NULL; i=i->next )
-				free( i->ptr );
-			freeListItem( results );
-	
-			// read new results, including result terminating packet
-			IdentifierVA dst = { NULL, NULL };
-			int remainder = 0;
-			char *buffer = context->io.input.buffer.ptr;
-			while ( io_read( output->ptr.socket, buffer, &remainder ) )
-				for ( char *ptr = buffer; *ptr; ptr++ )
-					slist_append( results, &dst, *ptr, 1, 0 );
-			slist_close( results, &dst, 0 );
-#ifdef DEBUG
-			if (( *results ))
-				for ( listItem *i = *results; i!=NULL; i=i->next )
-					outputf( Debug, "pop_output: received: %s", (char *) i->ptr );
-#endif
-		}
-		io_close( IO_QUERY, output->ptr.socket, "" );
+		io_flush( output->ptr.socket, &output->remainder, eot, context );
 		break;
 	case ClientOutput:
-		io_flush( output->ptr.socket, &output->remainder, context );
+		io_flush( output->ptr.socket, &output->remainder, 0, context );
 		break;
 	case StringOutput:
 		slist_close( &context->output.slist, &context->output.string, 0 );
@@ -232,6 +209,8 @@ outputf( OutputContentsType type, const char *format, ... )
 	int retval = (( type == Error ) || ( type == Debug ) ? -1 : 0 );
 	if ( format == NULL ) return retval;	// e.g. outputf( Error, NULL );
 
+	if ( type == Error ) flush_input( base, 0, &same, context );
+
 	va_list ap;
 	va_start( ap, format );
 	if ( type == Text )
@@ -272,7 +251,7 @@ outputf( OutputContentsType type, const char *format, ... )
 			if ( *format ) free( str );
 		}
 	}
-	else if ( ttyu( context ) || context->control.terminal ) // type is not Text
+	else if ( ttyu( context ) || context->control.terminal )
 	{
 		FILE *stream = stderr;
 		char *header;
@@ -336,21 +315,21 @@ output_( int type, int event, _context *context )
 	default:
 		retval = event;
 	}
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return retval;
 
 	VariableVA *variable;
 	char *path, *va_name;
 	context->error.flush_output = ( event != '\n' );
-	int marked = 1;
+	int marked = 0;
 
 	switch ( type ) {
 	case Modulo:
 		output( Text, "%" );
+		marked = 1;
 		break;
 
 	case Char:
-		marked = 0;
 		switch ( event ) {
 		case ' ':
 		case '\t':
@@ -396,12 +375,14 @@ output_( int type, int event, _context *context )
 
 	case SchemeDescriptor:
 		path = context->identifier.path;
-		if ( !context->control.operator )
-			return outputf( Error, "misdirected: >:%%[ scheme:%s ] - not operator", path  );
+		if ( !context->control.operator ) {
+			return outputf( Error, "misdirected: >:%%[ session:%s ] - not operator", path  );
+		}
 		registryEntry *entry = registryLookup( context->operator.sessions, path );
 		if ( entry == NULL ) return retval;
 		SessionVA *session = entry->value;
 		outputf( Text, "%d", session->pid );
+		marked = 1;
 		break;
 
 	case ExpressionResults:
@@ -410,11 +391,11 @@ output_( int type, int event, _context *context )
 
 		switch ( context->expression.mode ) {
 		case ReadMode:
-			output_literal_variable( context->expression.results, context->expression.ptr );
+			marked = output_literal_variable( context->expression.results, context->expression.ptr );
 			freeLiteral( &context->expression.results );
 			break;
 		default:
-			output_entity_variable( context->expression.results, context->expression.ptr );
+			marked = output_entity_variable( context->expression.results, context->expression.ptr );
 		}
 		break;
 
@@ -425,8 +406,9 @@ output_( int type, int event, _context *context )
 		va_name = context->identifier.id[ 2 ].ptr;
 		if ( !strcmp( va_name, "html" ) ) {
 			Entity *entity = (Entity *) context->expression.results->ptr;
-			char *identifier = (char *) cn_va_get( entity, "hcn" );
-			cn_read( identifier, HCNFileInput, base, 0 );
+			char *identifier = cn_va_get( entity, "hcn" );
+			if ( identifier == NULL ) break;
+			command_read( identifier, HCNFileInput, base, 0, context );
 		}
 		else if ( registryLookup( CN.VB, va_name ) == NULL ) {
 			return outputf( Error, "unknown value account name '%s'", va_name );
@@ -434,19 +416,18 @@ output_( int type, int event, _context *context )
 		else if ( !strcmp( va_name, "literal" ) ) {
 			switch ( context->expression.mode ) {
 			case ReadMode:
-				output_literal_variable( context->expression.results, context->expression.ptr );
+				marked = output_literal_variable( context->expression.results, context->expression.ptr );
 				freeLiteral( &context->expression.results );
 				break;
 			default:
-				output_entity_variable( context->expression.results, context->expression.ptr );
+				marked = output_entity_variable( context->expression.results, context->expression.ptr );
 			}
 		}
 		else marked = output_va_( va_name, context );
 		break;
 
 	case NarrativeBody:
-		marked = 0;
-		char *name = context->identifier.id[ 1 ].ptr;
+		; char *name = context->identifier.id[ 1 ].ptr;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
@@ -459,7 +440,7 @@ output_( int type, int event, _context *context )
 		}
 		break;
 	}
-	context->output.marked = marked;
+	context->output.marked |= marked;
 	return retval;
 }
 

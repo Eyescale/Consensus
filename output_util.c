@@ -13,7 +13,7 @@
 #include "input_util.h"
 #include "output.h"
 #include "output_util.h"
-#include "expression.h"
+#include "expression_util.h"
 #include "command.h"
 #include "io.h"
 #include "variable.h"
@@ -405,10 +405,10 @@ output_narrative_variable( Registry *registry )
 	}
 }
 
-void
+int
 output_entity_variable( listItem *i, Expression *format )
 {
-	if ( i == NULL ) return;
+	if ( i == NULL ) return 0;
 	if ( i->next == NULL ) {
 		output_entity_name( (Entity *) i->ptr, format, 1 );
 	}
@@ -422,12 +422,13 @@ output_entity_variable( listItem *i, Expression *format )
 		}
 		output( Text, " }" );
 	}
+	return 1;
 }
 
-void
+int
 output_literal_variable( listItem *i, Expression *format )
 {
-	if ( i == NULL ) return;
+	if ( i == NULL ) return 0;
 	ExpressionSub *s = (ExpressionSub *) i->ptr;
 	if ( i->next == NULL ) {
 		output_expression( ExpressionAll, s->e, -1, -1 );
@@ -441,6 +442,7 @@ output_literal_variable( listItem *i, Expression *format )
 		} 
 		output( Text, " }" );
 	}
+	return 1;
 }
 
 static void
@@ -526,6 +528,8 @@ output_va_( char *va_name, _context *context )
 
 	Entity *e = (Entity *) i->ptr;
 	void *value = cn_va_get( e, va_name );
+	if ( value == NULL ) return 0;
+
 	int narrative_account = !strcmp( va_name, "narratives" );
 
 	if ( i->next != NULL ) output( Text, "{ " );
@@ -534,6 +538,7 @@ output_va_( char *va_name, _context *context )
 		for ( i = i->next; i!=NULL; i=i->next ) {
 			e = (Entity *) i->ptr;
 			value = cn_va_get( e, va_name );
+			if ( value == NULL ) continue;
 			output_va_value( value, narrative_account );
 		}
 		output( Text, " }" );
@@ -594,52 +599,43 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			EventVA *event = (EventVA *) i->ptr;
 
-			// output event variable identifier
-			if ( event->identifier.name != NULL ) {
-#ifdef DO_LATER
-				if ( event->identifier.type == VariableIdentifier )
-					output( Text, "%" );
-#endif	// DO_LATER
-				output_identifier( event->identifier.name, 0 );
+			// output event identifier
+			if ( event->identifier != NULL ) {
+				output_identifier( event->identifier, 0 );
 			}
-			if ( !event->type.init ) output( Text, ": " );
-#ifdef DO_LATER
-			// output request-event type
-			if ( event->type.request ) {
-				if ( event->type.instantiate ) {
-					output( Text, "!! " );
-				} else if ( event->type.release ) {
-					output( Text, "!~ " );
-				} else if ( event->type.activate ) {
-					output( Text, "!* " );
-				} else if ( event->type.deactivate ) {
-					output( Text, "!_ " );
-				}
-			}
-#endif	// DO_LATER
+			if ( event->type != InitEvent ) output( Text, ": " );
+
 			// output event format
-			if ( event->type.init ) {
-				output( Text, "init" );
-			} else if ( event->type.stream ) {
+			if ( event->type == StreamEvent ) {
 				outputf( Text, "\"file://%s\"", event->format );
 			} else if ( event->format != NULL ) {
 				output_expression( ExpressionAll, event->format, -1, -1 );
 			}
 
-			// output notification-event type
-			if ( event->type.notification ) {
-				if ( event->type.stream ) {
-					output( Text, " !<" );
-				} else if ( event->type.instantiate ) {
-					output( Text, " !!" );
-				} else if ( event->type.release ) {
-					output( Text, " !~" );
-				} else if ( event->type.activate ) {
-					output( Text, " !*" );
-				} else if ( event->type.deactivate ) {
-					output( Text, " !_" );
-				}
+			// output event type
+			switch ( event->type ) {
+			case InitEvent:
+				output( Text, "init" );
+				break;
+			case StreamEvent:
+				output( Text, " !<" );
+				break;
+			case InstantiateEvent:
+				output( Text, " !!" );
+				break;
+			case ReleaseEvent:
+				output( Text, " !~" );
+				break;
+			case ActivateEvent:
+				output( Text, " !*" );
+				break;
+			case DeactivateEvent:
+				output( Text, " !_" );
+				break;
+			default:
+				break;
 			}
+
 			if ( i->next != NULL ) {
 				output( Text, ", " );
 			}
@@ -649,9 +645,9 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		}
 		break;
 	case ActionOccurrence:
-		backup.mode = context->control.mode;
-		backup.level = context->control.level;
-		set_control_mode( InstructionMode, context );
+		backup.mode = context->command.mode;
+		backup.level = context->command.level;
+		set_command_mode( InstructionMode, context );
 
 		ActionVA *action = (ActionVA *) occurrence->va->ptr;
 		listItem *instructions = action->instructions;
@@ -660,16 +656,16 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			cn_do( instructions->ptr );
 		} else {
 			output( Text, "do\n" );
-			push( base, 0, NULL, context );
-			context->control.level = level; // just to get the tabs right
-			cn_dol( instructions );
-			if ( context->control.level == level ) {
+			push( base, 0, &same, context );
+			context->command.level = level; // just to get the tabs right
+			cn_dob( instructions );
+			if ( context->command.level == level ) {
 				// returned from '/' - did not pop yet (expecting then)
-				pop( base, 0, NULL, context );
+				pop( base, 0, &same, context );
 			}
 		}
-		context->control.level = backup.level;
-		set_control_mode( backup.mode, context );
+		context->command.level = backup.level;
+		set_command_mode( backup.mode, context );
 		break;
 	case ThenOccurrence:
 		output( Text, "then" );

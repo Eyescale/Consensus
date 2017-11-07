@@ -12,8 +12,8 @@
 #include "api.h"
 #include "variable.h"
 #include "variable_util.h"
-#include "expression.h"
-#include "narrative.h"
+#include "expression_util.h"
+#include "narrative_util.h"
 
 // #define DEBUG
 
@@ -91,7 +91,7 @@ enum {
 static int
 assign_( int op, char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	Registry *registry;

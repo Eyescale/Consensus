@@ -8,7 +8,7 @@
 #include "kernel.h"
 
 #include "api.h"
-#include "expression.h"
+#include "expression_util.h"
 #include "expression_filter.h"
 #include "variable.h"
 #include "variable_util.h"

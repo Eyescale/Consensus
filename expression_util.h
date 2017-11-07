@@ -5,6 +5,14 @@
 	expression utilities	- private
 ---------------------------------------------------------------------------*/
 
+int	just_any( Expression *expression, int count );
+Expression *makeLiteral( Expression *expression );
+void	freeLiteral( listItem **list );
+int	translateFromLiteral( listItem **list, int as_sub, _context *context );
+void	freeExpression( Expression *expression );
+void	expression_collapse( Expression *expression );
+int	expression_solve( Expression *expression, int as_sub, _context *context );
+
 int	trace_mark( Expression *expression );
 int	mark_negated( Expression *expression, int negated );
 void	invert_results( ExpressionSub *sub, int as_sub, listItem *results );

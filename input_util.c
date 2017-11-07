@@ -440,14 +440,14 @@ identifier_finish( char *state, int event, char **next_state, _context *context 
 int
 on_token( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) ) {
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) ) {
 		do_( flush_input, same );
 		*next_state = *next_state + strlen( *next_state ) + 1;
 		return event;
 	}
 	char *ptr = *next_state;
 	for ( ; *ptr; event=0, ptr++ ) {
-		event = input( state, event, NULL, context );
+		event = read_input( state, event, NULL, context );
 		if ( event != *ptr ) return -1;
 	}
 	*next_state = ++ptr;
@@ -457,14 +457,14 @@ on_token( char *state, int event, char **next_state, _context *context )
 int
 read_0( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) ) {
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) ) {
 		do_( flush_input, same );
 		return event;
 	}
 
 	state = base;
 	do {
-		event = input( state, event, NULL, context );
+		event = read_input( state, event, NULL, context );
 		bgn_
 		in_( base ) bgn_
 			on_( '\\' )	do_( nop, "\\" )

@@ -9,12 +9,15 @@
 #include "registry.h"
 #include "kernel.h"
 
+#include "command_util.h"
+#include "cgi.h"
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
 #include "io.h"
 #include "api.h"
 #include "expression.h"
+#include "expression_util.h"
 #include "narrative.h"
 #include "narrative_util.h"
 #include "variable.h"
@@ -50,7 +53,7 @@ execute( _action action, char **state, int event, char *next_state, _context *co
 int
 set_results_to_nil( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	freeListItem( &context->expression.results );
@@ -61,7 +64,7 @@ set_results_to_nil( char *state, int event, char **next_state, _context *context
 int
 set_expression_mode( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
 	switch ( event ) {
@@ -76,7 +79,7 @@ set_expression_mode( char *state, int event, char **next_state, _context *contex
 int
 expression_op( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	int retval = expression_solve( context->expression.ptr, 3, context );
@@ -114,7 +117,7 @@ expression_op( char *state, int event, char **next_state, _context *context )
 int
 evaluate_expression( char *state, int event, char **next_state, _context *context )
 {
-	switch ( context->control.mode ) {
+	switch ( context->command.mode ) {
 	case FreezeMode:
 		do_( flush_input, same );
 		return event;
@@ -164,7 +167,7 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 int
 parse_expression( char *state, int event, char **next_state, _context *context )
 {
-	if ( context_check( FreezeMode, 0, 0 ) ) {
+	if ( command_mode( FreezeMode, 0, 0 ) ) {
 		do_( flush_input, same );
 		return event;
 	}
@@ -236,7 +239,7 @@ override_narrative( Entity *e, _context *context )
 int
 narrative_op( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	switch ( context->expression.mode ) {
@@ -263,6 +266,8 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		read_narrative( state, event, next_state, context );
 
 		Narrative *narrative = context->narrative.current;
+		context->narrative.current = NULL;
+
 		if ( narrative == NULL ) {
 			output( Warning, "narrative empty - not instantiated" );
 			return 0;
@@ -282,7 +287,6 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 			freeNarrative( narrative );
 			output( Warning, "no target entity - narrative not instantiated" );
 		}
-		context->narrative.current = NULL;
 		break;
 
 	case ReleaseMode:
@@ -326,12 +330,12 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 int
 exit_command( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, InstructionMode, ExecutionMode ) )
+	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
-	switch ( context->control.mode ) {
+	switch ( context->command.mode ) {
 	case InstructionMode:
-		if ( (context->narrative.current) && !context->narrative.mode.action.one )
+		if ( context->narrative.mode.editing && context->command.block )
 			return output( Error, "'exit' not supported in instruction block - "
 				"use 'do exit' action instead" );
 		break;
@@ -347,55 +351,17 @@ exit_command( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	read_va
----------------------------------------------------------------------------*/
-int
-read_va( char *state, int event, char **next_state, _context *context )
-{
-	event = 0;	// we know it is '$'
-	state = base;
-	do {
-		event = input( state, event, NULL, context );
-#ifdef DEBUG
-		output( Debug, "read_va: in \"%s\", on '%c'", state, event );
-#endif
-		bgn_
-		in_( base ) bgn_
-			on_( '(' )	do_( nop, "(" )
-			on_other	do_( error, "" )
-			end
-			in_( "(" ) bgn_
-				on_( ' ' )	do_( nop, same )
-				on_( '\t' )	do_( nop, same )
-				on_other	do_( read_2, "(_" )
-				end
-				in_( "(_" ) bgn_
-					on_( ' ' )	do_( nop, same )
-					on_( '\t' )	do_( nop, same )
-					on_( ')' )	do_( nop, "" )
-					on_other	do_( error, "" )
-					end
-		end
-	}
-	while ( strcmp( state, "" ) );
-
-	return event;
-}
-
-/*---------------------------------------------------------------------------
 	set_assignment_mode
 ---------------------------------------------------------------------------*/
 int
 set_assignment_mode( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
-
 	bgn_
 	in_( "> identifier" )	context->assignment.mode = AssignAdd;
 	in_( ": identifier" )	context->assignment.mode = AssignSet;
 	end
-
 	return 0;
 }
 
@@ -405,21 +371,19 @@ set_assignment_mode( char *state, int event, char **next_state, _context *contex
 int
 input_inline( char *state, int event, char **next_state, _context *context )
 {
-	switch ( context->control.mode ) {
+	switch ( context->command.mode ) {
 	case FreezeMode:
 		return 0;
 	case InstructionMode:
 		// sets execution flag so that the last instruction is parsed again,
 		// but this time in execution mode
-		set_control_mode( ExecutionMode, context );
+		set_command_mode( ExecutionMode, context );
 		return push_input( "", NULL, InstructionInline, context );
 	case ExecutionMode:
-		break;
+		; char *identifier = context->identifier.id[ 0 ].ptr;
+		context->identifier.id[ 0 ].ptr = NULL;
+		return push_input( "", identifier, PipeInput, context );
 	}
-	char *identifier = context->identifier.id[ 0 ].ptr;
-	context->identifier.id[ 0 ].ptr = NULL;
-
-	return push_input( "", identifier, PipeInput, context );
 }
 
 /*---------------------------------------------------------------------------
@@ -445,7 +409,7 @@ open_stream( char *state, int event, char **next_state, _context *context )
 int
 input_story( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	char *path = context->identifier.path;
@@ -465,9 +429,49 @@ output_story( char *state, int event, char **next_state, _context *context )
 	command output actions
 ---------------------------------------------------------------------------*/
 int
+set_output_from_variable( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->control.cgi || context->control.cgim ) {
+		event = read_cgi_output_session( state, event, next_state, context );
+		if ( event < 0 ) return event;
+	}
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return 0;
+
+	char *session, *identifier = context->identifier.id[ 0 ].ptr;
+	VariableVA *variable = lookupVariable( context, identifier, 0 );
+	if (( variable == NULL ) || ( variable->value == NULL ))
+		return outputf( Error, ">@ %%variable: variable '%s' not found", identifier );
+
+#ifdef DO_LATER
+	// for now only set the output to the first variable's entity's name
+#endif
+	switch ( variable->type ) {
+	case EntityVariable:
+		session = cn_name( ((listItem *) variable->value )->ptr );
+		if ( identifier == NULL )
+			return outputf( Error, ">@ %%variable: variable '%s'\'s value is a relationship instance" );
+		break;
+	default:
+		return outputf( Error, ">@ %%variable: variable '%s' is not an entity variable" );
+	}
+
+	if ( context->control.cgi || context->control.cgim )
+	{
+		return cgi_output_session( session );
+	}
+	else
+	{
+		free( context->identifier.path );
+		context->identifier.path = session;
+		return set_output_target( ">@session", ':', &same, context );
+	}
+}
+
+int
 set_output_target( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( !strcmp( state, ": identifier" ) ) {
@@ -477,13 +481,17 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 	}
 	else if ( !strcmp( state, ">@session" ) ) {
 		char *path = context->identifier.path;
-		context->identifier.path = NULL;
 		event = push_output( "^^", path, SessionOutput, context );
-		free( path );
 	}
 	else if ( !strcmp( state, "> .." ) ) {
-		event = push_output( "^^", &context->io.client, ClientOutput, context );
-		if ( !event ) context->io.query.sync = 1;
+		if (( context->input.stack )) {
+			InputVA *input = context->input.stack->ptr;
+			if ( input->mode == ClientInput ) {
+				event = push_output( "^^", &input->client, ClientOutput, context );
+				if ( !event ) { context->io.query.sync = 1; return 0; }
+			}
+		}
+		return output( Error, "> .. : no client input" );
 	}
 	return event;
 }
@@ -491,14 +499,14 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 int
 sync_delivery( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0,0, ExecutionMode ) )
+	if ( !command_mode( 0,0, ExecutionMode ) )
 		return 0;
 	if (( context->input.stack )) {
 		InputVA *input = context->input.stack->ptr;
 		if (( input->mode == ClientInput ) && ( input->session.created ))
 		{
 			// genitor wants to sync on iam
-			input->session.created->genitor = context->io.client;
+			input->session.created->genitor = input->client;
 			context->io.query.sync = 0;
 			context->io.query.leave_open = 1;
 		}
@@ -510,7 +518,7 @@ sync_delivery( char *state, int event, char **next_state, _context *context )
 int
 sync_output( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0,0, ExecutionMode ) )
+	if ( !command_mode( 0,0, ExecutionMode ) )
 		return 0;
 	if ( !context->output.marked )
 		return '\n';
@@ -530,7 +538,7 @@ sync_output( char *state, int event, char **next_state, _context *context )
 int
 backfeed_output( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	if ( context->output.query && !context->output.marked ) {
@@ -545,7 +553,7 @@ backfeed_output( char *state, int event, char **next_state, _context *context )
 static int
 pipe_output( InputType into, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
 	context->output.marked = 0;
@@ -562,19 +570,19 @@ pipe_output( InputType into, _context *context )
 int
 pipe_output_in( char *state, int event, char **next_state, _context *context )
 {
-	return pipe_output( SessionInput, context );
+	return pipe_output( SessionOutputPipe, context );
 }
 
 int
 pipe_output_out( char *state, int event, char **next_state, _context *context )
 {
-	return pipe_output( SessionInputOut, context );
+	return pipe_output( SessionOutputPipeOut, context );
 }
 
 int
 clear_output_target( char *state, int event, char **next_state, _context *context )
 {
-	if ( !context_check( 0, 0, ExecutionMode ) )
+	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
 	context->output.marked = 0;
@@ -672,77 +680,57 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 		int fd = session->genitor;
 		int remainder = 0, length = strlen( news );
 		io_write( fd, news, length, &remainder );
-		io_flush( fd, &remainder, context );
+		io_flush( fd, &remainder, 0, context );
 		write( fd, &remainder, sizeof( remainder ) );
 		close( fd );
-		session->genitor = 0;
 
+		session->genitor = 0;
 		free( news );
 	}
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	scheme_op
+	scheme_op	- operator specific
 ---------------------------------------------------------------------------*/
 int
 scheme_op( char *state, int event, char **next_state, _context *context )
 {
 	char *scheme = context->expression.scheme;
-	if ( !strcmp( scheme, "session" ) )
+	if ( strcmp( scheme, "session" ) )
+		return outputf( Error, "%s operation not supported", scheme );
+	if ( context->expression.mode != InstantiateMode )
+		return output( Error, "session operation not supported" );
+#ifdef DO_LATER
+	check session's path format (must not be a number)
+#endif
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return 0;
+	if ( context->control.operator_absent )
+		return output( Error, "operator out of order" );
+
+	if ( context->control.operator )
 	{
-		if ( !context->control.operator )
-			return output( Error, "session operation not authorized" );
-		else if ( context->expression.mode != InstantiateMode )
-			return outputf( Warning, "session operation not supported - ignoring", scheme );
-
-		if ( !context_check( 0, 0, ExecutionMode ) )
-			return 0;
-
-		switch ( context->expression.mode ) {
-		case InstantiateMode:
-			; char *path = context->identifier.path;
+		char *path = context->identifier.path;
+		int retval = create_session( path, context );
+		if ( !retval )
 			context->identifier.path = NULL;
-			event = create_session( path, context );
-			if ( event ) free( path );
-			break;
-		default:
-			break;
-		}
 	}
-	else outputf( Warning, "%s scheme operation not supported - ignoring", scheme );
+	else
+		return output( Error, "session operation not authorized" );
+
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	cgi_entry actions
+	scheme_op_pipe
 ---------------------------------------------------------------------------*/
 int
-cgi_entry_bgn( char *state, int event, char **next_state, _context *context )
+scheme_op_pipe( char *state, int event, char **next_state, _context *context )
 {
-	return 0;
+	if ( context->control.cgi || context->control.cgim )
+		return cgi_scheme_op_pipe( state, event, next_state, context );
+
+	return outputf( Error, "%s operation out of context - CGI only", context->expression.scheme );
 }
 
-int
-cgi_entry_add( char *state, int event, char **next_state, _context *context )
-{
-	return 0;
-}
-
-int
-cgi_entry_end( char *state, int event, char **next_state, _context *context )
-{
-	return 0;
-}
-
-int
-read_cgi_entry( char *state, int event, char **next_state, _context *context )
-{
-	return 0;
-}
-
-int
-set_cgi_entry( char *state, int event, char **next_state, _context *context )
-{
-	return 0;
-}

@@ -24,17 +24,17 @@ ttyu( _context *context )
 {
 	return ( context->control.terminal &&
 		!context->control.cgi &&
-		!context->control.cgim &&
+		// !context->control.cgim &&
 		!context->control.session );
 }
 
 /*---------------------------------------------------------------------------
-	context_check	- utility
+	command_mode	- utility
 ---------------------------------------------------------------------------*/
 int
-context_check( int freeze, int instruct, int execute )
+command_mode( int freeze, int instruct, int execute )
 {
-	int mode = CN.context->control.mode;
+	int mode = CN.context->command.mode;
 	switch ( mode ) {
 	case FreezeMode:
 		return freeze;
@@ -47,27 +47,27 @@ context_check( int freeze, int instruct, int execute )
 }
 
 /*---------------------------------------------------------------------------
-	set_control_mode	- utility
+	set_command_mode	- utility
 ---------------------------------------------------------------------------*/
 void
-set_control_mode( ControlMode mode, _context *context )
+set_command_mode( CommandMode mode, _context *context )
 {
 	switch ( mode ) {
 	case FreezeMode:
 		if ( context->input.stack == NULL ) {
 			output( Warning, "switching to passive mode - type in '/~' to alternate condition" );
 		}
-		context->freeze.level = context->control.level;
+		context->command.freeze.level = context->command.level;
 		break;
 	case InstructionMode:
 		break;
 	case ExecutionMode:
-		if (( context->control.mode == FreezeMode ) && ( context->input.stack == NULL )) {
+		if (( context->command.mode == FreezeMode ) && ( context->input.stack == NULL )) {
 			output( Warning, "back to active mode" );
 		}
 		break;
 	}
-	context->control.mode = mode;
+	context->command.mode = mode;
 }
 
 /*---------------------------------------------------------------------------
@@ -95,19 +95,17 @@ nop( char *state, int event, char **next_state, _context *context )
 int
 push( char *state, int event, char **next_state, _context *context )
 {
-	if ( context_check( FreezeMode, 0, 0 ) ) {
-		context->control.level++;
+	if ( command_mode( FreezeMode, 0, 0 ) ) {
+		context->command.level++;
 		return 0;
 	}
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
-	if ( next_state != NULL ) {
-		stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
-	}
-	context->control.level++;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
+	context->command.level++;
 
 	stack = (StackVA *) calloc( 1, sizeof(StackVA) );
 	RTYPE( &stack->variables ) = IndexedByName;
-	addItem( &context->control.stack, stack );
+	addItem( &context->command.stack, stack );
 
 #ifdef DEBUG
 	output( Debug, "Consensus: push: from state=\"%s\" to state=\"%s\"", state, stack->next_state );
@@ -122,13 +120,13 @@ int
 pop( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "kernel pop: from level=%d, state=\"%s\"", context->control.level, state );
+	output( Debug, "kernel pop: from level=%d, state=\"%s\"", context->command.level, state );
 #endif
-	if ( context_check( FreezeMode, 0, 0 ) ) {
-		if ( context->control.level == context->freeze.level ) {
-			set_control_mode( ExecutionMode, context );
+	if ( command_mode( FreezeMode, 0, 0 ) ) {
+		if ( context->command.level == context->command.freeze.level ) {
+			set_command_mode( ExecutionMode, context );
 		} else {
-			context->control.level--;
+			context->command.level--;
 			return 0;
 		}
 	}
@@ -137,7 +135,7 @@ pop( char *state, int event, char **next_state, _context *context )
 		InputVA *input = (InputVA *) context->input.stack->ptr;
 		if ( !strcmp( input->identifier, "" ) )
 			;
-		else if ( context->control.level == input->level ) {
+		else if ( context->command.level == input->level ) {
 			input->shed = 1;
 			output( Warning, "attempt to pop control beyond authorized level - closing stream..." );
 			return 0;
@@ -145,19 +143,19 @@ pop( char *state, int event, char **next_state, _context *context )
 	}
 
 	// free current level's variables
-	StackVA *stack = (StackVA *) context->control.stack->ptr;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	freeVariables( &stack->variables );
 
-	if ( context->control.level ) {
+	if ( context->command.level ) {
 		free( stack );
-		popListItem( &context->control.stack );
-		stack = (StackVA *) context->control.stack->ptr;
-		if ( next_state != NULL ) {
+		popListItem( &context->command.stack );
+		stack = (StackVA *) context->command.stack->ptr;
+		if ( next_state != &same ) {
 			*next_state  = stack->next_state;
 		}
-		context->control.level--;
+		context->command.level--;
 	} else {
-		if ( next_state != NULL )
+		if ( next_state != &same )
 			*next_state = "";
 	}
 
