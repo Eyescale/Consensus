@@ -554,9 +554,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 		in_( "!" ) bgn_
 			on_( '!' )	do_( set_expression_mode, "!." )
-#ifdef DO_LATER
-			on_( '<' )	do_( nop, "!<" )
-#endif
 			on_( '~' )	do_( set_expression_mode, "!." )
 			on_( '*' )	do_( set_expression_mode, "!." )
 			on_( '_' )	do_( set_expression_mode, "!." )

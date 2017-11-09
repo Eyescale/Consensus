@@ -1,8 +1,0 @@
-
-	!! titi()
-		on stream: file://test/file !<
-			do >:file://%[ ?-is->[ File<-has-%stream ] ] opened
-			/
-		/
-	!* titi()
-	!< file://test/file

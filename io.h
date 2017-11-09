@@ -21,7 +21,7 @@ int	io_open( int type, void *fmt, ... );
 void	io_close( int type, int socket_fd, char *format, ... );
 int	io_init( _context *context );
 int	io_exit( _context *context );
-void	io_notify( FrameLog *log, _context *context );
+void	io_notify( EntityLog *log, _context *context );
 int	io_query( char *path, _context *context );
 int	io_read( int fd, char *buffer, int *remainder );
 int	io_write( int fd, char *string, int length, int *remainder );

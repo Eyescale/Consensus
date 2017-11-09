@@ -345,25 +345,14 @@ typedef struct {
 }
 StackVA;
 
-// FrameLog
+// EntityLog
 // --------------------------------------------------
 typedef struct {
-	Registry external;
-	struct {
-		listItem *instantiated;	// { entity }
-		listItem *released;	// { entity-expression }
-		listItem *activated;	// { entity }
-		listItem *deactivated;	// { entity }
-	} entities;
-	struct {
-		listItem *instantiated;	// { entity }
-	} streams;
-	struct {
-		Registry activate;	// { ( narrative, { entity } ) }
-		Registry deactivate;	// { ( narrative, { entity } ) }
-	} narratives;
-}
-FrameLog;
+	listItem *instantiated;	// { entity }
+	listItem *released;	// { entity-expression }
+	listItem *activated;	// { entity }
+	listItem *deactivated;	// { entity }
+} EntityLog;
 
 // Context
 // --------------------------------------------------
@@ -446,9 +435,15 @@ typedef struct {
 	} narrative;
 	struct {
 		struct {
-			FrameLog cgi;
-			FrameLog buffer[ 2 ];
-			FrameLog *backbuffer, *frontbuffer;
+			EntityLog cgi;
+			struct {
+				Registry activate;
+				Registry deactivate;
+			} narratives;
+			struct {
+				EntityLog buffer[ 2 ];
+				EntityLog *backbuffer, *frontbuffer;
+			} entities;
 		} log;
 		int backlog;
 		unsigned int updating : 1;

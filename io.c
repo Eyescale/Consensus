@@ -240,7 +240,7 @@ io_scan( char *state, int event, char **next_state, _context *context )
 	io_notify
 ---------------------------------------------------------------------------*/
 void
-io_notify( FrameLog *log, _context *context )
+io_notify( EntityLog *log, _context *context )
 {
 	// notify changes to operator
 #ifdef DO_LATER

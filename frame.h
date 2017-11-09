@@ -19,8 +19,8 @@ _action	frame_update;
 ---------------------------------------------------------------------------*/
 
 int	test_log( _context *context, LogType type );
-void	free_log( FrameLog *log );
-void	narrative_process( Narrative *n, FrameLog *log, _context *context );
+void	free_log( EntityLog *log );
+void	narrative_process( Narrative *n, EntityLog *log, _context *context );
 
 
 #endif	// FRAME_H

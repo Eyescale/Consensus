@@ -387,23 +387,6 @@ input_inline( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	stream actions
----------------------------------------------------------------------------*/
-int
-open_stream( char *state, int event, char **next_state, _context *context )
-{
-	char *path = context->identifier.path;
-	if ( path == NULL ) return output( Error, "no file specified" );
-	bgn_
-	in_( "!< file://path" )		event = cn_open( path, O_RDONLY );
-	in_( "!< file://path <" )	event = cn_open( path, O_RDONLY );
-	in_( "!< file://path >" )	event = cn_open( path, O_WRONLY );
-	in_( "!< file://path ><" )	event = cn_open( path, O_RDWR );
-	end
-	return event;
-}
-
-/*---------------------------------------------------------------------------
 	story actions
 ---------------------------------------------------------------------------*/
 int

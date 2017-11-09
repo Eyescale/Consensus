@@ -314,8 +314,8 @@ cn_new( char *name )
 	cn_va_set( e, "name", name );
 	registryRegister( CN.names, name, e );
 	addItem( &CN.DB, e );
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	addItem( &log->entities.instantiated, e );
+	EntityLog *log = CN.context->frame.log.entities.backbuffer;
+	addItem( &log->instantiated, e );
 	return e;
 }
 
@@ -494,8 +494,8 @@ cn_instantiate( Entity *source, Entity *medium, Entity *target )
 {
 	Entity *e = newEntity( source, medium, target );
 	addItem( &CN.DB, e );
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	addItem( &log->entities.instantiated, e );
+	EntityLog *log = CN.context->frame.log.entities.backbuffer;
+	addItem( &log->instantiated, e );
 	return e;
 }
 
@@ -517,8 +517,8 @@ cn_release( Entity *e )
 		}
 	}
 	Expression *expression = cn_expression( e );
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	addItem( &log->entities.released, &expression->sub[ 3 ] );
+	EntityLog *log = CN.context->frame.log.entities.backbuffer;
+	addItem( &log->released, &expression->sub[ 3 ] );
 	cn_free( e );
 }
 
@@ -530,8 +530,8 @@ cn_activate( Entity *e )
 {
 	if ( !cn_is_active( e ) ) {
 		e->state = 1;
-		FrameLog *log = CN.context->frame.log.backbuffer;
-		addItem( &log->entities.activated, e );
+		EntityLog *log = CN.context->frame.log.entities.backbuffer;
+		addItem( &log->activated, e );
 		return 1;
 	}
 	else return 0;
@@ -545,8 +545,8 @@ cn_deactivate( Entity *e )
 {
 	if ( cn_is_active( e ) ) {
 		e->state = 0;
-		FrameLog *log = CN.context->frame.log.backbuffer;
-		addItem( &log->entities.deactivated, e );
+		EntityLog *log = CN.context->frame.log.entities.backbuffer;
+		addItem( &log->deactivated, e );
 		return 1;
 	}
 	else return 0;
@@ -607,11 +607,10 @@ cn_activate_narrative( Entity *e, char *name )
 	if (( registryLookup( &n->instances, e ) )) return 0;
 
 	// log narrative activation event - the actual activation is performed in systemFrame
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	Registry *registry = &log->narratives.activate;
-	registryEntry *entry = registryLookup( registry, n );
+	Registry *r = &CN.context->frame.log.narratives.activate;
+	registryEntry *entry = registryLookup( r, n );
 	if ( entry == NULL ) {
-		registryRegister( registry, n, newItem(e) );
+		registryRegister( r, n, newItem(e) );
 	} else {
 		addIfNotThere((listItem **) &entry->value, e );
 	}
@@ -632,8 +631,7 @@ cn_deactivate_narrative( Entity *e, char *name )
 	if ( registryLookup( &n->instances, e ) == NULL ) return 0;
 
 	// log narrative deactivation event - the actual deactivation is performed in systemFrame
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	Registry *r = &log->narratives.deactivate;
+	Registry *r = &CN.context->frame.log.narratives.deactivate;
 	registryEntry *entry = registryLookup( r, n );
 	if ( entry == NULL ) {
 		registryRegister( r, n, newItem(e) );
@@ -644,44 +642,3 @@ cn_deactivate_narrative( Entity *e, char *name )
 	return 1;
 }
 
-/*---------------------------------------------------------------------------
-	cn_open
----------------------------------------------------------------------------*/
-int
-cn_open( char *path, int oflags )
-{
-	// open stream
-	int fd = open( path, oflags );
-	if ( fd < 0 ) {
-		// log error	DO_LATER
-		return outputf( Warning, "file://%s - unable to open", path );
-	}
-	char *mode;
-	switch ( oflags ) {
-	case O_RDONLY: mode = "read_only"; break;
-	case O_WRONLY: mode = "write-only"; break;
-	case O_RDWR: mode = "read-write"; break;
-	}
-	// instantiate stream entity
-	/*
-		we don't want any event to be logged for this
-		particular instantiation, but we want to retrieve
-		the resulting entity. so we do it by hand...
-	*/
-	char *name;
-	asprintf( &name, "%d", fd );
-
-	Entity *e[ 5 ];
-	e[ 0 ] = cn_instf( "...", name, "is", "Stream" );
-	e[ 1 ] = cn_instf( "%..", e[0], "has", "Mode" );
-	e[ 2 ] = cn_instf( "..%", strdup( mode ), "is", e[1] );
- 	e[ 3 ] = cn_instf( "%..", e[0], "has", "File" );
- 	e[ 4 ] = cn_instf( "..%", strdup( path ), "is", e[3] );
-
-	free( name );
-
-	// log stream event
-	FrameLog *log = CN.context->frame.log.backbuffer;
-	addItem( &log->streams.instantiated, e[0] );
-	return 0;
-}

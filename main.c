@@ -129,8 +129,8 @@ main( int argc, char *argv[] )
 	context->command.stackbase.next_state = "";
 	context->command.stack = newItem( &context->command.stackbase );
 	context->command.mode = ExecutionMode;
-	context->frame.log.backbuffer = &context->frame.log.buffer[ 0 ];
-	context->frame.log.frontbuffer = &context->frame.log.buffer[ 1 ];
+	context->frame.log.entities.backbuffer = &context->frame.log.entities.buffer[ 0 ];
+	context->frame.log.entities.frontbuffer = &context->frame.log.entities.buffer[ 1 ];
 	context->input.buffer.current = &context->input.buffer.base;
 	context->hcn.state = "";
 	context->control.terminal = isatty( STDIN_FILENO );

@@ -134,8 +134,8 @@ add_cgi_entry( char *state, int event, char **next_state, _context *context )
 {
 	Expression *expression = makeLiteral( context->expression.ptr );
 	if (( expression )) {
-		FrameLog *log = &context->frame.log.cgi;
-		addItem( &log->entities.instantiated, &expression->sub[ 3 ] );
+		EntityLog *log = &context->frame.log.cgi;
+		addItem( &log->instantiated, &expression->sub[ 3 ] );
 		context->expression.ptr = NULL;
 	}
 	return 0;
@@ -144,10 +144,10 @@ add_cgi_entry( char *state, int event, char **next_state, _context *context )
 static void
 free_cgi_log( _context *context )
 {
-	FrameLog *log = &context->frame.log.cgi;
-	for ( listItem *i=log->entities.instantiated; i!=NULL; i=i->next )
+	EntityLog *log = &context->frame.log.cgi;
+	for ( listItem *i=log->instantiated; i!=NULL; i=i->next )
 		freeLiteral( i->ptr );
-	freeListItem( &log->entities.instantiated );
+	freeListItem( &log->instantiated );
 }
 
 int
@@ -196,8 +196,8 @@ read_cgi_input( char *state, int event, char **next_state, _context *context )
 
 	// process cgi entries
 	// -------------------
-	FrameLog *log = &context->frame.log.cgi;
-	if ( log->entities.instantiated == NULL )
+	EntityLog *log = &context->frame.log.cgi;
+	if ( log->instantiated == NULL )
 		return event;
 
 	Narrative *n = lookupNarrative( CN.nil, "cgi" );

@@ -30,15 +30,14 @@ test_log( _context *context, LogType type )
 {
 	switch ( type ) {
 	case OCCURRENCES:
-		; FrameLog *log = context->frame.log.backbuffer;
+		; EntityLog *log = context->frame.log.entities.backbuffer;
 		return (
-			( log->streams.instantiated ) ||
-			( log->entities.instantiated ) ||
-			( log->entities.released ) ||
-			( log->entities.activated ) ||
-			( log->entities.deactivated ) ||
-			( log->narratives.activate.value ) ||
-			( log->narratives.deactivate.value )
+			( log->instantiated ) ||
+			( log->released ) ||
+			( log->activated ) ||
+			( log->deactivated ) ||
+			( context->frame.log.narratives.activate.value ) ||
+			( context->frame.log.narratives.deactivate.value )
 		);
 	case EVENTS:
 		for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next ) {
@@ -104,59 +103,21 @@ test_condition( Occurrence *occurrence, _context *context )
 	test_event
 ---------------------------------------------------------------------------*/
 static listItem *
-lookupFrameLog( EventVA *event, FrameLog *log, _context *context )
+lookupEntityLog( EventVA *event, EntityLog *log, _context *context )
 {
 	int success = 0;
-	listItem *loglist = NULL;
+	listItem *loglist;
 
 	switch ( event->type ) {
 	case InitEvent:
 		return NULL; // registered only once
-	case StreamEvent:
-		freeListItem( &context->expression.results );
-		for ( listItem *i = log->streams.instantiated; i!=NULL; i=i->next )
-		{
-			Entity *stream = (Entity *) i->ptr;
-#ifndef DO_LATER
-			if ( !strcmp( event->format, "*" ) ) {
-				success = 1;
-				addItem( &context->expression.results, stream );
-				continue;
-			}
-#endif
-			Entity *file = cn_getf( "?.[%..]", "is", stream, "has", "File" );
-			if ( file == NULL ) {
-				continue;
-			}
-			char *name = cn_name( file );
-			if ( name == NULL ) {
-				continue;
-			}
-			if ( strcmp( name, event->format ) ) {
-				continue;
-			}
-			success = 1;
-			addItem( &context->expression.results, stream );
-		}
 	default:
-		if ( event->source.scheme )
-		{
-			registryEntry *entry = registryLookup( &log->external, &event->source.scheme );
-			if ( entry == NULL ) return NULL;
-			entry = registryLookup( entry->value, event->source.path );
-			if ( entry == NULL ) return NULL;
-			entry = registryLookup( entry->value, &event->type );
-			if ( entry == NULL ) return NULL;
-			loglist = entry->value;
-		}
-		else switch ( event->type )
-		{
-			case InstantiateEvent: loglist = log->entities.instantiated; break;
-			case ReleaseEvent: loglist = log->entities.released; break;
-			case ActivateEvent: loglist = log->entities.activated; break;
-			case DeactivateEvent: loglist = log->entities.deactivated; break;
-			default: break;
-		}
+		loglist =
+			( event->type == InstantiateEvent ) ? log->instantiated :
+			( event->type == ReleaseEvent ) ? log->released :
+			( event->type == ActivateEvent ) ? log->activated :
+			( event->type == DeactivateEvent ) ? log->deactivated : NULL;
+
 		if ( loglist == NULL ) return NULL;
 
 		context->expression.mode = ( event->source.scheme || ( event->type == ReleaseEvent )) ?
@@ -170,12 +131,12 @@ lookupFrameLog( EventVA *event, FrameLog *log, _context *context )
 }
 
 static int
-test_event( Narrative *instance, FrameLog *log, Occurrence *occurrence, _context *context )
+test_event( Narrative *instance, EntityLog *log, Occurrence *occurrence, _context *context )
 {
 	for ( listItem *i = occurrence->va; i!=NULL; i=i->next )
 	{
 		EventVA *event = (EventVA *) i->ptr;
-		if ( lookupFrameLog( event, log, context ) == NULL )
+		if ( lookupEntityLog( event, log, context ) == NULL )
 			return 0;
 
 		// register test results into occurrence->variables
@@ -188,7 +149,7 @@ test_event( Narrative *instance, FrameLog *log, Occurrence *occurrence, _context
 	search_and_register_events	- recursive
 ---------------------------------------------------------------------------*/
 static int
-search_and_register_events( Narrative *instance, FrameLog *log, Occurrence *thread, _context *context )
+search_and_register_events( Narrative *instance, EntityLog *log, Occurrence *thread, _context *context )
 {
 	OccurrenceType last;
 	int passed = 1, todo = 0;
@@ -472,7 +433,7 @@ execute_actions( Narrative *instance, _context *context )
 	narrative_process
 ---------------------------------------------------------------------------*/
 void
-narrative_process( Narrative *n, FrameLog *log, _context *context )
+narrative_process( Narrative *n, EntityLog *log, _context *context )
 {
 	context->narrative.current = n;
 
@@ -552,31 +513,13 @@ narrative_process( Narrative *n, FrameLog *log, _context *context )
 	frame_process, frame_start, frame_finish
 ---------------------------------------------------------------------------*/
 static void
-frame_process( FrameLog *log, _context *context )
+frame_process( EntityLog *log, _context *context )
 {
 #ifdef DEBUG
 	static int frameNumber = 0;
 	outputf( Debug, "entering frame_process: frame#=%d", frameNumber++ );
 #endif
-	// Check entity narratives to be deactivated - and deactivate them
-	// ---------------------------------------------------------------
-#ifdef DEBUG
-	output( Debug, "frame: 1. deactivate narratives" );
-#endif
-	for ( registryEntry *i = log->narratives.deactivate.value; i!=NULL; i=i->next )
-	{
-		Narrative *narrative = (Narrative *) i->index.address;
-		listItem *entities = (listItem *) i->value;
-		for ( listItem *j = entities; j!=NULL; j=j->next )
-			deactivateNarrative( (Entity *) j->ptr, narrative );
-		freeListItem( (listItem **) &i->value );
-	}
-
 	// Have each active narrative process the frame log
-	// ------------------------------------------------
-#ifdef DEBUG
-	output( Debug, "frame: 2. updating narratives" );
-#endif
 	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->ptr;
@@ -591,12 +534,52 @@ frame_process( FrameLog *log, _context *context )
 		}
 	}
 
-	// Check narratives to be activated - and activate them
-	// ----------------------------------------------------
 #ifdef DEBUG
-	output( Debug, "frame: 3. activate narratives" );
+	output( Debug, "leaving frame_process" );
 #endif
-	for ( registryEntry *i = log->narratives.activate.value; i!=NULL; i=i->next )
+}
+
+static EntityLog *
+frame_start( _context *context )
+{
+	EntityLog *log = context->frame.log.entities.backbuffer;
+
+	reorderListItem( &log->instantiated );
+	reorderListItem( &log->released );
+	reorderListItem( &log->activated );
+	reorderListItem( &log->deactivated );
+
+	// swap frame buffers
+	context->frame.log.entities.backbuffer = context->frame.log.entities.frontbuffer;
+	context->frame.log.entities.frontbuffer = log;
+
+	// Check entity narratives to be deactivated - and deactivate them
+#ifdef DEBUG
+	output( Debug, "frame_start: deactivate narratives" );
+#endif
+	Registry *registry = &context->frame.log.narratives.deactivate;
+	for ( registryEntry *i = registry->value; i!=NULL; i=i->next )
+	{
+		Narrative *narrative = (Narrative *) i->index.address;
+		listItem *entities = (listItem *) i->value;
+		for ( listItem *j = entities; j!=NULL; j=j->next )
+			deactivateNarrative( (Entity *) j->ptr, narrative );
+		freeListItem( (listItem **) &i->value );
+	}
+	emptyRegistry( registry );
+
+	return log;
+}
+
+static void
+frame_finish( EntityLog *log, _context *context )
+{
+	// Check narratives to be activated - and activate them
+#ifdef DEBUG
+	output( Debug, "frame_finish: activate narratives" );
+#endif
+	Registry *registry = &context->frame.log.narratives.activate;
+	for ( registryEntry *i = registry->value; i!=NULL; i=i->next )
 	{
 		Narrative *narrative = (Narrative *) i->index.address;
 		listItem *entities = (listItem *) i->value;
@@ -604,32 +587,8 @@ frame_process( FrameLog *log, _context *context )
 			activateNarrative( (Entity *) j->ptr, narrative );
 		freeListItem( (listItem **) &i->value );
 	}
+	emptyRegistry( registry );
 
-#ifdef DEBUG
-	output( Debug, "leaving frame_process" );
-#endif
-}
-
-static FrameLog *
-frame_start( _context *context )
-{
-	FrameLog *log = context->frame.log.backbuffer;
-
-	reorderListItem( &log->entities.instantiated );
-	reorderListItem( &log->entities.released );
-	reorderListItem( &log->entities.activated );
-	reorderListItem( &log->entities.deactivated );
-
-	// swap frame buffers
-	context->frame.log.backbuffer = context->frame.log.frontbuffer;
-	context->frame.log.frontbuffer = log;
-
-	return log;
-}
-
-static void
-frame_finish( FrameLog *log, _context *context )
-{
 	// update backlog counter for io_scan()
 	context->frame.backlog =
 		test_log( context, OCCURRENCES ) ? 3 :
@@ -638,15 +597,13 @@ frame_finish( FrameLog *log, _context *context )
 
 	io_notify( log, context );
 
-	freeListItem( &log->streams.instantiated );
-	freeListItem( &log->entities.instantiated );
-	freeListItem( &log->entities.released );
-	freeListItem( &log->entities.activated );
-	for ( listItem *i=log->entities.deactivated; i!=NULL; i=i->next )
+	for ( listItem *i=log->deactivated; i!=NULL; i=i->next )
 		freeLiteral( i->ptr );
-	freeListItem( &log->entities.deactivated );
-	emptyRegistry( &log->narratives.activate );
-	emptyRegistry( &log->narratives.deactivate );
+
+	freeListItem( &log->deactivated );
+	freeListItem( &log->instantiated );
+	freeListItem( &log->released );
+	freeListItem( &log->activated );
 }
 
 /*---------------------------------------------------------------------------
@@ -668,7 +625,7 @@ frame_update( char *state, int event, char **next_state, _context *context )
 	// all the way to actions - and those executed
 	for ( int i=0; i<3; i++ )
 	{
-		FrameLog *log = frame_start( context );
+		EntityLog *log = frame_start( context );
 		frame_process( log, context );
 		frame_finish( log, context );
 		if ( !context->frame.backlog )
