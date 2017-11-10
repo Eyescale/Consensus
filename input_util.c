@@ -25,31 +25,31 @@ separator_table[] = {
 	{ '\0', 0 },
 	{ -1, 0 },
 	{ ' ', 0 },
-	{ '-', 0 },
-	{ '|', 0 },
-	{ '>', 0 },
-	{ '<', 0 },
-	{ '[', 0 },
-	{ ']', 0 },
-	{ '%', 0 },
 	{ '.', 0 },
+	{ ':', 0 },
 	{ ',', 0 },
 	{ ';', 0 },
-	{ ':', 0 },
+	{ '/', 0 },
+	{ '?', 0 },
+	{ '!', 0 },
+	{ '%', 0 },
+	{ '~', 0 },
+	{ '*', 0 },
+	{ '_', 0 },
+	{ '-', 0 },
+	{ '+', 0 },
+	{ '=', 0 },
+	{ '|', 0 },
+	{ '<', 0 },
+	{ '>', 0 },
+	{ '[', 0 },
+	{ ']', 0 },
 	{ '(', 0 },
 	{ ')', 0 },
 	{ '{', 0 },
 	{ '}', 0 },
 	{ '[', 0 },
 	{ ']', 0 },
-	{ '<', 0 },
-	{ '>', 0 },
-	{ '-', 0 },
-	{ '=', 0 },
-	{ '/', 0 },
-	{ '%', 0 },
-	{ '?', 0 },
-	{ '!', 0 }
 };
 
 /*---------------------------------------------------------------------------
@@ -438,7 +438,7 @@ identifier_finish( char *state, int event, char **next_state, _context *context 
 }
 
 int
-on_token( char *state, int event, char **next_state, _context *context )
+read_token( char *state, int event, char **next_state, _context *context )
 {
 	if ( !command_mode( 0, InstructionMode, ExecutionMode ) ) {
 		do_( flush_input, same );

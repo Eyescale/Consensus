@@ -31,13 +31,20 @@ error( char *state, int event, char **next_state, _context *context )
 	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
 
-	flush_input( base, 0, &same, context );
-	if ( event == '\n' ) {
-		return outputf( Error, "in state \"%s\", instruction incomplete", state );
-	} else if ( event != 0 ) {
-		return outputf( Error, "in \"%s\", on '%c', syntax error", state, event );
+	if ( context->error.tell ) {
+		if ( event ) switch ( context->error.tell ) {
+		case 1:
+			outputf( Error, "in \"%s\", on '%c', syntax error", state, event );
+			break;
+		case 2:
+			outputf( Error, "in state \"%s\", instruction incomplete", state );
+			break;
+		}
+		context->error.tell = 0;
 	}
-	return event;
+	flush_input( base, 0, &same, context );
+
+	return -1;
 }
 
 /*---------------------------------------------------------------------------
@@ -97,12 +104,12 @@ prompt( _context *context )
 				fprintf( stderr, "(then/.)?_ " );
 			else
 				fprintf( stderr, "in/on/do_$ " );
-		} else if ( context->control.session ) {
-			fprintf( stderr, "session$ " );
-		} else if ( context->control.operator ) {
-			fprintf( stderr, "operator$ " );
-		} else {
-			fprintf( stderr, "consensus$ " );
+		}
+		else {
+			fprintf( stderr, 
+				context->control.operator ? "operator$ " :
+				context->control.cgim ? "cgi$ " :
+				"consensus$ " );
 		}
 		break;
 	}
@@ -161,7 +168,7 @@ pop_output( _context *context, int eot )
 		io_flush( output->ptr.socket, &output->remainder, eot, context );
 		break;
 	case ClientOutput:
-		io_flush( output->ptr.socket, &output->remainder, 0, context );
+		io_flush( output->ptr.socket, &output->remainder, eot, context );
 		break;
 	case StringOutput:
 		slist_close( &context->output.slist, &context->output.string, 0 );
@@ -209,7 +216,12 @@ outputf( OutputContentsType type, const char *format, ... )
 	int retval = (( type == Error ) || ( type == Debug ) ? -1 : 0 );
 	if ( format == NULL ) return retval;	// e.g. outputf( Error, NULL );
 
-	if ( type == Error ) flush_input( base, 0, &same, context );
+	if ( type == Error ) {
+		flush_input( base, 0, &same, context );
+		if ( !context->error.tell )
+			return retval;
+		context->error.tell = 0;
+	}
 
 	va_list ap;
 	va_start( ap, format );
@@ -296,6 +308,7 @@ enum {
 	VariableValue,
 	VariatorValue,
 	SchemeDescriptor,
+	SchemeValueAccount,
 	ExpressionResults,
 	ExpressionValueAccount,
 	NarrativeBody
@@ -304,6 +317,14 @@ enum {
 static int
 output_( int type, int event, _context *context )
 {
+	if ( context->output.html )
+		return output( Error, ".$( html )*****trailing characters" );
+
+	char *va_name = context->identifier.id[ 2 ].ptr;
+	if (( type == ExpressionValueAccount ) && !strcmp( va_name, "html" ))
+		// so that clear_output_target() can close Client connection
+		context->output.html = 1;
+
 	int retval;
 	switch ( type ) {
 	case Char:
@@ -319,7 +340,7 @@ output_( int type, int event, _context *context )
 		return retval;
 
 	VariableVA *variable;
-	char *path, *va_name;
+	char *scheme, *path;
 	context->error.flush_output = ( event != '\n' );
 	int marked = 0;
 
@@ -374,14 +395,27 @@ output_( int type, int event, _context *context )
 		break;
 
 	case SchemeDescriptor:
+		scheme = context->identifier.scheme;
 		path = context->identifier.path;
-		if ( !context->control.operator ) {
-			return outputf( Error, "misdirected: >:%%[ session:%s ] - not operator", path  );
-		}
+		if ( strcmp( scheme, "session" ) )
+			return outputf( Error, ">: %%[ %s://%s ] - operation not supported", scheme, path );
+		if ( !context->control.operator )
+			return outputf( Error, "misdirected: >: %%[ session:%s ] - not operator", path  );
 		registryEntry *entry = registryLookup( context->operator.sessions, path );
 		if ( entry == NULL ) return retval;
 		SessionVA *session = entry->value;
 		outputf( Text, "%d", session->pid );
+		marked = 1;
+		break;
+
+	case SchemeValueAccount:
+		scheme = context->identifier.scheme;
+		path = context->identifier.path;
+		if ( strcmp( scheme, "file" ) || strcmp( va_name, "html" ) )
+			return outputf( Error, ">:%%[ %s://%s ].$( %s ) - operation not supported",
+				scheme, path, va_name );
+		context->identifier.path = NULL;
+		command_read( path, HCNFileInput, base, 0, context );
 		marked = 1;
 		break;
 
@@ -403,12 +437,12 @@ output_( int type, int event, _context *context )
 		if ( context->expression.results == NULL )
 			return retval;
 
-		va_name = context->identifier.id[ 2 ].ptr;
 		if ( !strcmp( va_name, "html" ) ) {
 			Entity *entity = (Entity *) context->expression.results->ptr;
 			char *identifier = cn_va_get( entity, "hcn" );
 			if ( identifier == NULL ) break;
-			command_read( identifier, HCNFileInput, base, 0, context );
+			command_read( identifier, HCNValueFileInput, base, 0, context );
+			marked = 1;
 		}
 		else if ( registryLookup( CN.VB, va_name ) == NULL ) {
 			return outputf( Error, "unknown value account name '%s'", va_name );
@@ -465,6 +499,9 @@ output_variator_value( char *state, int event, char **next_state, _context *cont
 int
 output_scheme_descriptor( char *state, int event, char **next_state, _context *context )
 	{ return output_( SchemeDescriptor, event, context ); }
+int
+output_scheme_va( char *state, int event, char **next_state, _context *context )
+	{ return output_( SchemeValueAccount, event, context ); }
 int
 output_results( char *state, int event, char **next_state, _context *context )
 	{ return output_( ExpressionResults, event, context ); }

@@ -361,13 +361,16 @@ test_scheme( char *state, int event, char **next_state, _context *context )
 		return 0;
 
 	char *identifier = context->identifier.id[ 1 ].ptr;
- 	if ( strcmp( identifier, "file" ) && strcmp( identifier, "session" ) )
-		return 0;
+	if ( !strcmp( identifier, "file" ) ? 0 :
+	     !strcmp( identifier, "session" ) ? 0 :
+	     !strcmp( identifier, "operator" ) ? 0 :
+	     !strcmp( identifier, "cgi" ) ? 0 :
+	     1 ) return 0;
 
 	if ( context->expression.level != context->command.level )
-		return outputf( Error, "term '%s:' in expression is reserved", identifier );
+		return outputf( Error, "reserved term '%s' in expression", identifier );
 
-	context->expression.scheme = identifier;
+	context->identifier.scheme = identifier;
 	context->identifier.id[ 1 ].ptr = NULL;
 	*next_state = "";
 	return event;
@@ -1112,8 +1115,8 @@ parser_init( char *state, int event, char **next_state, _context *context )
 	context->expression.mode = ReadMode;
 	context->expression.marked = 0;
 
-	free( context->expression.scheme );
-	context->expression.scheme = NULL;
+	free( context->identifier.scheme );
+	context->identifier.scheme = NULL;
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
 	context->expression.filter = NULL;
@@ -1684,7 +1687,6 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 
 	in_( "source-medium->target:" ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( '*' )	do_( set_flag_active, "source-medium->target: *" )
 		on_( '_' )	do_( set_flag_inactive, "source-medium->target: _" )
 		on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
@@ -1693,7 +1695,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '[' )	do_( push, "source-medium->target: []" )
 		on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 		on_( '%' )	do_( nop, "source-medium->target: %" )
-		on_separator	do_( nothing, pop_state )
+		on_separator	do_( error, "" )
 		on_other	do_( read_1, "source-medium->target: identifier" )
 		end
 		in_( "source-medium->target: *" ) bgn_

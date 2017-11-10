@@ -14,5 +14,7 @@ int	output_variable_value_( VariableVA *variable );
 int	output_va_( char *va_name, _context *context );
 void	output_narrative_( Narrative *narrative, _context *context );
 
+void	printtab( int level );
+
 
 #endif	// OUTPUT_UTIL_H

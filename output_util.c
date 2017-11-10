@@ -549,10 +549,12 @@ output_va_( char *va_name, _context *context )
 /*---------------------------------------------------------------------------
 	output_narrative_
 ---------------------------------------------------------------------------*/
-static void
+void
 printtab( int level )
 {
-	for ( int i=0; i < level; i++ ) output( Text, "\t" );
+	for ( int i=0; i < level; i++ )
+		for ( int j=0; j < OUTPUT_TABSIZE; j++ )
+			output( Text, " " );
 }
 
 static void
@@ -571,23 +573,24 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		break;
 	case ConditionOccurrence:
 		output( Text, "in " );
-		if ( occurrence->va_num > 1 ) {
+		if ( occurrence->contrary ) {
+			output( Text, "~( " );
+		}
+		else if ( occurrence->va_num > 1 ) {
 			output( Text, "( " );
 		}
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			ConditionVA *condition = (ConditionVA *) i->ptr;
 			if ( condition->identifier != NULL ) {
 				output_identifier( condition->identifier, 0 );
-				output( Text, ": " );
-			} else {
-				output( Text, ":" );
 			}
+			output( Text, ": " );
 			output_expression( ExpressionAll, condition->format, -1, -1 );
 			if ( i->next != NULL ) {
 				output( Text, ", " );
 			}
 		}
-		if ( occurrence->va_num > 1 ) {
+		if (( occurrence->va_num > 1 ) || occurrence->contrary ) {
 			output( Text, " )" );
 		}
 		break;
@@ -676,66 +679,38 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 static void
 narrative_output_traverse( Occurrence *root, int level )
 {
-	int do_close = 1;
+	int do_close = 0;
 	for ( listItem *i=root->sub.n; i!=NULL; i=i->next )
 	{
-		Occurrence *occurrence = (Occurrence *) i->ptr;
-		if ( occurrence->type == ThenOccurrence )
-			do_close = 0;
+		Occurrence *occurrence = i->ptr;
 
 		printtab( level );
-		do {
-			narrative_output_occurrence( occurrence, level );
+		narrative_output_occurrence( occurrence, level );
 
-			OccurrenceType type = occurrence->type;
-			if ( occurrence->sub.num == 0 ) {
-				ActionVA *action = (ActionVA *) occurrence->va->ptr;
-				if (( type != ActionOccurrence ) || ( action->instructions->next == NULL )) {
-					output( Text, "\n" );
-				}
-				occurrence = NULL;
-			} else if ( occurrence->sub.num > 1 ) {
-				if ( type == ActionOccurrence ) {
-					output( Debug, "***** Error: Action can only be followed by then" );
-				}
-				output( Text, "\n" );
+		// action blocks include terminating '\n'
+		if ( occurrence->type == ActionOccurrence )
+		{
+			ActionVA *action = occurrence->va->ptr;
+			if ( action->instructions->next )
 				narrative_output_traverse( occurrence, level + 1 );
-				occurrence = NULL;
-			} else {
-				switch ( type ) {
-				case OtherwiseOccurrence:
-				case ConditionOccurrence:
-				case EventOccurrence:
-					; Occurrence *sub = occurrence->sub.n->ptr;
-					if ( sub->type == ActionOccurrence ) {
-						output( Text, " " );
-						occurrence = occurrence->sub.n->ptr;
-					} else {
-						output( Text, "\n" );
-						narrative_output_traverse( occurrence, level + 1 );
-						occurrence = NULL;
-					}
-					break;
-				case ActionOccurrence:
-					; ActionVA *action = (ActionVA *) occurrence->va->ptr;
-					if ( action->instructions->next != NULL ) {
-						// instruction block - may be followed by then
-						narrative_output_traverse( occurrence, level + 1 );
-						occurrence = NULL;
-					} else {
-						// standalone instruction - may be followed by then
-						output( Text, " " );
-						occurrence = occurrence->sub.n->ptr;
-					}
-					break;
-				case ThenOccurrence:
-					output( Text, " " );
-					occurrence = occurrence->sub.n->ptr;
-					break;
-				}
+			else if ( !occurrence->sub.num )
+				output( Text, "\n" );
+			else {
+				Occurrence *then = occurrence->sub.n->ptr;
+				output( Text, " " );
+				narrative_output_occurrence( then, level );
+				output( Text, "\n" );
+				for ( listItem *j = then->sub.n; j!=NULL; j=j->next )
+					narrative_output_traverse( then, level + 1 );
 			}
 		}
-		while ( occurrence != NULL );
+		else
+		{
+			output( Text, "\n" );
+			narrative_output_traverse( occurrence, level + 1 );
+		}
+		if ( occurrence->type != ThenOccurrence )
+			do_close = 1;
 	}
 	if ( do_close ) {
 		printtab( level );

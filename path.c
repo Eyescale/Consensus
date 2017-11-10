@@ -167,8 +167,10 @@ xeval( char *state, int event, char **next_state, _context *context )
 static int
 build_path( char *state, int event, char **next_state, _context *context )
 {
+	int retval = (( event == '.' ) || ( event == '-' )) ? 0 : event;
+
 	if ( !command_mode( 0, 0, ExecutionMode ) )
-		return event;
+		return retval;
 
 	char *path = context->identifier.path;
 	char *step = context->identifier.id[ 2 ].ptr;
@@ -220,9 +222,19 @@ build_path( char *state, int event, char **next_state, _context *context )
 	free( context->identifier.path );
 	context->identifier.path = path;
 
-	if (( event == '.' ) || ( event == '-' ))
-		event = 0;
+	return retval;
+}
 
+/*---------------------------------------------------------------------------
+	set_relative
+---------------------------------------------------------------------------*/
+int
+set_relative( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->identifier.path == NULL ) {
+		context->identifier.path = strdup( "//" );
+		event = 0;
+	}
 	return event;
 }
 
@@ -263,7 +275,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 				on_any	do_( build_path, base )
 				end
 			in_( "/" ) bgn_
-				on_( '/' )	do_( nop, base )
+				on_( '/' )	do_( set_relative, base )
 				on_( '%' )	do_( nop, "/%" )
 				on_( '.' )	do_( build_path, base )
 				on_( '-' )	do_( build_path, base )

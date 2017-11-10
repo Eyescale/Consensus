@@ -85,18 +85,21 @@ register_results( Occurrence *occurrence, char *identifier, _context *context )
 static int
 test_condition( Occurrence *occurrence, _context *context )
 {
+	int retval = ( occurrence->contrary ? 0 : 1 );
 	for ( listItem *i = occurrence->va; i!=NULL; i=i->next )
 	{
 		ConditionVA *condition = (ConditionVA *) i->ptr;
 		context->expression.mode = EvaluateMode;
 		expression_solve( condition->format, 3, context );
 		if ( context->expression.results == NULL ) {
-			return 0;
+			if ( occurrence->contrary )
+				retval = 1;
+			else return 0;
 		}
 		// register test results in occurrence->variables
 		register_results( occurrence, condition->identifier, context );
 	}
-	return 1;
+	return retval;
 }
 
 /*---------------------------------------------------------------------------
@@ -136,6 +139,22 @@ test_event( Narrative *instance, EntityLog *log, Occurrence *occurrence, _contex
 	for ( listItem *i = occurrence->va; i!=NULL; i=i->next )
 	{
 		EventVA *event = (EventVA *) i->ptr;
+		switch ( event->source.scheme ) {
+		case CGIScheme:
+			log = &context->frame.log.cgi;
+			break;
+		case SessionScheme:
+			// DO_LATER
+			break;
+		case OperatorScheme:
+			// DO_LATER
+			break;
+		case FileScheme:
+			// DO_LATER
+			break;
+		default:
+			break;
+		}
 		if ( lookupEntityLog( event, log, context ) == NULL )
 			return 0;
 
@@ -168,20 +187,15 @@ search_and_register_events( Narrative *instance, EntityLog *log, Occurrence *thr
 				// will be evaluated later - during the next frame - but this
 				// occurrence must be registered as an event.
 				int on_else_in = 0;
-				if ( last == EventOccurrence ) {
-					if (( i != NULL ) &&
-					    ( ((Occurrence *) i->ptr )->type == ConditionOccurrence ))
+				if ( i != NULL ) {
+					Occurrence *o = i->ptr;
+					if (( last == EventOccurrence ) && ( o->type == ConditionOccurrence ))
 						{ on_else_in = 1; passed = 0; }
-				}
-				else {	// last was a ConditionOccurrence
-					if (( i != NULL ) &&
-					    ( ((Occurrence *) i->ptr )->type == EventOccurrence ))
-						last = EventOccurrence;
+					last = o->type;
 				}
 				if ( !on_else_in ) for ( ; i!=NULL; i=i->next ) {
 					Occurrence *o = i->ptr;
-					passed = ( o->type == EventOccurrence ) ?
-							test_event( instance, log, o, context ) :
+					passed = ( o->type == EventOccurrence ) ? test_event( instance, log, o, context ) :
 						 ( o->type == ConditionOccurrence ) && ( thread->type != EventOccurrence ) ?
 							 test_condition( o, context ) : 0;
 					if ( !passed ) break;
@@ -290,29 +304,35 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
 		switch ( occurrence->type ) {
-		case ConditionOccurrence:
-			last = ConditionOccurrence;
-			passed = test_condition( occurrence, context );
-			if ( passed ) {
-				search_and_register_actions( narrative, occurrence, context );
-			}
-			break;
 		case OtherwiseOccurrence:
 			if ( passed )	// last pass's result
 				break;
 			passed = 1;	// this pass's result, so far
 			listItem *i = occurrence->va;
-			if ( i == NULL )
+			if ( i == NULL ) {
+				// if last was a ConditionOccurrence, then it cannot have passed,
+				// therefore this standalone else would pass
 				passed = (( last == ConditionOccurrence ) || occurrence->registered );
-			else if ( ((Occurrence *) i->ptr )->type == EventOccurrence )
-				passed = occurrence->registered;
-			// must evaluate otherwise conditions for this frame
-			else for ( ; i!=NULL; i=i->next ) {
-				passed = test_condition( i->ptr, context );
-				if ( !passed ) break;
+			} else {
+				Occurrence *o = i->ptr;
+				last = o->type;
+				if ( o->type == EventOccurrence )
+					passed = occurrence->registered;
+				// must evaluate otherwise conditions for this frame
+				else for ( ; i!=NULL; i=i->next ) {
+					passed = test_condition( i->ptr, context );
+					if ( !passed ) break;
+				}
 			}
 			if ( passed ) {
 				occurrence->registered = 0; // no need to take the same route twice
+				search_and_register_actions( narrative, occurrence, context );
+			}
+			break;
+		case ConditionOccurrence:
+			last = ConditionOccurrence;
+			passed = test_condition( occurrence, context );
+			if ( passed ) {
 				search_and_register_actions( narrative, occurrence, context );
 			}
 			break;
@@ -512,33 +532,6 @@ narrative_process( Narrative *n, EntityLog *log, _context *context )
 /*---------------------------------------------------------------------------
 	frame_process, frame_start, frame_finish
 ---------------------------------------------------------------------------*/
-static void
-frame_process( EntityLog *log, _context *context )
-{
-#ifdef DEBUG
-	static int frameNumber = 0;
-	outputf( Debug, "entering frame_process: frame#=%d", frameNumber++ );
-#endif
-	// Have each active narrative process the frame log
-	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
-	{
-		Narrative *narrative = (Narrative *) i->ptr;
-		for ( registryEntry *j = narrative->instances.value, *next_j; j!=NULL; j=next_j )
-		{
-			next_j = j->next; // needed in case of deactivation
-			Entity *e = (Entity *) j->index.address;
-			Narrative *n = (Narrative *) j->value;
-			narrative_process( n, log, context );
-			if ( n->deactivate )
-				deactivateNarrative( e, narrative );
-		}
-	}
-
-#ifdef DEBUG
-	output( Debug, "leaving frame_process" );
-#endif
-}
-
 static EntityLog *
 frame_start( _context *context )
 {
@@ -569,6 +562,32 @@ frame_start( _context *context )
 	emptyRegistry( registry );
 
 	return log;
+}
+
+static void
+frame_process( EntityLog *log, _context *context )
+{
+#ifdef DEBUG
+	static int frameNumber = 0;
+	outputf( Debug, "entering frame_process: frame#=%d", frameNumber++ );
+#endif
+	// Have each active narrative process the frame log
+	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
+	{
+		Narrative *narrative = (Narrative *) i->ptr;
+		for ( registryEntry *j = narrative->instances.value, *next_j; j!=NULL; j=next_j )
+		{
+			next_j = j->next; // needed in case of deactivation
+			Entity *e = (Entity *) j->index.address;
+			Narrative *n = (Narrative *) j->value;
+			narrative_process( n, log, context );
+			if ( n->deactivate )
+				deactivateNarrative( e, narrative );
+		}
+	}
+#ifdef DEBUG
+	output( Debug, "leaving frame_process" );
+#endif
 }
 
 static void

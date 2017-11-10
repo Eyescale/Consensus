@@ -178,7 +178,7 @@ io_scan( char *state, int event, char **next_state, _context *context )
 		return event;
 	if (( context->input.stack ))
 		return event;
-	if ( context->control.cgi || context->control.cgim )
+	if ( context->control.cgi )
 		return event;	// CGI does not listen to anyone
 
 	// set I/O descriptors
@@ -193,11 +193,13 @@ io_scan( char *state, int event, char **next_state, _context *context )
 		nfds = SUP( nfds, STDIN_FILENO );
 	}
 
-	FD_SET( context->io.bulletin, &fds );
-	nfds = SUP( nfds, context->io.bulletin );
+	if ( !context->control.cgim ) {
+		FD_SET( context->io.bulletin, &fds );
+		nfds = SUP( nfds, context->io.bulletin );
 
-	FD_SET( context->io.service, &fds );
-	nfds = SUP( nfds, context->io.service );
+		FD_SET( context->io.service, &fds );
+		nfds = SUP( nfds, context->io.service );
+	}
 
 	if ( context->control.operator ) {
 		FD_SET( context->io.cgiport, &fds );
@@ -273,7 +275,7 @@ io_query( char *path, _context *context )
 	}
 	else if ( context->control.operator_absent )
 	{
-		return output( Error, "operator out of order" );
+		return output( Error, "1: operator out of order" );
 	}
 	else if ( !strcmp( path, "operator" ) ) {
 		if ( context->control.operator ) {
@@ -401,8 +403,8 @@ io_flush( int socket_fd, int *remainder, int eot, _context *context )
 	// ------------------------
 	write( socket_fd, &size, sizeof( size ));
 
-	// end transmission if required, ONLY in case of SessionOutput
-	// -----------------------------------------------------------
+	// end transmission if required
+	// ----------------------------
 	if ( !eot ) return 0;
 
 	if ( context->io.query.sync )

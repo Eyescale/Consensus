@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -16,6 +17,7 @@
 #include "io.h"
 #include "hcn.h"
 #include "output.h"
+#include "output_util.h"
 #include "variable.h"
 #include "variable_util.h"
 
@@ -119,6 +121,24 @@ set_instruction( listItem *instruction, _context *context )
 /*---------------------------------------------------------------------------
 	push_input
 ---------------------------------------------------------------------------*/
+static char *
+full_path( char *name )
+{
+	if (( name[ 0 ] == '/' ) ? ( name[ 1 ] != '/' ) : 1 )
+		return name;
+
+	struct stat buf;
+	char *path;
+
+	asprintf( &path, "%s%s", CN_BASE_PATH, &name[ 2 ] );
+	if ( !stat( path, &buf ) ) {
+		free( name );
+	} else {
+		free( path );
+		asprintf( &path, "%sdefault/%s", CN_BASE_PATH, name );
+	}
+	return path;
+}
 int
 push_input( char *identifier, void *src, InputType type, _context *context )
 {
@@ -128,10 +148,13 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	else output( Debug, "push_input: NULL" );
 #endif
 	switch ( type ) {
+	case HCNValueFileInput:
+		src = strdup( src );
+		// no break
 	case PipeInput:
 	case HCNFileInput:
 	case FileInput:
-		identifier = src;
+		identifier = full_path( src );
 		// check if stream is already in use
 		for ( listItem *i=context->input.stack; i!=NULL; i=i->next )
 		{
@@ -167,6 +190,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	int failed = 0;
 	switch ( type ) {
 	case HCNFileInput:
+	case HCNValueFileInput:
 		context->hcn.state = base;
 		input->ptr.fd = open( identifier, O_RDONLY );
 		failed = ( input->ptr.fd < 0 );
@@ -272,15 +296,14 @@ pop_input( char *state, int event, char **next_state, _context *context )
 
 	int mode = input->mode;
 	switch ( mode ) {
+	case FileInput:
 	case HCNFileInput:
+	case HCNValueFileInput:
 		close ( input->ptr.fd );
+		free( input->identifier );
 		break;
 	case PipeInput:
 		pclose( input->ptr.file );
-		free( input->identifier );
-		break;
-	case FileInput:
-		close( input->ptr.fd );
 		free( input->identifier );
 		break;
 	case SessionOutputPipeInVariator:
@@ -491,8 +514,7 @@ sgetc( InputVA *input, _context *context )
 #endif
 		input->position = input->ptr.string;
 		if ( context->narrative.mode.output && ( input->mode == InstructionBlock ))
-			for ( int i=0; i<=context->command.level; i++ )
-				output( Text, "\t" );
+			printtab( context->command.level + 1 );
 	}
 	int event = (int) (( char *) input->position++ )[ 0 ];
 	if ( event )
@@ -541,12 +563,14 @@ read_input( char *state, int event, char **next_state, _context *context )
 		}
 		else if ( context->input.stack == NULL )
 		{
-			if ( context->control.cgi || context->control.cgim || context->control.session )
+			if ( context->control.cgi || context->control.session )
 				return output( Debug, "input: wrong mode" ); // should be impossible
 
-			if ( !strcmp( state, base ) ) {
+			StackVA *stack = context->command.stack->ptr;
+			if ( stack->narrative.state.closure || !strcmp( state, base ) ) {
 				prompt( context );
 			}
+
 			context->output.anteprompt = 0;
 
 			read( STDIN_FILENO, &event, 1 );
@@ -569,6 +593,7 @@ read_input( char *state, int event, char **next_state, _context *context )
 			}
 			else switch ( input->mode ) {
 			case HCNFileInput:
+			case HCNValueFileInput:
 				event = hcn_getc( input->ptr.fd, context );
 				if ( !event ) event = EOF;
 				break;
@@ -623,6 +648,9 @@ read_input( char *state, int event, char **next_state, _context *context )
 	}
 
 	context->error.flush_input = ( event != '\n' );
+	if ( context->error.tell )
+		context->error.tell = ( event == '\n' ) ? 2 : 1;
+
 	recordC( event, 0, context );
 
 	return event;

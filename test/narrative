@@ -1,5 +1,6 @@
 
 	!! titi()
+
 	on init do ~.
 	in state:?-is->toto in :toto on :titi !!
 		do exit

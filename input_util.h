@@ -8,7 +8,7 @@
 _action	read_0;
 _action	read_1;
 _action	read_2;
-_action	on_token;
+_action	read_token;
 
 /*---------------------------------------------------------------------------
 	input_util utilities		- public

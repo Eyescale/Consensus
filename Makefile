@@ -9,7 +9,7 @@ SHELL = /bin/sh
 INCLUDES = -I.
 
 OBJDIR = .ofiles
-SRCS =	main.c command.c command_util.c cgi.c \
+SRCS =	main.c command.c command_util.c \
 	narrative.c narrative_util.c \
 	expression.c expression_util.c expression_solve.c expression_filter.c \
 	path.c value.c variable.c variable_util.c \

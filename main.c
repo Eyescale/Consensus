@@ -101,7 +101,7 @@ main( int argc, char *argv[] )
 	signal( SIGTSTP, suspension_handler );
 
 	// initialize system data
-	// ----------------------
+	// --------------------------------------------------
 
 	CN.nil = newEntity( NULL, NULL, NULL );
 	CN.nil->sub[0] = CN.nil;
@@ -119,7 +119,7 @@ main( int argc, char *argv[] )
 	CN.names = newRegistry( IndexedByName );
 
 	// initialize context data
-	// -----------------------
+	// --------------------------------------------------
 
 	CN.context = calloc( 1, sizeof(_context) );
 
@@ -139,78 +139,85 @@ main( int argc, char *argv[] )
 	context->control.operator = clarg( argc, argv, "-moperator" );
 	struct stat buf;
 	context->control.operator_absent = stat( IO_OPERATOR_PATH, &buf );
-	if ( context->control.operator ) {
-		if ( !context->control.operator_absent )
-			return outputf( Error, "operator already registered" );
+	context->error.tell = 1;
+
+	if ( context->control.operator_absent ) {
+		if ( !context->control.operator && !context->control.cgi )
+			output( Warning, "operator is out of order" );
+	}
+	else if ( context->control.operator )
+		return outputf( Error, "operator already registered" );
+	else if ( context->control.cgi || context->control.cgim )
+		cn_new( "operator" );
+		
+	// initialize CNDB and IO ports
+	// --------------------------------------------------
+
+	if ( context->control.operator )
+	{
 		context->session.path = argv[ 0 ];
 		context->operator.pid = newRegistry( IndexedByNumber );
 		context->operator.sessions = newRegistry( IndexedByName );
-	} else {
-		if ( context->control.operator_absent )
-			output( Warning, "operator is out of order" );
-		context->session.path = clargv( argc, argv, "-msession" );
-		context->control.session = ((context->session.path) ? 1 : 0);
 	}
-	context->output.prompt = ttyu( context );
-
-	// initialize CNDB and IO data
-	// ---------------------------
-
-	if ( context->control.cgi || context->control.cgim )
+	else if ( context->control.cgi || context->control.cgim )
 	{
-		cgiInit();
-		if ( context->control.cgim ) {
-			cgiFormEntry *first = calloc( 1, sizeof(cgiFormEntry) );
-			first->attr = strdup( "session" );
-			first->value = strdup( "join" );
-			cgiFormEntryFirst = first;
-		}
-		printf( "Content-type: text/html\n\n" );
-
-		// 1. create the cgi data name-value pairs
-		for ( cgiFormEntry *i = cgiFormEntryFirst; i!=NULL; i=i->next )
-			cn_setf( "%s-is->%s", i->value, i->attr );
-
-		// 2. load and activate the cgi story
+		// 1. load the cgi story
 		context->frame.updating = 1;
-		cn_dof( ":< file:%s", CN_CGI_STORY_PATH );
+		cn_dof( ":< file://cgi.story" );
 		context->frame.updating = 0;
-		cn_activate_narrative( CN.nil, "cgi" );
+
+		// cgi emulation mode: we only load the cgi story, as
+		// the cgi data creation and the cgi narrative activation
+		// are expected to be done manually.
+
+		if ( context->control.cgi )
+		{
+			// 2. create the cgi data name-value pairs
+			cgiInit();
+			for ( cgiFormEntry *i = cgiFormEntryFirst; i!=NULL; i=i->next )
+				cn_setf( "%s-is->%s", i->value, i->attr );
+			// cgiExit();	DO_LATER
+
+			// 3. activate the cgi story and output cgi header
+			cn_activate_narrative( CN.nil, "cgi" );
+			printf( "Content-type: text/html\n\n" );
+		}
 	}
-	else if ( !context->control.operator )
+	else
 	{
-		char *hcn = clargv( argc, argv, "-mhcn" );
-		if ((hcn)) cn_dof( ": %%.$( hcn ) : \"%s\"", hcn );
-		else cn_dof( ": %%.$( hcn ) : \"%s\"", CN_HCN_HOME_PATH );
-#ifdef DO_LATER
+		context->session.path = clargv( argc, argv, "-msession" );
+		context->control.session = ( context->session.path != NULL );
+
 		char *story = clargv( argc, argv, "-mstory" );
 		if ((story)) cn_dof( ":< file:%s", story );
-#endif
+		else if ( context->control.session )
+			cn_dof( ":< file://session.story" );
 	}
 
+	context->output.prompt = ttyu( context );
+	context->error.tell = 1; // must reset
 	io_init( context );
 
 	// go live
-	// -------
+	// --------------------------------------------------
 
 	int event = 0;
-	if ( context->control.cgi || context->control.cgim )
+	if ( context->control.cgi )
 	{
 		do { event = frame_update( base, event, &same, context ); }
 		while ( narrative_active( context ) );
 	}
 	else
 	{
+		context->error.tell = 1; // must reset
 		event = command_read( NULL, UserInput, base, event, context );
 	}
 
 	// exit gracefully
-	// ---------------
+	// --------------------------------------------------
 
+	context->error.tell = 1; // not to forget
 	io_exit( context );
-#ifdef DO_LATER
-	cgiExit();	// does not exist yet
-#endif
 	return event;
 }
 

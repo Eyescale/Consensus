@@ -24,15 +24,9 @@ _action pipe_output_in;
 _action pipe_output_out;
 _action clear_output_target;
 _action set_assignment_mode;
-_action open_stream;
 _action scheme_op;
-_action scheme_op_pipe;
 _action handle_iam;
-_action cgi_entry_bgn;
-_action cgi_entry_add;
-_action cgi_entry_end;
-_action read_cgi_entry;
-_action set_cgi_entry;
+_action input_cgi;
 
 /*---------------------------------------------------------------------------
 	utilities	- public

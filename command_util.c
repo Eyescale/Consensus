@@ -10,7 +10,7 @@
 #include "kernel.h"
 
 #include "command_util.h"
-#include "cgi.h"
+#include "frame.h"
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
@@ -414,10 +414,8 @@ output_story( char *state, int event, char **next_state, _context *context )
 int
 set_output_from_variable( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.cgi || context->control.cgim ) {
-		event = read_cgi_output_session( state, event, next_state, context );
-		if ( event < 0 ) return event;
-	}
+	context->output.marked = 0;
+	context->output.html = 0;
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
@@ -439,21 +437,17 @@ set_output_from_variable( char *state, int event, char **next_state, _context *c
 		return outputf( Error, ">@ %%variable: variable '%s' is not an entity variable" );
 	}
 
-	if ( context->control.cgi || context->control.cgim )
-	{
-		return cgi_output_session( session );
-	}
-	else
-	{
-		free( context->identifier.path );
-		context->identifier.path = session;
-		return set_output_target( ">@session", ':', &same, context );
-	}
+	free( context->identifier.path );
+	context->identifier.path = session;
+	return set_output_target( ">@session", ':', &same, context );
 }
 
 int
 set_output_target( char *state, int event, char **next_state, _context *context )
 {
+	context->output.marked = 0;
+	context->output.html = 0;
+	event = 0;
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
@@ -507,7 +501,6 @@ sync_output( char *state, int event, char **next_state, _context *context )
 		return '\n';
 
 	output( Text, "\n" );
-	context->output.marked = 0;
 	if ( !context->output.redirected )
 		return 0;
 	if  ( context->io.query.sync )
@@ -565,10 +558,12 @@ pipe_output_out( char *state, int event, char **next_state, _context *context )
 int
 clear_output_target( char *state, int event, char **next_state, _context *context )
 {
+	int close_client_ticket = context->output.html;
+	context->output.html = 0;
+	context->output.marked = 0;
+
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
-
-	context->output.marked = 0;
 	if ( !context->output.redirected )
 		return event;
 
@@ -578,7 +573,7 @@ clear_output_target( char *state, int event, char **next_state, _context *contex
 		pop_output( context, 1 );
 		break;
 	case ClientOutput:
-		pop_output( context, 0 );
+		pop_output( context, close_client_ticket );
 		break;
 	case StringOutput:
 		pop_output( context, 0 );
@@ -655,6 +650,9 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 	if ( session->pid != atoi( pid ) )
 		return outputf( Warning, "iam event: unable to authenticate: '%s' - ignoring", path );
 
+	// create relationship instance
+	cn_instf( "...", path, "is", "session" );
+
 	if ( session->genitor )
 	{
 		char *news;
@@ -676,10 +674,13 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 /*---------------------------------------------------------------------------
 	scheme_op	- operator specific
 ---------------------------------------------------------------------------*/
+/*
+	implements !! session://path	- operator only
+*/
 int
 scheme_op( char *state, int event, char **next_state, _context *context )
 {
-	char *scheme = context->expression.scheme;
+	char *scheme = context->identifier.scheme;
 	if ( strcmp( scheme, "session" ) )
 		return outputf( Error, "%s operation not supported", scheme );
 	if ( context->expression.mode != InstantiateMode )
@@ -689,31 +690,103 @@ scheme_op( char *state, int event, char **next_state, _context *context )
 #endif
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
-	if ( context->control.operator_absent )
-		return output( Error, "operator out of order" );
-
-	if ( context->control.operator )
-	{
-		char *path = context->identifier.path;
-		int retval = create_session( path, context );
-		if ( !retval )
-			context->identifier.path = NULL;
-	}
-	else
+	if ( !context->control.operator )
 		return output( Error, "session operation not authorized" );
+
+	char *path = context->identifier.path;
+	int retval = create_session( path, context );
+	if ( !retval )
+		context->identifier.path = NULL;
 
 	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	scheme_op_pipe
+	input_cgi
 ---------------------------------------------------------------------------*/
-int
-scheme_op_pipe( char *state, int event, char **next_state, _context *context )
+static int
+add_cgi_entry( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->control.cgi || context->control.cgim )
-		return cgi_scheme_op_pipe( state, event, next_state, context );
+	Expression *expression = makeLiteral( context->expression.ptr );
+	if (( expression )) {
+		EntityLog *log = &context->frame.log.cgi;
+		addItem( &log->instantiated, &expression->sub[ 3 ] );
+		context->expression.ptr = NULL;
+	}
+	return 0;
+}
 
-	return outputf( Error, "%s operation out of context - CGI only", context->expression.scheme );
+static void
+free_cgi_log( _context *context )
+{
+	EntityLog *log = &context->frame.log.cgi;
+	for ( listItem *i=log->instantiated; i!=NULL; i=i->next )
+		freeLiteral( i->ptr );
+	freeListItem( &log->instantiated );
+}
+
+int
+input_cgi( char *state, int event, char **next_state, _context *context )
+{
+	if ( !context->control.session )
+		return output( Error, "< cgi >: not in a session" );
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return output( Error, "< cgi >: not in execution mode" );
+
+	// build the log of cgi entries
+	// ----------------------------
+	event = 0;
+	state = "< cgi >:";
+	do {
+		event = read_input( state, event, &same, context );
+		bgn_
+		on_( -1 )	do_( nothing, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		in_( "< cgi >:" ) bgn_
+			on_( '{' )	do_( nop, "< cgi >: {" )
+			on_other	do_( read_expression, "< cgi >:_" )
+			end
+		in_( "< cgi >:_" ) bgn_
+			on_( '\n' )	do_( add_cgi_entry, "" )
+			on_other	do_( error, "" )
+			end
+		in_( "< cgi >: {" ) bgn_
+			on_any		do_( read_expression, "< cgi >: {_" )
+			end
+			in_( "< cgi >: {_" ) bgn_
+				on_( ',' )	do_( add_cgi_entry, "< cgi >: {" )
+				on_( '}' )	do_( add_cgi_entry, "< cgi >: {_}" )
+				on_other	do_( error, "" )
+				end
+			in_( "< cgi >: {_}" ) bgn_
+				on_( '\n' )	do_( nop, "" )
+				on_other	do_( error, "" )
+				end
+		end
+	}
+	while ( strcmp( state, "" ) );
+	if ( event < 0 )
+		free_cgi_log( context );
+
+	// process cgi entries
+	// -------------------
+	EntityLog *log = &context->frame.log.cgi;
+	if ( log->instantiated == NULL )
+		return event;
+
+	Narrative *n = lookupNarrative( CN.nil, "cgi" );
+	if ( n == NULL ) {
+		event = outputf( Error, "session: %s - cgi story not found", context->session.path );
+	}
+	else {
+		activateNarrative( CN.nil, n );
+		do { narrative_process( n, log, context ); }
+		while ( !n->deactivate );
+		deactivateNarrative( CN.nil, n );
+	}
+
+	free_cgi_log( context );
+	return event;
 }
 

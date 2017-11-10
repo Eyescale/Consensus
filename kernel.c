@@ -24,7 +24,6 @@ ttyu( _context *context )
 {
 	return ( context->control.terminal &&
 		!context->control.cgi &&
-		// !context->control.cgim &&
 		!context->control.session );
 }
 

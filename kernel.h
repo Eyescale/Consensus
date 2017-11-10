@@ -42,6 +42,7 @@ SchemeType;
 typedef enum {
 	UserInput,	// default: read from stdin
 	HCNFileInput,
+	HCNValueFileInput,
 	PipeInput,
 	FileInput,
 	ClientInput,
@@ -185,6 +186,11 @@ typedef struct _Occurrence {
 	OccurrenceType type;
 	Registry variables;
 	unsigned int registered;
+#ifdef DO_LATER
+	char *format;
+#else
+	unsigned int contrary : 1;
+#endif
 	listItem *va;
 	int va_num;
 	struct {
@@ -337,6 +343,7 @@ typedef struct {
 			unsigned int then : 1;
 			unsigned int whole : 1;
 			unsigned int otherwise : 1;
+			unsigned int contrary : 1;
 		}
 		state;
 		EventVA event;
@@ -395,6 +402,7 @@ typedef struct {
 	} record;
 	struct {
 		IdentifierVA id[ 4 ];
+		char *scheme;
 		char *path;
 		int current;
 	} identifier;
@@ -466,10 +474,12 @@ typedef struct {
 		unsigned int anteprompt : 1;
 		unsigned int prompt : 1;
 		unsigned int redirected : 1;
+		unsigned int html : 1;
 		unsigned int marked : 1;
 		unsigned int query : 1;
 	} output;
 	struct {
+		unsigned int tell : 2;
 		unsigned int flush_input : 1;
 		unsigned int flush_output : 1;
 	} error;

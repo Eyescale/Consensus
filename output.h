@@ -27,6 +27,7 @@ _action output_special_char;
 _action output_variable_value;
 _action output_variator_value;
 _action output_scheme_descriptor;
+_action output_scheme_va;
 _action output_results;
 _action output_va;
 _action output_narrative;

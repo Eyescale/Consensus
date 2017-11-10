@@ -9,7 +9,6 @@
 
 #include "command.h"
 #include "command_util.h"
-#include "cgi.h"
 #include "io.h"
 #include "frame.h"
 #include "input.h"
@@ -323,11 +322,10 @@ command_err( char *state, int event, char **next_state, _context *context )
 		*next_state = out;
 	}
 	else {
-		if ( context->error.flush_input ) {
-			error( state, event, next_state, context );
-		}
-		event = 0;
+		error( state, event, next_state, context );
+		context->error.tell = 1;
 		*next_state = base;
+		event = 0;
 	}
 	return event;
 }
@@ -347,6 +345,7 @@ command_pop_input( char *state, int event, char **next_state, _context *context 
 
 		switch ( mode ) {
 		case HCNFileInput:
+		case HCNValueFileInput:
 			*next_state = "";
 			break;
 		case InstructionInline:
@@ -394,7 +393,7 @@ command_read( void *src, InputType type, char *state, int event, _context *conte
 	// pop input
 	// ------------------------------
 	while ( context->input.level > restore[ 0 ] )
-		pop_input( state, 0, &same, context );
+		pop_input( base, 0, &same, context );
 	context->command.one = restore[ 1 ];
 	context->command.block = restore[ 2 ];
 
@@ -492,13 +491,13 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( '~' )	do_( nop, "~" )
 			on_( '?' )	BRKERR do_( nop, "?" )
 			on_( '/' )	BRKERR do_( nop, "/" )
-			on_( 'e' )	do_( on_token, "exit\0exit" )
+			on_( 'e' )	do_( read_token, "exit\0exit" )
 			on_other	do_( command_err, base )
 			end
 
 		in_( "<" ) bgn_
-			on_( 'c' )	do_( on_token, "cgi\0< cgi" )
-			on_( 's' )	do_( on_token, "session:\0< session:" )
+			on_( 'c' )	do_( read_token, "cgi\0< cgi" )
+			on_( 's' )	do_( read_token, "session:\0< session:" )
 			on_other	do_( command_err, base )
 			end
 			in_( "< cgi" ) bgn_
@@ -506,7 +505,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_other	do_( command_err, base )
 				end
 				in_( "< cgi >" ) bgn_
-					on_( ':' )	do_( read_cgi_input, "< cgi >:" )
+					on_( ':' )	do_( input_cgi, "< cgi >:" )
 					on_other	do_( command_err, base )
 					end
 			in_("< session:" ) bgn_
@@ -582,19 +581,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 				in_( "!. scheme://path" ) bgn_
 					on_( '\n' )	do_( scheme_op, out )
-					on_( '|' )	do_( nop, "!. scheme://path |" )
-					on_other	do_( command_err, base )
-					end
-				in_( "!. scheme://path |" ) bgn_
-					on_( '>' )	do_( nop, "!. scheme://path | >" )
-					on_other	do_( command_err, base )
-					end
-				in_( "!. scheme://path | >" ) bgn_
-					on_( ':' )	do_( nop, "!. scheme://path | >:" )
-					on_other	do_( command_err, base )
-					end
-				in_( "!. scheme://path | >:" ) bgn_
-					on_( '\n' )	do_( scheme_op_pipe, out )
 					on_other	do_( command_err, base )
 					end
 			in_( "!. %" ) bgn_
@@ -638,7 +624,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 
 		in_( ">" ) bgn_
 			on_( '@' )	do_( nop, ">@" )
-			on_( ':' )	do_( nop, ">:" )
+			on_( ':' )	do_( set_output_target, ">:" )
 			on_( '.' )	do_( nop, "> ." )
 			on_other	do_( read_0, "> identifier" )
 			end
@@ -734,11 +720,29 @@ read_command( char *state, int event, char **next_state, _context *context )
 							on_( ']' )	do_( nop, ">: %[ scheme://path ]" )
 							on_other	do_( command_err, base )
 							end
+					in_( ">: %[ scheme://path ]" ) bgn_
+						on_( '.' )	do_( nop, ">: %[ scheme://path ]." )
+						on_other	do_( output_scheme_descriptor, ">:" )
+						end
+						in_( ">: %[ scheme://path ]." ) bgn_
+							on_( '$' )	do_( nop, ">: %[ scheme://path ].$" )
+							on_other	do_( command_err, base )
+							end
+						in_( ">: %[ scheme://path ].$" ) bgn_
+							on_( '(' )	do_( nop, ">: %[ scheme://path ].$(" )
+							on_other	do_( command_err, base )
+							end
+						in_( ">: %[ scheme://path ].$(" ) bgn_
+							on_any	do_( read_2, ">: %[ scheme://path ].$(_" )
+							end
+						in_( ">: %[ scheme://path ].$(_" ) bgn_
+							on_( ')' )	do_( nop, ">: %[ scheme://path ].$(_)" )
+							end
+					in_( ">: %[ scheme://path ].$(_)" ) bgn_
+						on_any	do_( output_scheme_va, ">:" )
+						end
 			in_( ">: %variable" ) bgn_
 				on_any	do_( output_variable_value, ">:" )
-				end
-			in_( ">: %[ scheme://path ]" ) bgn_
-				on_any	do_( output_scheme_descriptor, ">:" )
 				end
 			in_( ">: %[_]" ) bgn_
 				on_( '.' )	do_( nop, ">: %[_]." )
@@ -808,7 +812,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_other	do_( read_variable_ref, "? %variable" )
 				end
 				in_( "? %:" ) bgn_
-					on_any	do_( evaluate_expression, "? %: expression" )
+					on_( '\n' )	do_( command_err, base )
+					on_other	do_( evaluate_expression, "? %: expression" )
 					end
 					in_( "? %: expression" ) bgn_
 						on_( '\n' )	do_( command_push, expression_clause )
@@ -840,7 +845,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 					on_other	do_( read_variable_ref, "?~ %variable" )
 					end
 					in_( "?~ %:" ) bgn_
-						on_any	do_( evaluate_expression, "?~ %: expression" )
+						on_( '\n' )	do_( command_err, base )
+						on_other	do_( evaluate_expression, "?~ %: expression" )
 						end
 						in_( "?~ %: expression" ) bgn_
 							on_( '\n' )	do_( set_clause_to_contrary, same )
@@ -1066,7 +1072,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 
 		in_( ":<" ) bgn_
-			on_( 'f' )	do_( on_token, "file:\0:< file:" )
+			on_( 'f' )	do_( read_token, "file:\0:< file:" )
 			on_( '%' )	do_( nop, ":< %" )
 			on_( '\n' )	do_( nop, base )
 			on_other	do_( command_err, base )
