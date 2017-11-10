@@ -9,7 +9,6 @@ include(Extra)
 
 extra_application(Consensus SOURCES
 	api.c
-	cgi.c
 	cgic.c
 	command.c
 	command_util.c
