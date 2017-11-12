@@ -107,7 +107,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 		if ( list != NULL ) {
 			ExpressionSub *s = (ExpressionSub *) list->ptr;
 			push_output( "", NULL, StringOutput, context );
-			output_expression( ExpressionAll, s->e, -1, -1 );
+			output_expression( ExpressionAll, s->e );
 			pop_output( context, 0 );
 			read_STEP( context );
 		}

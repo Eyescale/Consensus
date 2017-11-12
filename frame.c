@@ -14,6 +14,7 @@
 #include "api.h"
 #include "input.h"
 #include "output.h"
+#include "output_util.h"
 #include "command.h"
 #include "expression_util.h"
 #include "narrative_util.h"
@@ -70,13 +71,11 @@ static void
 register_results( Occurrence *occurrence, char *identifier, _context *context )
 {
 	if ( identifier == NULL ) return;
-	context->narrative.occurrence = occurrence;
 	VariableVA *variable = fetchVariable( context, identifier, 1 );
 	if ( variable->type ) freeVariableValue( variable );
 	variable->type = ( context->expression.mode == ReadMode ) ? LiteralVariable : EntityVariable;
 	variable->value = context->expression.results;
 	context->expression.results = NULL;
-	context->narrative.occurrence = NULL;
 }
 
 /*---------------------------------------------------------------------------
@@ -90,8 +89,8 @@ test_condition( Occurrence *occurrence, _context *context )
 	{
 		ConditionVA *condition = (ConditionVA *) i->ptr;
 		context->expression.mode = EvaluateMode;
-		expression_solve( condition->format, 3, context );
-		if ( context->expression.results == NULL ) {
+		int success = expression_solve( condition->format, 3, context );
+		if ( success <= 0 ) {
 			if ( occurrence->contrary )
 				retval = 1;
 			else return 0;
@@ -175,6 +174,8 @@ search_and_register_events( Narrative *instance, EntityLog *log, Occurrence *thr
 	for ( listItem *i = thread->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
+		context->narrative.occurrence = occurrence;
+
 		switch ( occurrence->type ) {
 		case OtherwiseOccurrence:
 			if ( passed )	// last pass's result
@@ -200,7 +201,7 @@ search_and_register_events( Narrative *instance, EntityLog *log, Occurrence *thr
 							 test_condition( o, context ) : 0;
 					if ( !passed ) break;
 				}
-				if ( passed || on_else_in ) {
+				if (( passed && ( last == EventOccurrence )) || on_else_in ) {
 					// register occurrence in context->frame.events
 					// conditions will have to be evaluated later
 					addItem( &instance->frame.events, occurrence );
@@ -243,6 +244,7 @@ search_and_register_events( Narrative *instance, EntityLog *log, Occurrence *thr
 			passed = 1;
 			break;
 		}
+		context->narrative.occurrence = NULL;
 	}
 	return todo;
 }
@@ -303,6 +305,8 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 	for ( listItem *i = thread->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = (Occurrence *) i->ptr;
+		context->narrative.occurrence = occurrence;
+
 		switch ( occurrence->type ) {
 		case OtherwiseOccurrence:
 			if ( passed )	// last pass's result
@@ -319,9 +323,10 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 				if ( o->type == EventOccurrence )
 					passed = occurrence->registered;
 				// must evaluate otherwise conditions for this frame
-				else for ( ; i!=NULL; i=i->next ) {
-					passed = test_condition( i->ptr, context );
-					if ( !passed ) break;
+				else {
+					for ( ; (i!=NULL) && passed; i=i->next ) {
+						passed = test_condition( i->ptr, context );
+					}
 				}
 			}
 			if ( passed ) {
@@ -355,6 +360,7 @@ search_and_register_actions( Narrative *narrative, Occurrence *thread, _context 
 			passed = 1;
 			break;
 		}
+		context->narrative.occurrence = NULL;
 	}
 }
 

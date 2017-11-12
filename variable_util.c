@@ -180,7 +180,11 @@ lookupVariable( _context *context, char *identifier, int up )
 		context->narrative.occurrence = occurrence;
 	}
 	// if we did not find it locally then we can check the program stack
-	if ( variable == NULL ) {
+	if ( variable == NULL )
+	{
+		Narrative *backup = context->narrative.current;
+		context->narrative.current = NULL;
+
 		listItem *stack = context->command.stack;
 		for ( listItem *s = (up?stack->next:stack); s!=NULL; s=s->next )
 		{
@@ -189,6 +193,8 @@ lookupVariable( _context *context, char *identifier, int up )
 			if (( variable )) break;
 		}
 		context->command.stack = stack;
+
+		context->narrative.current = backup;
 	}
 	return variable;
 }

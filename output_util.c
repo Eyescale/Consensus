@@ -115,8 +115,18 @@ test_shorty( Expression *expression )
 }
 
 int
-output_expression( ExpressionOutput component, Expression *expression, int i, int shorty )
+output_expression( ExpressionOutput component, Expression *expression, ... )
 {
+	int i, shorty;
+	if ( component != ExpressionAll )
+	{
+		va_list ap;
+		va_start( ap, expression );
+		i = va_arg( ap, int );		// the Sub index where required
+		shorty = va_arg( ap, int );	// for SubNull to come out as '~.' in case of shorty
+		va_end( ap );
+	}
+	
 	ExpressionSub *sub = expression->sub;
 	int mark = expression->result.mark;
 	switch ( component ) {
@@ -158,7 +168,7 @@ output_expression( ExpressionOutput component, Expression *expression, int i, in
 	case SubSub:
 		output_expression( SubFlags, expression, i, shorty );
 		output( Text, "[ " );
-		output_expression( ExpressionAll, sub[ i ].e, -1, -1 );
+		output_expression( ExpressionAll, sub[ i ].e );
 		output( Text, " ]" );
 		return 1;
 	case SubAll:
@@ -431,14 +441,14 @@ output_literal_variable( listItem *i, Expression *format )
 	if ( i == NULL ) return 0;
 	ExpressionSub *s = (ExpressionSub *) i->ptr;
 	if ( i->next == NULL ) {
-		output_expression( ExpressionAll, s->e, -1, -1 );
+		output_expression( ExpressionAll, s->e );
 	} else {
 		output( Text, "{ " );
-		output_expression( ExpressionAll, s->e, -1, -1 );
+		output_expression( ExpressionAll, s->e );
 		for ( i=i->next; i!=NULL; i=i->next ) {
 			output( Text, ", " );
 			ExpressionSub *s = (ExpressionSub *) i->ptr;
-			output_expression( ExpressionAll, s->e, -1, -1 );
+			output_expression( ExpressionAll, s->e );
 		} 
 		output( Text, " }" );
 	}
@@ -476,7 +486,7 @@ output_variable_value_( VariableVA *variable )
 		output_entity_variable( (listItem *) variable->value, NULL );
 		break;
 	case ExpressionVariable:
-		output_expression( ExpressionAll, ((listItem *) variable->value )->ptr, -1, -1 );
+		output_expression( ExpressionAll, ((listItem *) variable->value )->ptr );
 		break;
 	case LiteralVariable:
 		output_literal_variable( (listItem *) variable->value, NULL );
@@ -585,7 +595,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 				output_identifier( condition->identifier, 0 );
 			}
 			output( Text, ": " );
-			output_expression( ExpressionAll, condition->format, -1, -1 );
+			output_expression( ExpressionAll, condition->format );
 			if ( i->next != NULL ) {
 				output( Text, ", " );
 			}
@@ -612,7 +622,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 			if ( event->type == StreamEvent ) {
 				outputf( Text, "\"file://%s\"", event->format );
 			} else if ( event->format != NULL ) {
-				output_expression( ExpressionAll, event->format, -1, -1 );
+				output_expression( ExpressionAll, event->format );
 			}
 
 			// output event type
@@ -679,7 +689,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 static void
 narrative_output_traverse( Occurrence *root, int level )
 {
-	int do_close = 0;
+	int do_close = root->sub.num;
 	for ( listItem *i=root->sub.n; i!=NULL; i=i->next )
 	{
 		Occurrence *occurrence = i->ptr;
@@ -709,8 +719,8 @@ narrative_output_traverse( Occurrence *root, int level )
 			output( Text, "\n" );
 			narrative_output_traverse( occurrence, level + 1 );
 		}
-		if ( occurrence->type != ThenOccurrence )
-			do_close = 1;
+		if ( occurrence->type == ThenOccurrence )
+			do_close = 0;
 	}
 	if ( do_close ) {
 		printtab( level );

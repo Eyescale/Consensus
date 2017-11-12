@@ -156,6 +156,7 @@ narrative_build( Occurrence *occurrence, int event, _context *context )
 			}
 		}
 		stack->narrative.state.whole = 1;
+		stack->narrative.state.otherwise = 0;
 	}
 
 	// retrieve and set parent occurrence - aka. narrative thread
