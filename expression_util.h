@@ -6,6 +6,7 @@
 ---------------------------------------------------------------------------*/
 
 int	just_any( Expression *expression, int count );
+int	just_blank( Expression *expression );
 Expression *makeLiteral( Expression *expression );
 void	freeLiteral( listItem **list );
 int	translateFromLiteral( listItem **list, int as_sub, _context *context );

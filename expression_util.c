@@ -17,7 +17,7 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	just_any
+	just_any, just_blank
 ---------------------------------------------------------------------------*/
 int
 just_any( Expression *expression, int i )
@@ -27,6 +27,14 @@ just_any( Expression *expression, int i )
 		!sub[ i ].result.active &&
 		!sub[ i ].result.inactive &&
 		!sub[ i ].result.not;
+}
+int
+just_blank( Expression *expression )
+{
+	for ( int i=0; i< 4; i++ )
+		if ( !just_any( expression, i ) )
+			return 0;
+	return 1;
 }
 
 /*---------------------------------------------------------------------------
@@ -130,7 +138,7 @@ nullify( Expression *expression, listItem **residue )
 }
 
 static void
-erase( Expression *expression )
+freeResultIdentifier( Expression *expression )
 {
 	if ( expression == NULL ) return;
 	ExpressionSub *sub = expression->sub;
@@ -139,14 +147,20 @@ erase( Expression *expression )
 		if ( sub[ i ].result.any || sub[ i ].result.none )
 			continue;
 
-		erase( sub[ i ].e );
+		freeResultIdentifier( sub[ i ].e );
 
 		switch ( sub[ i ].result.identifier.type ) {
 		case VariableIdentifier:
 			if (( sub[ i ].result.identifier.value == variator_symbol ) || ( sub[ i ].result.identifier.value == this_symbol ))
 				break;
+			free( sub[ i ].result.identifier.value );
+			break;
+		case QueryResults:
+			freeListItem( (listItem **) &sub[ i ].result.identifier.value );
+			break;
 		case DefaultIdentifier:
 			free( sub[ i ].result.identifier.value );
+			break;
 		default:
 			break;
 		}
@@ -164,9 +178,9 @@ freeExpression( Expression *expression )
 	listItem *residue = NULL;
 	nullify( expression, &residue );
 	for ( listItem *i = residue; i!=NULL; i=i->next ) {
-		erase( (Expression *) i->ptr );
+		freeResultIdentifier( (Expression *) i->ptr );
 	}
-	erase( expression );
+	freeResultIdentifier( expression );
 	freeListItem( &residue );
 }
 

@@ -214,15 +214,15 @@ expand_s( listItem **base, listItem **sub )
 }
 
 static listItem *
-expand_b( listItem **base, IdentifierVA *buffer )
+expand_b( listItem **base, IdentifierVA *string )
 {
 	listItem *results = NULL;
 
-	string_finish( buffer, 0 );
-	if (( buffer->ptr )) {
-		listItem *sub = newItem( buffer->ptr );
+	string_finish( string, 0 );
+	if (( string->ptr )) {
+		listItem *sub = newItem( string->ptr );
 		results = (*base) ? expand_s( base, &sub ) : sub;
-		buffer->ptr = NULL;
+		string->ptr = NULL;
 	}
 	else results = *base;
 	return results;
@@ -234,41 +234,38 @@ string_expand( char *identifier, char **next_pos )
 	listItem *backlog = NULL;
 	listItem *results = NULL;
 	listItem *sub_results = NULL;
-	IdentifierVA buffer = { NULL, NULL };
+	IdentifierVA string = { NULL, NULL };
 	for ( char *src = identifier; ; src++ ) {
 		switch ( *src ) {
 		case 0:
 		case '}':
+			backlog = expand_b( &backlog, &string );
+			if (( next_pos )) *next_pos = src;
+			return catListItem( results, backlog );
 		case ',':
-			backlog = expand_b( &backlog, &buffer );
+			backlog = expand_b( &backlog, &string );
 			results = catListItem( results, backlog );
-			switch ( *src ) {
-			case 0:
-			case '}':
-				if (( next_pos )) *next_pos = src;
-				return results;
-			}
 			backlog = NULL;
 			break;
 		case '\\':
 			switch ( src[ 1 ] ) {
 			case 0:
-				string_append( &buffer, '\\' );
+				string_append( &string, '\\' );
 				break;
 			case '"':
 			case 'n':
 			case 't':
-				string_append( &buffer, '\\' );
+				string_append( &string, '\\' );
 				// no break
 			default:
 				src++;
-				string_append( &buffer, *src );
+				string_append( &string, *src );
 			}
 			break;
 		case ' ':
 			break;
 		case '{':
-			backlog = expand_b( &backlog, &buffer );
+			backlog = expand_b( &backlog, &string );
 			sub_results = string_expand( src + 1, &src );
 			backlog = expand_s( &backlog, &sub_results );
 			if ( *src == (char) 0 ) {
@@ -277,7 +274,7 @@ string_expand( char *identifier, char **next_pos )
 			}
 			break;
 		default:
-			string_append( &buffer, *src );
+			string_append( &string, *src );
 		}
 	}
 }

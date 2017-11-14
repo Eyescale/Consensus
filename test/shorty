@@ -29,7 +29,7 @@
 : variable : [ .[ ..[ %variable ] ]. ]-[ ... ]->[ ?.. ]
 >:\ test 2. Formatting        %variable
 : variable1 : [ ?:[ a-is->b: %[ ?.. ] ]:~%[ .?. ] ]
-: variable2 : [ ?:[ a-is->b: %[ ?.. ] ]: %[ .?. ] ]
+: variable2 : [ ?:[ a-is->b: %[ ..? ] ]: %[ .?. ] ]
 >:\ test 3. as-sub            %variable1
 >:\                           %variable2
 >:\n

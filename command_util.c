@@ -245,7 +245,8 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 	switch ( context->expression.mode ) {
 	case InstantiateMode:
 		; listItem *last_i = NULL, *next_i;
-		for ( listItem *i = context->expression.results; i!=NULL; i=next_i ) {
+		for ( listItem *i = context->expression.results; i!=NULL; i=next_i )
+		{
 			next_i = i->next;
 			if ( !override_narrative(( Entity *) i->ptr, context ) )
 			{
@@ -449,7 +450,7 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 	context->output.html = 0;
 	event = 0;
 	if ( !command_mode( 0, 0, ExecutionMode ) )
-		return 0;
+		return event;
 
 	if ( !strcmp( state, ": identifier" ) ) {
 		char *variable = context->identifier.id[ 0 ].ptr;

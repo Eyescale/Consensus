@@ -411,6 +411,19 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		}
 		if ( *sub_results == NULL ) return 0;
 		break;
+	case QueryResults:
+		if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
+			context->expression.mode = EvaluateMode;
+			for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+				addItem( sub_results, i->ptr );
+			}
+			break;
+		}
+		for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+			filter_results( sub_results, expression, count, i->ptr, ENTITY, results );
+		}
+		if ( *sub_results == NULL ) return 0;
+		break;
 	case DefaultIdentifier:
 		if ( sub[ count ].result.identifier.value == NULL ) {
 			return output( Error, "expression terms are incomplete" );

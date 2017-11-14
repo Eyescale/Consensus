@@ -11,6 +11,7 @@
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
+#include "output_util.h"
 #include "expression.h"
 #include "expression_util.h"
 #include "variable.h"
@@ -89,7 +90,7 @@ test_super( char *state, int event, char **next_state, _context *context )
 		case 5: super = "!.!"; break;
 		case 6: super = ".!!"; break;
 		case 7: super = "!!!"; break;
-		default: return output( Debug, "in test_super" );
+		default: return output( Debug, "***** Error: in test_super" );
 	}
 	return outputf( Error, "instance is not allowed after super ('%s') in expression", super );
 }
@@ -170,16 +171,6 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 		expression->result.output_swap = 1;
 	}
 	return event;
-}
-
-static int
-pop_all( char *state, int event, char **next_state, _context *context )
-{
-	while ( context->command.level != context->expression.level )
-		pop( state, event, next_state, context );
-
-	context->expression.mode = ErrorMode;
-	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -276,9 +267,8 @@ set_sub_any( int count, int event, _context *context )
 static int
 set_sub_identifier( int count, int event, _context *context )
 {
-	if ( context->command.mode != ExecutionMode ) {
+	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
-	}
 
 	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
@@ -355,6 +345,41 @@ set_sub_this( int count, int event, _context *context )
 }
 
 static int
+set_sub_results( int count, int event, _context *context )
+{
+	if ( context->command.mode != ExecutionMode )
+		return reset_flags( context );
+
+	if ( context->expression.results == NULL )
+		return set_sub_null( count, event, context );
+
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+	Expression *e = context->expression.ptr;
+	// optimization: in this specific case read_query() did not resolve the query
+	if (( count == 3 ) && just_blank( e ) && ( e->result.mark <= 7 ) )
+	{
+		expression->result.as_sub = e->result.mark;
+		set_flags( stack, expression, 3 );
+		if ( expression->sub[ 3 ].result.not ) {
+			expression->result.as_sub <<= 4;
+			expression->sub[ 3 ].result.not = 0;
+		}
+	}
+	else {
+		expression->sub[ count ].result.identifier.type = QueryResults;
+		expression->sub[ count ].result.identifier.value = context->expression.results;
+		expression->sub[ count ].result.any = 0;
+		expression->sub[ count ].result.none = 0;
+		context->expression.results = NULL;
+		set_flags( stack, expression, count );
+	}
+	freeExpression( context->expression.ptr );
+	context->expression.ptr = NULL;
+	return 0;
+}
+
+static int
 test_scheme( char *state, int event, char **next_state, _context *context )
 {
 	if ( strcmp( state, "identifier" ) || strcmp( *next_state, "source-medium->target:" ))
@@ -381,25 +406,17 @@ test_scheme( char *state, int event, char **next_state, _context *context )
 ---------------------------------------------------------------------------*/
 static int
 set_source_pop( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_pop( 0, event, context );
-}
+	{ return set_sub_pop( 0, event, context ); }
 static int
 set_source_mark( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_mark( 0, event, context );
-	
+	{ return set_sub_mark( 0, event, context ); 
 }
 static int
 set_source_null( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_null( 0, event, context );
-}
+	{ return set_sub_null( 0, event, context ); }
 static int
 set_source_any( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_any( 0, event, context );
-}
+	{ return set_sub_any( 0, event, context ); }
 static int
 set_source_identifier( char *state, int event, char **next_state, _context *context )
 {
@@ -408,63 +425,49 @@ set_source_identifier( char *state, int event, char **next_state, _context *cont
 }
 static int
 set_source_variable( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variable( 0, event, context );
-}
+	{ return set_sub_variable( 0, event, context ); }
 static int
 set_source_variator( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variator( 0, event, context );
-}
+	{ return set_sub_variator( 0, event, context ); }
 static int
 set_source_this( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_this( 0, event, context );
-}
+	{ return set_sub_this( 0, event, context ); }
+static int
+set_source_results( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_results( 0, event, context ); }
+
 
 /*---------------------------------------------------------------------------
 	medium actions
 ---------------------------------------------------------------------------*/
 static int
 set_medium_pop( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_pop( 1, event, context );
-}
+	{ return set_sub_pop( 1, event, context ); }
 static int
 set_medium_mark( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_mark( 1, event, context );
-}
+	{ return set_sub_mark( 1, event, context ); }
 static int
 set_medium_null( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_null( 1, event, context );
-}
+	{ return set_sub_null( 1, event, context ); }
 static int
 set_medium_any( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_any( 1, event, context );
-}
+	{ return set_sub_any( 1, event, context ); }
 static int
 set_medium_identifier( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_identifier( 1, event, context );
-}
+	{ return set_sub_identifier( 1, event, context ); }
 static int
 set_medium_variable( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variable( 1, event, context );
-}
+	{ return set_sub_variable( 1, event, context ); }
 static int
 set_medium_variator( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variator( 1, event, context );
-}
+	{ return set_sub_variator( 1, event, context ); }
 static int
 set_medium_this( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_this( 1, event, context );
-}
+	{ return set_sub_this( 1, event, context ); }
+static int
+set_medium_results( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_this( 1, event, context ); }
+
 
 /*---------------------------------------------------------------------------
 	target actions
@@ -484,88 +487,64 @@ swap_source_target( char *state, int event, char **next_state, _context *context
 }
 static int
 set_target_pop( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_pop( 2, event, context );
-}
+	{ return set_sub_pop( 2, event, context ); }
 static int
 set_target_mark( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_mark( 2, event, context );
-}
+	{ return set_sub_mark( 2, event, context ); }
 static int
 set_target_null( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_null( 2, event, context );
-}
+	{ return set_sub_null( 2, event, context ); }
 static int
 set_target_any( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_any( 2, event, context );
-}
+	{ return set_sub_any( 2, event, context ); }
 static int
 set_target_identifier( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_identifier( 2, event, context );
-}
+	{ return set_sub_identifier( 2, event, context ); }
 static int
 set_target_variable( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variable( 2, event, context );
-}
+	{ return set_sub_variable( 2, event, context ); }
 static int
 set_target_variator( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variator( 2, event, context );
-}
+	{ return set_sub_variator( 2, event, context ); }
 static int
 set_target_this( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_this( 2, event, context );
-}
+	{ return set_sub_this( 2, event, context ); }
+static int
+set_target_results( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_results( 2, event, context ); }
+
 
 /*---------------------------------------------------------------------------
 	instance actions
 ---------------------------------------------------------------------------*/
 static int
 set_instance_pop( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_pop( 3, event, context );
-}
+	{ return set_sub_pop( 3, event, context ); }
 static int
 set_instance_mark( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_mark( 3, event, context );
-}
+	{ return set_sub_mark( 3, event, context ); }
 static int
 set_instance_null( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_null( 3, event, context );
-}
+	{ return set_sub_null( 3, event, context ); }
 static int
 set_instance_any( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_any( 3, event, context );
-}
+	{ return set_sub_any( 3, event, context ); }
 static int
 set_instance_identifier( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_identifier( 3, event, context );
-}
+	{ return set_sub_identifier( 3, event, context ); }
 static int
 set_instance_variable( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variable( 3, event, context );
-}
+	{ return set_sub_variable( 3, event, context ); }
 static int
 set_instance_variator( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_variator( 3, event, context );
-}
+	{ return set_sub_variator( 3, event, context ); }
 static int
 set_instance_this( char *state, int event, char **next_state, _context *context )
-{
-	return set_sub_this( 3, event, context );
-}
+	{ return set_sub_this( 3, event, context ); }
+static int
+set_instance_results( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_results( 3, event, context ); }
+
 
 /*---------------------------------------------------------------------------
 	flag actions
@@ -608,110 +587,55 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 }
 
 /*---------------------------------------------------------------------------
-	set_as_sub
+	read_query
 ---------------------------------------------------------------------------*/
 static int
-set_as_sub( char *state, int event, char **next_state, _context *context )
+read_query( char *state, int event, char **next_state, _context *context )
 {
-	if ( context->command.mode != ExecutionMode )
-		return 0;
+	// re-enter read_expression
+	// ------------------------
 
-	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	StackVA *stack = context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 
-	bgn_
-	in_( "%[.." ) bgn_
-		on_( '?' )	expression->result.as_sub = 4;
-		end
-	in_( "%[?." ) bgn_
-		on_( '.' )	expression->result.as_sub = 1;
-		on_( '?' )	expression->result.as_sub = 5;
-		end
-	in_( "%[.?" ) bgn_
-		on_( '.' )	expression->result.as_sub = 2;
-		on_( '?' )	expression->result.as_sub = 6;
-		end
-	in_( "%[??" ) bgn_
-		on_( '.' )	expression->result.as_sub = 3;
-		on_( '?' )	expression->result.as_sub = 7;
-		end
-	end
+	struct { int level, marked; struct { int not, active, inactive; } flag; } backup;
+	backup.level = context->expression.level;
+	backup.marked = context->expression.marked;
+	backup.flag.not = stack->expression.flag.not;
+	backup.flag.active = stack->expression.flag.active;
+	backup.flag.inactive = stack->expression.flag.inactive;
 
-	set_flags( stack, expression, 3 );
-	if ( expression->sub[ 3 ].result.not ) {
-		expression->result.as_sub <<= 4;
-		expression->sub[ 3 ].result.not = 0;
-	}
-	return 0;
-}
-
-/*---------------------------------------------------------------------------
-	read_as_sub
----------------------------------------------------------------------------*/
-static int
-read_as_sub( char *state, int event, char **next_state, _context *context )
-{
-	event = 0;
-	do
-	{
-	event = read_input( state, event, NULL, context );
-#ifdef DEBUG
-	outputf( Debug, "read_as_sub: in \"%s\", on '%c'", state, event );
+	event = read_expression( base, 0, &same, context );
+	if ( context->command.mode == ExecutionMode ) {
+		Expression *e = context->expression.ptr;
+		if (( event != ']' ) || ( context->expression.mode == ErrorMode )) {
+			event = output( Error, NULL );
+		}
+		// optimization: set_sub_results will check this condition
+		else if ( just_blank( e ) && ( e->result.mark <= 7 ) &&
+			!strcmp( state, "source-medium->target: %" ) )
+		{
+			event = 0;
+		}
+		else if ( strcmp( state, "source-medium->target: %" ) ||
+			!just_blank( e ) || ( e->result.mark > 7 ))
+		{
+			context->expression.mode = EvaluateMode;
+			int retval = expression_solve( e, 3, context );
+#ifdef DO_LATER
+			expression_solve = 0 means no results. What do I do then?
 #endif
-
-	bgn_
-	in_( "%" ) bgn_
-		on_( ' ' )	do_( nop, same )
-		on_( '\t' )	do_( nop, same )
-		on_( '.' )	do_( nop, "%[." )
-		on_( '?' )	do_( nop, "%[?" )
-		on_other	do_( error, "" )
-		end
-	in_( "source-medium->target: %" ) bgn_
-		on_( ' ' )	do_( nop, same )
-		on_( '\t' )	do_( nop, same )
-		on_( '.' )	do_( nop, "%[." )
-		on_( '?' )	do_( nop, "%[?" )
-		on_other	do_( error, "" )
-		end
-		in_( "%[." ) bgn_
-			on_( '.' )	do_( nop, "%[.." )
-			on_( '?' )	do_( nop, "%[.?" )
-			on_other	do_( error, "" )
-			end
-			in_( "%[.." ) bgn_
-				on_( '?' )	do_( set_as_sub, "%[_" )
-				on_other	do_( error, "" )
-				end
-			in_( "%[.?" ) bgn_
-				on_( '.' )	do_( set_as_sub, "%[_" )
-				on_( '?' )	do_( set_as_sub, "%[_" )
-				on_other	do_( error, "" )
-				end
-		in_( "%[?" ) bgn_
-			on_( '.' )	do_( nop, "%[?." )
-			on_( '?' )	do_( nop, "%[??" )
-			on_other	do_( error, "" )
-			end
-			in_( "%[?." ) bgn_
-				on_( '.' )	do_( set_as_sub, "%[_" )
-				on_( '?' )	do_( set_as_sub, "%[_" )
-				on_other	do_( error, "" )
-				end
-			in_( "%[??" ) bgn_
-				on_( '.' )	do_( set_as_sub, "%[_" )
-				on_( '?' )	do_( set_as_sub, "%[_" )
-				on_other	do_( error, "" )
-				end
-		in_( "%[_" ) bgn_
-			on_( ' ' )		do_( nop, same )
-			on_( '\t' )		do_( nop, same )
-			on_( ']' )		do_( nop, "" )
-			on_other		do_( error, "" )
-			end
-	end
+			event = ( retval > 0 ) ? 0 : retval;
+		}
 	}
-	while ( strcmp( state, "" ) );
+
+	stack->expression.ptr = expression;
+	context->expression.level = backup.level;
+	context->expression.marked = backup.marked;
+	stack->expression.flag.not = backup.flag.not;
+	stack->expression.flag.active = backup.flag.active;
+	stack->expression.flag.inactive = backup.flag.inactive;
+	context->expression.mode = ( event < 0 ) ? ErrorMode : ReadMode;
 
 	return event;
 }
@@ -734,19 +658,22 @@ set_shorty( char *state, int event, char **next_state, _context *context )
 	bgn_
 	in_( ".." )		do_( nop, same )
 
-	in_( "[]." )		do_( set_source_pop, same )
+	in_( "[_]." )		do_( set_source_pop, same )
+	in_( "%[_]." )		do_( set_source_results, same )
 	in_( "identifier." )	do_( set_source_identifier, same )
 	in_( "%!." )		do_( set_source_this, same )
 	in_( "%?." )		do_( set_source_variator, same )
 	in_( "%identifier." )	do_( set_source_variable, same )
 
-	in_( ".[]" )		do_( set_medium_pop, same )
+	in_( ".[_]" )		do_( set_medium_pop, same )
+	in_( ".%[_]" )		do_( set_medium_results, same )
 	in_( ".identifier" )	do_( set_medium_identifier, same )
 	in_( ".%?" )		do_( set_medium_variator, same )
 	in_( ".%!" )		do_( set_medium_this, same )
 	in_( ".%identifier" )	do_( set_medium_variable, same )
 
-	in_( "..[]" )		EPUSH do_( set_target_pop, same ) EPOP
+	in_( "..[_]" )		EPUSH do_( set_target_pop, same ) EPOP
+	in_( "..%[_]" )		EPUSH do_( set_target_results, same ) EPOP
 	in_( "..identifier" )	EPUSH do_( set_target_identifier, same ) EPOP
 	in_( "..%?" )		EPUSH do_( set_target_variator, same ) EPOP
 	in_( "..%!" )		EPUSH do_( set_target_this, same ) EPOP
@@ -952,18 +879,28 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( ']' )	do_( nothing, base )
 			on_other	do_( nothing, "source-medium->target" )
 			end
-	in_( "[]" ) bgn_
-		on_( '.' )	do_( nop, "[]." )
-		end
-		in_( "[]." ) bgn_
-			on_( '.' )	do_( set_shorty, "" )
-			on_other	do_( error, "" )
-			end
 	in_( "identifier" ) bgn_
 		on_( '.' )	do_( nop, "identifier." )
 		end
 		in_( "identifier." ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
+			end
+	in_( "[_]" ) bgn_
+		on_( '.' )	do_( nop, "[_]." )
+		end
+		in_( "[_]." ) bgn_
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
+			end
+	in_( "%[_]" ) bgn_
+		on_( '.' )	do_( nop, "%[_]." )
+		end
+		in_( "%[_]." ) bgn_
+			on_( '.' )	do_( set_shorty, "" )
+#ifdef MARK
+			on_( '$' )	do( nothing, "" )
+#endif
 			on_other	do_( error, "" )
 			end
 	in_( "%!" ) bgn_
@@ -988,27 +925,27 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		on_( '_' )	do_( set_flag_inactive, "._" )
 		on_( '~' )	do_( set_flag_not, ".~" )
 		on_( '%' )	do_( nop, ".%" )
-		on_( '[' )	do_( push, ".[]" )
+		on_( '[' )	do_( push, ".[_]" )
 		on_other	do_( read_1, ".identifier" )
 		end
 		in_( ".*" ) bgn_
 			on_( '~' )	do_( set_flag_not, ".~" )
 			on_( '%' )	do_( nop, ".%" )
-			on_( '[' )	do_( push, ".[]" )
+			on_( '[' )	do_( push, ".[_]" )
 			on_other	do_( read_1, ".identifier" )
 			end
 		in_( "._" ) bgn_
 			on_( '~' )	do_( set_flag_not, ".~" )
 			on_( '%' )	do_( nop, ".%" )
-			on_( '[' )	do_( push, ".[]" )
+			on_( '[' )	do_( push, ".[_]" )
 			on_other	do_( read_1, ".identifier" )
 			end
 		in_( ".~" ) bgn_
 			on_( '%' )	do_( nop, ".%" )
-			on_( '[' )	do_( push, ".[]" )
+			on_( '[' )	do_( push, ".[_]" )
 			on_other	do_( read_1, ".identifier" )
 			end
-		in_( ".[]" ) bgn_
+		in_( ".[_]" ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
 			on_other	do_( error, "" )
 			end
@@ -1019,6 +956,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		in_( ".%" ) bgn_
 			on_( '?' )	do_( nop, ".%?" )
 			on_( '!' )	do_( nop, ".%!" )
+			on_( '[' )	do_( read_query, ".%[_]" )
 			on_other	do_( read_variable_ref, ".%identifier" )
 			end
 			in_( ".%?" ) bgn_
@@ -1030,6 +968,10 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				on_other	do_( error, "" )
 				end
 			in_( ".%identifier" ) bgn_
+				on_( '.' )	do_( set_shorty, "" )
+				on_other	do_( error, "" )
+				end
+			in_( ".%[_]" ) bgn_
 				on_( '.' )	do_( set_shorty, "" )
 				on_other	do_( error, "" )
 				end
@@ -1051,27 +993,27 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '_' )	do_( set_flag_inactive, ".._" )
 			on_( '~' )	do_( set_flag_not, "..~" )
 			on_( '%' )	do_( nop, "..%" )
-			on_( '[' )	do_( push, "..[]" )
+			on_( '[' )	do_( push, "..[_]" )
 			on_other	do_( read_1, "..identifier" )
 			end
 			in_( "..*" ) bgn_
 				on_( '~' )	do_( set_flag_not, "..~" )
 				on_( '%' )	do_( nop, "..%" )
-				on_( '[' )	do_( push, "..[]" )
+				on_( '[' )	do_( push, "..[_]" )
 				on_other	do_( read_1, "..identifier" )
 				end
 			in_( ".._" ) bgn_
 				on_( '~' )	do_( set_flag_not, "..~" )
 				on_( '%' )	do_( nop, "..%" )
-				on_( '[' )	do_( nop, "..[]" )
+				on_( '[' )	do_( nop, "..[_]" )
 				on_other	do_( read_1, "..identifier" )
 				end
 			in_( "..~" ) bgn_
 				on_( '%' )	do_( nop, "..%" )
-				on_( '[' )	do_( nop, "..[]" )
+				on_( '[' )	do_( nop, "..[_]" )
 				on_other	do_( read_1, "..identifier" )
 				end
-			in_( "..[]" ) bgn_
+			in_( "..[_]" ) bgn_
 				on_any		do_( set_shorty, "" )
 				end
 			in_( "..identifier" ) bgn_
@@ -1080,6 +1022,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			in_( "..%" ) bgn_
 				on_( '?' )	do_( nop, "..%?" )
 				on_( '!' )	do_( nop, "..%!" )
+				on_( '[' )	do_( read_query, "..%[_]" )
 				on_other	do_( read_variable_ref, "..%identifier" )
 				end
 				in_( "..%?" ) bgn_
@@ -1091,11 +1034,18 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				in_( "..%identifier" ) bgn_
 					on_any	do_( set_shorty, "" )
 					end
-		end
+				in_( "..%[_]" ) bgn_
+					on_any	do_( set_shorty, "" )
+					end
+	end
 
-		// return control to read_expression after push or when mark set
-		if (( state == base ) || !strcmp( state, "source-" ) || !strcmp( state, "target<" ) || !strcmp( state, "source-medium->target" ))
-			{ *next_state = state; state = ""; }
+	// return control to read_expression after push or when mark set
+	bgn_
+		in_( base )			{ *next_state = state; state = ""; }
+		in_( "source-" )		{ *next_state = state; state = ""; }
+		in_( "target<" )		{ *next_state = state; state = ""; }
+		in_( "source-medium->target" )	{ *next_state = state; state = ""; }
+	end
 	}
 	while ( strcmp( state, "" ) );
 
@@ -1148,8 +1098,11 @@ parser_exit( char *state, int event, char **next_state, _context *context )
 	outputf( Debug, "parser_exit: on the way: returning event='%c' in mode=%d...", event, context->expression.mode );
 #endif
 	if (( event < 0 ) || ( context->expression.mode == ErrorMode ))
-		pop_all( state, event, next_state, context );
-
+	{
+		context->expression.mode = ErrorMode;
+		while ( context->command.level != context->expression.level )
+			pop( state, event, next_state, context );
+	}
 	if ( context->command.mode != ExecutionMode )
 		return event;
 
@@ -1208,8 +1161,8 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	on_( -1 )	do_( nothing, "" )
 
 	// return control to read_shorty after pop
-	in_( ".[]" )	do_( read_shorty, "source-medium->target" )
-	in_( "..[]" )	do_( read_shorty, "source-medium->target" )
+	in_( ".[_]" )	do_( read_shorty, "source-medium->target" )
+	in_( "..[_]" )	do_( read_shorty, "source-medium->target" )
 
 	in_( base ) bgn_
 		on_( '(' )	do_( error, "" )
@@ -1219,7 +1172,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '_' )	do_( set_flag_inactive, "_" )
 		on_( '~' )	do_( set_flag_not, "~" )
 		on_( ']' )	do_( nothing, pop_state )
-		on_( '[' )	do_( push, "[]" )
+		on_( '[' )	do_( push, "[_]" )
 		on_( '-' )	do_( set_source_null, "source-" )
 		on_( '<' )	do_( set_target_null, "target<" )
 		on_( '.' )	do_( nop, "." )
@@ -1231,14 +1184,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "~" )
-			on_( '[' )	do_( push, "[]" )
+			on_( '[' )	do_( push, "[_]" )
 			on_( '.' )	do_( nop, "." )
 			on_( '%' )	do_( nop, "%" )
 			on_other	do_( read_1, "identifier" )
 			end
 		in_( "_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "~" )
-			on_( '[' )	do_( push, "[]" )
+			on_( '[' )	do_( push, "[_]" )
 			on_( '.' )	do_( nop, "." )
 			on_( '%' )	do_( nop, "%" )
 			on_other	do_( read_1, "identifier" )
@@ -1251,7 +1204,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( ' ' )	do_( nop, "~ " )
 			on_( '\t' )	do_( nop, "~ " )
 			on_( ']' )	do_( set_source_null, pop_state )
-			on_( '[' )	do_( push, "[]" )
+			on_( '[' )	do_( push, "[_]" )
 			on_( '-' )	do_( set_source_null, "source-" )
 			on_( '<' )	do_( set_target_null, "target<" )
 			on_( '.' )	do_( nop, "~." )
@@ -1295,7 +1248,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_other	do_( read_shorty, "source-medium->target" )
 			end
 
-		in_( "[]" ) bgn_
+		in_( "[_]" ) bgn_
 			on_( '(' )	do_( error, "" )
 			on_( '-' )	do_( set_source_pop, "source-" )
 			on_( '<' )	do_( swap_source_target, "target<" )
@@ -1322,6 +1275,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "%" ) bgn_
 			on_( '!' )	do_( nop, "%!" )
 			on_( '?' )	do_( nop, "%?" )
+			on_( '[' )	do_( read_query, "%[_]" )
 			on_other	do_( read_variable_ref, "%identifier" )
 			end
 			in_( "%!" ) bgn_
@@ -1346,6 +1300,17 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '.' )	do_( read_shorty, "source-medium->target" )
 				on_other	do_( set_source_variator, pop_state )
 				end
+			in_( "%[_]" ) bgn_
+				on_( '(' )	do_( error, "" )
+				on_( '-' )	do_( set_source_results, "source-" )
+				on_( '<' )	do_( set_target_results, "target<" )
+				on_( ':' )	do_( set_source_results, "source-medium->target:" )
+				on_( ' ' )	do_( set_source_results, "source-medium->target" )
+				on_( '\t' )	do_( set_source_results, "source-medium->target" )
+				on_( ']' )	do_( set_source_results, pop_state )
+				on_( '.' )	do_( read_shorty, "source-medium->target" )
+				on_other	do_( set_source_results, pop_state )
+				end
 			in_( "%identifier" ) bgn_
 				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_variable, "source-" )
@@ -1362,7 +1327,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '*' )	do_( set_flag_active, "source-*" )
 		on_( '_' )	do_( set_flag_inactive, "source-_" )
 		on_( '~' )	do_( set_flag_not, "source-~" )
-		on_( '[' )	do_( push, "source-[]" )
+		on_( '[' )	do_( push, "source-[_]" )
 		on_( '-' )	do_( set_medium_null, "source-medium-" )
 		on_( '.' )	do_( nop, "source-." )
 		on_( '%' )	do_( nop, "source-%" )
@@ -1371,21 +1336,21 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "source-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-~" )
-			on_( '[' )	do_( push, "source-[]" )
+			on_( '[' )	do_( push, "source-[_]" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
 			end
 		in_( "source-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-~" )
-			on_( '[' )	do_( push, "source-[]" )
+			on_( '[' )	do_( push, "source-[_]" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
 			end
 		in_( "source-~" ) bgn_
 			on_( '-' )	do_( set_medium_null, "source-medium-" )
-			on_( '[' )	do_( push, "source-[]" )
+			on_( '[' )	do_( push, "source-[_]" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
@@ -1394,7 +1359,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '-' )	do_( set_medium_mark, "source-medium-" )
 			on_other	do_( error, "" )
 			end
-		in_( "source-[]" ) bgn_
+		in_( "source-[_]" ) bgn_
 			on_( '-' )	do_( set_medium_pop, "source-medium-" )
 			on_other	do_( error, "" )
 			end
@@ -1409,6 +1374,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-%" ) bgn_
 			on_( '!' )	do_( nop, "source-%!" )
 			on_( '?' )	do_( nop, "source-%?" )
+			on_( '[' )	do_( read_query, "source-%[_]" )
 			on_other	do_( read_variable_ref, "source-%identifier" )
 			end
 			in_( "source-%!" ) bgn_
@@ -1417,6 +1383,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				end
 			in_( "source-%?" ) bgn_
 				on_( '-' )	do_( set_medium_variator, "source-medium-" )
+				on_other	do_( error, "" )
+				end
+			in_( "source-%[_]" ) bgn_
+				on_( '-' )	do_( set_medium_results, "source-medium-" )
 				on_other	do_( error, "" )
 				end
 			in_( "source-%identifier" ) bgn_
@@ -1437,7 +1407,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( ' ' )	do_( set_target_null, "source-medium->target" )
 		on_( '\t' )	do_( set_target_null, "source-medium->target" )
 		on_( ']' )	do_( set_target_null, pop_state )
-		on_( '[' )	do_( push, "source-medium->[]" )
+		on_( '[' )	do_( push, "source-medium->[_]" )
 		on_( '%' )	do_( nop, "source-medium->%" )
 		on_( '.' )	do_( set_target_any, "source-medium->target" )
 		on_( '?' )	do_( set_target_mark, "source-medium->target" )
@@ -1448,14 +1418,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "source-medium->*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->~" )
-			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '[' )	do_( push, "source-medium->[_]" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_other	do_( read_1, "source-medium->identifier" )
 			end
 		in_( "source-medium->_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->~" )
-			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '[' )	do_( push, "source-medium->[_]" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_other	do_( read_1, "source-medium->identifier" )
@@ -1465,14 +1435,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '\t' )	do_( set_target_null, "source-medium->target" )
 			on_( '(' )	do_( error, "" )
 			on_( ']' )	do_( set_target_null, pop_state )
-			on_( '[' )	do_( push, "source-medium->[]" )
+			on_( '[' )	do_( push, "source-medium->[_]" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_( ':' )	do_( set_target_null, "source-medium->target:" )
 			on_separator	do_( set_target_null, pop_state )
 			on_other	do_( read_1, "source-medium->identifier" )
 			end
-		in_( "source-medium->[]" ) bgn_
+		in_( "source-medium->[_]" ) bgn_
 			on_( ' ' )	do_( set_target_pop, "source-medium->target" )
 			on_( '\t' )	do_( set_target_pop, "source-medium->target" )
 			on_( ']' )	do_( set_target_pop, pop_state )
@@ -1490,6 +1460,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->%" ) bgn_
 				on_( '!' )	do_( nop, "source-medium->%!" )
 				on_( '?' )	do_( nop, "source-medium->%?" )
+				on_( '[' )	do_( read_query, "source-medium->%[_]" )
 				on_other	do_( read_variable_ref, "source-medium->%identifier" )
 				end
 				in_( "source-medium->%!" ) bgn_
@@ -1507,6 +1478,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 					on_( ']' )	do_( set_target_variator, pop_state )
 					on_( ':' )	do_( set_target_variator, "source-medium->target:" )
 					on_other	do_( set_target_variator, pop_state )
+					end
+				in_( "source-medium->%[_]" ) bgn_
+					on_( '(' )	do_( error, "" )
+					on_( ' ' )	do_( set_target_results, "source-medium->target" )
+					on_( '\t' )	do_( set_target_results, "source-medium->target" )
+					on_( ']' )	do_( set_target_results, pop_state )
+					on_( ':' )	do_( set_target_results, "source-medium->target:" )
+					on_other	do_( set_target_results, pop_state )
 					end
 				in_( "source-medium->%identifier" ) bgn_
 					on_( '(' )	do_( error, "" )
@@ -1526,7 +1505,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( '*' )	do_( set_flag_active, "target<-*" )
 		on_( '_' )	do_( set_flag_inactive, "target<-_" )
 		on_( '~' )	do_( set_flag_not, "target<-~" )
-		on_( '[' )	do_( push, "target<-[]" )
+		on_( '[' )	do_( push, "target<-[_]" )
 		on_( '-' )	do_( set_medium_null, "target<-medium-" )
 		on_( '.' )	do_( set_medium_any, "target<-." )
 		on_( '%' )	do_( nop, "target<-%" )
@@ -1535,20 +1514,20 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "target<-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-~" )
-			on_( '[' )	do_( push, "target<-[]" )
+			on_( '[' )	do_( push, "target<-[_]" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
 			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-~" )
-			on_( '[' )	do_( push, "target<-[]" )
+			on_( '[' )	do_( push, "target<-[_]" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
 			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-~" ) bgn_
-			on_( '[' )	do_( push, "target<-[]" )
+			on_( '[' )	do_( push, "target<-[_]" )
 			on_( '-' )	do_( set_medium_null, "target<-medium-" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
@@ -1558,7 +1537,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '-' )	do_( set_medium_mark, "target<-medium-" )
 			on_other	do_( error, "" )
 			end
-		in_( "target<-[]" ) bgn_
+		in_( "target<-[_]" ) bgn_
 			on_( '-' )	do_( set_medium_pop, "target<-medium-" )
 			on_other	do_( error, "" )
 			end
@@ -1574,6 +1553,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-%" ) bgn_
 			on_( '!' )	do_( nop, "target<-%!" )
 			on_( '?' )	do_( nop, "target<-%?" )
+			on_( '[' )	do_( read_query, "target<-%[_]" )
 			on_other	do_( read_variable_ref, "target<-%identifier" )
 			end
 			in_( "target<-%!" ) bgn_
@@ -1582,6 +1562,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				end
 			in_( "target<-%?" ) bgn_
 				on_( '-' )	do_( set_medium_variator, "target<-medium-" )
+				on_other	do_( error, "" )
+				end
+			in_( "target<-%[_]" ) bgn_
+				on_( '-' )	do_( set_medium_results, "target<-medium-" )
 				on_other	do_( error, "" )
 				end
 			in_( "target<-%identifier" ) bgn_
@@ -1597,7 +1581,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( ' ' )	do_( set_source_null, "source-medium->target" )
 		on_( '\t' )	do_( set_source_null, "source-medium->target" )
 		on_( ']' )	do_( set_source_null, pop_state )
-		on_( '[' )	do_( push, "target<-medium-[]" )
+		on_( '[' )	do_( push, "target<-medium-[_]" )
 		on_( '%' )	do_( nop, "target<-medium-%" )
 		on_( '.' )	do_( set_source_any, "source-medium->target" )
 		on_( '?' )	do_( set_source_mark, "source-medium->target" )
@@ -1607,14 +1591,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "target<-medium-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
-			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '[' )	do_( push, "target<-medium-[_]" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
-			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '[' )	do_( push, "target<-medium-[_]" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_other	do_( read_1, "target<-medium-identifier" )
@@ -1624,14 +1608,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( ' ' )	do_( set_source_null, "source-medium->target" )
 			on_( '\t' )	do_( set_source_null, "source-medium->target" )
 			on_( ']' )	do_( set_source_null, pop_state )
-			on_( '[' )	do_( push, "target<-medium-[]" )
+			on_( '[' )	do_( push, "target<-medium-[_]" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_( ':' )	do_( set_source_null, "source-medium->target:" )
 			on_separator	do_( set_source_null, pop_state )
 			on_other	do_( read_1, "target<-medium-identifier" )
 			end
-		in_( "target<-medium-[]" ) bgn_
+		in_( "target<-medium-[_]" ) bgn_
 			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_source_pop, "source-medium->target" )
 			on_( '\t' )	do_( set_source_pop, "source-medium->target" )
@@ -1650,6 +1634,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-medium-%" ) bgn_
 			on_( '!' )	do_( nop, "target<-medium-%!" )
 			on_( '?' )	do_( nop, "target<-medium-%?" )
+			on_( '[' )	do_( read_query, "target<-medium-%[_]" )
 			on_other	do_( read_variable_ref, "target<-medium-%identifier" )
 			end
 			in_( "target<-medium-%!" ) bgn_
@@ -1668,6 +1653,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( ':' )	do_( set_source_variator, "source-medium->target:" )
 				on_other	do_( set_source_variator, pop_state )
 				end
+			in_( "target<-medium-%[_]" ) bgn_
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_source_results, "source-medium->target" )
+				on_( '\t' )	do_( set_source_results, "source-medium->target" )
+				on_( ']' )	do_( set_source_results, pop_state )
+				on_( ':' )	do_( set_source_results, "source-medium->target:" )
+				on_other	do_( set_source_results, pop_state )
+				end
 			in_( "target<-medium-%identifier" ) bgn_
 				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_source_variable, "source-medium->target" )
@@ -1678,21 +1671,21 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				end
 
 	in_( "source-medium->target" ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( ' ' )	do_( nop, same )
 		on_( '\t' )	do_( nop, same )
+		on_( '(' )	do_( error, "" )
 		on_( ']' )	do_( nop, pop_state )
 		on_( ':' )	do_( nop, "source-medium->target:" )
 		on_other	do_( nothing, pop_state )
 		end
 
 	in_( "source-medium->target:" ) bgn_
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
 		on_( '*' )	do_( set_flag_active, "source-medium->target: *" )
 		on_( '_' )	do_( set_flag_inactive, "source-medium->target: _" )
 		on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
-		on_( ' ' )	do_( nop, same )
-		on_( '\t' )	do_( nop, same )
-		on_( '[' )	do_( push, "source-medium->target: []" )
+		on_( '[' )	do_( push, "source-medium->target: [_]" )
 		on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 		on_( '%' )	do_( nop, "source-medium->target: %" )
 		on_separator	do_( error, "" )
@@ -1700,29 +1693,29 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "source-medium->target: *" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
-			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '[' )	do_( push, "source-medium->target: [_]" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: _" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
-			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '[' )	do_( push, "source-medium->target: [_]" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: ~" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_instance_null, "source-medium->target: instance" )
 			on_( '\t' )	do_( set_instance_null, "source-medium->target: instance" )
-			on_( '[' )	do_( push, "source-medium->target: []" )
+			on_( '(' )	do_( error, "" )
+			on_( '[' )	do_( push, "source-medium->target: [_]" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_separator	do_( set_instance_null, pop_state )
 			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
-		in_( "source-medium->target: []" ) bgn_
+		in_( "source-medium->target: [_]" ) bgn_
 			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_instance_pop, "source-medium->target: instance" )
 			on_( '\t' )	do_( set_instance_pop, "source-medium->target: instance" )
@@ -1732,7 +1725,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->target: %" ) bgn_
 			on_( '!' )	do_( nop, "source-medium->target: %!" )
 			on_( '?' )	do_( nop, "source-medium->target: %?" )
-			on_( '[' )	do_( read_as_sub, "source-medium->target: instance" )
+			on_( '[' )	do_( read_query, "source-medium->target: %[_]" )
 			on_other	do_( read_variable_ref, "source-medium->target: %identifier" )
 			end
 			in_( "source-medium->target: %!" ) bgn_
@@ -1748,6 +1741,13 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '\t' )	do_( set_instance_variator, "source-medium->target: instance" )
 				on_( ']' )	do_( set_instance_variator, pop_state )
 				on_other	do_( set_instance_variator, pop_state )
+				end
+			in_( "source-medium->target: %[_]" ) bgn_
+				on_( '(' )	do_( error, "" )
+				on_( ' ' )	do_( set_instance_results, "source-medium->target: instance" )
+				on_( '\t' )	do_( set_instance_results, "source-medium->target: instance" )
+				on_( ']' )	do_( set_instance_results, pop_state )
+				on_other	do_( set_instance_results, pop_state )
 				end
 			in_( "source-medium->target: %identifier" ) bgn_
 				on_( '(' )	do_( error, "" )

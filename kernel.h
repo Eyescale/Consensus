@@ -84,7 +84,8 @@ typedef enum {
 	StringIdentifier,
 	NullIdentifier,
 	VariableIdentifier,
-	QueryIdentifier
+	QueryIdentifier,
+	QueryResults
 }
 IdentifierType;
 
@@ -103,6 +104,14 @@ typedef enum {
 	ListFilter
 }
 FilterType;
+
+typedef enum {
+	InstantiateOperation = 1,
+	ReleaseOperation,
+	ActivateOperation,
+	DeactivateOperation,
+}
+OperationType;
 
 typedef enum {
 	EvaluateMode = 1,
@@ -384,6 +393,7 @@ typedef struct {
 		listItem *stack;	// current StackVA
 		StackVA stackbase;
 		int level;
+		OperationType op;
 		struct {
 			int level;
 		} freeze;

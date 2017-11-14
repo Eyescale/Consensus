@@ -424,6 +424,8 @@ check_out( char *state, int event, char **next_state, _context *context )
 #define BRKOUT if ( context->command.one ) do_( nothing, "" ) else
 #define BRKERR if ( context->command.one ) do_( error, "" ) else
 
+#define	SAME_OR( s )	((context->output.query && !context->output.marked) ? s : same )
+
 int
 read_command( char *state, int event, char **next_state, _context *context )
 {
@@ -667,7 +669,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( '%' )	do_( nop, ">: %" )
 			on_( '"' )	do_( nop, ">: \"" )
 			on_( '<' )	do_( backfeed_output, same )
-			on_( '>' )	do_( output_char, ((context->output.query && !context->output.marked) ? ">: >" : same ))
+			on_( '>' )	do_( output_char, SAME_OR( ">: >" ) )
 			on_other	do_( output_char, same )
 			end
 			in_( ">: >" ) bgn_
@@ -683,7 +685,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '"' )	do_( nop, ">:" )
 				on_( '\\' )	do_( nop, ">: \"\\" )
 				on_( '<' )	do_( backfeed_output, same )
-				on_( '>' )	do_( output_char, ((context->output.query && !context->output.marked) ? ">: \">" : same ))
+				on_( '>' )	do_( output_char, SAME_OR( ">: \">" ) )
 				on_other	do_( output_char, same )
 				end
 				in_( ">: \">" ) bgn_
