@@ -114,17 +114,17 @@ vaopf( int op, char *format, va_list ap )
 	reorderListItem( &arglist );
 
 	push_input( "", reformat, InstructionOne, context );
-	read_expression( base, 0, &same, context );
+	int retval = read_expression( base, 0, &same, context );
 	pop_input( base, 0, NULL, context );
 
-        if ( context->expression.mode == ErrorMode ) {
+        if ( retval < 0 ) {
 		output( Warning, "vaopf(): could not read expression" );
 		goto RETURN;
 	}
 
         context->expression.mode = op;
 	context->expression.args = arglist;
-        int retval = expression_solve( context->expression.ptr, 3, context );
+        retval = expression_solve( context->expression.ptr, 3, context );
 	context->expression.args = NULL;
 
         if ( retval < 0 ) {

@@ -149,7 +149,9 @@ xeval( char *state, int event, char **next_state, _context *context )
 	context->identifier.id[ 2 ].ptr = NULL;
 
 	event = read_expression( state, event, &same, context );
-	if ( command_mode( 0, 0, ExecutionMode ) && ( context->expression.mode != ErrorMode ))
+	if ( event < 0 )
+		;
+	else if ( command_mode( 0, 0, ExecutionMode ) )
 	{
 		context->expression.mode = EvaluateMode;
 		int retval = expression_solve( context->expression.ptr, 3, context );

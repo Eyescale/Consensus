@@ -1051,7 +1051,8 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 
 	int restore_mode = context->expression.mode;
 	if ( context->expression.filter == NULL ) {
-		if (( restore_mode == ReadMode ) && ( context->expression.stack == NULL )) RETURN( 0 );
+		if (( restore_mode == ReadMode ) && ( context->expression.stack == NULL ))
+			RETURN( 0 );
 		restore_mode = set_filter( expression, context );
 #ifdef DEBUG
 		if ( restore_mode == ReadMode ) {

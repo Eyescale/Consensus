@@ -19,7 +19,7 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	parser engine
+	execution engine
 ---------------------------------------------------------------------------*/
 #define	do_( a, s )	\
 	event = expression_execute( a, &state, event, s, context );
@@ -103,7 +103,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	if ( action == push )
 	{
 #ifdef DEBUG
-		outputf( Debug, "parser: pushing from level %d", context->command.level );
+		outputf( Debug, "expression_execute: pushing from level %d", context->command.level );
 #endif
 		Expression *e = ( context->command.mode == ExecutionMode ) ?
 			set_sub_expression( *state, context ) : NULL;
@@ -116,27 +116,27 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	}
 	else if ( !strcmp( next_state, pop_state ) )
 	{
-		if ( ( event != ']' ) && ( context->command.level != context->expression.level ) )
-		{
-			event = error( *state, event, &next_state, context );
-		}
-		else if ( context->command.level == context->expression.level )
+		if ( context->command.level == context->expression.level )
 		{
 #ifdef DEBUG
-			outputf( Debug, "parser: popping from base level %d", context->command.level );
+			outputf( Debug, "expression_execute: popping from base level %d", context->command.level );
 #endif
 			if ( context->command.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
 				StackVA *stack = (StackVA *) context->command.stack->ptr;
 				expression_collapse( stack->expression.ptr );
-				if ( retval < 0 ) context->expression.mode = ErrorMode;
 			}
+			if ( retval < 0 ) event = retval;
 			*state = "";
+		}
+		else if ( event != ']' )
+		{
+			event = error( *state, event, &next_state, context );
 		}
 		else
 		{
 #ifdef DEBUG
-			outputf( Debug, "parser: popping from level %d", context->command.level );
+			outputf( Debug, "expression_execute: popping from level %d", context->command.level );
 #endif
 			if ( context->command.mode == ExecutionMode ) {
 				retval = action( *state, event, &next_state, context );
@@ -150,12 +150,13 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	}
 	else if ( !strcmp( next_state, "source-medium->target:" ) ) {
 		int retval = test_super( *state, event, &next_state, context );
-		if ( !retval ) {
+		if ( retval < 0 )
+			event = retval;
+		else {
 			event = action( *state, event, &next_state, context );
 			if ( strcmp( next_state, same ) )
 				*state = next_state;
 		}
-		else event =  retval;
 	}
 	else
 	{
@@ -174,7 +175,7 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 }
 
 /*---------------------------------------------------------------------------
-	utility functions
+	actual actions implementation	- local
 ---------------------------------------------------------------------------*/
 static int
 reset_flags( _context *context )
@@ -592,6 +593,7 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 static int
 read_query( char *state, int event, char **next_state, _context *context )
 {
+	asprintf( &state, "%s[_", state );
 	struct {
 		int level, marked;
 		struct { int not, active, inactive; } flag;
@@ -610,14 +612,16 @@ read_query( char *state, int event, char **next_state, _context *context )
 	backup.flag.inactive = stack->expression.flag.inactive;
 
 	event = read_expression( base, 0, &same, context );
-	if ( context->command.mode == ExecutionMode ) {
+	if ( event < 0 )
+		;
+	else if ( event != ']' )
+		event = error( state, event, next_state, context );
+	else if ( context->command.mode == ExecutionMode )
+	{
 		Expression *e = context->expression.ptr;
-		if (( event != ']' ) || ( context->expression.mode == ErrorMode )) {
-			event = output( Error, NULL );
-		}
 		// optimization: set_sub_results will check this condition
-		else if ( just_blank( e ) && ( e->result.mark <= 7 ) &&
-			!strcmp( state, "source-medium->target: %" ) ) {
+		if ( just_blank( e ) && ( e->result.mark <= 7 ) &&
+			!strcmp( state, "source-medium->target: %[_" ) ) {
 			event = 0;
 		}
 		else {
@@ -637,8 +641,8 @@ read_query( char *state, int event, char **next_state, _context *context )
 	context->expression.level = backup.level;
 
 	stack->expression.ptr = expression;
-	context->expression.mode = ( event < 0 ) ? ErrorMode : ReadMode;
 
+	free( state );
 	return event;
 }
 
@@ -1055,13 +1059,13 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	parser_init
+	expression_init
 ---------------------------------------------------------------------------*/
 static int
-parser_init( char *state, int event, char **next_state, _context *context )
+expression_init( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	outputf( Debug, "parser_init: setting parser level to %d", context->command.level );
+	outputf( Debug, "expression_init: setting expression level to %d", context->command.level );
 #endif
 	context->expression.level = context->command.level;
 	context->expression.mode = ReadMode;
@@ -1091,16 +1095,15 @@ parser_init( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	parser_exit
+	expression_exit
 ---------------------------------------------------------------------------*/
 static int
-parser_exit( char *state, int event, char **next_state, _context *context )
+expression_exit( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	outputf( Debug, "parser_exit: on the way: returning event='%c' in mode=%d...", event, context->expression.mode );
+	outputf( Debug, "expression_exit: on the way: returning event='%c' in mode=%d...", event, context->expression.mode );
 #endif
-	if (( event < 0 ) || ( context->expression.mode == ErrorMode ))
-	{
+	if ( event < 0 ) {
 		context->expression.mode = ErrorMode;
 		while ( context->command.level != context->expression.level )
 			pop( state, event, next_state, context );
@@ -1142,7 +1145,7 @@ int
 read_expression( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "parser: entering" );
+	output( Debug, "read_expression: entering" );
 #endif
 	if ( command_mode( FreezeMode, 0, 0 ) ) {
 		event = flush_input( base, 0, &same, context );
@@ -1155,7 +1158,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	in_( ": identifier : %" )	do_( nothing, "%" )
 	in_other 			do_( nothing, base )
 	end
-	do_( parser_init, same )
+	do_( expression_init, same )
 
 	do {
 	event = read_input( state, event, NULL, context );
@@ -1164,7 +1167,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 #endif
 
 	bgn_
-	// errors are handled in parser_exit
+	// errors are handled in expression_exit
 	on_( -1 )	do_( nothing, "" )
 
 	// return control to read_shorty after pop
@@ -1782,7 +1785,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	}
 	while ( strcmp( state, "" ) );
 
-	do_( parser_exit, same );
+	do_( expression_exit, same );
 
 #ifdef DEBUG
 	outputf( Debug, "exiting read_expression '%c'", event );

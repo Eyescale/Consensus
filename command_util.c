@@ -124,16 +124,13 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 {
 	switch ( context->command.mode ) {
 	case FreezeMode:
-		do_( flush_input, same );
-		return event;
+		return flush_input( state, event, &same, context );
 	case InstructionMode:
-		do_( read_expression, same );
-		return event;
+		return read_expression( state, event, &same, context );
 	case ExecutionMode:
 		break;
 	}
 
-	int restore_mode = 0;
 	context->expression.do_resolve = 1;
 	bgn_
 	/*
@@ -149,8 +146,10 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 					context->error.flush_output = 1;	// we want to output errors in the text
 	end
 
-	do_( read_expression, same );
-	if ( context->expression.mode != ErrorMode ) {
+	event = read_expression( state, event, &same, context );
+	if ( event < 0 )
+		;
+	else {
 		Expression *expression = context->expression.ptr;
 		context->expression.mode = EvaluateMode;
 		int retval = expression_solve( expression, 3, context );

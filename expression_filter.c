@@ -50,9 +50,6 @@ set_filter( Expression *expression, _context *context )
 		switch ( restore_mode ) {
 		case InstantiateMode:
 			return 0;
-		case ReleaseMode:
-		case ActivateMode:
-		case DeactivateMode:
 		case EvaluateMode:
 			break;
 		default:
@@ -64,9 +61,6 @@ set_filter( Expression *expression, _context *context )
 		context->expression.mode = ReadMode;
 		switch ( restore_mode ) {
 		case InstantiateMode:
-		case ReleaseMode:
-		case ActivateMode:
-		case DeactivateMode:
 			break;
 		default:
 			restore_mode = ( context->expression.do_resolve ? EvaluateMode : ReadMode );
@@ -95,9 +89,6 @@ remove_filter( Expression *expression, int mode, int as_sub, _context *context )
 	switch ( mode ) {
 	case EvaluateMode:
 	case InstantiateMode:
-	case ReleaseMode:
-	case ActivateMode:
-	case DeactivateMode:
 		context->expression.mode = mode;
 		break;
 	default:

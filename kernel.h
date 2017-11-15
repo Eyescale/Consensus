@@ -117,9 +117,6 @@ typedef enum {
 	EvaluateMode = 1,
 	ReadMode,
 	InstantiateMode,
-	ReleaseMode,
-	ActivateMode,
-	DeactivateMode,
 	ErrorMode
 }
 ExpressionMode;
