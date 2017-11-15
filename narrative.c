@@ -399,7 +399,7 @@ set_event_scheme( char *state, int event, char **next_state, _context *context )
 		}
 		stack->narrative.event.source.scheme = CGIScheme;
 	}
-	if ( !strcmp( scheme, "operator" ) )
+	else if ( !strcmp( scheme, "operator" ) )
 	{
 		if ( context->identifier.path != NULL ) {
 			free( context->identifier.path );
@@ -476,39 +476,64 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 				on_any	do_( read_0, "identifier < scheme" )
 				end
 				in_( "identifier < scheme" ) bgn_
-					on_( '>' )	do_( set_event_scheme, "identifier:" )
+					on_( '>' )	do_( set_event_scheme, "identifier <_>" )
 					on_( ':' )	do_( read_path, "identifier < scheme://path" )
 					on_other	do_( error, "" )
 					end
 				in_( "identifier < scheme://path" ) bgn_
-					on_( '>' )	do_( set_event_scheme, "identifier:" )
+					on_( '>' )	do_( set_event_scheme, "identifier <_>" )
+					on_other	do_( error, "" )
+					end
+				in_( "identifier <_>" ) bgn_
+					on_( ':' )	do_( nop, "identifier:" )
 					on_other	do_( error, "" )
 					end
 			in_( "identifier:" ) bgn_
+#ifndef DO_LATER
 				on_any	do_( read_expression, "identifier: expression" )
 				end
-				in_( "identifier: expression" ) bgn_
-					on_( ':' )	do_( nop, "identifier: scheme:" )
-					on_( '!' )	do_( nop, "identifier: expression !" )
-					on_other	do_( error, "" )
+#else
+				on_( '<' )	do_( nop, "identifier: <" )
+				on_other	do_( read_expression, "identifier: expression" )
+				end
+				in_( "identifier: <" ) bgn_
+					on_any	do_( read_scheme, "identifier: < scheme" )
 					end
-				in_( "identifier: scheme:" ) bgn_
-					on_any	do_( read_path, "identifier: scheme://path" )
-					end
-					in_( "identifier: scheme://path" ) bgn_
-						on_( '!' )	do_( nop, "identifier: scheme://path !" )
+					in_( "identifier: < scheme" ) bgn_
+						on_( '>' )	do_( nop, "identifier: <_>" )
+						on_( ':' )	do_( nop, "identifier: < scheme:" )
+						on_other	do_( error, "" )
 						end
-						in_( "identifier: scheme://path !" ) bgn_
+					in_( "identifier: < scheme:" ) bgn_
+						on_any	do_( read_path, "identifier: < scheme://path" )
+						end
+					in_( "identifier: < scheme://path" ) bgn_
+						on_( '>' )	do_( nop, "identifier: <_>" )
+						on_other	do_( error, "" )
+						end
+					in_( "identifier: <_>" ) bgn_
+						on_( '!' )	do_( nop, "identifier: <_> !" )
+						end
+						in_( "identifier: <_> !" ) bgn_
+							on_( '!' )	do_( set_event_type, "" )
+							on_( '~' )	do_( set_event_type, "" )
+							on_( '*' )	do_( set_event_type, "" )
+							on_( '_' )	do_( set_event_type, "" )
 							on_( '<' )	do_( set_event_type, "" )
 							on_other	do_( error, "" )
 							end
-			in_( "identifier: expression !" ) bgn_
-				on_( '!' )	do_( set_event_type, "" )
-				on_( '~' )	do_( set_event_type, "" )
-				on_( '*' )	do_( set_event_type, "" )
-				on_( '_' )	do_( set_event_type, "" )
-				on_other	do_( error, "" )
-				end
+#endif	// DO_LATER
+				in_( "identifier: expression" ) bgn_
+					on_( '!' )	do_( nop, "identifier: expression !" )
+					on_other	do_( error, "" )
+					end
+					in_( "identifier: expression !" ) bgn_
+						on_( '!' )	do_( set_event_type, "" )
+						on_( '~' )	do_( set_event_type, "" )
+						on_( '*' )	do_( set_event_type, "" )
+						on_( '_' )	do_( set_event_type, "" )
+						on_other	do_( error, "" )
+						end
 		end
 	}
 	while ( strcmp( state, "" ) );

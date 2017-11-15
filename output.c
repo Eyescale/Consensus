@@ -398,9 +398,9 @@ output_( int type, int event, _context *context )
 		scheme = context->identifier.scheme;
 		path = context->identifier.path;
 		if ( strcmp( scheme, "session" ) )
-			return outputf( Error, ">: %%[ %s://%s ] - operation not supported", scheme, path );
+			return outputf( Error, ">: %%< %s://%s > - operation not supported", scheme, path );
 		if ( !context->control.operator )
-			return outputf( Error, "misdirected: >: %%[ session:%s ] - not operator", path  );
+			return outputf( Error, "misdirected: >: %%< session:%s > - not operator", path  );
 		registryEntry *entry = registryLookup( context->operator.sessions, path );
 		if ( entry == NULL ) return retval;
 		SessionVA *session = entry->value;
@@ -412,7 +412,7 @@ output_( int type, int event, _context *context )
 		scheme = context->identifier.scheme;
 		path = context->identifier.path;
 		if ( strcmp( scheme, "file" ) || strcmp( va_name, "html" ) )
-			return outputf( Error, ">:%%[ %s://%s ].$( %s ) - operation not supported",
+			return outputf( Error, ">:%%< %s://%s >.$( %s ) - operation not supported",
 				scheme, path, va_name );
 		context->identifier.path = NULL;
 		command_read( path, HCNFileInput, base, 0, context );

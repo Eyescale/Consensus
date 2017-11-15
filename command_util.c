@@ -629,7 +629,7 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 	if ( session->genitor )
 	{
 		char *news;
-		asprintf( &news, "< operator >: session:%s !!", path );
+		asprintf( &news, "< operator >: < session:%s > !!", path );
 
 		int fd = session->genitor;
 		int remainder = 0, length = strlen( news );

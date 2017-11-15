@@ -35,6 +35,30 @@ path_execute( _action action, char **state, int event, char *next_state, _contex
 }
 
 /*---------------------------------------------------------------------------
+	read_scheme
+---------------------------------------------------------------------------*/
+int
+read_scheme( char *state, int event, char **next_state, _context *context )
+{
+	event = read_1( state, event, next_state, context );
+	if ( event < 0 ) return event;
+
+	char *identifier = context->identifier.id[ 1 ].ptr;
+	if ( !strcmp( identifier, "file" ) ? 0 :
+	     !strcmp( identifier, "session" ) ? 0 :
+	     !strcmp( identifier, "operator" ) ? 0 :
+	     !strcmp( identifier, "cgi" ) ? 0 : 1 )
+		return outputf( Error, "'%s': unknown scheme", identifier );
+
+	free( context->identifier.path );
+	context->identifier.path = NULL;
+	free( context->identifier.scheme );
+	context->identifier.scheme = identifier;
+	context->identifier.id[ 1 ].ptr = NULL;
+	return event;
+}
+
+/*---------------------------------------------------------------------------
 	read_STEP	- local utility
 ---------------------------------------------------------------------------*/
 static void

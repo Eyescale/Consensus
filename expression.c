@@ -380,28 +380,6 @@ set_sub_results( int count, int event, _context *context )
 	return 0;
 }
 
-static int
-test_scheme( char *state, int event, char **next_state, _context *context )
-{
-	if ( strcmp( state, "identifier" ) || strcmp( *next_state, "source-medium->target:" ))
-		return 0;
-
-	char *identifier = context->identifier.id[ 1 ].ptr;
-	if ( !strcmp( identifier, "file" ) ? 0 :
-	     !strcmp( identifier, "session" ) ? 0 :
-	     !strcmp( identifier, "operator" ) ? 0 :
-	     !strcmp( identifier, "cgi" ) ? 0 :
-	     1 ) return 0;
-
-	if ( context->expression.level != context->command.level )
-		return outputf( Error, "reserved term '%s' in expression", identifier );
-
-	context->identifier.scheme = identifier;
-	context->identifier.id[ 1 ].ptr = NULL;
-	*next_state = "";
-	return event;
-}
-
 /*---------------------------------------------------------------------------
 	source actions
 ---------------------------------------------------------------------------*/
@@ -410,8 +388,7 @@ set_source_pop( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_pop( 0, event, context ); }
 static int
 set_source_mark( char *state, int event, char **next_state, _context *context )
-	{ return set_sub_mark( 0, event, context ); 
-}
+	{ return set_sub_mark( 0, event, context ); }
 static int
 set_source_null( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_null( 0, event, context ); }
@@ -420,10 +397,7 @@ set_source_any( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_any( 0, event, context ); }
 static int
 set_source_identifier( char *state, int event, char **next_state, _context *context )
-{
-	int retval = test_scheme( state, event, next_state, context );
-	return ( retval ? retval : set_sub_identifier( 0, event, context ) );
-}
+	{ return set_sub_identifier( 0, event, context ); }
 static int
 set_source_variable( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_variable( 0, event, context ); }
@@ -436,7 +410,6 @@ set_source_this( char *state, int event, char **next_state, _context *context )
 static int
 set_source_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_results( 0, event, context ); }
-
 
 /*---------------------------------------------------------------------------
 	medium actions
@@ -468,7 +441,6 @@ set_medium_this( char *state, int event, char **next_state, _context *context )
 static int
 set_medium_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_this( 1, event, context ); }
-
 
 /*---------------------------------------------------------------------------
 	target actions
@@ -514,7 +486,6 @@ static int
 set_target_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_results( 2, event, context ); }
 
-
 /*---------------------------------------------------------------------------
 	instance actions
 ---------------------------------------------------------------------------*/
@@ -545,7 +516,6 @@ set_instance_this( char *state, int event, char **next_state, _context *context 
 static int
 set_instance_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_results( 3, event, context ); }
-
 
 /*---------------------------------------------------------------------------
 	flag actions
@@ -1071,8 +1041,6 @@ expression_init( char *state, int event, char **next_state, _context *context )
 	context->expression.mode = ReadMode;
 	context->expression.marked = 0;
 
-	free( context->identifier.scheme );
-	context->identifier.scheme = NULL;
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
 	context->expression.filter = NULL;

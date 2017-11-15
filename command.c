@@ -468,7 +468,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 			in_( ">: \"\\" )		do_( output_special_char, ">: \"" )
 			in_( ">: %?" )			do_( output_variator_value, ">:" )
 			in_( ">: %variable" )		do_( output_variable_value, ">:" )
-			in_( ">: %[ scheme://path ]" )	do_( output_scheme_descriptor, ">:" )
+			in_( ">: %<_>" )		do_( output_scheme_descriptor, ">:" )
+			in_( ">: %<_>.$(_)" )		do_( output_scheme_va, ">:" )
 			in_( ">: %[_]" )		do_( output_results, ">:" )
 			in_( ">: %[_].$(_)" )		do_( output_va, ">:" )
 			in_( ">: %[_].narrative(_)" )	do_( output_narrative, ">:" )
@@ -559,11 +560,30 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_other	do_( command_err, base )
 			end
 			in_( "!." ) bgn_
+				on_( '<' )	do_( nop, "!. <" )
 				on_( '%' )	do_( nop, "!. %" )
 				on_other	do_( read_expression, "!. expression" )
 				end
+			in_( "!. <" ) bgn_
+				on_any		do_( read_scheme, "!. < scheme" )
+				end
+				in_( "!. < scheme" ) bgn_
+					on_( ':' )	do_( nop, "!. < scheme:" )
+					on_( '>' )	do_( nop, "!. <_>" )
+					on_other	do_( command_err, base )
+					end
+				in_( "!. < scheme:" ) bgn_
+					on_any	do_( read_path, "!. <_" )
+					end
+				in_( "!. <_" ) bgn_
+					on_( '>' )	do_( nop, "!. <_>" )
+					on_other	do_( command_err, base )
+					end
+				in_( "!. <_>" ) bgn_
+					on_( '\n' )	do_( scheme_op, out )
+					on_other	do_( command_err, base )
+					end
 			in_( "!. expression" ) bgn_
-				on_( ':' )	do_( nop, "!. scheme:" )
 				on_( '\n' )	do_( expression_op, out )
 				on_( '(' )	do_( set_results_to_nil, "!. narrative(" )
 				on_other	do_( command_err, base )
@@ -576,13 +596,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '\n' )	do_( narrative_op, out )
 				on_other	do_( command_err, base )
 				end
-			in_( "!. scheme:" ) bgn_
-				on_any	do_( read_path, "!. scheme://path" )
-				end
-				in_( "!. scheme://path" ) bgn_
-					on_( '\n' )	do_( scheme_op, out )
-					on_other	do_( command_err, base )
-					end
 			in_( "!. %" ) bgn_
 				on_( '[' )	do_( nop, "!. %[" )
 				on_other	do_( read_expression, "!. expression" )
@@ -613,6 +626,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				on_( '\n' )	do_( narrative_op, out )
 				on_other	do_( command_err, base )
 				end
+
 		in_( "~" ) bgn_
 			on_( '.' )	do_( nop, "~." )
 			on_other	do_( command_err, base )
@@ -696,8 +710,9 @@ read_command( char *state, int event, char **next_state, _context *context )
 					end
 			in_( ">: %" ) bgn_
 				on_( '?' )	do_( nop, ">: %?" )
-				on_( '.' )	do_( set_results_to_nil, ">: %[_]." )
+				on_( '<' )	do_( nop, ">: %<" )
 				on_( '[' )	do_( nop, ">: %[" )
+				on_( '.' )	do_( set_results_to_nil, ">: %[_]." )
 				on_( '\n' )	do_( output_mod, ">:" )
 				on_separator	do_( output_mod, ">:" )
 				on_other	do_( read_variable_ref, ">: %variable" )
@@ -705,41 +720,48 @@ read_command( char *state, int event, char **next_state, _context *context )
 				in_( ">: %?" ) bgn_
 					on_any	do_( output_variator_value, ">:" )
 					end
+				in_( ">: %<" ) bgn_
+					on_any	do_( read_scheme, ">: %< scheme" )
+					end
+					in_( ">: %< scheme" ) bgn_
+						on_( ':' )	do_( nop, ">: %< scheme:" )
+						on_( '>' )	do_( nop, ">: %<_>" )
+						on_other	do_( command_err, base )
+						end
+					in_( ">: %< scheme:" ) bgn_
+						on_any	do_( read_path, ">: %<_" )
+						end
+						in_( ">: %<_" ) bgn_
+							on_( '>' )	do_( nop, ">: %<_>" )
+							on_other	do_( command_err, base )
+							end
+					in_( ">: %<_>" ) bgn_
+						on_( '.' )	do_( nop, ">: %<_>." )
+						on_other	do_( output_scheme_descriptor, ">:" )
+						end
+						in_( ">: %<_>." ) bgn_
+							on_( '$' )	do_( nop, ">: %<_>.$" )
+							on_other	do_( command_err, base )
+							end
+						in_( ">: %<_>.$" ) bgn_
+							on_( '(' )	do_( nop, ">: %<_>.$(" )
+							on_other	do_( command_err, base )
+							end
+						in_( ">: %<_>.$(" ) bgn_
+							on_any	do_( read_2, ">: %<_>.$(_" )
+							end
+						in_( ">: %<_>.$(_" ) bgn_
+							on_( ')' )	do_( nop, ">: %<_>.$(_)" )
+							end
+					in_( ">: %<_>.$(_)" ) bgn_
+						on_any	do_( output_scheme_va, ">:" )
+						end
 				in_( ">: %[" ) bgn_
 					on_any	do_( evaluate_expression, ">: %[_" )
 					end
 					in_( ">: %[_" ) bgn_
-						on_( ':' )	do_( nop, ">: %[ scheme:" )
 						on_( ']' )	do_( nop, ">: %[_]")
 						on_other	do_( command_err, base )
-						end
-					in_( ">: %[ scheme:" ) bgn_
-						on_any	do_( read_path, ">: %[ scheme://path" )
-						end
-						in_( ">: %[ scheme://path" ) bgn_
-							on_( ']' )	do_( nop, ">: %[ scheme://path ]" )
-							on_other	do_( command_err, base )
-							end
-					in_( ">: %[ scheme://path ]" ) bgn_
-						on_( '.' )	do_( nop, ">: %[ scheme://path ]." )
-						on_other	do_( output_scheme_descriptor, ">:" )
-						end
-						in_( ">: %[ scheme://path ]." ) bgn_
-							on_( '$' )	do_( nop, ">: %[ scheme://path ].$" )
-							on_other	do_( command_err, base )
-							end
-						in_( ">: %[ scheme://path ].$" ) bgn_
-							on_( '(' )	do_( nop, ">: %[ scheme://path ].$(" )
-							on_other	do_( command_err, base )
-							end
-						in_( ">: %[ scheme://path ].$(" ) bgn_
-							on_any	do_( read_2, ">: %[ scheme://path ].$(_" )
-							end
-						in_( ">: %[ scheme://path ].$(_" ) bgn_
-							on_( ')' )	do_( nop, ">: %[ scheme://path ].$(_)" )
-							end
-					in_( ">: %[ scheme://path ].$(_)" ) bgn_
-						on_any	do_( output_scheme_va, ">:" )
 						end
 			in_( ">: %variable" ) bgn_
 				on_any	do_( output_variable_value, ">:" )
