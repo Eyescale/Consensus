@@ -6,12 +6,11 @@
 ---------------------------------------------------------------------------*/
 
 _action set_results_to_nil;
-_action set_expression_mode;
+_action set_command_op;
 _action expression_op;
 _action evaluate_expression;
 _action narrative_op;
 _action exit_command;
-_action parse_expression;
 _action input_inline;
 _action input_story;
 _action output_story;

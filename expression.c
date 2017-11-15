@@ -592,13 +592,17 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 static int
 read_query( char *state, int event, char **next_state, _context *context )
 {
+	struct {
+		int level, marked;
+		struct { int not, active, inactive; } flag;
+	} backup;
+
 	// re-enter read_expression
 	// ------------------------
 
 	StackVA *stack = context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 
-	struct { int level, marked; struct { int not, active, inactive; } flag; } backup;
 	backup.level = context->expression.level;
 	backup.marked = context->expression.marked;
 	backup.flag.not = stack->expression.flag.not;
@@ -613,13 +617,10 @@ read_query( char *state, int event, char **next_state, _context *context )
 		}
 		// optimization: set_sub_results will check this condition
 		else if ( just_blank( e ) && ( e->result.mark <= 7 ) &&
-			!strcmp( state, "source-medium->target: %" ) )
-		{
+			!strcmp( state, "source-medium->target: %" ) ) {
 			event = 0;
 		}
-		else if ( strcmp( state, "source-medium->target: %" ) ||
-			!just_blank( e ) || ( e->result.mark > 7 ))
-		{
+		else {
 			context->expression.mode = EvaluateMode;
 			int retval = expression_solve( e, 3, context );
 #ifdef DO_LATER
@@ -629,12 +630,13 @@ read_query( char *state, int event, char **next_state, _context *context )
 		}
 	}
 
-	stack->expression.ptr = expression;
-	context->expression.level = backup.level;
-	context->expression.marked = backup.marked;
-	stack->expression.flag.not = backup.flag.not;
-	stack->expression.flag.active = backup.flag.active;
 	stack->expression.flag.inactive = backup.flag.inactive;
+	stack->expression.flag.active = backup.flag.active;
+	stack->expression.flag.not = backup.flag.not;
+	context->expression.marked = backup.marked;
+	context->expression.level = backup.level;
+
+	stack->expression.ptr = expression;
 	context->expression.mode = ( event < 0 ) ? ErrorMode : ReadMode;
 
 	return event;
@@ -1142,6 +1144,11 @@ read_expression( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	output( Debug, "parser: entering" );
 #endif
+	if ( command_mode( FreezeMode, 0, 0 ) ) {
+		event = flush_input( base, 0, &same, context );
+		return event;
+	}
+
 	// set own state according to commander's state
 	bgn_
 	in_( "!. %" )			do_( nothing, "%" )

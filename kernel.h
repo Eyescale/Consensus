@@ -16,8 +16,8 @@ CommandMode;
 
 typedef enum {
 	ClauseNone,
-	ClauseActive,
-	ClausePassive
+	ActiveClause,
+	PassiveClause
 }
 ClauseState;
 

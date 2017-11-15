@@ -62,17 +62,16 @@ set_results_to_nil( char *state, int event, char **next_state, _context *context
 }
 
 int
-set_expression_mode( char *state, int event, char **next_state, _context *context )
+set_command_op( char *state, int event, char **next_state, _context *context )
 {
 	if ( !command_mode( 0, InstructionMode, ExecutionMode ) )
 		return 0;
-
-	switch ( event ) {
-	case '!': context->expression.mode = InstantiateMode; break;
-	case '~': context->expression.mode = ReleaseMode; break;
-	case '*': context->expression.mode = ActivateMode; break;
-	case '_': context->expression.mode = DeactivateMode; break;
-	}
+	bgn_
+	on_( '!' )	context->command.op = InstantiateOperation;
+	on_( '~' )	context->command.op = ReleaseOperation;
+	on_( '*' )	context->command.op = ActivateOperation;
+	on_( '_' )	context->command.op = DeactivateOperation;
+	end
 	return 0;
 }
 
@@ -82,33 +81,39 @@ expression_op( char *state, int event, char **next_state, _context *context )
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
+	switch ( context->command.op ) {
+	case InstantiateOperation:
+		context->expression.mode = InstantiateMode;
+		break;
+	default:
+		context->expression.mode = EvaluateMode;
+	}
+
 	int retval = expression_solve( context->expression.ptr, 3, context );
 	if ( retval == -1 ) return outputf( Error, NULL );
 
-	switch ( context->expression.mode ) {
-	case InstantiateMode:
+	switch ( context->command.op ) {
+	case InstantiateOperation:
 		// already done during expression_solve
 		break;
-	case ReleaseMode:
+	case ReleaseOperation:
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
 			cn_release( e );
 		}
 		freeListItem( &context->expression.results );
 		break;
-	case ActivateMode:
+	case ActivateOperation:
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
 			cn_activate( e );
 		}
 		break;
-	case DeactivateMode:
+	case DeactivateOperation:
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next ) {
 			Entity *e = (Entity *) i->ptr;
 			cn_deactivate( e );
 		}
-		break;
-	default:
 		break;
 	}
 	return event;
@@ -132,11 +137,6 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 	context->expression.do_resolve = 1;
 	bgn_
 	/*
-	   the mode will be needed by narrative_op
-	*/
-	in_( "!. %[" )			restore_mode = context->expression.mode;
-	in_( ": identifier : !. %[" )	restore_mode = context->expression.mode;
-	/*
 	   in loop or condition evaluation we do not want expression_solve() to
 	   resolve filtered results if there are, and unless specified otherwise.
 	   Note that expression_solve may revert to EvaluateMode.
@@ -157,25 +157,6 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 		if ( retval < 0 ) event = retval;
 	}
 	context->expression.do_resolve = 0;
-
-	if ( restore_mode ) {
-		context->expression.mode = restore_mode;
-	}
-	return event;
-}
-
-int
-parse_expression( char *state, int event, char **next_state, _context *context )
-{
-	if ( command_mode( FreezeMode, 0, 0 ) ) {
-		do_( flush_input, same );
-		return event;
-	}
-
-	// the mode may be needed by expression_op
-	int restore_mode = context->expression.mode;
-	do_( read_expression, same );
-	context->expression.mode = restore_mode;
 
 	return event;
 }
@@ -242,8 +223,8 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
-	switch ( context->expression.mode ) {
-	case InstantiateMode:
+	switch ( context->command.op ) {
+	case InstantiateOperation:
 		; listItem *last_i = NULL, *next_i;
 		for ( listItem *i = context->expression.results; i!=NULL; i=next_i )
 		{
@@ -290,39 +271,31 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		}
 		break;
 
-	case ReleaseMode:
+	case ReleaseOperation:
 		; char *name = context->identifier.id[ 1 ].ptr;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
 			cn_release_narrative( e, name );
 		}
-		event = 0;
 		break;
 
-	case ActivateMode:
+	case ActivateOperation:
 		name = context->identifier.id[ 1 ].ptr;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
 			cn_activate_narrative( e, name );
 		}
-		event = 0;
 		break;
 
-	case DeactivateMode:
+	case DeactivateOperation:
 		name = context->identifier.id[ 1 ].ptr;
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
 			cn_deactivate_narrative( e, name );
 		}
-		event = 0;
-		break;
-
-	default:
-		// only supports these modes for now...
-		event = 0;
 		break;
 	}
 	return 0;
@@ -684,7 +657,7 @@ scheme_op( char *state, int event, char **next_state, _context *context )
 	char *scheme = context->identifier.scheme;
 	if ( strcmp( scheme, "session" ) )
 		return outputf( Error, "%s operation not supported", scheme );
-	if ( context->expression.mode != InstantiateMode )
+	if ( context->command.op != InstantiateOperation )
 		return output( Error, "session operation not supported" );
 #ifdef DO_LATER
 	check session's path format (must not be a number)

@@ -52,18 +52,17 @@ set_clause( int clause, char *state, int event, char **next_state, _context *con
 		break;
 	case InstructionMode:
 		; StackVA *stack = (StackVA *) context->command.stack->ptr;
-		stack->clause.state = ClauseActive;
+		stack->clause.state = ActiveClause;
 		break;
 	case ExecutionMode:
 		if ( context->expression.mode == ReadMode ) {
 			freeLiteral( &context->expression.results );
 		}
-
 		stack = (StackVA *) context->command.stack->ptr;
 		stack->clause.state = clause ?
-			( context->command.contrary ? ClausePassive : ClauseActive ) :
-			( context->command.contrary ? ClauseActive : ClausePassive );
-		if ( stack->clause.state == ClausePassive )
+			( context->command.contrary ? PassiveClause : ActiveClause ) :
+			( context->command.contrary ? ActiveClause : PassiveClause );
+		if ( stack->clause.state == PassiveClause )
 			set_command_mode( FreezeMode, context );
 	}
 	context->command.contrary = 0;
@@ -92,15 +91,15 @@ flip_clause( char *state, int event, char **next_state, _context *context )
 	case FreezeMode:
 		if ( context->command.level == context->command.freeze.level )
 		{
-			stack->clause.state = ClauseActive;
+			stack->clause.state = ActiveClause;
 			set_command_mode( ExecutionMode, context );
 			set_record_mode( OffRecordMode, event, context );
 		}
 		break;
 	case InstructionMode:
 		switch ( stack->clause.state ) {
-			case ClauseActive:
-			case ClausePassive:
+			case ActiveClause:
+			case PassiveClause:
 				break;
 			case ClauseNone:
 				return output( Error, "not in conditional execution mode" );
@@ -108,17 +107,16 @@ flip_clause( char *state, int event, char **next_state, _context *context )
 		break;
 	case ExecutionMode:
 		switch ( stack->clause.state ) {
-			case ClauseActive:
-				stack->clause.state = ClausePassive;
+			case ActiveClause:
+				stack->clause.state = PassiveClause;
+				set_command_mode( FreezeMode, context );
 				break;
-			case ClausePassive:
-				stack->clause.state = ClauseActive;
+			case PassiveClause:
+				stack->clause.state = ActiveClause;
 				break;
 			case ClauseNone:
 				return output( Error, "not in conditional execution mode" );
 		}
-		if ( stack->clause.state == ClausePassive )
-			set_command_mode( FreezeMode, context );
 	}
 	return 0;
 }
@@ -539,8 +537,8 @@ read_command( char *state, int event, char **next_state, _context *context )
 			end
 
 		in_( "/" ) bgn_
-			on_( '~' )	do_( nop, "/~" )
 			on_( '\n' )	do_( command_pop, pop_state )
+			on_( '~' )	do_( nop, "/~" )
 			on_( '.' )	do_( nop, "/." )
 			on_other	do_( command_err, base )
 			end
@@ -554,15 +552,15 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 
 		in_( "!" ) bgn_
-			on_( '!' )	do_( set_expression_mode, "!." )
-			on_( '~' )	do_( set_expression_mode, "!." )
-			on_( '*' )	do_( set_expression_mode, "!." )
-			on_( '_' )	do_( set_expression_mode, "!." )
+			on_( '!' )	do_( set_command_op, "!." )
+			on_( '~' )	do_( set_command_op, "!." )
+			on_( '*' )	do_( set_command_op, "!." )
+			on_( '_' )	do_( set_command_op, "!." )
 			on_other	do_( command_err, base )
 			end
 			in_( "!." ) bgn_
 				on_( '%' )	do_( nop, "!. %" )
-				on_other	do_( parse_expression, "!. expression" )
+				on_other	do_( read_expression, "!. expression" )
 				end
 			in_( "!. expression" ) bgn_
 				on_( ':' )	do_( nop, "!. scheme:" )
@@ -587,7 +585,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 					end
 			in_( "!. %" ) bgn_
 				on_( '[' )	do_( nop, "!. %[" )
-				on_other	do_( parse_expression, "!. expression" )
+				on_other	do_( read_expression, "!. expression" )
 				end
 				in_( "!. %[" ) bgn_
 					on_any	do_( evaluate_expression, "!. %[_" )
@@ -921,7 +919,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 			on_( '%' )	do_( nop, ": identifier : %" )
 			on_( '\n' )	do_( command_err, base )
 			on_( '!' )	do_( nop, ": identifier : !" )
-			on_other	do_( parse_expression, ": identifier : expression" )
+			on_other	do_( read_expression, ": identifier : expression" )
 			end
 			in_( ": identifier : expression" ) bgn_
 				on_( '(' )	do_( set_results_to_nil, ": identifier : narrative(" )
@@ -930,7 +928,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 				end
 			in_( ": identifier : %" ) bgn_
 				on_( '[' )	do_( nop, ": identifier : %[" )
-				on_other	do_( parse_expression, ": identifier : expression" )
+				on_other	do_( read_expression, ": identifier : expression" )
 				end
 				in_( ": identifier : %[" ) bgn_
 					on_any	do_( evaluate_expression, ": identifier : %[_" )
@@ -976,14 +974,14 @@ read_command( char *state, int event, char **next_state, _context *context )
 							on_other	do_( command_err, base )
 							end
 			in_( ": identifier : !" ) bgn_
-				on_( '!' )	do_( set_expression_mode, same )
-						do_( parse_expression, ": identifier : !." )
-				on_( '~' )	do_( set_expression_mode, same )
-						do_( parse_expression, ": identifier : !." )
-				on_( '*' )	do_( set_expression_mode, same )
-						do_( parse_expression, ": identifier : !." )
-				on_( '_' )	do_( set_expression_mode, same )
-						do_( parse_expression, ": identifier : !." )
+				on_( '!' )	do_( set_command_op, same )
+						do_( read_expression, ": identifier : !." )
+				on_( '~' )	do_( set_command_op, same )
+						do_( read_expression, ": identifier : !." )
+				on_( '*' )	do_( set_command_op, same )
+						do_( read_expression, ": identifier : !." )
+				on_( '_' )	do_( set_command_op, same )
+						do_( read_expression, ": identifier : !." )
 				on_other	do_( command_err, base )
 				end
 			in_( ": identifier : !." ) bgn_
