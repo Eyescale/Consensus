@@ -30,6 +30,7 @@ extra_application(Consensus SOURCES
 	output_util.c
 	path.c
 	registry.c
+	string_util.c
 	value.c
 	variable.c
 	variable_util.c
