@@ -43,18 +43,20 @@ read_scheme( char *state, int event, char **next_state, _context *context )
 	event = read_1( state, event, next_state, context );
 	if ( event < 0 ) return event;
 
-	char *identifier = context->identifier.id[ 1 ].ptr;
+	char *identifier = take_identifier( context, 1 );
 	if ( !strcmp( identifier, "file" ) ? 0 :
 	     !strcmp( identifier, "session" ) ? 0 :
 	     !strcmp( identifier, "operator" ) ? 0 :
 	     !strcmp( identifier, "cgi" ) ? 0 : 1 )
+	{
+		free( identifier );
 		return outputf( Error, "'%s': unknown scheme", identifier );
+	}
 
 	free( context->identifier.path );
 	context->identifier.path = NULL;
 	free( context->identifier.scheme );
 	context->identifier.scheme = identifier;
-	context->identifier.id[ 1 ].ptr = NULL;
 	return event;
 }
 
@@ -68,7 +70,7 @@ read_STEP( _context * context )
 		return;
 
 	listItem **list = &context->output.slist;
-	context->identifier.id[ 2 ].ptr = popListItem( list );
+	set_identifier( context, 2, popListItem( list ) );
 	for ( listItem *i = *list; i!=NULL; i=i->next )
 		free( i->ptr );
 	freeListItem( list );
@@ -83,9 +85,7 @@ va2s( char *state, int event, char **next_state, _context *context )
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
-	char *identifier = context->identifier.id[ 1 ].ptr;
-	context->identifier.id[ 1 ].ptr = NULL;
-
+	char *identifier = take_identifier( context, 1 );
 	VariableVA *variable = lookupVariable( context, identifier, 0 );
 	if ( variable == NULL ) {
 		free( identifier );
@@ -150,8 +150,7 @@ xr2s( char *state, int event, char **next_state, _context *context )
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return event;
 
-	free( context->identifier.id[ 2 ].ptr );
-	context->identifier.id[ 2 ].ptr = NULL;
+	free_identifier( context, 2 );
 
 	// take only the first item in the list of results
 	if ( context->expression.results != NULL ) {
@@ -169,8 +168,7 @@ xr2s( char *state, int event, char **next_state, _context *context )
 static int
 xeval( char *state, int event, char **next_state, _context *context )
 {
-	char *backup = context->identifier.id[ 2 ].ptr;
-	context->identifier.id[ 2 ].ptr = NULL;
+	char *backup = take_identifier( context, 2 );
 
 	event = read_expression( state, event, &same, context );
 	if ( event < 0 )
@@ -182,8 +180,7 @@ xeval( char *state, int event, char **next_state, _context *context )
 		if ( retval < 0 ) event = retval;
 	}
 
-	free( context->identifier.id[ 2 ].ptr );
-	context->identifier.id[ 2 ].ptr = backup;
+	free_identifier( context, 2 );
 	return event;
 }
 
@@ -199,7 +196,7 @@ build_path( char *state, int event, char **next_state, _context *context )
 		return retval;
 
 	char *path = context->identifier.path;
-	char *step = context->identifier.id[ 2 ].ptr;
+	char *step = get_identifier( context, 2 );
 #ifdef DEBUG
 	outputf( Debug, "build_path: path=%s, step=%s", path, step );
 #endif
@@ -242,8 +239,7 @@ build_path( char *state, int event, char **next_state, _context *context )
 			end
 		end
 	}
-	free( context->identifier.id[ 2 ].ptr );
-	context->identifier.id[ 2 ].ptr = NULL;
+	free_identifier( context, 2 );
 
 	free( context->identifier.path );
 	context->identifier.path = path;
@@ -312,7 +308,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 					end
 				in_( "/%" ) bgn_
 					on_( '[' )	do_( xeval, "/%[_" )
-					on_other	do_( read_variable_ref, "/%variable" )
+					on_other	do_( read_1, "/%variable" )
 					end
 					in_( "/%[_" ) bgn_
 						on_( ' ' )	do_( nop, same )
@@ -328,7 +324,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 						end
 			in_( "%" ) bgn_
 				on_( '[' )	do_( xeval, "%[_" )
-				on_other	do_( read_variable_ref, "%variable" )
+				on_other	do_( read_1, "%variable" )
 				end
 				in_( "/%[_" ) bgn_
 					on_( ' ' )	do_( nop, same )
@@ -346,8 +342,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 	}
 	while ( strcmp( state, "" ) );
 
-	free( context->identifier.id[ 2 ].ptr );
-	context->identifier.id[ 2 ].ptr = NULL;
+	free_identifier( context, 2 );
 
 #ifdef DEBUG
 	outputf( Debug, "read_path: returning %s", context->identifier.path.ptr );

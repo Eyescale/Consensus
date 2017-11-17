@@ -21,6 +21,7 @@ typedef enum {
 	IndexedByNumber
 } RegistryType;
 
+registryEntry *newRegistryEntry( RegistryType type, void *name, void *value );
 void freeRegistryEntry( RegistryType type, registryEntry *entry );
 
 typedef registryEntry Registry;

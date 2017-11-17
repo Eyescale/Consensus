@@ -23,7 +23,6 @@ VariableVA *
 newVariable( Registry *registry, char *identifier )
 {
 	VariableVA *variable = calloc( 1, sizeof(VariableVA) );
-	RTYPE( &variable->sub ) = IndexedByName;
 	registryRegister( registry, identifier, variable );
 	return variable;
 }
@@ -34,8 +33,6 @@ newVariable( Registry *registry, char *identifier )
 void
 freeVariableValue( VariableVA *variable )
 {
-	freeVariables( &variable->sub );
-
 	switch ( variable->type ) {
 	case NarrativeVariable:
 		freeRegistry((Registry **) &variable->value );
@@ -99,65 +96,32 @@ variable_registry( _context *context )
 VariableVA *
 fetchVariable( _context *context, char *identifier, int do_create )
 {
-	VariableVA *variable = NULL;
-	Registry *registry;
-	registryEntry *entry;
-	char *path;
-
-	if ( identifier == NULL ) {
-		path = context->identifier.id[ 0 ].ptr;
-		registry = variable_registry( context );
-	}
-	else if ( strncmp( identifier, variator_symbol, strlen(variator_symbol) ) )
+	VariableVA *variable;
+	if (( identifier == variator_symbol ) || ( identifier == this_symbol ))
 	{
-		path = identifier;
-		registry = variable_registry( context );
-	}
-	else	// variator
-	{
-		registry = variable_registry( context );
-		entry = registryLookup( registry, variator_symbol );
-		if ( entry == NULL ) {
-			if ( do_create ) {
-				variable = newVariable( registry, variator_symbol );
-			}
-			else return NULL;
-		}
-		else variable = (VariableVA *) entry->value;
-
-		identifier += strlen( variator_symbol );
-		if ( *identifier++ != '.' )
-			return variable;
-
-		path = identifier;
-		registry = &variable->sub;
-	}
-
-	int event;
-	IdentifierVA buffer = { NULL, NULL };
-	do {
-		while (((event=*path++)) && ( event != '.' ))
-			string_append( &buffer, event );
-
-		string_finish( &buffer, 0 );
-		if ( buffer.ptr == NULL )
-			continue;
-
-		entry = registryLookup( registry, buffer.ptr );
+		Registry *registry = variable_registry( context );
+		registryEntry *entry = registryLookup( registry, identifier );
 		variable = do_create ?
-			( (entry) ? entry->value : newVariable( registry, buffer.ptr ) ):
+			( (entry) ? entry->value : newVariable( registry, identifier ) ):
 			( (entry) ? entry->value : NULL );
-
-		if ((entry)) free( buffer.ptr );
-		else if ( do_create ) buffer.ptr = NULL;
-		else { free( buffer.ptr ); event = 0; }
-
-		if ( event == '.' ) {
-			registry = &variable->sub;
-		}
 	}
-	while ( event );
+	else if ( identifier == NULL )
+	{
+		identifier = take_identifier( context, 0 );
 
+		Registry *registry = variable_registry( context );
+		registryEntry *entry = registryLookup( registry, identifier );
+		variable = do_create ?
+			( (entry) ? entry->value : newVariable( registry, identifier ) ):
+			( (entry) ? entry->value : NULL );
+	}
+	else {
+		Registry *registry = variable_registry( context );
+		registryEntry *entry = registryLookup( registry, identifier );
+		variable = do_create ?
+			( (entry) ? entry->value : newVariable( registry, strdup(identifier) ) ):
+			( (entry) ? entry->value : NULL );
+	}
 	return variable;
 }
 

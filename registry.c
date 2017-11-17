@@ -29,7 +29,7 @@ compare( RegistryType type, registryEntry *entry, void *name )
 /*---------------------------------------------------------------------------
 	newRegistryEntry, freeRegistryEntry	- local
 ---------------------------------------------------------------------------*/
-static registryEntry *
+registryEntry *
 newRegistryEntry( RegistryType type, void *name, void *value )
 {
         registryEntry *r;

@@ -49,7 +49,7 @@ set_filter( Expression *expression, _context *context )
 		context->expression.mode = EvaluateMode;
 		switch ( restore_mode ) {
 		case InstantiateMode:
-			return 0;
+			return 0;	// should not be possible
 		case EvaluateMode:
 			break;
 		default:

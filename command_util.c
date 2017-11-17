@@ -166,7 +166,7 @@ evaluate_expression( char *state, int event, char **next_state, _context *contex
 int
 override_narrative( Entity *e, _context *context )
 {
-	char *name = context->identifier.id[ 1 ].ptr;
+	char *name = get_identifier( context, 1 );
 
 	// does e already have a narrative with the same name?
 	Narrative *n = lookupNarrative( e, name );
@@ -271,7 +271,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		break;
 
 	case ReleaseOperation:
-		; char *name = context->identifier.id[ 1 ].ptr;
+		; char *name = get_identifier( context, 1 );
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
@@ -280,7 +280,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		break;
 
 	case ActivateOperation:
-		name = context->identifier.id[ 1 ].ptr;
+		name = get_identifier( context, 1 );
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
@@ -289,7 +289,7 @@ narrative_op( char *state, int event, char **next_state, _context *context )
 		break;
 
 	case DeactivateOperation:
-		name = context->identifier.id[ 1 ].ptr;
+		name = get_identifier( context, 1 );
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
@@ -353,8 +353,7 @@ input_inline( char *state, int event, char **next_state, _context *context )
 		set_command_mode( ExecutionMode, context );
 		return push_input( "", NULL, InstructionInline, context );
 	case ExecutionMode:
-		; char *identifier = context->identifier.id[ 0 ].ptr;
-		context->identifier.id[ 0 ].ptr = NULL;
+		; char *identifier = take_identifier( context, 0 );
 		return push_input( "", identifier, PipeInput, context );
 	}
 }
@@ -392,7 +391,7 @@ set_output_from_variable( char *state, int event, char **next_state, _context *c
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return 0;
 
-	char *session, *identifier = context->identifier.id[ 0 ].ptr;
+	char *session, *identifier = get_identifier( context, 0 );
 	VariableVA *variable = lookupVariable( context, identifier, 0 );
 	if (( variable == NULL ) || ( variable->value == NULL ))
 		return outputf( Error, ">@ %%variable: variable '%s' not found", identifier );
@@ -425,8 +424,7 @@ set_output_target( char *state, int event, char **next_state, _context *context 
 		return event;
 
 	if ( !strcmp( state, ": identifier" ) ) {
-		char *variable = context->identifier.id[ 0 ].ptr;
-		context->identifier.id[ 0 ].ptr = NULL;
+		char *variable = take_identifier( context, 0 );
 		event = push_output( "^^", variable, StringOutput, context );
 	}
 	else if ( !strcmp( state, ">@session" ) ) {
@@ -613,7 +611,7 @@ handle_iam( char *state, int event, char **next_state, _context *context )
 		return output( Warning, "iam event: wrong address" );
 
 	char *path = context->identifier.path;
-	char *pid = context->identifier.id[ 2 ].ptr;
+	char *pid = get_identifier( context, 2 );
 
 	registryEntry *entry = registryLookup( context->operator.sessions, path );
 	if ( entry == NULL )

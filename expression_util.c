@@ -91,10 +91,11 @@ int
 translateFromLiteral( listItem **list, int as_sub, _context *context )
 {
 	listItem *last_results = NULL;
+	listItem *original = *list;
 	if ( list == &context->expression.results ) {
 		context->expression.results = NULL;
 	}
-	for ( listItem *i = *list; i!=NULL; i=i->next )
+	for ( listItem *i = original; i!=NULL; i=i->next )
 	{
 		Expression *expression = ((ExpressionSub *) i->ptr )->e;
 		int success = expression_solve( expression, as_sub, context );
@@ -104,7 +105,7 @@ translateFromLiteral( listItem **list, int as_sub, _context *context )
 			context->expression.results = NULL;
 		}
 	}
-	freeListItem( list );
+	freeListItem( &original );
 	*list = last_results;
 	return ( last_results != NULL );
 }
@@ -155,7 +156,10 @@ freeResultIdentifier( Expression *expression )
 				break;
 			free( sub[ i ].result.identifier.value );
 			break;
-		case QueryResults:
+		case LiteralResults:
+			freeLiteral( (listItem **) &sub[ i ].result.identifier.value );
+			break;
+		case EntityResults:
 			freeListItem( (listItem **) &sub[ i ].result.identifier.value );
 			break;
 		case DefaultIdentifier:

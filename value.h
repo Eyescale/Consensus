@@ -7,12 +7,12 @@
 
 _action read_va;
 _action set_va;
+_action set_va_from_narrative;
 _action set_va_from_variable;
 
 /*---------------------------------------------------------------------------
 	value utilities	- public
 ---------------------------------------------------------------------------*/
-
 
 
 #endif	// VALUE_H

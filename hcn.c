@@ -148,8 +148,8 @@ hcn_output_LT_char( char *state, int event, char **next_state, _context *context
 static int
 hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
 {
-	free( context->hcn.buffer.ptr );
-	freeListItem( &context->hcn.buffer.list );
+	free( context->hcn.buffer.index.name );
+	freeListItem( (listItem **) &context->hcn.buffer.value );
 	return 0;
 }
 /*---------------------------------------------------------------------------
@@ -207,25 +207,25 @@ hcn_getc( int fd, _context *context )
 
 		// flush buffer
 		// ------------
-		if ( context->hcn.buffer.ptr != NULL )
+		if (( context->hcn.buffer.index.name ))
 		do {
 			if ( context->hcn.position == NULL ) {
-				context->hcn.position = context->hcn.buffer.ptr;
+				context->hcn.position = context->hcn.buffer.index.name;
 #ifdef DEBUG
 				outputf( Debug, "hcn: reading from: \"%s\"", (char *) context->hcn.position );
 #endif
 			}
 			event = (int ) (( char *) context->hcn.position++ )[ 0 ];
 			if ( !event ) {
-				free( context->hcn.buffer.ptr );
-				context->hcn.buffer.ptr = NULL;
+				free( context->hcn.buffer.index.name );
+				context->hcn.buffer.index.name = NULL;
 				context->hcn.position = NULL;
 			}
 			else {
 				return event;
 			}
 		}
-		while ( context->hcn.buffer.ptr != NULL );
+		while (( context->hcn.buffer.index.name ));
 
 		// input new data
 		// --------------

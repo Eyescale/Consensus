@@ -85,7 +85,8 @@ typedef enum {
 	NullIdentifier,
 	VariableIdentifier,
 	QueryIdentifier,
-	QueryResults
+	EntityResults,
+	LiteralResults
 }
 IdentifierType;
 
@@ -256,11 +257,7 @@ Narrative;
 
 // Input & Output
 // --------------------------------------------------
-typedef struct {
-	listItem *list;
-	char *ptr;
-}
-IdentifierVA;
+typedef registryEntry IdentifierVA;
 
 typedef struct {
 	char *identifier;
@@ -429,6 +426,7 @@ typedef struct {
 		listItem *stack;
 		int marked;
 		int do_resolve;
+		int subtype;
 	} expression;
 	struct {
 		int level;
@@ -440,9 +438,7 @@ typedef struct {
 			struct {
 				listItem *results;
 			} expression;
-			struct {
-				char *ptr;
-			} identifier;
+			char *identifier;
 		} backup;
 		Narrative *current;
 		Occurrence *occurrence;	// current

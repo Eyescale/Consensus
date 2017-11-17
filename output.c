@@ -175,15 +175,15 @@ pop_output( _context *context, int eot )
 		reorderListItem( &context->output.slist );
 		char *identifier = output->variable.identifier;
 		if (( context->output.slist )) {
-			listItem *i = context->output.slist;
+			listItem *value = context->output.slist;
 #ifdef EXPAND
-			if ( i->next == NULL ) {
-				i = string_expand( i->ptr, NULL );
-				assign_variable( &identifier, i, StringVariable, context );
+			if ( value->next == NULL ) {
+				value = string_expand( value->ptr, NULL );
+				assign_variable( &identifier, value, StringVariable, context );
 			} else
 #endif
 			{
-				assign_variable( &identifier, i, StringVariable, context );
+				assign_variable( &identifier, value, StringVariable, context );
 				context->output.slist = NULL;
 			}
 		} else {
@@ -320,7 +320,7 @@ output_( int type, int event, _context *context )
 	if ( context->output.html )
 		return output( Error, ".$( html )*****trailing characters" );
 
-	char *va_name = context->identifier.id[ 2 ].ptr;
+	char *va_name = get_identifier( context, 2 );
 	if (( type == ExpressionValueAccount ) && !strcmp( va_name, "html" ))
 		// so that clear_output_target() can close Client connection
 		context->output.html = 1;
@@ -384,10 +384,9 @@ output_( int type, int event, _context *context )
 
 	case VariableValue:
 #ifdef DEBUG
-		outputf( Debug, "output_variable_value: %%%s", context->identifier.id[ 1 ].ptr );
+		outputf( Debug, "output_variable_value: %%%s", context->identifier.id[ 1 ].name );
 #endif
-		path = context->identifier.id[ 1 ].ptr;
-		context->identifier.id[ 1 ].ptr = NULL;
+		path = take_identifier( context, 1 );
 		variable = lookupVariable( context, path, 0 );
 		free( path );
 		if ( variable == NULL ) return retval;
@@ -461,7 +460,7 @@ output_( int type, int event, _context *context )
 		break;
 
 	case NarrativeBody:
-		; char *name = context->identifier.id[ 1 ].ptr;
+		; char *name = get_identifier( context, 1 );
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;

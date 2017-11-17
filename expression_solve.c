@@ -411,7 +411,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		}
 		if ( *sub_results == NULL ) return 0;
 		break;
-	case QueryResults:
+	case EntityResults:
 		if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode == ReadMode ))) {
 			context->expression.mode = EvaluateMode;
 			for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
@@ -423,6 +423,50 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 			filter_results( sub_results, expression, count, i->ptr, ENTITY, results );
 		}
 		if ( *sub_results == NULL ) return 0;
+		break;
+	case LiteralResults:
+		if (( count == 3 ) && (( results == NULL ) || ( context->expression.mode != ReadMode ))) {
+			context->expression.mode = ReadMode;
+			for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+				addItem( sub_results, i->ptr );
+			}
+			break;
+		} else {
+			filter_results( sub_results, expression, count, NULL, 0, results );
+			if (( results != NULL ) && ( *sub_results == NULL )) return 0;
+		}
+		listItem *last_results = NULL;
+		int sub_count = sub[ 1 ].result.none ? 3 : count;
+		if ( context->expression.mode == ReadMode )
+		{
+			for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+				ExpressionSub *s = (ExpressionSub *) i->ptr;
+				success = solve( s->e, sub_count, *sub_results );
+				if ( success > 0 ) {
+					last_results = catListItem( s->e->result.list, last_results );
+					s->e->result.list = NULL;
+				}
+			}
+		}
+		else {
+			restore_filter = context->expression.filter;
+			context->expression.filter = *sub_results;
+			for ( listItem *i = sub[ count ].result.identifier.value; i!=NULL; i=i->next ) {
+				ExpressionSub *s = (ExpressionSub *) i->ptr;
+				success = expression_solve( s->e, sub_count, context );
+				if ( success > 0 ) {
+					last_results = catListItem( context->expression.results, last_results );
+					context->expression.results = NULL;
+				}
+			}
+			context->expression.filter = restore_filter;
+		}
+#ifdef MEMOPT
+		if ( sub_count != 3 )
+#endif
+			freeListItem( sub_results );
+		if ( last_results == NULL ) return 0;
+		*sub_results = last_results;
 		break;
 	case DefaultIdentifier:
 		if ( sub[ count ].result.identifier.value == NULL ) {
@@ -467,7 +511,7 @@ sub_solve( Expression *expression, int count, listItem *results, _context *conte
 		if (( results != NULL ) && ( *sub_results == NULL )) return 0;
 
 		Expression *sub_e = sub[ count ].e;
-		int sub_count = sub[ 1 ].result.none ? 3 : count;
+		sub_count = sub[ 1 ].result.none ? 3 : count;
 		success = solve( sub_e, sub_count, *sub_results );
 #ifdef MEMOPT
 		if ( sub_count != 3 )
@@ -1106,7 +1150,7 @@ expression_solve( Expression *expression, int as_sub, _context *context )
 	// invoke resolve() to extract marked results
 	// ------------------------------------------
 
-	// Notat that resolve must be called even in TestMode due to embedded expressions
+	// Note that resolve must be called even in TestMode due to embedded expressions
 
 	int filter_on = ( context->expression.mode == ReadMode );
 #ifdef DEBUG

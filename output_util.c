@@ -22,9 +22,9 @@
 // #define DEBUG
 
 #if 0		// in case of StringVariable
-#define NOQ	1
+#define INQ	0
 #else
-#define NOQ	0
+#define INQ	1
 #endif
 
 /*---------------------------------------------------------------------------
@@ -35,16 +35,16 @@ extern struct {
 } separator_table[];	// in input_util.c
 
 void
-output_identifier( char *identifier, int noq )
+output_identifier( char *identifier, int inq )
 {
 	_context *context = CN.context;
-	IdentifierVA buffer = { NULL, NULL };
-	int as_string = 0;
+	IdentifierVA *buffer = newIdentifier();
+	int noq = 0;
 
 	if (( context->output.stack )) {
 		OutputVA *output = context->output.stack->ptr;
 		if ( output->mode == StringOutput )
-			as_string = 1;
+			{ noq = 1; inq = 0; }
 	}
 	int has_special = 0;
 	for ( char *src = identifier; *src; src++ )
@@ -52,13 +52,13 @@ output_identifier( char *identifier, int noq )
 		switch ( *src ) {
 		case '"':
 			has_special = 1;
-			string_append( &buffer, '\\' );
-			string_append( &buffer, *src );
+			string_append( buffer, '\\' );
+			string_append( buffer, *src );
 			break;
 		case '\n':
 			has_special = 1;
-			string_append( &buffer, '\\' );
-			string_append( &buffer, 'n' );
+			string_append( buffer, '\\' );
+			string_append( buffer, 'n' );
 			break;
 		case '\\':
 			has_special = 1;
@@ -68,33 +68,33 @@ output_identifier( char *identifier, int noq )
 			case '"':
 			case 'n':
 				src++;
-				string_append( &buffer, '\\' );
-				string_append( &buffer, *src );
+				string_append( buffer, '\\' );
+				string_append( buffer, *src );
 				break;
 			case 't':
 				src++;
-				string_append( &buffer, '\t' );
+				string_append( buffer, '\t' );
 				break;
 			default:
-				string_append( &buffer, '\\' );
+				string_append( buffer, '\\' );
 				break;
 			}
 			break;
 		default:
 			if ( is_separator( *src ) ) {
 				has_special = 1;
-				if ( as_string ) string_append( &buffer, '\\' );
+				if ( noq ) string_append( buffer, '\\' );
 			}
-			string_append( &buffer, *src );
+			string_append( buffer, *src );
 		}
 	}
-	string_finish( &buffer, 0 );
-	if ( has_special && !( noq || as_string )) {
-		outputf( Text, "\"%s\"", buffer.ptr );
+	string_finish( buffer, 0 );
+	if ( has_special && inq ) {
+		outputf( Text, "\"%s\"", buffer->index.name );
 	} else {
-		output( Text, buffer.ptr );
+		output( Text, buffer->index.name );
 	}
-	free( buffer.ptr );
+	freeIdentifier( buffer );
 }
 
 /*---------------------------------------------------------------------------
@@ -146,13 +146,13 @@ output_expression( ExpressionOutput component, Expression *expression, ... )
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
 			output( Text, "%" );
-			output_identifier( sub[ i ].result.identifier.value, 0 );
+			output_identifier( sub[ i ].result.identifier.value, 1 );
 		}
 		return 1;
 	case SubIdentifier:
 		if ( sub[ i ].result.identifier.value != NULL ) {
 			output_expression( SubFlags, expression, i, shorty );
-			output_identifier( sub[ i ].result.identifier.value, 0 );
+			output_identifier( sub[ i ].result.identifier.value, 1 );
 		}
 		return 1;
 	case SubNull:
@@ -185,6 +185,12 @@ output_expression( ExpressionOutput component, Expression *expression, ... )
 			break;
 		case DefaultIdentifier:
 			output_expression( SubIdentifier, expression, i, shorty );
+			break;
+		case EntityResults:
+			output( Text, "EntityResults" );	// DO_LATER
+			break;
+		case LiteralResults:
+			output( Text, "LiteralResults" );	// DO_LATER
 			break;
 		default:
 			break;
@@ -340,7 +346,7 @@ output_entity_name( Entity *e, Expression *format, int base )
 	}
 	char *name = cn_name( e );
 	if ( name != NULL ) {
-		output_identifier( name, 0 );
+		output_identifier( name, 1 );
 		return;
 	}
 	if ( !base ) output( Text, "[ " );
@@ -379,14 +385,14 @@ output_narrative_name( Entity *e, char *name )
 {
 	if ( e == CN.nil )
 	{
-		output_identifier( name, 0 );
+		output_identifier( name, 1 );
 		output( Text, "()" );
 	}
 	else {
 		output( Text, "%[ " );
 		output_entity_name( e, NULL, 1 );
 		output( Text, " ]." );
-		output_identifier( name, 0 );
+		output_identifier( name, 1 );
 		output( Text, "()" );
 	}
 }
@@ -460,13 +466,13 @@ output_string_variable( listItem *i )
 {
 	if ( i == NULL ) return;
 	if ( i->next == NULL ) {
-		output_identifier((char *) i->ptr, NOQ );
+		output_identifier((char *) i->ptr, INQ );
 	} else {
 		output( Text, "{ " );
-		output_identifier((char *) i->ptr, NOQ );
+		output_identifier((char *) i->ptr, INQ );
 		for ( i=i->next; i!=NULL; i=i->next ) {
 			output( Text, ", " );
-			output_identifier((char *) i->ptr, NOQ );
+			output_identifier((char *) i->ptr, INQ );
 		} 
 		output( Text, " }" );
 	}
@@ -510,21 +516,21 @@ output_va_value( void *value, int narrative_account )
 	if ( narrative_account ) {
 		registryEntry *i = ((Registry *) value )->value;
 		if ( i->next == NULL ) {
-			output_identifier( (char *) i->index.name, 0 );
+			output_identifier( (char *) i->index.name, 1 );
 			output( Text, "()" );
 		} else {
 			output( Text, "{ " );
-			output_identifier( (char *) i->index.name, 0 );
+			output_identifier( (char *) i->index.name, 1 );
 			output( Text, "()" );
 			for ( i = i->next; i!=NULL; i=i->next ) {
 				output( Text, ", " );
-				output_identifier( (char *) i->index.name, 0 );
+				output_identifier( (char *) i->index.name, 1 );
 				output( Text, "()" );
 			}
 			output( Text, " }" );
 		}
 	} else {
-		output_identifier( (char *) value, 0 );
+		output_identifier( (char *) value, 1 );
 	}
 }
 
@@ -592,7 +598,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 			ConditionVA *condition = (ConditionVA *) i->ptr;
 			if ( condition->identifier != NULL ) {
-				output_identifier( condition->identifier, 0 );
+				output_identifier( condition->identifier, 1 );
 			}
 			output( Text, ": " );
 			output_expression( ExpressionAll, condition->format );
@@ -614,7 +620,7 @@ narrative_output_occurrence( Occurrence *occurrence, int level )
 
 			// output event identifier
 			if ( event->identifier != NULL ) {
-				output_identifier( event->identifier, 0 );
+				output_identifier( event->identifier, 1 );
 			}
 			if ( event->type != InitEvent ) output( Text, ": " );
 

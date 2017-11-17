@@ -416,18 +416,19 @@ io_flush( int socket_fd, int *remainder, int eot, _context *context )
 		freeListItem( results );
 
 		// read new results, including result terminating packet
-		IdentifierVA dst = { NULL, NULL };
+		IdentifierVA *dst = newIdentifier();
 		int remainder = 0;
 		char *buffer = context->io.input.buffer.ptr;
 		while ( io_read( socket_fd, buffer, &remainder ) )
 			for ( char *ptr = buffer; *ptr; ptr++ )
-				slist_append( results, &dst, *ptr, 1, 0 );
-		slist_close( results, &dst, 0 );
+				slist_append( results, dst, *ptr, 1, 0 );
+		slist_close( results, dst, 0 );
 #ifdef DEBUG
 		if (( *results ))
 			for ( listItem *i = *results; i!=NULL; i=i->next )
 				outputf( Debug, "io_flush: received: %s", (char *) i->ptr );
 #endif
+		freeIdentifier( dst );
 	}
 	io_close( IO_QUERY, socket_fd, "" );
 

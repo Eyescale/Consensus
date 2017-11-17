@@ -59,20 +59,31 @@ assign_variable( char **identifier, void *value, int type, _context *context )
 	outputf( Debug, "assigning value to variable '%s'", identifier );
 #endif
 	VariableVA *variable = fetchVariable( context, *identifier, 1 );
-	if ( !variable->type ) {
-		variable->type = type;
-	} else {
-		freeVariableValue( variable );
-		if ( type ) variable->type = type;
-		if ( *identifier != variator_symbol )
-			free( *identifier );
+	if (( *identifier == variator_symbol ) || ( *identifier == this_symbol ))
+	{
+		if ( variable->type ) {
+			freeVariableValue( variable );
+			if ( type ) variable->type = type;
+		}
+		else variable->type = type;
 	}
-	if ( *identifier != variator_symbol )
+	else {
+		if ( variable->type ) {
+			freeVariableValue( variable );
+			if ( type ) variable->type = type;
+			free( *identifier );
+		}
+		else variable->type = type;
+
 		*identifier = NULL;
-	if ( type == StringVariable )
+	}
+	switch ( type ) {
+	case StringVariable:
 		variable->value = value;
-	else
+		break;
+	default:
 		addItem( (listItem **) &variable->value, value );
+	}
 }
 
 /*---------------------------------------------------------------------------
@@ -128,7 +139,7 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 		break;
 
 	case Reset:
-		identifier = context->identifier.id[ 0 ].ptr;
+		identifier = get_identifier( context, 0 );
 		if ( !strcmp( identifier, this_symbol ) )
 			break;
 
@@ -185,7 +196,7 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 			translateFromLiteral( &context->expression.results, 3, context );
 		if ( context->expression.results == NULL )
 			return assign_( Reset, state, event, next_state, context );
-		if ( strcmp( context->identifier.id[ 2 ].ptr, "literal" ) )
+		if ( strcmp( get_identifier( context, 2 ), "literal" ) )
 			return output( Error, "currently only 'literal' values can be assigned to variables" );
 
 		variable = fetchVariable( context, NULL, 1 );
@@ -206,7 +217,7 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 			output( Warning, "variable type mismatch: assigning variable" );
 		if ( context->expression.mode == ReadMode )
 			translateFromLiteral( &context->expression.results, 3, context );
-		if ( context->identifier.id[ 1 ].ptr == NULL )
+		if ( !test_identifier( context, 1 ) )
 			return assign_( Reset, state, event, next_state, context );
 		if ( context->expression.results == NULL )
 			return assign_( Reset, state, event, next_state, context );
@@ -216,7 +227,7 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 
 		variable->type = NarrativeVariable;
 		variable->value = newRegistry( IndexedByAddress );
-		identifier = context->identifier.id[ 1 ].ptr;
+		identifier = get_identifier( context, 1 );
 		for ( listItem *i = context->expression.results; i!=NULL; i=i->next )
 		{
 			Entity *e = (Entity *) i->ptr;
@@ -239,7 +250,7 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 		// detect variable's self-references
 		// ---------------------------------
 		int count, type;
-		identifier = context->identifier.id[ 0 ].ptr;
+		identifier = get_identifier( context, 0 );
 		count = count_occurrences( expression, identifier, 0 );
 		if ( count > 0 ) {
 			variable = lookupVariable( context, identifier, 0 );
@@ -303,53 +314,4 @@ assign_narrative( char *state, int event, char **next_state, _context *context )
 int
 assign_expression( char *state, int event, char **next_state, _context *context )
 	{ return assign_( SetExpression, state, event, next_state, context ); }
-
-/*---------------------------------------------------------------------------
-	read_variable_id, read_variable_ref
----------------------------------------------------------------------------*/
-int
-read_variable_id( char *state, int event, char **next_state, _context *context )
-{
-	int ndx = context->identifier.current;
-	char *np = NULL, *path = NULL;
-	state = base;
-	do {
-		bgn_
-		in_( base ) bgn_
-			on_any	do_( read_0, "step" )
-			end
-		in_( "step" ) bgn_
-			on_( -1 )	do_( nothing, "" )
-			on_other
-				if ((path)) {
-					asprintf( &np, "%s.%s", path, context->identifier.id[ ndx ].ptr );
-					free( path ); path = np; np = NULL;
-				}
-				else {
-					path = context->identifier.id[ ndx ].ptr;
-					context->identifier.id[ ndx ].ptr = NULL;
-				}
-				bgn_
-				on_( '.' )	do_( nop, base )
-				on_other	do_( nothing, "" )
-				end
-			end
-		end
-	}
-	while ( strcmp( state, "" ) );
-
-	free( context->identifier.id[ ndx ].ptr );
-	context->identifier.id[ ndx ].ptr = path;
-
-	return event;
-}
-
-int
-read_variable_ref( char *state, int event, char **next_state, _context *context )
-{
-	context->identifier.current = 1;
-	event = read_variable_id( state, event, next_state, context );
-	context->identifier.current = 0;
-	return event;
-}
 

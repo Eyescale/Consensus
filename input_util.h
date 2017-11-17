@@ -1,6 +1,8 @@
 #ifndef INPUT_UTIL_H
 #define INPUT_UTIL_H
 
+#include "string_util.h"
+
 /*---------------------------------------------------------------------------
 	input_util actions		- public
 ---------------------------------------------------------------------------*/
@@ -13,6 +15,12 @@ _action	read_token;
 /*---------------------------------------------------------------------------
 	input_util utilities		- public
 ---------------------------------------------------------------------------*/
+
+int	test_identifier( _context *context, int i );
+void	set_identifier( _context *context, int i, char *value );
+char *	get_identifier( _context *context, int i );
+char *	take_identifier( _context *context, int i );
+void	free_identifier( _context *context, int i );
 
 int	num_separators( void );
 int	is_separator( int event );

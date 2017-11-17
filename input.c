@@ -81,8 +81,8 @@ flush_input( char *state, int event, char **next_state, _context *context )
 	case FreezeMode:
 		break;
 	case InstructionMode:
-		free( context->record.string.ptr );
-		context->record.string.ptr = NULL;
+		free( context->record.string.index.name );
+		context->record.string.index.name = NULL;
 		freeLastInstruction( context );
 		break;
 	case ExecutionMode:
@@ -124,7 +124,7 @@ set_instruction( listItem *instruction, _context *context )
 static char *
 full_path( char *name )
 {
-	if (( name[ 0 ] == '/' ) ? ( name[ 1 ] != '/' ) : 1 )
+	if (( name[ 0 ] != '/' ) || ( name[ 1 ] != '/' ))
 		return name;
 
 	struct stat buf;
@@ -253,7 +253,7 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	context->input.buffer.position = NULL;
 	context->input.buffer.current = &input->buffer;
 
-	// make stream current
+	// make stream current (register)
 	addItem( &context->input.stack, input );
 	context->input.level++;
 
@@ -357,7 +357,7 @@ set_record_mode( RecordMode mode, int event, _context *context )
 		if ( context->record.mode == OnRecordMode )
 		{
 			// remove the last event '\n' from the record
-			popListItem( &context->record.string.list );
+			popListItem( (listItem **) &context->record.string.value );
 			string_finish( &context->record.string, 1 );
 		}
 		else if ( context->record.mode == RecordInstructionMode )
@@ -384,12 +384,12 @@ set_record_mode( RecordMode mode, int event, _context *context )
 	recordC
 ---------------------------------------------------------------------------*/
 static void
-recordC( int event, int as_string, _context *context )
+recordC( int event, int nocr, _context *context )
 {
 	// record instruction or expression if needed
 	switch( context->record.mode ) {
 	case RecordInstructionMode:
-		slist_append( &context->record.instructions, &context->record.string, event, as_string, 1 );
+		slist_append( &context->record.instructions, &context->record.string, event, nocr, 1 );
 		break;
 	case OnRecordMode:
 		string_append( &context->record.string, event );
@@ -426,7 +426,7 @@ bufferize( int event, int *mode, _context *context )
 	}
 	else if ( event == EOF ) {
 		string_finish( context->input.buffer.current, 1 );
-		context->input.buffer.position = context->input.buffer.current->ptr;
+		context->input.buffer.position = context->input.buffer.current->index.name;
 		if ((context->input.buffer.position)) {
 			context->input.eof = 1;
 			return 0;
@@ -454,7 +454,7 @@ bufferize( int event, int *mode, _context *context )
 		else {
 			string_append( context->input.buffer.current, '\n' );
 			string_finish( context->input.buffer.current, 1 );
-			context->input.buffer.position = context->input.buffer.current->ptr;
+			context->input.buffer.position = context->input.buffer.current->index.name;
 			return 0;
 		}
 	}

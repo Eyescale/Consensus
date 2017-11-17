@@ -202,8 +202,7 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 {
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
-	free( context->identifier.id[ 0 ].ptr );
-	context->identifier.id[ 0 ].ptr = NULL;
+	free_identifier( context, 0 );
 
 	state = base;
 	do {
@@ -252,9 +251,8 @@ set_condition_value( Occurrence *occurrence, _context *context )
 	occurrence->va_num++;
 	condition->format = context->expression.ptr;
 	context->expression.ptr = NULL;
-	if ( context->identifier.id[ 0 ].ptr != NULL ) {
-		condition->identifier = context->identifier.id[ 0 ].ptr;
-		context->identifier.id[ 0 ].ptr = NULL;
+	if ( test_identifier( context, 0 ) ) {
+		condition->identifier = take_identifier( context, 0 );
 	}
 	return condition;
 }
@@ -362,7 +360,7 @@ check_narrative_on_( char *state, int event, char **next_state, _context *contex
 static int
 check_init_event( char *state, int event, char **next_state, _context *context )
 {
-	if ( !strcmp( context->identifier.id[ 0 ].ptr, "init" ) ) {
+	if ( !strcmp( get_identifier( context, 0 ), "init" ) ) {
 		if ( context->command.level > context->narrative.level ) {
 			return output( Error, "narrative on-init sequence must start from base" );
 		}
@@ -370,18 +368,17 @@ check_init_event( char *state, int event, char **next_state, _context *context )
 		stack->narrative.event.type = InitEvent;
 		return event;
 	}
-	return outputf( Error, "on %s%c*****trailing characters", context->identifier.id[ 0 ].ptr, event );
+	return outputf( Error, "on %s%c*****trailing characters", get_identifier( context, 0 ), event );
 }
 
 static int
 set_event_identifier( char *state, int event, char **next_state, _context *context )
 {
-	if ( !strcmp( context->identifier.id[ 0 ].ptr, "init" ) ) {
+	if ( !strcmp( get_identifier( context, 0 ), "init" ) ) {
 		return output( Error, "on init*****trailing characters" );
 	}
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	stack->narrative.event.identifier = context->identifier.id[ 0 ].ptr;
-	context->identifier.id[ 0 ].ptr = NULL;
+	stack->narrative.event.identifier = take_identifier( context, 0 );
 	return 0;
 }
 
@@ -389,7 +386,7 @@ static int
 set_event_scheme( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	char *scheme = context->identifier.id[ 0 ].ptr;
+	char *scheme = get_identifier( context, 0 );
 	if ( !strcmp( scheme, "cgi" ) )
 	{
 		if ( context->identifier.path != NULL ) {
@@ -562,8 +559,7 @@ set_event_value( Occurrence *occurrence, EventVA *data, _context *context )
 	if ( data->type == StreamEvent )
 	{
 		// in this case the event expression is a filepath
-		event->format = context->identifier.id[ 1 ].ptr;
-		context->identifier.id[ 1 ].ptr = NULL;
+		event->format = take_identifier( context, 1 );
 	}
 	else
 	{
@@ -748,11 +744,11 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 #ifdef DEBUG
 	output( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.ptr, event );
 #endif
-	if ( event < 0 ) return event;
+	if ( event < 0 ) return error( state, event, next_state, context );
 
 	// Note: context->record.instructions is assumed to be NULL here...
-	addItem( &context->record.instructions, context->record.string.ptr );
-	context->record.string.ptr = NULL;
+	addItem( &context->record.instructions, context->record.string.index.name );
+	context->record.string.index.name = NULL;
 
 	return event;
 }
@@ -813,7 +809,7 @@ narrative_action_open( char *state, int event, char **next_state, _context *cont
 	set_record_mode( OffRecordMode, event, context );
 	set_command_mode( backup.mode, context );
 
-	if ( event < 0 ) return event;
+	if ( event < 0 ) return error( state, event, next_state, context );
 
 	if ( context->command.level < backup.level ) {
 		// returned from '/. - did pop already
@@ -900,14 +896,12 @@ narrative_init( char *state, int event, char **next_state, _context *context )
 {
 	context->narrative.mode.editing = 1;
 
-	context->narrative.backup.identifier.ptr = context->identifier.id[ 0 ].ptr;
-	context->identifier.id[ 0 ].ptr = NULL;
+	context->narrative.backup.identifier = take_identifier( context, 0 );
 	context->narrative.backup.expression.results = context->expression.results;
 	context->expression.results = NULL;
 
 	Narrative *narrative = newNarrative();
-	narrative->name = context->identifier.id[ 1 ].ptr;
-	context->identifier.id[ 1 ].ptr = NULL;
+	narrative->name = take_identifier( context, 1 );
 	context->narrative.current = narrative;
 
 	event = push( state, event, next_state, context );
@@ -929,13 +923,11 @@ narrative_exit( char *state, int event, char **next_state, _context *context )
 	context->expression.results = context->narrative.backup.expression.results;
 	context->narrative.backup.expression.results = NULL;
 
-	free( context->identifier.id[ 0 ].ptr );
-	context->identifier.id[ 0 ].ptr = context->narrative.backup.identifier.ptr;
-	context->narrative.backup.identifier.ptr = NULL;
+	free_identifier( context, 0 );
+	set_identifier( context, 0, context->narrative.backup.identifier );
+	context->narrative.backup.identifier = NULL;
 
-	free( context->identifier.id[ 1 ].ptr );
-	context->identifier.id[ 1 ].ptr = NULL;
-
+	free_identifier( context, 1 );
 	if ( narrative != NULL )
 	{
 		reorderNarrative( &narrative->root );
@@ -946,7 +938,7 @@ narrative_exit( char *state, int event, char **next_state, _context *context )
 			context->narrative.current = NULL;
 		}
 		else {
-			context->identifier.id[ 1 ].ptr = strdup( narrative->name );
+			set_identifier( context, 1, strdup( narrative->name ) );
 		}
 	}
 	context->narrative.level = 0;
@@ -962,8 +954,8 @@ narrative_err( char *state, int event, char **next_state, _context *context )
 {
 	if (( context->input.stack ))	// abort script
 	{
-		free( context->record.string.ptr );
-		context->record.string.ptr = NULL;
+		free( context->record.string.index.name );
+		context->record.string.index.name = NULL;
 		freeInstructionBlock( context );
 
 		while ( context->command.level >= context->narrative.level )

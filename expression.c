@@ -274,10 +274,9 @@ set_sub_identifier( int count, int event, _context *context )
 	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = DefaultIdentifier;
-	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
+	expression->sub[ count ].result.identifier.value = take_identifier( context, 1 );
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
-	context->identifier.id[ 1 ].ptr = NULL;
 	set_flags( stack, expression, count );
 	return 0;
 }
@@ -291,10 +290,9 @@ set_sub_variable( int count, int event, _context *context )
 	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
-	expression->sub[ count ].result.identifier.value = context->identifier.id[ 1 ].ptr;
+	expression->sub[ count ].result.identifier.value = take_identifier( context, 1 );
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
-	context->identifier.id[ 1 ].ptr = NULL;
 	set_flags( stack, expression, count );
 	return 0;
 }
@@ -368,11 +366,12 @@ set_sub_results( int count, int event, _context *context )
 		}
 	}
 	else {
-		expression->sub[ count ].result.identifier.type = QueryResults;
+		expression->sub[ count ].result.identifier.type = context->expression.subtype;
 		expression->sub[ count ].result.identifier.value = context->expression.results;
 		expression->sub[ count ].result.any = 0;
 		expression->sub[ count ].result.none = 0;
 		context->expression.results = NULL;
+		context->expression.mode = ReadMode;
 		set_flags( stack, expression, count );
 	}
 	freeExpression( context->expression.ptr );
@@ -597,10 +596,10 @@ read_query( char *state, int event, char **next_state, _context *context )
 		else {
 			context->expression.mode = EvaluateMode;
 			int retval = expression_solve( e, 3, context );
-#ifdef DO_LATER
-			expression_solve = 0 means no results. What do I do then?
-#endif
 			event = ( retval > 0 ) ? 0 : retval;
+			int type = ( context->expression.mode == ReadMode ) ?
+				LiteralResults : EntityResults;
+			context->expression.subtype = type;
 		}
 	}
 
@@ -874,11 +873,13 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "%[_]." ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
-#ifdef MARK
-			on_( '$' )	do( nothing, "" )
-#endif
-			on_other	do_( error, "" )
+			on_( '$' )	do_( nothing, "%[_].$" )
+			on_other	do_( read_1, "%[_].narrative" )
 			end
+			in_( "%[_].narrative" ) bgn_
+				on_( '(' )	do_( nothing, "%[_].narrative(" )
+				on_other	do_( error, "" )
+				end
 	in_( "%!" ) bgn_
 		on_( '.' )	do_( nop, "%!." )
 		end
@@ -933,7 +934,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '?' )	do_( nop, ".%?" )
 			on_( '!' )	do_( nop, ".%!" )
 			on_( '[' )	do_( read_query, ".%[_]" )
-			on_other	do_( read_variable_ref, ".%identifier" )
+			on_other	do_( read_1, ".%identifier" )
 			end
 			in_( ".%?" ) bgn_
 				on_( '.' )	do_( set_shorty, "" )
@@ -999,7 +1000,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				on_( '?' )	do_( nop, "..%?" )
 				on_( '!' )	do_( nop, "..%!" )
 				on_( '[' )	do_( read_query, "..%[_]" )
-				on_other	do_( read_variable_ref, "..%identifier" )
+				on_other	do_( read_1, "..%identifier" )
 				end
 				in_( "..%?" ) bgn_
 					on_any	do_( set_shorty, "" )
@@ -1015,17 +1016,34 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 					end
 	end
 
-	// return control to read_expression after push or when mark set
+	// return control to read_expression after push or when mark set or other conditions
 	bgn_
 		in_( base )			{ *next_state = state; state = ""; }
 		in_( "source-" )		{ *next_state = state; state = ""; }
 		in_( "target<" )		{ *next_state = state; state = ""; }
 		in_( "source-medium->target" )	{ *next_state = state; state = ""; }
+		in_( "%[_].$" )			{ *next_state = state; state = ""; }
+		in_( "%[_].narrative(" )	{ *next_state = state; state = ""; }
 	end
 	}
 	while ( strcmp( state, "" ) );
 
 	return event;
+}
+
+/*---------------------------------------------------------------------------
+	set_results_to_nil
+---------------------------------------------------------------------------*/
+static int
+set_results_to_nil( char *state, int event, char **next_state, _context *context )
+{
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return 0;
+
+	freeListItem( &context->expression.results );
+	context->expression.results = newItem( CN.nil );
+	context->expression.mode = EvaluateMode;
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -1084,12 +1102,10 @@ expression_exit( char *state, int event, char **next_state, _context *context )
 	if ( context->expression.mode == ErrorMode )
 	{
 		freeExpression( expression );
-		context->expression.ptr = NULL;
 	}
 	else if ( expression != NULL ) {
 		if ( expression->sub[ 0 ].result.none ) {
 			free( expression );
-			context->expression.ptr = NULL;
 		} else {
 			context->expression.ptr = expression;
 			expression->result.marked = context->expression.marked;
@@ -1141,6 +1157,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	// return control to read_shorty after pop
 	in_( ".[_]" )	do_( read_shorty, "source-medium->target" )
 	in_( "..[_]" )	do_( read_shorty, "source-medium->target" )
+
+	// process special state returned from read_shorty
+	in_( "%[_].$" )			do_( nothing, pop_state )
+	in_( "%[_].narrative(" )	do_( nothing, pop_state )
 
 	in_( base ) bgn_
 		on_( '(' )	do_( error, "" )
@@ -1239,7 +1259,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			end
 
 		in_( "identifier" ) bgn_
-			on_( '(' )	do_( nothing, pop_state )
+			on_( '(' )	do_( set_results_to_nil, pop_state )
 			on_( '-' )	do_( set_source_identifier, "source-" )
 			on_( '<' )	do_( set_target_identifier, "target<" )
 			on_( ':' )	do_( set_source_identifier, "source-medium->target:" )
@@ -1254,8 +1274,17 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "%!" )
 			on_( '?' )	do_( nop, "%?" )
 			on_( '[' )	do_( read_query, "%[_]" )
-			on_other	do_( read_variable_ref, "%identifier" )
+			on_( '.' )	do_( set_results_to_nil, "%." )
+			on_other	do_( read_1, "%identifier" )
 			end
+			in_( "%." ) bgn_
+				on_( '$' )	do_( nothing, pop_state )
+				on_other	do_( read_1, "%.narrative" )
+				end
+				in_( "%.narrative" ) bgn_
+					on_( '(' )	do_( nothing, pop_state )
+					on_other	do_( error, "" )
+					end
 			in_( "%!" ) bgn_
 				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_this, "source-" )
@@ -1353,7 +1382,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "source-%!" )
 			on_( '?' )	do_( nop, "source-%?" )
 			on_( '[' )	do_( read_query, "source-%[_]" )
-			on_other	do_( read_variable_ref, "source-%identifier" )
+			on_other	do_( read_1, "source-%identifier" )
 			end
 			in_( "source-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "source-medium-" )
@@ -1439,7 +1468,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '!' )	do_( nop, "source-medium->%!" )
 				on_( '?' )	do_( nop, "source-medium->%?" )
 				on_( '[' )	do_( read_query, "source-medium->%[_]" )
-				on_other	do_( read_variable_ref, "source-medium->%identifier" )
+				on_other	do_( read_1, "source-medium->%identifier" )
 				end
 				in_( "source-medium->%!" ) bgn_
 					on_( '(' )	do_( error, "" )
@@ -1532,7 +1561,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "target<-%!" )
 			on_( '?' )	do_( nop, "target<-%?" )
 			on_( '[' )	do_( read_query, "target<-%[_]" )
-			on_other	do_( read_variable_ref, "target<-%identifier" )
+			on_other	do_( read_1, "target<-%identifier" )
 			end
 			in_( "target<-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "target<-medium-" )
@@ -1613,7 +1642,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "target<-medium-%!" )
 			on_( '?' )	do_( nop, "target<-medium-%?" )
 			on_( '[' )	do_( read_query, "target<-medium-%[_]" )
-			on_other	do_( read_variable_ref, "target<-medium-%identifier" )
+			on_other	do_( read_1, "target<-medium-%identifier" )
 			end
 			in_( "target<-medium-%!" ) bgn_
 				on_( '(' )	do_( error, "" )
@@ -1704,7 +1733,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "source-medium->target: %!" )
 			on_( '?' )	do_( nop, "source-medium->target: %?" )
 			on_( '[' )	do_( read_query, "source-medium->target: %[_]" )
-			on_other	do_( read_variable_ref, "source-medium->target: %identifier" )
+			on_other	do_( read_1, "source-medium->target: %identifier" )
 			end
 			in_( "source-medium->target: %!" ) bgn_
 				on_( '(' )	do_( error, "" )
@@ -1758,7 +1787,6 @@ read_expression( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	outputf( Debug, "exiting read_expression '%c'", event );
 #endif
-
 	return event;
 }
 
