@@ -34,4 +34,5 @@ extra_application(Consensus SOURCES
 	value.c
 	variable.c
 	variable_util.c
+	xl.c
 )
