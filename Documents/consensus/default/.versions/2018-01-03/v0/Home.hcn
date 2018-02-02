@@ -1,0 +1,78 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<< : datalist_style: "font-size:90%; padding:3px; margin-right: 3px; width:50%; margin-top:5px;" >>
+</head>
+<body>
+<div class="stamp">
+Consensus > Session > %session
+</div>
+<div class = "page">
+
+<h1>
+Home
+</h1>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Home" >
+<input type="hidden" name="session" value="%session" >
+<input type="submit" class="leave" style="float:right" name="action" value="Leave">
+</form>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Home" >
+<input type="hidden" name="session" value="%session" >
+<dl>
+<dt>
+Name
+</dt>
+<dd>
+<b>%session</b> &mdash; <em>no text</em>
+</dd>
+
+<dt>
+Participants
+</dt>
+<dd>
+<em>no other</em>
+</dd>
+
+<dt>
+Description
+</dt>
+<dd>
+<em>no description</em>
+</dd>
+
+<dt>
+Entities
+</dt>
+<dd>
+<< ?!: ~[ ... ] >>
+	Here are all the base entities in the CNDB right now:
+	<ul>
+	<< ?: ~[ ... ] >>
+		<li><a href=consensus?action=View&session=%session&entity=%?>%?</a>
+	<< / >>
+	</ul>
+<< / >>
+<input type="text" style="%datalist_style" name="entity" placeholder="Type in or select an entity name" list="entities" autocomplete="off">
+<datalist id="entities">
+<< ?:~[ ... ] >>
+	<option value="%?">
+<< / >>
+</datalist>
+<input type="submit" class="button" style="font-size:80%" name="entityAction" value="Add">
+<input type="submit" class="button" style="font-size:80%" name="entityAction" value="Remove">
+</dd>
+</dl>
+
+<input type="submit" class="button" style="float:right" name="action" value="Edit">
+</form>
+</div class="page">
+<div class="footer">
+<hr>
+<div class="date">
+September 19, 2017
+</div>
+</div>
+</body>
+</html>

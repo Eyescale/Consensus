@@ -1,0 +1,36 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<< : welcome_img: "http://localhost/images/dancers.jpg" >>
+<< : h1_style: "position:relative; top:30px" >>
+<< : img_style: "position:relative; top:90px" >>
+<< : form_style: "position:relative; top:140px" >>
+<< : input_style: "width:80%; font-size:100%; padding:5px" >>
+</head>
+
+<body>
+<div class="stamp">
+Consensus
+</div>
+<div class="page" style="text-align:center">
+
+<h1 style="%h1_style">
+Welcome
+</h1>
+<img style="%img_style" src="%welcome_img">
+<p>
+<form style="%form_style" method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Welcome">
+<input type="text" style="%input_style" name="session" placeholder="Pick a session or create a new one" list="sessions" autocomplete="off">
+<datalist id="sessions">
+<< >@ operator:< \%[ ?-is->session ] | > sessions: >>
+<< ?: %sessions >>
+	<option value="%?">
+<< / >>
+</datalist>
+<input type="submit" class="button" name="action" value="Join">
+</form>
+
+</div class="page">
+</body>
+</html>

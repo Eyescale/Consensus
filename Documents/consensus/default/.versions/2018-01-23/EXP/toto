@@ -1,0 +1,179 @@
+-------------------------------------------
+21c21
+< > <a href="consensus?session=%session&view=Session">%session</a>
+---
+> > <a href="consensus?session=%session&view=Session">$.[ %session ]</a>
+23c23
+< 	> <a href="consensus?session=%session&action=View&entity=%entity">%entity</a>
+---
+> 	> <a href="consensus?session=%session&entity=%entity&action=View&ext=%ext">$.[ %entity ]</a>
+39d38
+< <input type="hidden" name="session" value="%session">
+40a40
+> <input type="hidden" name="session" value="%session">
+45c45
+< <textarea onkeydown="%ontab" name="contents">
+---
+> <textarea onkeydown="$.[ %ontab ]" name="contents">
+47c47
+< %contents
+---
+> $.[ %contents ]
+70c70
+< <input type="text" style="font-size:85%; padding:3px; width:40vw;" name="filename" placeholder="%path" %focus>
+---
+> <input type="text" style="font-size:85%; padding:3px; width:40vw;" name="filename" placeholder="$.[ %path ]" %focus>
+-------------------------------------------
+9,10c9,10
+< 	> <a href="consensus?session=%session&view=Session">%session</a>
+< 	> %entity
+---
+> 	> <a href="consensus?session=%session&view=Session">$.[ %session ]</a>
+> 	> $.[ %entity ]
+31c31
+< 	%entity
+---
+> 	$.[ %entity ]
+44c44
+< 		<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 		<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+47c47
+< 		<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 		<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+52c52
+< 		<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 		<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+55c55
+< 		<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 		<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+60c60
+< 		<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 		<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+63c63
+< 		<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 		<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+81c81
+< 			%instance
+---
+> 			$.[ %instance ]
+84c84
+< 			%instance
+---
+> 			$.[ %instance ]
+89c89
+< 			<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 			<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+92c92
+< 			<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 			<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+97c97
+< 			<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 			<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+100c100
+< 			<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 			<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+117c117
+< 			<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 			<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+120c120
+< 			<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 			<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+125c125
+< 			[ %instance ]
+---
+> 			$.[ %instance ]
+128c128
+< 			%instance
+---
+> 			$.[ %instance ]
+133c133
+< 			<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 			<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+136c136
+< 			<a href="consensus?session=%session&entity=%target">%target</a>
+---
+> 			<a href="consensus?session=%session&entity=%target">$.[ %target ]</a>
+153c153
+< 			<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 			<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+156c156
+< 			<a href="consensus?session=%session&entity=%source">%source</a>
+---
+> 			<a href="consensus?session=%session&entity=%source">$.[ %source ]</a>
+161c161
+< 			<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 			<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+164c164
+< 			<a href="consensus?session=%session&entity=%medium">%medium</a>
+---
+> 			<a href="consensus?session=%session&entity=%medium">$.[ %medium ]</a>
+169c169
+< 			%instance
+---
+> 			$.[ %instance ]
+172c172
+< 			%instance
+---
+> 			$.[ %instance ]
+-------------------------------------------
+15c15
+< <h1 style="%h1_style">
+---
+> <h1 style="$.[ %h1_style ]">
+18c18
+< <img style="%img_style" src="%scream_img">
+---
+> <img style="$.[ %img_style ]" src="$.[ %scream_img ]">
+20c20
+< <div style="%text_style">
+---
+> <div style="$.[ %text_style ]">
+-------------------------------------------
+4d3
+< << : datalist_style: "font-size:90%; padding:3px; margin-right: 3px; width:50%; margin-top:5px;" >>
+6d4
+< 
+30c28
+< <b>%session</b> &mdash; <em>no text</em>
+---
+> <b>$.[ %session ]</b> &mdash; <em>no text</em>
+47c45
+< 		<a href="consensus?session=%session&entity=\%22%?\%22">%?</a><br>
+---
+> 		<a href="consensus?session=%session&entity=\%22%?\%22">$.[ %? ]</a><br>
+-------------------------------------------
+18c18
+< <h1 style="%h1_style">
+---
+> <h1 style="$.[ %h1_style ]">
+21c21
+< <img style="%img_style" src="%welcome_img">
+---
+> <img style="$.[ %img_style ]" src="$.[ %welcome_img ]">
+23c23
+< <form style="%form_style" method="POST" enctype="multipart/form-data">
+---
+> <form style="$.[ %form_style ]" method="POST" enctype="multipart/form-data">
+25c25
+< <input type="text" style="%input_style" name="session" placeholder="Pick a session or create a new one" list="sessions" autocomplete="off">
+---
+> <input type="text" style="$.[ %input_style ]" name="session" placeholder="Pick a session or create a new one" list="sessions" autocomplete="off">
+29c29
+< 	<option value="%?">
+---
+> 	<option value="$.[ %? ]">

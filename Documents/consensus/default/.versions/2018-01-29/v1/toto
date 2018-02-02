@@ -1,0 +1,11 @@
+/~ ?!: Entity: %view
+	> path : $[ %entity ]( %ext )
+	?~!: %path
+		> path : //%view.%ext
+	/
+/~ ?!: Session: %view
+	> path : $( %ext )
+	?~!: %path
+		> path : //%view.%ext
+	/
+/ >>

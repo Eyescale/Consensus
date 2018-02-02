@@ -1,0 +1,85 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<< : datalist_style: "font-size:90%; padding:3px; margin-right: 3px; width:50%; margin-top:5px;" >>
+</head>
+
+<body>
+<div class="stamp">
+	<a href="consensus">Consensus</a>
+	> %session
+</div>
+<div class = "page">
+
+<h1>
+Session
+</h1>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Session" >
+<input type="hidden" name="session" value="%session" >
+<input type="submit" class="redbutton" style="float:right" name="action" value="Leave">
+</form>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="session" value="%session" >
+<input type="hidden" name="view" value="Session" >
+<dl>
+<dt>
+Name
+</dt>
+<dd>
+<b>%session</b> &mdash; <em>no text</em>
+</dd>
+
+<dt>
+Participants
+</dt>
+<dd>
+<em>no other</em>
+</dd>
+
+<dt>
+Entities (base)
+</dt>
+<dd>
+<table style="width:50vw;">
+<< ?: ~[ ... ] >>
+	<tr>
+	<td style="padding:0px;">
+		<a href="consensus?session=%session&action=View&entity=%?">
+			%?
+		</a>
+	</td>
+	<td></td>
+	</tr>
+<< / >>
+<tr>
+<td style="padding-right:10px;padding-top:5px;">
+	<input type="text" style="font-size:90%; padding:3px; width:100%;" name="entity" placeholder="Type in an entity name">
+</td>
+<td style="width:10%;padding-top:5px;text-align:center;">
+	<input type="submit" class="button" style="font-size:80%;font-style:italic;" name="entityAction" value="Add">
+</td>
+</tr>
+</table>
+</dd>
+</dl>
+
+<dt>
+Description
+</dt>
+<dd>
+<em>no description</em>
+</dd>
+
+<input type="hidden" name="ext" value="story">
+<input type="submit" class="button" style="float:right" name="action" value="Edit">
+</form>
+</div class="page">
+<div class="footer">
+<hr>
+<div class="date">
+September 19, 2017
+</div>
+</div>
+</body>
+</html>

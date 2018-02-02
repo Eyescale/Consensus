@@ -1,0 +1,74 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<< : datalist_style: "font-size:90%; padding:3px; margin-right: 3px; width:50%; margin-top:5px;" >>
+</head>
+<body>
+<div class="stamp">
+Consensus > Session > %session > %entity
+</div>
+<div class = "page">
+
+<h1>
+Entity
+</h1>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Entity" >
+<input type="hidden" name="session" value="%session" >
+<input type="hidden" name="entity" value="%entity" >
+<input type="submit" class="leave" style="float:right" name="action" value="Home">
+</form>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="view" value="Entity" >
+<input type="hidden" name="session" value="%session" >
+<input type="hidden" name="entity" value="%entity" >
+<dl>
+<dt>
+Name
+</dt>
+<dd>
+<b>%entity</b> &mdash; <em>no text</em>
+</dd>
+
+<dt>
+Description
+</dt>
+<dd>
+<em>no description</em>
+</dd>
+
+<dt>
+Connections
+</dt>
+<dd>
+<table style="width:66%" >
+<tr>
+	<th>from</th>
+	<th>via</th>
+</tr>
+<< ?: ..!: %entity >>
+	<tr>
+	<td>%[ ?..:%? ]</td>
+	<td>%[ .?.:%? ]</td>
+	</tr>
+<</>>
+<tr>
+	<td><input type="text" name="from" placeholder="source" autocomplete="off"></td>
+	<td><input type="text" name="via" placeholder="medium" autocomplete="off"></td>
+</tr>
+</table>
+<input type="submit" class="button" style="font-size:80%" name="fromAction" value="Add">
+</dd>
+</dl>
+
+<input type="submit" class="button" style="float:right" name="action" value="Edit">
+</form>
+</div class="page">
+<div class="footer">
+<hr>
+<div class="date">
+September 19, 2017
+</div>
+</div>
+</body>
+</html>

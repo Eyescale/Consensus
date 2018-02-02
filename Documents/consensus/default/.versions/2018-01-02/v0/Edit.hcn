@@ -1,0 +1,23 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<< : area_style: "width:100%; height:75%; font-size:85%; padding:3px; margin-top:5px" >>
+<< : notab : "if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}" >>
+</head>
+<body>
+<div class="stamp">
+Consensus > Session > %session > %view
+</div>
+<div class="page">
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="session" value="%session">
+<input type="hidden" name="view" value="%view">
+<input type="hidden" name="mode" value="edit">
+<textarea style="%area_style" onkeydown="%notab" name="contents">
+$\< file://%view.hcn >
+</textarea>
+<input type="submit" class="button" style="float:right;" name="action" value="Save">
+</form>
+</div class="page">
+</body>
+</html>

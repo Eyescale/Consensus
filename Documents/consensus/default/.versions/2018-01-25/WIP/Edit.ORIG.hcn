@@ -1,0 +1,77 @@
+<html>
+<head>
+<link rel="stylesheet" href="http://localhost/css/style.css" type="text/css" media="screen">
+<style>
+textarea {
+	width:100%;
+	height:75%;
+	font-size:85%;
+	padding:3px;
+	margin-top:5px;
+	font-family:Monaco;
+	font-size:80%;
+}
+</style>
+<< : ontab : "if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}" >>
+</head>
+
+<body>
+<div class="stamp">
+<a href="consensus">Consensus</a>
+> <a href="consensus?session=$.[ %session ]&view=Session">$.[ %session ]</a>
+<< ?!: %entity >>
+	> <a href="consensus?session=$.[ %session ]&action=View&entity=%entity">$.[ %entity ]</a>
+	: hcn
+<< /~ >>
+	> %view :
+	<< ?!: hcn: %ext >>
+		<a href="consensus?session=$.[ %session ]&action=Edit&view=%view&ext=story">story</a>
+		| hcn
+	<< /~ >>
+		story
+		| <a href="consensus?session=$.[ %session ]&action=Edit&view=%view&ext=hcn">hcn</a>
+	<< / >>
+<< / >>
+</div>
+<div class="page">
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="mode" value="edit">
+<input type="hidden" name="session" value="$.[ %session ]">
+<input type="hidden" name="entity" value="%entity">
+<input type="hidden" name="view" value="%view">
+<input type="hidden" name="ext" value="%ext">
+
+<textarea onkeydown="$.[ %ontab ]" name="contents">
+<< ?!: %contents >>
+$.[ %contents ]
+<< /~ >>
+<<
+	?!: Entity: %view
+		> path : $[ %entity ]( %ext )
+	/~ ?!: Session: %view
+		> path : $( %ext )
+	/
+	?~!: %path
+		> path : //%view.%ext
+	/
+>>
+$.< file:%path >
+<< / >>
+</textarea>
+
+<div style="margin:4px 0px 0px 2px;">
+<a href="consensus?session=$.[ %session ]&action=Reset&view=%view&ext=%ext"><em>Reset</em></a>
+<span style="float:right">
+<< ?!: %contents >>
+	<< : focus : "autofocus" >>
+<< / >>
+file:
+<input type="text" style="font-size:85%; padding:3px; width:40vw;" name="filename" placeholder="$.[ %path ]" %focus>
+<input type="submit" class="button" name="action" value="Save" >
+</span>
+</div>
+
+</form>
+</div class="page">
+</body>
+</html>
