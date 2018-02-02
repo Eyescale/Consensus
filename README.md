@@ -1,19 +1,21 @@
 # Consensus
 
 * This here is a Chrome-enabled version of consensus. To install, you need to:
-<ul>
-1. make consensus (see below)
-2. setup local WebServer on your system - cf. https://www.maketecheasier.com/setup-local-web-server-all-platforms/
-3. configure Apache to permit CGI - cf. https://httpd.apache.org/docs/current/howto/cgi.html
-4. copy the consensus executable under /Library/WebServer/CGI-Executables
-5. copy the entire contents of the distribution's 'Documents' directory under /Library/WebServer/Documents
-</ul>
+<ol>
+<li> make consensus (see below)
+<li> setup local WebServer on your system - cf. https://www.maketecheasier.com/setup-local-web-server-all-platforms/
+<li> configure Apache to permit CGI - cf. https://httpd.apache.org/docs/current/howto/cgi.html
+<li> copy the consensus executable under /Library/WebServer/CGI-Executables
+<li> copy the entire contents of the distribution's 'Documents' directory under /Library/WebServer/Documents
+</ol>
 * To run, you need to
-1. launch consensus in operator mode, e.g. from the distribution's directory
+<ol>
+<li> launch consensus in operator mode, e.g. from the distribution's directory
 ```
     ./consensus -moperator
 ````
-2. enter the URL 'localhost/cgi-bin/consensus' in Chrome
+<li> enter the URL 'localhost/cgi-bin/consensus' in Chrome
+</ol>
 
 ----
 
