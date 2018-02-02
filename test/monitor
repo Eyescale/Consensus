@@ -1,6 +1,6 @@
 
 	!~ .
-	!! monitor()
+	!! $.monitor()
 		on init do
 			>:\	monitor() >>>>> init done
 			/.
@@ -22,10 +22,10 @@
 			/.
 		/
 
-	>:%.monitor()
+	>:$.monitor()
 
-	>:1. !* monitor()
-	!* monitor()
+	>:1. !* \$.monitor()
+	!* $.monitor()
 
 	>:2. !! titi-is->toto
 	!! titi-is->toto
@@ -39,6 +39,6 @@
 	>:5. !~ titi
 	!~ titi
 
-	!_ monitor()
-	!~ monitor()
+	!_ $.monitor()
+	!~ $.monitor()
 	>:\n

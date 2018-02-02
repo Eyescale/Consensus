@@ -2,7 +2,7 @@
 	!! Product-is->Label
 	!! People-is->Label
 	!! test
-	: %[ test ].$( hcn ) : "./test/index.hcn"
+	: $[ test ]( hcn ) : "./test/index.hcn"
 	: console : "hello, world"
-	>:%[ test ].$( html )
+	>:$[ test ]( html )
 

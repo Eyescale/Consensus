@@ -1,10 +1,13 @@
 <html>
+<head>
+<< : h1_style : "text-align:center; font-weight:normal;" >>
+</head>
 <body>
-<h1 style="text-align:center; font-weight:normal;"> Welcome to Consensus! </h1>
-<< ?%: ?-is->Label >>
+<h1 style="$.[ %h1_style ]"> Welcome to Consensus! </h1>
+<< ?!: ?-is->Label #this is a comment >>
 <ul>
-	<< ? : ?-is->Label >>
-	<li> <a href="consensus.cgi?label=%?">%?</a>
+	<< ?: ?-is->Label >>
+	<li> <a href="consensus.cgi?label=%?">$.[ %? ]</a>
 	<< / >>
 </ul>
 << /~ >>
@@ -17,7 +20,7 @@
 </form>
 
 <hr>
-%console
+$.[ %console ]
 
 </body>
 </html>

@@ -1,5 +1,5 @@
 
-	!! titi()
+	!! $.titi()
 
 	on init do ~.
 	in state:?-is->toto in :toto on :titi !!
@@ -16,9 +16,10 @@
 		?:?-is->toto		# Great to comment isn't it
 			>:%?		# That is... so long as you have
 			/		# something to say!
-		?%: a-is->b
+		?!: a-is->b
 			>:tt
-			/~
+			/
+		~
 			>:yy
 			/
 		/
@@ -44,5 +45,5 @@
 	>:narrative titi()
 	>:----------------
 	>:\n
-	>:%.titi()
+	>:$.titi()
 	>:\n
