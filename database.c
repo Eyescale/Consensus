@@ -9,48 +9,41 @@ static Entity *freeEntityList = NULL;
 static listItem *freeItemList = NULL;
 
 Entity *
-newEntity( Entity *source, Entity *medium, Entity *target )
+newEntity( Entity *source, Entity *medium, Entity *target, int twist )
 {
 	Entity *e;
 
 	if ( freeEntityList == NULL ) 
 		e = calloc( 1, sizeof( Entity ) );
-	else
-	{
+	else {
 		e = freeEntityList;
 		freeEntityList = freeEntityList->next;
 		e->next = NULL;
 		e->state = 0;
 	}
-
 	e->sub[0] = source;
 	e->sub[1] = medium;
 	e->sub[2] = target;
+	e->twist = twist;
 
-	if (( source == NULL ) && ( target == NULL ))
-	{
+	if (( source == NULL ) && ( target == NULL )) {
 		return e;
 	}
-
-	if ( source != NULL )
-	{
+	if ( source != NULL ) {
 		listItem *item = newItem(e);
 		item->next = source->as_sub[0];
 		source->as_sub[0] = item;
 	}
-	if ( medium != NULL )
-	{
+	if ( medium != NULL ) {
 		listItem *item = newItem(e);
 		item->next = medium->as_sub[1];
 		medium->as_sub[1] = item;
 	}
-	if ( target != NULL )
-	{
+	if ( target != NULL ) {
 		listItem *item = newItem(e);
 		item->next = target->as_sub[2];
 		target->as_sub[2] = item;
 	}
-
 	return e;
 }
 
@@ -189,9 +182,7 @@ void freeItem( listItem *item )
 
 listItem *catListItem( listItem *list1, listItem *list2 )
 {
-	if ( list1 == NULL )
-		return list2;
-
+	if ( list1 == NULL ) return list2;
 	if ( list2 != NULL ) {
 		listItem *j = list1;
 		while ( j->next != NULL ) j=j->next;

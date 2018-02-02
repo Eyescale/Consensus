@@ -18,6 +18,7 @@
 #include "input.h"
 #include "output.h"
 #include "narrative_util.h"
+#include "xl.h"
 
 /*---------------------------------------------------------------------------
 	cn_do, cn_dob, cn_dof
@@ -51,8 +52,25 @@ cn_dof( const char *format, ... )
 }
 
 int
-cn_dob( listItem *actions )
-	{ return command_read( actions, InstructionBlock, base, 0, CN.context ); }
+cn_dob( listItem *actions, int level )
+{
+	_context *context = CN.context;
+	int retval;
+	if ( level ) {
+		struct { int level; } backup;
+		backup.level = context->command.level;
+		push( base, 0, &same, context );
+		context->command.level = level;	// just to get the tabs right
+		retval = command_read( actions, InstructionBlock, base, 0, context );
+		context->command.level = backup.level;
+	}
+	else {
+		push( base, 0, &same, context );
+		retval = command_read( actions, InstructionBlock, base, 0, context );
+	}
+	return retval;
+}
+
 int
 cn_do( char *action )
 	{ return cn_dof( "", action ); }
@@ -60,12 +78,36 @@ cn_do( char *action )
 /*---------------------------------------------------------------------------
 	cn_setf, cn_getf, cn_testf
 ---------------------------------------------------------------------------*/
+static Entity *vaopf( int op, char *format, va_list ap );
+
+Entity *
+cn_setf( char *format, ... )
+/*
+   cn_setf() allows to specify an expression via a format string using %s and
+   %e to reference the (resp.) identifier or entity arguments.
+   cn_setf() stores the arguments in a list and rewrites the format string to
+   include the corresponding argument position in the list - e.g. %0e, %1s -
+   so that read_expression() can cast them to the proper type in the expression.
+   The format string is pushed as input to read_expression()
+   The argument list is passed to expression_solve() via context->expression.args
+*/
+{
+	va_list ap;
+	va_start( ap, format );
+	Entity *e = vaopf( InstantiateMode, format, ap );
+	va_end( ap );
+	return e;
+}
+
 static Entity *
 vaopf( int op, char *format, va_list ap )
 {
 	_context *context = CN.context;
-	Entity *result = NULL;
 
+	struct { int mode; } backup;
+	backup.mode = context->expression.mode;
+
+	Entity *result = NULL;
 	listItem *arglist = NULL;
 	char *reformat = NULL;
 	int argnum = 0;
@@ -113,6 +155,7 @@ vaopf( int op, char *format, va_list ap )
 	}
 	reorderListItem( &arglist );
 
+	context->expression.mode = BuildMode;
 	push_input( "", reformat, InstructionOne, context );
 	int retval = read_expression( base, 0, &same, context );
 	pop_input( base, 0, NULL, context );
@@ -124,7 +167,7 @@ vaopf( int op, char *format, va_list ap )
 
         context->expression.mode = op;
 	context->expression.args = arglist;
-        retval = expression_solve( context->expression.ptr, 3, context );
+        retval = expression_solve( context->expression.ptr, 3, NULL, context );
 	context->expression.args = NULL;
 
         if ( retval < 0 ) {
@@ -138,25 +181,46 @@ vaopf( int op, char *format, va_list ap )
 	}
 
 RETURN:
+	free( context->expression.ptr );
+	context->expression.ptr = NULL;
 	free( reformat );
 	freeListItem( &arglist );
 	context->expression.args = NULL;
+	context->expression.mode = backup.mode;
 	return result;
-}
-
-Entity *
-cn_setf( char *format, ... )
-{
-	va_list ap;
-	va_start( ap, format );
-	Entity *e = vaopf( InstantiateMode, format, ap );
-	va_end( ap );
-	return e;
 }
 
 /*---------------------------------------------------------------------------
 	cn_getf
 ---------------------------------------------------------------------------*/
+static Entity * vagetf( Entity **candidate, const char *format, va_list ap );
+
+Entity *
+cn_getf( const char *format, ... )
+/*
+	cn_getf() is a mini-solver taking a format string made of the
+	following characters:
+		[	starts sub-expression
+		]	closes sub-expression
+		?	target result
+		.	identifier passed as argument
+		%	entity passed as argument
+	and returning the first found result, or NULL if not found
+	e.g.
+		cn_getf( "?..", "is", "session" )
+	returns
+		the first result of %[ ?-is->session ], if there is;
+		NULL otherwise
+*/
+{
+	Entity *e = NULL, *solve;
+	va_list ap;
+	va_start( ap, format );
+	solve = vagetf( &e, format, ap );
+	va_end( ap );
+	return ( solve = NULL ) ? NULL : e;
+}
+
 static Entity *
 vagetf( Entity **candidate, const char *format, va_list ap )
 {
@@ -206,20 +270,27 @@ RETURN:
 	return cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
 }
 
-Entity *
-cn_getf( const char *format, ... )
-{
-	Entity *e = NULL, *solve;
-	va_list ap;
-	va_start( ap, format );
-	solve = vagetf( &e, format, ap );
-	va_end( ap );
-	return ( solve = NULL ) ? NULL : e;
-}
-
 /*---------------------------------------------------------------------------
 	cn_instf
 ---------------------------------------------------------------------------*/
+static Entity *vainstf( const char *format, va_list ap );
+
+Entity *
+cn_instf( const char *format, ... )
+/*
+	See cn_getf() format description above
+	Note that string arguments will be duplicated - vs. cn_setf() -
+	and that no notification will result for generated entities
+*/
+{
+
+	va_list ap;
+	va_start( ap, format );
+	Entity *e = vainstf( format, ap );
+	va_end( ap );
+	return e;
+}
+
 static Entity *
 vainstf( const char *format, va_list ap )
 {
@@ -238,10 +309,9 @@ vainstf( const char *format, va_list ap )
 		case '.':
 			; char *identifier = va_arg( ap, char * );
 			e = cn_entity( identifier );
-			if ( e == NULL )
-			{
+			if ( e == NULL ) {
 				identifier = strdup( identifier );
-				e = newEntity( NULL, NULL, NULL );
+				e = newEntity( NULL, NULL, NULL, 0 );
 				cn_va_set( e, "name", identifier );
 				registryRegister( CN.names, identifier, e );
 				addItem( &CN.DB, e );
@@ -259,20 +329,9 @@ RETURN:
 	}
 	e = cn_instance( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
 	if ( e == NULL ) {
-		e = newEntity( sub[ 0 ], sub[ 1 ], sub[ 2 ] );
+		e = newEntity( sub[ 0 ], sub[ 1 ], sub[ 2 ], 0 );
 		addItem( &CN.DB, e );
 	}
-	return e;
-}
-
-Entity *
-cn_instf( const char *format, ... )
-{
-
-	va_list ap;
-	va_start( ap, format );
-	Entity *e = vainstf( format, ap );
-	va_end( ap );
 	return e;
 }
 
@@ -310,11 +369,11 @@ cn_name( Entity *e )
 Entity *
 cn_new( char *name )
 {
-	Entity *e = newEntity( NULL, NULL, NULL );
+	Entity *e = newEntity( NULL, NULL, NULL, 0 );
 	cn_va_set( e, "name", name );
 	registryRegister( CN.names, name, e );
 	addItem( &CN.DB, e );
-	EntityLog *log = CN.context->frame.log.entities.backbuffer;
+	CNLog *log = CN.context->frame.log.entities.backbuffer;
 	addItem( &log->instantiated, e );
 	return e;
 }
@@ -326,7 +385,6 @@ void
 cn_free( Entity *e )
 {
 	// remove all entity's narratives
-
 	Registry *entity_narratives = cn_va_get( e, "narratives" );
 	if (( entity_narratives )) {
 		for ( registryEntry *r = entity_narratives->value, *next_r; r!=NULL; r=next_r )
@@ -337,28 +395,34 @@ cn_free( Entity *e )
 	}
 
 	// remove entity from name registry
+	registryEntry *entry = registryLookup( CN.VB, "name" );
+	entry = registryLookup( entry->value, e );
+	if ((entry)) {
+		char *name = entry->value;
+		registryDeregister( CN.names, name );
+		free( name );
+	}
 
-	char *name = cn_va_get( e, "name" );
-	registryDeregister( CN.names, name );
-	free( name );
+	// free entity's hcn, story and url strings
+	entry = registryLookup( CN.VB, "hcn" );
+	entry = registryLookup( entry->value, e );
+	if ((entry)) free( entry->value );
 
-	// free entity's name, hcn and url strings
+	entry = registryLookup( CN.VB, "story" );
+	entry = registryLookup( entry->value, e );
+	if ((entry)) free( entry->value );
 
-	name = cn_va_get( e, "hcn" );
-	free( name );
-
-	name = cn_va_get( e, "url" );
-	free( name );
+	entry = registryLookup( CN.VB, "url" );
+	entry = registryLookup( entry->value, e );
+	if ((entry)) free( entry->value );
 
 	// close all value accounts associated with this entity
-
 	for ( registryEntry *r = CN.VB->value; r!=NULL; r=r->next ) {
 		Registry *registry = r->value;
 		registryDeregister( registry, e );
 	}
 
 	// finally remove entity from CN.DB
-
 	removeItem( &CN.DB, e );
 	freeEntity( e );
 }
@@ -369,17 +433,13 @@ cn_free( Entity *e )
 registryEntry *
 cn_va_set( Entity *e, char *va_name, void *value )
 {
-	if ( value == NULL ) return NULL;
-
 	registryEntry *entry = registryLookup( CN.VB, va_name );
 	Registry *va = (Registry *) entry->value;
 	entry = registryLookup( va, e );
-	if ( entry == NULL )
-	{
-		return registryRegister( va, e, value );
+	if ( entry == NULL ) {
+		return ( value == NULL ) ? NULL : registryRegister( va, e, value );
 	}
-	else if ( !strcmp( va_name, "narratives" ) )
-	{
+	else if ( !strcmp( va_name, "narratives" ) ) {
 		Registry *entity_narratives = entry->value;
 		// deregister entity from all previous narratives
 		for (registryEntry *i = entity_narratives->value; i!=NULL; i=i->next )
@@ -390,8 +450,14 @@ cn_va_set( Entity *e, char *va_name, void *value )
 		// reset value account
 		freeRegistry((Registry **) &entry->value );
 	}
-	else free( entry->value );
-	entry->value = value;
+	else {
+		free( entry->value );
+	}
+	if ( value == NULL ) {
+		registryDeregister( va, e );
+	}
+	else entry->value = value;
+
 	return entry;
 }
 
@@ -405,55 +471,6 @@ cn_va_get( Entity *e, char *va_name )
 	if ( entry == NULL ) return NULL;
 	entry = registryLookup( entry->value, e );
 	return ( entry == NULL ) ? NULL : entry->value;
-
-}
-
-/*---------------------------------------------------------------------------
-	cn_expression
----------------------------------------------------------------------------*/
-static Expression *
-cn_express( Entity *e, ExpressionSub *super )
-{
-	if ( e == NULL ) return NULL;
-
-	Expression *expression = (Expression *) calloc( 1, sizeof(Expression));
-	ExpressionSub *sub = expression->sub;
-	sub[ 3 ].result.any = 1;
-	sub[ 3 ].e = expression;
-	sub[ 3 ].super = super;
-
-	if ( e == CN.nil ) {
-		sub[ 0 ].result.identifier.type = NullIdentifier;
-		sub[ 1 ].result.none = 1;
-		sub[ 2 ].result.none = 1;
-	}
-	else
-	{
-		char *name = cn_name( e );
-		if ( name != NULL ) {
-			sub[ 0 ].result.identifier.type = DefaultIdentifier;
-			sub[ 0 ].result.identifier.value = strdup( name );
-			sub[ 1 ].result.none = 1;
-			sub[ 2 ].result.none = 1;
-		}
-		else for ( int i=0; i<3; i++ ) {
-			name = cn_name( e->sub[ i ] );
-			if ( name != NULL ) {
-				sub[ i ].result.identifier.type = DefaultIdentifier;
-				sub[ i ].result.identifier.value = strdup( name );
-			} else {
-				sub[ i ].e = cn_express( e->sub[ i ], &sub[ 3 ] );
-				sub[ i ].result.none = ( sub[ i ].e == NULL );
-			}
-		}
-	}
-	return expression;
-}
-
-Expression *
-cn_expression( Entity *e )
-{
-	return cn_express( e, NULL );
 }
 
 /*---------------------------------------------------------------------------
@@ -490,11 +507,14 @@ cn_instance( Entity *source, Entity *medium, Entity *target )
 	cn_instantiate
 ---------------------------------------------------------------------------*/
 Entity *
-cn_instantiate( Entity *source, Entity *medium, Entity *target )
+cn_instantiate( Entity *source, Entity *medium, Entity *target, int twist )
 {
-	Entity *e = newEntity( source, medium, target );
+	if ((source) && ( source->twist & 8 )) twist |= 1;
+	if ((medium) && ( medium->twist & 8 )) twist |= 2;
+	if ((target) && ( target->twist & 8 )) twist |= 4;
+	Entity *e = newEntity( source, medium, target, twist );
 	addItem( &CN.DB, e );
-	EntityLog *log = CN.context->frame.log.entities.backbuffer;
+	CNLog *log = CN.context->frame.log.entities.backbuffer;
 	addItem( &log->instantiated, e );
 	return e;
 }
@@ -516,9 +536,8 @@ cn_release( Entity *e )
 			cn_release( (Entity *) j->ptr );
 		}
 	}
-	Expression *expression = cn_expression( e );
-	EntityLog *log = CN.context->frame.log.entities.backbuffer;
-	addItem( &log->released, &expression->sub[ 3 ] );
+	CNLog *log = CN.context->frame.log.entities.backbuffer;
+	addItem( &log->released, e2l(e) );
 	cn_free( e );
 }
 
@@ -530,7 +549,7 @@ cn_activate( Entity *e )
 {
 	if ( !cn_is_active( e ) ) {
 		e->state = 1;
-		EntityLog *log = CN.context->frame.log.entities.backbuffer;
+		CNLog *log = CN.context->frame.log.entities.backbuffer;
 		addItem( &log->activated, e );
 		return 1;
 	}
@@ -545,7 +564,7 @@ cn_deactivate( Entity *e )
 {
 	if ( cn_is_active( e ) ) {
 		e->state = 0;
-		EntityLog *log = CN.context->frame.log.entities.backbuffer;
+		CNLog *log = CN.context->frame.log.entities.backbuffer;
 		addItem( &log->deactivated, e );
 		return 1;
 	}
@@ -597,14 +616,14 @@ cn_release_narrative( Entity *e, char *name )
 /*---------------------------------------------------------------------------
 	cn_activate_narrative
 ---------------------------------------------------------------------------*/
-int
+Narrative *
 cn_activate_narrative( Entity *e, char *name )
 {
 	Narrative *n = lookupNarrative( e, name );
-	if ( n == NULL ) return 0;
+	if ( n == NULL ) return NULL;
 
 	// check if the requested narrative instance already exists
-	if (( registryLookup( &n->instances, e ) )) return 0;
+	if (( registryLookup( &n->instances, e ) )) return n;
 
 	// log narrative activation event - the actual activation is performed in systemFrame
 	Registry *r = &CN.context->frame.log.narratives.activate;
@@ -615,7 +634,7 @@ cn_activate_narrative( Entity *e, char *name )
 		addIfNotThere((listItem **) &entry->value, e );
 	}
 
-	return 1;
+	return n;
 }
 
 /*---------------------------------------------------------------------------

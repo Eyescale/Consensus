@@ -16,10 +16,12 @@ CommandMode;
 
 typedef enum {
 	ClauseNone,
+	PassiveClause,
 	ActiveClause,
-	PassiveClause
+	PostActiveClause,
+	ClauseElse
 }
-ClauseState;
+ClauseMode;
 
 typedef enum {
 	InstantiateEvent = 1,
@@ -32,7 +34,8 @@ typedef enum {
 EventType;
 
 typedef enum {
-	FileScheme = 1,
+	DefaultScheme = 0,
+	FileScheme,
 	SessionScheme,
 	OperatorScheme,
 	CGIScheme,
@@ -43,11 +46,11 @@ typedef enum {
 	UserInput,	// default: read from stdin
 	HCNFileInput,
 	HCNValueFileInput,
-	PipeInput,
+	UNIXPipeInput,
 	FileInput,
 	ClientInput,
 	SessionOutputPipe,
-	SessionOutputPipeInVariator,
+	SessionOutputPipeToVariable,
 	SessionOutputPipeOut,
 	InstructionBlock,
 	InstructionOne,
@@ -58,6 +61,7 @@ InputType;
 typedef enum {
 	ClientOutput = 1,
 	SessionOutput,
+	FileOutput,
 	StringOutput
 }
 OutputType;
@@ -81,14 +85,16 @@ RecordMode;
 
 typedef enum {
 	DefaultIdentifier = 1,
-	StringIdentifier,
 	NullIdentifier,
 	VariableIdentifier,
-	QueryIdentifier,
+	ExpressionValue,
+	NarrativeIdentifiers,
+	ExpressionCollect,
+	LiteralResults,
 	EntityResults,
-	LiteralResults
+	StringResults
 }
-IdentifierType;
+ValueType;
 
 typedef enum {
 	EntityVariable = 1,
@@ -115,8 +121,9 @@ typedef enum {
 OperationType;
 
 typedef enum {
-	EvaluateMode = 1,
+	BuildMode = 1,
 	ReadMode,
+	EvaluateMode,
 	InstantiateMode,
 	ErrorMode
 }
@@ -132,9 +139,8 @@ typedef enum {
 OccurrenceType;
 
 typedef enum {
-	AssignSet,
-	AssignAdd,
-	AssignClient
+	AssignSet = 1,
+	AssignAdd
 }
 AssignmentMode;
 
@@ -157,34 +163,34 @@ SessionVA;
 typedef struct _Expression {
 	struct _ExpressionSub {
 		struct _Expression *e;
+		struct _ExpressionSub *super;
 		struct {
 			struct {
-				IdentifierType type;
+				ValueType type;
 				void *value;
 			} identifier;
+			listItem *list;
 			unsigned int active : 1;
-			unsigned int inactive : 1;
+			unsigned int passive : 1;
 			unsigned int not : 1;
 			unsigned int any : 1;
 			unsigned int none : 1;
 			unsigned int resolve : 1;
-			unsigned int lookup : 1;
-			listItem *list;
 		}
 		result;
-		void *super;
 	}
 	sub[ 4 ];
 	struct {
+		int twist;
 		int as_sub, as_sup, mark;
-		unsigned int marked : 1;
-		unsigned int output_swap : 1;
 		listItem *list;
+		unsigned int marked : 1;
 	}
 	result;
 }
 Expression;
 typedef struct _ExpressionSub ExpressionSub;
+typedef ExpressionSub Literal;
 
 // Occurrence
 // --------------------------------------------------
@@ -257,7 +263,7 @@ Narrative;
 
 // Input & Output
 // --------------------------------------------------
-typedef registryEntry IdentifierVA;
+typedef registryEntry StringVA;
 
 typedef struct {
 	char *identifier;
@@ -270,22 +276,28 @@ typedef struct {
 	} ptr;
 	int client;
 	int remainder;
-	IdentifierVA buffer;
+	StringVA buffer;
 	char *position;
 	struct {
 		SessionVA *created;
 	} session;
 	struct {
-		char *position;
-		IdentifierVA *buffer;
+		char *identifier;
+	} variable;
+	struct {
 		struct {
 			listItem *instructions;
 			int mode;
 		} record;
+		char *position;
+		listItem *instruction;
+		StringVA *buffer;
+		unsigned int eof : 1;
 		unsigned int prompt : 1;
 		unsigned int flush : 1;
+		unsigned int command_one : 1;
 	} restore;
-	unsigned int shed : 1;
+	unsigned int discard : 1;
 }
 InputVA;
 
@@ -293,25 +305,34 @@ typedef struct {
 	int level;
 	int mode;
 	struct {
-		unsigned int redirected : 1;
-		unsigned int query : 1;
-	} restore;
-	struct {
 		char *identifier;
 	} variable;
-	struct {
+	union {
 		int socket;
+		FILE *file;
 	} ptr;
 	int remainder;
+	struct {
+		unsigned int redirected : 1;
+		unsigned int query : 1;
+		unsigned int hcn : 1;
+		unsigned int cgi : 1;
+	} restore;
 }
 OutputVA;
+
+typedef enum {
+	TXT_LINE = 1,
+	TXT_SEGMENT,
+	TXT_OPTION
+}
+OutputOperation;
 
 // Variables
 // --------------------------------------------------
 typedef struct VariableVA_ {
 	VariableType type;
 	void *value;
-	Registry sub;
 }
 VariableVA;
 
@@ -321,7 +342,7 @@ typedef struct {
 	char *next_state;	// state to be restored upon pop
 	Registry variables;
 	struct {
-		ClauseState state;
+		ClauseMode mode;
 	} clause;
 	struct {
 		int base;
@@ -330,22 +351,23 @@ typedef struct {
 	} loop;
 	struct {
 		Expression *ptr;
+		listItem *collect;
 		struct {
 			unsigned int not : 1;
 			unsigned int active : 1;
-			unsigned int inactive : 1;
+			unsigned int passive : 1;
 		} flag;
 	} expression;
 	struct {
 		struct {
-			unsigned int action : 1;
-			unsigned int closure : 1;
-			unsigned int exit : 1;
-			unsigned int event : 1;
 			unsigned int condition : 1;
+			unsigned int event : 1;
+			unsigned int action : 1;
+			unsigned int otherwise : 1;
 			unsigned int then : 1;
 			unsigned int whole : 1;
-			unsigned int otherwise : 1;
+			unsigned int closure : 1;
+			unsigned int exit : 1;
 			unsigned int contrary : 1;
 		}
 		state;
@@ -355,14 +377,14 @@ typedef struct {
 }
 StackVA;
 
-// EntityLog
+// CNLog
 // --------------------------------------------------
 typedef struct {
 	listItem *instantiated;	// { entity }
-	listItem *released;	// { entity-expression }
+	listItem *released;	// { literal }
 	listItem *activated;	// { entity }
 	listItem *deactivated;	// { entity }
-} EntityLog;
+} CNLog;
 
 // Context
 // --------------------------------------------------
@@ -393,19 +415,22 @@ typedef struct {
 		} freeze;
 		unsigned int one : 1;
 		unsigned int block : 1;
-		unsigned int contrary : 1;
 	} command;
+	struct {
+		ClauseMode mode;
+		unsigned int contrary : 1;
+	} clause;
 	struct {
 		int mode;
 	} assignment;
 	struct {
 		int level;
-		IdentifierVA string;
+		StringVA string;
 		listItem *instructions;
 		RecordMode mode;
 	} record;
 	struct {
-		IdentifierVA id[ 4 ];
+		StringVA id[ 4 ];
 		char *scheme;
 		char *path;
 		int current;
@@ -413,20 +438,19 @@ typedef struct {
 	struct {
 		char *state;
 		char *position;
-		IdentifierVA buffer;
+		StringVA buffer;
 	} hcn;
 	struct {
 		int level;
 		ExpressionMode mode;
 		listItem *results;
-		listItem *filter;
 		listItem *args;
 		Expression *ptr;
 		char *scheme;
 		listItem *stack;
-		int marked;
-		int do_resolve;
-		int subtype;
+		listItem *backup;
+		listItem *filter;
+		unsigned int marked : 1;
 	} expression;
 	struct {
 		int level;
@@ -446,14 +470,14 @@ typedef struct {
 	} narrative;
 	struct {
 		struct {
-			EntityLog cgi;
+			CNLog cgi;
 			struct {
 				Registry activate;
 				Registry deactivate;
 			} narratives;
 			struct {
-				EntityLog buffer[ 2 ];
-				EntityLog *backbuffer, *frontbuffer;
+				CNLog buffer[ 2 ];
+				CNLog *backbuffer, *frontbuffer;
 			} entities;
 		} log;
 		int backlog;
@@ -464,20 +488,22 @@ typedef struct {
 		listItem *stack;	// current InputVA
 		listItem *instruction;
 		struct {
-			IdentifierVA base, *current;
+			StringVA base, *ptr;
 			char *position;
 		} buffer;
-		int eof;
+		unsigned int eof : 1;
+		unsigned int hcn : 1;
 	} input;
 	struct {
 		listItem *stack;	// current OutputVA
 		AssignmentMode mode;
 		listItem *slist;
-		IdentifierVA string;
+		StringVA string;	// buffer for slist
 		unsigned int anteprompt : 1;
 		unsigned int prompt : 1;
 		unsigned int redirected : 1;
-		unsigned int html : 1;
+		unsigned int cgi : 1;
+		unsigned int as_is : 1;
 		unsigned int marked : 1;
 		unsigned int query : 1;
 	} output;

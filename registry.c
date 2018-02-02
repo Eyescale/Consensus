@@ -81,8 +81,7 @@ void
 emptyRegistry( Registry *registry )
 {
 	RegistryType type = RTYPE( registry );
-	registryEntry *next_r;
-	for ( registryEntry *r=registry->value; r!=NULL; r=next_r )
+	for ( registryEntry *r=registry->value, *next_r; r!=NULL; r=next_r )
 	{
 		next_r = r->next;
 		freeRegistryEntry( type, r );
@@ -239,3 +238,4 @@ Registry *registryDuplicate( Registry *registry )
 
 	return copy;
 }
+

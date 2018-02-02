@@ -19,21 +19,91 @@
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	narrative_active
+	newNarrative, newOccurrence
 ---------------------------------------------------------------------------*/
-int
-narrative_active( _context *context )
+Narrative *
+newNarrative( void )
 {
-	for ( listItem *i = context->narrative.registered; i!=NULL; i=i->next )
-	{
-		Narrative *narrative = (Narrative *) i->ptr;
-		if (( narrative->instances.value )) return 1;
-	}
-	return 0;
+	Narrative *narrative = calloc( 1, sizeof(Narrative) );
+	RTYPE( &narrative->variables ) = IndexedByName;
+	return narrative;
+}
+
+Occurrence *
+newOccurrence( OccurrenceType type )
+{
+	Occurrence *occurrence = calloc( 1, sizeof(Occurrence) );
+	RTYPE( &occurrence->variables ) = IndexedByName;
+	occurrence->type = type;
+	return occurrence;
 }
 
 /*---------------------------------------------------------------------------
-	registerNarrative
+	freeNarrative, freeOccurrence	- recursive
+---------------------------------------------------------------------------*/
+void
+freeNarrative( Narrative *narrative )
+{
+	freeListItem( &narrative->frame.events );
+	freeListItem( &narrative->frame.actions );
+	freeListItem( &narrative->frame.then );
+	freeOccurrence( &narrative->root );
+	freeVariables( &narrative->variables );
+	free( narrative->name );
+	free( narrative );
+}
+
+void
+freeOccurrence( Occurrence *occurrence )
+{
+	if ( occurrence == NULL ) return;
+	for ( listItem *i = occurrence->sub.n; i!=NULL; i=i->next )
+	{
+		freeOccurrence( i->ptr );
+		free( i->ptr );
+	}
+	freeVariables( &occurrence->variables );
+	freeListItem( &occurrence->sub.n );
+	switch ( occurrence->type ) {
+	case OtherwiseOccurrence:
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			freeOccurrence( i->ptr );
+		}
+		break;
+	case ConditionOccurrence:
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			ConditionVA *condition = (ConditionVA *) i->ptr;
+			free( condition->identifier );
+			free( condition->format );
+			free( condition );
+		}
+		break;
+	case EventOccurrence:
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			EventVA *event = (EventVA *) i->ptr;
+			free( event->identifier );
+			free( event->format );
+			free( event );
+		}
+		break;
+	case ActionOccurrence:
+		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
+			if ( i->ptr == NULL ) continue;
+			ActionVA *action = (ActionVA *) occurrence->va->ptr;
+			freeListItem( &action->instructions );
+			free( action );
+		}
+		break;
+	case ThenOccurrence:
+		break;
+	}
+	freeListItem( &occurrence->va );
+}
+
+/*---------------------------------------------------------------------------
+	registerNarrative, deregisterNarrative
 ---------------------------------------------------------------------------*/
 void
 registerNarrative( Narrative *narrative, _context *context )
@@ -41,9 +111,6 @@ registerNarrative( Narrative *narrative, _context *context )
 	addItem( &context->narrative.registered, narrative );
 }
 
-/*---------------------------------------------------------------------------
-	deregisterNarrative
----------------------------------------------------------------------------*/
 void
 deregisterNarrative( Narrative *narrative, _context *context )
 {
@@ -132,8 +199,80 @@ removeNarrative( Entity *entity, Narrative *narrative )
 }
 
 /*---------------------------------------------------------------------------
+	addToNarrative
+---------------------------------------------------------------------------*/
+registryEntry *
+addToNarrative( Narrative *narrative, Entity *entity )
+{
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
+	if ( entry != NULL ) {
+		// free the alias previously referring to that narrative
+		free( entry->value );
+		entry->value = NULL;
+	}
+	else {
+		entry = registryRegister( &narrative->entities, entity, NULL );
+	}
+	return entry;
+}
+
+/*---------------------------------------------------------------------------
+	removeFromNarrative
+---------------------------------------------------------------------------*/
+void
+removeFromNarrative( Narrative *narrative, Entity *entity )
+{
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
+	if ( entry == NULL ) return;
+	// free the name by which this entity referred to that narrative
+	free( entry->value );
+	registryDeregister( &narrative->entities, entity );
+	if ( narrative->entities.value == NULL ) {
+		deregisterNarrative( narrative, CN.context );
+	}
+}
+
+/*---------------------------------------------------------------------------
+	lookupNarrative
+---------------------------------------------------------------------------*/
+Narrative *
+lookupNarrative( Entity *entity, char *name )
+{
+	registryEntry *entry = registryLookup( CN.VB, "narratives" );
+	if ( entry == NULL ) return NULL;
+	entry = registryLookup( entry->value, entity );
+	if ( entry == NULL ) return NULL;
+	entry = registryLookup( entry->value, name );
+	return ( entry == NULL ) ? NULL : entry->value;
+}
+
+/*---------------------------------------------------------------------------
 	activateNarrative
 ---------------------------------------------------------------------------*/
+static void duplicateNarrative( Occurrence *master, Occurrence *copy );
+static void search_and_register_init( Narrative * instance );
+
+Narrative *
+activateNarrative( Entity *entity, Narrative *narrative )
+{
+	Narrative *instance;
+	registryEntry *entry = registryLookup( &narrative->entities, entity );
+	// entry->value is the pseudo used by this entity to refer to that narrative
+	if (( entry->value == NULL ) && !narrative->assigned ) {
+		instance = narrative;
+		narrative->assigned = 1;
+	} else {
+		instance = newNarrative();
+		duplicateNarrative( &narrative->root, &instance->root );
+		instance->name = ( entry->value == NULL ) ?
+			narrative->name : (char *) entry->value;
+	}
+	assign_this_variable( &instance->variables, entity );
+	registryRegister( &narrative->instances, entity, instance );
+	search_and_register_init( instance );
+	return instance;
+}
+
 static void
 duplicateNarrative( Occurrence *master, Occurrence *copy )
 {
@@ -220,27 +359,6 @@ search_and_register_init( Narrative * instance )
 	}
 }
 
-Narrative *
-activateNarrative( Entity *entity, Narrative *narrative )
-{
-	Narrative *instance;
-	registryEntry *entry = registryLookup( &narrative->entities, entity );
-	// entry->value is the pseudo used by this entity to refer to that narrative
-	if (( entry->value == NULL ) && !narrative->assigned ) {
-		instance = narrative;
-		narrative->assigned = 1;
-	} else {
-		instance = newNarrative();
-		duplicateNarrative( &narrative->root, &instance->root );
-		instance->name = ( entry->value == NULL ) ?
-			narrative->name : (char *) entry->value;
-	}
-	set_this_variable( &instance->variables, entity );
-	registryRegister( &narrative->instances, entity, instance );
-	search_and_register_init( instance );
-	return instance;
-}
-
 /*---------------------------------------------------------------------------
 	deactivateNarrative
 ---------------------------------------------------------------------------*/
@@ -272,51 +390,23 @@ deactivateNarrative( Entity *entity, Narrative *narrative )
 }
 
 /*---------------------------------------------------------------------------
-	lookupNarrative
+	narrative_active, any_narrative_active
 ---------------------------------------------------------------------------*/
-Narrative *
-lookupNarrative( Entity *entity, char *name )
+int
+narrative_active( Entity *entity, Narrative *narrative )
 {
-	registryEntry *entry = registryLookup( CN.VB, "narratives" );
-	if ( entry == NULL ) return NULL;
-	entry = registryLookup( entry->value, entity );
-	if ( entry == NULL ) return NULL;
-	entry = registryLookup( entry->value, name );
-	return ( entry == NULL ) ? NULL : entry->value;
-}
-
-/*---------------------------------------------------------------------------
-	addToNarrative
----------------------------------------------------------------------------*/
-registryEntry *
-addToNarrative( Narrative *narrative, Entity *entity )
-{
-	registryEntry *entry = registryLookup( &narrative->entities, entity );
-	if ( entry != NULL ) {
-		// free the alias previously referring to that narrative
-		free( entry->value );
-		entry->value = NULL;
+	if ((entity) && (narrative)) {
+		if (( registryLookup( &narrative->instances, entity ) )) {
+			return 1;
+		}
 	}
 	else {
-		entry = registryRegister( &narrative->entities, entity, NULL );
+		for ( listItem *i = CN.context->narrative.registered; i!=NULL; i=i->next ) {
+			Narrative *n = (Narrative *) i->ptr;
+			if (( n->instances.value )) return 1;
+		}
 	}
-	return entry;
-}
-
-/*---------------------------------------------------------------------------
-	removeFromNarrative
----------------------------------------------------------------------------*/
-void
-removeFromNarrative( Narrative *narrative, Entity *entity )
-{
-	registryEntry *entry = registryLookup( &narrative->entities, entity );
-	if ( entry == NULL ) return;
-	// free the name by which this entity referred to that narrative
-	free( entry->value );
-	registryDeregister( &narrative->entities, entity );
-	if ( narrative->entities.value == NULL ) {
-		deregisterNarrative( narrative, CN.context );
-	}
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -408,89 +498,5 @@ is_narrative_dangling( Occurrence *occurrence, int cut )
 		}
 	}
 	return 0;
-}
-
-/*---------------------------------------------------------------------------
-	newOccurrence, newNarrative
----------------------------------------------------------------------------*/
-Occurrence *
-newOccurrence( OccurrenceType type )
-{
-	Occurrence *occurrence = calloc( 1, sizeof(Occurrence) );
-	RTYPE( &occurrence->variables ) = IndexedByName;
-	occurrence->type = type;
-	return occurrence;
-}
-
-Narrative *
-newNarrative( void )
-{
-	Narrative *narrative = calloc( 1, sizeof(Narrative) );
-	RTYPE( &narrative->variables ) = IndexedByName;
-	return narrative;
-}
-
-/*---------------------------------------------------------------------------
-	freeOccurrence, freeNarrative	- recursive
----------------------------------------------------------------------------*/
-void
-freeOccurrence( Occurrence *occurrence )
-{
-	if ( occurrence == NULL ) return;
-	for ( listItem *i = occurrence->sub.n; i!=NULL; i=i->next )
-	{
-		freeOccurrence( i->ptr );
-		free( i->ptr );
-	}
-	freeVariables( &occurrence->variables );
-	freeListItem( &occurrence->sub.n );
-	switch ( occurrence->type ) {
-	case OtherwiseOccurrence:
-		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
-			freeOccurrence( i->ptr );
-		}
-		break;
-	case ConditionOccurrence:
-		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
-			if ( i->ptr == NULL ) continue;
-			ConditionVA *condition = (ConditionVA *) i->ptr;
-			free( condition->identifier );
-			free( condition->format );
-			free( condition );
-		}
-		break;
-	case EventOccurrence:
-		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
-			if ( i->ptr == NULL ) continue;
-			EventVA *event = (EventVA *) i->ptr;
-			free( event->identifier );
-			free( event->format );
-			free( event );
-		}
-		break;
-	case ActionOccurrence:
-		for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
-			if ( i->ptr == NULL ) continue;
-			ActionVA *action = (ActionVA *) occurrence->va->ptr;
-			freeListItem( &action->instructions );
-			free( action );
-		}
-		break;
-	case ThenOccurrence:
-		break;
-	}
-	freeListItem( &occurrence->va );
-}
-
-void
-freeNarrative( Narrative *narrative )
-{
-	freeListItem( &narrative->frame.events );
-	freeListItem( &narrative->frame.actions );
-	freeListItem( &narrative->frame.then );
-	freeOccurrence( &narrative->root );
-	freeVariables( &narrative->variables );
-	free( narrative->name );
-	free( narrative );
 }
 

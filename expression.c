@@ -15,8 +15,12 @@
 #include "expression.h"
 #include "expression_util.h"
 #include "variable.h"
+#include "variable_util.h"
 
 // #define DEBUG
+
+static Expression *expression_set( char *state, _context *context );
+static int test_super( char *state, int event, char **next_state, _context *context );
 
 /*---------------------------------------------------------------------------
 	execution engine
@@ -24,19 +28,94 @@
 #define	do_( a, s )	\
 	event = expression_execute( a, &state, event, s, context );
 
+static int
+expression_execute( _action action, char **state, int event, char *next_state, _context *context )
+{
+	int retval = 0;
+
+	if ( action == push ) {
+#ifdef DEBUG
+		outputf( Debug, "expression_execute: pushing from level %d", context->command.level );
+#endif
+		Expression *e = ( context->command.mode == ExecutionMode ) ?
+			expression_set( *state, context ) : NULL;
+
+		event = push( *state, event, &next_state, context );
+		*state = base;
+
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
+		stack->expression.ptr = e;
+	}
+	else if ( !strcmp( next_state, pop_state ) ) {
+		int popout = ( context->command.level == context->expression.level );
+		if ( ( event != ']' ) && !popout )
+			event = error( *state, event, &next_state, context );
+		else {
+#ifdef DEBUG
+			if ( popout ) {
+				outputf( Debug, "expression_execute: popping from base level %d", context->command.level );
+			} else {
+				outputf( Debug, "expression_execute: popping from level %d", context->command.level );
+			}
+#endif
+			if ( context->command.mode == ExecutionMode ) {
+				retval = action( *state, event, &next_state, context );
+				StackVA *stack = (StackVA *) context->command.stack->ptr;
+				expression_collapse( stack->expression.ptr );
+			}
+			if ( retval < 0 )
+				event = retval;
+			else if ( popout )
+				*state = "";
+			else {
+				event = pop( *state, event, &next_state, context );
+				*state = next_state;
+			}
+		}
+	}
+	else if ( !strcmp( next_state, "source-medium->target:" ) ) {
+		// forbid instance specification in case super has been specified
+		int retval = test_super( *state, event, &next_state, context );
+		if ( retval < 0 )
+			event = retval;
+		else {
+			event = action( *state, event, &next_state, context );
+			if ( strcmp( next_state, same ) )
+				*state = next_state;
+		}
+	}
+	else {
+		event = action( *state, event, &next_state, context );
+		if ( strcmp( next_state, same ) )
+			*state = next_state;
+	}
+	// so that we can output the expression the way it was entered...
+	if ( context->command.mode == ExecutionMode ) {
+		if ( !strcmp( next_state, "target<" ) ) {
+			StackVA *stack = (StackVA*) context->command.stack->ptr;
+			Expression *expression = stack->expression.ptr;
+			expression->result.twist = 8;
+		}
+		else if ( !strcmp( next_state, "source-" ) ) {
+			StackVA *stack = (StackVA*) context->command.stack->ptr;
+			Expression *expression = stack->expression.ptr;
+			expression->result.twist = 16;
+		}
+	}
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	expression_set, _close, _abort, _resolve
+---------------------------------------------------------------------------*/
 static Expression *
-set_sub_expression( char *state, _context *context )
+expression_set( char *state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
 	ExpressionSub *sub = expression->sub;
 
-	Expression *e = calloc( 1, sizeof(Expression) );
-	e->sub[ 3 ].result.any = 1;
-	for ( int i=0; i<3; i++ ) {
-		e->sub[ i ].result.none = 1;	// none meaning: none specified
-	}
-
+	Expression *e = newExpression( context );
 	bgn_
 	in_( base )				sub[ 0 ].e = e;
 	in_( "*" )				sub[ 0 ].e = e;
@@ -72,110 +151,38 @@ set_sub_expression( char *state, _context *context )
 	return e;
 }
 
-static int
-test_super( char *state, int event, char **next_state, _context *context )
+static Expression *
+take_expression( _context *context )
 {
-	if ( context->command.mode != ExecutionMode )
-		return 0;
-
-	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	StackVA *stack = context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
-	char *super;
-	switch ( expression->result.as_sup ) {
-		case 0: return 0;
-		case 1: super = "!.."; break;
-		case 2: super = ".!."; break;
-		case 3: super = "!!."; break;
-		case 4: super = "..!"; break;
-		case 5: super = "!.!"; break;
-		case 6: super = ".!!"; break;
-		case 7: super = "!!!"; break;
-		default: return output( Debug, "***** Error: in test_super" );
+	if ( expression->sub[ 0 ].result.none ) {
+		free( expression );
+		expression = NULL;
+	} else if ( context->expression.marked ) {
+		if ( trace_mark( expression ) ) {
+			expression->result.marked = 1;
+			context->expression.marked = 0;
+		}
+		if ( mark_negated( expression, 0 ) ) {
+			output( Warning, "'?' inside of negative clause - will not yield result..." );
+		}
 	}
-	return outputf( Error, "instance is not allowed after super ('%s') in expression", super );
+	freeExpressions( &stack->expression.collect );
+	stack->expression.ptr = NULL;
+	return expression;
 }
 
 static int
-expression_execute( _action action, char **state, int event, char *next_state, _context *context )
+expression_abort( _context *context )
 {
-	int retval = 0;
-
-	if ( action == push )
-	{
-#ifdef DEBUG
-		outputf( Debug, "expression_execute: pushing from level %d", context->command.level );
-#endif
-		Expression *e = ( context->command.mode == ExecutionMode ) ?
-			set_sub_expression( *state, context ) : NULL;
-
-		event = push( *state, event, &next_state, context );
-		*state = base;
-
-		StackVA *stack = (StackVA *) context->command.stack->ptr;
-		stack->expression.ptr = e;
-	}
-	else if ( !strcmp( next_state, pop_state ) )
-	{
-		if ( context->command.level == context->expression.level )
-		{
-#ifdef DEBUG
-			outputf( Debug, "expression_execute: popping from base level %d", context->command.level );
-#endif
-			if ( context->command.mode == ExecutionMode ) {
-				retval = action( *state, event, &next_state, context );
-				StackVA *stack = (StackVA *) context->command.stack->ptr;
-				expression_collapse( stack->expression.ptr );
-			}
-			if ( retval < 0 ) event = retval;
-			*state = "";
-		}
-		else if ( event != ']' )
-		{
-			event = error( *state, event, &next_state, context );
-		}
-		else
-		{
-#ifdef DEBUG
-			outputf( Debug, "expression_execute: popping from level %d", context->command.level );
-#endif
-			if ( context->command.mode == ExecutionMode ) {
-				retval = action( *state, event, &next_state, context );
-				StackVA *stack = (StackVA *) context->command.stack->ptr;
-				expression_collapse( stack->expression.ptr );
-			}
-			event = pop( *state, event, &next_state, context );
-			if ( retval < 0 ) event = retval;
-			*state = next_state;
-		}
-	}
-	else if ( !strcmp( next_state, "source-medium->target:" ) ) {
-		int retval = test_super( *state, event, &next_state, context );
-		if ( retval < 0 )
-			event = retval;
-		else {
-			event = action( *state, event, &next_state, context );
-			if ( strcmp( next_state, same ) )
-				*state = next_state;
-		}
-	}
-	else
-	{
-		event = action( *state, event, &next_state, context );
-		if ( strcmp( next_state, same ) )
-			*state = next_state;
-	}
-	// just so that we can output the expression the way it was entered...
-	if ( !strcmp( next_state, "target<" ) && ( context->command.mode == ExecutionMode ))
-	{
-		StackVA *stack = (StackVA*) context->command.stack->ptr;
-		Expression *expression = stack->expression.ptr;
-		expression->result.output_swap = 1;
-	}
-	return event;
+	context->expression.mode = ErrorMode;
+	context->command.mode = FreezeMode;
+	return 0;
 }
 
 /*---------------------------------------------------------------------------
-	actual actions implementation	- local
+	action utilities	- local
 ---------------------------------------------------------------------------*/
 static int
 reset_flags( _context *context )
@@ -183,7 +190,7 @@ reset_flags( _context *context )
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	stack->expression.flag.not = 0;
 	stack->expression.flag.active = 0;
-	stack->expression.flag.inactive = 0;
+	stack->expression.flag.passive = 0;
 	return 0;
 }
 static void
@@ -191,10 +198,10 @@ set_flags( StackVA *stack, Expression *expression, int count )
 {
 	expression->sub[ count ].result.not = stack->expression.flag.not;
 	expression->sub[ count ].result.active = stack->expression.flag.active;
-	expression->sub[ count ].result.inactive = stack->expression.flag.inactive;
+	expression->sub[ count ].result.passive = stack->expression.flag.passive;
 	stack->expression.flag.not = 0;
 	stack->expression.flag.active = 0;
-	stack->expression.flag.inactive = 0;
+	stack->expression.flag.passive = 0;
 }
 
 static int
@@ -206,7 +213,7 @@ set_sub_mark( int count, int event, _context *context )
 			return output( Error, "extraneous '~' in expression" );
 		if ( stack->expression.flag.active )
 			return output( Error, "extraneous '*' in expression" );
-		if ( stack->expression.flag.inactive )
+		if ( stack->expression.flag.passive )
 			return output( Error, "extraneous '_' in expression" );
 	}
 	if ( context->expression.marked ) {
@@ -254,7 +261,7 @@ set_sub_any( int count, int event, _context *context )
 		expression->sub[ count ].result.none = 0;
 		stack->expression.flag.not = 0;
 		stack->expression.flag.active = 0;
-		if ( stack->expression.flag.inactive ) {
+		if ( stack->expression.flag.passive ) {
 			return output( Error, "(nil) is always active" );
 		}
 	} else {
@@ -282,7 +289,65 @@ set_sub_identifier( int count, int event, _context *context )
 }
 
 static int
-set_sub_variable( int count, int event, _context *context )
+set_sub_collect( int count, int event, _context *context )
+{
+	if ( context->command.mode != ExecutionMode )
+		return reset_flags( context );
+
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	if ( stack->expression.collect == NULL )
+		return expression_abort( context );
+
+	Expression *expression = stack->expression.ptr;
+	expression->sub[ count ].result.identifier.type = ExpressionCollect;
+	expression->sub[ count ].result.identifier.value = stack->expression.collect;
+	expression->sub[ count ].result.any = 0;
+	expression->sub[ count ].result.none = 0;
+	stack->expression.collect = NULL;
+	set_flags( stack, expression, count );
+	return 0;
+}
+
+static int
+set_sub_results( int count, int event, _context *context )
+{
+	if ( context->command.mode != ExecutionMode )
+		return reset_flags( context );
+
+	if ( context->expression.ptr == NULL )
+		return expression_abort( context );
+
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	if ( context->expression.mode == BuildMode ) {
+		stack->expression.collect = newItem( context->expression.ptr );
+		context->expression.ptr = NULL;
+		return set_sub_collect( count, event, context );
+	}
+	freeExpression( context->expression.ptr );
+	context->expression.ptr = NULL;
+
+	if ( context->expression.results == NULL ) {
+		if ( stack->expression.flag.not ) {
+			stack->expression.flag.not = 0;
+			return set_sub_any( count, event, context );
+		}
+		else return expression_abort( context );
+	}
+
+	Expression *expression = stack->expression.ptr;
+	expression->sub[ count ].result.identifier.type =
+		( context->expression.mode == ReadMode ) ? LiteralResults : EntityResults;
+	expression->sub[ count ].result.identifier.value = context->expression.results;
+	expression->sub[ count ].result.any = 0;
+	expression->sub[ count ].result.none = 0;
+	context->expression.results = NULL;
+	context->expression.mode = EvaluateMode;
+	set_flags( stack, expression, count );
+	return 0;
+}
+
+static int
+set_sub_variable_ref( int count, int event, _context *context )
 {
 	if ( context->command.mode != ExecutionMode )
 		return reset_flags( context );
@@ -291,6 +356,53 @@ set_sub_variable( int count, int event, _context *context )
 	Expression *expression = stack->expression.ptr;
 	expression->sub[ count ].result.identifier.type = VariableIdentifier;
 	expression->sub[ count ].result.identifier.value = take_identifier( context, 1 );
+	expression->sub[ count ].result.any = 0;
+	expression->sub[ count ].result.none = 0;
+	set_flags( stack, expression, count );
+	return 0;
+}
+
+static int
+set_sub_variable( int count, int event, _context *context )
+{
+	if ( context->expression.mode == BuildMode )
+		return set_sub_variable_ref( count, event, context );
+
+	if ( context->command.mode != ExecutionMode )
+		return reset_flags( context );
+
+	char *identifier = get_identifier( context, 1 );
+	VariableVA *variable = lookupVariable( context, identifier );
+	if ( variable == NULL ) {
+#ifdef DEBUG
+		outputf( Debug, "in expression: '%%%s' variable not found", identifier );
+#endif
+		return expression_abort( context );
+	}
+	listItem *value = getVariableValue( variable, context, 1 ); // duplicate
+
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+	switch ( variable->type ) {
+	case EntityVariable:
+		expression->sub[ count ].result.identifier.type = EntityResults;
+		expression->sub[ count ].result.identifier.value = value;
+		break;
+	case LiteralVariable:
+		expression->sub[ count ].result.identifier.type = LiteralResults;
+		expression->sub[ count ].result.identifier.value = value;
+		break;
+	case ExpressionVariable:
+		expression->sub[ count ].result.identifier.type = ExpressionCollect;
+		expression->sub[ count ].result.identifier.value = value;
+		break;
+	case StringVariable:
+		expression->sub[ count ].result.identifier.type = StringResults;
+		expression->sub[ count ].result.identifier.value = value;
+		break;
+	case NarrativeVariable:
+		return outputf( Error, "'%%%s' is a narrative variable - not allowed in expressions", identifier );
+	}
 	expression->sub[ count ].result.any = 0;
 	expression->sub[ count ].result.none = 0;
 	set_flags( stack, expression, count );
@@ -344,39 +456,23 @@ set_sub_this( int count, int event, _context *context )
 }
 
 static int
-set_sub_results( int count, int event, _context *context )
+instance_solve( int event, _context *context )
 {
-	if ( context->command.mode != ExecutionMode )
-		return reset_flags( context );
+	if (( event < 0 ) || ( context->command.mode != ExecutionMode ))
+		return event;
 
-	if ( context->expression.results == NULL )
-		return set_sub_null( count, event, context );
+	Expression *expression = take_expression( context );
+	if ( expression == NULL ) {
+		return expression_abort( context );
+	}
 
-	StackVA *stack = (StackVA*) context->command.stack->ptr;
-	Expression *expression = stack->expression.ptr;
-	Expression *e = context->expression.ptr;
-	// optimization: in this specific case read_query() did not resolve the query
-	if (( count == 3 ) && just_blank( e ) && ( e->result.mark <= 7 ) )
-	{
-		expression->result.as_sub = e->result.mark;
-		set_flags( stack, expression, 3 );
-		if ( expression->sub[ 3 ].result.not ) {
-			expression->result.as_sub <<= 4;
-			expression->sub[ 3 ].result.not = 0;
-		}
-	}
-	else {
-		expression->sub[ count ].result.identifier.type = context->expression.subtype;
-		expression->sub[ count ].result.identifier.value = context->expression.results;
-		expression->sub[ count ].result.any = 0;
-		expression->sub[ count ].result.none = 0;
-		context->expression.results = NULL;
-		context->expression.mode = ReadMode;
-		set_flags( stack, expression, count );
-	}
-	freeExpression( context->expression.ptr );
-	context->expression.ptr = NULL;
-	return 0;
+	context->expression.mode = 0;
+	event = expression_solve( expression, 3, NULL, context );
+	context->expression.ptr = expression;
+
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	stack->expression.ptr = newExpression( context );
+	return set_sub_results( 0, event, context );
 }
 
 /*---------------------------------------------------------------------------
@@ -409,6 +505,9 @@ set_source_this( char *state, int event, char **next_state, _context *context )
 static int
 set_source_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_results( 0, event, context ); }
+static int
+set_source_collect( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_collect( 0, event, context ); }
 
 /*---------------------------------------------------------------------------
 	medium actions
@@ -440,6 +539,9 @@ set_medium_this( char *state, int event, char **next_state, _context *context )
 static int
 set_medium_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_this( 1, event, context ); }
+static int
+set_medium_collect( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_collect( 1, event, context ); }
 
 /*---------------------------------------------------------------------------
 	target actions
@@ -452,8 +554,8 @@ swap_source_target( char *state, int event, char **next_state, _context *context
 
 	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
-	bcopy( &expression->sub[ 0 ], &expression->sub[ 2 ], sizeof( ExpressionSub ) );
-	bzero( &expression->sub[ 0 ], sizeof( ExpressionSub ) );
+	memcpy( &expression->sub[ 2 ], &expression->sub[ 0 ], sizeof( ExpressionSub ) );
+	memset( &expression->sub[ 0 ], 0, sizeof( ExpressionSub ) );
 	expression->sub[ 0 ].result.none = 1;	// none meaning: none specified
 	return set_sub_pop( 2, event, context );
 }
@@ -484,6 +586,9 @@ set_target_this( char *state, int event, char **next_state, _context *context )
 static int
 set_target_results( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_results( 2, event, context ); }
+static int
+set_target_collect( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_collect( 2, event, context ); }
 
 /*---------------------------------------------------------------------------
 	instance actions
@@ -504,17 +609,54 @@ static int
 set_instance_identifier( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_identifier( 3, event, context ); }
 static int
-set_instance_variable( char *state, int event, char **next_state, _context *context )
-	{ return set_sub_variable( 3, event, context ); }
-static int
 set_instance_variator( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_variator( 3, event, context ); }
 static int
 set_instance_this( char *state, int event, char **next_state, _context *context )
 	{ return set_sub_this( 3, event, context ); }
 static int
+set_instance_variable( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->expression.mode != BuildMode ) {
+		event = set_sub_variable( 3, event, context );
+		return instance_solve( event, context );
+	}
+	else return set_sub_variable_ref( 3, event, context );
+}
+static int
 set_instance_results( char *state, int event, char **next_state, _context *context )
-	{ return set_sub_results( 3, event, context ); }
+{
+	if ( context->command.mode != ExecutionMode )
+		return reset_flags( context );
+
+	if ( context->expression.ptr == NULL )
+		return expression_abort( context );
+
+	Expression *e = context->expression.ptr;
+	if ( just_blank( e ) && ( e->result.mark <= 7 ))
+	/*
+		optimization: in this case read_query() did not solve the query
+	*/
+	{
+		StackVA *stack = (StackVA*) context->command.stack->ptr;
+		Expression *expression = stack->expression.ptr;
+		expression->result.as_sub = e->result.mark;
+		set_flags( stack, expression, 3 );
+		if ( expression->sub[ 3 ].result.not ) {
+			expression->result.as_sub <<= 4;
+			expression->sub[ 3 ].result.not = 0;
+		}
+		return 0;
+	}
+	else if  ( context->expression.mode != BuildMode ) {
+		event = set_sub_results( 3, event, context );
+		return instance_solve( event, context );
+	}
+	else return set_sub_results( 3, event, context );
+}
+static int
+set_instance_collect( char *state, int event, char **next_state, _context *context )
+	{ return set_sub_collect( 3, event, context ); }
 
 /*---------------------------------------------------------------------------
 	flag actions
@@ -536,14 +678,14 @@ set_flag_active( char *state, int event, char **next_state, _context *context )
 	if ( stack->expression.flag.not ) {
 		return output( Error, "'*' must precede '~' in expression" );
 	}
-	if ( stack->expression.flag.inactive ) {
+	if ( stack->expression.flag.passive ) {
 		return output( Error, "conflicting '_' and '*' in expression" );
 	}
 	stack->expression.flag.active = 1;
 	return 0;
 }
 static int
-set_flag_inactive( char *state, int event, char **next_state, _context *context )
+set_flag_passive( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA*) context->command.stack->ptr;
 	if ( stack->expression.flag.not ) {
@@ -552,8 +694,47 @@ set_flag_inactive( char *state, int event, char **next_state, _context *context 
 	if ( stack->expression.flag.active ) {
 		return output( Error, "conflicting '*' and '_' in expression" );
 	}
-	stack->expression.flag.inactive = 1;
+	stack->expression.flag.passive = 1;
 	return 0;
+}
+
+/*---------------------------------------------------------------------------
+	read_collect
+---------------------------------------------------------------------------*/
+static int
+read_collect( char *state, int event, char **next_state, _context *context )
+{
+	asprintf( &state, "%s{_", state );
+
+	// re-enter read_expression
+	// ------------------------
+	StackVA *stack = context->command.stack->ptr;
+	listItem *collection = NULL;
+	do {
+		struct { Expression *expression; int mode; } backup;
+		backup.expression = context->expression.ptr;
+		backup.mode = context->expression.mode;
+		context->expression.ptr = NULL;
+
+		event = read_expression( base, 0, &same, context );
+		if ( event < 0 )
+			freeExpression( context->expression.ptr );
+		else if (( event != ',' ) && ( event != '}' )) {
+			event = error( state, event, next_state, context );
+			freeExpression( context->expression.ptr );
+		}
+		else if (( context->command.mode == ExecutionMode ) && (context->expression.ptr))
+			addItem( &collection, context->expression.ptr );
+
+		context->expression.ptr = backup.expression;
+		context->expression.mode = backup.mode;
+	}
+	while ( event == ',' );
+	reorderListItem( &collection );
+	stack->expression.collect = collection;
+
+	free( state );
+	return ( event < 0 ) ? event : 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -563,56 +744,28 @@ static int
 read_query( char *state, int event, char **next_state, _context *context )
 {
 	asprintf( &state, "%s[_", state );
-	struct {
-		int level, marked;
-		struct { int not, active, inactive; } flag;
-	} backup;
 
 	// re-enter read_expression
 	// ------------------------
-
-	StackVA *stack = context->command.stack->ptr;
-	Expression *expression = stack->expression.ptr;
-
-	backup.level = context->expression.level;
-	backup.marked = context->expression.marked;
-	backup.flag.not = stack->expression.flag.not;
-	backup.flag.active = stack->expression.flag.active;
-	backup.flag.inactive = stack->expression.flag.inactive;
-
 	event = read_expression( base, 0, &same, context );
 	if ( event < 0 )
 		;
 	else if ( event != ']' )
 		event = error( state, event, next_state, context );
-	else if ( context->command.mode == ExecutionMode )
+	else if (( context->command.mode == ExecutionMode ) &&
+		 ( context->expression.mode != BuildMode ))
 	{
 		Expression *e = context->expression.ptr;
-		// optimization: set_sub_results will check this condition
-		if ( just_blank( e ) && ( e->result.mark <= 7 ) &&
-			!strcmp( state, "source-medium->target: %[_" ) ) {
-			event = 0;
-		}
+		int count = strcmp( state, "source-medium->target: %[_" ) ? 0 : 3;
+		if (( count == 3 ) && just_blank( e ) && ( e->result.mark <= 7 ))
+			; // optimization: set_instance_results() will check this condition
 		else {
 			context->expression.mode = EvaluateMode;
-			int retval = expression_solve( e, 3, context );
-			event = ( retval > 0 ) ? 0 : retval;
-			int type = ( context->expression.mode == ReadMode ) ?
-				LiteralResults : EntityResults;
-			context->expression.subtype = type;
+			event = expression_solve( e, 3, NULL, context );
 		}
 	}
-
-	stack->expression.flag.inactive = backup.flag.inactive;
-	stack->expression.flag.active = backup.flag.active;
-	stack->expression.flag.not = backup.flag.not;
-	context->expression.marked = backup.marked;
-	context->expression.level = backup.level;
-
-	stack->expression.ptr = expression;
-
 	free( state );
-	return event;
+	return ( event < 0 ) ? event : 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -634,25 +787,28 @@ set_shorty( char *state, int event, char **next_state, _context *context )
 	in_( ".." )		do_( nop, same )
 
 	in_( "[_]." )		do_( set_source_pop, same )
+	in_( "{_}." )		do_( set_source_collect, same )
 	in_( "%[_]." )		do_( set_source_results, same )
 	in_( "identifier." )	do_( set_source_identifier, same )
 	in_( "%!." )		do_( set_source_this, same )
 	in_( "%?." )		do_( set_source_variator, same )
-	in_( "%identifier." )	do_( set_source_variable, same )
+	in_( "%variable." )	do_( set_source_variable, same )
 
 	in_( ".[_]" )		do_( set_medium_pop, same )
+	in_( ".{_}" )		do_( set_medium_collect, same )
 	in_( ".%[_]" )		do_( set_medium_results, same )
 	in_( ".identifier" )	do_( set_medium_identifier, same )
 	in_( ".%?" )		do_( set_medium_variator, same )
 	in_( ".%!" )		do_( set_medium_this, same )
-	in_( ".%identifier" )	do_( set_medium_variable, same )
+	in_( ".%variable" )	do_( set_medium_variable, same )
 
 	in_( "..[_]" )		EPUSH do_( set_target_pop, same ) EPOP
+	in_( "..{_}" )		do_( set_target_collect, same )
 	in_( "..%[_]" )		EPUSH do_( set_target_results, same ) EPOP
 	in_( "..identifier" )	EPUSH do_( set_target_identifier, same ) EPOP
 	in_( "..%?" )		EPUSH do_( set_target_variator, same ) EPOP
 	in_( "..%!" )		EPUSH do_( set_target_this, same ) EPOP
-	in_( "..%identifier" )	EPUSH do_( set_target_variable, same ) EPOP
+	in_( "..%variable" )	EPUSH do_( set_target_variable, same ) EPOP
 	end
 
 	for ( int i=0; i<3; i++ ) {
@@ -720,7 +876,7 @@ set_mark( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	set_super
+	set_super, test_super
 ---------------------------------------------------------------------------*/
 static int
 set_super( char *state, int event, char **next_state, _context *context )
@@ -752,6 +908,29 @@ set_super( char *state, int event, char **next_state, _context *context )
 	return 0;
 }
 
+static int
+test_super( char *state, int event, char **next_state, _context *context )
+{
+	if ( context->command.mode != ExecutionMode )
+		return 0;
+
+	StackVA *stack = (StackVA*) context->command.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+	char *super;
+	switch ( expression->result.as_sup ) {
+		case 0: return 0;
+		case 1: super = "!.."; break;
+		case 2: super = ".!."; break;
+		case 3: super = "!!."; break;
+		case 4: super = "..!"; break;
+		case 5: super = "!.!"; break;
+		case 6: super = ".!!"; break;
+		case 7: super = "!!!"; break;
+		default: return output( Debug, "***** Error: in test_super" );
+	}
+	return outputf( Error, "instance is not allowed after super ('%s') in expression", super );
+}
+
 /*---------------------------------------------------------------------------
 	read_shorty
 ---------------------------------------------------------------------------*/
@@ -763,7 +942,6 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	outputf( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
 #endif
-
 	bgn_
 	in_( base ) bgn_
 		on_( '?' )	do_( nop, "?" )
@@ -873,13 +1051,15 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		end
 		in_( "%[_]." ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
-			on_( '$' )	do_( nothing, "%[_].$" )
-			on_other	do_( read_1, "%[_].narrative" )
+			on_other	do_( error, "" )
 			end
-			in_( "%[_].narrative" ) bgn_
-				on_( '(' )	do_( nothing, "%[_].narrative(" )
-				on_other	do_( error, "" )
-				end
+	in_( "{_}" ) bgn_
+		on_( '.' )	do_( nop, "{_}." )
+		end
+		in_( "{_}." ) bgn_
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
+			end
 	in_( "%!" ) bgn_
 		on_( '.' )	do_( nop, "%!." )
 		end
@@ -887,10 +1067,10 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '.' )	do_( set_shorty, "" )
 			on_other	do_( error, "" )
 			end
-	in_( "%identifier" ) bgn_
-		on_( '.' )	do_( nop, "%identifier." )
+	in_( "%variable" ) bgn_
+		on_( '.' )	do_( nop, "%variable." )
 		end
-		in_( "%identifier." ) bgn_
+		in_( "%variable." ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
 			on_other	do_( error, "" )
 			end
@@ -899,30 +1079,38 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		on_( '!' )	do_( nop, ".!" )
 		on_( '?' )	do_( nop, ".?" )
 		on_( '*' )	do_( set_flag_active, ".*" )
-		on_( '_' )	do_( set_flag_inactive, "._" )
+		on_( '_' )	do_( set_flag_passive, "._" )
 		on_( '~' )	do_( set_flag_not, ".~" )
 		on_( '%' )	do_( nop, ".%" )
 		on_( '[' )	do_( push, ".[_]" )
+		on_( '{' )	do_( read_collect, ".{_}" )
 		on_other	do_( read_1, ".identifier" )
 		end
 		in_( ".*" ) bgn_
 			on_( '~' )	do_( set_flag_not, ".~" )
 			on_( '%' )	do_( nop, ".%" )
 			on_( '[' )	do_( push, ".[_]" )
+			on_( '{' )	do_( read_collect, ".{_}" )
 			on_other	do_( read_1, ".identifier" )
 			end
 		in_( "._" ) bgn_
 			on_( '~' )	do_( set_flag_not, ".~" )
 			on_( '%' )	do_( nop, ".%" )
 			on_( '[' )	do_( push, ".[_]" )
+			on_( '{' )	do_( read_collect, ".{_}" )
 			on_other	do_( read_1, ".identifier" )
 			end
 		in_( ".~" ) bgn_
 			on_( '%' )	do_( nop, ".%" )
 			on_( '[' )	do_( push, ".[_]" )
+			on_( '{' )	do_( read_collect, ".{_}" )
 			on_other	do_( read_1, ".identifier" )
 			end
 		in_( ".[_]" ) bgn_
+			on_( '.' )	do_( set_shorty, "" )
+			on_other	do_( error, "" )
+			end
+		in_( ".{_}" ) bgn_
 			on_( '.' )	do_( set_shorty, "" )
 			on_other	do_( error, "" )
 			end
@@ -934,7 +1122,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '?' )	do_( nop, ".%?" )
 			on_( '!' )	do_( nop, ".%!" )
 			on_( '[' )	do_( read_query, ".%[_]" )
-			on_other	do_( read_1, ".%identifier" )
+			on_other	do_( read_1, ".%variable" )
 			end
 			in_( ".%?" ) bgn_
 				on_( '.' )	do_( set_shorty, "" )
@@ -944,7 +1132,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				on_( '.' )	do_( set_shorty, "" )
 				on_other	do_( error, "" )
 				end
-			in_( ".%identifier" ) bgn_
+			in_( ".%variable" ) bgn_
 				on_( '.' )	do_( set_shorty, "" )
 				on_other	do_( error, "" )
 				end
@@ -967,30 +1155,37 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 			on_( '?' )	do_( set_mark, "?_" )
 			on_( '!' )	do_( set_super, "!_" )
 			on_( '*' )	do_( set_flag_active, "..*" )
-			on_( '_' )	do_( set_flag_inactive, ".._" )
+			on_( '_' )	do_( set_flag_passive, ".._" )
 			on_( '~' )	do_( set_flag_not, "..~" )
 			on_( '%' )	do_( nop, "..%" )
 			on_( '[' )	do_( push, "..[_]" )
+			on_( '{' )	do_( read_collect, "..{_}" )
 			on_other	do_( read_1, "..identifier" )
 			end
 			in_( "..*" ) bgn_
 				on_( '~' )	do_( set_flag_not, "..~" )
 				on_( '%' )	do_( nop, "..%" )
 				on_( '[' )	do_( push, "..[_]" )
+				on_( '{' )	do_( read_collect, "..{_}" )
 				on_other	do_( read_1, "..identifier" )
 				end
 			in_( ".._" ) bgn_
 				on_( '~' )	do_( set_flag_not, "..~" )
 				on_( '%' )	do_( nop, "..%" )
-				on_( '[' )	do_( nop, "..[_]" )
+				on_( '[' )	do_( push, "..[_]" )
+				on_( '{' )	do_( read_collect, "..{_}" )
 				on_other	do_( read_1, "..identifier" )
 				end
 			in_( "..~" ) bgn_
 				on_( '%' )	do_( nop, "..%" )
-				on_( '[' )	do_( nop, "..[_]" )
+				on_( '[' )	do_( push, "..[_]" )
+				on_( '{' )	do_( read_collect, "..{_}" )
 				on_other	do_( read_1, "..identifier" )
 				end
 			in_( "..[_]" ) bgn_
+				on_any		do_( set_shorty, "" )
+				end
+			in_( "..{_}" ) bgn_
 				on_any		do_( set_shorty, "" )
 				end
 			in_( "..identifier" ) bgn_
@@ -1000,7 +1195,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				on_( '?' )	do_( nop, "..%?" )
 				on_( '!' )	do_( nop, "..%!" )
 				on_( '[' )	do_( read_query, "..%[_]" )
-				on_other	do_( read_1, "..%identifier" )
+				on_other	do_( read_1, "..%variable" )
 				end
 				in_( "..%?" ) bgn_
 					on_any	do_( set_shorty, "" )
@@ -1008,7 +1203,7 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 				in_( "..%!" ) bgn_
 					on_any	do_( set_shorty, "" )
 					end
-				in_( "..%identifier" ) bgn_
+				in_( "..%variable" ) bgn_
 					on_any	do_( set_shorty, "" )
 					end
 				in_( "..%[_]" ) bgn_
@@ -1022,8 +1217,6 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 		in_( "source-" )		{ *next_state = state; state = ""; }
 		in_( "target<" )		{ *next_state = state; state = ""; }
 		in_( "source-medium->target" )	{ *next_state = state; state = ""; }
-		in_( "%[_].$" )			{ *next_state = state; state = ""; }
-		in_( "%[_].narrative(" )	{ *next_state = state; state = ""; }
 	end
 	}
 	while ( strcmp( state, "" ) );
@@ -1032,18 +1225,56 @@ read_shorty( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	set_results_to_nil
+	expression_backup, expression_restore
 ---------------------------------------------------------------------------*/
-static int
-set_results_to_nil( char *state, int event, char **next_state, _context *context )
+typedef struct {
+	struct {
+		Expression *ptr;
+		int level, marked, flags;
+		struct {
+			unsigned int active : 1;
+			unsigned int passive : 1;
+			unsigned int not : 1;
+		} flag;
+	} expression;
+	struct {
+		int mode;
+	} command;
+} ExpressionBackup;
+	
+static void
+expression_backup( _context *context )
 {
-	if ( !command_mode( 0, 0, ExecutionMode ) )
-		return 0;
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
 
-	freeListItem( &context->expression.results );
-	context->expression.results = newItem( CN.nil );
-	context->expression.mode = EvaluateMode;
-	return 0;
+	ExpressionBackup *backup = malloc( sizeof( ExpressionBackup ) );
+	backup->expression.ptr = stack->expression.ptr;
+	backup->expression.flag.active = stack->expression.flag.active;
+	backup->expression.flag.passive = stack->expression.flag.passive;
+	backup->expression.flag.not = stack->expression.flag.not;
+	backup->expression.level = context->expression.level;
+	backup->expression.marked = context->expression.marked;
+	backup->command.mode = context->command.mode;
+	addItem( &context->expression.backup, backup );
+
+	context->expression.level = context->command.level;
+	context->expression.marked = 0;
+	stack->expression.ptr = NULL;
+	reset_flags( context );
+}
+
+static void
+expression_restore( _context *context )
+{
+	ExpressionBackup *backup = popListItem( &context->expression.backup );
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	stack->expression.ptr = backup->expression.ptr;
+	stack->expression.flag.active = backup->expression.flag.active;
+	stack->expression.flag.passive = backup->expression.flag.passive;
+	stack->expression.flag.not = backup->expression.flag.not;
+	context->expression.level = backup->expression.level;
+	context->expression.marked = backup->expression.marked;
+	context->command.mode = backup->command.mode;
 }
 
 /*---------------------------------------------------------------------------
@@ -1055,29 +1286,16 @@ expression_init( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	outputf( Debug, "expression_init: setting expression level to %d", context->command.level );
 #endif
-	context->expression.level = context->command.level;
-	context->expression.mode = ReadMode;
-	context->expression.marked = 0;
-
+	expression_backup( context );
 	freeExpression( context->expression.ptr );
 	context->expression.ptr = NULL;
-	context->expression.filter = NULL;
-	if ( context->command.mode != ExecutionMode )
-		return event;
-
-	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	Expression *expression = (Expression *) calloc( 1, sizeof(Expression) );
-	expression->sub[ 3 ].result.any = 1;
-	for ( int i=0; i<3; i++ )
-		expression->sub[ i ].result.none = 1;	// none meaning: none specified
-
-	stack->expression.ptr = expression;
-	stack->expression.flag.not = 0;
-	stack->expression.flag.active = 0;
-	stack->expression.flag.inactive = 0;
-
+	if ( context->command.mode == ExecutionMode )
+	{
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
+		stack->expression.ptr = newExpression( context );
+		reset_flags( context );
+	}
 	return event;
-
 }
 
 /*---------------------------------------------------------------------------
@@ -1089,36 +1307,22 @@ expression_exit( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	outputf( Debug, "expression_exit: on the way: returning event='%c' in mode=%d...", event, context->expression.mode );
 #endif
-	if ( event < 0 ) {
+	StackVA *stack = context->command.stack->ptr;
+	Expression *expression = stack->expression.ptr;
+
+	if (( event < 0 ) || ( context->expression.mode == ErrorMode )) {
 		context->expression.mode = ErrorMode;
 		while ( context->command.level != context->expression.level )
+		{
+			freeExpression( stack->expression.ptr );
+			freeExpressions( &stack->expression.collect );
 			pop( state, event, next_state, context );
-	}
-	if ( context->command.mode != ExecutionMode )
-		return event;
-
-	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	Expression *expression = stack->expression.ptr;
-	if ( context->expression.mode == ErrorMode )
-	{
-		freeExpression( expression );
-	}
-	else if ( expression != NULL ) {
-		if ( expression->sub[ 0 ].result.none ) {
-			free( expression );
-		} else {
-			context->expression.ptr = expression;
-			expression->result.marked = context->expression.marked;
-			if ( expression->result.marked ) {
-				trace_mark( expression );
-				if ( mark_negated( expression, 0 ) ) {
-					output( Warning, "'?' inside of negative clause - "
-						"will not yield result..." );
-				}
-			}
 		}
 	}
-	stack->expression.ptr = NULL;
+	else if ( context->command.mode == ExecutionMode ) {
+		context->expression.ptr = take_expression( context );
+	}
+	expression_restore( context );
 	return event;
 }
 
@@ -1131,25 +1335,13 @@ read_expression( char *state, int event, char **next_state, _context *context )
 #ifdef DEBUG
 	output( Debug, "read_expression: entering" );
 #endif
-	if ( command_mode( FreezeMode, 0, 0 ) ) {
-		event = flush_input( base, 0, &same, context );
-		return event;
-	}
-
-	// set own state according to commander's state
-	bgn_
-	in_( "!. %" )			do_( nothing, "%" )
-	in_( ": identifier : %" )	do_( nothing, "%" )
-	in_other 			do_( nothing, base )
-	end
-	do_( expression_init, same )
+	do_( expression_init, base )
 
 	do {
 	event = read_input( state, event, NULL, context );
 #ifdef DEBUG
 	outputf( Debug, "read_expression: in \"%s\", on '%c'", state, event );
 #endif
-
 	bgn_
 	// errors are handled in expression_exit
 	on_( -1 )	do_( nothing, "" )
@@ -1158,19 +1350,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	in_( ".[_]" )	do_( read_shorty, "source-medium->target" )
 	in_( "..[_]" )	do_( read_shorty, "source-medium->target" )
 
-	// process special state returned from read_shorty
-	in_( "%[_].$" )			do_( nothing, pop_state )
-	in_( "%[_].narrative(" )	do_( nothing, pop_state )
-
 	in_( base ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( ' ' )	do_( nop, same )
 		on_( '\t' )	do_( nop, same )
 		on_( '*' )	do_( set_flag_active, "*" )
-		on_( '_' )	do_( set_flag_inactive, "_" )
+		on_( '_' )	do_( set_flag_passive, "_" )
 		on_( '~' )	do_( set_flag_not, "~" )
-		on_( ']' )	do_( nothing, pop_state )
 		on_( '[' )	do_( push, "[_]" )
+		on_( '{' )	do_( read_collect, "{_}" )
 		on_( '-' )	do_( set_source_null, "source-" )
 		on_( '<' )	do_( set_target_null, "target<" )
 		on_( '.' )	do_( nop, "." )
@@ -1183,6 +1370,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "~" )
 			on_( '[' )	do_( push, "[_]" )
+			on_( '{' )	do_( read_collect, "{_}" )
 			on_( '.' )	do_( nop, "." )
 			on_( '%' )	do_( nop, "%" )
 			on_other	do_( read_1, "identifier" )
@@ -1190,6 +1378,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "~" )
 			on_( '[' )	do_( push, "[_]" )
+			on_( '{' )	do_( read_collect, "{_}" )
 			on_( '.' )	do_( nop, "." )
 			on_( '%' )	do_( nop, "%" )
 			on_other	do_( read_1, "identifier" )
@@ -1198,11 +1387,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( ' ' )	do_( set_source_null, "source-medium->target" )
 			on_( '\t' )	do_( set_source_null, "source-medium->target" )
 			on_( ':' )	do_( set_source_null, "source-medium->target:" )
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( nop, "~ " )
 			on_( '\t' )	do_( nop, "~ " )
-			on_( ']' )	do_( set_source_null, pop_state )
 			on_( '[' )	do_( push, "[_]" )
+			on_( '{' )	do_( read_collect, "{_}" )
 			on_( '-' )	do_( set_source_null, "source-" )
 			on_( '<' )	do_( set_target_null, "target<" )
 			on_( '.' )	do_( nop, "~." )
@@ -1211,20 +1399,16 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_other	do_( read_1, "identifier" )
 			end
 			in_( "~." ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_any, "source-" )
 				on_( '<' )	do_( set_target_any, "target<" )
 				on_( ':' )	do_( set_source_any, "source-medium->target:" )
 				on_( ' ' )	do_( set_source_any, "source-medium->target" )
 				on_( '\t' )	do_( set_source_any, "source-medium->target" )
-				on_( ']' )	do_( set_source_any, pop_state )
 				on_other	do_( set_source_any, pop_state )
 				end
 			in_( "~ " ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( nop, same )
 				on_( '\t' )	do_( nop, same )
-				on_( ']' )	do_( set_source_null, pop_state )
 				on_other	do_( set_source_null, pop_state )
 				end
 		in_( "." ) bgn_
@@ -1233,8 +1417,8 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( ':' )	do_( set_source_any, "source-medium->target:" )
 			on_( ' ' )	do_( set_source_any, "source-medium->target" )
 			on_( '\t' )	do_( set_source_any, "source-medium->target" )
-			on_( ']' )	do_( set_source_any, pop_state )
-			on_( '\n' )	do_( set_source_any, pop_state )
+			on_( '[' )	do_( read_shorty, "source-medium->target" )
+			on_( '{' )	do_( read_shorty, "source-medium->target" )
 			on_( '.' )	do_( read_shorty, "source-medium->target" )
 			on_( '?' )	do_( read_shorty, "source-medium->target" )
 			on_( '!' )	do_( read_shorty, "source-medium->target" )
@@ -1242,30 +1426,36 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '_' )	do_( read_shorty, "source-medium->target" )
 			on_( '~' )	do_( read_shorty, "source-medium->target" )
 			on_( '%' )	do_( read_shorty, "source-medium->target" )
-			on_( '[' )	do_( read_shorty, "source-medium->target" )
+			on_separator	do_( set_source_any, pop_state )
 			on_other	do_( read_shorty, "source-medium->target" )
 			end
 
 		in_( "[_]" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( '-' )	do_( set_source_pop, "source-" )
 			on_( '<' )	do_( swap_source_target, "target<" )
 			on_( ':' )	do_( set_source_pop, "source-medium->target:" )
 			on_( ' ' )	do_( set_source_pop, "source-medium->target" )
 			on_( '\t' )	do_( set_source_pop, "source-medium->target" )
-			on_( ']' )	do_( set_source_pop, pop_state )
 			on_( '.' )	do_( read_shorty, "source-medium->target" )
 			on_other	do_( set_source_pop, pop_state )
 			end
 
+		in_( "{_}" ) bgn_
+			on_( '-' )	do_( set_source_collect, "source-" )
+			on_( '<' )	do_( swap_source_target, "target<" )
+			on_( ':' )	do_( set_source_collect, "source-medium->target:" )
+			on_( ' ' )	do_( set_source_collect, "source-medium->target" )
+			on_( '\t' )	do_( set_source_collect, "source-medium->target" )
+			on_( '.' )	do_( read_shorty, "source-medium->target" )
+			on_other	do_( set_source_collect, pop_state )
+			end
+
 		in_( "identifier" ) bgn_
-			on_( '(' )	do_( set_results_to_nil, pop_state )
 			on_( '-' )	do_( set_source_identifier, "source-" )
 			on_( '<' )	do_( set_target_identifier, "target<" )
 			on_( ':' )	do_( set_source_identifier, "source-medium->target:" )
 			on_( ' ' )	do_( set_source_identifier, "source-medium->target" )
 			on_( '\t' )	do_( set_source_identifier, "source-medium->target" )
-			on_( ']' )	do_( set_source_identifier, pop_state )
 			on_( '.' )	do_( read_shorty, "source-medium->target" )
 			on_other	do_( set_source_identifier, pop_state )
 			end
@@ -1274,67 +1464,51 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "%!" )
 			on_( '?' )	do_( nop, "%?" )
 			on_( '[' )	do_( read_query, "%[_]" )
-			on_( '.' )	do_( set_results_to_nil, "%." )
-			on_other	do_( read_1, "%identifier" )
+			on_other	do_( read_1, "%variable" )
 			end
-			in_( "%." ) bgn_
-				on_( '$' )	do_( nothing, pop_state )
-				on_other	do_( read_1, "%.narrative" )
-				end
-				in_( "%.narrative" ) bgn_
-					on_( '(' )	do_( nothing, pop_state )
-					on_other	do_( error, "" )
-					end
 			in_( "%!" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_this, "source-" )
 				on_( '<' )	do_( set_target_this, "target<" )
 				on_( ':' )	do_( set_source_this, "source-medium->target:" )
 				on_( ' ' )	do_( set_source_this, "source-medium->target" )
 				on_( '\t' )	do_( set_source_this, "source-medium->target" )
-				on_( ']' )	do_( set_source_this, pop_state )
 				on_( '.' )	do_( read_shorty, "source-medium->target" )
 				on_other	do_( set_source_this, pop_state )
 				end
 			in_( "%?" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_variator, "source-" )
 				on_( '<' )	do_( set_target_variator, "target<" )
 				on_( ':' )	do_( set_source_variator, "source-medium->target:" )
 				on_( ' ' )	do_( set_source_variator, "source-medium->target" )
 				on_( '\t' )	do_( set_source_variator, "source-medium->target" )
-				on_( ']' )	do_( set_source_variator, pop_state )
 				on_( '.' )	do_( read_shorty, "source-medium->target" )
 				on_other	do_( set_source_variator, pop_state )
 				end
 			in_( "%[_]" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( '-' )	do_( set_source_results, "source-" )
 				on_( '<' )	do_( set_target_results, "target<" )
 				on_( ':' )	do_( set_source_results, "source-medium->target:" )
 				on_( ' ' )	do_( set_source_results, "source-medium->target" )
 				on_( '\t' )	do_( set_source_results, "source-medium->target" )
-				on_( ']' )	do_( set_source_results, pop_state )
 				on_( '.' )	do_( read_shorty, "source-medium->target" )
 				on_other	do_( set_source_results, pop_state )
 				end
-			in_( "%identifier" ) bgn_
-				on_( '(' )	do_( error, "" )
+			in_( "%variable" ) bgn_
 				on_( '-' )	do_( set_source_variable, "source-" )
 				on_( '<' )	do_( set_target_variable, "target<" )
 				on_( ':' )	do_( set_source_variable, "source-medium->target:" )
 				on_( ' ' )	do_( set_source_variable, "source-medium->target" )
 				on_( '\t' )	do_( set_source_variable, "source-medium->target" )
-				on_( ']' )	do_( set_source_variable, pop_state )
 				on_( '.' )	do_( read_shorty, "source-medium->target" )
 				on_other	do_( set_source_variable, pop_state )
 				end
 
 	in_( "source-" ) bgn_
 		on_( '*' )	do_( set_flag_active, "source-*" )
-		on_( '_' )	do_( set_flag_inactive, "source-_" )
+		on_( '_' )	do_( set_flag_passive, "source-_" )
 		on_( '~' )	do_( set_flag_not, "source-~" )
 		on_( '[' )	do_( push, "source-[_]" )
+		on_( '{' )	do_( read_collect, "source-{_}" )
 		on_( '-' )	do_( set_medium_null, "source-medium-" )
 		on_( '.' )	do_( nop, "source-." )
 		on_( '%' )	do_( nop, "source-%" )
@@ -1344,6 +1518,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-~" )
 			on_( '[' )	do_( push, "source-[_]" )
+			on_( '{' )	do_( read_collect, "source-{_}" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
@@ -1351,6 +1526,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-~" )
 			on_( '[' )	do_( push, "source-[_]" )
+			on_( '{' )	do_( read_collect, "source-{_}" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
@@ -1358,6 +1534,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-~" ) bgn_
 			on_( '-' )	do_( set_medium_null, "source-medium-" )
 			on_( '[' )	do_( push, "source-[_]" )
+			on_( '{' )	do_( read_collect, "source-{_}" )
 			on_( '.' )	do_( nop, "source-." )
 			on_( '%' )	do_( nop, "source-%" )
 			on_other	do_( read_1, "source-identifier" )
@@ -1368,6 +1545,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			end
 		in_( "source-[_]" ) bgn_
 			on_( '-' )	do_( set_medium_pop, "source-medium-" )
+			on_other	do_( error, "" )
+			end
+		in_( "source-{_}" ) bgn_
+			on_( '-' )	do_( set_medium_collect, "source-medium-" )
 			on_other	do_( error, "" )
 			end
 		in_( "source-." ) bgn_
@@ -1382,7 +1563,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "source-%!" )
 			on_( '?' )	do_( nop, "source-%?" )
 			on_( '[' )	do_( read_query, "source-%[_]" )
-			on_other	do_( read_1, "source-%identifier" )
+			on_other	do_( read_1, "source-%variable" )
 			end
 			in_( "source-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "source-medium-" )
@@ -1396,7 +1577,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '-' )	do_( set_medium_results, "source-medium-" )
 				on_other	do_( error, "" )
 				end
-			in_( "source-%identifier" ) bgn_
+			in_( "source-%variable" ) bgn_
 				on_( '-' )	do_( set_medium_variable, "source-medium-" )
 				on_other	do_( error, "" )
 				end
@@ -1407,25 +1588,24 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		end
 
 	in_( "source-medium->" ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( '*' )	do_( set_flag_active, "source-medium->*" )
-		on_( '_' )	do_( set_flag_inactive, "source-medium->_" )
+		on_( '_' )	do_( set_flag_passive, "source-medium->_" )
 		on_( '~' )	do_( set_flag_not, "source-medium->~" )
 		on_( ' ' )	do_( set_target_null, "source-medium->target" )
 		on_( '\t' )	do_( set_target_null, "source-medium->target" )
-		on_( ']' )	do_( set_target_null, pop_state )
 		on_( '[' )	do_( push, "source-medium->[_]" )
+		on_( '{' )	do_( read_collect, "source-medium->{_}" )
 		on_( '%' )	do_( nop, "source-medium->%" )
 		on_( '.' )	do_( set_target_any, "source-medium->target" )
 		on_( '?' )	do_( set_target_mark, "source-medium->target" )
 		on_( ':' )	do_( set_target_null, "source-medium->target:" )
-		on_( '(' )	do_( error, "" )
 		on_separator	do_( set_target_null, pop_state )
 		on_other	do_( read_1, "source-medium->identifier" )
 		end
 		in_( "source-medium->*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->~" )
 			on_( '[' )	do_( push, "source-medium->[_]" )
+			on_( '{' )	do_( read_collect, "source-medium->{_}" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_other	do_( read_1, "source-medium->identifier" )
@@ -1433,6 +1613,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->~" )
 			on_( '[' )	do_( push, "source-medium->[_]" )
+			on_( '{' )	do_( read_collect, "source-medium->{_}" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_other	do_( read_1, "source-medium->identifier" )
@@ -1440,9 +1621,8 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->~" ) bgn_
 			on_( ' ' )	do_( set_target_null, "source-medium->target" )
 			on_( '\t' )	do_( set_target_null, "source-medium->target" )
-			on_( '(' )	do_( error, "" )
-			on_( ']' )	do_( set_target_null, pop_state )
 			on_( '[' )	do_( push, "source-medium->[_]" )
+			on_( '{' )	do_( read_collect, "source-medium->{_}" )
 			on_( '%' )	do_( nop, "source-medium->%" )
 			on_( '.' )	do_( set_target_any, "source-medium->target" )
 			on_( ':' )	do_( set_target_null, "source-medium->target:" )
@@ -1452,15 +1632,18 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->[_]" ) bgn_
 			on_( ' ' )	do_( set_target_pop, "source-medium->target" )
 			on_( '\t' )	do_( set_target_pop, "source-medium->target" )
-			on_( ']' )	do_( set_target_pop, pop_state )
 			on_( ':' )	do_( set_target_pop, "source-medium->target:" )
 			on_other	do_( set_target_pop, pop_state )
 			end
+		in_( "source-medium->{_}" ) bgn_
+			on_( ' ' )	do_( set_target_collect, "source-medium->target" )
+			on_( '\t' )	do_( set_target_collect, "source-medium->target" )
+			on_( ':' )	do_( set_target_collect, "source-medium->target:" )
+			on_other	do_( set_target_collect, pop_state )
+			end
 		in_( "source-medium->identifier" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_target_identifier, "source-medium->target" )
 			on_( '\t' )	do_( set_target_identifier, "source-medium->target" )
-			on_( ']' )	do_( set_target_identifier, pop_state )
 			on_( ':' )	do_( set_target_identifier, "source-medium->target:" )
 			on_other	do_( set_target_identifier, pop_state )
 			end
@@ -1468,37 +1651,29 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '!' )	do_( nop, "source-medium->%!" )
 				on_( '?' )	do_( nop, "source-medium->%?" )
 				on_( '[' )	do_( read_query, "source-medium->%[_]" )
-				on_other	do_( read_1, "source-medium->%identifier" )
+				on_other	do_( read_1, "source-medium->%variable" )
 				end
 				in_( "source-medium->%!" ) bgn_
-					on_( '(' )	do_( error, "" )
 					on_( ' ' )	do_( set_target_this, "source-medium->target" )
 					on_( '\t' )	do_( set_target_this, "source-medium->target" )
-					on_( ']' )	do_( set_target_this, pop_state )
 					on_( ':' )	do_( set_target_this, "source-medium->target:" )
 					on_other	do_( set_target_this, pop_state )
 					end
 				in_( "source-medium->%?" ) bgn_
-					on_( '(' )	do_( error, "" )
 					on_( ' ' )	do_( set_target_variator, "source-medium->target" )
 					on_( '\t' )	do_( set_target_variator, "source-medium->target" )
-					on_( ']' )	do_( set_target_variator, pop_state )
 					on_( ':' )	do_( set_target_variator, "source-medium->target:" )
 					on_other	do_( set_target_variator, pop_state )
 					end
 				in_( "source-medium->%[_]" ) bgn_
-					on_( '(' )	do_( error, "" )
 					on_( ' ' )	do_( set_target_results, "source-medium->target" )
 					on_( '\t' )	do_( set_target_results, "source-medium->target" )
-					on_( ']' )	do_( set_target_results, pop_state )
 					on_( ':' )	do_( set_target_results, "source-medium->target:" )
 					on_other	do_( set_target_results, pop_state )
 					end
-				in_( "source-medium->%identifier" ) bgn_
-					on_( '(' )	do_( error, "" )
+				in_( "source-medium->%variable" ) bgn_
 					on_( ' ' )	do_( set_target_variable, "source-medium->target" )
 					on_( '\t' )	do_( set_target_variable, "source-medium->target" )
-					on_( ']' )	do_( set_target_variable, pop_state )
 					on_( ':' )	do_( set_target_variable, "source-medium->target:" )
 					on_other	do_( set_target_variable, pop_state )
 					end
@@ -1510,9 +1685,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 
 	in_( "target<-" ) bgn_
 		on_( '*' )	do_( set_flag_active, "target<-*" )
-		on_( '_' )	do_( set_flag_inactive, "target<-_" )
+		on_( '_' )	do_( set_flag_passive, "target<-_" )
 		on_( '~' )	do_( set_flag_not, "target<-~" )
 		on_( '[' )	do_( push, "target<-[_]" )
+		on_( '{' )	do_( read_collect, "target<-{_}" )
 		on_( '-' )	do_( set_medium_null, "target<-medium-" )
 		on_( '.' )	do_( set_medium_any, "target<-." )
 		on_( '%' )	do_( nop, "target<-%" )
@@ -1522,6 +1698,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-~" )
 			on_( '[' )	do_( push, "target<-[_]" )
+			on_( '{' )	do_( read_collect, "target<-{_}" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
 			on_other	do_( read_1, "target<-identifier" )
@@ -1529,12 +1706,14 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-~" )
 			on_( '[' )	do_( push, "target<-[_]" )
+			on_( '{' )	do_( read_collect, "target<-{_}" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
 			on_other	do_( read_1, "target<-identifier" )
 			end
 		in_( "target<-~" ) bgn_
 			on_( '[' )	do_( push, "target<-[_]" )
+			on_( '{' )	do_( read_collect, "target<-{_}" )
 			on_( '-' )	do_( set_medium_null, "target<-medium-" )
 			on_( '.' )	do_( set_medium_any, "target<-medium" )
 			on_( '%' )	do_( nop, "target<-%" )
@@ -1546,6 +1725,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			end
 		in_( "target<-[_]" ) bgn_
 			on_( '-' )	do_( set_medium_pop, "target<-medium-" )
+			on_other	do_( error, "" )
+			end
+		in_( "target<-{_}" ) bgn_
+			on_( '-' )	do_( set_medium_collect, "target<-medium-" )
 			on_other	do_( error, "" )
 			end
 		in_( "target<-." ) bgn_
@@ -1561,7 +1744,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "target<-%!" )
 			on_( '?' )	do_( nop, "target<-%?" )
 			on_( '[' )	do_( read_query, "target<-%[_]" )
-			on_other	do_( read_1, "target<-%identifier" )
+			on_other	do_( read_1, "target<-%variable" )
 			end
 			in_( "target<-%!" ) bgn_
 				on_( '-' )	do_( set_medium_this, "target<-medium-" )
@@ -1575,20 +1758,19 @@ read_expression( char *state, int event, char **next_state, _context *context )
 				on_( '-' )	do_( set_medium_results, "target<-medium-" )
 				on_other	do_( error, "" )
 				end
-			in_( "target<-%identifier" ) bgn_
+			in_( "target<-%variable" ) bgn_
 				on_( '-' )	do_( set_medium_variable, "target<-medium-" )
 				on_other	do_( error, "" )
 				end
 
 	in_( "target<-medium-" ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( '*' )	do_( set_flag_active, "target<-medium-*" )
-		on_( '_' )	do_( set_flag_inactive, "target<-medium-_" )
+		on_( '_' )	do_( set_flag_passive, "target<-medium-_" )
 		on_( '~' )	do_( set_flag_not, "target<-medium-~" )
 		on_( ' ' )	do_( set_source_null, "source-medium->target" )
 		on_( '\t' )	do_( set_source_null, "source-medium->target" )
-		on_( ']' )	do_( set_source_null, pop_state )
 		on_( '[' )	do_( push, "target<-medium-[_]" )
+		on_( '{' )	do_( read_collect, "target<-medium-{_}" )
 		on_( '%' )	do_( nop, "target<-medium-%" )
 		on_( '.' )	do_( set_source_any, "source-medium->target" )
 		on_( '?' )	do_( set_source_mark, "source-medium->target" )
@@ -1599,6 +1781,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-medium-*" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
 			on_( '[' )	do_( push, "target<-medium-[_]" )
+			on_( '{' )	do_( read_collect, "target<-medium-{_}" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_other	do_( read_1, "target<-medium-identifier" )
@@ -1606,16 +1789,16 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "target<-medium-_" ) bgn_
 			on_( '~' )	do_( set_flag_not, "target<-medium-~" )
 			on_( '[' )	do_( push, "target<-medium-[_]" )
+			on_( '{' )	do_( read_collect, "target<-medium-{_}" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-~" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_source_null, "source-medium->target" )
 			on_( '\t' )	do_( set_source_null, "source-medium->target" )
-			on_( ']' )	do_( set_source_null, pop_state )
 			on_( '[' )	do_( push, "target<-medium-[_]" )
+			on_( '{' )	do_( read_collect, "target<-medium-{_}" )
 			on_( '%' )	do_( nop, "target<-medium-%" )
 			on_( '.' )	do_( set_source_any, "source-medium->target" )
 			on_( ':' )	do_( set_source_null, "source-medium->target:" )
@@ -1623,18 +1806,20 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_other	do_( read_1, "target<-medium-identifier" )
 			end
 		in_( "target<-medium-[_]" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_source_pop, "source-medium->target" )
 			on_( '\t' )	do_( set_source_pop, "source-medium->target" )
-			on_( ']' )	do_( set_source_pop, pop_state )
 			on_( ':' )	do_( set_source_pop, "source-medium->target:" )
 			on_other	do_( set_source_pop, pop_state )
 			end
+		in_( "target<-medium-{_}" ) bgn_
+			on_( ' ' )	do_( set_source_collect, "source-medium->target" )
+			on_( '\t' )	do_( set_source_collect, "source-medium->target" )
+			on_( ':' )	do_( set_source_collect, "source-medium->target:" )
+			on_other	do_( set_source_collect, pop_state )
+			end
 		in_( "target<-medium-identifier" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_source_identifier, "source-medium->target" )
 			on_( '\t' )	do_( set_source_identifier, "source-medium->target" )
-			on_( ']' )	do_( set_source_identifier, pop_state )
 			on_( ':' )	do_( set_source_identifier, "source-medium->target:" )
 			on_other	do_( set_source_identifier, pop_state )
 			end
@@ -1642,47 +1827,38 @@ read_expression( char *state, int event, char **next_state, _context *context )
 			on_( '!' )	do_( nop, "target<-medium-%!" )
 			on_( '?' )	do_( nop, "target<-medium-%?" )
 			on_( '[' )	do_( read_query, "target<-medium-%[_]" )
-			on_other	do_( read_1, "target<-medium-%identifier" )
+			on_other	do_( read_1, "target<-medium-%variable" )
 			end
 			in_( "target<-medium-%!" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_source_this, "source-medium->target" )
 				on_( '\t' )	do_( set_source_this, "source-medium->target" )
-				on_( ']' )	do_( set_source_this, pop_state )
 				on_( ':' )	do_( set_source_this, "source-medium->target:" )
 				on_other	do_( set_source_this, pop_state )
 				end
 			in_( "target<-medium-%?" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_source_variator, "source-medium->target" )
 				on_( '\t' )	do_( set_source_variator, "source-medium->target" )
-				on_( ']' )	do_( set_source_variator, pop_state )
 				on_( ':' )	do_( set_source_variator, "source-medium->target:" )
 				on_other	do_( set_source_variator, pop_state )
 				end
 			in_( "target<-medium-%[_]" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_source_results, "source-medium->target" )
 				on_( '\t' )	do_( set_source_results, "source-medium->target" )
-				on_( ']' )	do_( set_source_results, pop_state )
 				on_( ':' )	do_( set_source_results, "source-medium->target:" )
 				on_other	do_( set_source_results, pop_state )
 				end
-			in_( "target<-medium-%identifier" ) bgn_
-				on_( '(' )	do_( error, "" )
+			in_( "target<-medium-%variable" ) bgn_
 				on_( ' ' )	do_( set_source_variable, "source-medium->target" )
 				on_( '\t' )	do_( set_source_variable, "source-medium->target" )
-				on_( ']' )	do_( set_source_variable, pop_state )
 				on_( ':' )	do_( set_source_variable, "source-medium->target:" )
 				on_other	do_( set_source_variable, pop_state )
 				end
 
 	in_( "source-medium->target" ) bgn_
+		on_( ':' )	do_( nop, "source-medium->target:" )
 		on_( ' ' )	do_( nop, same )
 		on_( '\t' )	do_( nop, same )
-		on_( '(' )	do_( error, "" )
 		on_( ']' )	do_( nop, pop_state )
-		on_( ':' )	do_( nop, "source-medium->target:" )
 		on_other	do_( nothing, pop_state )
 		end
 
@@ -1690,9 +1866,10 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		on_( ' ' )	do_( nop, same )
 		on_( '\t' )	do_( nop, same )
 		on_( '*' )	do_( set_flag_active, "source-medium->target: *" )
-		on_( '_' )	do_( set_flag_inactive, "source-medium->target: _" )
+		on_( '_' )	do_( set_flag_passive, "source-medium->target: _" )
 		on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
 		on_( '[' )	do_( push, "source-medium->target: [_]" )
+		on_( '{' )	do_( read_collect, "source-medium->target: {_}" )
 		on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 		on_( '%' )	do_( nop, "source-medium->target: %" )
 		on_separator	do_( error, "" )
@@ -1701,6 +1878,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->target: *" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
 			on_( '[' )	do_( push, "source-medium->target: [_]" )
+			on_( '{' )	do_( read_collect, "source-medium->target: {_}" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_other	do_( read_1, "source-medium->target: identifier" )
@@ -1708,6 +1886,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->target: _" ) bgn_
 			on_( '~' )	do_( set_flag_not, "source-medium->target: ~" )
 			on_( '[' )	do_( push, "source-medium->target: [_]" )
+			on_( '{' )	do_( read_collect, "source-medium->target: {_}" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_other	do_( read_1, "source-medium->target: identifier" )
@@ -1715,67 +1894,59 @@ read_expression( char *state, int event, char **next_state, _context *context )
 		in_( "source-medium->target: ~" ) bgn_
 			on_( ' ' )	do_( set_instance_null, "source-medium->target: instance" )
 			on_( '\t' )	do_( set_instance_null, "source-medium->target: instance" )
-			on_( '(' )	do_( error, "" )
 			on_( '[' )	do_( push, "source-medium->target: [_]" )
+			on_( '{' )	do_( read_collect, "source-medium->target: {_}" )
 			on_( '.' )	do_( set_instance_any, "source-medium->target: instance" )
 			on_( '%' )	do_( nop, "source-medium->target: %" )
 			on_separator	do_( set_instance_null, pop_state )
 			on_other	do_( read_1, "source-medium->target: identifier" )
 			end
 		in_( "source-medium->target: [_]" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_instance_pop, "source-medium->target: instance" )
 			on_( '\t' )	do_( set_instance_pop, "source-medium->target: instance" )
-			on_( ']' )	do_( set_instance_pop, pop_state )
 			on_other	do_( set_instance_pop, pop_state )
+			end
+		in_( "source-medium->target: {_}" ) bgn_
+			on_( ' ' )	do_( set_instance_collect, "source-medium->target: instance" )
+			on_( '\t' )	do_( set_instance_collect, "source-medium->target: instance" )
+			on_other	do_( set_instance_collect, pop_state )
 			end
 		in_( "source-medium->target: %" ) bgn_
 			on_( '!' )	do_( nop, "source-medium->target: %!" )
 			on_( '?' )	do_( nop, "source-medium->target: %?" )
 			on_( '[' )	do_( read_query, "source-medium->target: %[_]" )
-			on_other	do_( read_1, "source-medium->target: %identifier" )
+			on_other	do_( read_1, "source-medium->target: %variable" )
 			end
 			in_( "source-medium->target: %!" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_instance_this, "source-medium->target: instance" )
 				on_( '\t' )	do_( set_instance_this, "source-medium->target: instance" )
-				on_( ']' )	do_( set_instance_this, pop_state )
 				on_other	do_( set_instance_this, pop_state )
 				end
 			in_( "source-medium->target: %?" ) bgn_
 				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_instance_variator, "source-medium->target: instance" )
 				on_( '\t' )	do_( set_instance_variator, "source-medium->target: instance" )
-				on_( ']' )	do_( set_instance_variator, pop_state )
 				on_other	do_( set_instance_variator, pop_state )
 				end
 			in_( "source-medium->target: %[_]" ) bgn_
-				on_( '(' )	do_( error, "" )
 				on_( ' ' )	do_( set_instance_results, "source-medium->target: instance" )
 				on_( '\t' )	do_( set_instance_results, "source-medium->target: instance" )
-				on_( ']' )	do_( set_instance_results, pop_state )
 				on_other	do_( set_instance_results, pop_state )
 				end
-			in_( "source-medium->target: %identifier" ) bgn_
-				on_( '(' )	do_( error, "" )
+			in_( "source-medium->target: %variable" ) bgn_
 				on_( ' ' )	do_( set_instance_variable, "source-medium->target: instance" )
 				on_( '\t' )	do_( set_instance_variable, "source-medium->target: instance" )
-				on_( ']' )	do_( set_instance_variable, pop_state )
 				on_other	do_( set_instance_variable, pop_state )
 				end
 		in_( "source-medium->target: identifier" ) bgn_
-			on_( '(' )	do_( error, "" )
 			on_( ' ' )	do_( set_instance_identifier, "source-medium->target: instance" )
 			on_( '\t' )	do_( set_instance_identifier, "source-medium->target: instance" )
-			on_( ']' )	do_( set_instance_identifier, pop_state )
 			on_other	do_( set_instance_identifier, pop_state )
 			end
 
 	in_( "source-medium->target: instance" ) bgn_
-		on_( '(' )	do_( error, "" )
 		on_( ' ' )	do_( nop, same )
 		on_( '\t' )	do_( nop, same )
-		on_( ']' )	do_( nothing, pop_state )
 		on_other	do_( nothing, pop_state )
 		end
 	end

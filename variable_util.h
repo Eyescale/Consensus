@@ -2,18 +2,20 @@
 #define VARIABLE_UTIL_H
 
 /*---------------------------------------------------------------------------
-	variables utilities	- public
+	variable utilities	- public
 ---------------------------------------------------------------------------*/
 
 VariableVA *newVariable( Registry *registry, char *identifier );
-void freeVariableValue( VariableVA *variable );
-void freeVariables( Registry *variables );
-Registry *variable_registry( _context *context );
-VariableVA *lookupVariable( _context *context, char *identifier, int up );
 VariableVA *fetchVariable( _context *context, char *identifier, int do_create );
-
-int expression_substitute( Expression *expression, char *identifier, listItem *value, int count );
-int count_occurrences( Expression *expression, char *identifier, int count );
+VariableVA *lookupVariable( _context *context, char *identifier );
+void	resetVariable( char *identifier, _context *context );
+void	resetVariables( _context *context );
+void	transferVariables( Registry *dst, Registry *src, int override );
+void	freeVariables( Registry *variables );
+void	freeVariableValue( VariableVA *variable );
+void	setVariableValue( VariableVA *, void *value, ValueType type, _context * );
+void	addVariableValue( VariableVA *, void *value, ValueType type, _context * );
+void *  getVariableValue( VariableVA *, _context *context, int duplicate );
 
 
 #endif	// VARIABLE_UTIL_H

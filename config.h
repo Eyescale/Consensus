@@ -1,7 +1,6 @@
 #ifndef CONFIG_H
 
-#define CN_EXE_PATH		"/Library/WebServer/CGI-Executables/consensus/"
-#define CN_BASE_PATH		"/Library/WebServer/Documents/consensus/"
+#define CN_BASE_PATH		"/Library/WebServer/Documents/consensus"
 
 #define IO_OPERATOR_PATH	"/tmp/cn-operator.io"
 #define IO_SERVICE_PATH		"/tmp/cn%d-service.io"

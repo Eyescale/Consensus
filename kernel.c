@@ -54,7 +54,7 @@ set_command_mode( CommandMode mode, _context *context )
 	switch ( mode ) {
 	case FreezeMode:
 		if ( context->input.stack == NULL ) {
-			output( Warning, "switching to passive mode - type in '/~' to alternate condition" );
+			output( Warning, "entering passive mode" );
 		}
 		context->command.freeze.level = context->command.level;
 		break;
@@ -62,7 +62,7 @@ set_command_mode( CommandMode mode, _context *context )
 		break;
 	case ExecutionMode:
 		if (( context->command.mode == FreezeMode ) && ( context->input.stack == NULL )) {
-			output( Warning, "back to active mode" );
+			output( Info, "back to active mode" );
 		}
 		break;
 	}
@@ -94,10 +94,6 @@ nop( char *state, int event, char **next_state, _context *context )
 int
 push( char *state, int event, char **next_state, _context *context )
 {
-	if ( command_mode( FreezeMode, 0, 0 ) ) {
-		context->command.level++;
-		return 0;
-	}
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	stack->next_state = strcmp( *next_state, same ) ? *next_state : state;
 	context->command.level++;
@@ -119,28 +115,23 @@ int
 pop( char *state, int event, char **next_state, _context *context )
 {
 #ifdef DEBUG
-	output( Debug, "kernel pop: from level=%d, state=\"%s\"", context->command.level, state );
+	outputf( Debug, "kernel pop: from level=%d, state=\"%s\"", context->command.level, state );
 #endif
 	if ( command_mode( FreezeMode, 0, 0 ) ) {
 		if ( context->command.level == context->command.freeze.level ) {
 			set_command_mode( ExecutionMode, context );
-		} else {
-			context->command.level--;
-			return 0;
 		}
 	}
-
-	if ( context->input.stack != NULL ) {
+	if (( context->input.stack )) {
 		InputVA *input = (InputVA *) context->input.stack->ptr;
 		if ( !strcmp( input->identifier, "" ) )
 			;
 		else if ( context->command.level == input->level ) {
-			input->shed = 1;
+			input->discard = 1;
 			output( Warning, "attempt to pop control beyond authorized level - closing stream..." );
 			return 0;
 		}
 	}
-
 	// free current level's variables
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	freeVariables( &stack->variables );
@@ -159,7 +150,7 @@ pop( char *state, int event, char **next_state, _context *context )
 	}
 
 #ifdef DEBUG
-	output( Debug, "kernel pop: to state=\"%s\"", state );
+	outputf( Debug, "kernel pop: to state=\"%s\"", state );
 #endif
 	return 0;
 }

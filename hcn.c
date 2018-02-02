@@ -63,6 +63,9 @@ hcn_output_end( char *state, int event, char **next_state, _context *context )
 static int
 hcn_output_char( char *state, int event, char **next_state, _context *context )
 {
+	if (( event == '#' ) || ( event == '|' )) {
+		string_append( &context->hcn.buffer, '\\' );
+	}
 	string_append( &context->hcn.buffer, event );
 	return 0;
 }
@@ -76,22 +79,22 @@ hcn_output_special_char( char *state, int event, char **next_state, _context *co
 static int
 hcn_output_quote_bgn( char *state, int event, char **next_state, _context *context )
 {
-	string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, '"' );
+	string_append( &context->hcn.buffer, '%' );
+	string_append( &context->hcn.buffer, '\'' );
 	return 0;
 }
 static int
 hcn_output_quote_end( char *state, int event, char **next_state, _context *context )
 {
-	string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, '"' );
+	string_append( &context->hcn.buffer, '%' );
+	string_append( &context->hcn.buffer, '\'' );
 	return 0;
 }
 static int
 hcn_output_bgn_char( char *state, int event, char **next_state, _context *context )
 {
 	hcn_output_bgn( state, event, next_state, context );
-	if (( event == ' ' ) || ( event == '\t' ))
+	if (( event == ' ' ) || ( event == '\t' ) || ( event == '#' ) || ( event == '|' ))
 		string_append( &context->hcn.buffer, '\\' );
 	string_append( &context->hcn.buffer, event );
 	return 0;

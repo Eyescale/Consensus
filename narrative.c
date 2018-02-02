@@ -14,6 +14,7 @@
 #include "output.h"
 #include "path.h"
 #include "command.h"
+#include "command_util.h"
 #include "expression.h"
 #include "expression_util.h"
 #include "narrative.h"
@@ -26,10 +27,27 @@
 ---------------------------------------------------------------------------*/
 #define do_( a, s )  \
 	event = narrative_execute( a, &state, event, s, context );
+
+static int
+narrative_execute( _action action, char **state, int event, char *next_state, _context *context )
+{
+	if ( action == flush_input ) {
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
+		stack->narrative.thread = NULL;
+	}
+	event = action( *state, event, &next_state, context );
+        if ( strcmp( next_state, same ) ) *state = next_state;
+
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	narrative_pop
+---------------------------------------------------------------------------*/
 /*
    stack->narrative.state.whole		true if an action has been specified at a higher stack level
-   stack->narrative.state.event		true if an event has been specified at this stack level
    stack->narrative.state.condition	true if a condition has been specified at this stack level
+   stack->narrative.state.event		true if an event has been specified at this stack level
    stack->narrative.state.action	true if an action has been specified at this stack level
    stack->narrative.state.then		true if a then has been specified at this stack level
   
@@ -49,20 +67,17 @@ narrative_pop( char *state, int event, char **next_state, _context *context )
 		event = pop( state, event, next_state, context );
 		if ( event < 0 ) return event;
 
-		if ( context->command.level < context->narrative.level )
-		{
+		if ( context->command.level < context->narrative.level ) {
 			*next_state = "";
 			return event;
 		}
-
 		stack = (StackVA *) context->command.stack->ptr;
-		if ( stack->narrative.state.then )
-		{
-			/*
-			   if the user did not specify an action, and
-			   the stack state is then
-			*/
+		if ( stack->narrative.state.then ) {
 			if ( !whole )
+			/*
+				if the user did not specify an action, and
+				the stack state is then
+			*/
 			{
 				/*
 				   then not followed by action is void
@@ -89,28 +104,6 @@ narrative_pop( char *state, int event, char **next_state, _context *context )
 			return event;
 		}
 	}
-}
-
-static int
-narrative_execute( _action action, char **state, int event, char *next_state, _context *context )
-{
-	if ( !strcmp( next_state, pop_state ) )
-	{
-		// int retval = action( *state, event, &next_state, context );
-		event = narrative_pop( *state, event, &next_state, context );
-		*state = next_state;
-	}
-	else
-	{
-		if ( action == flush_input ) {
-			StackVA *stack = (StackVA *) context->command.stack->ptr;
-			stack->narrative.thread = NULL;
-		}
-		event = action( *state, event, &next_state, context );
-                if ( strcmp( next_state, same ) )
-                        *state = next_state;
-	}
-	return event;
 }
 
 /*---------------------------------------------------------------------------
@@ -190,7 +183,7 @@ narrative_build( Occurrence *occurrence, int event, _context *context )
 	narrative_condition actions
 ---------------------------------------------------------------------------*/
 static int
-set_contrary( char *state, int event, char **next_state, _context *context )
+set_to_contrary( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = context->command.stack->ptr;
 	stack->narrative.state.contrary = 1;
@@ -221,7 +214,7 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 				on_other	do_( error, "" )
 				end
 			in_( "identifier:" ) bgn_
-				on_any		do_( read_expression, "" )
+				on_any		do_( build_expression, "" )
 				end
 		end
 	}
@@ -447,7 +440,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	context->identifier.path = NULL;
 
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	bzero( &stack->narrative.event, sizeof( EventVA ) );
+	memset( &stack->narrative.event, 0, sizeof( EventVA ) );
 	state = base;
 	do {
 		event = read_input( state, event, NULL, context );
@@ -466,7 +459,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 			end
 			in_( "identifier" ) bgn_
 				on_( ':' )	do_( set_event_identifier, "identifier:" )
-				on_( '<' )	do_( nop, "identifier <" )
+				on_( '<' )	do_( set_event_identifier, "identifier <" )
 				on_other	do_( check_init_event, "" )
 				end
 			in_( "identifier <" ) bgn_
@@ -487,11 +480,11 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 					end
 			in_( "identifier:" ) bgn_
 #ifndef DO_LATER
-				on_any	do_( read_expression, "identifier: expression" )
+				on_any	do_( build_expression, "identifier: expression" )
 				end
 #else
 				on_( '<' )	do_( nop, "identifier: <" )
-				on_other	do_( read_expression, "identifier: expression" )
+				on_other	do_( build_expression, "identifier: expression" )
 				end
 				in_( "identifier: <" ) bgn_
 					on_any	do_( read_scheme, "identifier: < scheme" )
@@ -698,6 +691,20 @@ then_restore( char *state, int event, char **next_state, _context *context )
 }
 
 static int
+set_narrative_do_then( char *state, int event, char **next_state, _context *context )
+{
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	if ( stack->narrative.state.exit ) {
+		output( Warning, "'then' following exit - will be ignored" );
+	}
+	// do not set current stack->narrative.state.then
+	Occurrence *occurrence = newOccurrence( ThenOccurrence );
+	int retval = narrative_build( occurrence, event, context );
+
+	return ( retval < 0 ) ? retval : event;
+}
+
+static int
 set_narrative_then( char *state, int event, char **next_state, _context *context )
 {
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
@@ -710,6 +717,7 @@ set_narrative_then( char *state, int event, char **next_state, _context *context
 	if ( stack->narrative.state.exit ) {
 		output( Warning, "'then' following exit - may be ignored" );
 	}
+	stack->narrative.state.then = 1;
 	Occurrence *occurrence = newOccurrence( ThenOccurrence );
 	int retval = narrative_build( occurrence, event, context );
 
@@ -719,8 +727,6 @@ set_narrative_then( char *state, int event, char **next_state, _context *context
 static int
 push_narrative_then( char *state, int event, char **next_state, _context *context )
 {
-	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	stack->narrative.state.then = 1;
 	event = push( state, event, next_state, context );
 	*next_state = base;
 	return event;
@@ -742,7 +748,7 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 	set_command_mode( backup.mode, context );
 
 #ifdef DEBUG
-	output( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.ptr, event );
+	outputf( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.index.name, event );
 #endif
 	if ( event < 0 ) return error( state, event, next_state, context );
 
@@ -753,7 +759,26 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 	return event;
 }
 
-ActionVA *
+static ActionVA *set_action_value( Occurrence *, _context * );
+static int
+set_narrative_action( char *state, int event, char **next_state, _context *context )
+{
+	if ( event < 0 ) return event;
+
+	Occurrence *occurrence = newOccurrence( ActionOccurrence );
+	ActionVA *action = set_action_value( occurrence, context );
+	int retval = narrative_build( occurrence, event, context );
+
+	StackVA *stack = (StackVA *) context->command.stack->ptr;
+	if ( action->exit ) {
+		stack->narrative.state.exit = 1;
+	}
+	stack->narrative.state.otherwise = 0;
+	stack->narrative.state.action = 1;
+	return ( retval < 0 ) ? retval : event;
+}
+
+static ActionVA *
 set_action_value( Occurrence *occurrence, _context *context )
 {
 	listItem *instructions = context->record.instructions;
@@ -770,28 +795,12 @@ set_action_value( Occurrence *occurrence, _context *context )
 }
 
 static int
-set_narrative_action( char *state, int event, char **next_state, _context *context )
+narrative_action_end( char *state, int event, char **next_state, _context *context )
 {
-	if ( event < 0 ) return event;
-
-	Occurrence *occurrence = newOccurrence( ActionOccurrence );
-	ActionVA *action = set_action_value( occurrence, context );
-	int retval = narrative_build( occurrence, event, context );
-
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	if ( action->exit ) {
-		stack->narrative.state.exit = 1;
-	}
-	stack->narrative.state.otherwise = 0;
-
-	if ( stack->narrative.state.then && ( event == '\n' ) ) {
-		do_( nothing, pop_state );
-		*next_state = state;
-	}
-	else if ( retval >= 0 ) {
-		stack->narrative.state.action = 1;
-	}
-	return ( retval < 0 ) ? retval : event;
+	if ( stack->narrative.state.then )
+		return narrative_pop( state, event, next_state, context );
+	return 0;
 }
 
 static int
@@ -815,10 +824,15 @@ narrative_action_open( char *state, int event, char **next_state, _context *cont
 		// returned from '/. - did pop already
 		reorderListItem( &context->record.instructions );
 		int retval = set_narrative_action( state, '\n', next_state, context );
+		if ( retval > 0 ) {
+			StackVA *stack = context->command.stack->ptr;
+			if ( stack->narrative.state.then )
+				return narrative_pop( state, event, next_state, context );
+		}
 		return ( retval < 0 ) ? retval : '}';
 	}
 
-	// returned from '/' - did not close yet
+	// returned from '/' - did not pop (aka. close) yet
 	StackVA *stack = (StackVA *) context->command.stack->ptr;
 	stack->narrative.state.closure = 1; // just for prompt
 	return 0;
@@ -827,19 +841,8 @@ narrative_action_open( char *state, int event, char **next_state, _context *cont
 static int
 narrative_action_close( char *state, int event, char **next_state, _context *context )
 {
-	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	stack->narrative.state.closure = 0;
-
 	// pop at last
 	pop( state, event, &same, context );
-
-	// set this stack level to action
-	stack = context->command.stack->ptr;
-
-	stack->narrative.state.event = 0;
-	stack->narrative.state.condition = 0;
-	stack->narrative.state.action = 1;
-	stack->narrative.state.then = 0;
 
 	// replace the last instruction (which was "/" ) with "/."
 	if ( context->record.instructions->next != NULL ) {
@@ -856,7 +859,14 @@ narrative_action_close( char *state, int event, char **next_state, _context *con
 	}
 	reorderListItem( &context->record.instructions );
 
-	return set_narrative_action( state, event, next_state, context );
+	// set this stack level to action
+	int retval = set_narrative_action( state, event, next_state, context );
+	if ( retval > 0 ) {
+		StackVA *stack = context->command.stack->ptr;
+		if ( stack->narrative.state.then )
+			return narrative_pop( state, event, next_state, context );
+	}
+	return retval;
 }
 
 static int
@@ -866,8 +876,8 @@ narrative_action_then( char *state, int event, char **next_state, _context *cont
 	stack->narrative.state.closure = 0;
 
 	// set current stack level to then
-	stack->narrative.state.event = 0;
 	stack->narrative.state.condition = 0;
+	stack->narrative.state.event = 0;
 	stack->narrative.state.action = 0;
 	stack->narrative.state.then = 1;
 
@@ -971,7 +981,7 @@ narrative_err( char *state, int event, char **next_state, _context *context )
 	else
 	{
 		do_( flush_input, same );
-		if ( !strncmp( state, "in (", 3 ) || !strncmp( state, "on (", 3 ) ) {
+		if ( !strncmp( state, "in (", 4 ) || !strncmp( state, "on (", 4 ) ) {
 			Occurrence *occurrence = current_occurrence( context );
 			for ( listItem *i = occurrence->va; i!=NULL; i=i->next ) {
 				freeOccurrence( i->ptr );
@@ -987,9 +997,9 @@ narrative_err( char *state, int event, char **next_state, _context *context )
 			stack->narrative.state.otherwise = 0;
 			stack->narrative.thread = NULL;
 		}
-		context->error.tell = 1;
 		*next_state = base;
 	}
+	context->error.tell = 1;
 	return event;
 }
 
@@ -1043,12 +1053,13 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 				on_( ' ' )	do_( nop, "in " )
 				on_( '\t' )	do_( nop, "in " )
 				on_( '(' )	do_( nothing, "in " )
-				on_( '~' )	do_( set_contrary, "in " )
+				on_( '~' )	do_( set_to_contrary, "in " )
 				on_other	do_( error, base )
 				end
 				in_( "in " ) bgn_
 					on_( ' ' )	do_( nop, same )
 					on_( '\t' )	do_( nop, same )
+					on_( '~' )	do_( set_to_contrary, same )
 					on_( '(' )	do_( narrative_condition_begin, "in (" )
 					on_other	do_( read_narrative_condition, same )
 							do_( set_narrative_condition, "in (_)" )
@@ -1134,11 +1145,17 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 				in_( "do_" ) bgn_
 					on_( ' ' )	do_( nop, same )
 					on_( '\t' )	do_( nop, same )
-					on_( '\n' )	do_( nop, base )
+					on_( '\n' )	do_( narrative_action_end, base )
 					on_( 'e' )	do_( read_token, "else\0else" )
-					on_( 't' )	do_( read_token, "then\0then" )
+					on_( 't' )	do_( read_token, "then\0do_then" )
 					on_other	do_( error, same )
 					end
+					in_( "do_then" ) bgn_
+						on_( ' ' )	do_( set_narrative_do_then, "then_" )
+						on_( '\t' )	do_( set_narrative_do_then, "then_" )
+						on_( '\n' )	do_( set_narrative_do_then, "then_" )
+						on_other	do_( then_restore, base )
+						end
 				in_( "do {" ) bgn_
 					on_( '}' )	do_( nop, base )
 					on_( ' ' )	do_( nop, same )
@@ -1212,7 +1229,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 		in_( "/" ) bgn_
 			on_( ' ' )	do_( nop, same )
 			on_( '\t' )	do_( nop, same )
-			on_( '\n' )	do_( nothing, pop_state )
+			on_( '\n' )	do_( narrative_pop, pop_state )
 			on_other	do_( error, base )
 			end
 

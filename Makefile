@@ -11,13 +11,13 @@ INCLUDES = -I.
 OBJDIR = .ofiles
 SRCS =	main.c command.c command_util.c \
 	narrative.c narrative_util.c \
-	expression.c expression_util.c expression_solve.c expression_filter.c \
+	expression.c expression_util.c expression_solve.c expression_sieve.c \
 	path.c value.c variable.c variable_util.c \
 	io.c input.c input_util.c hcn.c output.c output_util.c \
-	frame.c api.c kernel.c database.c registry.c string_util.c \
+	frame.c api.c kernel.c database.c registry.c string_util.c xl.c \
 	cgic.c
 
-CFLAGS = -DCGI_DEV
+#CFLAGS = -DPREVIOUS
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 MAIN = consensus
 

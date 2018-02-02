@@ -10,9 +10,11 @@
 #include "output.h"
 
 #include "api.h"
+#include "variable.h"
 #include "variable_util.h"
 #include "expression_util.h"
 #include "narrative_util.h"
+#include "xl.h"
 
 // #define DEBUG
 
@@ -28,34 +30,160 @@ newVariable( Registry *registry, char *identifier )
 }
 
 /*---------------------------------------------------------------------------
-	freeVariableValue, freeVariables
+	fetchVariable	- retrieve or create variable based on context
 ---------------------------------------------------------------------------*/
-void
-freeVariableValue( VariableVA *variable )
+static Registry * variable_registry( _context *context );
+
+VariableVA *
+fetchVariable( _context *context, char *identifier, int do_create )
 {
-	switch ( variable->type ) {
-	case NarrativeVariable:
-		freeRegistry((Registry **) &variable->value );
-		break;
-	case ExpressionVariable:
-		freeExpression( ((listItem *) variable->value )->ptr );
-		freeItem( variable->value );
-		variable->value = NULL;
-		break;
-	case EntityVariable:
-		freeListItem( (listItem **) &variable->value );
-		break;
-	case StringVariable:
-		for ( listItem *i = variable->value; i!=NULL; i=i->next )
-			free( i->ptr );
-		freeListItem( (listItem **) &variable->value );
-		break;
-	case LiteralVariable:
-		freeLiteral( (listItem **) &variable->value );
-		break;
+	Registry *registry = variable_registry( context );
+	registryEntry *entry = registryLookup( registry, identifier );
+	return do_create ?
+		( (entry) ? entry->value : newVariable( registry, identifier ) ):
+		( (entry) ? entry->value : NULL );
+}
+
+static Registry *
+variable_registry( _context *context )
+{
+	if ( context->narrative.current && !context->narrative.mode.editing )
+	{
+		Occurrence *occurrence = context->narrative.occurrence;
+		return &occurrence->variables;
+	} else {
+		StackVA *stack = (StackVA *) context->command.stack->ptr;
+		return &stack->variables;
 	}
 }
 
+/*---------------------------------------------------------------------------
+	lookupVariable
+---------------------------------------------------------------------------*/
+VariableVA *
+lookupVariable( _context *context, char *identifier )
+{
+	VariableVA *variable = NULL;
+#if 0
+	outputf( Debug, "lookupVariable: identifier='%s'", identifier );
+#endif
+	if ( context->narrative.current && !context->narrative.mode.editing )
+	{
+		Occurrence *occurrence = context->narrative.occurrence;
+		for ( Occurrence *i = occurrence; i!=NULL; i=i->thread )
+		{
+			context->narrative.occurrence = i;
+			variable = fetchVariable( context, identifier, 0 );
+			if (( variable )) break;
+		}
+		context->narrative.occurrence = occurrence;
+	}
+	// if we did not find it locally then we check the program stack
+	if ( variable == NULL )
+	{
+		Narrative *backup = context->narrative.current;
+		context->narrative.current = NULL;
+
+		listItem *stack = context->command.stack;
+		for ( listItem *s = stack; s!=NULL; s=s->next )
+		{
+			context->command.stack = s;
+			variable = fetchVariable( context, identifier, 0 );
+			if (( variable )) break;
+		}
+		context->command.stack = stack;
+
+		context->narrative.current = backup;
+	}
+	return variable;
+}
+
+/*---------------------------------------------------------------------------
+	resetVariable
+---------------------------------------------------------------------------*/
+void
+resetVariable( char *identifier, _context *context )
+{
+	if ( identifier == NULL )
+		identifier = get_identifier( context, 0 );
+
+	if ( !strcmp( identifier, this_symbol ) )
+		return;
+
+	Registry *registry = variable_registry( context );
+	registryEntry *entry = registryLookup( registry, identifier );
+	if ( entry == NULL ) return;
+
+	VariableVA *variable = (VariableVA *) entry->value;
+	freeVariableValue( variable );
+	free( variable );
+
+	registryDeregister( registry, identifier );
+}
+
+/*---------------------------------------------------------------------------
+	resetVariables
+---------------------------------------------------------------------------*/
+void
+resetVariables( _context *context )
+{
+	Registry *registry = variable_registry( context );
+	registryEntry *r, *r_next, *r_last = NULL;
+	for ( r = registry->value; r!=NULL; r=r_next )
+	{
+		r_next = r->next;
+		char *identifier = r->index.name;
+		if ( identifier == this_symbol ) {
+			r_last = r;
+			continue;
+		}
+		if ( identifier != variator_symbol )
+			free( identifier );
+
+		VariableVA *variable = r->value;
+		freeVariableValue( variable );
+		free( variable );
+
+		if ( r_last == NULL )
+			registry->value = r_next;
+		else
+			r_last->next = r_next;
+
+		freeRegistryEntry( IndexedByName, r );
+	}
+}
+
+/*---------------------------------------------------------------------------
+	transferVariables
+---------------------------------------------------------------------------*/
+void
+transferVariables( Registry *dst, Registry *src, int override )
+{
+	if ( dst->value == NULL ) {
+		dst->value = src->value;
+		src->value = NULL;
+	}
+	else {
+		for ( registryEntry *r = src->value; r!=NULL; r=r->next ) {
+			char *identifier = r->index.name;
+			registryEntry *entry = registryLookup( dst, identifier );
+			if (( entry )) {
+				free( identifier );
+				if ( override ) {
+					freeVariableValue( entry->value );
+					entry->value = r->value;
+				}
+				else freeVariableValue( r->value );
+			}
+			else registryRegister( dst, identifier, r->value );
+		}
+		emptyRegistry( src );
+	}
+}
+
+/*---------------------------------------------------------------------------
+	freeVariables
+---------------------------------------------------------------------------*/
 void
 freeVariables( Registry *variables )
 {
@@ -75,158 +203,213 @@ freeVariables( Registry *variables )
 }
 
 /*---------------------------------------------------------------------------
-	variable_registry
+	freeVariableValue
 ---------------------------------------------------------------------------*/
-Registry *
-variable_registry( _context *context )
+void
+freeVariableValue( VariableVA *variable )
 {
-	if ( context->narrative.current && !context->narrative.mode.editing )
-	{
-		Occurrence *occurrence = context->narrative.occurrence;
-		return &occurrence->variables;
-	} else {
-		StackVA *stack = (StackVA *) context->command.stack->ptr;
-		return &stack->variables;
+	if ( variable->value == NULL ) return;
+
+	switch ( variable->type ) {
+	case NarrativeVariable:
+		freeRegistry((Registry **) &variable->value );
+		break;
+	case ExpressionVariable:
+		freeExpression( ((listItem *) variable->value )->ptr );
+		freeItem( variable->value );
+		variable->value = NULL;
+		break;
+	case EntityVariable:
+		freeListItem( (listItem **) &variable->value );
+		break;
+	case StringVariable:
+		for ( listItem *i = variable->value; i!=NULL; i=i->next )
+			free( i->ptr );
+		freeListItem( (listItem **) &variable->value );
+		break;
+	case LiteralVariable:
+		freeLiterals( (listItem **) &variable->value );
+		break;
 	}
 }
 
 /*---------------------------------------------------------------------------
-	fetchVariable	- retrieve or create variable based on context
+	setVariableValue
 ---------------------------------------------------------------------------*/
-VariableVA *
-fetchVariable( _context *context, char *identifier, int do_create )
+void
+setVariableValue( VariableVA *variable, void *value, ValueType type, _context *context )
 {
-	VariableVA *variable;
-	if (( identifier == variator_symbol ) || ( identifier == this_symbol ))
-	{
-		Registry *registry = variable_registry( context );
-		registryEntry *entry = registryLookup( registry, identifier );
-		variable = do_create ?
-			( (entry) ? entry->value : newVariable( registry, identifier ) ):
-			( (entry) ? entry->value : NULL );
+	freeVariableValue( variable );
+	switch ( type ) {
+	case NarrativeIdentifiers:
+		variable->type = NarrativeVariable;
+		break;
+	case ExpressionValue:
+		value = newItem( value );
+		// no break
+	case ExpressionCollect:
+		variable->type = ExpressionVariable;
+		break;
+	case LiteralResults:
+		variable->type = LiteralVariable;
+		break;
+	case EntityResults:
+		variable->type = EntityVariable;
+		break;
+	case StringResults:
+		variable->type = StringVariable;
+		break;
+	default:
+		// cf. command.c: replace variator value w/o changing type
+		break;
 	}
-	else if ( identifier == NULL )
-	{
-		identifier = take_identifier( context, 0 );
+	variable->value = value;
+}
 
-		Registry *registry = variable_registry( context );
-		registryEntry *entry = registryLookup( registry, identifier );
-		variable = do_create ?
-			( (entry) ? entry->value : newVariable( registry, identifier ) ):
-			( (entry) ? entry->value : NULL );
+/*---------------------------------------------------------------------------
+	addVariableValue
+---------------------------------------------------------------------------*/
+void
+addVariableValue( VariableVA *variable, void *value, ValueType type, _context *context )
+/*
+	written so as to facilitate possible type conversion in the future
+*/
+{
+	switch ( type ) {
+	case NarrativeIdentifiers:
+		switch ( variable->type ) {
+		case EntityVariable:
+		case StringVariable:
+		case LiteralVariable:
+		case ExpressionVariable:
+			output( Warning, "addVariableValue: variable type mismatch: re-assigning variable" );
+			freeVariableValue( variable );
+			variable->type = NarrativeVariable;
+			// no break
+		case NarrativeVariable:
+			if (( variable->value )) {
+				Registry *r1 = variable->value;
+				Registry *r2 = value;
+				for ( registryEntry *r = r2->value; r!=NULL; r=r->next )
+					registryRegister( r1, r->index.name, r->value );
+				freeRegistry( (Registry **) &value );
+			}
+			else variable->value = value;
+			break;
+		}
+		break;
+	case ExpressionValue:
+		value = newItem( value );
+		// no break
+	case ExpressionCollect:
+		switch ( variable->type ) {
+		case EntityVariable:
+		case StringVariable:
+		case LiteralVariable:
+		case NarrativeVariable:
+			output( Warning, "addVariableValue: variable type mismatch: re-assigning variable" );
+			freeVariableValue( variable );
+			variable->type = ExpressionVariable;
+			// no break
+		case ExpressionVariable:
+			variable->value = catListItem( value, variable->value );
+			break;
+		}
+		break;
+	case LiteralResults:
+		switch ( variable->type ) {
+		case EntityVariable:
+		case StringVariable:
+		case ExpressionVariable:
+		case NarrativeVariable:
+			output( Warning, "addVariableValue: variable type mismatch: re-assigning variable" );
+			freeVariableValue( variable );
+			variable->type = LiteralVariable;
+			// no break
+		case LiteralVariable:
+			variable->value = catListItem( value, variable->value );
+			break;
+		}
+		break;
+	case EntityResults:
+		switch ( variable->type ) {
+		case StringVariable:
+		case LiteralVariable:
+		case ExpressionVariable:
+		case NarrativeVariable:
+			output( Warning, "addVariableValue: variable type mismatch: re-assigning variable" );
+			freeVariableValue( variable );
+			variable->type = EntityVariable;
+			// no break
+		case EntityVariable:
+			variable->value = catListItem( value, variable->value );
+			break;
+		}
+		break;
+	case StringResults:
+		switch ( variable->type ) {
+		case EntityVariable:
+		case LiteralVariable:
+		case ExpressionVariable:
+		case NarrativeVariable:
+			output( Warning, "addVariableValue: variable type mismatch: re-assigning variable" );
+			freeVariableValue( variable );
+			variable->type = StringVariable;
+			// no break
+		case StringVariable:
+			variable->value = catListItem( value, variable->value );
+			break;
+		}
+		break;
+	default:
+		// cf. command.c: replace variator value w/o changing type
+		outputf( Debug, "***** Error: in addVariableValue: value untyped" );
+		return;
+	}
+}
+
+/*---------------------------------------------------------------------------
+	getVariableValue
+---------------------------------------------------------------------------*/
+void *
+getVariableValue( VariableVA *variable, _context *context, int duplicate )
+{
+	if ( variable == NULL ) {
+		return NULL;
+	}
+	else if ( duplicate ) {
+		listItem *results = NULL;
+		switch ( variable->type ) {
+		case EntityVariable:
+			for ( listItem *i = variable->value; i!=NULL; i=i->next )
+				addItem( &results, i->ptr );
+			break;
+		case StringVariable:
+			for ( listItem *i = variable->value; i!=NULL; i=i->next )
+				addItem( &results, strdup( i->ptr ) );
+			break;
+		case LiteralVariable:
+			for ( listItem *i = variable->value; i!=NULL; i=i->next )
+				addItem( &results, ldup( i->ptr ) );
+			break;
+		case ExpressionVariable:
+			for ( listItem *i = variable->value; i!=NULL; i=i->next ) {
+				listItem *s = x2s( i->ptr, context, 0 );
+				Expression *x = s2x( popListItem(&s), context );
+				addItem( &results, x );
+			}
+			break;
+		case NarrativeVariable:
+			// DO_LATER
+			outputf( Debug, "***** in getVariableValue: NarrativeVariable duplication not supported" );
+			break;
+		}
+		return results;
 	}
 	else {
-		Registry *registry = variable_registry( context );
-		registryEntry *entry = registryLookup( registry, identifier );
-		variable = do_create ?
-			( (entry) ? entry->value : newVariable( registry, strdup(identifier) ) ):
-			( (entry) ? entry->value : NULL );
+		// provision: in the future we want to transport at least
+		// EntityVariable value as string - safer, but also slower
+		return variable->value;
 	}
-	return variable;
-}
-
-/*---------------------------------------------------------------------------
-	lookupVariable
----------------------------------------------------------------------------*/
-VariableVA *
-lookupVariable( _context *context, char *identifier, int up )
-{
-	VariableVA *variable = NULL;
-	if ( context->narrative.current && !context->narrative.mode.editing )
-	{
-		Occurrence *occurrence = context->narrative.occurrence;
-		for ( Occurrence *i = occurrence; i!=NULL; i=i->thread )
-		{
-			context->narrative.occurrence = i;
-			variable = fetchVariable( context, identifier, 0 );
-			if (( variable )) break;
-		}
-		context->narrative.occurrence = occurrence;
-	}
-	// if we did not find it locally then we can check the program stack
-	if ( variable == NULL )
-	{
-		Narrative *backup = context->narrative.current;
-		context->narrative.current = NULL;
-
-		listItem *stack = context->command.stack;
-		for ( listItem *s = (up?stack->next:stack); s!=NULL; s=s->next )
-		{
-			context->command.stack = s;
-			variable = fetchVariable( context, identifier, 0 );
-			if (( variable )) break;
-		}
-		context->command.stack = stack;
-
-		context->narrative.current = backup;
-	}
-	return variable;
-}
-
-/*---------------------------------------------------------------------------
-	expression_substitute
----------------------------------------------------------------------------*/
-int
-expression_substitute( Expression *expression, char *identifier, listItem *value, int count )
-{
-	if (( expression == NULL ) || !count )
-		return count;
-
-	ExpressionSub *sub = expression->sub;
-	for ( int i=0; i<4; i++ ) {
-		switch ( sub[ i ].result.identifier.type ) {
-		case VariableIdentifier:
-			; char *name = sub[ i ].result.identifier.value;
-			if (( name == NULL ) || strcmp( name, identifier ) )
-				continue;
-			if ( value == NULL ) {
-				sub[ i ].result.lookup = 1;
-				count--;
-			}
-			else {
-				free( name );
-				sub[ i ].result.identifier.value = NULL;
-				sub[ i ].e = value->ptr;
-				if ( count == 1 ) {
-					sub[ i ].result.identifier.type = 0;
-					count = 0;
-				}
-			}
-			break;
-		default:
-			if ( sub[ i ].result.any ) break;
-			count = expression_substitute( sub[ i ].e, identifier, value, count );
-		}
-		if ( !count ) break;
-	}
-	if ( !count && ( value != NULL ) ) {
-		// only collapse if the original count is 1
-		expression_collapse( expression );
-	}
-	return count;
-}
-
-/*---------------------------------------------------------------------------
-	count_occurrences
----------------------------------------------------------------------------*/
-int
-count_occurrences( Expression *expression, char *identifier, int count )
-{
-	if ( expression == NULL ) return count;
-	ExpressionSub *sub = expression->sub;
-	for ( int i=0; i<4; i++ )
-	{
-		switch ( sub[ i ].result.identifier.type ) {
-		case VariableIdentifier:
-			; char *name = sub[ i ].result.identifier.value;
-			if (( name == NULL ) || strcmp( name, identifier ) )
-				continue;
-			count++;
-			break;
-		default:
-			count = count_occurrences( sub[ i ].e, identifier, count );
-		}
-	}
-	return count;
 }
 

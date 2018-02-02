@@ -13,8 +13,7 @@ typedef struct _Entity
 {
 	// entity data
         struct _Entity *sub[3];
-
-	int state;
+	int twist, state;
 
 	// memory management
         struct _Entity *next;
@@ -22,7 +21,7 @@ typedef struct _Entity
 }
 Entity;
 
-Entity *newEntity( Entity *source, Entity *medium, Entity *target );
+Entity *newEntity( Entity *source, Entity *medium, Entity *target, int pointback );
 void freeEntity( Entity *this );
 
 void *newItem( void *ptr );

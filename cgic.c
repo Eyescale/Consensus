@@ -7,6 +7,7 @@
 	modify the getTempFileName() function to suit your needs. */
 
 #define cgicTempDir "/tmp"
+int CGI_DEBUG_MARK = 0;
 
 #if CGICDEBUG
 #define CGICDEBUGSTART \

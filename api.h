@@ -7,7 +7,7 @@
 
 int	cn_dof( const char *format, ... );
 int	cn_do( char *action );
-int	cn_dob( listItem *actions );
+int	cn_dob( listItem *actions, int level );
 Entity	*cn_setf( char *format, ... );
 
 #ifdef DO_LATER
@@ -19,7 +19,7 @@ Entity	*cn_instf( const char *format, ... );	// to be deprecated
 #endif
 
 Entity	*cn_new( char *name );
-Entity	*cn_instantiate( Entity *source, Entity *medium, Entity *target );
+Entity	*cn_instantiate( Entity *source, Entity *medium, Entity *target, int pointback );
 int	cn_activate( Entity *e );
 int	cn_deactivate( Entity *e );
 void	cn_release( Entity *e );
@@ -35,7 +35,7 @@ void	*cn_va_get( Entity *e, char *va_name );
 registryEntry *cn_va_set( Entity *e, char *va_name, void *value );
 
 int	cn_instantiate_narrative( Entity *e, Narrative *n );
-int	cn_activate_narrative( Entity *e, char *name );
+Narrative *cn_activate_narrative( Entity *e, char *name );
 int	cn_deactivate_narrative( Entity *e, char *name );
 int	cn_release_narrative( Entity *e, char *name );
 

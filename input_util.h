@@ -24,12 +24,12 @@ void	free_identifier( _context *context, int i );
 
 int	num_separators( void );
 int	is_separator( int event );
-int	string_start( IdentifierVA *string, int event );
-int	string_append( IdentifierVA *string, int event );
-char *	string_finish( IdentifierVA *string, int cleanup );
+int	string_start( StringVA *string, int event );
+int	string_append( StringVA *string, int event );
+char *	string_finish( StringVA *string, int cleanup );
 listItem *string_expand( char *string, char **next_pos );
-void	slist_append( listItem **slist, IdentifierVA *identifier, int event, int as_string, int cleanup );
-void	slist_close( listItem **slist, IdentifierVA *identifier, int cleanup );
+void	slist_append( listItem **slist, StringVA *identifier, int event, int as_string, int cleanup );
+void	slist_close( listItem **slist, StringVA *identifier, int cleanup );
 
 // unused
 char *	string_extract( char *identifier );

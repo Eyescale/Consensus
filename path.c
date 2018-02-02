@@ -2,20 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 #include "database.h"
 #include "registry.h"
 #include "kernel.h"
 
+#include "api.h"
 #include "path.h"
-#include "expression.h"
-#include "expression_util.h"
+#include "command_util.h"
 #include "input.h"
 #include "input_util.h"
 #include "output.h"
 #include "output_util.h"
-#include "variable.h"
-#include "variable_util.h"
+#include "value.h"
 
 // #define DEBUG
 
@@ -61,126 +61,148 @@ read_scheme( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	read_STEP	- local utility
+	read_path
 ---------------------------------------------------------------------------*/
-static void
-read_STEP( _context * context )
+static _action read_va_path;
+static _action set_relative;
+static _action build_path;
+
+int
+read_path( char *state, int event, char **next_state, _context *context )
+/*
+	the full path shall be built into context->identifier.path
+	reading each step into context->identifier.id[ 2 ]
+*/
 {
-	if ( context->output.slist == NULL )
-		return;
-
-	listItem **list = &context->output.slist;
-	set_identifier( context, 2, popListItem( list ) );
-	for ( listItem *i = *list; i!=NULL; i=i->next )
-		free( i->ptr );
-	freeListItem( list );
-}
-
-/*---------------------------------------------------------------------------
-	va2s	- translate variable value into string
----------------------------------------------------------------------------*/
-static int
-va2s( char *state, int event, char **next_state, _context *context )
-{
-	if ( !command_mode( 0, 0, ExecutionMode ) )
-		return event;
-
-	char *identifier = take_identifier( context, 1 );
-	VariableVA *variable = lookupVariable( context, identifier, 0 );
-	if ( variable == NULL ) {
-		free( identifier );
-		return outputf( Error, "read_path: variable '%s' not found - cannot form path", identifier );
+	if ( command_mode( 0, 0, ExecutionMode ) ) {
+		free( context->identifier.path );
+		context->identifier.path = NULL;
 	}
-	listItem *list = NULL;
-
-	switch ( variable->type ) {
-	case StringVariable:
-	case NarrativeVariable:
-		event = outputf( Error, "read_path: unsupported variable type - '%s'", identifier );
-		free( identifier );
-		return event;
-	case EntityVariable:
-		// take only the first item in the list of entities
-		list = variable->value;
-		if ( list != NULL ) {
-			push_output( "", NULL, StringOutput, context );
-			output_entity_name( list->ptr, NULL, 1 );
-			pop_output( context, 0 );
-			read_STEP( context );
-		}
-		break;
-	case ExpressionVariable:
-		// take only the first item in the list of expressions
-		list = variable->value;
-		if ( list != NULL ) {
-			context->expression.mode = EvaluateMode;
-	                expression_solve( list->ptr, 3, context );
-		        list = context->expression.results;
-		}
-		// take only the first item in the list of results
-		if ( list != NULL ) {
-			push_output( "", NULL, StringOutput, context );
-			output_entity_name( list->ptr, NULL, 1 );
-			pop_output( context, 0 );
-			read_STEP( context );
-		}
-		break;
-	case LiteralVariable:
-		// take only the first item in the list of literals
-		list = variable->value;
-		if ( list != NULL ) {
-			ExpressionSub *s = (ExpressionSub *) list->ptr;
-			push_output( "", NULL, StringOutput, context );
-			output_expression( ExpressionAll, s->e );
-			pop_output( context, 0 );
-			read_STEP( context );
-		}
-		break;
+	state = base;
+	do {
+		event = read_input( state, event, NULL, context );
+#ifdef DEBUG
+		outputf( Debug, "read_path: in \"%s\", on '%c'", state, event );
+#endif
+		bgn_
+		on_( -1 )	do_( nothing, "" )
+		in_( base ) bgn_
+			on_( '/' )	do_( nop, "/" )
+			on_( '.' )	do_( build_path, base )
+			on_( '-' )	do_( build_path, base )
+			on_( '$' )	do_( read_va_path, "step" )
+			on_( '%' )	do_( read_va, "step" )
+			on_separator	do_( nothing, "" )
+			on_other	do_( read_va, "step" )
+			end
+			in_( "step" ) bgn_
+				on_any	do_( build_path, base )
+				end
+		in_( "/" ) bgn_
+			on_( '/' )	do_( set_relative, base )
+			on_( '.' )	do_( build_path, base )
+			on_( '-' )	do_( build_path, base )
+			on_( '$' )	do_( read_va_path, "/step" )
+			on_other	do_( read_va, "/step" )
+			end
+			in_( "/step" ) bgn_
+				on_any	do_( build_path, base )
+				end
+		end
 	}
-	free( identifier );
-	return event;
-}
+	while ( strcmp( state, "" ) );
 
-/*---------------------------------------------------------------------------
-	xr2s	- translate expression results into string
----------------------------------------------------------------------------*/
-static int
-xr2s( char *state, int event, char **next_state, _context *context )
-{
-	if ( !command_mode( 0, 0, ExecutionMode ) )
-		return event;
-
-	free_identifier( context, 2 );
-
-	// take only the first item in the list of results
-	if ( context->expression.results != NULL ) {
-		push_output( "", NULL, StringOutput, context );
-		output_entity_name( context->expression.results->ptr, NULL, 1 );
-		pop_output( context, 0 );
-		read_STEP( context );
+	if ( command_mode( 0, 0, ExecutionMode ) ) {
+		free_identifier( context, 2 );
+#ifdef DEBUG
+		outputf( Debug, "read_path: returning %s", context->identifier.path );
+#endif
 	}
 	return event;
 }
 
+static _action va2path;
+static int
+read_va_path( char *state, int event, char **next_state, _context *context )
+{
+	event = 0;
+	state = base;
+	do {
+		event = read_input( state, event, NULL, context );
+#ifdef DEBUG
+		outputf( Debug, "read_va_value: in \"%s\", on '%c'", state, event );
+#endif
+		bgn_
+		on_( -1 )	do_( nothing, "" )
+		on_( ' ' )	do_( nop, same )
+		on_( '\t' )	do_( nop, same )
+		in_( base ) bgn_
+			on_( '[' )	do_( nop, "$[" )
+			on_( '(' )	do_( set_results_to_nil, "$[_](" )
+			on_other	do_( error, base )
+			end
+			in_( "$[" ) bgn_
+				on_any	do_( solve_expression, "$[_" )
+				end
+			in_( "$[_" ) bgn_
+				on_( ']' )	do_( nop, "$[_]" )
+				on_other	do_( error, base )
+				end
+			in_( "$[_]" ) bgn_
+				on_( '(' )	do_( nop, "$[_](" )
+				on_other	do_( error, base )
+				end
+			in_( "$[_](" ) bgn_
+				on_any	do_( read_va, "$[_](_" )
+				end
+			in_( "$[_](_" ) bgn_
+				on_( ')' )	do_( va2path, "" )
+				on_other	do_( error, base )
+				end
+		end
+	}
+	while ( strcmp( state, "" ) );
+	return event;
+}
+static int
+va2path( char *state, int event, char **next_state, _context *context )
+{
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return 0;
+
+	char *va_name = get_identifier( context, 2 );
+	if ( strcmp( va_name, "hcn" ) && strcmp( va_name, "story" ) )
+		return outputf( Error, "'%s' value is not allowed in path", va_name );
+	if ( context->expression.results == NULL )
+		return outputf( Error, "va2path: $[(null)]( %s ) is not supported", va_name );
+
+	Entity *e = popListItem( &context->expression.results );
+	char *path = cn_va_get( e, va_name );
+	if ( path == NULL ) {
+		if ( e == CN.nil ) {
+			asprintf( &path, "//Session.%s", va_name );
+		}
+		else asprintf( &path, "//Entity.%s", va_name );
+	}
+	else path = strdup( path );
+	free( va_name );
+	set_identifier( context, 2, path );
+	return 0;
+}
+
 /*---------------------------------------------------------------------------
-	xeval	- read & evaluate expression from stdin
+	set_relative
 ---------------------------------------------------------------------------*/
 static int
-xeval( char *state, int event, char **next_state, _context *context )
+set_relative( char *state, int event, char **next_state, _context *context )
 {
-	char *backup = take_identifier( context, 2 );
+	if ( !command_mode( 0, 0, ExecutionMode ) )
+		return 0;
 
-	event = read_expression( state, event, &same, context );
-	if ( event < 0 )
-		;
-	else if ( command_mode( 0, 0, ExecutionMode ) )
-	{
-		context->expression.mode = EvaluateMode;
-		int retval = expression_solve( context->expression.ptr, 3, context );
-		if ( retval < 0 ) event = retval;
+	if ( context->identifier.path == NULL ) {
+		context->identifier.path = strdup( "//" );
+		event = 0;
 	}
-
-	free_identifier( context, 2 );
 	return event;
 }
 
@@ -191,7 +213,6 @@ static int
 build_path( char *state, int event, char **next_state, _context *context )
 {
 	int retval = (( event == '.' ) || ( event == '-' )) ? 0 : event;
-
 	if ( !command_mode( 0, 0, ExecutionMode ) )
 		return retval;
 
@@ -212,7 +233,8 @@ build_path( char *state, int event, char **next_state, _context *context )
 			in_( "/" )	asprintf( &path, "%s/%c", path, event );
 			end
 		}
-	} else if ( path == NULL ) {
+	}
+	else if ( path == NULL ) {
 		bgn_
 		in_( "step" ) bgn_
 			on_( '.' )	asprintf( &path, "%s%c", step, event );
@@ -225,7 +247,8 @@ build_path( char *state, int event, char **next_state, _context *context )
 			on_other	asprintf( &path, "/%s", step );
 			end
 		end
-	} else {
+	}
+	else {
 		bgn_
 		in_( "step" ) bgn_
 			on_( '.' )	asprintf( &path, "%s%s%c", path, step, event );
@@ -248,105 +271,32 @@ build_path( char *state, int event, char **next_state, _context *context )
 }
 
 /*---------------------------------------------------------------------------
-	set_relative
+	cn_path
 ---------------------------------------------------------------------------*/
-int
-set_relative( char *state, int event, char **next_state, _context *context )
+char *
+cn_path( _context *context, const char *mode, char *name )
 {
-	if ( context->identifier.path == NULL ) {
-		context->identifier.path = strdup( "//" );
-		event = 0;
+	if (( name[ 0 ] != '/' ) || ( name[ 1 ] != '/' )) {
+		return name;
 	}
-	return event;
-}
-
-/*---------------------------------------------------------------------------
-	read_path
----------------------------------------------------------------------------*/
-int
-read_path( char *state, int event, char **next_state, _context *context )
-{
-	if ( command_mode( FreezeMode, 0, 0 ) ) {
-		event = flush_input( state, event, &same, context );
-		return event;
+	char *path;
+	if ( !strcmp( mode, "w" ) ) {
+		if ( context->control.session ) {
+			asprintf( &path, "%s/session/%s/%s", CN_BASE_PATH, context->session.path, name+2 );
+		}
+		else asprintf( &path, "%s/%s", CN_BASE_PATH, name+2 );
 	}
-
-	// the full path shall be built into context->identifier.path
-	// reading each step into context->identifier.id[ 2 ]
-
-	free( context->identifier.path );
-	context->identifier.path = NULL;
-
-	state = base;
-	do {
-		event = read_input( state, event, NULL, context );
-#ifdef DEBUG
-		outputf( Debug, "read_path: in \"%s\", on '%c'", state, event );
-#endif
-		bgn_
-		on_( -1 )	do_( nothing, "" )
-		in_( base ) bgn_
-			on_( '/' )	do_( nop, "/" )
-			on_( '%' )	do_( nop, "%" )
-			on_( '-' )	do_( build_path, base )
-			on_( '.' )	do_( build_path, base )
-			on_separator	do_( nothing, "" )
-			on_other	do_( read_2, "step" )
-			end
-			in_( "step" ) bgn_
-				on_any	do_( build_path, base )
-				end
-			in_( "/" ) bgn_
-				on_( '/' )	do_( set_relative, base )
-				on_( '%' )	do_( nop, "/%" )
-				on_( '.' )	do_( build_path, base )
-				on_( '-' )	do_( build_path, base )
-				on_other	do_( read_2, "/step" )
-				end
-				in_( "/step" ) bgn_
-					on_any	do_( build_path, base )
-					end
-				in_( "/%" ) bgn_
-					on_( '[' )	do_( xeval, "/%[_" )
-					on_other	do_( read_1, "/%variable" )
-					end
-					in_( "/%[_" ) bgn_
-						on_( ' ' )	do_( nop, same )
-						on_( '\t' )	do_( nop, same )
-						on_( ']' )	do_( nop, "/%[_]" )
-						on_other	do_( error, "" )
-						end
-					in_( "/%variable" ) bgn_
-						on_any	do_( va2s, "/step" )
-						end
-					in_( "/%[_]" ) bgn_
-						on_any	do_( xr2s, "/step" )
-						end
-			in_( "%" ) bgn_
-				on_( '[' )	do_( xeval, "%[_" )
-				on_other	do_( read_1, "%variable" )
-				end
-				in_( "/%[_" ) bgn_
-					on_( ' ' )	do_( nop, same )
-					on_( '\t' )	do_( nop, same )
-					on_( ']' )	do_( nop, "/%[_]" )
-					on_other	do_( error, "" )
-					end
-				in_( "%variable" ) bgn_
-					on_any	do_( va2s, "step" )
-					end
-				in_( "%[_]" ) bgn_
-					on_any	do_( xr2s, "step" )
-					end
-		end
+	else {
+		struct stat buf;
+		if ( context->control.session ) {
+			asprintf( &path, "%s/session/%s/%s", CN_BASE_PATH, context->session.path, name+2 );
+			if ( stat( path, &buf ) ) {
+				free( path );
+				asprintf( &path, "%s/default/%s", CN_BASE_PATH, name+2 );
+			}
+		}
+		else asprintf( &path, "%s/default/%s", CN_BASE_PATH, name+2 );
 	}
-	while ( strcmp( state, "" ) );
-
-	free_identifier( context, 2 );
-
-#ifdef DEBUG
-	outputf( Debug, "read_path: returning %s", context->identifier.path.ptr );
-#endif
-	return event;
+	return path;
 }
 

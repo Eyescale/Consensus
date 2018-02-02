@@ -12,5 +12,7 @@ _action	read_path;
 	path utilities		- public
 ---------------------------------------------------------------------------*/
 
+char *cn_path( _context *, const char *mode, char * );
+
 
 #endif	// PATH_H
