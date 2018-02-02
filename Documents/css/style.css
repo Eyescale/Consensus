@@ -1,0 +1,79 @@
+html, body {
+	height:100%;
+}
+
+a {
+	text-decoration:none;
+}
+
+.stamp {
+	font-size:90%;
+	padding: 0 5px;
+}
+
+h1 {
+	text-align: center;
+	margin-top: 0;
+}
+
+.page {
+	font-size:100%;
+	background-color:#ffffff;
+	width:80%;
+	padding-top:20px;
+	margin-left:auto;
+	margin-right:auto;
+	text-align:justify;
+#	min-height:100%;
+}
+
+.button, .redbutton {
+ 	color: #ffffff;
+	background-color:#0000cc;
+ 	font-size:100%;
+ 	padding: 6px 15px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.button:hover {
+	background-color: #00aa00;
+}
+.redbutton:hover {
+	background-color: Red;
+}
+
+dl dl { margin-top: 0px; }
+
+dt { padding-left:6px; font-weight:bold; margin-bottom:3px; }
+dd { margin-bottom:20px; font-weight:normal; margin-right:40px; }
+
+dl dl dt { padding-left: 0px; }
+
+dl.toc dt { padding-left:0px; }
+dl.toc dd { margin-bottom:0px; font-weight:normal; }
+dl.toc th { vertical-align:top; }
+
+dl.list dt { padding-left:0px; font-weight:normal; }
+dl.list dd { margin-bottom:10px; }
+
+.footer {
+	color:#cccccc;
+	margin-top:10px;
+	padding: 0 5px;
+	font-size:90%;
+}
+
+.footer hr {
+	color:#cccccc;
+	height:1px;
+	margin-top:100px;
+	border-style:dotted;
+	border-width:0px 0px 1px 0px;
+}
+
+.footer .date {
+	font-style:italic;
+	padding: 0 6px;
+}
+
