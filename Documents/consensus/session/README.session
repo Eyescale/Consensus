@@ -1,0 +1,4 @@
+
+This here file forces git to check-in the session directory
+which must reside together with the default directory
+under /Library/WebServer/Documents/consensus/
