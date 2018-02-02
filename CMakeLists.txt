@@ -14,7 +14,7 @@ extra_application(Consensus SOURCES
 	command_util.c
 	database.c
 	expression.c
-	expression_filter.c
+	expression_sieve.c
 	expression_solve.c
 	expression_util.c
 	frame.c
