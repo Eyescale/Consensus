@@ -2,7 +2,6 @@
 
 * This here is a Chrome-enabled version of consensus.
 * To install, you need to:
-<div style="list-style-type:decimal">
     1. make consensus (see below)
     2. setup local WebServer on your system - cf.  
        https://www.maketecheasier.com/setup-local-web-server-all-platforms/
@@ -10,12 +9,9 @@
        https://httpd.apache.org/docs/current/howto/cgi.html
     4. copy the consensus executable under /Library/WebServer/CGI-Executables
     5. copy the entire contents of the distribution's 'Documents' directory under /Library/WebServer/Documents
-</div>
 * To run, you need to
-<div style="list-style-type:decimal">
     1. launch consensus in operator mode, e.g. from the distribution's directory type './consensus -moperator'
     2. enter the URL 'localhost/cgi-bin/consensus' in Chrome
-</div>
 
 ----
 
