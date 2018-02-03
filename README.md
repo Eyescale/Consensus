@@ -12,7 +12,7 @@
 * To run, you need to
     * launch consensus in operator mode, e.g. from the distribution's directory type
     ```
-    ./consensus -moperator
+        ./consensus -moperator
     ```
     * enter the URL 'localhost/cgi-bin/consensus' in Chrome
 
