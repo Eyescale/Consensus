@@ -36,3 +36,4 @@ extra_application(Consensus SOURCES
 	variable_util.c
 	xl.c
 )
+target_include_directories(Consensus PRIVATE include)
