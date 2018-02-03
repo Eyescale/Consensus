@@ -6,7 +6,7 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I.
+INCLUDES = -I. -I./include
 
 OBJDIR = .ofiles
 SRCS =	main.c command.c command_util.c \
