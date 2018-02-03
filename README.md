@@ -10,7 +10,10 @@
     * copy the consensus executable under /Library/WebServer/CGI-Executables
     * copy the entire contents of the distribution's 'Documents' directory under /Library/WebServer/Documents
 * To run, you need to
-    * launch consensus in operator mode, e.g. from the distribution's directory type './consensus -moperator'
+    * launch consensus in operator mode, e.g. from the distribution's directory type
+```
+    ./consensus -moperator
+```
     * enter the URL 'localhost/cgi-bin/consensus' in Chrome
 
 ----
