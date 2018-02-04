@@ -189,7 +189,7 @@ command_init( char *state, int event, char **next_state, _context *context )
 				break;
 			case '\n':
 				; char *identifier = string_finish( buffer, 0 );
-				buffer->index.name = NULL;
+				buffer->value = NULL;
 				if (( identifier )) {
 					SessionVA *session = calloc( 1, sizeof(SessionVA) );
 					session->path = identifier;

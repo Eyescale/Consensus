@@ -55,10 +55,9 @@ output_identifier( char *identifier )
 		if ( *src != '\"' )
 			string_append( buffer, *src );
 		string_finish( buffer, 0 );
-		output( Text, buffer->index.name );
+		output( Text, buffer->value );
 	}
 	else {
-		StringVA *buffer = newString();
 		int has_special = 0;
 		for ( char *src = identifier; *src; src++ ) {
 			switch ( *src ) {
@@ -104,13 +103,13 @@ output_identifier( char *identifier )
 		}
 		string_finish( buffer, 0 );
 		if ( !has_special ) {
-			output( Text, buffer->index.name );
+			output( Text, buffer->value );
 		}
 		else if ( context->input.hcn ) {
-			outputf( Text, "%%22%s%%22", buffer->index.name );
+			outputf( Text, "%%22%s%%22", buffer->value );
 		}
 		else {
-			outputf( Text, "\"%s\"", buffer->index.name );
+			outputf( Text, "\"%s\"", buffer->value );
 		}
 	}
 	freeString( buffer );

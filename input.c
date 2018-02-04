@@ -43,13 +43,8 @@ read_input( char *state, int event, char **next_state, _context *context )
 			event = (int) ((char *) context->input.buffer.position++ )[ 0 ];
 		}
 		else if ( context->input.stack == NULL ) {
-#if 0
 			if ( context->control.cgi || context->control.session )
 				return output( Debug, "input: wrong mode" ); // should be impossible
-#else
-			if ( context->control.cgi || context->control.session )
-				output( Debug, "input: wrong mode" ); // should be impossible
-#endif
 
 			StackVA *stack = context->command.stack->ptr;
 			if ( stack->narrative.state.closure || !strcmp( state, base ) || !strcmp( state, "?!:_/" ) )
@@ -159,7 +154,7 @@ bufferize( int event, int *mode, _context *context )
 	}
 	else if ( event == EOF ) {
 		string_finish( context->input.buffer.ptr, 1 );
-		context->input.buffer.position = context->input.buffer.ptr->index.name;
+		context->input.buffer.position = context->input.buffer.ptr->value;
 		if ((context->input.buffer.position)) {
 			context->input.eof = 1;
 			return 0;
@@ -171,7 +166,7 @@ bufferize( int event, int *mode, _context *context )
 		if ( event == '\n' ) {
 			string_append( context->input.buffer.ptr, '\n' );
 			string_finish( context->input.buffer.ptr, 1 );
-			context->input.buffer.position = context->input.buffer.ptr->index.name;
+			context->input.buffer.position = context->input.buffer.ptr->value;
 		}
 	}
 	else if ( mode[ BACKSLASH ] ) {
@@ -217,7 +212,7 @@ bufferize( int event, int *mode, _context *context )
 		case '\n':
 			string_append( context->input.buffer.ptr, '\n' );
 			string_finish( context->input.buffer.ptr, 1 );
-			context->input.buffer.position = context->input.buffer.ptr->index.name;
+			context->input.buffer.position = context->input.buffer.ptr->value;
 			break;
 		case '#':
 			mode[ COMMENT ] = 1;
@@ -403,7 +398,6 @@ push_input( char *identifier, void *src, InputType type, _context *context )
 	}
 	if ( failed ) {
 		outputf( Error, "could not open stream: \"%s\"", identifier );
-		context->command.one = input->restore.command_one;
 		freeInput( input, context );
 		free( identifier );
 		return output( Error, NULL );
@@ -593,8 +587,7 @@ flush_input( char *state, int event, char **next_state, _context *context )
 			while ( event != '\n' );
 		}
 		else {
-			free( context->record.string.index.name );
-			context->record.string.index.name = NULL;
+			string_start( &context->record.string, 0 );
 			freeLastInstruction( context );
 		}
 		break;
@@ -654,21 +647,18 @@ set_record_mode( RecordMode mode, int event, _context *context )
 {
 	switch ( mode ) {
 	case OffRecordMode:
-		if ( context->record.mode == OnRecordMode )
-		{
+		if ( context->record.mode == OnRecordMode ) {
 			// remove the last event '\n' from the record
 			popListItem( (listItem **) &context->record.string.value );
 			string_finish( &context->record.string, 1 );
 		}
-		else if ( context->record.mode == RecordInstructionMode )
-		{
+		else if ( context->record.mode == RecordInstructionMode ) {
 			slist_close( &context->record.instructions, &context->record.string, 0 );
 		}
 		context->record.mode = mode;
 		break;
 	case OnRecordMode:
-		if (( context->record.mode == OffRecordMode ) && ( event >= 0 ))
-		{
+		if (( context->record.mode == OffRecordMode ) && ( event >= 0 )) {
 			string_start( &context->record.string, event );
 			context->record.mode = mode;
 		}

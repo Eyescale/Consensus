@@ -748,13 +748,13 @@ read_narrative_action( char *state, int event, char **next_state, _context *cont
 	set_command_mode( backup.mode, context );
 
 #ifdef DEBUG
-	outputf( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.index.name, event );
+	outputf( Debug, "narrative: read action \"%s\" - returning '%c'", context->record.string.value, event );
 #endif
 	if ( event < 0 ) return error( state, event, next_state, context );
 
 	// Note: context->record.instructions is assumed to be NULL here...
-	addItem( &context->record.instructions, context->record.string.index.name );
-	context->record.string.index.name = NULL;
+	addItem( &context->record.instructions, context->record.string.value );
+	context->record.string.value = NULL;
 
 	return event;
 }
@@ -964,8 +964,7 @@ narrative_err( char *state, int event, char **next_state, _context *context )
 {
 	if (( context->input.stack ))	// abort script
 	{
-		free( context->record.string.index.name );
-		context->record.string.index.name = NULL;
+		string_start( &context->record.string, 0 );
 		freeInstructionBlock( context );
 
 		while ( context->command.level >= context->narrative.level )

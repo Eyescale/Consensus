@@ -6,6 +6,10 @@ int	isanumber( char *string );
 /*---------------------------------------------------------------------------
 	string_util	utilities
 ---------------------------------------------------------------------------*/
+enum {
+	STRING_EVENTS = 0,
+	STRING_TEXT
+};
 
 StringVA *newString( void );
 void	freeString( StringVA * );

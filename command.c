@@ -103,6 +103,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 		// in general, we want to ignore ' ' and '\t'
 		// but there are special cases...
 		switch( state[ strlen(state) - 1 ] ) {
+		case '$':
 		case '%':
 			do_( command_err, base )
 			break;

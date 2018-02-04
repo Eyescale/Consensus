@@ -5,8 +5,8 @@ on event < cgi >: . !!
 		do exit
 		/
 	else in : Edit-is->action: %event do
-		: view: ?-is->view: %event
-		: ext: ?-is->ext: %event
+		: view : ?-is->view: %event
+		: ext : ?-is->ext: %event
 		: entity < ?-is->entity: %event
 		/
 		then

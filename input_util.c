@@ -144,25 +144,44 @@ read_2( char *state, int event, char **next_state, _context *context )
 ---------------------------------------------------------------------------*/
 int
 test_identifier( _context *context, int i )
-	{ return ( context->identifier.id[ i ].index.name ) ? 1 : 0; }
+{
+	if (( context->identifier.id[ i ].index.value == STRING_TEXT ) &&
+	    ( context->identifier.id[ i ].value != NULL )) {
+		return 1;
+	}
+	return 0;
+}
 void
 set_identifier( _context *context, int i, char *value )
-	{ context->identifier.id[ i ].index.name = value; }
+{
+	context->identifier.id[ i ].index.value = STRING_TEXT;
+	context->identifier.id[ i ].value = value;
+}
 char *
 get_identifier( _context *context, int i )
-	{ return context->identifier.id[ i ].index.name; }
+{
+	if ( context->identifier.id[ i ].index.value == STRING_TEXT ) {
+		return context->identifier.id[ i ].value;
+	}
+	return NULL;
+}
 char *
 take_identifier( _context *context, int i )
 {
-	char *retval = context->identifier.id[ i ].index.name;
-	context->identifier.id[ i ].index.name = NULL;
-	return retval;
+	if ( context->identifier.id[ i ].index.value == STRING_TEXT ) {
+		char *retval = context->identifier.id[ i ].value;
+		context->identifier.id[ i ].value = NULL;
+		return retval;
+	}
+	return NULL;
 }
 void
 free_identifier( _context *context, int i )
 {
-	free( context->identifier.id[ i ].index.name );
-	context->identifier.id[ i ].index.name = NULL;
+	if ( context->identifier.id[ i ].index.value == STRING_TEXT ) {
+		free( context->identifier.id[ i ].value );
+		context->identifier.id[ i ].value = NULL;
+	}
 }
 
 /*---------------------------------------------------------------------------

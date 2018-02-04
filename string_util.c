@@ -32,15 +32,23 @@ isanumber( char *string )
 StringVA *
 newString( void )
 {
-	return newRegistryEntry( 0, NULL, NULL );
+	int mode = STRING_EVENTS;
+	StringVA *string = newRegistryEntry( IndexedByNumber, &mode, NULL );
+	return string;
 }
 
 void
 freeString( StringVA *string )
 {
-	freeListItem( (listItem **) &string->value );
-	free( string->index.name );
-	freeRegistryEntry( 0, string );
+	switch ( string->index.value ) {
+	case STRING_EVENTS:
+		freeListItem( (listItem **) &string->value );
+		break;
+	case STRING_TEXT:
+		free( string->value );
+		break;
+	}
+	freeRegistryEntry( IndexedByNumber, string );
 }
 
 /*---------------------------------------------------------------------------
@@ -52,9 +60,16 @@ string_start( StringVA *string, int event )
 #ifdef DEBUG_2
 	output( Debug, "string_start: '%c'", (char) event );
 #endif
-	freeListItem( (listItem **) &string->value );
-	free( string->index.name );
-	string->index.name = NULL;
+	switch ( string->index.value ) {
+	case STRING_EVENTS:
+		freeListItem( (listItem **) &string->value );
+		break;
+	case STRING_TEXT:
+		free( string->value );
+		string->value = NULL;
+		string->index.value = STRING_EVENTS;
+		break;
+	}
 	if ( event ) {
 		string_append( string, event );
 	}
@@ -66,6 +81,9 @@ string_start( StringVA *string, int event )
 ---------------------------------------------------------------------------*/
 int
 string_append( StringVA *string, int event )
+/*
+	Assumption: string->index.value == STRING_EVENTS
+*/
 {
 #ifdef DEBUG_2
 	output( Debug, "string_append: '%c'", (char) event );
@@ -82,6 +100,9 @@ string_append( StringVA *string, int event )
 ---------------------------------------------------------------------------*/
 char *
 string_finish( StringVA *string, int cleanup )
+/*
+	Assumption: string->index.value == STRING_EVENTS
+*/
 {
 #ifdef DEBUG_2
 	output( Debug, "string_finish: '%c'", (char) event );
@@ -93,8 +114,7 @@ string_finish( StringVA *string, int cleanup )
 	int count = 0;
 
 	// remove trailing white space
-	if ( cleanup )
-	{
+	if ( cleanup ) {
 		listItem *backup = NULL;
 		i = *list;
 		if ((char) i->ptr == '\n' ) {
@@ -126,8 +146,7 @@ string_finish( StringVA *string, int cleanup )
 	count = reorderListItem( list );
 
 	// remove leading white space
-	if ( cleanup )
-	{
+	if ( cleanup ) {
 		for ( i = *list; i!=NULL; i=next_i ) {
 			switch ((char) i->ptr) {
 			case ' ':
@@ -144,15 +163,17 @@ string_finish( StringVA *string, int cleanup )
 	}
 
 	// allocate string
-	string->index.name = (char *) malloc( count + 1 );
-	char *ptr = string->index.name;
+	char *str = (char *) malloc( count + 1 );
+	char *ptr = str;
 	for ( i = *list, count=0; i!=NULL; i=i->next, count++ ) {
 		*ptr++ = (char) i->ptr;
 	}
 	*ptr = 0;
 
 	freeListItem( list );
-	return string->index.name;
+	string->index.value = STRING_TEXT;
+	string->value = str;
+	return str;
 }
 
 /*---------------------------------------------------------------------------
@@ -167,7 +188,7 @@ slist_close( listItem **slist, StringVA *dst, int cleanup )
 			addItem( slist, str );
 		}
 		else free( str );
-		dst->index.name = NULL;
+		dst->value = NULL;
 	}
 }
 void
@@ -397,10 +418,10 @@ expand_b( listItem **base, StringVA *string )
 	listItem *results = NULL;
 
 	string_finish( string, 0 );
-	if (( string->index.name )) {
-		listItem *sub = newItem( string->index.name );
+	if (( string->value )) {
+		listItem *sub = newItem( string->value );
 		results = (*base) ? expand_s( base, &sub ) : sub;
-		string->index.name = NULL;
+		string->value = NULL;
 	}
 	else results = *base;
 	return results;

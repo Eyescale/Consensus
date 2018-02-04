@@ -58,6 +58,7 @@ hcn_output_end( char *state, int event, char **next_state, _context *context )
 {
 	string_append( &context->hcn.buffer, '\n' );
 	string_finish( &context->hcn.buffer, 0 );
+	context->hcn.position = context->hcn.buffer.value;
 	return 0;
 }
 static int
@@ -115,6 +116,7 @@ hcn_output_CR( char *state, int event, char **next_state, _context *context )
 	string_append( &context->hcn.buffer, '\\' );
 	string_append( &context->hcn.buffer, 'n' );
 	string_finish( &context->hcn.buffer, 0 );
+	context->hcn.position = context->hcn.buffer.value;
 	return 0;
 }
 static int
@@ -151,9 +153,7 @@ hcn_output_LT_char( char *state, int event, char **next_state, _context *context
 static int
 hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
 {
-	free( context->hcn.buffer.index.name );
-	freeListItem( (listItem **) &context->hcn.buffer.value );
-	return 0;
+	return string_start( &context->hcn.buffer, 0 );
 }
 /*---------------------------------------------------------------------------
 	command actions
@@ -163,6 +163,7 @@ hcn_command_end( char *state, int event, char **next_state, _context *context )
 {
 	string_append( &context->hcn.buffer, '\n' );
 	string_finish( &context->hcn.buffer, 0 );
+	context->hcn.position = context->hcn.buffer.value;
 	return 0;
 }
 static int
@@ -210,25 +211,14 @@ hcn_getc( int fd, _context *context )
 
 		// flush buffer
 		// ------------
-		if (( context->hcn.buffer.index.name ))
-		do {
-			if ( context->hcn.position == NULL ) {
-				context->hcn.position = context->hcn.buffer.index.name;
-#ifdef DEBUG
-				outputf( Debug, "hcn: reading from: \"%s\"", (char *) context->hcn.position );
-#endif
-			}
+		if (( context->hcn.position )) {
 			event = (int ) (( char *) context->hcn.position++ )[ 0 ];
 			if ( !event ) {
-				free( context->hcn.buffer.index.name );
-				context->hcn.buffer.index.name = NULL;
+				string_start( &context->hcn.buffer, 0 );
 				context->hcn.position = NULL;
 			}
-			else {
-				return event;
-			}
+			else return event;
 		}
-		while (( context->hcn.buffer.index.name ));
 
 		// input new data
 		// --------------
