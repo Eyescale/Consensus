@@ -33,8 +33,7 @@ StringVA *
 newString( void )
 {
 	int mode = STRING_EVENTS;
-	StringVA *string = newRegistryEntry( IndexedByNumber, &mode, NULL );
-	return string;
+	return newRegistryEntry( IndexedByNumber, &mode, NULL );
 }
 
 void
