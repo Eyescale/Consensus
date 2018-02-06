@@ -46,12 +46,17 @@ output_identifier( char *identifier )
 		char *src = identifier;
 		if ( *src != '\"' )
 			string_append( buffer, *src );
+#ifdef PREVIOUS
 		for ( src++; src[ 1 ]; src++ ) {
 			if ( *src == '\\' ) {
 				string_append( buffer, '\\' );
 			}
 			string_append( buffer, *src );
 		}
+#else
+		for ( src++; src[ 1 ]; src++ )
+			string_append( buffer, *src );
+#endif
 		if ( *src != '\"' )
 			string_append( buffer, *src );
 		string_finish( buffer, 0 );

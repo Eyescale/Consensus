@@ -190,12 +190,12 @@ bufferize( int event, int *mode, _context *context )
 				context->output.prompt = 0;
 				fprintf( stderr, "$\t" );
 			}
+#ifdef CR_ENCODE
 			string_append( context->input.buffer.ptr, '\\' );
 			string_append( context->input.buffer.ptr, 'n' );
-			break;
-		case '\t':
-			string_append( context->input.buffer.ptr, '\\' );
-			string_append( context->input.buffer.ptr, 't' );
+#else
+			string_append( context->input.buffer.ptr, event );
+#endif
 			break;
 		case '\\':
 			mode[ BACKSLASH ] = 1;

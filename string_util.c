@@ -172,6 +172,9 @@ string_finish( StringVA *string, int cleanup )
 	freeListItem( list );
 	string->index.value = STRING_TEXT;
 	string->value = str;
+#if 0
+	fprintf( stderr, "STRING_FINISH => '%s'\n", str );
+#endif
 	return str;
 }
 

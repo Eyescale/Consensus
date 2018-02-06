@@ -17,180 +17,45 @@
 
 // #define DEBUG
 
+static _action hcn_output_bgn;
+static _action hcn_output_CR;
+static _action hcn_output_bgn_char;
+static _action hcn_output_bgn_LT;
+static _action hcn_output_bgn_LT_char;
+static _action hcn_output_char;
+static _action hcn_output_special_char;
+static _action hcn_output_LT;
+static _action hcn_output_LT_char;
+static _action hcn_output_end;
+static _action hcn_output_end_command_bgn;
+
+static _action hcn_command_bgn;
+static _action hcn_command_bgn_GT_char;
+static _action hcn_command_char;
+static _action hcn_command_GT_char;
+static _action hcn_command_end;
+static _action hcn_command_end_output_bgn;
+
+
 /*---------------------------------------------------------------------------
 	engine
 ---------------------------------------------------------------------------*/
 #define do_( a, s ) \
 	event = hcn_execute( a, &state, event, s, context );
 
-static _action hcn_output_CR;
-static _action hcn_output_end;
-static _action hcn_command_end;
-
 static int
 hcn_execute( _action action, char **state, int event, char *next_state, _context *context )
 {
 	event = action( *state, event, &next_state, context );
-
-	if (( action == hcn_output_CR ) || ( action == hcn_output_end ) || ( action == hcn_command_end ))
-	{
-		context->hcn.state = ( strcmp( next_state, same ) ? next_state : *state );
-		*state = "";
-	}
-	else if ( strcmp( next_state, same ) ) {
+	if ( strcmp( next_state, same ) ) {
+		if ( !strcmp( next_state, "" ) ) {
+			string_finish( &context->hcn.buffer, 0 );
+			context->hcn.position = context->hcn.buffer.value;
+			context->hcn.state = base;
+		}
 		*state = next_state;
 	}
 	return event;
-}
-
-/*---------------------------------------------------------------------------
-	output actions
----------------------------------------------------------------------------*/
-static int
-hcn_output_bgn( char *state, int event, char **next_state, _context *context )
-{
-	string_start( &context->hcn.buffer, '>' );
-	string_append( &context->hcn.buffer, ':' );
-	return 0;
-}
-static int
-hcn_output_end( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '\n' );
-	string_finish( &context->hcn.buffer, 0 );
-	context->hcn.position = context->hcn.buffer.value;
-	return 0;
-}
-static int
-hcn_output_char( char *state, int event, char **next_state, _context *context )
-{
-	if (( event == '#' ) || ( event == '|' )) {
-		string_append( &context->hcn.buffer, '\\' );
-	}
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_output_special_char( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_output_quote_bgn( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '%' );
-	string_append( &context->hcn.buffer, '\'' );
-	return 0;
-}
-static int
-hcn_output_quote_end( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '%' );
-	string_append( &context->hcn.buffer, '\'' );
-	return 0;
-}
-static int
-hcn_output_bgn_char( char *state, int event, char **next_state, _context *context )
-{
-	hcn_output_bgn( state, event, next_state, context );
-	if (( event == ' ' ) || ( event == '\t' ) || ( event == '#' ) || ( event == '|' ))
-		string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_output_bgn_special_char( char *state, int event, char **next_state, _context *context )
-{
-	hcn_output_bgn( state, event, next_state, context );
-	string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_output_CR( char *state, int event, char **next_state, _context *context )
-{
-	string_start( &context->hcn.buffer, '>' );
-	string_append( &context->hcn.buffer, ':' );
-	string_append( &context->hcn.buffer, '\\' );
-	string_append( &context->hcn.buffer, 'n' );
-	string_finish( &context->hcn.buffer, 0 );
-	context->hcn.position = context->hcn.buffer.value;
-	return 0;
-}
-static int
-hcn_output_bgn_LT( char *state, int event, char **next_state, _context *context )
-{
-	hcn_output_bgn( state, event, next_state, context );
-	string_append( &context->hcn.buffer, '<' );
-	return 0;
-}
-static int
-hcn_output_bgn_LT_char( char *state, int event, char **next_state, _context *context )
-{
-	hcn_output_bgn( state, event, next_state, context );
-	string_append( &context->hcn.buffer, '<' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_output_LT( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '<' );
-	return 0;
-}
-static int
-hcn_output_LT_char( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '<' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-/*---------------------------------------------------------------------------
-	output-to-command transition
----------------------------------------------------------------------------*/
-static int
-hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
-{
-	return string_start( &context->hcn.buffer, 0 );
-}
-/*---------------------------------------------------------------------------
-	command actions
----------------------------------------------------------------------------*/
-static int
-hcn_command_end( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '\n' );
-	string_finish( &context->hcn.buffer, 0 );
-	context->hcn.position = context->hcn.buffer.value;
-	return 0;
-}
-static int
-hcn_command_char( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_command_bgn( char *state, int event, char **next_state, _context *context )
-{
-	string_start( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_command_bgn_GT_char( char *state, int event, char **next_state, _context *context )
-{
-	string_start( &context->hcn.buffer, '>' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
-}
-static int
-hcn_command_GT_char( char *state, int event, char **next_state, _context *context )
-{
-	string_append( &context->hcn.buffer, '>' );
-	string_append( &context->hcn.buffer, event );
-	return 0;
 }
 
 /*---------------------------------------------------------------------------
@@ -200,12 +65,10 @@ int
 hcn_getc( int fd, _context *context )
 {
 	int event = 0;
-
 #ifdef DEBUG
 	char *state = context->hcn.state;
 	outputf( Debug, "entering hcn_getc: \"%s\"", state );
 #endif
-
 	do {
 		char *state = context->hcn.state;
 
@@ -231,40 +94,24 @@ hcn_getc( int fd, _context *context )
 			on_( 0 ) return 0;
 			in_( base ) bgn_
 				on_( '<' )	do_( nop, "<" )
+				on_( '\\' )	do_( hcn_output_bgn, ">:_\\" )
 				on_( '\n' )	do_( hcn_output_CR, same )
-				on_( '\\' )	do_( nop, "\\" )
 				on_other	do_( hcn_output_bgn_char, ">:_" )
 				end
-				in_( "\\" ) bgn_
-					on_( '\n' )	do_( nop, base )
-					on_other	do_( hcn_output_bgn_special_char, ">:_" )
-					end
 				in_( "<" ) bgn_
 					on_( '<' )	do_( nop, "<<" )
 					on_( '\\' )	do_( hcn_output_bgn_LT, ">:_\\" )
 					on_other	do_( hcn_output_bgn_LT_char, ">:_" )
 					end
 			in_( ">:_" ) bgn_
-				on_( '"' )	do_( hcn_output_quote_bgn, ">:_\"" )
 				on_( '\\' )	do_( nop, ">:_\\" )
 				on_( '<' )	do_( nop, ">:_<" )
 				on_( '\n' )	do_( hcn_output_end, base )
 				on_other	do_( hcn_output_char, same )
 				end
 				in_( ">:_\\" ) bgn_
-					on_( '\n' )	do_( nop, ">:_" )
-					on_other	do_( hcn_output_special_char, ">:_" )
+					on_any	do_( hcn_output_special_char, ">:_" )
 					end
-				in_( ">:_\"" ) bgn_
-					on_( '"' )	do_( hcn_output_quote_end, ">:_" )
-					on_( '\\' )	do_( nop, ">:_\"\\" )
-					on_other	do_( hcn_output_char, same )
-					end
-					in_( ">:_\"\\" ) bgn_
-						on_( '\n' )	do_( nop, ">:_\"" )
-						on_( '"' )	do_( hcn_output_char, ">:_\"" )
-						on_other	do_( hcn_output_special_char, ">:_\"" )
-						end
 				in_( ">:_<" ) bgn_
 					on_( '<' )	do_( hcn_output_end_command_bgn, "<<" )
 					on_( '\\' )	do_( hcn_output_LT, ">:_\\" )
@@ -294,7 +141,7 @@ hcn_getc( int fd, _context *context )
 							end
 						in_( "<<_>>_" ) bgn_
 							on_( '\n' )	do_( hcn_command_end, base )
-							on_other	do_( nop, same )
+							on_other	do_( hcn_command_end_output_bgn, same )
 							end
 			end
 		}
@@ -304,3 +151,157 @@ hcn_getc( int fd, _context *context )
 	return event;
 }
 
+/*---------------------------------------------------------------------------
+	output actions
+---------------------------------------------------------------------------*/
+static int
+hcn_output_bgn( char *state, int event, char **next_state, _context *context )
+{
+	string_start( &context->hcn.buffer, '>' );
+	string_append( &context->hcn.buffer, ':' );
+	return 0;
+}
+static int
+hcn_output_CR( char *state, int event, char **next_state, _context *context )
+{
+	hcn_output_bgn( state, event, next_state, context );
+	string_append( &context->hcn.buffer, '\\' );
+	string_append( &context->hcn.buffer, 'n' );
+	*next_state = "";
+	return 0;
+}
+static int
+hcn_output_bgn_char( char *state, int event, char **next_state, _context *context )
+{
+	hcn_output_bgn( state, event, next_state, context );
+	switch ( event ) {
+	case ' ':
+	case '\t':
+		string_append( &context->hcn.buffer, '\\' );
+		break;
+	}
+	return hcn_output_char( state, event, next_state, context );
+}
+static int
+hcn_output_bgn_LT( char *state, int event, char **next_state, _context *context )
+{
+	hcn_output_bgn( state, event, next_state, context );
+	string_append( &context->hcn.buffer, '<' );
+	return 0;
+}
+static int
+hcn_output_bgn_LT_char( char *state, int event, char **next_state, _context *context )
+{
+	hcn_output_bgn_LT( state, event, next_state, context );
+	return hcn_output_char( state, event, next_state, context );
+}
+static int
+hcn_output_char( char *state, int event, char **next_state, _context *context )
+{
+	switch ( event ) {
+	case '\"':
+		string_append( &context->hcn.buffer, '%' );
+		string_append( &context->hcn.buffer, '\'' );
+		break;
+	case '#':
+	case '|':
+	case '\\':
+		string_append( &context->hcn.buffer, '\\' );
+		string_append( &context->hcn.buffer, event );
+		break;
+	default:
+		string_append( &context->hcn.buffer, event );
+		break;
+	}
+	if ( event == '\n' ) *next_state = "";
+	return 0;
+}
+static int
+hcn_output_special_char( char *state, int event, char **next_state, _context *context )
+{
+	switch ( event ) {
+	case '%':
+	case '$':
+		string_append( &context->hcn.buffer, '\\' );
+		string_append( &context->hcn.buffer, event );
+		return 0;
+	default:
+		string_append( &context->hcn.buffer, '\\' );
+		string_append( &context->hcn.buffer, '\\' );
+		return hcn_output_char( state, event, next_state, context );
+	}
+}
+static int
+hcn_output_LT( char *state, int event, char **next_state, _context *context )
+{
+	string_append( &context->hcn.buffer, '<' );
+	return 0;
+}
+static int
+hcn_output_LT_char( char *state, int event, char **next_state, _context *context )
+{
+	hcn_output_LT( state, event, next_state, context );
+	return hcn_output_char( state, event, next_state, context );
+}
+static int
+hcn_output_end( char *state, int event, char **next_state, _context *context )
+{
+	string_append( &context->hcn.buffer, '\n' );
+	*next_state = "";
+	return 0;
+}
+static int
+hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
+{
+	// DO_LATER: flush output
+	output( Warning, "hcn_getc: << must start on a new line - ignoring previous characters" );
+	return string_start( &context->hcn.buffer, 0 );
+}
+/*---------------------------------------------------------------------------
+	command actions
+---------------------------------------------------------------------------*/
+static int
+hcn_command_bgn( char *state, int event, char **next_state, _context *context )
+{
+	string_start( &context->hcn.buffer, event );
+	return 0;
+}
+static int
+hcn_command_bgn_GT_char( char *state, int event, char **next_state, _context *context )
+{
+	string_start( &context->hcn.buffer, '>' );
+	string_append( &context->hcn.buffer, event );
+	return 0;
+}
+static int
+hcn_command_char( char *state, int event, char **next_state, _context *context )
+{
+	string_append( &context->hcn.buffer, event );
+	return 0;
+}
+static int
+hcn_command_GT_char( char *state, int event, char **next_state, _context *context )
+{
+	string_append( &context->hcn.buffer, '>' );
+	return hcn_command_char( state, event, next_state, context );
+}
+static int
+hcn_command_end( char *state, int event, char **next_state, _context *context )
+{
+	string_append( &context->hcn.buffer, '\n' );
+	*next_state = "";
+	return 0;
+}
+static int
+hcn_command_end_output_bgn( char *state, int event, char **next_state, _context *context )
+{
+	// DO_LATER: flush command and begin new output
+	switch ( event ) {
+		case ' ':
+		case '\t':
+			break;
+		default:
+			output( Warning, "hcn_getc: ignoring >> trailing characters" );
+	}
+	return 0;
+}

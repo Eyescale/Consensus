@@ -172,11 +172,13 @@ read_identifier( char *state, int event, char **next_state, _context *context )
 				on_other	do_( identifier_append, "\"identifier" )
 				end
 				in_( "\"_\\" ) bgn_
-					on_( 't' )	event = '\t';
-							do_( identifier_append, "\"identifier" )
+#ifdef CR_ENCODE
 					on_( 'n' )	event = '\n';
 							do_( identifier_append, "\"identifier" )
 					on_other	do_( identifier_append, "\"identifier" )
+#else
+					on_any	do_( identifier_append, "\"identifier" )
+#endif
 					end
 				in_( "\"_\"" ) bgn_
 					on_any do_( identifier_finish, "" )
