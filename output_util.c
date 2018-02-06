@@ -295,10 +295,14 @@ output_expression( ExpressionOutput part, Expression *expression, ... )
 		output( Text, mark & ( 1 << i ) ? "?" : "." );
 		return 1;
 	case SubVariable:
-		if ( sub[ i ].result.identifier.value != NULL ) {
+		; char *identifier = sub[ i ].result.identifier.value;
+		if (( identifier )) {
 			output_expression( SubFlags, expression, i, shorty );
 			output( Text, "%" );
-			output_identifier( sub[ i ].result.identifier.value );
+			if ( !strcmp( identifier, variator_symbol ) || !strcmp( identifier, this_symbol ) ) {
+				output( Text, identifier );
+			}
+			else output_identifier( identifier );
 		}
 		return 1;
 	case SubIdentifier:

@@ -16,7 +16,7 @@ void	freeString( StringVA * );
 
 int	string_start( StringVA *string, int event );
 int	string_append( StringVA *string, int event );
-char *	string_finish( StringVA *string, int cleanup );
+char *	string_finish( StringVA *string, int trim );
 listItem *string_expand( char *string, char **next_pos );
 
 /*
@@ -33,9 +33,9 @@ listItem *string_expand( char *string, char **next_pos );
 	stringify() is not used, but provided as an example implementation.
 */
 
-void	slist_append( listItem **slist, StringVA *string, int event, int nocr, int cleanup );
-void	slist_close( listItem **slist, StringVA *string, int cleanup );
-listItem *stringify( listItem *string, int cleanup );
+void	slist_append( listItem **slist, StringVA *string, int event, int nocr, int trim );
+void	slist_close( listItem **slist, StringVA *string, int trim );
+listItem *stringify( listItem *string, int trim );
 
 /*---------------------------------------------------------------------------
 	unused

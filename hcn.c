@@ -147,7 +147,7 @@ hcn_getc( int fd, _context *context )
 		}
 		while ( strcmp( state, "" ) );
 	}
-	while ( event == 0 );
+	while ( !event );
 	return event;
 }
 

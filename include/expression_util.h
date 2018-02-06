@@ -5,18 +5,19 @@
 	expression utilities	- most of them private to expression.c
 ---------------------------------------------------------------------------*/
 
-Expression *newExpression( _context *context );
-void	freeExpression( Expression *expression );
-int	flagged( Expression *expression, int count );
-int	just_any( Expression *expression, int count );
-int	just_blank( Expression *expression );
-void	freeExpressions( listItem **list );
-void	freeLiteral( Literal *l );
+Expression *newExpression( _context * );
+void	freeExpression( Expression * );
+int	just_mark( Expression * );
+int	just_blank( Expression * );
+int	just_any( Expression *, int count );
+int	flagged( Expression *, int count );
+void	freeExpressions( listItem ** );
+void	freeLiteral( Literal * );
 void	freeLiterals( listItem **list );
-int	trace_mark( Expression *expression );
-int	mark_negated( Expression *expression, int negated );
-void	expression_collapse( Expression *expression );
+int	trace_mark( Expression * );
+int	mark_negated( Expression *, int negated );
+void	expression_collapse( Expression * );
 
-int	expression_solve( Expression *expression, int as_sub, listItem *filter, _context *context );
+int	expression_solve( Expression *, int as_sub, listItem *filter, _context * );
 
 #endif	// EXPRESSION_UTIL_H

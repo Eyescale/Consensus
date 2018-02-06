@@ -633,7 +633,7 @@ set_instance_results( char *state, int event, char **next_state, _context *conte
 		return expression_abort( context );
 
 	Expression *e = context->expression.ptr;
-	if ( just_blank( e ) && ( e->result.mark <= 7 ))
+	if ( just_mark( e ) )
 	/*
 		optimization: in this case read_query() did not solve the query
 	*/
@@ -757,7 +757,7 @@ read_query( char *state, int event, char **next_state, _context *context )
 	{
 		Expression *e = context->expression.ptr;
 		int count = strcmp( state, "source-medium->target: %[_" ) ? 0 : 3;
-		if (( count == 3 ) && just_blank( e ) && ( e->result.mark <= 7 ))
+		if (( count == 3 ) && just_mark( e ))
 			; // optimization: set_instance_results() will check this condition
 		else {
 			context->expression.mode = EvaluateMode;

@@ -25,11 +25,11 @@ static int assign_( int op, char *state, int event, char **next_state, _context 
 enum {
 	ResetAll = 1,
 	Reset,
-	AssignToExpression,
-	AssignToExpressionResults,
-	AssignToLiteralValue,
-	AssignToValueAccount,
-	AssignToNarrative,
+	AssignExpression,
+	AssignExpressionResults,
+	AssignLiteralValue,
+	AssignValueAccount,
+	AssignNarrative,
 };
 int
 reset_variable( char *state, int event, char **next_state, _context *context )
@@ -39,19 +39,19 @@ reset_variables( char *state, int event, char **next_state, _context *context )
 	{ return assign_( ResetAll, state, event, next_state, context ); }
 int
 assign_results( char *state, int event, char **next_state, _context *context )
-	{ return assign_( AssignToExpressionResults, state, event, next_state, context ); }
+	{ return assign_( AssignExpressionResults, state, event, next_state, context ); }
 int
 assign_literals( char *state, int event, char **next_state, _context *context )
-	{ return assign_( AssignToLiteralValue, state, event, next_state, context ); }
+	{ return assign_( AssignLiteralValue, state, event, next_state, context ); }
 int
 assign_va( char *state, int event, char **next_state, _context *context )
-	{ return assign_( AssignToValueAccount, state, event, next_state, context ); }
+	{ return assign_( AssignValueAccount, state, event, next_state, context ); }
 int
 assign_narrative( char *state, int event, char **next_state, _context *context )
-	{ return assign_( AssignToNarrative, state, event, next_state, context ); }
+	{ return assign_( AssignNarrative, state, event, next_state, context ); }
 int
 assign_expression( char *state, int event, char **next_state, _context *context )
-	{ return assign_( AssignToExpression, state, event, next_state, context ); }
+	{ return assign_( AssignExpression, state, event, next_state, context ); }
 
 /*---------------------------------------------------------------------------
 	assign_
@@ -70,11 +70,11 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 	case Reset:
 		resetVariable( NULL, context );
 		break;
-	case AssignToExpression:
+	case AssignExpression:
 		; Expression *e = context->expression.ptr;
 		context->expression.ptr = NULL;
-		if (( e ) && e->sub[ 1 ].result.none && e->sub[ 3 ].result.none &&
-		    ( e->sub[ 0 ].e == NULL ) && !flagged( e, 0 ))
+		if (( e ) && e->sub[ 1 ].result.none && e->sub[ 3 ].result.none && ( e->sub[ 0 ].e == NULL ) &&
+		    !flagged( e, 0 ) && !( e->result.mark & 7 ) && !e->result.as_sub && !e->result.as_sup )
 		{
 			ValueType type = e->sub[ 0 ].result.identifier.type;
 			listItem *value = e->sub[ 0 ].result.identifier.value;
@@ -99,23 +99,23 @@ assign_( int op, char *state, int event, char **next_state, _context *context )
 		}
 		else assign_variable( mode, NULL, e, ExpressionValue, context );
 		break;
-	case AssignToExpressionResults:
+	case AssignExpressionResults:
 		; ValueType type = ( context->expression.mode == ReadMode ) ? LiteralResults : EntityResults;
 		assign_variable( mode, NULL, context->expression.results, type, context );
 		context->expression.results = NULL;
 		break;
-	case AssignToValueAccount:
+	case AssignValueAccount:
 		if ( strcmp( get_identifier( context, 2 ), "literal" ) )
 			return output( Error, "currently only 'literal' values can be assigned to variables" );
 		// no break
-	case AssignToLiteralValue:
+	case AssignLiteralValue:
 		// translate expression results into literals
 		if (( context->expression.results ) && ( context->expression.mode != ReadMode ))
 			E2L( &context->expression.results, NULL, context );
 		assign_variable( mode, NULL, context->expression.results, LiteralResults, context );
 		context->expression.results = NULL;
 		break;
-	case AssignToNarrative:
+	case AssignNarrative:
 		; Registry *registry = NULL;
 		if ( test_identifier( context, 1 ) && (context->expression.results) )
 		{
@@ -399,8 +399,7 @@ substitute( Expression *expression, char *identifier, VariableVA *variable, int 
 				case ExpressionVariable:
 					; listItem *expressions = getVariableValue( variable, context, duplicate );
 					if ( expressions->next == NULL ) {
-						sub[ i ].e = expressions->ptr;
-						freeListItem( &expressions );
+						sub[ i ].e = popListItem( &expressions );
 						do_collapse = 1;
 					}
 					else {

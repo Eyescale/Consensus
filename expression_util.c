@@ -86,17 +86,9 @@ freeExpressions( listItem **list )
 /*---------------------------------------------------------------------------
 	flagged, just_any, just_blank
 ---------------------------------------------------------------------------*/
-int
-flagged( Expression *expression, int i )
+int just_mark( Expression *e )
 {
-	ExpressionSub *sub = expression->sub;
-	return ( sub[ i ].result.active || sub[ i ].result.passive || sub[ i ].result.not );
-}
-
-int
-just_any( Expression *expression, int i )
-{
-	return	expression->sub[ i ].result.any && !flagged( expression, i );
+	return just_blank( e ) && ( e->result.mark <= 7 ) && !e->result.as_sub && !e->result.as_sup;
 }
 int
 just_blank( Expression *expression )
@@ -105,6 +97,17 @@ just_blank( Expression *expression )
 		if ( !just_any( expression, i ) )
 			return 0;
 	return 1;
+}
+int
+just_any( Expression *expression, int i )
+{
+	return	expression->sub[ i ].result.any && !flagged( expression, i );
+}
+int
+flagged( Expression *expression, int i )
+{
+	ExpressionSub *sub = expression->sub;
+	return ( sub[ i ].result.active || sub[ i ].result.passive || sub[ i ].result.not );
 }
 
 /*---------------------------------------------------------------------------
