@@ -98,7 +98,7 @@ string_append( StringVA *string, int event )
 	string_finish
 ---------------------------------------------------------------------------*/
 char *
-string_finish( StringVA *string, int cleanup )
+string_finish( StringVA *string, int trim )
 /*
 	Assumption: string->index.value == STRING_EVENTS
 */
@@ -113,7 +113,7 @@ string_finish( StringVA *string, int cleanup )
 	int count = 0;
 
 	// remove trailing white space
-	if ( cleanup ) {
+	if ( trim ) {
 		listItem *backup = NULL;
 		i = *list;
 		if ((char) i->ptr == '\n' ) {
@@ -145,7 +145,7 @@ string_finish( StringVA *string, int cleanup )
 	count = reorderListItem( list );
 
 	// remove leading white space
-	if ( cleanup ) {
+	if ( trim ) {
 		for ( i = *list; i!=NULL; i=next_i ) {
 			switch ((char) i->ptr) {
 			case ' ':
@@ -164,7 +164,7 @@ string_finish( StringVA *string, int cleanup )
 	// allocate string
 	char *str = (char *) malloc( count + 1 );
 	char *ptr = str;
-	for ( i = *list, count=0; i!=NULL; i=i->next, count++ ) {
+	for ( i = *list; i!=NULL; i=i->next ) {
 		*ptr++ = (char) i->ptr;
 	}
 	*ptr = 0;
@@ -172,9 +172,6 @@ string_finish( StringVA *string, int cleanup )
 	freeListItem( list );
 	string->index.value = STRING_TEXT;
 	string->value = str;
-#if 0
-	fprintf( stderr, "STRING_FINISH => '%s'\n", str );
-#endif
 	return str;
 }
 
@@ -182,10 +179,10 @@ string_finish( StringVA *string, int cleanup )
 	stringify
 ---------------------------------------------------------------------------*/
 void
-slist_close( listItem **slist, StringVA *dst, int cleanup )
+slist_close( listItem **slist, StringVA *dst, int trim )
 {
 	if (( dst->value )) {
-		char *str = string_finish( dst, 0 );
+		char *str = string_finish( dst, trim );
 		if ( strcmp( str, "\n" ) ) {
 			addItem( slist, str );
 		}
@@ -194,24 +191,24 @@ slist_close( listItem **slist, StringVA *dst, int cleanup )
 	}
 }
 void
-slist_append( listItem **slist, StringVA *dst, int event, int nocr, int cleanup )
+slist_append( listItem **slist, StringVA *dst, int event, int nocr, int trim )
 {
 	if ( dst->value == NULL ) {
 		string_start( dst, event );
 	} else if (( event != '\n' ) || !nocr ) {
 		string_append( dst, event );
 	}
-	if ( event == '\n' ) slist_close( slist, dst, cleanup );
+	if ( event == '\n' ) slist_close( slist, dst, trim );
 }
 listItem *
-stringify( listItem *src, int cleanup )
+stringify( listItem *src, int trim )
 {
 	listItem *results = NULL;
 	StringVA *dst = newString();
 	for ( listItem *i = src; i!=NULL; i=i->next )
 		for ( char *ptr = i->ptr; *ptr; ptr++ )
-			slist_append( &results, dst, *ptr, 1, cleanup );
-	slist_close( &results, dst, cleanup );
+			slist_append( &results, dst, *ptr, 1, trim );
+	slist_close( &results, dst, trim );
 	freeString( dst );
 	return results;
 }

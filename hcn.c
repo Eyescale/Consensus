@@ -254,7 +254,6 @@ static int
 hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
 {
 	// DO_LATER: flush output
-	output( Warning, "hcn_getc: << must start on a new line - ignoring previous characters" );
 	return string_start( &context->hcn.buffer, 0 );
 }
 /*---------------------------------------------------------------------------
