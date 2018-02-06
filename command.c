@@ -76,7 +76,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 	// 1. input event
 	// ---------------------------------------------------------------
 
-	event = read_input( state, event, NULL, context );
+	event = read_input( state, event, &same, context );
 
 #ifdef DEBUG
 	outputf( Debug, "read_command: state=\"%s\", event='%c'", state, event );

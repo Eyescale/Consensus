@@ -80,7 +80,7 @@ read_path( char *state, int event, char **next_state, _context *context )
 	}
 	state = base;
 	do {
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 #ifdef DEBUG
 		outputf( Debug, "read_path: in \"%s\", on '%c'", state, event );
 #endif
@@ -128,7 +128,7 @@ read_va_path( char *state, int event, char **next_state, _context *context )
 	event = 0;
 	state = base;
 	do {
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 #ifdef DEBUG
 		outputf( Debug, "read_va_value: in \"%s\", on '%c'", state, event );
 #endif

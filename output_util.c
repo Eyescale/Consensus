@@ -36,10 +36,6 @@ printtab( int level )
 /*---------------------------------------------------------------------------
 	output_identifier
 ---------------------------------------------------------------------------*/
-extern struct {
-	int real, fake;
-} separator_table[];	// in input_util.c
-
 void
 output_identifier( char *identifier )
 {
@@ -50,8 +46,12 @@ output_identifier( char *identifier )
 		char *src = identifier;
 		if ( *src != '\"' )
 			string_append( buffer, *src );
-		for ( src++; src[ 1 ]; src++ )
+		for ( src++; src[ 1 ]; src++ ) {
+			if ( *src == '\\' ) {
+				string_append( buffer, '\\' );
+			}
 			string_append( buffer, *src );
+		}
 		if ( *src != '\"' )
 			string_append( buffer, *src );
 		string_finish( buffer, 0 );
@@ -69,28 +69,17 @@ output_identifier( char *identifier )
 				string_append( buffer, '\\' );
 				string_append( buffer, '\"' );
 				break;
-			case '\n':
-				has_special = 1;
-				string_append( buffer, '\\' );
-				string_append( buffer, 'n' );
-				break;
 			case '\\':
-				has_special = 1;
-				src++;
 				switch ( src[ 1 ] ) {
-				case 0:
-					break;
-				case 't':
-					string_append( buffer, '\t' );
-					break;
-				case 'n':
 				case '"':
 				case '\\':
 					string_append( buffer, '\\' );
 					string_append( buffer, *src );
+					src++;
 					break;
 				default:
-					string_append( buffer, *src );
+					string_append( buffer, '\\' );
+					string_append( buffer, '\\' );
 					break;
 				}
 				break;

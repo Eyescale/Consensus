@@ -3,6 +3,7 @@
 << : h1_style : "text-align:center; font-weight:normal;" >>
 </head>
 <body>
+this will come out as a single backslash: \\ 
 <h1 style="$.[ %h1_style ]"> Welcome to Consensus! </h1>
 << ?!: ?-is->Label #this is a comment >>
 <ul>

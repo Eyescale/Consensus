@@ -13,7 +13,6 @@
 #include "output.h"
 
 // #define DEBUG
-// #define ISALPHA
 
 struct {
 	int real, fake;
@@ -75,11 +74,8 @@ read_execute( _action action, char **state, int event, char *next_state, _contex
 /*---------------------------------------------------------------------------
 	is_separator
 ---------------------------------------------------------------------------*/
-int
-num_separators( void )
-{
-	return sizeof( separator_table ) / sizeof( separator_table[ 0 ] );
-}
+static int num_separators( void );
+
 int
 is_separator( int event )
 {
@@ -91,20 +87,21 @@ is_separator( int event )
 	return !event;
 }
 
+static int
+num_separators( void )
+{
+	return sizeof( separator_table ) / sizeof( separator_table[ 0 ] );
+}
+
 /*---------------------------------------------------------------------------
 	read_token
 ---------------------------------------------------------------------------*/
 int
 read_token( char *state, int event, char **next_state, _context *context )
 {
-	if ( !command_mode( 0, InstructionMode, ExecutionMode ) ) {
-		event = flush_input( state, event, &same, context );
-		*next_state = *next_state + strlen( *next_state ) + 1;
-		return event;
-	}
 	char *ptr = *next_state;
 	for ( ; *ptr; event=0, ptr++ ) {
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 		if ( event != *ptr ) return -1;
 	}
 	*next_state = ++ptr;
@@ -136,6 +133,97 @@ read_2( char *state, int event, char **next_state, _context *context )
 	context->identifier.current = 2;
 	event = read_identifier( state, event, next_state, context );
 	context->identifier.current = 0;
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	read_identifier		- local
+---------------------------------------------------------------------------*/
+static _action identifier_start;
+static _action identifier_append;
+static _action identifier_finish;
+
+static int
+read_identifier( char *state, int event, char **next_state, _context *context )
+/*
+	Note that we must read even in FreezeMode, as the program logics in some
+	case depends on the identifier (e.g. in case of value accounts), whereas
+	we must count the push(es) and pop(s) to know when to exit FreezeMode.
+*/
+{
+	state = base;
+	identifier_start( state, 0, &same, context );
+	do {
+		event = read_input( state, event, &same, context );
+#ifdef DEBUG
+		outputf( Debug, "read_identifier: in \"%s\", on '%c'", state, event );
+#endif
+		bgn_
+		on_( 0 ) do_( nothing, "" )
+		in_( base ) bgn_
+			on_( '\\' )	do_( nothing, "identifier" )
+			on_( '\"' )	do_( nop, "\"" )
+			on_separator	do_( error, "" )
+			on_other	do_( identifier_append, "identifier" )
+			end
+			in_( "\"" ) bgn_
+				on_( '\\' )	do_( nop, "\"_\\" )
+				on_( '\"' )	do_( nop, "\"_\"" )
+				on_other	do_( identifier_append, "\"identifier" )
+				end
+				in_( "\"_\\" ) bgn_
+					on_( 't' )	event = '\t';
+							do_( identifier_append, "\"identifier" )
+					on_( 'n' )	event = '\n';
+							do_( identifier_append, "\"identifier" )
+					on_other	do_( identifier_append, "\"identifier" )
+					end
+				in_( "\"_\"" ) bgn_
+					on_any do_( identifier_finish, "" )
+					end
+				in_( "\"identifier" ) bgn_
+					on_( '\\' )	do_( nop, "\"_\\" )
+					on_( '\"' )	do_( nop, "\"_\"" )
+					on_other	do_( identifier_append, same )
+					end
+		in_( "identifier" ) bgn_
+			on_( '\\' )	do_( nop, "_\\" )
+			on_( '\"' )	do_( identifier_finish, "" )
+			on_separator	do_( identifier_finish, "" )
+			on_other	do_( identifier_append, same )
+			end
+			in_( "_\\" ) bgn_
+				on_( '0' )	do_( nop, "_\\0" )
+				on_( 't' )	event = '\t';
+						do_( identifier_append, "identifier" )
+				on_( 'n' )	event = '\n';
+						do_( identifier_append, "identifier" )
+				on_other	do_( identifier_append, "identifier" )
+				end
+			in_( "_\\0" ) bgn_
+				on_any	do_( identifier_finish, "" )
+				end
+		end
+	}
+	while ( strcmp( state, "" ) );
+
+	return event;
+}
+
+static int
+identifier_start( char *state, int event, char **next_state, _context *context )
+{
+	return string_start( &context->identifier.id[ context->identifier.current ], event );
+}
+static int
+identifier_append( char *state, int event, char **next_state, _context *context )
+{
+	return string_append( &context->identifier.id[ context->identifier.current ], event );
+}
+static int
+identifier_finish( char *state, int event, char **next_state, _context *context )
+{
+	string_finish( &context->identifier.id[ context->identifier.current ], 0 );
 	return event;
 }
 
@@ -182,122 +270,5 @@ free_identifier( _context *context, int i )
 		free( context->identifier.id[ i ].value );
 		context->identifier.id[ i ].value = NULL;
 	}
-}
-
-/*---------------------------------------------------------------------------
-	read_identifier		- local
----------------------------------------------------------------------------*/
-static _action identifier_start;
-static _action identifier_append;
-static _action identifier_append_special;
-static _action identifier_finish;
-
-static int
-read_identifier( char *state, int event, char **next_state, _context *context )
-/*
-	Note that we must read even in FreezeMode, as the program logics in some
-	case depends on the identifier (e.g. in case of value accounts), whereas
-	we must count the push(es) and pop(s) to know when to exit FreezeMode.
-*/
-{
-#ifdef ISALPHA
-	// first character must be alphanumerical - BUG: cn_setf()
-	if (( event != '\"' ) && !isalpha( event ) ) return -1;
-#else
-	// first character must not be '_'
-	if ( event == '_' ) return -1;
-#endif
-
-	state = base;
-	do {
-		event = read_input( state, event, NULL, context );
-#ifdef DEBUG
-		outputf( Debug, "read_identifier: in \"%s\", on '%c'", state, event );
-#endif
-		bgn_
-		on_( 0 ) do_( nothing, "" )
-		in_( base ) bgn_
-			on_( '\\' )	do_( nop, "\\" )
-			on_( '\"' )	do_( nop, "\"" )
-			on_separator	do_( error, "" )
-			on_other	do_( identifier_start, "identifier" )
-			end
-			in_( "\\" ) bgn_
-				on_any	do_( identifier_start, "identifier" )
-				end
-			in_( "\"" ) bgn_
-				on_( '\\' )	do_( nop, "\"\\" )
-				on_other	do_( identifier_start, "\"identifier" )
-				end
-				in_( "\"\\" ) bgn_
-					on_( 't' )	event = '\t';
-							do_( identifier_start, "\"identifier" )
-					on_( 'n' )	event = '\n';
-							do_( identifier_start, "\"identifier" )
-					on_other	do_( identifier_start, "\"identifier" )
-					end
-				in_( "\"identifier" ) bgn_
-					on_( '\\' )	do_( nop, "\"identifier\\" )
-					on_( '\"' )	do_( nop, "\"identifier\"" )
-					on_other	do_( identifier_append, same )
-					end
-					in_( "\"identifier\\" ) bgn_
-						on_( 't' )	event = '\t';
-								do_( identifier_append, "\"identifier" )
-						on_( 'n' )	event = '\n';
-								do_( identifier_append, "\"identifier" )
-						on_other	do_( identifier_append, "\"identifier" )
-						end
-					in_( "\"identifier\"" ) bgn_
-						on_any do_( identifier_finish, "" )
-						end
-		in_( "identifier" ) bgn_
-			on_( '\\' )	do_( nop, "_\\" )
-			on_( '\"' )	do_( identifier_finish, "" )
-			on_separator	do_( identifier_finish, "" )
-			on_other	do_( identifier_append, same )
-			end
-			in_( "_\\" ) bgn_
-				on_( '0' )	do_( nop, "_\\0" )
-				on_other	do_( identifier_append_special, "identifier" )
-				end
-			in_( "_\\0" ) bgn_
-				on_any	do_( identifier_finish, "" )
-				end
-		end
-	}
-	while ( strcmp( state, "" ) );
-
-	return event;
-}
-
-static int
-identifier_start( char *state, int event, char **next_state, _context *context )
-{
-	return string_start( &context->identifier.id[ context->identifier.current ], event );
-}
-static int
-identifier_append( char *state, int event, char **next_state, _context *context )
-{
-	return string_append( &context->identifier.id[ context->identifier.current ], event );
-}
-static int
-identifier_append_special( char *state, int event, char **next_state, _context *context )
-{
-	switch ( event ) {
-	case 't':
-		event = '\t';
-		break;
-	case 'n':
-		event = '\n';
-		break;
-	}
-	return string_append( &context->identifier.id[ context->identifier.current ], event );
-}
-static int
-identifier_finish( char *state, int event, char **next_state, _context *context )
-{
-	string_finish( &context->identifier.id[ context->identifier.current ], 0 );
-	return event;
 }
 

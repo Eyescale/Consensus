@@ -199,7 +199,7 @@ read_narrative_condition( char *state, int event, char **next_state, _context *c
 
 	state = base;
 	do {
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 		bgn_
 		on_( 0 )	do_( error, "" )
 		on_( -1 )	do_( nothing, "" )
@@ -443,7 +443,7 @@ read_narrative_event( char *state, int event, char **next_state, _context *conte
 	memset( &stack->narrative.event, 0, sizeof( EventVA ) );
 	state = base;
 	do {
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 #ifdef DEBUG
 		outputf( Debug, "read_narrative_event: in \"%s\", on '%c'", state, event );
 #endif
@@ -1021,7 +1021,7 @@ read_narrative( char *state, int event, char **next_state, _context *context )
 
 	while( strcmp( state, "" ) )
 	{
-		event = read_input( state, event, NULL, context );
+		event = read_input( state, event, &same, context );
 #ifdef DEBUG
 		outputf( Debug, "narrative: in \"%s\", on '%c'", state, event );
 #endif

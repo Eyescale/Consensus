@@ -22,7 +22,6 @@ char *	get_identifier( _context *context, int i );
 char *	take_identifier( _context *context, int i );
 void	free_identifier( _context *context, int i );
 
-int	num_separators( void );
 int	is_separator( int event );
 int	string_start( StringVA *string, int event );
 int	string_append( StringVA *string, int event );

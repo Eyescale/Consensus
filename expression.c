@@ -938,7 +938,7 @@ static int
 read_shorty( char *state, int event, char **next_state, _context *context )
 {
 	do {
-	event = read_input( state, event, NULL, context );
+	event = read_input( state, event, &same, context );
 #ifdef DEBUG
 	outputf( Debug, "read_shorty: in \"%s\", on '%c'", state, event );
 #endif
@@ -1338,7 +1338,7 @@ read_expression( char *state, int event, char **next_state, _context *context )
 	do_( expression_init, base )
 
 	do {
-	event = read_input( state, event, NULL, context );
+	event = read_input( state, event, &same, context );
 #ifdef DEBUG
 	outputf( Debug, "read_expression: in \"%s\", on '%c'", state, event );
 #endif
