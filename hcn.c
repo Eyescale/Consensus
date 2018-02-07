@@ -167,8 +167,7 @@ hcn_output_CR( char *state, int event, char **next_state, _context *context )
 	hcn_output_bgn( state, event, next_state, context );
 	string_append( &context->hcn.buffer, '\\' );
 	string_append( &context->hcn.buffer, 'n' );
-	*next_state = "";
-	return 0;
+	return hcn_output_end( state, event, next_state, context );
 }
 static int
 hcn_output_bgn_char( char *state, int event, char **next_state, _context *context )
@@ -199,6 +198,8 @@ static int
 hcn_output_char( char *state, int event, char **next_state, _context *context )
 {
 	switch ( event ) {
+	case '\n':
+		return hcn_output_end( state, event, next_state, context );
 	case '\"':
 		string_append( &context->hcn.buffer, '%' );
 		string_append( &context->hcn.buffer, '\'' );
@@ -213,7 +214,6 @@ hcn_output_char( char *state, int event, char **next_state, _context *context )
 		string_append( &context->hcn.buffer, event );
 		break;
 	}
-	if ( event == '\n' ) *next_state = "";
 	return 0;
 }
 static int

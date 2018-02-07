@@ -44,14 +44,15 @@ output_identifier( char *identifier )
 	if ( context->output.as_is ) {
 		// output identifier without enclosing quotes
 		char *src = identifier;
-		if ( *src != '\"' )
+		int inq = ( *src == '\"' );
+		for ( ; src[ 1 ]; src++ ) {
+			if ( *src == '\"' ) inq = 0;
 			string_append( buffer, *src );
-		for ( src++; src[ 1 ]; src++ )
-			string_append( buffer, *src );
-		if ( *src != '\"' )
+		}
+		if ( !inq || ( *src != '\"' ))
 			string_append( buffer, *src );
 		string_finish( buffer, 0 );
-		output( Text, buffer->value );
+		output( Text, (char *) buffer->value + inq );
 	}
 	else {
 		int has_special = 0;
@@ -60,24 +61,11 @@ output_identifier( char *identifier )
 			case '\r':
 				// skip this one - until further notice..
 				break;
-			case '"':
+			case '\"':
+			case '\\':
 				has_special = 1;
 				string_append( buffer, '\\' );
-				string_append( buffer, '\"' );
-				break;
-			case '\\':
-				switch ( src[ 1 ] ) {
-				case '"':
-				case '\\':
-					string_append( buffer, '\\' );
-					string_append( buffer, *src );
-					src++;
-					break;
-				default:
-					string_append( buffer, '\\' );
-					string_append( buffer, '\\' );
-					break;
-				}
+				string_append( buffer, *src );
 				break;
 			default:
 				if ( is_separator( *src ) ) {

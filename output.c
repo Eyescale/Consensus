@@ -94,9 +94,6 @@ output_( int type, char *state, int event, char **next_state, _context *context 
 	case Char:
 		retval = (( event == '\n' ) ? '\n' : 0 );
 		break;
-	case SpecialChar:
-		retval = ((( event == 'n' ) && !context->output.marked ) ? '\n' : 0 );
-		break;
 	default:
 		retval = 0;
 	}
