@@ -25,9 +25,9 @@ Entity
 Name
 <dd>
 << ?!: ...: %entity >>
-	<< : source: %[ ?..: %entity ] >>
-	<< : medium: %[ .?.: %entity ] >>
-	<< : target: %[ ..?: %entity ] >>
+	<< : source: ?..: %entity >>
+	<< : medium: .?.: %entity >>
+	<< : target: ..?: %entity >>
 	<< ?!: ...: %source >>
 		<font color=LightGray> [ </font>
 		<a href="consensus?session=$.[ %session ]&entity=%source">$.[ %source:%[?..] ]</a>
@@ -65,8 +65,8 @@ Instances
 	<< ?: !..: %entity >>
 		<tr>
 		<td>
-		<< : medium : %[ .?. : %? ] >>
-		<< : target : %[ ..? : %? ] >>
+		<< : medium : .?. : %? >>
+		<< : target : ..? : %? >>
 		<< ?!: ...: %entity >>
 			<font color=LightGray> [ </font>
 			$.[ %entity:%[?..] ]
@@ -101,8 +101,8 @@ Instances
 	<< ?: .!.: %entity >>
 		<tr>
 		<td>
-		<< : source : %[ ?.. : %? ] >>
-		<< : target : %[ ..? : %? ] >>
+		<< : source : ?.. : %? >>
+		<< : target : ..? : %? >>
 		<< ?!: ...: %source >>
 			<font color=LightGray> [ </font>
 			<a href="consensus?session=$.[ %session ]&entity=%source">$.[ %source:%[?..] ]</a>
@@ -137,8 +137,8 @@ Instances
 	<< ?: ..!: %entity >>
 		<tr>
 		<td>
-		<< : source : %[ ?.. : %? ] >>
-		<< : medium : %[ .?. : %? ] >>
+		<< : source : ?.. : %? >>
+		<< : medium : .?. : %? >>
 		<< ?!: ...: %source >>
 			<font color=LightGray> [ </font>
 			<a href="consensus?session=$.[ %session ]&entity=%source">$.[ %source:%[?..] ]</a>

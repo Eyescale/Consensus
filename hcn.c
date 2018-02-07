@@ -254,6 +254,35 @@ static int
 hcn_output_end_command_bgn( char *state, int event, char **next_state, _context *context )
 {
 	// DO_LATER: flush output
+	if (( context->hcn.buffer.index.value == STRING_EVENTS ) && ( context->hcn.buffer.value )) {
+		int flag = 3;
+		for ( listItem *i = context->hcn.buffer.value; i!=NULL; i=i->next ) {
+			switch ((int) i->ptr ) {
+			case ' ':
+			case '\t':
+				if ( flag != 3 )
+					{ flag = 1; i = NULL; }
+				break;
+			case '\\':
+				if ( flag == 3 ) flag--;
+				else { flag = 1; i = NULL; }
+				break;
+			case ':':
+				if ( flag == 2 ) flag--;
+				else { flag = 1; i = NULL; }
+				break;
+			case '>':
+				if ( flag == 1 ) flag--;
+				else { flag = 1; i = NULL; }
+				break;
+			default:
+				{ flag = 1; i = NULL; }
+			}
+		}
+		if ( flag ) {
+			output( Warning, "hcn_getc: << must start on a blank line - ignoring leading characters" );
+		}
+	}
 	return string_start( &context->hcn.buffer, 0 );
 }
 /*---------------------------------------------------------------------------

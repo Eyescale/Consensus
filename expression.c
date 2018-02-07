@@ -19,8 +19,18 @@
 
 // #define DEBUG
 
-static Expression *expression_set( char *state, _context *context );
-static int test_super( char *state, int event, char **next_state, _context *context );
+static _action test_super;
+static _action set_instance_variable;
+static _action set_instance_variator;
+static _action set_instance_this;
+static _action set_instance_results;
+static _action set_source_variable;
+static _action set_source_variator;
+static _action set_source_this;
+static _action set_source_results;
+
+static Expression *expression_set( char *state, _context * );
+static int instance_solve( _context * );
 
 /*---------------------------------------------------------------------------
 	execution engine
@@ -49,45 +59,55 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	else if ( !strcmp( next_state, pop_state ) ) {
 		int popout = ( context->command.level == context->expression.level );
 		if ( ( event != ']' ) && !popout )
-			event = error( *state, event, &next_state, context );
-		else {
-#ifdef DEBUG
-			if ( popout ) {
-				outputf( Debug, "expression_execute: popping from base level %d", context->command.level );
-			} else {
-				outputf( Debug, "expression_execute: popping from level %d", context->command.level );
+			return error( *state, event, &next_state, context );
+
+		if ( context->command.mode == ExecutionMode ) {
+			retval = action( *state, event, &next_state, context );
+			if ( retval < 0 ) return retval;
+
+			StackVA *stack = (StackVA *) context->command.stack->ptr;
+			Expression *e = stack->expression.ptr;
+			// DO_LATER: basically here we could systematically solve expression
+			// - which we shall do when the mode is set to InstantiateMode - but
+			// for now we leave it that way to facilitate later implementation of
+			// variable late-resolution.
+			if (( context->expression.mode != BuildMode ) && !e->result.as_sub &&
+			    (( action == set_instance_variable ) ||
+			     ( action == set_instance_variator ) ||
+			     ( action == set_instance_results ) ||
+			     ( action == set_instance_this ) ||
+			     ( action == set_source_variable ) ||
+			     ( action == set_source_variator ) ||
+			     ( action == set_source_results ) ||
+			     ( action == set_source_this )))
+			{
+				instance_solve( context );
 			}
-#endif
-			if ( context->command.mode == ExecutionMode ) {
-				retval = action( *state, event, &next_state, context );
-				StackVA *stack = (StackVA *) context->command.stack->ptr;
-				expression_collapse( stack->expression.ptr );
-			}
-			if ( retval < 0 )
-				event = retval;
-			else if ( popout )
-				*state = "";
-			else {
-				event = pop( *state, event, &next_state, context );
-				*state = next_state;
-			}
+			expression_collapse( e );
 		}
+#ifdef DEBUG
+		outputf( Debug, popout ?
+			"expression_execute: popping from base level %d" :
+			"expression_execute: popping from level %d",
+			context->command.level );
+#endif
+		if ( !popout ) {
+			event = pop( *state, event, &next_state, context );
+			*state = next_state;
+		}
+		else *state = "";
 	}
 	else if ( !strcmp( next_state, "source-medium->target:" ) ) {
 		// forbid instance specification in case super has been specified
 		int retval = test_super( *state, event, &next_state, context );
-		if ( retval < 0 )
-			event = retval;
-		else {
-			event = action( *state, event, &next_state, context );
-			if ( strcmp( next_state, same ) )
-				*state = next_state;
-		}
+		if ( retval < 0 ) return retval;
+
+		event = action( *state, event, &next_state, context );
+		if ( strcmp( next_state, same ) ) *state = next_state;
 	}
 	else {
 		event = action( *state, event, &next_state, context );
-		if ( strcmp( next_state, same ) )
-			*state = next_state;
+		if ( strcmp( next_state, same ) ) *state = next_state;
 	}
 	// so that we can output the expression the way it was entered...
 	if ( context->command.mode == ExecutionMode ) {
@@ -105,8 +125,16 @@ expression_execute( _action action, char **state, int event, char *next_state, _
 	return event;
 }
 
+static int
+expression_abort( _context *context )
+{
+	context->expression.mode = ErrorMode;
+	context->command.mode = FreezeMode;
+	return 0;
+}
+
 /*---------------------------------------------------------------------------
-	expression_set, _close, _abort, _resolve
+	expression_set, expression_take, instance_solve
 ---------------------------------------------------------------------------*/
 static Expression *
 expression_set( char *state, _context *context )
@@ -152,7 +180,7 @@ expression_set( char *state, _context *context )
 }
 
 static Expression *
-take_expression( _context *context )
+expression_take( _context *context )
 {
 	StackVA *stack = context->command.stack->ptr;
 	Expression *expression = stack->expression.ptr;
@@ -174,10 +202,34 @@ take_expression( _context *context )
 }
 
 static int
-expression_abort( _context *context )
+instance_solve( _context *context )
+/*
+	Assumption: context->expression.mode != BuildMode
+*/
 {
-	context->expression.mode = ErrorMode;
-	context->command.mode = FreezeMode;
+	// evaluate current expression
+	Expression *expression = expression_take( context );
+	if ( expression == NULL )
+		return expression_abort( context );
+	context->expression.mode = 0;
+	int event = expression_solve( expression, 3, NULL, context );
+	freeExpression( expression );
+	if ( context->expression.results == NULL )
+		return expression_abort( context );
+
+	// assign results as source term of new expression
+	expression = newExpression( context );
+	expression->sub[ 0 ].result.identifier.type =
+		( context->expression.mode == ReadMode ) ? LiteralResults : EntityResults;
+	expression->sub[ 0 ].result.identifier.value = context->expression.results;
+	expression->sub[ 0 ].result.any = 0;
+	expression->sub[ 0 ].result.none = 0;
+	context->expression.results = NULL;
+	context->expression.mode = EvaluateMode;
+
+	// make new expression current
+	StackVA *stack = context->command.stack->ptr;
+	stack->expression.ptr = expression;
 	return 0;
 }
 
@@ -365,6 +417,7 @@ set_sub_variable_ref( int count, int event, _context *context )
 static int
 set_sub_variable( int count, int event, _context *context )
 {
+#ifdef DO_LATER
 	if ( context->expression.mode == BuildMode )
 		return set_sub_variable_ref( count, event, context );
 
@@ -407,6 +460,9 @@ set_sub_variable( int count, int event, _context *context )
 	expression->sub[ count ].result.none = 0;
 	set_flags( stack, expression, count );
 	return 0;
+#else
+	return set_sub_variable_ref( count, event, context );
+#endif
 }
 
 static int
@@ -455,25 +511,6 @@ set_sub_this( int count, int event, _context *context )
 	return 0;
 }
 
-static int
-instance_solve( int event, _context *context )
-{
-	if (( event < 0 ) || ( context->command.mode != ExecutionMode ))
-		return event;
-
-	Expression *expression = take_expression( context );
-	if ( expression == NULL ) {
-		return expression_abort( context );
-	}
-
-	context->expression.mode = 0;
-	event = expression_solve( expression, 3, NULL, context );
-	context->expression.ptr = expression;
-
-	StackVA *stack = (StackVA *) context->command.stack->ptr;
-	stack->expression.ptr = newExpression( context );
-	return set_sub_results( 0, event, context );
-}
 
 /*---------------------------------------------------------------------------
 	source actions
@@ -616,13 +653,7 @@ set_instance_this( char *state, int event, char **next_state, _context *context 
 	{ return set_sub_this( 3, event, context ); }
 static int
 set_instance_variable( char *state, int event, char **next_state, _context *context )
-{
-	if ( context->expression.mode != BuildMode ) {
-		event = set_sub_variable( 3, event, context );
-		return instance_solve( event, context );
-	}
-	else return set_sub_variable_ref( 3, event, context );
-}
+	{ return set_sub_variable( 3, event, context ); }
 static int
 set_instance_results( char *state, int event, char **next_state, _context *context )
 {
@@ -648,11 +679,7 @@ set_instance_results( char *state, int event, char **next_state, _context *conte
 		}
 		return 0;
 	}
-	else if  ( context->expression.mode != BuildMode ) {
-		event = set_sub_results( 3, event, context );
-		return instance_solve( event, context );
-	}
-	else return set_sub_results( 3, event, context );
+	return set_sub_results( 3, event, context );
 }
 static int
 set_instance_collect( char *state, int event, char **next_state, _context *context )
@@ -1320,7 +1347,7 @@ expression_exit( char *state, int event, char **next_state, _context *context )
 		}
 	}
 	else if ( context->command.mode == ExecutionMode ) {
-		context->expression.ptr = take_expression( context );
+		context->expression.ptr = expression_take( context );
 	}
 	expression_restore( context );
 	return event;
