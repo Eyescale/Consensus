@@ -7,8 +7,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 
 #include "command_util.h"
@@ -39,15 +40,10 @@
 static int
 execute( _action action, char **state, int event, char *next_state, _context *context )
 {
-	int retval;
-	if ( action == push ) {
-		event = push( *state, event, &next_state, context );
-		*state = base;
-	} else {
-		event = action( *state, event, &next_state, context );
-		if ( strcmp( next_state, same ) )
-			*state = next_state;
-	}
+	event = action( *state, event, &next_state, context );
+	if ( strcmp( next_state, same ) )
+		*state = next_state;
+
 	return event;
 }
 

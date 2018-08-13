@@ -9,8 +9,9 @@
 #include <xlocale.h>
 #include <stdarg.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 
 #include "io.h"

@@ -3,8 +3,9 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 #include "output.h"
 

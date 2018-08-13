@@ -4,8 +4,9 @@
 #include <strings.h>
 #include <unistd.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 
 #include "api.h"
@@ -40,10 +41,53 @@ static _action clause_end;
 static _action push_input_hcn;
 
 /*---------------------------------------------------------------------------
-	read_command
+	execution engine	- local
 ---------------------------------------------------------------------------*/
 #define do_( a, s ) \
-	{ addItem( &actions, &a ); addItem( &states, s ); }
+	event = execute( a, &state, event, s, context );
+
+static int
+execute( _action action, char **state, int event, char *next_state, _context *context )
+/*
+	read_command enters the state 'out' upon each command completion,
+	most notably upon '\n', but also in ">:" on '|'
+	When this state is reached from a narrative single action command,
+	then control must be returned to the narrative, unless the command
+	consists of reading and outputing HCN contents - each line of which
+	then translates into a single output command.
+	The flag context->input.hcn is set when pushing HCN input stream,
+	and unset when popping the HCN input stream.
+*/
+{
+	if ( !strcmp( *state, "" ) ) return event;
+
+	int retval = (*action)( *state, event, &next_state, context );
+	if ( strcmp( next_state, same ) ) *state = next_state;
+
+	if ( !strcmp( *state, out ) ) {
+		if ( context->input.hcn ) {
+			*state = base;
+		} else {
+			int clear = clear_output_target( base, event, &same, context );
+			*state = ( context->command.one || (( clear < 0 ) &&
+				( context->narrative.mode.editing && (context->input.stack) ))) ?
+				"" : base;
+		}
+	}
+
+	// In case the action did actually check out, ignore its
+	// returned value - unless it's an error - and report the
+	// triggering event back to the caller
+
+	if ( strcmp( *state, "" ) || ( retval < 0 ) )
+		event = retval;
+
+	return event;
+}
+
+/*---------------------------------------------------------------------------
+	read_command
+---------------------------------------------------------------------------*/
 /*
 	These macros return control to narrative single-action editing mode
 	1. BRKERR rejects loop or test initialization instructions
@@ -69,9 +113,6 @@ static _action push_input_hcn;
 int
 read_command( char *state, int event, char **next_state, _context *context )
 {
-	listItem *actions = NULL;
-	listItem *states = NULL;
-
 	// ---------------------------------------------------------------
 	// 1. input event
 	// ---------------------------------------------------------------
@@ -92,7 +133,7 @@ read_command( char *state, int event, char **next_state, _context *context )
 		break;
 	case 0: // input() reached EOF
 		// pop_state is when pop() command failed aka.
-		// " attempt to pop beyond authorized level"
+		// "attempt to pop beyond authorized level"
 		bgn_
 		in_( pop_state )	do_( command_pop_input, base )
 		in_other		do_( command_pop_input, same )
@@ -823,36 +864,6 @@ read_command( char *state, int event, char **next_state, _context *context )
 					end
 		end
 	}
-
-	// -----------------------------------------------------------
-	// 3. execute actions
-	// -----------------------------------------------------------
-
-	reorderListItem( &actions );
-	reorderListItem( &states );
-	for ( listItem *i=actions, *j=states; i!=NULL; i=i->next, j=j->next )
-	{
-		_action *action = i->ptr;
-		*next_state = j->ptr;
-
-		int retval = (*action)( state, event, next_state, context );
-		if ( strcmp( *next_state, same ) ) state = *next_state;
-
-		check_out( state, retval, next_state, context );
-		if ( strcmp( *next_state, same ) ) state = *next_state;
-
-		// In case the action did actually check out, ignore its
-		// returned value - unless it's an error - and report the
-		// triggering event back to the caller
-
-		if ( !strcmp( state, "" ) ) {
-			if ( retval < 0 ) event = retval;
-			break;
-		}
-		event = retval;
-	}
-	freeListItem( &states );
-	freeListItem( &actions );
 	*next_state = state;
 	return event;
 }
@@ -1135,7 +1146,7 @@ static int
 command_err( char *state, int event, char **next_state, _context *context )
 {
 	// clear output target in case error happened in output state (>:)
-	event = clear_output_target( state, event, next_state, context );
+	event = clear_output_target( base, event, &same, context );
 
 #if 0
 	// in case we were reading HCN file, this will abort the answer
@@ -1263,34 +1274,3 @@ push_input_hcn( char *state, int event, char **next_state, _context *context )
 	return push_input( "", path, HCNFileInput, context );
 }
 
-/*---------------------------------------------------------------------------
-	check_out	- local
----------------------------------------------------------------------------*/
-static int
-check_out( char *state, int event, char **next_state, _context *context )
-/*
-	read_command enters the state 'out' upon each command completion,
-	most notably upon '\n', but also in ">:" on '|'
-	When this state is reached from a narrative single action command,
-	then control must be returned to the narrative, unless the command
-	consists of reading and outputing HCN contents - each line of which
-	then translates into a single output command.
-	The flag context->input.hcn is set when pushing HCN input stream,
-	and unset when popping the HCN input stream.
-*/
-{
-	if ( !strcmp( state, out ) ) {
-		if ( context->input.hcn ) {
-			*next_state = base;
-		}
-		else {
-			event = clear_output_target( state, event, next_state, context );
-			*next_state = ( context->command.one || (( event < 0 ) &&
-				( context->narrative.mode.editing && (context->input.stack) ))) ?
-				"" : base;
-		}
-	}
-	else *next_state = same;
-
-	return event;
-}

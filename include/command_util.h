@@ -38,8 +38,5 @@ _action input_cgi;
 	utilities	- public
 ---------------------------------------------------------------------------*/
 
-void set_command_mode( CommandMode mode, _context *context );
-int command_mode( int freeze, int instruct, int execute );
-
 
 #endif	// COMMAND_UTIL_H

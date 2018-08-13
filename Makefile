@@ -14,7 +14,7 @@ SRCS =	main.c command.c command_util.c \
 	expression.c expression_util.c expression_solve.c expression_sieve.c \
 	path.c value.c variable.c variable_util.c \
 	io.c input.c input_util.c hcn.c output.c output_util.c \
-	frame.c api.c kernel.c database.c registry.c string_util.c xl.c \
+	frame.c api.c kernel.c database.c list.c registry.c string_util.c xl.c \
 	cgic.c
 
 #CFLAGS = -DPREVIOUS

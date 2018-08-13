@@ -4,8 +4,9 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 #include "output.h"
 

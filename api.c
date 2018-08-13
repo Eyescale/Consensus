@@ -5,8 +5,9 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
-#include "database.h"
+#include "list.h"
 #include "registry.h"
+#include "database.h"
 #include "kernel.h"
 
 #include "command.h"

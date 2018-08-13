@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 
-#include "database.h"
 #include "registry.h"
 
 static registryEntry *freeRegistryItemList = NULL;
