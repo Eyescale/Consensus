@@ -18,6 +18,7 @@ extra_application(Consensus SOURCES
 	expression_solve.c
 	expression_util.c
 	frame.c
+	list.c
 	hcn.c
 	input.c
 	input_util.c
