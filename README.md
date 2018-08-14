@@ -1,6 +1,6 @@
 # Consensus
 
-* This here is a Chrome-enabled version of consensus.
+* Under Pilot/ you will find the Chrome-enabled, Pilot version of consensus.
 * To install, you need to:
     * make consensus (see below)
     * setup local WebServer on your system - cf.  
@@ -8,7 +8,7 @@
     * configure Apache to permit CGI - cf.  
        https://httpd.apache.org/docs/current/howto/cgi.html
     * copy the consensus executable under /Library/WebServer/CGI-Executables
-    * copy the entire contents of the distribution's 'Documents' directory under /Library/WebServer/Documents
+    * copy the entire contents of the Pilot's 'Documents' sub-directory under /Library/WebServer/Documents
 * To run, you need to
     * launch consensus in operator mode, e.g. from the distribution's directory type
     ```
@@ -19,6 +19,9 @@
 ----
 
 * To compile, you need to create a .ofiles directory
+      cd Pilot
+      mkdir .ofiles
+      make
 * To run, just launch ./consensus
 * after the prompt, you can type e.g. the command
 ```
