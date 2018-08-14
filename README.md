@@ -19,9 +19,11 @@
 ----
 
 * To compile, you need to create a .ofiles directory
-      cd Pilot
-      mkdir .ofiles
-      make
+```
+    cd Pilot
+    mkdir .ofiles
+    make
+```
 * To run, just launch ./consensus
 * after the prompt, you can type e.g. the command
 ```
