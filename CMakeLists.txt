@@ -37,4 +37,4 @@ extra_application(Consensus SOURCES
     Pilot/variable_util.c
     Pilot/xl.c
 )
-target_include_directories(Consensus PRIVATE include)
+target_include_directories(Consensus PRIVATE Pilot/include)
