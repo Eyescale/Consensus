@@ -61,7 +61,7 @@ Description
 Contents
 	. main.c
 		System definition - CNSystemBegin() / CNSystemEnd()
-		. declares Operator system as well as Parser and Input subsystems
+		. declares Operator system together with Parser and Input subsystems
 
 		Subsystem definition - via subsystems ID and init() method
 			. invokes each subsystem's init() method
