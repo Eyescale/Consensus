@@ -30,11 +30,11 @@ Theoretical Background
 	. A program - aka. System's Narrative - takes the following form:
 
 		in current State: Condition1
-			on change [ from previous ] to current State: Event1*
+			on change [ from previous ] to current State: Event1
 				do change [ from current ] to next State: Action1
 
 		in current State: Condition2
-			on change [ from previous ] to current State: Event2*
+			on change [ from previous ] to current State: Event2
 				do change [ from current ] to next State: Action2
 
 		etc.
