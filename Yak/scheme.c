@@ -370,9 +370,16 @@ readSchemeFrame( Scheme *scheme, int event )
 			end
 		in_( "%{_}" ) bgn_
 			on_space	do_( ": space" )
+			on_( '%' )	do_( "%{_}%" )
 			on_other	do_( "schema" )	REENTER
 						regex_position = 0;
 			end
+			in_( "%{_}%" ) bgn_
+				on_( '{' )	do_( "tokens" )
+				on_( '-' )	do_( "%{_}" )
+				on_other	do_( ": %" )	REENTER
+							regex_position = 0;
+				end
 	END
 	return errnum;
 }
@@ -523,11 +530,11 @@ outputScheme( Scheme *scheme, int tok )
 			/* output schema leading tokens
 			*/
 			listItem *t = schema->data;
-			for ( ; (( t )); t=t->next ) {
+			for ( int sp=0; (( t )); t=t->next ) {
 				Token *token = t->ptr;
 				if (( token->position ))
 					break;
-				printf( " " );
+				if (!sp) { sp = 1; printf( " " ); }
 				outputToken( token->values );
 			}
 			/* output schema leading space if not already there
@@ -578,18 +585,13 @@ outputScheme( Scheme *scheme, int tok )
 				/* output tokens at position
 				*/
 				char *pos = ( output.state == 5 ) ? output.regexpos : &str[ 1 ];
-				int nosp = 0;
 				switch ( output.state ) {
 				case 0:
-					nosp = ( *str != ' ' );
-					// no break
 				case 5:
 					for ( ; (( t )); t=t->next ) {
 						Token *token = t->ptr;
 						if ( token->position != pos )
 							break;
-						if ( nosp ) printf( " " );
-						else nosp = 1;
 						outputToken( token->values );
 						switch ( str[ 1 ] ) {
 							case '\0':
