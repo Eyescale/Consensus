@@ -6,6 +6,15 @@
 #include "list.h"
 #include "parser.h"
 
+static void
+Usage( void )
+{
+	/* option -n is for 'no token'
+	   option -s is for 'space' (registered)
+	*/
+	fprintf( stderr, "Usage: yak [-ns] path\n" );
+	exit( -1 );
+}
 enum {
 	NewLine,
 	Slash,
@@ -23,13 +32,22 @@ static int NextState( int, int );
 int
 main( int argc, char *argv[] )
 {
-	char *path; int raw;
+	char *path, *options = NULL;
 	switch ( argc ) {
-	case 2: path = argv[ 1 ]; raw = 0; break;
-	case 3: path = argv[ 2 ]; raw = !strcmp( argv[ 1 ], "-n" ); break;
-	default:
-		fprintf( stderr, "Usage: yak [-n] path\n" );
-		exit( -1 );
+	case 2: path = argv[ 1 ]; break;
+	case 3: path = argv[ 2 ]; options = argv[ 1 ]; break;
+	default: Usage();
+	}
+	int token = 1, space = 0;
+	if (( options )) {
+		char *o = options;
+		if ( *o++ != '-' ) Usage();
+		for ( ; *o; o++ ) {
+			switch ( *o ) {
+			case 'n': token = 0; break;
+			case 's': space = 1; break;
+			}
+		}
 	}
 
 	Scheme *scheme = readScheme( path );
@@ -37,13 +55,14 @@ main( int argc, char *argv[] )
 		freeScheme( scheme );
 		exit( -1 );
 	}
-	outputScheme( scheme, !raw );
+	outputScheme( scheme, token );
 	if ( SchemeBase( scheme ) == NULL ) {
 		fprintf( stderr, "yak$ Error: scheme has no base rule\n" );
 		freeScheme( scheme );
 		exit( -1 );
 	}
-	Parser *parser = newParser( scheme, ( raw ? 0 : P_TOK ) );
+	int p_opt = ( token ? P_TOK : 0 ) | ( space ? P_SPACE : 0 );
+	Parser *parser = newParser( scheme, p_opt );
 	if ( parser == NULL ) {
 		fprintf( stderr, "yak$ Error: parser allocation failed\n" );
 		freeScheme( scheme );
@@ -158,7 +177,11 @@ outputSequence( Parser *parser, Sequence *sequence )
 	if ( parser->options & P_TOK ) {
 		for ( listItem *i=sequence; i!=NULL; i=i->next ) {
 			for ( listItem *j=i->ptr; j!=NULL; j=j->next ) {
-				printf( "%s", j->ptr );
+				char *token = j->ptr;
+				if ( is_space( token[ 0 ] ) )
+					printf( "'%s'", j->ptr );
+				else
+					printf( "%s", j->ptr );
 				if ( j->next ) printf( " " );
 			}
 			if ( i->next ) printf( " " );
