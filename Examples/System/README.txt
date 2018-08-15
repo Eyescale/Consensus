@@ -39,9 +39,10 @@ Design
 
 		etc.
 
-	Where State represents the contents of [a portion of] the memory, whose
-	differential is tracked at each program step (frame), and external events
-	are mapped into internal events - System's WorldView
+	Where
+	. a State represents the contents of [a portion of] the memory, whose
+	  differential is tracked at each program step (frame)
+	. external events are mapped into internal events - System's WorldView
 
 Usage
 	./system
