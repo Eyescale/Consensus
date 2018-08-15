@@ -21,7 +21,6 @@
 	: / \n %{ good bye! }
 	| in% %{ START }
 	| %{ in_ } in %cond \n %{ _in }
-	| abc%{ toto }
 
  cond	: %state
 	| %op
