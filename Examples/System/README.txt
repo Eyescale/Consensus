@@ -87,13 +87,14 @@ Contents
 	  Parser.c
 		Subsystem implementations - data and methods
 		. SubsystemInit() - allocate subsystem-specific data and methods
-		. connect() - register interests and subscribe to automatic update
+		. SubsystemFrame() - processes changes from last frame
+		. SubsystemSync() - map external change notifications into own
+		  Subsystem's worldview and log local changes for the next frame
 
 	. include/Input.h
 	  include/Parser.h
 		. Subsystem manifests - system interface and data structures
-		  data structure is needed for other subsystems to subscribe
-		. frame() - subsystem's narrative frame
+		  access to data structure is needed for other subsystems to subscribe
 
 Dependencies
 	./Library/include/system.h
