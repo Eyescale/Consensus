@@ -95,10 +95,10 @@ Schemas
 		  Examples
 			: abc%rule%-def
 			          ^
-			: abc:%-\
+			: abc%rule%-\
 			  def
 		   Note that a space character preceding the rule '%-' will devoid
-		   devoid the rule of any effect
+		   the rule of any effect
 
 		. The Identifier rule ('%%') accepts any combination of digits and
 		  non-separator character (at least one)
