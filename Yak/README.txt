@@ -3,7 +3,7 @@ Name
 
 Synopsis
 	Yak is a transducer - a la Yacc, Bison, PLY ...
-	A yak scheme file allows to specifies the target input grammar in
+	A yak scheme file allows to specify the target input grammar in
 	the form of rules and schemas, and corresponding output tokens.
 	Yak allows regular expressions (regex) to be used as part of the
 	scheme file format.
