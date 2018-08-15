@@ -15,7 +15,7 @@ Overview
 	The example source code under the ./Example/System directory illustrates how
 	such systems can be architected using linear programming language such as C.
 
-Theoretical Background
+Design
 	. A System is entirely defined by the series of its States.
 	. The State of a System is the Vector of States of its Subsystems.
 	. Events and Actions are State changes, i.e.
@@ -44,7 +44,7 @@ Theoretical Background
 	are mapped into internal events - System's WorldView
 
 Usage
-	./System
+	./system
 
 Execution
 	. The program will read anything from stdin and

@@ -15,7 +15,7 @@ SRCS =	main.c Input.c Parser.c
 
 #CFLAGS = -DPREVIOUS
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = System
+MAIN = system
 
 .PHONY: depend clean
 
