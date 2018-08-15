@@ -584,22 +584,17 @@ outputScheme( Scheme *scheme, int tok )
 				}
 				/* output tokens at position
 				*/
-				char *pos = ( output.state == 5 ) ? output.regexpos : &str[ 1 ];
+				char *tpos = ( output.state == 5 ) ? output.regexpos : &str[ 1 ];
+				int sp = ( output.state != 5 );
 				switch ( output.state ) {
 				case 0:
 				case 5:
 					for ( ; (( t )); t=t->next ) {
 						Token *token = t->ptr;
-						if ( token->position != pos )
+						if ( token->position != tpos )
 							break;
+						if (sp) { sp = 0; printf( " " ); }
 						outputToken( token->values );
-						switch ( str[ 1 ] ) {
-							case '\0':
-							case ' ':
-								break;
-							default:
-								printf( " " );
-						}
 					}
 				}
 				if ( output.state == 5 ) output.state = 0;
