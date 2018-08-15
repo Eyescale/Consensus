@@ -1,0 +1,14 @@
+# allows user input such as
+#	in ( :titi )
+#	in ( :titi, :toto )
+# etc.
+# FIXED
+	: \/\n
+	| in %{ in_ } %cond %{ _in } \n
+
+ cond	: %{ and_ } ( %expr ) %{ _and }
+
+ expr	: %state
+	| %expr , %{ comma } %state
+
+ state	: %{ name } : %% %{ take }

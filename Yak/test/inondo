@@ -1,0 +1,42 @@
+# introduce
+#	%literal	// means everything but space is recorded
+#	%space		// means space also is recorded
+# characters to be escaped in schema
+#	% \
+# space input
+#	. as first input
+#	  	. is accepted by base-rule schema threads unless
+#	    	  these are in a schema position preceded, with
+#	     	  or without intermediate space, by a reference
+#	     	  to the built-in rule '%\'
+#	  	. causes base-rule threads in such position to fail
+#		. causes non-base-rule schema threads to fail
+#	. otherwise
+#		. is accepted by threads which are positioned at
+#		  the start of a schema morpheme (rule reference
+#		  or group of characters)
+#		. causes threads which are not positioned at the
+#		  start of a schema morpheme to fail
+
+	: / \n %{ good bye! }
+	| in% %{ START }
+	| %{ in_ } in %cond \n %{ _in }
+	| abc%{ toto }
+
+ cond	: %state
+	| %op
+
+ state	: %{ name } : %% %{ take }
+	| %{ not name } : ~ %% %{ take }
+	| %{ name } : %% %{ value } : %% %{ take }
+
+ op	: %{ and_ } ( %expr ) %{ _and }
+ 	| %{ or_ } { %expr } %{ _or }
+ 	| %{ not and_ } ~ ( %expr ) %{ _and }
+ 	| %{ not or_ } ~ { %expr } %{ _or }
+
+ expr	: %state
+	| %op
+	| %expr , %{ comma } %state
+	| %expr , %{ comma } %op
+

@@ -1,0 +1,16 @@
+# allow user input such as
+#	in ((:toto))
+# FIXED
+	: %-/%-\n
+	| %{ in_ } in %cond \n %{ _in }
+
+ cond	: %op
+	| %state
+
+ op	: %{ and_ } ( %expr ) %{ _and }
+
+ expr	: %state
+	| %op
+
+ state	: %{ name } : %% %{ take }
+

@@ -1,0 +1,8 @@
+# double base rule definition
+# FIXED
+
+	: /\n
+	: %space\n
+space	: o
+	| o %space
+

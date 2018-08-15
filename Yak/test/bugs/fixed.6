@@ -1,0 +1,11 @@
+# multiple separate tokens on push / pop rules do not work
+# user input
+#	in ( :toto )
+# FIXED
+	: \/\n
+	| in %{ in_ } %cond %{ _in } \n
+
+ cond	: %{ and_ } ( %expr ) %{ _and }
+
+ expr	: %{ name_ } %{ YOP } : %% %{ YIP } %{ take }
+# expr	: %{ name_ } %{ YOP } : %% %{ take }

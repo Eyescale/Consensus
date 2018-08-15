@@ -1,0 +1,11 @@
+# Bug: see below %{ in_}
+# ---------------------^ no space => the tokenization gets mixed up (scheme.c)
+# FIXED
+
+	: \/\n
+	| in %{ in_} %cond %{ _in } \n
+
+ cond	: %{ and_ } ( %expr ) %{ _and }
+
+ expr	: %{ name_ } : %% %{ take }
+

@@ -1,0 +1,15 @@
+# multiple separate tokens do not work
+# FIXED
+	: \/\n
+	| in %{ in_ } %cond %{ _in } \n
+
+ cond	: %{ and_ } ( %expr ) %{ _and }
+
+ expr	: %{ name_ } : %% %{ take }
+	| %expr , %{ comma } %{ name } : %% %{ take }
+# ---------------------------^
+# user input
+#	in ( :toto, : titi )
+# came out as
+#	in_ and_ name_ toto take name comma titi take _and _in
+# -------------------------------^ inverted name <-> comma
