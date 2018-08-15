@@ -1,6 +1,6 @@
 
 Name
-	./Example/System
+	./Examples/System
 
 Overview
 	The purpose of Consensus is to allow to create Systems of information which are
@@ -12,7 +12,7 @@ Overview
 	to represent and understand the way Systems work in reality, but also the only
 	approach that gives us the chance to harmonize ourselves with our environment.
 
-	The example source code under the ./Example/System directory illustrates how
+	The example source code under the ./Examples/System directory illustrates how
 	such systems can be architected using linear programming language such as C.
 
 Design
