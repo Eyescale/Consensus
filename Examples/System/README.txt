@@ -43,12 +43,6 @@ Theoretical Background
 	differential is tracked at each program step (frame), and external events
 	are mapped into internal events - System's WorldView
 
-Description
-	. Implements CNSystem execution model and interfaces - including
-		. Subsystem class definition and interfaces
-	  	. CNIn, CNOn, CNDo API - in include/system.h
-	. Implements Input and Parser subsystems, executing in parallel
-
 Usage
 	./System
 
@@ -58,6 +52,12 @@ Execution
 		  2. exit upon '/' followed by carriage return
 
 Description
+	. Implements CNSystem execution model and interfaces - including
+		. Subsystem class definition and interfaces
+	  	. CNIn, CNOn, CNDo API - in include/system.h
+	. Implements Input and Parser subsystems, executing in parallel
+
+Contents
 	. main.c
 		System definition - CNSystemBegin() / CNSystemEnd()
 		. declares Operator system as well as Parser and Input subsystems
@@ -98,7 +98,7 @@ Dependencies
 	./Library/include/system.h
 		. System interface definition
 			. Subsystem class definition
-			. CNIn, CNOn, CNDo implementation - uses macros to simplify
+			. CNIn, CNOn, CNDo implementation - uses macros
 	./Library/libcn.so
 		. Consensus library
 
