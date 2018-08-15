@@ -1003,7 +1003,11 @@ s_register_pop( Parser *p, SchemaThread *s )
 {
 	if ( p->options & P_TOK ) {
 		char *r_id = s->r->rule->identifier;
+#ifdef REGEX
 		if (( *r_id != '/' ) && r_inbuilt( r_id )) {
+#else
+		if ( r_inbuilt( r_id ) ) {
+#endif
 			if (( s->sequence )) {
 				reorderListItem( &s->sequence );
 
@@ -1076,10 +1080,10 @@ s_regex_feed( Parser *p, SchemaThread *s, SchemaThread *subscriber )
 		if ( (uintptr_t) t_position > position )
 			break;
 
-		// preserve order in case of multiple token value lists
-		listItem *list = NULL;
+		// handle case of multiple token value lists
+		listItem *tokens = NULL;
 		do {
-			addItem( &list, token->values );
+			addItem( &tokens, token->values );
 			if (( i = i->next )) {
 				token = i->ptr;
 				t_position = token->position;
@@ -1087,9 +1091,11 @@ s_regex_feed( Parser *p, SchemaThread *s, SchemaThread *subscriber )
 		}
 		while (( i ) && ( (uintptr_t) t_position == position ));
 
+		reorderListItem( &tokens );
+
 		// make sure we do have regex references (optimisation)
 		int regref = 0;
-		for ( listItem *l=list; l!=NULL && !regref; l=l->next ) {
+		for ( listItem *l=tokens; l!=NULL && !regref; l=l->next ) {
 			for ( listItem *j=l->ptr; j!=NULL; j=j->next ) {
 				for ( char *str=j->ptr; *str; str++ ) {
 					if ( *str != '\\' ) continue;
@@ -1102,7 +1108,7 @@ s_regex_feed( Parser *p, SchemaThread *s, SchemaThread *subscriber )
 		// expand regex references if there are
 		if ( regref ) {
 			Regex *r = s->schema->data;
-			for ( listItem *l=list; l!=NULL; l=l->next ) {
+			for ( listItem *l=tokens; l!=NULL; l=l->next ) {
 				listItem *values = RegexExpand( r, l->ptr, s->sequence );
 				if (( values )) {
 					addItem( &p->tokens, values );
@@ -1111,10 +1117,11 @@ s_regex_feed( Parser *p, SchemaThread *s, SchemaThread *subscriber )
 			}
 		}
 		else {
-			for ( listItem *j=list; j!=NULL; j=j->next )
+			for ( listItem *j=tokens; j!=NULL; j=j->next )
 				addItem( &subscriber->sequence, j->ptr );
 		}
-		freeListItem( &list );
+		freeListItem( &tokens );
+
 		break;
 	}
 }

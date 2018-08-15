@@ -13,7 +13,7 @@ Overview
 	approach that gives us the chance to harmonize ourselves with our environment.
 
 	The example source code under the ./Examples/System directory illustrates how
-	such systems can be architected using linear programming language such as C.
+	such systems can be architected using linear programming languages such as C.
 
 Design
 	. A System is entirely defined by the series of its States.

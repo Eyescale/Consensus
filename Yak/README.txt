@@ -3,7 +3,7 @@ Name
 
 Synopsis
 	Yak is a transducer - a la Yacc, Bison, PLY ...
-	A yak scheme file allows to specify the target input grammar in
+	A yak scheme file allows to specifies the target input grammar in
 	the form of rules and schemas, and corresponding output tokens.
 	Yak allows regular expressions (regex) to be used as part of the
 	scheme file format.
@@ -34,7 +34,8 @@ Rules
 Schemas
 	Space Management
 		. space characters are ignored after the Hyphen rule ('%-')
-		. space characters are ignored before the Token sign ('%{' )
+		. space characters are ignored before the Token sign ('%{' ), unless
+		  they are following a Regex rule ('%/regex/')
 		. space characters are ignored at the beginning of a schema, unless
 		  this schema pertains to the base rule
 		. space characters are ignored at the end of a schema

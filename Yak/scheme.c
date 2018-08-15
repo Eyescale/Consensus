@@ -180,11 +180,14 @@ readSchemeFrame( Scheme *scheme, int event )
 			on_space	do_( same )
 			on_( '%' )	do_( ": space%" )
 			on_( '\n' )	do_( ": \\n" )
+						regex_position = 0;
 						// space characters are ignored at the end of a schema
 			on_( '\\' )	do_( ": \\" )
+						regex_position = 0;
 						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
 							s_append( string, ' ', &position );
 			on_other	do_( ": _" )
+						regex_position = 0;
 						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
 							s_append( string, ' ', &position );
 						s_append( string, event, &position );
@@ -192,6 +195,11 @@ readSchemeFrame( Scheme *scheme, int event )
 		in_( ": space%" ) bgn_
 			on_( '{' )	do_( "tokens" )
 						// space characters are ignored before the Token sign
+						// EXCEPT following regex rule
+						if ( regex_position ) {
+							regex_position = 0;
+							s_append( string, ' ', &position );
+						}
 			on_other	do_( ": %" )	REENTER
 						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
 							s_append( string, ' ', &position );
@@ -308,9 +316,9 @@ readSchemeFrame( Scheme *scheme, int event )
 		in_( ": regex" ) bgn_
 			on_( '\n' )	do_( "error" )	REENTER
 						regex_position = 0;
+			on_( '\\' )	do_( ": %/\\" )
 			on_( '/' )	do_( ": %//" )
 						s_append( string, event, &position );
-			on_( '\\' )	do_( ": %/\\" )
 			on_other	do_( same )
 						s_append( string, event, &position );
 			end
@@ -325,6 +333,7 @@ readSchemeFrame( Scheme *scheme, int event )
 					on_other	do_( ": regex" )	REENTER
 					end
 			in_( ": %//" ) bgn_
+				on_space	do_( ": space" )
 				on_( '%' )	do_( ": %//%" )
 				on_other	do_( "schema" )	REENTER
 							regex_position = 0;
@@ -342,10 +351,11 @@ readSchemeFrame( Scheme *scheme, int event )
 					t_finish( string, scheme, list );
 		on_( '}' )	do_( "schema" )
 					t_finish( string, scheme, list );
-					if ( regex_position )
+					if ( regex_position ) {
 						t_wrap( list, regex_position );
-					else
-						t_wrap( list, position );
+						regex_position = 0;
+					}
+					else t_wrap( list, position );
 		on_other	do_( same )
 					t_append( string, event );
 		end
@@ -355,8 +365,6 @@ readSchemeFrame( Scheme *scheme, int event )
 			end
 		in_( "token\\" ) bgn_
 			on_( '\n' )	do_( "tokens" )
-			on_( '}' )	do_( "tokens" )
-						t_append( string, '}' );
 			on_other	do_( "tokens" )
 						t_append( string, '\\' );
 						t_append( string, event );
