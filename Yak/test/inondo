@@ -1,6 +1,5 @@
 
 	: / \n %{ good bye! }
-	| in% %{ START }
 	| %{ in_ } in %cond \n %{ _in }
 
  cond	: %state

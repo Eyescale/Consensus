@@ -49,7 +49,6 @@ main( int argc, char *argv[] )
 			}
 		}
 	}
-
 	Scheme *scheme = readScheme( path );
 	if ( !ParserValidate( scheme ) ) {
 		freeScheme( scheme );
@@ -74,7 +73,6 @@ main( int argc, char *argv[] )
 		freeScheme( scheme );
 		exit( -1 );
 	}
-
 	int line = 0, column;
 	int event='\n', state = NewLine;
 	do {
@@ -169,6 +167,7 @@ NextState( int state, int event )
 /*---------------------------------------------------------------------------
 	outputSequence
 ---------------------------------------------------------------------------*/
+static void outputSpace( char * );
 static void
 outputSequence( Parser *parser, Sequence *sequence )
 {
@@ -180,9 +179,9 @@ outputSequence( Parser *parser, Sequence *sequence )
 			for ( listItem *j=i->ptr; j!=NULL; j=j->next ) {
 				char *token = j->ptr;
 				if ( is_space( token[ 0 ] ) )
-					printf( "'%s'", j->ptr );
+					outputSpace( token );
 				else
-					printf( "%s", j->ptr );
+					printf( "%s", token );
 				if ( j->next ) printf( " " );
 			}
 			if ( i->next ) printf( " " );
@@ -214,3 +213,19 @@ outputSequence( Parser *parser, Sequence *sequence )
 #endif
 }
 
+static void
+outputSpace( char *sp )
+{
+	printf( "'" );
+	for ( ; *sp; sp++ ) {
+		switch ( *sp ) {
+		case ' ':
+			printf( " " );
+			break;
+		case '\t':
+			printf( "\\t" );
+			break;
+		}
+	}
+	printf( "'" );
+}
