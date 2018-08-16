@@ -15,7 +15,7 @@ SRCS =	main.c scheme.c \
 	parser.c parser_debug.c \
 	regex.c regex_debug.c
 
-#CFLAGS = -DPREVIOUS
+CFLAGS = -DDEBUG
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 MAIN = yak
 
@@ -25,12 +25,13 @@ all:$(MAIN)
 
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	cc -shared -o libyak.so $(INCLUDES) parser.c scheme.c regex.c $(LFLAGS) $(LIBS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	$(RM) $(OBJDIR)/*.o $(MAIN)
+	$(RM) $(OBJDIR)/*.o $(MAIN) libyak.so
 	cp ../Base/libcn.so .
 
 depend: $(SRCS)

@@ -6,22 +6,9 @@
 #include "regex.h"
 #include "regex_util.h"
 
-#define DEBUG
-#include "regex_debug.h"
-
 /*---------------------------------------------------------------------------
-	Warnings
+	Debug
 ---------------------------------------------------------------------------*/
-void
-WRN_group_not_found( SchemaThread *s )
-{
-	fprintf( stderr, "RX Warning: group '%%(' not found\n" );
-}
-void
-WRN_RX_multiple_results( void )
-{
-	fprintf( stderr, "RX Warning: multiple results\n" );
-}
 void
 DBG_RX_expect( SchemaThread *s )
 {

@@ -172,8 +172,9 @@ NextState( int state, int event )
 static void
 outputSequence( Parser *parser, Sequence *sequence )
 {
-
+#ifdef DEBUG
 	printf( "~~~~~~\n" );
+#endif
 	if ( parser->options & P_TOK ) {
 		for ( listItem *i=sequence; i!=NULL; i=i->next ) {
 			for ( listItem *j=i->ptr; j!=NULL; j=j->next ) {
@@ -208,6 +209,8 @@ outputSequence( Parser *parser, Sequence *sequence )
 		CNStreamEnd( stream )
 	}
 	printf( "\n" );
+#ifdef DEBUG
 	printf( "~~~~~~\n" );
+#endif
 }
 

@@ -4,17 +4,37 @@
 
 #include "parser.h"
 #include "parser_util.h"
-#include "regex.h"
+#include "parser_debug.h"
 
 #define REGEX
+#ifdef REGEX
+#include "regex.h"
+#endif
 
 /*===========================================================================
 
 	Parser public interface -- implementation
 
 ===========================================================================*/
-#define DEBUG
-#include "parser_debug.h"
+static void
+ERR_rule_not_found( Rule *r, char *identifier )
+{
+	if ( r == NULL ) {
+		fprintf( stderr, "Error: ParserValidate: no base rule\n" );
+		return;
+	}
+	fprintf( stderr, "Error: ParserValidate: in rule '%s', rule not found: %%%s\n",
+		r->identifier, identifier );
+}
+static void
+ERR_cyclic_rule( Rule *r )
+	{ fprintf( stderr, "Error: ParserValidate: cyclic rule '%s'\n", r->identifier ); }
+
+#ifdef REGEX
+static void
+WRN_regex_invalid( void )
+	{ fprintf( stderr, "Warning: regex invalid - deactivating subscriber\n" ); }
+#endif
 
 enum {
 	PREPROCESS = 0,
@@ -38,7 +58,7 @@ ParserValidate( Scheme *scheme )
 {
 	if ( scheme == NULL ) return 0;
 	if ( SchemeBase( scheme ) == NULL ) {
-		fprintf( stderr, "Error: ParserValidate: no base rule\n" );
+		ERR_rule_not_found( NULL, NULL );
 		return 0;
 	}
 	/* Ensure all rules referenced by schemas do in fact exist in scheme
@@ -56,8 +76,7 @@ ParserValidate( Scheme *scheme )
 
 				char *identifier;
 				strscanid( p, &identifier );
-				fprintf( stderr, "Error: ParserValidate: in rule '%s', "
-					"rule not found: %%%s\n", r->identifier, identifier );
+				ERR_rule_not_found( r, identifier );
 				free( identifier );
 				return 0;
 			}
@@ -73,7 +92,7 @@ ParserValidate( Scheme *scheme )
 			freeListItem( &tagged[ 1 ] );
 			continue;
 		}
-		fprintf( stderr, "Error: ParserValidate: cyclic rule '%s'\n", r->identifier );
+		ERR_cyclic_rule( r );
 		freeListItem( &tagged[ 0 ] );
 		freeListItem( &tagged[ 1 ] );
 		return 0;
@@ -557,14 +576,8 @@ p_update( Parser *parser, listItem **change )
 			}
 			else {
 				rule = fetchRule( parser->scheme, subscriber->position );
-				if (( rule )) {
-					r = r_launch( parser, rule, subscriber, change );
-					if (( r )) r_register_push( parser, r );
-				}
-				else {
-					WRN_rule_not_found( subscriber );
-					addItem( &change[ DEACTIVATE ], subscriber );
-				}
+				r = r_launch( parser, rule, subscriber, change );
+				if (( r )) r_register_push( parser, r );
 			}
 		}
 

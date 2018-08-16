@@ -4,15 +4,17 @@
 
 #include "regex.h"
 #include "regex_util.h"
+// #define DEBUG
+#include "regex_debug.h"
 
 /*===========================================================================
 
 	Regex public interface -- implementation
 
 ===========================================================================*/
-
-#define DEBUG
-#include "regex_debug.h"
+static void
+WRN_RX_multiple_results( void )
+	{ fprintf( stderr, "RX Warning: multiple results\n" ); }
 
 enum {
 	PREPROCESS = 0,
@@ -646,13 +648,7 @@ r_update( Regex *regex, listItem **change )
 			}
 			else {
 				group = find_group( regex, subscriber->position );
-				if (( group )) {
-					g_launch( regex, group, subscriber, change );
-				}
-				else {
-					WRN_group_not_found( subscriber );
-					addItem( &change[ DEACTIVATE ], subscriber );
-				}
+				g_launch( regex, group, subscriber, change );
 			}
 		}
 

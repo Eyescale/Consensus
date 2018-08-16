@@ -6,47 +6,9 @@
 #include "parser.h"
 #include "parser_util.h"
 
-#define DEBUG
-#include "parser_debug.h"
-
-/*---------------------------------------------------------------------------
-	Warnings
----------------------------------------------------------------------------*/
-void
-WRN_cyclic_rule( Rule *r )
-{
-	fprintf( stderr, "Warning: cyclic dependency on rule '%s' -> disabling\n", r->identifier );
-}
-void
-WRN_rule_not_found( SchemaThread *s )
-{
-	if ( s == NULL ) {
-		ERR_NO_BASE;
-		return;
-	}
-	if ( is_separator( s->position[ 1 ] ) )
-		fprintf( stderr, "Warning: rule '%c' not found\n", s->position[ 1 ] );
-	else {
-		char *identifier;
-		strscanid( s->position, &identifier );
-		fprintf( stderr, "Warning: rule '%s' not found\n", identifier );
-		free( identifier );
-	}
-}
-void
-WRN_regex_invalid( void )
-{
-	fprintf( stderr, "Warning: regex invalid - deactivating subscriber\n" );
-}
-
 /*---------------------------------------------------------------------------
 	Debug
 ---------------------------------------------------------------------------*/
-void
-DBG_cyclic_schema( Rule *r )
-{
-	fprintf( stderr, "Debug: cyclic or dangling dependency in rule '%s' -> disabling schema\n", r->identifier );
-}
 void
 DBG_rule_found( char *identifier )
 {

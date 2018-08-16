@@ -6,7 +6,7 @@
 #include "scheme.h"
 #include "ansi.h"
 
-// #define DEBUG
+// #define SCH_DEBUG
 
 /*===========================================================================
 
@@ -116,7 +116,7 @@ readSchemeFrame( Scheme *scheme, int event )
 	int errnum = ErrReadSchemeNoErr;
 
 	BEGIN
-#ifdef DEBUG
+#ifdef SCH_DEBUG
 	end
 	fprintf( stderr, "readSchemeFrame: state=\"%s\" event='%c'\n", state, event );
 	bgn_
@@ -721,10 +721,6 @@ removeToken( Scheme *s, listItem *t )
 Rule *
 newRule( char *identifier )
 {
-#ifdef DEBUG
-	if (( identifier )) fprintf( stderr, "newRule: %s\n", identifier );
-	else fprintf( stderr, "newRule: base\n" );
-#endif
 	return ( identifier == NULL ) ?
 		(Rule *) newPair( "", NULL ) :
 		(Rule *) newPair( identifier, NULL );

@@ -144,7 +144,7 @@ Usage
 			case rvParserNoMatch:
 				// here all parser rules failed
 				//
-				ParserReBase( parser );
+				ParserRebase( parser );
 				break;
 			case rvParserNoMore:
 				// here all parser rules completed and at least one
@@ -152,7 +152,7 @@ Usage
 				// It is up to this implementation whether to call
 				// it an error (e.g. the last event was not '\n')
 				// or not
-				ParserReBase( parser );
+				ParserRebase( parser );
 				break;
 			case rvParserEncore:
 				// here there are still parser rules running. we can
@@ -161,7 +161,7 @@ Usage
 				// in the stream - pipeline mode. Otherwise rules will
 				// not be re-activated until the longest one succeeds.
 				//
-				// ParserReBase( parser );
+				// ParserRebase( parser );
 				break;
 		}
 	}
