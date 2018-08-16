@@ -3,7 +3,7 @@ Name
 
 Synopsis
 	Yak is a transducer - a la Yacc, Bison, PLY ...
-	A yak scheme file allows to specify the target input grammar in
+	A yak scheme file allows to specifies the target input grammar in
 	the form of rules and schemas, and corresponding output tokens.
 	Yak allows regular expressions (regex) to be used as part of the
 	scheme file format.
@@ -202,10 +202,10 @@ Design
                             // that position. Either the rule failed as a whole, or some of its schemas
                             // succeeded. In the latter case we keep the rule active by forking.
         
-                            else on Rn[ m + p ].status: Failure / n: R.reference[ j, p: S.position ]
+                            else on Rn[ m - p ].status: Failure / n: R.reference[ j, p: S.position ]
                                 set S.status : Failure
         
-                            else on_each Rn[ m + p ].Sk.status: Success / n: R.reference[ j, p: S.position ], k
+                            else on_each Rn[ m - p ].Sk.status: Success / n: R.reference[ j, p: S.position ], k
                                 in : FORK( S ) : 0
                                     update S.value(s)
                                     set S.position : next( S.position )
