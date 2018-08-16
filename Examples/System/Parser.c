@@ -26,7 +26,7 @@ ParserInit( System *this )
 #include "id.h"
 #include "Input.h"
 
-int
+static int
 ParserFrame( System *this )
 {
 	CNFrameBegin( ParserData )
