@@ -585,7 +585,7 @@ outputScheme( Scheme *scheme, int tok )
 				/* output tokens at position
 				*/
 				char *tpos = ( output.state == 5 ) ? output.regexpos : &str[ 1 ];
-				int sp = ( output.state != 5 );
+				int sp = ( output.state != 5 ) && ( *str != ' ' );
 				switch ( output.state ) {
 				case 0:
 				case 5:
