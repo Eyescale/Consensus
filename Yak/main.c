@@ -6,14 +6,37 @@
 #include "list.h"
 #include "parser.h"
 
-static void
-Usage( void )
+static char *
+clarg( int argc, char *argv[], int *token, int *space )
 {
-	/* option -n is for 'no token'
-	   option -s is for 'space' (registered)
-	*/
-	fprintf( stderr, "Usage: yak [-ns] path\n" );
-	exit( -1 );
+	char *path;
+	*token = 1;
+	*space = 0;
+	switch ( argc ) {
+	case 2:
+		path = argv[ 1 ];
+		break;
+	case 3:
+		path = argv[ 2 ];
+		char *o = argv[ 1 ];
+		if ( *o++ == '-' ) {
+			for ( ; *o; o++ ) {
+				switch ( *o ) {
+				case 'n': *token = 0; break;
+				case 's': *space = 1; break;
+				}
+			}
+			break;
+		}
+		// no break
+	default:
+		/* option -n is for 'no token'
+		   option -s is for 'space' (recorded)
+		*/
+		fprintf( stderr, "Usage: yak [-ns] path\n" );
+		exit( -1 );
+	}
+	return path;
 }
 enum {
 	NewLine,
@@ -32,47 +55,17 @@ static int NextState( int, int );
 int
 main( int argc, char *argv[] )
 {
-	char *path, *options = NULL;
-	switch ( argc ) {
-	case 2: path = argv[ 1 ]; break;
-	case 3: path = argv[ 2 ]; options = argv[ 1 ]; break;
-	default: Usage();
-	}
-	int token = 1, space = 0;
-	if (( options )) {
-		char *o = options;
-		if ( *o++ != '-' ) Usage();
-		for ( ; *o; o++ ) {
-			switch ( *o ) {
-			case 'n': token = 0; break;
-			case 's': space = 1; break;
-			}
-		}
-	}
-	Scheme *scheme = readScheme( path );
-	if ( !ParserValidate( scheme ) ) {
-		freeScheme( scheme );
-		exit( -1 );
-	}
-	outputScheme( scheme, token );
-	if ( SchemeBase( scheme ) == NULL ) {
-		fprintf( stderr, "yak$ Error: scheme has no base rule\n" );
-		freeScheme( scheme );
-		exit( -1 );
-	}
+	int token, space;
+	char *path = clarg( argc, argv, &token, &space );
 	int p_opt = ( token ? P_TOK : 0 ) | ( space ? P_SPACE : 0 );
+	Scheme *scheme = readScheme( path );
 	Parser *parser = newParser( scheme, p_opt );
 	if ( parser == NULL ) {
 		fprintf( stderr, "yak$ Error: parser allocation failed\n" );
 		freeScheme( scheme );
 		exit( -1 );
 	}
-	else if ( ParserStatus( parser ) == rvParserNoMore ) {
-		fprintf( stderr, "yak$ Error: parser defunct\n" );
-		freeParser( parser );
-		freeScheme( scheme );
-		exit( -1 );
-	}
+	outputScheme( scheme, token );
 	int line = 0, column;
 	int event='\n', state = NewLine;
 	do {
