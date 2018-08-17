@@ -29,6 +29,9 @@ ERR_rule_not_found( Rule *r, char *identifier )
 static void
 ERR_cyclic_rule( Rule *r )
 	{ fprintf( stderr, "Error: ParserValidate: cyclic rule '%s'\n", r->identifier ); }
+static void
+ERR_parser_defunct( void )
+	{ fprintf( stderr, "Error: parser defunct\n" ); }
 
 #ifdef REGEX
 static void
@@ -174,12 +177,24 @@ RETURN_NCYCLIC:
 Parser *
 newParser( Scheme *scheme, int options )
 {
+	if ( !ParserValidate( scheme ) )
+		return NULL;
+
 	Parser *parser = calloc( 1, sizeof(Parser) );
 	if ( parser == NULL ) return NULL;
 	parser->options = options;
 	parser->scheme = scheme;
 	addItem( &parser->frames, NULL );
-	ParserRebase( parser, P_BASE );
+
+	switch ( ParserRebase( parser, P_BASE ) ) {
+	case rvParserNoMore:
+		ERR_parser_defunct();
+		freeParser( parser );
+		parser = NULL;
+		break;
+	default:
+		break;
+	}	
 	return parser;
 }
 
