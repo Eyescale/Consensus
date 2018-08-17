@@ -223,11 +223,15 @@ freeParser( Parser *parser )
 	for ( listItem *i=parser->frames; i!=NULL; i=i->next ) {
 		for ( listItem *j=i->ptr; j!=NULL; j=j->next ) {
 			RuleThread *r = j->ptr;
-			int inbuilt = r_inbuilt( r->rule->identifier );
 			for ( listItem *k=r->s; k!=NULL; k=k->next ) {
 				SchemaThread *s = k->ptr;
-				if (( s->position[ 0 ] != '%' ) || inbuilt )
+				switch ( s->position[ 0 ] ) {
+				case ' ':
+				case '%':
+					break;
+				default:
 					addItem( &change[ DEACTIVATE ], s );
+				}
 			}
 		}
 	}

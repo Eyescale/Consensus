@@ -1,5 +1,5 @@
 
-	: / \n %{ good bye! }
+	: /\n %{ good bye! }
 	| %{ in_ } in %cond \n %{ _in }
 
  cond	: %state

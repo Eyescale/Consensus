@@ -5,14 +5,14 @@
 	: /\n
 	| %test \n %{ YOP }
 
- test	: abc%/[ \t]*/def
+# test	: abc%/[ \t]*/def
 
 # test	: %/(abc)/%{ \1 }
 # test	: %/(a{2}*)/%{ \1 }
 # test	: %/(a+)/%{ \1 }
 # test	: %/(a{2,3}|cd)/%{ \1 }
 # test	: %/(a|b)/%{ \1 }
-# test	: %/([A-Za-z_][A-Za-z0-9_]*)/%{ \1 }
+ test	: %/([A-Za-z_][A-Za-z0-9_]*)/%{ \1 }
 # test	: %%
 # test	: %/([abc]+)/%{ \1 }
 

@@ -59,13 +59,13 @@ main( int argc, char *argv[] )
 	char *path = clarg( argc, argv, &token, &space );
 	int p_opt = ( token ? P_TOK : 0 ) | ( space ? P_SPACE : 0 );
 	Scheme *scheme = readScheme( path );
+	outputScheme( scheme, token );
 	Parser *parser = newParser( scheme, p_opt );
 	if ( parser == NULL ) {
 		fprintf( stderr, "yak$ Error: parser allocation failed\n" );
 		freeScheme( scheme );
 		exit( -1 );
 	}
-	outputScheme( scheme, token );
 	int line = 0, column;
 	int event='\n', state = NewLine;
 	do {
@@ -122,10 +122,6 @@ main( int argc, char *argv[] )
 		state = NextState( state, event );
 	}
 	while ( state != Exit );
-	if ( event != EOF ) {
-		fprintf( stderr, "yak$$\n" );
-		ParserFrame( parser, EOF );
-	}
 	freeParser( parser );
 	freeScheme( scheme );
 }
