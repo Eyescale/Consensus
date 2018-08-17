@@ -93,7 +93,7 @@ Contents
 
 	. include/Input.h
 	  include/Parser.h
-		. Subsystem manifests - system interface and data structures
+		. Subsystem manifests - system interface and data structures.
 		  access to data structure is needed for other subsystems to subscribe
 
 Dependencies
