@@ -38,6 +38,12 @@ clarg( int argc, char *argv[], int *token, int *space )
 	}
 	return path;
 }
+
+/*---------------------------------------------------------------------------
+	main
+---------------------------------------------------------------------------*/
+static void outputSequence( Parser *, Sequence * );
+static int NextState( int, int );
 enum {
 	NewLine,
 	Slash,
@@ -45,12 +51,6 @@ enum {
 	InLine,
 	Exit
 };
-
-/*---------------------------------------------------------------------------
-	main
----------------------------------------------------------------------------*/
-static void outputSequence( Parser *, Sequence * );
-static int NextState( int, int );
 
 int
 main( int argc, char *argv[] )
