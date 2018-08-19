@@ -1,5 +1,5 @@
 Name
-	./Pilot
+	Consensus
 
 Overview
 	The purpose of Consensus is to allow to build Systems of information which are
@@ -50,26 +50,4 @@ Overview
 	and arrows, and provide the user with a syntax even closer to natural language to
 	describe, navigate and manage his data.
 
-Build & Test
-	. Download the entire Pilot/ directory from the distribution
-	. make the consensus executable
-    		cd Pilot
-		mkdir .ofiles
-		make
-	. From your Pilot directory launch consensus in interactive mode
-		./consensus
-	. after the prompt, you can type e.g. the command
-    		:< file:test/full
-
-Install & Run
-	. setup local WebServer on your system - cf.  
-		https://www.maketecheasier.com/setup-local-web-server-all-platforms/
-	. configure Apache to permit CGI - cf.  
-	       https://httpd.apache.org/docs/current/howto/cgi.html
-	. copy the consensus executable under /Library/WebServer/CGI-Executables
-	. copy the entire contents of the Pilot's 'Documents' sub-directory
-	  under /Library/WebServer/Documents
-	. from your Pilot directory launch consensus in operator mode
-        	./consensus -moperator
-	. enter the URL 'localhost/cgi-bin/consensus' in Chrome
-
+	-- WIP --
