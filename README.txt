@@ -14,8 +14,8 @@ Overview
 	1. Consensus Execution Model
 	The fundamental principles pertaining to the Consensus Execution Model are
 	exposed very simply in the example located in the ./Examples/System directory.
-	The application of these principles used in the Pilot for building a Web-enabled
-	Consensus Knowledge Management Platform is depicted in ./Pilot/doc/ReleaseNotes.pdf
+	The application of these principles for building a Web-enabled Consensus
+	Knowledge Management Platform is depicted in ./Pilot/doc/ReleaseNotes.pdf
 
 	2. Consensus Data Model
 	Whereas the Consensus Execution Model is relatively straightforward - it
