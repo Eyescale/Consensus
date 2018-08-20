@@ -448,7 +448,6 @@ RegexFrame( Regex *regex, int event, int capture )
 			for ( listItem *k=g->s; k!=NULL; k=k->next ) {
 				s = k->ptr;
 				if ( S_INHIBITED( s ) ) {
-					fprintf( stderr, "INHIBITED: s:%0x\n", (int) s );
 					addItem( &change[ DEACTIVATE ], s );
 					continue;
 				}
