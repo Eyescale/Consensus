@@ -169,11 +169,6 @@ RETURN_NCYCLIC:
 /*---------------------------------------------------------------------------
 	newParser
 ---------------------------------------------------------------------------*/
-/*
-	Assumption: the scheme has been validated with respect to
-	this parser implementation - cf main.c the user is responsible
-	for calling ParserValidate( scheme ), cf main.c
-*/
 Parser *
 newParser( Scheme *scheme, int options )
 {
