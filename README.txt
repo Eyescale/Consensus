@@ -12,10 +12,38 @@ Overview
 		2. The Descriptive part - aka. Consensus Data Model
 
 	1. Consensus Execution Model
-	The fundamental principles pertaining to the Consensus Execution Model are
-	exposed very simply in the example located in the ./Examples/System directory.
-	The application of these principles for building a Web-enabled Consensus
-	Knowledge Management Platform is depicted in ./Pilot/doc/ReleaseNotes.pdf
+	Consensus programs execute according to the following Design Principles:
+
+	   . A System is entirely defined by the series of its States.
+	   . The State of a System is the Vector of States of its Subsystems.
+	   . Events and Actions are State changes, i.e.
+		event = S:a->b	where S is a System and a, b two of its States
+		action = S:a->b	where S is a System and a, b two of its States
+	   . The General State Change Propagation Equation is
+		[ S: a->b ]=>[ S': a'->b' ]
+		where S and S' are two Cosystems, and a, b, a', b' their States.
+	     Note: within the same system (S = S' above), the GSCPE translates as
+		The Action exerted on a System is the second order derivative of
+		the series of its States - cf. Second Law of Motion (Newton)
+	   . A program - aka. System's Narrative - takes the following form:
+		in current State: Condition1
+			on change [ from previous ] to current State: Event1
+				do change [ from current ] to next State: Action1
+		in current State: Condition2
+			on change [ from previous ] to current State: Event2
+				do change [ from current ] to next State: Action2
+		etc.
+	  Where
+	   . a State represents the contents of [a portion of] the memory, whose
+	     differential is tracked at each program step (frame)
+	   . external events are mapped into internal events - System's WorldView
+
+	The example source code under the ./Examples/System directory demonstrates how
+       	such systems can be architected using linear programming languages such as C.
+
+	The source code under ./Pilot and documentation under ./Pilot/doc show how
+	the Web-enabled Consensus Knowledge Management Platform has been architected
+	following these same principles.
 
 	2. Consensus Data Model
 	Whereas the Consensus Execution Model is relatively straightforward - it
@@ -39,7 +67,7 @@ Overview
 
 	2.2. Consensus entities
 	Consensus entities extend the notion of Consensus items to allow multi-dimensional
-	connections and triple-based aggregation. They incorporate the full topological
+	connections and triple-based aggregation, by incorporating the full topological
 	information related to each entity in the entity definition itself.
 
 	The Consensus data model aims at being simple and universal, and relies on the
@@ -50,4 +78,3 @@ Overview
 	and arrows, and provide the user with a syntax even closer to natural language to
 	describe, navigate and manage his data.
 
-	-- WIP --
