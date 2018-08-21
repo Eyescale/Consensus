@@ -202,10 +202,15 @@ Design
                             // that position. Either the rule failed as a whole, or some of its schemas
                             // succeeded. In the latter case we keep the rule active by forking.
         
-                            else on Rn[ m - p ].status: Failure / n: R.reference[ j, p: S.position ]
+			    // Explanation of the following formula:
+			    // The rule R was launched at frame m, and its schema S is now pending on
+			    // the rule Rn which was launched at frame m + p, where p is S.position -
+			    // not considering the backslashes and other rule references in the position
+
+                            else foreach Rn[ m + p ].status: Failure / n: R.reference[ j, p: S.position ]
                                 set S.status : Failure
         
-                            else on_each Rn[ m - p ].Sk.status: Success / n: R.reference[ j, p: S.position ], k
+                            else foreach Rn[ m + p ].Sk.status: Success / n: R.reference[ j, p: S.position ], k
                                 in : FORK( S ) : 0
                                     update S.value(s)
                                     set S.position : next( S.position )
