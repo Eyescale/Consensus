@@ -65,11 +65,7 @@ ParserFrame( System *this )
 	ParserSync
 ---------------------------------------------------------------------------*/
 /*
-   Notes
-   . Here we log the local address, consistently with CNOn( input.event )
-     Alternatively we could log the interest itself and invoke CNOn( input->event )
-     The benefit is lesser memory consumption (no local mapping of cosystem data)
-     The risk is a race condition on input data during the next frame
+	map cosystem changes into internal events
 */
 static int
 ParserSync( System *this )
@@ -77,8 +73,7 @@ ParserSync( System *this )
 	CNSyncBegin( ParserData )
 	CNOnSystemChange( InputID ) bgn_
 		CNOnFieldChange( InputData, event )
-			CNSyncData( input.event ) = CNChangeValue( InputData, event );
-			CNSyncLog( input.event );
+			CNDoi( input.event, CNFieldValue( InputData, event ) );
 		end
 	CNSyncEnd
 }

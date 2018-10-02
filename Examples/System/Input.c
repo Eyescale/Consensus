@@ -59,11 +59,7 @@ input( void )
 	InputSync
 ---------------------------------------------------------------------------*/
 /*
-   Notes
-   . Here we log the local address, consistently with CNOn( parser.call )
-     Alternatively we could log the interest itself and invoke CNOn( parser->call.input )
-     The benefit is lesser memory consumption (no local mapping of cosystem data)
-     The risk is a race condition on parser data during the next frame
+   map cosystem changes into internal events
 */
 static int
 InputSync( System *this )
@@ -71,8 +67,7 @@ InputSync( System *this )
 	CNSyncBegin( InputData )
 	CNOnSystemChange( ParserID ) bgn_
 		CNOnFieldChange( ParserData, call.input )
-			CNSyncData( parser.call ) = 1;
-			CNSyncLog( parser.call );
+			CNDoi( parser.call, 1 );
 		end
 	CNSyncEnd
 	return 1;

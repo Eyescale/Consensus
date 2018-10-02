@@ -26,7 +26,6 @@ SystemFree( System *s )
 {
 	freeSystemRegistry( &s->changes );
 	freeSystemRegistry( &s->subscriptions );
-	freeListItem( &s->log );
 	freeListItem( &s->frontbuffer );
 	freeListItem( &s->backbuffer );
 	free( s->data );
@@ -97,7 +96,7 @@ SystemFrame( System *s )
 		if (( subsystem->frame ))
 			((Narrative *) subsystem->frame)( subsystem );
 	}
-	/* have subsystems update their logs, according to their interests
+	/* map cosystem changes into subsystems internal events
 	*/
 	for ( listItem *i=s->subsystems; i!=NULL; i=i->next ) {
 		System *subsystem = i->ptr;
@@ -128,7 +127,6 @@ SystemFrame( System *s )
 static void
 SystemUpdateNotifications( System *s )
 {
-	freeListItem( &s->log );
 	freeSystemRegistry( &s->changes );
 	for ( listItem *j=s->subscriptions; j!=NULL; j=j->next ) {
 		Pair *subscription = j->ptr;

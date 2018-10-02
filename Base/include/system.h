@@ -15,7 +15,6 @@ typedef struct _system {
 	void *sync;
 	listItem *subsystems;
 	listItem *backbuffer, *frontbuffer;
-	listItem *log;	// log of cosystem changes
 	struct _system *operator;
 	listItem *subscriptions;
 	listItem *changes;
@@ -68,7 +67,7 @@ int SystemFrame( System * );
 	{
 
 #define CNOn( field ) \
-	( lookupIfThere( this->log, &data->field ))
+	( lookupIfThere( this->frontbuffer, &data->field ))
 
 #define CNOni( field, value ) \
 	( CNOn( field ) && ((int) data->field == value ))
@@ -98,13 +97,9 @@ int SystemFrame( System * );
 #define CNOnSystemChange( ID ) \
 		} else if ( cosystem->id == ID ) {
 #define CNOnFieldChange( type, field ) \
-			} else if ( lookupIfThere( changes, &CNChangeValue(type,field) ) ) {
-#define CNSyncData( field ) \
-				data->field
-#define CNChangeValue( type, field ) \
+			} else if ( lookupIfThere( changes, &CNFieldValue(type,field) ) ) {
+#define CNFieldValue( type, field ) \
 				(((type *)handle)->field)
-#define CNSyncLog( field ) \
-				addIfNotThere( &this->log, &CNSyncData(field) );
 #define CNSyncEnd \
 		} \
 	} \
