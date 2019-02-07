@@ -56,12 +56,12 @@ Description
 	. Implements CNSystem execution model and interfaces - including
 		. Subsystem class definition and interfaces
 	  	. CNIn, CNOn, CNDo API - in include/system.h
-	. Implements Input and Parser subsystems, executing in parallel
+	. Implements input and parser subsystems, executing in parallel
 
 Contents
 	. main.c
 		System definition - CNSystemBegin() / CNSystemEnd()
-		. declares Operator system together with Parser and Input subsystems
+		. declares Operator system together with parser and input subsystems
 
 		Subsystem definition - via subsystems ID and init() method
 			. invokes each subsystem's init() method
@@ -83,24 +83,25 @@ Contents
 		  ie. when no subsystem has any event to process
 		. otherwise, SystemFrame() returns 1
 
-	. Input.c
-	  Parser.c
+	. input.c
+	  parser.c
 		Subsystem implementations - data and methods
 		. SubsystemInit() - allocate subsystem-specific data and methods
 		. SubsystemFrame() - processes changes from last frame
 		. SubsystemSync() - map external change notifications into own
 		  Subsystem's worldview and log local changes for the next frame
 
-	. include/Input.h
-	  include/Parser.h
-		. Subsystem manifests - system interface and data structures.
+	. include/input.h
+	  include/parser.h
+		. Subsystem manifests - system interface and data structures
 		  access to data structure is needed for other subsystems to subscribe
 
 Dependencies
-	./Library/include/system.h
+	./operator.c
+	./include/operator.h
 		. System interface definition
 			. Subsystem class definition
 			. CNIn, CNOn, CNDo implementation - uses macros
-	./Library/libcn.so
+	./Base/libcn.so
 		. Consensus library
 
