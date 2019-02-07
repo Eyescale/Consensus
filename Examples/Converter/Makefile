@@ -28,6 +28,7 @@ $(OBJS): $(OBJDIR)/%.o: %.c
 
 clean:
 	$(RM) $(OBJDIR)/*.o ../base/.ofiles/*.o $(MAIN)
+	cp ../../Base/libcn.so .
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^
