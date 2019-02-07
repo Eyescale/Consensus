@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "system.h"
-#include "Parser.h"
+#include "operator.h"
+#include "parser.h"
 
 /*---------------------------------------------------------------------------
 	ParserInit
@@ -24,7 +24,7 @@ ParserInit( System *this )
 	ParserFrame
 ---------------------------------------------------------------------------*/
 #include "id.h"
-#include "Input.h"
+#include "input.h"
 
 static int
 ParserFrame( System *this )

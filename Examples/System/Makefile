@@ -11,7 +11,7 @@ LFLAGS = -L../../Base
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	main.c Input.c Parser.c
+SRCS =	main.c input.c parser.c operator.c
 
 #CFLAGS = -DPREVIOUS
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)

@@ -4,8 +4,8 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
-#include "system.h"
-#include "Input.h"
+#include "operator.h"
+#include "input.h"
 
 /*---------------------------------------------------------------------------
 	InputInit
@@ -27,7 +27,7 @@ InputInit( System *this )
 	InputFrame
 ---------------------------------------------------------------------------*/
 #include "id.h"
-#include "Parser.h"
+#include "parser.h"
 
 static int input( void );
 
