@@ -1,28 +1,28 @@
 
 Name
-	./Examples/Translator
+	./Examples/Converter
 
 Synopsis
-	The sample code in the ./Examples/Translator directory provides
-	an example of how to implement a translator using the Consensus
+	The sample code in the ./Examples/Converter directory provides
+	an example of how to implement a converter using the Consensus
 	Yak transducer.
 
 Usage
-	./translate [-n]
+	./convert [-n]
 
 Description
-	The program translates Consensus 'in condition' statements provided
+	The program converts Consensus 'in condition' statements provided
 	by the user into their equivalent C counterpart, according to the
-	grammar specified in the ./Examples/Translator/scheme.y resource file
+	grammar specified in the ./Examples/Converter/scheme.y resource file
 	and example usage given in the ./Examples/System sample code.
 
 	User inputs not starting with 'in ' or 'in(' or 'in:' or 'in~' are
 	reproduced as they are by the program - the idea being that the
-	translator will convert Cn statements from within C files and leave
+	converter will translate Cn statements from within C files and leave
 	the C part of the code unmodified.
 
 	The option -n invokes a different, non-tokenized implementation of
-	the translator to provide exactly the same results.
+	the converter to provide exactly the same results.
 
 Examples
 	yak1$ in : state

@@ -14,7 +14,7 @@ OBJDIR = .ofiles
 SRCS =	main.c translate.c
 
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = translate
+MAIN = convert
 
 .PHONY: depend clean
 
@@ -28,8 +28,6 @@ $(OBJS): $(OBJDIR)/%.o: %.c
 
 clean:
 	$(RM) $(OBJDIR)/*.o ../base/.ofiles/*.o $(MAIN)
-	cp ../../Base/libcn.so .
-	cp ../../Yak/libyak.so .
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^
