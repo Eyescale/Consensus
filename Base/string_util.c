@@ -11,7 +11,7 @@
 int
 is_separator( int event )
 {
-	return ( !isalnum(event) && ( event != '_' ) );
+	return !( isalnum(event) || event == '_' );
 }
 
 /*---------------------------------------------------------------------------
@@ -119,10 +119,9 @@ StringAppend( CNString *string, int event )
 #ifdef DEBUG_2
 	output( Debug, "StringAppend: '%c'", (char) event );
 #endif
-	union { void *ptr; int event; } data;
-	data.ptr = NULL;
-	data.event = event;
-	addItem( (listItem**) &string->data, data.ptr );
+	union { void *ptr; int event; } icast;
+	icast.event = event;
+	addItem( (listItem**) &string->data, icast.ptr );
 	return 0;
 }
 
@@ -229,6 +228,17 @@ strscanid( char *str, char **identifier )
 
 	*identifier = ptr;
 	return str + n;
+}
+
+/*---------------------------------------------------------------------------
+	strmatch
+---------------------------------------------------------------------------*/
+int
+strmatch( char *s, int event )
+{
+	do { if ( event == *s ) return 1; }
+	while ( *s++ );
+	return 0;
 }
 
 /*---------------------------------------------------------------------------

@@ -34,6 +34,7 @@ int	StringAppend( CNString *string, int event );
 char *	StringFinish( CNString *string, int trim );
 
 char *	strscanid( char *, char ** );
+int 	strmatch( char *, int event );
 char *	strskip( char *fmt, char *str );
 char *	strxchange( char *expression, char *identifier, char *value );
 listItem *strxpand( char *string, char **next_pos );

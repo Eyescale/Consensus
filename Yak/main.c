@@ -191,7 +191,7 @@ outputSequence( Parser *parser, Sequence *sequence )
 				}
 				CNStreamFlow( stream );
 			}
-		CNOnStreamEnd
+		CNOnStreamPop
 			CNInStreamPop( stream, Pair *, pair )
 				printf( "}" );
 		CNStreamEnd( stream )

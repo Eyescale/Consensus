@@ -5,7 +5,8 @@
 
 static listItem *freeItemList = NULL;
 
-void *newItem( void *ptr )
+void *
+newItem( void *ptr )
 {
         listItem *item;
         if ( freeItemList == NULL )
@@ -19,15 +20,14 @@ void *newItem( void *ptr )
         item->ptr = ptr;
         return item;
 }
-
-void freeItem( listItem *item )
+void
+freeItem( listItem *item )
 {
 	if ( item == NULL ) return;
         item->next = freeItemList;
 	item->ptr = NULL;
         freeItemList = item;
 }
-
 void
 clipItem( listItem **list, listItem *item )
 {
@@ -41,7 +41,6 @@ clipItem( listItem **list, listItem *item )
 		else last_i = i;
 	}
 }
-
 listItem *
 addItem( listItem **list, void *ptr )
 {
@@ -50,8 +49,6 @@ addItem( listItem **list, void *ptr )
 	*list = i;
 	return i;
 }
-
-
 void
 removeItem( listItem **list, void *ptr )
 {
@@ -66,8 +63,8 @@ removeItem( listItem **list, void *ptr )
 		else last_i = i;
 	}
 }
-
-void *lookupItem( listItem *list, void *ptr )
+void *
+lookupItem( listItem *list, void *ptr )
 {
 	for ( listItem *i = list; i!=NULL; i=i->next )
 	{
@@ -77,7 +74,6 @@ void *lookupItem( listItem *list, void *ptr )
 	}
 	return NULL;
 }
-
 void
 clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *next_i )
 {
@@ -85,7 +81,6 @@ clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *next_i )
 	else { last_i->next = next_i; }
 	freeItem( i );
 }
-
 listItem *
 addIfNotThere( listItem **list, void *ptr )
 {
@@ -114,7 +109,6 @@ addIfNotThere( listItem **list, void *ptr )
         }
 	return item;
 }
-
 listItem *
 lookupIfThere( listItem *list, void *ptr )
 {
@@ -133,7 +127,6 @@ lookupIfThere( listItem *list, void *ptr )
         }
 	return NULL;
 }
-
 void
 removeIfThere( listItem **list, void *ptr )
 {
@@ -151,8 +144,8 @@ removeIfThere( listItem **list, void *ptr )
                 break;
         }
 }
-
-listItem *catListItem( listItem *list1, listItem *list2 )
+listItem *
+catListItem( listItem *list1, listItem *list2 )
 {
 	if ( list1 == NULL ) return list2;
 	if ( list2 != NULL ) {
@@ -162,8 +155,8 @@ listItem *catListItem( listItem *list1, listItem *list2 )
 	}
 	return list1;
 }
-
-void *popListItem( listItem **list )
+void *
+popListItem( listItem **list )
 {
 	if ( *list == NULL ) return NULL;
 	void *ptr = (*list)->ptr;
@@ -172,8 +165,8 @@ void *popListItem( listItem **list )
 	*list = next_i;
 	return ptr;
 }
-
-void freeListItem( listItem **list )
+void
+freeListItem( listItem **list )
 {
 	listItem *i, *next_i;
 	for ( i=*list; i!=NULL; i=next_i )
@@ -183,8 +176,8 @@ void freeListItem( listItem **list )
 	}
 	*list = NULL;
 }
-
-int reorderListItem( listItem **list )
+int
+reorderListItem( listItem **list )
 {
 	int count = 0;
 	listItem *i, *next_i, *last_i = NULL;

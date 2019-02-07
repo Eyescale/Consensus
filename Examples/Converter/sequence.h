@@ -55,7 +55,7 @@ typedef listItem Sequence;
 #define CNOnSequencePop( s ) \
 				CNStreamFlow( stream ); \
 			} \
-		CNOnStreamEnd \
+		CNOnStreamPop \
 			CNInStreamPop( stream, Pair *, pair )
 #define CNSequenceEnd( s ) \
 				s.name = popListItem( &s.stack ); \

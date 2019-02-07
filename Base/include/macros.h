@@ -12,6 +12,7 @@
 #define on_space			} else if (( event == ' ' ) || ( event == '\t' )) {
 #define on_separator			} else if ( is_separator( event ) ) {
 #define on_digit			} else if ( isdigit( event ) ) {
+#define ons( s )			} else if ( strmatch( s, event ) ) {
 #define on_other			} else {
 #define on_any				} else {
 #define same					state

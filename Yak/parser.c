@@ -169,6 +169,11 @@ RETURN_NCYCLIC:
 /*---------------------------------------------------------------------------
 	newParser
 ---------------------------------------------------------------------------*/
+/*
+	Assumption: the scheme has been validated with respect to
+	this parser implementation - cf main.c the user is responsible
+	for calling ParserValidate( scheme ), cf main.c
+*/
 Parser *
 newParser( Scheme *scheme, int options )
 {
@@ -895,7 +900,7 @@ seqfree( Parser *p, listItem **sequence )
 				freePair( pair );
 				CNStreamFlow( stream );
 			}
-		CNOnStreamEnd
+		CNOnStreamPop
 			CNInStreamPop( stream, Pair *, pair )
 				freeListItem((listItem **) &pair->value );
 				freePair( pair );
@@ -937,16 +942,16 @@ seqdup( Parser *p, Sequence *sequence )
 			}
 			else {
 				pair = newPair( NULL, pair->value );
-				addItem( &CNStreamRetour( stream ), pair );
+				addItem( &CNStreamData( stream ), pair );
 				CNStreamFlow( stream );
 			}
-		CNOnStreamEnd
-			reorderListItem( &CNStreamRetour( stream ) );
+		CNOnStreamPop
+			reorderListItem( &CNStreamData( stream ) );
 			CNInStreamPop( stream, Pair *, pair )
-				pair = newPair( pair->name, CNStreamRetour( stream ) );
-				addItem((Sequence **) &CNStreamReturn( stream ), pair );
+				pair = newPair( pair->name, CNStreamData( stream ) );
+				addItem((Sequence **) &CNStreamRetour( stream ), pair );
 		CNStreamEnd( stream )
-		return CNStreamRetour( stream );
+		return CNStreamData( stream );
 	}
 }
 

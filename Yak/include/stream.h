@@ -19,8 +19,8 @@
 /*---------------------------------------------------------------------------
 	List Streaming Interface - non-recursive
 ---------------------------------------------------------------------------*/
-#define CNStreamRetour( s )	s.retour
-#define CNStreamReturn( s )	s.data->ptr
+#define CNStreamData( s )	s.retour
+#define CNStreamRetour( s )	s.data->ptr
 
 #define CNStreamBegin( type, s, list ) \
 	struct { \
@@ -42,14 +42,14 @@
 #define CNOnStreamValue( s, type, variable ) \
 		while (( s.i )) { \
 			type variable = s.i->ptr;
-#define CNStreamPush( s, a ) \
+#define CNStreamPush( s, a ) { \
 			addItem( &s.data, s.retour ); \
 			addItem( &s.stack, s.i ); \
 			s.retour = NULL; \
-			s.i = a;
+			s.i = a; }
 #define CNStreamFlow( s ) \
 			s.i = s.i->next;
-#define CNOnStreamEnd \
+#define CNOnStreamPop \
 		} {
 #define CNInStreamPop( s, type, variable ) \
 		} if (( s.stack )) { \
@@ -58,6 +58,10 @@
 		} \
 	} while (( s.stack ));
 
+#define CNStreamReturn( s, retval ) \
+	freeListItem( &s.data ); \
+	freeListItem( &s.stack ); \
+	return retval;
 
 /*---------------------------------------------------------------------------
 	Nested List Streaming Interface - non-recursive
@@ -132,7 +136,7 @@
 				s1.retour = NULL; \
 				s1.i = list; \
 			}
-#define CNOnStreamEnd \
+#define CNOnStreamPop \
 		} {
 #define CNInStreamPop( s, type, variable ) \
 		} if (( s.stack )) { \

@@ -1,5 +1,5 @@
-#ifndef DATABASE_H
-#define DATABASE_H
+#ifndef LIST_H
+#define LIST_H
 
 #include <stdint.h>
 #include <string.h>
@@ -31,4 +31,4 @@ void freeListItem( listItem **item );
 int reorderListItem( listItem **item );
 
 
-#endif	// DATABASE_H
+#endif	// LIST_H
