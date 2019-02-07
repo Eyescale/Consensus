@@ -9,7 +9,7 @@ SHELL = /bin/sh
 INCLUDES = -I. -I./include
 
 OBJDIR = .ofiles
-SRCS =	pair.c list.c string_util.c system.c
+SRCS =	pair.c list.c registry.c string_util.c
 
 #CFLAGS = -DPREVIOUS
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
