@@ -82,7 +82,7 @@ A. Consensus Fundamentals
 		substantiate the action expression. It will fail only if one of the
 		expression terms is a query yielding no result.
 
-	   Consensus do operations only take effects after the end of the current frame
+	   Consensus do operations only take effect after the end of the current frame
 	   and before the start of the next one.
 
 B. Input & Output (version 1.0)
@@ -155,16 +155,17 @@ D. Consensus queries
 	3. The expression term 'expression : expression' represents the instances which
 	   verify both expression terms.
 
-	4. The expression term ~expression represents all instances which do not verify
+	4. The expression term ~expression represents the instances which do not verify
 	   expression.
 
 E. Example: Turing Machine
 
 	The directory ./Examples/TuringMachine of this site features a Turing Machine[1]
-	implementation based on Consensus B% (B-mod, for Behavioral Modeling) programming
-	language, thereby demonstrating the Turing completeness of the language.
+	implementation based on the above-described Consensus B% (B-mod, for Behavioral
+	Modeling) programming language, thereby demonstrating the Turing completeness
+	of the language.
 
-	More examples can be found e.g. in the ./Release/Version1.0/Test directory of this
+	More examples can be found e.g. in the ./Release/Version-1.0/Test directory of this
 	site, namely the CN.suite and CN.regression programs, the first of which provides
 	a good starting point for learning the language.
 
