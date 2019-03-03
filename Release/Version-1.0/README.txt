@@ -164,7 +164,7 @@ E. Example: Turing Machine
 	implementation based on Consensus B% (B-mod, for Behavioral Modeling) programming
 	language, thereby demonstrating the Turing completeness of the language.
 
-	More examples can be found in the ./Release/Version1.0/Test directory of this
+	More examples can be found e.g. in the ./Release/Version1.0/Test directory of this
 	site, namely the CN.suite and CN.regression programs, the first of which provides
 	a good starting point for learning the language.
 
