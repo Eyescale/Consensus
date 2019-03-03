@@ -1,0 +1,59 @@
+on init
+	do (( *, phase ), INPUT )
+	do (( *, state ), INPUT_SEPARATOR )
+	do > "separator:_ "
+	do input: <
+
+else in *phase: INPUT
+	in ( *, input )
+	else
+		do > "\nError: File Format: unexpected EOF\n"
+		do exit
+
+	in *state: INPUT_SEPARATOR
+		on (( *, input ), ~%(separator,(TM,?)))
+			do > "separator:_ "
+			do input: <
+			do ( separator, (TM,*input))
+		else
+			do (( *, state ), INPUT_BLANK )
+			do > "blank:_ "
+			do input: <
+	else in *state: INPUT_BLANK
+		do (( *, BLANK ), (TM,*input))
+		do (( *, p), START )
+		do (( *, state ), INPUT_TAPE )
+		do > "tape start:_ "
+		do input: <
+	else in *state: INPUT_TAPE
+		on (( *, input ), ~%(separator,(TM,?)))
+			do > "*p: %_\n": *p
+			do (( *, p), (*p,(TM,*input)))
+			do > "tape next:_ "
+			do input: <
+		else
+			do > "input complete\n"
+			in ( START, . )
+				do (( *, p), %(START,.))
+				do (( *, phase ), DATA_PREP )
+			else
+				do > "blank tape\n"
+				do (( *, START ), (START,*BLANK))
+				do (( *, phase ), OUTPUT )
+
+else in *phase: DATA_PREP
+	on (( *, p), . )
+		do (( *, (TAPE,*p)), %((.,?):*p))
+		do (( *, (RIGHT,*p)), %(*p,?))
+		do (( *, (LEFT,%(*p,?))), *p )
+	else in ( *p, . )
+		do (( *, p), %(*p,?))
+	else
+		do (( *, START ), %(START,.))
+		do (( *, phase ), OUTPUT )
+
+else in *phase: OUTPUT
+	do > "separators: %_\n": %(separator,(TM,?))
+	do > "blank: %_\n": %((TM,?):*BLANK)
+	do > "START: %_\n": *START
+	do exit

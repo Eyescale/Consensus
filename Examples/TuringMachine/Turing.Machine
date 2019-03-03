@@ -1,0 +1,16 @@
+# Turing Machine from Lin and Rado - cf Introduction by Pascal Michel
+# http://www.logique.jussieu.fr/~michel/tmi.html
+
+Head Tape Start
+Head
+	0 Right Left
+Start
+	A 0 1 Right B
+	A 1 1 Right H
+	B 0 0 Right C
+	B 1 1 Right B
+	C 0 1 Left C
+	C 1 1 Left A
+Tape
+#	0 0 0 A 0 0 0 0 0 0 0
+Start

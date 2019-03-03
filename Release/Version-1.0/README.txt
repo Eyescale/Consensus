@@ -136,7 +136,7 @@ D. Consensus queries
 	1. The expression term *variable has the same effect as %(( *, variable ), ? )
 	   which is to dereference the variable expression.
 
-	   Example: the expression term *. represents all assigned instances.
+	   Example: the expression term *. represents all assigned instances (values).
 	
 	2. The expression term %( expression ) represents all instances which verify
 	   expression from the expression's mark ? standpoint. If expression has no
@@ -145,7 +145,7 @@ D. Consensus queries
 	   Example: the expression term %( ? ) represents all CNDB instances.
 
 	   Special case: the expression term %( *? ) represents all instances which
-	   are used as references.
+	   are used as references (variables).
 
 	   Note here the difference between, for example: 'do ( name1, ( name2, . ))'
 	   which will couple name2 with all existing instances in the CNDB, prior to

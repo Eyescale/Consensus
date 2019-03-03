@@ -1,0 +1,156 @@
+/* 1. FIXED
+	on init
+		do ((*,separator),(TM,success))
+	else
+	
+		do >:%((TM,?):*separator)
+		// do >:%( (TM,.) : *separator )
+		// do >:((TM,.):*separator)
+		do >:
+		do exit
+*/
+/* 2. FIXED: assignment by reference
+	on init
+		do ((*,titi),gulp)
+	else on (( *, titi ), . )
+		do ((*,toto),*titi)
+	else
+		do >:*toto
+		do >:
+		do exit
+*/
+/* 3. FIXED: self-assignment
+	on init
+		do ((*,(RIGHT,(RIGHT,(START,(TM,0))))),(RIGHT,(RIGHT,(START,(TM,0)))))
+	else
+		do > "FOUND: "
+		do >: *(RIGHT,(RIGHT,(START,(TM,0))))
+		do >:
+		do exit
+*/
+/* 4. FIXED: input:< twice in a frame => used to crash
+	on init
+		do >"$_ "
+		do input: <
+		do input: <
+	else on (( *, input ), . )
+		in ( *input:%(memory,?) )
+			do >: %(memory,?)
+			do >:
+			do exit
+		else
+			do ( memory, *input )
+			do >"$_ "
+			do input: <
+*/
+/* 5. FIXED: ensure some newborn privacy - that is:
+      we should not see e.g. ( tutu, ( tutu, toto ) )
+      note that assignment is a special case (see above 3.)
+	on init
+		do ( toto, (titi,tata ))
+	else on toto
+		do ( tutu, . )
+	else on tutu
+		do >:.
+		do >:
+		do exit
+*/
+/* 6. FIXED: instantiation via reference
+	on init
+		do ((*,toto), titi)
+	else on ((*,toto),.)
+		do ( tata, (*toto,tutu) )
+	else on tata
+		do >:%( tata, ? )
+		do >:
+		do exit
+	else
+		do > "failed\n"
+		do exit
+*/
+/* 7. FIXED: filtered comparison
+	on init
+		do (( *, right ), RIGHT )
+		do (( *, left ), LEFT )
+		do (( *, motion ), LEFT )
+	else in *motion: *right
+		do > "ERROR\n"
+		do exit
+	else in *motion: *left
+		do > "SUCCESS\n"
+		do exit
+	else
+		do > "FAILURE\n"
+		do exit
+*/
+/* 8. FIXED: filtered 'not' instantiation
+	on init
+		do (( *, (STATE,(A,s))), B )
+		do (( *, (STATE,(B,s))), C )
+		do (( *, (STATE,(C,s))), H )
+	else on STATE
+		do > "OUTPUT STATES: "
+		do >: *(STATE,.)
+		do >:
+		do > "INPUT STATES: "
+		do >: %(STATE,(?,.))
+		do >:
+		do > "FINAL STATES: "
+		do >: *(STATE,.):~%(STATE,(?,.))
+		do >:
+		do ( FINAL, *(STATE,.):~%(STATE,(?,.)))
+	else
+		do > "FINAL INSTANCE: "
+		do >: %( FINAL, ? )
+		do >:
+		do exit
+*/
+/* 9. FIXED: filter negation: LEFT-most extraction - must return START
+*/
+	on init
+		// first RIGHT
+		do START
+		do (( *, (RIGHT,START)), (RIGHT,START) )
+		do (( *, (LEFT,(RIGHT,START))), START )
+		do (( *, (RIGHT,(RIGHT,START))), (RIGHT,(RIGHT,START)) )
+		do (( *, (LEFT,(RIGHT,(RIGHT,START)))), (RIGHT,START) )
+		// then LEFT
+		do (( *, (LEFT,START)), (LEFT,START) )
+		do (( *, (RIGHT,(LEFT,START))), START )
+		do (( *, p ), (RIGHT,START))
+	else on START
+		do > "LEFT positions: "
+		do >: *(LEFT,.)
+		do >:
+		do > "positions with LEFT: "
+		do >: %(LEFT,?)
+		do >:
+		do > "FIRST position: "
+		do >: *(LEFT,.):~%(LEFT,?)
+		do >:
+		do (( *, p ), *(LEFT,.):~%(LEFT,?))
+	else
+		do > "INSTANCE: "
+		do >: *p
+		do >:
+		do exit
+/* 10. FIXED: no manifest on instantiation, traversal outside-in
+	on init
+		do START
+		// first RIGHT
+		do (( *, (RIGHT,START)), (RIGHT,START) )
+		do (( *, (LEFT,(RIGHT,START))), START )
+		do (( *, (RIGHT,(RIGHT,START))), (RIGHT,(RIGHT,START)) )
+		do (( *, (LEFT,(RIGHT,(RIGHT,START)))), (RIGHT,START) )
+		// then LEFT
+		do (( *, (LEFT,START)), (LEFT,START) )
+		do (( *, (RIGHT,(LEFT,START))), START )
+		do (( *, p ), (RIGHT,START))
+	else on RIGHT
+		do (( *, p ), *(RIGHT,*p))
+	else
+		do > "*p: "
+		do >: *p
+		do >:
+		do exit
+*/

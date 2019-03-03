@@ -1,0 +1,236 @@
+//===========================================================================
+//	"hello, world" story
+//===========================================================================
+/* 1. hello world
+	on init
+		do > "hello, world\n"
+		do exit
+*/
+//===========================================================================
+//	Narrative formatting
+//===========================================================================
+/* 2.1. macros ignore & indentation
+	on init
+#	else
+-			do > "hello, world\n"
++	do exit
+*/
+/* 2.3. event & conditions without action
+	on init
+	else in ( something )
+	else
+		in ( anything )
+		else
+			do > "hello, world\n"
+			do exit
+*/
+//===========================================================================
+// 	Instantiation & output formatting
+//===========================================================================
+/* 3.1. instantiate single
+	on init
+		do toto
+	else
+		do >"%_\n": .	// output all, followed by carriage return
+		do exit
+*/
+/* 3.2. instantiate couple & format output
+	on init
+		do ( toto, titi )
+	else
+		do >"CNDB: %_\n": .
+		do exit
+*/
+//===========================================================================
+// 	Input
+//===========================================================================
+/* 4.1. input
+	on init
+		do input:<
+	else
+		do >: .
+		do >:
+		do exit
+*/
+/* 4.2. input repeat - will memorize everything until first repetition
+	on init
+		do > "please:_ "
+		do input: <
+	else
+		in ( *, input )
+			do > ""
+		else
+			do > "EOF: good bye\n"
+			do exit
+	
+		on (( *, input ), %( separator, ? ))
+			do > "got it\n"
+			do exit
+		else on (( *, input ), . )
+			do > "thank you for "
+			do >: *input
+			do >:
+			do ( separator, *input )
+		else
+			do > "please:_ "
+			do input: <
+*/
+//===========================================================================
+//	assignment
+//===========================================================================
+/* 5.1. assignment
+	on init
+		do (( *, toto ), titi )
+	else
+		do >: *toto
+#		do >: %(( *, toto ), ? )
+		// do >: .
+		do >:
+		do exit
+*/
+/* 5.2. multi & self- assignment
+	on init
+		do (( *, toto ), titi )
+		do (( *, toto ), toto )
+	else
+		// do >: .
+		do >: *toto
+		do >:
+		do exit
+*/
+/* 5.3. couple assignment
+	on init
+		do (( *, toto ), (titi,tata))
+	else
+		do >: *toto
+		// do >: .
+		do >:
+		do exit
+*/
+/* 5.4. assignment to couple
+	on init
+		do (( *, (toto,titi)), tata )
+	else
+		do >: *(toto,titi)
+		// do >: .
+		do >:
+		do exit
+*/
+//===========================================================================
+//	release & negation
+//===========================================================================
+/* 6.1. release
+	on init
+		do ( hold )
+	else on ( hold )
+		do > "on hold ... "
+		do ~( hold )
+	else on ~( hold )
+		do > "released - good bye!\n"
+		do exit
+	else
+		do > "bug\n"
+		do exit
+*/
+/* 6.2. negation as sub
+*/
+	on init
+		do ((*,titi),toto)
+		do ((*,toto),zrgl)
+	else
+		do >: ( ., ~toto )
+		do >:
+		do exit
+*/
+//===========================================================================
+//	queries
+//===========================================================================
+/* 7.1. couple queries
+	on init
+		do ( toto, titi )
+	else
+#		do >: .
+#		do >: ( ., . )		// CNDB relationship instances
+#		do >: ( toto . )	// instances with toto as source
+#		do >: ( ., titi )	// instances with titi as target
+#		do >: %( toto, ? )	// instances connected from toto
+		do >: %( ?, titi )	// instances connected to titi
+		do >:
+		do exit
+*/
+/* 7.2. sub-expression queries
+	on init
+		do ((titi,toto),(tutu,(tata,tonton)))
+	else
+#		do >: .
+		do >: %((.,?),(.,.))	// output toto
+		do >:
+		do exit
+*/
+/* 7.3. complex query
+	on init
+		do ((titi,toto),(tutu,(tata,tonton)))
+	else
+#		do >: .
+		do >: %((.,?),(%(?,(tata,.)),(.,tonton)))
+		do >:
+		do exit
+*/
+//===========================================================================
+//	query by reference
+//===========================================================================
+/* 8.1. query by reference
+	on init
+		do (( *, toto ), titi )
+	else
+		do >: %( *? )
+		do >:
+		do exit
+*/
+/* 8.2. query by reference & filter
+	on init
+		do (( *, right ), RIGHT )
+		do (( *, motion ), RIGHT )
+	else
+		// do >: *motion: *right	// return RIGHT
+		do >: %(*?:*motion)		// return { motion, right }
+		// do >: %(*?:*motion): RIGHT	// must fail
+
+		// do >: %(*(?:motion))		// return { motion, right }
+		// do >: %(*(?:motion)): RIGHT	// must fail
+		do >:
+		do exit
+*/
+/* 8.3. query by reference - TRIM'd (*? as sub)
+	on init
+		do ((*, tata ), toto )
+		do ( titi, toto )
+	else
+		do >: %( ., *? )
+		// do >: .
+		do >:
+		do exit
+*/
+/* 8.4. double reference
+	on init
+		do ((*,titi),toto)
+		do ((*,toto),zrgl)
+		do ((*,tata),tutu)
+		do ((*,glop),tutu)
+	else
+#		do >: %( ?, . )
+#		do >: %( ., ? )
+#		do >: %( *, ? )
+#		do >: %((.,.),?)
+#		do >: %((.,titi),?)
+#		do >: (( ., %(*,?)), toto )
+
+#		do >: *.	// should return all values
+#		do >: %( *? )	// should return all variables
+#		do >: **.	// should return zrgl
+#		do >: %( **? )	// should return titi
+#		do >: (( ., %(**?)), . )
+		do >: (( ., %(**?)), toto )
+		do >:
+		do exit
+*/
