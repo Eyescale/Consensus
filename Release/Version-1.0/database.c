@@ -209,7 +209,6 @@ fprintf( stderr, "db_feel: }\n" );
 #endif
 	return 0;
 }
-
 CNInstance *
 db_register( char *identifier, CNDB *db )
 {
