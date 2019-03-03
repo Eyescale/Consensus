@@ -1,5 +1,5 @@
 Name
-	./Examples/TuringMachine/B%
+	./Examples/TuringMachine
 
 Usage
 	./B% TM.story < Turing.Machine
