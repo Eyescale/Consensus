@@ -8,41 +8,8 @@ Overview
 	to inform their own states, as opposed to trying to change the other Systems'
 	states to have them align with and preserve their own.
 
-	We believe the sensitive approach to be, not only the only sensible approach
-	to represent and understand the way Systems work in reality, but also the only
-	approach that gives us the chance to harmonize ourselves with our environment.
-
 	The example source code under the ./Examples/System directory illustrates how
 	such systems can be architected using linear programming languages such as C.
-
-Design
-	. A System is entirely defined by the series of its States.
-	. The State of a System is the Vector of States of its Subsystems.
-	. Events and Actions are State changes, i.e.
-		event = S:a->b	where S is a System and a, b two of its States
-		action = S:a->b	where S is a System and a, b two of its States
-	. The General State Change Propagation Equation is
-		[ S: a->b ]=>[ S': a'->b' ]
-		where S and S' are two Cosystems, and a, b, a', b' their States.
-	  Note: within the same system (S = S' above), the GSCPE translates as
-		The Action exerted on a System is the second order derivative of
-		the series of its States - cf. Second Law of Motion (Newton)
-	. A program - aka. System's Narrative - takes the following form:
-
-		in current State: Condition1
-			on change [ from previous ] to current State: Event1
-				do change [ from current ] to next State: Action1
-
-		in current State: Condition2
-			on change [ from previous ] to current State: Event2
-				do change [ from current ] to next State: Action2
-
-		etc.
-
-	Where
-	. a State represents the contents of [a portion of] the memory, whose
-	  differential is tracked at each program step (frame)
-	. external events are mapped into internal events - System's WorldView
 
 Usage
 	./system
@@ -96,12 +63,12 @@ Contents
 		. Subsystem manifests - system interface and data structures
 		  access to data structure is needed for other subsystems to subscribe
 
-Dependencies
 	./operator.c
 	./include/operator.h
 		. System interface definition
 			. Subsystem class definition
-			. CNIn, CNOn, CNDo implementation - uses macros
+			. CNIn, CNOn, CNDo implementation - uses macros to simplify
+Dependencies
 	./Base/libcn.so
 		. Consensus library
 

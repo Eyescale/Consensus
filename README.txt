@@ -7,6 +7,10 @@ Overview
 	to inform their own states, as opposed to trying to change the other Systems'
 	states to have them align with and preserve their own.
 
+	We believe the sensitive approach to be, not only the only sensible approach
+	to represent and understand the way Systems work in reality, but also the only
+	approach that gives us the chance to harmonize ourselves with our environment.
+
 	The challenge posed by this objective breaks down into two parts
 		1. The Procedural part - aka. Consensus Execution Model
 		2. The Descriptive part - aka. Consensus Data Model

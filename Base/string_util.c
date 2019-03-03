@@ -137,9 +137,16 @@ StringFinish( CNString *string, int trim )
 #ifdef DEBUG_2
 	output( Debug, "StringFinish: '%c'", (char) event );
 #endif
-	listItem **list = (listItem **) &string->data;
-	if ( *list == NULL ) return NULL;
+	char *str = l2s((listItem **) &string->data, trim );
+	string->mode = CNStringText;
+	string->data = str;
+	return str;
+}
 
+char *
+l2s( listItem **list, int trim )
+{
+	if ( *list == NULL ) return NULL;
 	listItem *i, *next_i;
 	int count = 0;
 
@@ -199,10 +206,7 @@ StringFinish( CNString *string, int trim )
 		*ptr++ = (char) i->ptr;
 	}
 	*ptr = 0;
-
 	freeListItem( list );
-	string->mode = CNStringText;
-	string->data = str;
 	return str;
 }
 

@@ -110,25 +110,25 @@ registryDeregister( Registry *registry, void *name, ... )
 Pair *
 registryLookup( Registry *registry, void *name, ... )
 {
-	RegistryType type = registry->type;
-	if (( type == IndexedByName ) && ( name == NULL ))
-		return NULL;
-
-        for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
-		Pair *r = i->ptr;
-		int comparison;
-		if (( name )) {
-			comparison = compare( type, r, name );
+	if (( name )) {
+		RegistryType type = registry->type;
+        	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
+			Pair *r = i->ptr;
+			int comparison = compare( type, r, name );
 			if ( comparison > 0 ) return NULL;
+			else if ( !comparison ) return r;
 		}
-		else {
-			va_list ap;
-			va_start( ap, name );
-			comparison = !( r->value == va_arg( ap, void * ) );
-			va_end( ap );
-		}
-                if ( !comparison ) return r;
-        }
+	}
+	else {
+		va_list ap;
+		va_start( ap, name );
+		void *value = va_arg( ap, void * );
+		va_end( ap );
+	        for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
+			Pair *r = i->ptr;
+			if ( r->value == value ) return r;
+        	}
+	}
         return NULL;
 }
 Registry *

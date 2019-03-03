@@ -32,6 +32,7 @@ void	StringReset( CNString *string, int );
 int	StringStart( CNString *string, int event );
 int	StringAppend( CNString *string, int event );
 char *	StringFinish( CNString *string, int trim );
+char *	l2s( listItem **, int trim );
 
 char *	strscanid( char *, char ** );
 int 	strmatch( char *, int event );
