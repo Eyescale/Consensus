@@ -206,7 +206,7 @@ do_input( char *expression, CNDB *db )
 	}
 	while (( event != EOF ) && is_separator( event ));
 	if ( event == EOF ) {
-		// instantiate (*,variable) just to release it
+		// release (*,variable)
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
 		db_release( &expression[ 1 ], db );
