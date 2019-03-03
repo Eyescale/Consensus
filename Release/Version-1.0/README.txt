@@ -1,6 +1,9 @@
 Name
 	Consensus Programming Language (B%) version 1.0
 
+Usage
+	./B% program.story
+
 Contents
 
 	A. Consensus Fundamentals
@@ -46,35 +49,35 @@ A. Consensus Fundamentals
 	   Note that only one query symbol is allowed per sub-expression, unless it is
 	   embedded in a sub-sub-expression.
 
-	2. The narrative statement `in condition` probes the Consensus Database (CNDB) and
+	2. The narrative statement 'in condition' probes the Consensus Database (CNDB) and
 	   passes (that is: allows the execution of the underlying statements) if and only
 	   if there exists at least one instance verifying the condition expression.
 
-	3. The narrative statement `on event` probes the Consensus program’s frame log
+	3. The narrative statement 'on event' probes the Consensus program’s frame log
 	   (CNLog) and passes if and only if there exists at least one instance verifying
 	   the event expression and which, based on the following convention, was either
 	   created or released during the last program frame:
 
-		if the event expression is in the form ~( expression ) then `on event` 
+		if the event expression is in the form ~( expression ) then 'on event' 
 		will probe the CNLog for at least one instance verifying expression and
 		which was released (de-instantiated) during the last frame.
 
-		if the event expression is not in the form ~( expression ) then `on event`
+		if the event expression is not in the form ~( expression ) then 'on event'
 		will probe the CNLog for at least one instance verifying the event
 		expression and which was created (instantiated) during the last frame.
 
-	4. The narrative statement `do action` causes either new instances to be added to,
+	4. The narrative statement 'do action' causes either new instances to be added to,
 	   or existing instances to be removed from, the CNDB, based on the following
 	   convention:
 
-		if the action expression is in the form ~( expression ) then `do action`
+		if the action expression is in the form ~( expression ) then 'do action'
 		will search the CNDB for all instances verifying expression and, for each
 		instance found: if the instance is an entity, remove the entity from the
 		CNDB; otherwise if the instance is a couple, remove the couple’s
 		relationship instance from the CNDB. Note that the removal of an instance
 		entails the removal of all its ascendants.
 
-		if the action expression is not in the form ~( expression ) then `do action`
+		if the action expression is not in the form ~( expression ) then 'do action'
 		will attempt to instantiate all entities and relationships needed to
 		substantiate the action expression. It will fail only if one of the
 		expression terms is a query yielding no result.
@@ -103,7 +106,7 @@ B. Input & Output (version 1.0)
 
 C. Variable assignment
 
-	The action `do (( *, variable ), value )` marks the current (( *,variable), . )
+	The action 'do (( *, variable ), value )' marks the current (( *,variable), . )
 	relationship instance, if any, to be released, and the specified new assignment
 	to be created.
 
@@ -115,7 +118,7 @@ C. Variable assignment
 
 	These actions, like all Consensus do operations, only take effect after the end
 	of the current frame and before the start of the next one. This allows both the
-	`on (( *, variable), value)` and `on ~(( *, variable), previous_value )` event
+	'on (( *, variable), value)' and 'on ~(( *, variable), previous_value )' event
 	operations to perform as expected - if value is the same as previous_value
 	(reassignment), only the former event operation will pass.
 
@@ -144,23 +147,26 @@ D. Consensus queries
 	   Special case: the expression term %( *? ) represents all instances which
 	   are used as references.
 
-	   Note here the difference between, for example: `do ( name1, ( name2, . ))`
+	   Note here the difference between, for example: 'do ( name1, ( name2, . ))'
 	   which will couple name2 with all existing instances in the CNDB, prior to
-	   coupling each resulting instance with name1; and `do ( name1, %( name2, . ))`
+	   coupling each resulting instance with name1; and 'do ( name1, %( name2, . ))'
 	   which will only couple existing ( name2, . ) relationship instances to name1.
 
-	3. The expression term expression : expression represents the instances which
+	3. The expression term 'expression : expression' represents the instances which
 	   verify both expression terms.
 
 	4. The expression term ~expression represents all instances which do not verify
-	   expression
+	   expression.
 
 E. Example: Turing Machine
 
-	A Turing Machine[1] implementation using the Consensus programming language
-	(the language itself has been named B%, or B-mod, for Behavioral Modeling)
-	is provided under the directory ./Examples/TuringMachine of this site, thereby
-	demonstrating the Turing completeness of the language.
+	The directory ./Examples/TuringMachine of this site features a Turing Machine[1]
+	implementation based on Consensus B% (B-mod, for Behavioral Modeling) programming
+	language, thereby demonstrating the Turing completeness of the language.
+
+	More examples can be found in the ./Release/Version1.0/Test directory of this
+	site, namely the CN.suite and CN.regression programs, the first of which provides
+	a good starting point for learning the language.
 
 	References:
 	1. Turing machines, an Introduction - Pascal Michel, Maitre de Conference,
