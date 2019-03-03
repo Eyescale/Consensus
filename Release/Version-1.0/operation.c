@@ -237,7 +237,6 @@ do_output( char *expression, CNDB *db )
 	Assuming expression is in the form
 		> format : expression
 	then outputs expression to stdout according to format
-	Note: this implementation outputs either format or expression
 */
 {
 	// skip the leading '>'
