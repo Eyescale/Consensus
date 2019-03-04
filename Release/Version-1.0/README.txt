@@ -115,7 +115,7 @@ C. Variable assignment
 
 	In case the 'value' expression represents multiple instances, Consensus will ensure
 	that only one of these instances is assigned to 'variable', although the user is
-	given no possibility to predict which one.
+	not given the possibility to predict which one.
 	In case the 'variable' expression represents multiple instances, then 'value' will
 	be assigned to each of these instances.
 
