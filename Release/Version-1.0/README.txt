@@ -76,8 +76,7 @@ A. Consensus Fundamentals
 		will search the CNDB for all instances verifying 'expression' and, for each
 		instance found: if the instance is an entity, remove the entity from the
 		CNDB; otherwise if the instance is a couple, remove the couple’s
-		relationship instance from the CNDB. Note that the removal of an instance
-		entails the removal of all its descendants.
+		relationship instance from the CNDB.
 
 		if the 'action' expression is not in the form '~( expression )' then
 		'do action' will attempt to instantiate all entities and relationships
@@ -86,6 +85,8 @@ A. Consensus Fundamentals
 
 	   Consensus 'do' operations only take effect after the end of the current frame
 	   and before the start of the next one.
+
+	   Note that the removal of an instance entails the removal of all its descendants.
 
 B. Input & Output (version 1.0)
 
