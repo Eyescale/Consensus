@@ -11,7 +11,7 @@ Overview
 	to represent and understand the way Systems work in reality, but also the only
 	approach that gives us the chance to harmonize ourselves with our environment.
 
-	The challenge posed by this objective breaks down into two parts
+	Technically, the challenge posed by this objective breaks down into two parts
 		1. The Procedural part - aka. Consensus Execution Model
 		2. The Descriptive part - aka. Consensus Data Model
 
