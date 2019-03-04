@@ -12,6 +12,7 @@ Overview
 	approach that gives us the chance to harmonize ourselves with our environment.
 
 	Technically, the challenge posed by this objective breaks down into two parts
+
 		1. The Procedural part - aka. Consensus Execution Model
 		2. The Descriptive part - aka. Consensus Data Model
 
@@ -51,10 +52,14 @@ Overview
 
 	2. Consensus Data Model
 	The Consensus data model aims at being simple and universal, and relies on the
-	Consensus entity as fundamental building block (record type) of the Consensus
-	database (CNDB).
+	Consensus instance as fundamental building block (record type) of the Consensus
+	data base (CNDB).
 
-	Internally, to date, Consensus relies on the notions of lists, items and entities,
+	One of the key driving objectives of the on-going Consensus development efforts
+	is to harmonize Consensus internal and external representations - so that,
+	ultimately, the language can implement itself.
+
+	Internally, to date, Consensus relies on the notions of lists, items and instances,
 	where:
 
 	. Consensus lists and items address directly the Consensus first Design Principle:
@@ -67,13 +72,9 @@ Overview
 		  the next item in the list
 		. From a programming perspective, a list is none other than its first item
 
-	. Consensus entities extend the notion of Consensus items to allow multi-dimensional
+	. Consensus instances extend the notion of Consensus items to allow multi-dimensional
 	  connections and, originally, triple-based aggregation, by incorporating the full
 	  topological information related to each entity in the entity definition itself.
-
-	One of the driving objectives of the on-going Consensus development efforts is to
-	harmonize Consensus internal and external representations - so that, ultimately,
-	the language can implement itself.
 
 	One if not the most important lesson learnt from the Consensus Pilot development is
 	that not 'triples', but 'couples', must constitute the basis for our data model.
