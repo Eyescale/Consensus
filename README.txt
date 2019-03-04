@@ -54,23 +54,22 @@ Overview
 	Consensus entity as fundamental building block (record type) of the Consensus
 	database (CNDB).
 
-	Internally, to date, Consensus relies on the notions of lists, items and entities.
+	Internally, to date, Consensus relies on the notions of lists, items and entities,
+	where:
 
-	2.1. Consensus lists and items
-	Consensus lists and items address directly the Consensus first Design Principle:
+	. Consensus lists and items address directly the Consensus first Design Principle:
 		"A System is entirely defined by the series of its states"
-	where
+	  where
 		. the term 'list' in the implementation stands for the term 'series'
 		  in the requirement
 		. a list item is a pair whose first element is a pointer to the item's
-		  data (e.g. 'state' in the requirement), and second element a pointer to
+		  data ('state' in the requirement), and second element a pointer to
 		  the next item in the list
 		. From a programming perspective, a list is none other than its first item
 
-	2.2. Consensus entities
-	Consensus entities extend the notion of Consensus items to allow multi-dimensional
-	connections and, originally, triple-based aggregation, by incorporating the full
-	topological information related to each entity in the entity definition itself.
+	. Consensus entities extend the notion of Consensus items to allow multi-dimensional
+	  connections and, originally, triple-based aggregation, by incorporating the full
+	  topological information related to each entity in the entity definition itself.
 
 	One of the driving objectives of the on-going Consensus development efforts is to
 	harmonize Consensus internal and external representations - so that, ultimately,
