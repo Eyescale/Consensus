@@ -77,7 +77,7 @@ A. Consensus Fundamentals
 		instance found: if the instance is an entity, remove the entity from the
 		CNDB; otherwise if the instance is a couple, remove the couple’s
 		relationship instance from the CNDB. Note that the removal of an instance
-		entails the removal of all its ascendants.
+		entails the removal of all its descendants.
 
 		if the 'action' expression is not in the form '~( expression )' then
 		'do action' will attempt to instantiate all entities and relationships
@@ -97,7 +97,7 @@ B. Input & Output (version 1.0)
 	This action attempts to read a name (see above) from the program’s standard input
 	channel, and, if it succeeds, instantiates '(( *, expression), name )'. Otherwise,
 	if it cannot read a name, upon reading EOF the Consensus input operation releases
-	the '( *, expression )' relationship instances and all its ascendants.
+	the '( *, expression )' relationship instances and all its descendants.
 
 		do > format : expression
 
