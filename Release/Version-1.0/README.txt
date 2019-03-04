@@ -116,12 +116,12 @@ C. Variable assignment
 	In case the 'value' expression represents multiple instances, Consensus will ensure
 	that only one of these instances is assigned to 'variable', although the user is
 	given no possibility to predict which one.
-	In case the 'variable' expression represents multiple instances, then the 'value'
-	assignment operation will be performed on each of these instances.
+	In case the 'variable' expression represents multiple instances, then 'value' will
+	be assigned to each of these instances.
 
 	These actions, like all Consensus 'do' operations, only take effect after the end
 	of the current frame and before the start of the next one. This allows both the
-	'on (( *, variable), value)' and 'on ~(( *, variable), previous_value )' event
+	'on (( *, variable), value)' and the 'on ~(( *, variable), previous_value )' event
 	operations to perform as expected - if 'value' is the same as 'previous_value'
 	(reassignment), only the former event operation will pass.
 
