@@ -50,12 +50,10 @@ Overview
 	following these same principles.
 
 	2. Consensus Data Model
-	Whereas the Consensus Execution Model is relatively straightforward - it
-	generalizes the notion of State Machine based on the Consensus general state
-	change propagation equation - its Data Model is more complicated.
-	This is due to the fact that the internal and external data representations
-	have not yet been harmonized, their harmonization being the purpose of the
-	on-going Consensus research and development efforts.
+	The Consensus data model aims at being simple and universal, and relies on the
+	Consensus entity as fundamental building block (record type) of the Consensus
+	database (CNDB).
+
 	Internally, to date, Consensus relies on the notions of lists, items and entities.
 
 	2.1. Consensus lists and items
@@ -71,14 +69,19 @@ Overview
 
 	2.2. Consensus entities
 	Consensus entities extend the notion of Consensus items to allow multi-dimensional
-	connections and triple-based aggregation, by incorporating the full topological
-	information related to each entity in the entity definition itself.
+	connections and, originally, triple-based aggregation, by incorporating the full
+	topological information related to each entity in the entity definition itself.
 
-	The Consensus data model aims at being simple and universal, and relies on the
-	Consensus entity as fundamental building block (record type) of the Consensus
-	database (CNDB). One if not the most important lesson learnt from the Consensus
-	Pilot development is that not 'triples', but 'pairs', must constitute the basis
-	for our data model. This will allow us, in the next version, to get rid of brackets
-	and arrows, and provide the user with a syntax even closer to natural language to
-	describe, navigate and manage his data.
+	One of the driving objectives of the on-going Consensus development efforts is to
+	harmonize Consensus internal and external representations - so that, ultimately,
+	the language can implement itself.
+
+	One if not the most important lesson learnt from the Consensus Pilot development is
+	that not 'triples', but 'couples', must constitute the basis for our data model.
+
+	The source code under ./Release/Version-1.0 demonstrates a first industrial-quality
+	release of the Consensus programming language, where the notion of instance covers
+	both the notions of entity (name) and relationship (couple).
+
+	The language itself has been named B%, say B-mod, for Behavioral Modeling.
 
