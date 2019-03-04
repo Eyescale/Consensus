@@ -9,7 +9,7 @@ Overview
 
 	We believe the sensitive approach to be, not only the only sensible approach
 	to represent and understand the way Systems work in reality, but also the only
-	approach that gives us the chance to harmonize ourselves with our environment.
+	approach that gives us the chance to harmonize with our environment.
 
 	Technically, the challenge posed by this objective breaks down into two parts
 
