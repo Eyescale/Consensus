@@ -50,7 +50,7 @@ Overview
 	The example source code under the ./Examples/System directory demonstrates how
        	such systems can be architected using linear programming languages such as C.
 
-	The source code under ./Pilot and documentation under ./Pilot/doc show how
+	The source code under ./Pilot and the documentation under ./Pilot/doc show how
 	the Web-enabled Consensus Knowledge Management Platform has been architected
 	following these same principles.
 
