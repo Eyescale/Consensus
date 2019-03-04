@@ -20,8 +20,8 @@ Outcome
 	. Possibility for each participant to effectively contribute to and thereby influence
 	  the evolution of the community, depending on others' adherence to what s/he himself
 	  cares to demonstrate
-	. Possibility for each participant to navigate, appreciate and decide for himself based
-	  on what the others care to share
+	. Possibility for each participant to navigate, appreciate and decide for themselves,
+	  based on what the others care to share
 	. Accrued sense of responsibility, interest & control over one's destiny and environment,
 	  via others
 
