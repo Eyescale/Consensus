@@ -154,7 +154,7 @@ else in *phase: RUN
 		do >:
 		do (( *, (TAPE,*(head,position))), *(SYMBOL,*index))
 
-		// assign MOTION entry value at index to entry
+		// assign MOTION entry value at index to motion
 		do > "TAPE move: %_": %((.,?):*(MOTION,*index))
 		do >:
 		do (( *, motion ), *(MOTION,*index))
