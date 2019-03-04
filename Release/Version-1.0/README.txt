@@ -113,10 +113,10 @@ C. Variable assignment
 	to be created.
 
 	In case the 'value' expression represents multiple instances, Consensus will ensure
-	that only one of these instances is assigned to variable, although the user is
+	that only one of these instances is assigned to 'variable', although the user is
 	given no possibility to predict which one.
-	In case the 'variable' expression represents multiple instances, then the operation
-	will be performed on each of these instances.
+	In case the 'variable' expression represents multiple instances, then the 'value'
+	assignment operation will be performed on each of these instances.
 
 	These actions, like all Consensus 'do' operations, only take effect after the end
 	of the current frame and before the start of the next one. This allows both the

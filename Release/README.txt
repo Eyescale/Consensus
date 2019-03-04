@@ -22,7 +22,8 @@ Outcome
 	  cares to demonstrate
 	. Possibility for each participant to navigate, appreciate and decide for himself based
 	  on what the others care to share
-	. Accrued sense of responsibility, interest & control over one's destiny, via others
+	. Accrued sense of responsibility, interest & control over one's destiny and environment,
+	  via others
 
 
 
