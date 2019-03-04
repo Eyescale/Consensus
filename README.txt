@@ -31,8 +31,8 @@ Overview
 		The Action exerted on a System is the second order derivative of
 		the series of its States - cf. Second Law of Motion (Newton)
 
-	Based on these principles, a program - aka. System's Story, or Narrative -
-	takes the following form:
+	Based on these principles, a Consensus program - aka. System's Story, or
+	Narrative - takes the following form:
 
 		in current State: Condition1
 			on change [ from previous ] to current State: Event1
