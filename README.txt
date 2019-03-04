@@ -30,7 +30,10 @@ Overview
 	     Note: within the same system (S = S' above), the GSCPE translates as
 		The Action exerted on a System is the second order derivative of
 		the series of its States - cf. Second Law of Motion (Newton)
-	   . A program - aka. System's Narrative - takes the following form:
+
+	Based on these principles, a program - aka. System's Story, or Narrative -
+	takes the following form:
+
 		in current State: Condition1
 			on change [ from previous ] to current State: Event1
 				do change [ from current ] to next State: Action1
@@ -38,7 +41,8 @@ Overview
 			on change [ from previous ] to current State: Event2
 				do change [ from current ] to next State: Action2
 		etc.
-	  Where
+
+	Where
 	   . a State represents the contents of [a portion of] the memory, whose
 	     differential is tracked at each program step (frame)
 	   . external events are mapped into internal events - System's WorldView
