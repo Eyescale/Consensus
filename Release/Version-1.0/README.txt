@@ -155,15 +155,15 @@ D. Consensus queries
 		do ( name1, ( name2, . ))
 		do ( name1, %( name2, . ))
 
-	   The former which will couple 'name2' with all existing instances in the
-	   CNDB, prior to coupling each resulting instance with 'name1', whereas
+	   The former will couple 'name2' with all existing instances in the CNDB,
+	   prior to coupling each resulting instance with 'name1'; whereas
 	   The latter will only couple existing '( name2, . )' relationship instances
 	   with 'name1'.
 
-	3. The expression term 'expression : expression' represents the instances which
-	   verify both 'expression' terms.
+	3. The term 'expression : expression' represents the instances which verify
+	   both 'expression' terms.
 
-	4. The expression term '~expression' represents the instances which do not verify
+	4. The term '~expression' represents the instances which do not verify
 	   'expression'.
 
 E. Example: Turing Machine
@@ -174,8 +174,8 @@ E. Example: Turing Machine
 	thereby demonstrating the Turing completeness of the language.
 
 	More examples can be found e.g. in the ./Release/Version-1.0/Test directory of this
-	site, namely the CN.suite and CN.regression programs, the first of which provides
-	a good starting point for learning and experementing with the language.
+	site, in particular the CN.suite program (aka. story in Consensus terms), which
+	provides a good starting point for learning and experimenting with the language.
 
 	References:
 	1. Turing machines, an Introduction - Pascal Michel, Maitre de Conference,
