@@ -158,7 +158,7 @@ D. Consensus queries
 
 	   The former will couple 'name2' with all existing instances in the CNDB,
 	   prior to coupling each resulting instance with 'name1'; whereas
-	   The latter will only couple existing '( name2, . )' relationship instances
+	   The latter will couple only existing '( name2, . )' relationship instances
 	   with 'name1'.
 
 	3. The term 'expression : expression' represents the instances which verify
