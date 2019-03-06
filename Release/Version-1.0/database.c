@@ -71,6 +71,13 @@ freename_CB( Registry *registry, Pair *entry )
 //===========================================================================
 void
 db_update( CNDB *db )
+/*
+	Notes (cf db_op):
+	. instances cannot be both to be released and to be manifested
+	. instances cannot be both to be released and new/reborn
+	. instances cannot be both to be manifested and released
+	  (as instances to be manifested are always new/reborn)
+*/
 {
 	CNInstance *nil = db->nil;
 	CNInstance *e, *f, *g, *x;
@@ -89,7 +96,7 @@ fprintf( stderr, "db_update: 1. forget obsolete manifestations\n" );
 		db_remove( g, db );
 	}
 #ifdef DEBUG
-fprintf( stderr, "db_update: 2. actualize to be & manifested entities\n" );
+fprintf( stderr, "db_update: 2. actualize to be manifested entities\n" );
 #endif
 	// for each g: ( nil, f ) where f: ( nil, x )
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
@@ -101,28 +108,6 @@ fprintf( stderr, "db_update: 2. actualize to be & manifested entities\n" );
 			next_i = next_i->next;
 		// remove ( nil, ( nil, x ) )
 		db_remove( g, db );
-		x = f->sub[ 1 ];
-		// rehabilitate x if need be
-		// for each f: ( x, nil ) where ( nil, f ) xor ( f, nil ) may exist
-		for ( listItem *j=nil->as_sub[ 1 ]; j!=NULL; j=j->next ) {
-			f = j->ptr;
-			if ( f->sub[ 0 ] != x ) continue;
-			if (( f->as_sub[ 0 ] )) {	// can only be ( f, nil )
-				g = f->as_sub[ 0 ]->ptr;
-				// remove ( ( x, nil ), nil )
-				db_remove( g, db );
-			}
-			if (( f->as_sub[ 1 ] )) {	// can only be ( nil, f )
-				g = f->as_sub[ 1 ]->ptr;
-				if (( next_i ) && ( next_i->ptr == g ))
-					next_i = next_i->next;
-				// remove ( nil, ( x, nil ) )
-				db_remove( g, db );
-			}
-			// remove ( x, nil )
-			db_remove( f, db );
-			break;
-		}
 	}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. remove released entities\n" );
@@ -134,6 +119,8 @@ fprintf( stderr, "db_update: 3. remove released entities\n" );
 		if (( f->as_sub[ 0 ] )) continue; // new or reborn
 		if (( f->as_sub[ 1 ] )) continue; // to be released
 		x = f->sub[ 0 ];
+		if ( x->sub[ 1 ] == nil ) continue; // new or reborn
+		// note that (( nil, . ), nil ) does not exist
 		if ( x->sub[ 0 ] == NULL ) {
 			db_deregister( x, db );
 		}
@@ -154,8 +141,9 @@ fprintf( stderr, "db_update: 4. actualize newborn and to be released entities\n"
 				next_i = next_i->next;
 			// remove (( x, nil ), nil )
 			db_remove( g, db );
+			db_remove( f, db );
 		}
-		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+		else if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 			// actualize to be released entity
 			g = f->as_sub[ 1 ]->ptr;
 			// remove ( nil, ( x, nil ) )
