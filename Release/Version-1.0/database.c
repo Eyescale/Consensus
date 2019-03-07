@@ -72,11 +72,11 @@ freename_CB( Registry *registry, Pair *entry )
 void
 db_update( CNDB *db )
 /*
-	Notes (cf db_op):
-	. instances cannot be both to be released and to be manifested
-	. instances cannot be both to be released and new/reborn
-	. instances cannot be both to be manifested and released
-	  (as instances to be manifested are always new/reborn)
+	cf db_op()
+	(( x, nil ), nil ) : to be manifested (aka. new- or reborn)
+	( nil, ( x, nil )) : to be released
+	( x, nil ) : deprecated (as of last frame)
+	( nil, x ) : manifested (as of last frame)
 */
 {
 	CNInstance *nil = db->nil;
@@ -84,13 +84,11 @@ db_update( CNDB *db )
 #ifdef DEBUG
 fprintf( stderr, "db_update: 1. forget obsolete manifestations\n" );
 #endif
-	// for each g: ( nil, x ) where x neither ( nil, . ) nor ( ., nil )
+	// for each g: ( nil, x ) where x is not ( ., nil )
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
-		if (( g->as_sub[ 1 ] )) continue;
 		x = g->sub[ 1 ];
-		if ( x->sub[ 0 ] == nil ) continue;
 		if ( x->sub[ 1 ] == nil ) continue;
 		// remove ( nil, x )
 		db_remove( g, db );
@@ -98,29 +96,30 @@ fprintf( stderr, "db_update: 1. forget obsolete manifestations\n" );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 2. actualize to be manifested entities\n" );
 #endif
-	// for each g: ( nil, f ) where f: ( nil, x )
-	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
+	// for each g: ( f, nil ) where f: ( x, nil )
+	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
-		f = g->sub[ 1 ];
-		if ( f->sub[ 0 ] != nil ) continue;
+		f = g->sub[ 0 ];
+		if ( f->sub[ 1 ] != nil ) continue;
+		x = f->sub[ 0 ];
 		if (( next_i ) && ( next_i->ptr == f ))
 			next_i = next_i->next;
-		// remove ( nil, ( nil, x ) )
+		// remove (( x, nil ), nil ) and ( x, nil )
 		db_remove( g, db );
+		db_remove( f, db );
+		// create ( nil, x )
+		cn_new( nil, x );
 	}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. remove released entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) or ( f, nil ) may exist
+	// for each f: ( x, nil ) where ( nil, f ) may exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if (( f->as_sub[ 0 ] )) continue; // new or reborn
 		if (( f->as_sub[ 1 ] )) continue; // to be released
 		x = f->sub[ 0 ];
-		if ( x->sub[ 1 ] == nil ) continue; // new or reborn
-		// note that (( nil, . ), nil ) does not exist
 		if ( x->sub[ 0 ] == NULL ) {
 			db_deregister( x, db );
 		}
@@ -129,21 +128,13 @@ fprintf( stderr, "db_update: 3. remove released entities\n" );
 		db_remove( x, db );
 	}
 #ifdef DEBUG
-fprintf( stderr, "db_update: 4. actualize newborn and to be released entities\n" );
+fprintf( stderr, "db_update: 4. actualize to be released entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) or ( f, nil ) may exist
+	// for each f: ( x, nil ) where ( nil, f ) may exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
-			g = f->as_sub[ 0 ]->ptr;
-			if (( next_i ) && ( next_i->ptr == g ))
-				next_i = next_i->next;
-			// remove (( x, nil ), nil )
-			db_remove( g, db );
-			db_remove( f, db );
-		}
-		else if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 			// actualize to be released entity
 			g = f->as_sub[ 1 ]->ptr;
 			// remove ( nil, ( x, nil ) )
@@ -338,7 +329,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	returns 1 if passes, otherwise:
 		tests new born = ((e,nil),nil)
 			in which case returns 1
-		otherwise tests to be deprecated = (nil,(e,nil))
+		otherwise tests to be released = (nil,(e,nil))
 			in which case returns 0
 		otherwise tests deprecated = (e,nil)
 			in which case returns !privy
@@ -470,44 +461,20 @@ dbg_out( "db_remove:\t", e, "\n", db );
 static CNInstance *
 db_op( int op, CNInstance *e, int flag, CNDB *db )
 {
-#ifdef DEBUG
-	if ( db_private( 0, e, db ) ) {
-		if (( flag == DB_REASSIGN ) && ( op == DB_REHABILITATE_OP )) {
-			fprintf( stderr, "db_op: Warning: op=%d, %%e private: ", op );
-			dbg_out( NULL, e, "\n", db );
-			return NULL;
-		}
-	}
-#endif
 	CNInstance *nil = db->nil;
 	switch ( op ) {
 	case DB_DEPRECATE_OP:
-		// cannot let e remain "to be manifested" if it is
-		// for each g: ( nil, ( nil, e ) )
-		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
-			CNInstance *f = i->ptr;
-			if ( f->sub[ 0 ] != nil ) continue;
-			if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
-				CNInstance *g = f->as_sub[ 1 ]->ptr;
-				// remove ( nil, ( nil, e )) 
-				db_remove( g, db );
-			}
-			break;
-		}
-		// return "new/reborn" to limbo, mark others "to be released"
+		/* return "to be manifested" to limbo, keep to be & deprecated as-is,
+		   and mark others "to be released"
+		*/
 		// for each f: ( e, nil ) where there may be ( f, nil ) or ( nil, f )
-		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+		for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 			CNInstance *f = i->ptr;
 			if ( f->sub[ 1 ] != nil ) continue;
 			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
 				CNInstance *g = f->as_sub[ 0 ]->ptr;
 				// remove (( e, nil ), nil )
 				db_remove( g, db );
-				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
-					g = f->as_sub[ 1 ]->ptr;
-					// remove ( nil, ( e, nil ))
-					db_remove( g, db );
-				}
 			}
 			else if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 				CNInstance *g = f->as_sub[ 1 ]->ptr;
@@ -519,46 +486,36 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 
 	case DB_REHABILITATE_OP:;
 		CNInstance *f = cn_instance( e, nil );
-		if (( f ) && !( f->as_sub[ 0 ] )) {
-			// create (( e, nil ), nil ) (reborn)
-			cn_new( f, nil );
+		if (( f )) {
+			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
+				CNInstance *g = f->as_sub[ 0 ]->ptr;
+				return g; // already to be manifested
+			}
+			else {
+				// create (( e, nil ), nil ) (reborn)
+				return cn_new( f, nil );
+			}
 		}
-		// special case - reassignment: manifest no matter what
-		// otherwise manifest only if deprecated
+		// general case: manifest only if deprecated
 		else if ( flag != DB_REASSIGN ) {
 			return e;
 		}
 		// no break
 
 	case DB_MANIFEST_OP:
-		if ( flag == DB_NEW ) {
-			// create (( e, nil ), nil ) = newborn
-			cn_new( cn_new( e, nil ), nil );
-		}
-		else {
-			// for each g: ( nil, ( nil, e ))
-			for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
-				CNInstance *f = i->ptr;
-				if ( f->sub[ 0 ] != nil ) continue;
-				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
-					CNInstance *g = f->as_sub[ 1 ]->ptr;
-					return g;
-				}
-				return cn_new( nil, f );
-			}
-		}
-		return cn_new( nil, cn_new( nil, e ) );
+		// create (( e, nil ), nil ) = newborn
+		return cn_new( cn_new( e, nil ), nil );
 	}
 	return NULL;
 }
 static int
 db_deprecated( CNInstance *e, CNDB *db )
 /*
-	tests e against ( nil, . ) and ( ., nil ) }
+	tests e against ( nil, . ) and ( ., nil )
 	returns 1 if passes, otherwise:
 		tests new born = ((e,nil),nil)
-			in which case returns 1
-		otherwise tests to be deprecated = (nil,(e,nil))
+			in which case returns 0
+		otherwise tests to be released = (nil,(e,nil))
 			in which case returns 0
 		otherwise tests deprecated = (e,nil)
 			in which case returns 1
