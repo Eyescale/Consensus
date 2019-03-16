@@ -26,7 +26,6 @@ fprintf( stderr, " ........{\n" );
 	VerifyData data;
 	data.stack.exponent = NULL;
 	data.stack.couple = NULL;
-	data.stack.level = NULL;
 	data.stack.scope = NULL;
 	data.stack.base = NULL;
 	data.stack.not = NULL;
@@ -40,7 +39,6 @@ fprintf( stderr, " ........{\n" );
 	data.privy = privy;
 	data.empty = db_is_empty( db );
 	data.star = p_lookup( privy, "*", db );
-	data.level = NULL;
 	data.couple = 0;
 
 	int success = xp_verify( privy, x, expression, db, &data );
@@ -138,15 +136,11 @@ db_verify_sub( int op, int success,
 				data->couple = 1;
 				push_exponent( AS_SUB, 0, exponent );
 			}
-			addItem( &data->stack.level, data->level );
-			data->level = *exponent;
 			icast.value = not;
 			addItem( &data->stack.not, icast.ptr );
 			not = 0; p++;
 			break;
 		case ':':
-			while ( *exponent != data->level )
-				popListItem( exponent );
 			if (( op == SUB_START ) && ( scope==OOS+1 ))
 				{ out = 1; break; }
 			if ( success ) { p++; }
@@ -154,11 +148,8 @@ db_verify_sub( int op, int success,
 			break;
 		case ',':
 			if ( scope <= OOS+1 ) { out = 1; break; }
-			while ( *exponent != data->level )
-				popListItem( exponent );
 			popListItem( exponent );
 			push_exponent( AS_SUB, 1, exponent );
-			data->level = *exponent;
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_DEFAULT, p+1 );
 			break;
@@ -166,11 +157,8 @@ db_verify_sub( int op, int success,
 			scope--;
 			if ( scope <= OOS ) { out = 1; break; }
 			if ( data->couple ) {
-				while ( *exponent != data->level )
-					popListItem( exponent );
 				popListItem( exponent );
 			}
-			data->level = popListItem( &data->stack.level );
 			data->couple = (int) popListItem( &data->stack.couple );
 			if (( op == SUB_START ) && ( scope==OOS+1 ))
 			    { out = 1; break; }

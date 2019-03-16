@@ -28,7 +28,6 @@ typedef struct {
 	struct {
 		listItem *exponent;
 		listItem *couple;
-		listItem *level;
 		listItem *scope;
 		listItem *base;
 		listItem *not;
@@ -43,7 +42,6 @@ typedef struct {
 	char *pivot;
 	int empty;
 	CNInstance *star;
-	listItem *level;
 	int couple;
 } VerifyData;
 int xp_verify( int privy, CNInstance *x, char *expression, CNDB *, VerifyData * );
