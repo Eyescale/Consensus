@@ -714,7 +714,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 	freeListItem( &stack.tuple );
 	freeListItem( &stack.level );
 	freeListItem( &stack.premark );
-	if ( *p ) {
+	if ( *p && *p!=',' && *p!=')' ) {
 		freeListItem( &star_exp );
 		return p;
 	}
@@ -804,7 +804,7 @@ locate_mark( char *expression, listItem **exponent )
 	}
 	freeListItem( &stack.couple );
 	freeListItem( &stack.level );
-	return p;
+	return ((*p=='?') ? p : NULL );
 }
 
 //===========================================================================
