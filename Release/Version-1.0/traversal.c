@@ -177,8 +177,7 @@ fprintf( stderr, "\n" );
 #else
 			else {
 #endif
-				freeItem( i );
-				return 0;
+				goto RETURN;
 			}
 		}
 	}
