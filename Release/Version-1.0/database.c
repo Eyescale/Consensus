@@ -72,29 +72,68 @@ freename_CB( Registry *registry, Pair *entry )
 void
 db_update( CNDB *db )
 /*
-	cf db_op()
-	(( x, nil ), nil ) : to be manifested (aka. new- or reborn)
-	( nil, ( x, nil )) : to be released
-	( x, nil ) : deprecated (as of last frame)
-	( nil, x ) : manifested (as of last frame)
+   cf db_op()
+	( nil, ( nil, x ))	x to be manifested
+	( nil, ( x, nil ))	x to be released
+	( nil, x )		x manifested (as of last frame)
+	( x, nil )		x deprecated (as of last frame)
+	(( x, nil ), nil )	x newborn
+   combinations
+	x can be both manifested AND to-be-released
+	x can be both manifested AND newborn (reassigned)
+	x can be both released AND to-be-manifested (reborn)
+	x can be both newborn AND to-be-released
+
+	x cannot be both manifested AND released
+	x cannot be both released AND to-be-released
+	x cannot be both newborn AND released
+	x cannot be both newborn AND to-be-manifested
+	x cannot be both to-be-released AND to-be-manifested
 */
 {
 	CNInstance *nil = db->nil;
 	CNInstance *e, *f, *g, *x;
 #ifdef DEBUG
-fprintf( stderr, "db_update: 1. forget obsolete manifestations\n" );
+fprintf( stderr, "db_update: 1. actualize past manifestations\n" );
 #endif
-	// for each g: ( nil, x ) where x is not ( ., nil )
+	// for each g: ( nil, x ) where ( nil, g ) does not exist and
+	//	x is neither ( ., nil ) nor ( nil, . )
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
+		if (( g->as_sub[ 1 ] )) continue; // to be manifested
 		x = g->sub[ 1 ];
+		if ( x->sub[ 0 ] == nil ) continue;
 		if ( x->sub[ 1 ] == nil ) continue;
-		// remove ( nil, x )
-		db_remove( g, db );
+		f = cn_instance( x, nil );
+		if (( f )) {
+			if (( f->as_sub[ 0 ] )) { // reassigned
+				// remove (( x, nil ), nil ) and ( x, nil )
+				g = f->as_sub[ 0 ]->ptr;
+				db_remove( g, db );
+				db_remove( f, db );
+			}
+			else if (( f->as_sub[ 1 ] )) { // to be released
+				// remove ( nil, x )
+				db_remove( g, db );
+				// remove ( nil, ( x, nil ))
+				g = f->as_sub[ 1 ]->ptr;
+				db_remove( g, db );
+				// remove ( x, nil ) and x
+				db_remove( f, db );
+				if ( x->sub[ 0 ] == NULL ) {
+					db_deregister( x, db );
+				}
+				db_remove( x, db );
+			}
+		}
+		else {
+			// remove ( nil, x )
+			db_remove( g, db );
+		}
 	}
 #ifdef DEBUG
-fprintf( stderr, "db_update: 2. actualize to be manifested entities\n" );
+fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 #endif
 	// for each g: ( f, nil ) where f: ( x, nil )
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
@@ -102,35 +141,69 @@ fprintf( stderr, "db_update: 2. actualize to be manifested entities\n" );
 		g = i->ptr;
 		f = g->sub[ 0 ];
 		if ( f->sub[ 1 ] != nil ) continue;
-		x = f->sub[ 0 ];
 		if (( next_i ) && ( next_i->ptr == f ))
 			next_i = next_i->next;
-		// remove (( x, nil ), nil ) and ( x, nil )
-		db_remove( g, db );
-		db_remove( f, db );
-		// create ( nil, x )
-		cn_new( nil, x );
+		x = f->sub[ 0 ];
+		if (( f->as_sub[ 1 ] )) { // to be released
+			// remove (( x, nil ), nil )
+			db_remove( g, db );
+			// remove ( nil, ( x, nil ))
+			g = f->as_sub[ 1 ]->ptr;
+			db_remove( g, db );
+			// remove ( x, nil ) and x
+			db_remove( f, db );
+			if ( x->sub[ 0 ] == NULL ) {
+				db_deregister( x, db );
+			}
+			db_remove( x, db );
+		}
+		else {
+			// remove (( x, nil ), nil ) and ( x, nil )
+			db_remove( g, db );
+			db_remove( f, db );
+			// create ( nil, x )
+			cn_new( nil, x );
+		}
 	}
 #ifdef DEBUG
-fprintf( stderr, "db_update: 3. remove released entities\n" );
+fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) may exist
+	// for each f: ( nil, x ) where ( nil, f ) exists and possibly ( x, nil )
+	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
+		next_i = i->next;
+		f = i->ptr;
+		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+			// actualize to be manifested entity
+			g = f->as_sub[ 1 ]->ptr;
+			if (( next_i ) && ( next_i->ptr == g ))
+				next_i = next_i->next;
+			// remove ( nil, ( nil, x ) )
+			db_remove( g, db );
+			// remove ( x, nil ) if x was released
+			g = cn_instance( f->sub[ 1 ], nil );
+			if (( g )) db_remove( g, db );
+		}
+	}
+#ifdef DEBUG
+fprintf( stderr, "db_update: 4. remove released entities\n" );
+#endif
+	// for each f: ( x, nil ) where ( nil, f ) does not exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) continue; // to be released
 		x = f->sub[ 0 ];
+		// remove ( x, nil ) and x
+		db_remove( f, db );
 		if ( x->sub[ 0 ] == NULL ) {
 			db_deregister( x, db );
 		}
-		// remove ( x, nil ) and x
-		db_remove( f, db );
 		db_remove( x, db );
 	}
 #ifdef DEBUG
-fprintf( stderr, "db_update: 4. actualize to be released entities\n" );
+fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) may exist
+	// for each f: ( x, nil ) where ( nil, f ) exists
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
@@ -160,32 +233,36 @@ db_feel( char *expression, DBLogType type, CNDB *db )
 		privy = 0;
 		break;
 	}
-#ifdef DEBUG
-if (( privy )) fprintf( stderr, "db_feel: (%s,) {\n", expression );
-else fprintf( stderr, "db_feel: (,%s) {\n", expression );
-#endif
 	CNInstance *nil = db->nil;
+#ifdef DEBUG
+	if (( privy )) fprintf( stderr, "db_feel: (%s,) {\n", expression );
+	else fprintf( stderr, "db_feel: (,%s) {\n", expression );
 	for ( listItem *i=nil->as_sub[ privy ]; i!=NULL; i=i->next ) {
 		CNInstance *g = i->ptr;
+		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
 		CNInstance *x = g->sub[ !privy ];
-		if (( g->as_sub[ 1 ] ) || ( g->as_sub[ 0 ] )) continue;
-#ifdef DEBUG
-dbg_out( "db_feel:\t", g, NULL, db );
-#endif
+		if (( x->sub[ 0 ] == nil ) || ( x->sub[ 1 ] == nil ))
+			continue;
+		dbg_out( "db_feel:\t", g, NULL, db );
 		if ( db_verify( privy, x, expression, db ) ) {
-#ifdef DEBUG
-fprintf( stderr, " - found\n" );
-fprintf( stderr, "db_feel: }\n" );
-#endif
+			fprintf( stderr, " - found\n" );
+			fprintf( stderr, "db_feel: }\n" );
 			return 1;
 		}
-#ifdef DEBUG
-else fprintf( stderr, " - no match\n" );
-#endif
+		else fprintf( stderr, " - no match\n" );
 	}
-#ifdef DEBUG
-fprintf( stderr, "db_feel: }\n" );
-#endif
+	fprintf( stderr, "db_feel: }\n" );
+#else	// DEBUG
+	for ( listItem *i=nil->as_sub[ privy ]; i!=NULL; i=i->next ) {
+		CNInstance *g = i->ptr;
+		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
+		CNInstance *x = g->sub[ !privy ];
+		if (( x->sub[ 0 ] == nil ) || ( x->sub[ 1 ] == nil ))
+			continue;
+		if ( db_verify( privy, x, expression, db ) )
+			return 1;
+	}
+#endif	// DEBUG
 	return 0;
 }
 CNInstance *
@@ -328,7 +405,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	tests e against ( nil, . ) and ( ., nil )
 	returns 1 if passes, otherwise:
 		tests new born = ((e,nil),nil)
-			in which case returns 1
+			in which case tests manifested = ( nil, e )
 		otherwise tests to be released = (nil,(e,nil))
 			in which case returns 0
 		otherwise tests deprecated = (e,nil)
@@ -341,11 +418,12 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	if ( e->sub[ 1 ] == nil ) return 1;
 	CNInstance *f = cn_instance( e, nil );
 	if (( f )) {
-		if ( f->as_sub[ 0 ] )	// new born
-			return 1;
-		if ( f->as_sub[ 1 ] )	// to be released
+		if ( f->as_sub[ 0 ] ) // new born
+			return !( cn_instance( nil, e ) );
+		if ( f->as_sub[ 1 ] ) // to be released
 			return 0;
-		return !privy;		// deprecated
+		// deprecated
+		return !privy;
 	}
 	return 0;
 }
@@ -461,49 +539,94 @@ dbg_out( "db_remove:\t", e, "\n", db );
 static CNInstance *
 db_op( int op, CNInstance *e, int flag, CNDB *db )
 {
-	CNInstance *nil = db->nil;
+	CNInstance *nil = db->nil, *f;
 	switch ( op ) {
 	case DB_DEPRECATE_OP:
-		/* return "to be manifested" to limbo, keep to be & deprecated as-is,
-		   and mark others "to be released"
-		*/
-		// for each f: ( e, nil ) where there may be ( f, nil ) or ( nil, f )
-		for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-			CNInstance *f = i->ptr;
-			if ( f->sub[ 1 ] != nil ) continue;
+		f = cn_instance( e, nil );
+		if (( f )) {
+			// case newborn, possibly to-be-released or manifested (reassigned)
 			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
-				CNInstance *g = f->as_sub[ 0 ]->ptr;
-				// remove (( e, nil ), nil )
-				db_remove( g, db );
+				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+					CNInstance *g = f->as_sub[ 1 ]->ptr;
+					return g; // already to-be-released
+				}
+				// case manifested
+				if (( cn_instance( nil, e ) )) {
+					// remove (( e, nil ), nil )
+					CNInstance *g = f->as_sub[ 0 ]->ptr;
+					db_remove( g, db );
+				}
+				// create ( nil, ( e, nil )) (to be released)
+				return cn_new( nil, f );
 			}
-			else if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+			// case to-be-released (=> cannot be deprecated or to-be-manifested)
+			else if (( f->as_sub[ 1 ] )) {
 				CNInstance *g = f->as_sub[ 1 ]->ptr;
-				return g; // already to be released
+				return g; // already to-be-released
 			}
-			return f; // already deprecated
+			// case released, possibly to-be-manifested (reborn)
+			CNInstance *k = cn_instance( nil, e );
+			if (( k )) {
+				// cannot be released and manifested
+				CNInstance *g = k->as_sub[ 1 ]->ptr;
+				db_remove( g, db );
+				db_remove( k, db );
+			}
+			return f;
+		}
+		/* neither released, nor newborn, nor to-be-released
+		   possibly manifested or to-be-manifested
+		*/
+		f = cn_instance( nil, e );
+		if (( f ) && ( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+			CNInstance *g = f->as_sub[ 1 ]->ptr;
+			db_remove( g, db );
+			db_remove( f, db );
 		}
 		return cn_new( nil, cn_new( e, nil ) );
 
-	case DB_REHABILITATE_OP:;
-		CNInstance *f = cn_instance( e, nil );
+	case DB_REHABILITATE_OP:
+		f = cn_instance( e, nil );
 		if (( f )) {
+			// case newborn, possibly to-be-released or manifested (reassigned)
 			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
+				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+					CNInstance *g = f->as_sub[ 1 ]->ptr;
+					db_remove( g, db );
+				}
 				CNInstance *g = f->as_sub[ 0 ]->ptr;
-				return g; // already to be manifested
+				return g;
 			}
-			else {
-				// create (( e, nil ), nil ) (reborn)
-				return cn_new( f, nil );
+			// case to-be-released (=> cannot be deprecated or to-be-manifested)
+			else if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+				CNInstance *g = f->as_sub[ 1 ]->ptr;
+				db_remove( g, db );
+				db_remove( f, db );
 			}
+			// case released, possibly to-be-manifested (aka. reborn)
+			else flag = DB_REASSIGN; // cannot be released AND manifested
+		}
+		// case reassignment, possibly manifested or to-be-manifested
+		if ( flag == DB_REASSIGN ) {
+			f = cn_instance( nil, e );
+			if (( f )) {
+				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+					CNInstance *g = f->as_sub[ 1 ]->ptr;
+					return g; // already to-be-manifested
+				}
+				// already manifested - create newborn (reassigned)
+				return cn_new( cn_new( e, nil ), nil );
+			}
+			// create ( nil, ( nil, e )) (to be manifested)
+			return cn_new( nil, cn_new( nil, e ) );
 		}
 		// general case: manifest only if deprecated
-		else if ( flag != DB_REASSIGN ) {
-			return e;
-		}
-		// no break
+		return e;
 
 	case DB_MANIFEST_OP:
-		// create (( e, nil ), nil ) = newborn
+		/* Assumption: flag == DB_NEW
+		   create (( e, nil ), nil ) = newborn
+		*/
 		return cn_new( cn_new( e, nil ), nil );
 	}
 	return NULL;
@@ -513,9 +636,9 @@ db_deprecated( CNInstance *e, CNDB *db )
 /*
 	tests e against ( nil, . ) and ( ., nil )
 	returns 1 if passes, otherwise:
-		tests new born = ((e,nil),nil)
+		tests newborn or reassigned - ((e,nil),nil)
 			in which case returns 0
-		otherwise tests to be released = (nil,(e,nil))
+		tests to be released = (nil,(e,nil))
 			in which case returns 0
 		otherwise tests deprecated = (e,nil)
 			in which case returns 1
@@ -526,7 +649,7 @@ db_deprecated( CNInstance *e, CNDB *db )
 	if ( e->sub[ 1 ] == nil ) return 1;
 	CNInstance *f = cn_instance( e, nil );
 	if (( f )) {
-		if ( f->as_sub[ 0 ] )	// new born
+		if ( f->as_sub[ 0 ] )	// newborn or reassigned
 			return 0;
 		if ( f->as_sub[ 1 ] )	// to be released
 			return 0;
