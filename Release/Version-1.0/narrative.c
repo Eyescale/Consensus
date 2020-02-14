@@ -188,6 +188,7 @@ readNarrative( char *path )
 				end
 				in_( "do_" ) bgn_
 					on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
+					on_( '/' )	do_( "err" )	errnum = ErrSyntaxError;
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
 					on_( '>' )	do_( "do >" )	add_item( &sequence, event );
