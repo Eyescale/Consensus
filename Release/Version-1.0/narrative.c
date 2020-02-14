@@ -65,7 +65,7 @@ readNarrative( char *path )
 					narrative = NULL;
 					errnum = 0;
 	in_( "out" )
-		if ( level == 0 ) {
+		if (( level == 0 ) && (sequence)) {
 			do_( "" )	occurrence_set( stack.occurrence->ptr, &sequence );
 		}
 		else {	do_( "err" )	errnum = ErrUnexpectedEOF; }
@@ -351,14 +351,18 @@ readNarrative( char *path )
 			end
 	in_( "expr_" ) bgn_
 		on_( '\n' )
-			if ( level == 0 ) {
+			if (( level == 0 ) && (sequence)) {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
 						typelse = tab = informed = 0;
 			}
 			else {	do_( "err" )	errnum = ErrUnexpectedCR; }
 		on_( '\t' )	do_( same )
 		on_( ' ' )	do_( same )
-		on_( '/' )	do_( "_/" )
+		on_( '/' )
+			if (( level == 0 ) && (sequence)) {
+				do_( "_/" )
+			}
+			else {	do_( "err" )	errnum = ErrSyntaxError; }
 		on_other	do_( "err" )	errnum = ErrSyntaxError;
 		end
 		in_( "_/" ) bgn_
