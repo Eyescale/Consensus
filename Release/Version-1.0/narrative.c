@@ -65,7 +65,7 @@ readNarrative( char *path )
 					narrative = NULL;
 					errnum = 0;
 	in_( "out" )
-		if (( level == 0 ) && (sequence)) {
+		if ( level == 0 ) {
 			do_( "" )	occurrence_set( stack.occurrence->ptr, &sequence );
 		}
 		else {	do_( "err" )	errnum = ErrUnexpectedEOF; }
@@ -79,8 +79,8 @@ readNarrative( char *path )
 		in_( "term_" )	do_( "out" )	REENTER
 		in_( ">_" )	do_( "out" )	REENTER
 		in_( "_<" )	do_( "out" )	REENTER
-		in_( "_//" )	do_( "out" )	REENTER
 		in_( "//" )	do_( "out" )	REENTER
+		in_( "expr_//" ) do_( "out" )	REENTER
 		in_other	do_( "err" )	errnum = ErrUnexpectedEOF;
 		end
 	in_( "base" ) bgn_
@@ -146,43 +146,60 @@ readNarrative( char *path )
 			end
 			in_( "in" ) bgn_
 				on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
-				on_( '\t' )	do_( "_expr" )	type = IN;
-				on_( ' ' )	do_( "_expr" )	type = IN;
+				on_( '\t' )	do_( "in_" )
+				on_( ' ' )	do_( "in_" )
 				on_other	do_( "err" )	errnum = ErrSyntaxError;
 				end
+				in_( "in_" ) bgn_
+					on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
+					on_( '/' )	do_( "err" )	errnum = ErrSyntaxError;
+					on_( '\t' )	do_( same )
+					on_( ' ' )	do_( same )
+					on_other	do_( "_expr" )	REENTER
+									type = IN;
+					end
 		in_( "o" ) bgn_
 			on_( 'n' )	do_( "on" )
 			on_other	do_( "err" )	errnum = ErrSyntaxError;
 			end
 			in_( "on" ) bgn_
 				on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
-				on_( '\t' )	do_( "_expr" )	type = ON;
-				on_( ' ' )	do_( "_expr" )	type = ON;
+				on_( '\t' )	do_( "on_" )
+				on_( ' ' )	do_( "on_" )
 				on_other	do_( "err" )	errnum = ErrSyntaxError;
 				end
+				in_( "on_" ) bgn_
+					on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
+					on_( '/' )	do_( "err" )	errnum = ErrSyntaxError;
+					on_( '\t' )	do_( same )
+					on_( ' ' )	do_( same )
+					on_other	do_( "_expr" )	REENTER
+									type = ON;
+					end
 		in_( "d" ) bgn_
 			on_( 'o' )	do_( "do" )
 			on_other	do_( "err" )	errnum = ErrSyntaxError;
 			end
 			in_( "do" ) bgn_
 				on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
-				on_( '\t' )	do_( "do_" )	type = DO;
-				on_( ' ' )	do_( "do_" )	type = DO;
+				on_( '\t' )	do_( "do_" )
+				on_( ' ' )	do_( "do_" )
 				on_other	do_( "err" )	errnum = ErrSyntaxError;
 				end
 				in_( "do_" ) bgn_
 					on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
-					on_( '>' )	do_( "do >" )	type = OUTPUT;
-									add_item( &sequence, event );
+					on_( '>' )	do_( "do >" )	add_item( &sequence, event );
 					on_other	do_( "_expr" )	REENTER
+									type = DO;
 					end
 				in_( "do >" ) bgn_
 					on_( '\n' )	do_( "err" )	errnum = ErrUnexpectedCR;
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
-					on_( ':' )	do_( "_expr" )	add_item( &sequence, event );
+					on_( ':' )	do_( "_expr" )	type = OUTPUT;
+									add_item( &sequence, event );
 					on_( '\"' )	do_( "do >\"" )	add_item( &sequence, event );
 					on_other	do_( "err" )	errnum = ErrOutputScheme;
 					end
@@ -200,9 +217,11 @@ readNarrative( char *path )
 							end
 					in_( "do >_" ) bgn_
 						on_( '\n' )	do_( "_expr" )	REENTER
+										type = OUTPUT;
+						on_( ':' )	do_( "_expr" )	type = OUTPUT;
+										add_item( &sequence, event );
 						on_( '\t' )	do_( same )
 						on_( ' ' )	do_( same )
-						on_( ':' )	do_( "_expr" )	add_item( &sequence, event );
 						on_other	do_( "err" )	errnum = ErrOutputScheme;
 						end
 		in_( "e" ) bgn_
@@ -220,22 +239,20 @@ readNarrative( char *path )
 					in_( "else" ) bgn_
 						on_( '\n' )	do_( "_expr" )	REENTER
 										type = ELSE;
-						on_( '\t')	do_( "else_" )	typelse = 1;
-						on_( ' ')	do_( "else_" )	typelse = 1;
-						on_( '/')	do_( "else/" )	type = ELSE;
+						on_( '\t')	do_( "else_" )
+						on_( ' ')	do_( "else_" )
+						on_( '/')	do_( "else/" )
 						on_other	do_( "err" )	errnum = ErrSyntaxError;
 						end
 						in_( "else_" ) bgn_
 							on_( '\n' )	do_( "_expr" )	REENTER
 											type = ELSE;
-											typelse = 0;
 							on_( '\t' )	do_( same )
 							on_( ' ' )	do_( same )
-							on_( 'i' )	do_( "base" )	REENTER
-							on_( 'o' )	do_( "base" )	REENTER
-							on_( 'd' )	do_( "base" )	REENTER
-							on_( '/' )	do_( "else/" )	type = ELSE;
-											typelse = 0;
+							on_( 'i' )	do_( "i" )	typelse = 1;
+							on_( 'o' )	do_( "o" )	typelse = 1;
+							on_( 'd' )	do_( "d" )	typelse = 1;
+							on_( '/' )	do_( "else/" )
 							on_other	do_( "err" )	errnum = ErrSyntaxError;
 							end
 						in_( "else/" ) bgn_
@@ -244,6 +261,7 @@ readNarrative( char *path )
 							end
 							in_( "else//" ) bgn_
 								on_( '\n' )	do_( "_expr" )	REENTER
+												type = ELSE;
 								on_other	do_( same )
 								end
 	in_( "_expr" )	if ( narrative_build( &stack.occurrence, type, typelse, &last_tab, tab ) ) {
@@ -261,7 +279,6 @@ readNarrative( char *path )
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++;
-						// if ( informed ) add_item( &sequence, ' ' );
 						push_position( &stack.position, first );
 						push_sub( stack.sub_expression );
 						add_item( &sequence, event );
@@ -298,15 +315,13 @@ readNarrative( char *path )
 			else {	do_( "err" )	errnum = ErrSequenceSyntaxError; }
 		on_( '?' )
 			if ( !informed && tag_sub( stack.sub_expression ) ) {
-				do_( "?." )	// if ( informed ) add_item( &sequence, ' ' );
-						add_item( &sequence, event );
+				do_( "?." )	add_item( &sequence, event );
 						informed = 1;
 			}
 			else {	do_( "err" )	errnum = (( stack.sub_expression ) ? ErrMarkMultiple : ErrMarkNoSub ); }
 		on_( '.' )
 			if ( !informed ) {
-				do_( "?." )	// if ( informed ) add_item( &sequence, ' ' );
-						add_item( &sequence, event );
+				do_( "?." )	add_item( &sequence, event );
 						informed = 1;
 			}
 			else {	do_( "err" )	errnum = ErrSequenceSyntaxError; }
@@ -314,8 +329,7 @@ readNarrative( char *path )
 		on_separator	do_( "err" )	errnum = ErrSequenceSyntaxError;
 		on_other
 			if ( !informed ) {
-				do_( "term" )	// if ( informed ) add_item( &sequence, ' ' );
-						add_item( &sequence, event );
+				do_( "term" )	add_item( &sequence, event );
 						informed = 1;
 			}
 			else {	do_( "err" )	errnum = ErrSequenceSyntaxError; }
@@ -351,25 +365,25 @@ readNarrative( char *path )
 			end
 	in_( "expr_" ) bgn_
 		on_( '\n' )
-			if (( level == 0 ) && (sequence)) {
+			if ( level == 0 ) {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
 						typelse = tab = informed = 0;
 			}
 			else {	do_( "err" )	errnum = ErrUnexpectedCR; }
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
 		on_( '/' )
-			if (( level == 0 ) && (sequence)) {
-				do_( "_/" )
+			if ( level == 0 ) {
+				do_( "expr_/" )
 			}
 			else {	do_( "err" )	errnum = ErrSyntaxError; }
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
 		on_other	do_( "err" )	errnum = ErrSyntaxError;
 		end
-		in_( "_/" ) bgn_
-			on_( '/' )	do_( "_//" )
+		in_( "expr_/" ) bgn_
+			on_( '/' )	do_( "expr_//" )
 			on_other	do_( "err" )	errnum = ErrSyntaxError;
 			end
-			in_( "_//" ) bgn_
+			in_( "expr_//" ) bgn_
 				on_( '\n' )	do_( "expr_" )	REENTER
 				on_other	do_( same )
 				end
@@ -385,6 +399,10 @@ readNarrative( char *path )
 	else narrative_reorder( narrative );
 	return narrative;
 }
+
+//===========================================================================
+//	newNarrative / freeNarrative
+//===========================================================================
 CNNarrative *
 newNarrative( void )
 {
@@ -402,7 +420,7 @@ freeNarrative( CNNarrative *narrative )
 }
 
 //===========================================================================
-//	narrative_build / narrative_reorder
+//	narrative_build
 //===========================================================================
 static int is_action( int positive, int type );
 static int true_type( int type, int typelse );
@@ -459,35 +477,7 @@ narrative_build( listItem **stack, int type, int typelse, int *prev, int tabs )
 	}
 	return success;
 }
-static void
-narrative_reorder( CNNarrative *narrative )
-{
-	if ( narrative == NULL ) return;
-	CNOccurrence *occurrence = narrative->root;
-	listItem *i = newItem( occurrence ), *stack = NULL;
-	for ( ; ; ) {
-		occurrence = i->ptr;
-		listItem *j = occurrence->data->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
-		else {
-			for ( ; ; ) {
-				if (( i->next )) {
-					i = i->next;
-					break;
-				}
-				else if (( stack )) {
-					i = popListItem( &stack );
-					occurrence = i->ptr;
-					reorderListItem( &occurrence->data->sub );
-				}
-				else {
-					freeItem( i );
-					return;
-				}
-			}
-		}
-	}
-}
+
 static int
 is_action( int positive, int type )
 {
@@ -516,6 +506,39 @@ true_type( int type, int typelse )
 		case OUTPUT: type = ELSE_OUTPUT; break;
 		}
 	return type;
+}
+
+//===========================================================================
+//	narrative_reorder
+//===========================================================================
+static void
+narrative_reorder( CNNarrative *narrative )
+{
+	if ( narrative == NULL ) return;
+	CNOccurrence *occurrence = narrative->root;
+	listItem *i = newItem( occurrence ), *stack = NULL;
+	for ( ; ; ) {
+		occurrence = i->ptr;
+		listItem *j = occurrence->data->sub;
+		if (( j )) { addItem( &stack, i ); i = j; }
+		else {
+			for ( ; ; ) {
+				if (( i->next )) {
+					i = i->next;
+					break;
+				}
+				else if (( stack )) {
+					i = popListItem( &stack );
+					occurrence = i->ptr;
+					reorderListItem( &occurrence->data->sub );
+				}
+				else {
+					freeItem( i );
+					return;
+				}
+			}
+		}
+	}
 }
 
 //===========================================================================
