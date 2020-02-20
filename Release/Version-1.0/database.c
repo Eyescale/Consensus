@@ -25,11 +25,12 @@ freeCNDB( CNDB *db )
 {
 	/* delete all CNDB entities, proceeding top down
 	*/
+	listItem *nil = newItem( db->nil );
 	listItem *stack = NULL;
-	listItem *i = db->index->entries;
+	listItem *i = nil;
 	while (( i )) {
 		CNInstance *e;
-		if (( stack ))
+		if (( stack ) || (nil))
 			e = i->ptr;
 		else {
 			Pair *pair = i->ptr;
@@ -50,13 +51,18 @@ freeCNDB( CNDB *db )
 				i = popListItem( &stack );
 				e = i->ptr;
 			}
+			else if (( nil )) {
+				freeListItem( &nil );
+				i = db->index->entries;
+				break;
+			}
 			else i = NULL;
 		}
 	}
+
 	/* then delete CNDB per se
 	*/
 	freeRegistry( db->index, freename_CB );
-	cn_free( db->nil );
 	freePair((Pair *) db );
 }
 static int

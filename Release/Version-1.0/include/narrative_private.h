@@ -1,22 +1,15 @@
 #ifndef NARRATIVE_PRIVATE_H
 #define NARRATIVE_PRIVATE_H
 
-typedef listItem Sequence;
+// #define DEBUG
 
 static CNOccurrence *newOccurrence( CNOccurrenceType );
 static void freeOccurrence( CNOccurrence * );
-static void occurrence_set( CNOccurrence *, Sequence **sequence );
-static int narrative_build( listItem **stack, int type, int typelse, int *prev, int tabs );
+static void occurrence_set( CNOccurrence *, listItem **sequence );
 static void narrative_reorder( CNNarrative * );
 
-static void push_position( listItem **stack, int first );
-static void add_item( Sequence **Sequence, int event );
-static void freeSequence( Sequence ** );
-static void push_sub( listItem * );
-static void pop_sub( listItem ** );
-static int tag_sub( listItem * );
-
 typedef enum {
+	ErrUnknownState,
 	ErrUnexpectedEOF,
 	ErrSpace,
 	ErrUnexpectedCR,
@@ -43,17 +36,23 @@ static void narrative_report( CNNarrativeError, int line, int column, int tabmar
 
 #define	CNParserBegin( file ) \
 	char *state = "base"; \
-	int event, line=1, column=0, errnum=0, reenter; \
+	int event, line=1, column=0, errnum=0; \
+	struct { int event, state, transition; } caught; \
 	do { \
 		event = fgetc( file ); column++; \
 		do { \
-			reenter = 0; \
+			caught.transition = 0; \
+			caught.state = 0; \
+			caught.event = 1; \
 			DBGMonitor \
 			bgn_
+#define CNParserDefault \
+			end \
+			if ( caught.transition ) ; \
+			else bgn_
 #define CNParserEnd \
 			end \
-			if ( errnum ) reenter = 1; \
-		} while ( reenter ); \
+		} while ( !caught.event ); \
 		if ( event=='\n' ) { line++; column=0; } \
 	} while ( strcmp( state, "" ) );
 
