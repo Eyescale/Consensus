@@ -139,6 +139,7 @@ r_cyclic( Scheme *scheme, Rule *r, listItem **tagged )
 		if ( s_null( schema ) ) continue;
 
 		char *p;
+		int busted = 0;
 		for ( s_init( &p, schema ); ; s_advance( &p, schema ) ) {
 			if ( p[ 0 ] == ' ' )
 				continue;
@@ -152,8 +153,10 @@ r_cyclic( Scheme *scheme, Rule *r, listItem **tagged )
 					break;
 				else if ( rule != r )
 					return 1;
-				else if ( !ns )
+				else if ( !ns && !busted ) {
+					busted = 1;
 					tag++; // schema depends on r
+				}
 			}
 		}
 	}
