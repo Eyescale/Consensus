@@ -1,0 +1,132 @@
+
+
+1. About Lists
+
+	. we have a "list" implementation, starting with
+		do (( *, list ), ( list, * ))
+
+			    v----------- 
+			 ---+--- 	|
+			|       v	|
+		       list     *	|
+			^       |	|
+			 ---+---	|
+			     -----+-----
+			((*,list), current )
+
+	  and subsequently
+		do (( *, list ), ( *list, element ))
+	  	to build
+
+			 rec	 v-------
+			    \ ---+---	 |
+		 rec      ---+---    v	 |
+		    \ ---+---    v   g	 |
+		  ---+---    v   f	 |
+	     	 |       v   e		 |
+	      	list     *		 |
+	     	 ^       |		 |
+	     	  ---+---		 |
+		      ---------+---------
+		     ((*,list), current )
+
+
+	  So that at any time:
+		%(( list, * ), . ) is the first actual record
+		%((( list, * ), . ) . ) is the second record
+		etc.
+		%((( list, * ), ? ) is the first actual element
+		%((( list, * ), . ), ? ) is the second element
+		etc.
+		*list is the current record		// if not (list,*)
+		%((.,?): *list) is the current element	// if not *
+		%((?,.):*list) is the previous record	// if not list
+		etc.
+
+		do { ~(*,list), ~(list,*) } destroys the list entirely
+		do { ~((list,*),.), ((*,list),(list,*)) } destroys the list's contents.
+
+	and we can point to any record (+) in the list, without interfering with
+	the list navigation - e.g. assuming that we have a list of frames, and
+	rule instances created via do ( rule, *frame ), we can query
+		%( ?, *frame ):~( *, frame )
+	and retrieve all the rules that are instantiated in the current frame
+	and not considering the "current" frame pointer itself
+
+
+NOTES:
+	. Another alternative is to
+		do ((*,list), (list,*))
+		and subsequently do ((*,list), (element,*list))
+
+		    --------v
+		   |     ---+---v
+		   |    g    ---+---v
+		   |        f	 ---+---v
+		   |    	e    ---+---
+		   |		    |	    v 
+		   |    	   list     *
+		   |		    ^	    |
+		   |    	     ---+---
+		    ---------+----------
+		    ((*,list), current )
+
+	  the first element then being 'list', as opposed to '*'
+
+		It would seem that (list,*) would then be more easily extractable
+		into a standalone literal. However the extracted literal would still
+		be in LIFO order, as there is simply no easy formalism to grow a list
+		from the inside
+				(a,(b,( ... )))
+			------------------^
+
+	. Alternative model
+		do ((*,list), (*,list))
+		and subsequently do ((*,list) , (element,*list))
+
+		    --------v
+		   |     ---+---v
+		   |    g    ---+---v
+		   |        f	 ---+---v
+		   |    	e    ---+---v
+		   |		    *	|  list
+		    ---------+----------
+		    ((*,list), current )
+
+	  The ( *, list ) entity being pointed to and from, which could make
+	  navigation tricky.
+
+	. Q: What about
+		do ((*,list),(*,list))
+		and then do ((*,list),(*list,element))
+
+	  A: does: do ((*,list),((*,list),e))
+		=> will first do ((*,list),e)
+			=> deprecates the previous ((*,list),(*,list)) assignment
+			=> manifest ((*,list),e)
+		   and then assign (*,list) to ((*,list),e)
+			=> deprecates the previous ((*,list),e) assignment
+			=> THEN manifests ((*,list),((*,list),e))
+		then on the next frame:
+			the event ((*,list),.) would be manifested
+			the event ~((*,list),e) would be manifested as well
+			the event ~((*,list),(*,list)) would be manifested as well
+			and the value *list would be inaccessible (deprecated)
+		then on the next frame:
+			the entity ((*,list),e) would be deleted
+			which would delete ((*,list),((*,list),e))
+		   unless ((*,list),e) is rehabilitated
+			which now would manifest ~((*,list),((*,list),e)
+			as well as ((*,list),e)
+			and then now *list would be accessible as e !
+		unless we do ((*,list),(*,list),e)
+			which now would manifest ~((*,list),((*,list),e)
+			as well as ~((*,list),e)
+			etc.
+
+	in any case: doing ((*,list),((*,list),e)) would be an interesting way
+	to have one time events ((*,list),e) with unaccessible *list value.
+	So I can check do ((*,flash),((*,flash),e))
+		and I can test on ((*,flash),.) or on ((*,flash),e)
+		but I can never access *flash
+

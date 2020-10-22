@@ -23,7 +23,7 @@
 				do input:<
 			else on (( *, input ), . )
 				// could do some preprocessing here
-				do (( *, frame ), ( *input, *frame ))
+				do (( *, frame ), ( *frame, *input ))
 			else on ~( *, input )
 				do EOF
 				do ~( INPUT )
@@ -154,7 +154,7 @@
 		else
 			do ((*,position), %position )
 			in %flag: UNCONSUMED
-				do ((*,event), %((?,.):%frame))
+				do ((*,event), %((.,?):%frame))
 			else do .( READY )
 
 	else on ~%( this, ?:((rule,.),.))
@@ -202,5 +202,5 @@
 	else in .( READY )
 		on (( *, frame ), . )
 			do ~.( READY )
-			do ((*,event), %((?,.):*frame) )
+			do ((*,event), %((.,?):*frame) )
 
