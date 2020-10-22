@@ -30,8 +30,8 @@ Contents
 	The ./design sub-directory holds both external and internal specifications,
 	as well as documentation for this release. The ./design/yak.story file is a
 	prototype, in B% pseudo-code, of the first example implementation. The
-	./design/Schema-fork-on-completion .jpg and .txt files describe the underlying
-	entity behavior and relationship model (EBRM).
+	./design/schema-fork-on-completion .jpg and .txt files describe the underlying
+	entity behavior & relationship model (EBRM).
 
 	More contents will be provided as the work progress. Watch out for updates of
 	this file in order to track the release status.

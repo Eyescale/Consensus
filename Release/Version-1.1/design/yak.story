@@ -124,7 +124,7 @@
 		else do ~( this ) // FAIL
 
 	else in .( COMPLETE )
-		on ~%( this, ?:((schema,.),.))
+		on ~( this, ((schema,.),.))
 			do ~( this ) // FAIL: parent schema failed
 	else in .( READY )
 		on (( *, frame ), . )
@@ -157,7 +157,7 @@
 				do ((*,event), %((.,?):%frame))
 			else do .( READY )
 
-	else on ~%( this, ?:((rule,.),.))
+	else on ~( this, ((rule,.),.))
 		do ~( this ) // FAIL: parent rule failed
 
 	else on (( *, event ), . )

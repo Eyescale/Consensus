@@ -124,7 +124,7 @@ NOTES:
 			as well as ~((*,list),e)
 			etc.
 
-	in any case: doing ((*,list),((*,list),e)) would be an interesting way
+	in any case: doing ((*,list),((*,list),e)) could be an interesting way
 	to have one time events ((*,list),e) with unaccessible *list value.
 	So I can check do ((*,flash),((*,flash),e))
 		and I can test on ((*,flash),.) or on ((*,flash),e)
