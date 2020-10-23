@@ -89,7 +89,7 @@
 				do ((*,s), %? )
 			else error
 		else
-			// output event, unless *f is first CONSUMED schema frame
+			// output event, unless *f is a first CONSUMED schema frame
 			in *f:( frame, * )
 			else in *s:(.,(CONSUMED,*f))
 			else do >: %((.,?):*f)

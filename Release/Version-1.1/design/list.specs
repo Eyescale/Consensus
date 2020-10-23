@@ -117,6 +117,7 @@ NOTES:
 			which would delete ((*,list),((*,list),e))
 		   unless ((*,list),e) is rehabilitated
 			which now would manifest ~((*,list),((*,list),e)
+				- déjà vu
 			as well as ((*,list),e)
 			and then now *list would be accessible as e !
 		unless we do ((*,list),(*,list),e)
