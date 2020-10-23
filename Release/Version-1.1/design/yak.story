@@ -4,7 +4,7 @@
         .EOF
 
 	on init
-		do (( rule, identifier ), ( schema, (a,(b,...,((%,id),...(z,\0)))) ))
+		do (( rule, identifier ), ( schema, (a,(b,...((%,id),...(z,\0)))) ))
 		...
 		do (( *, base ), identifier )
 		do (( *, frame ), ( frame, * ))
