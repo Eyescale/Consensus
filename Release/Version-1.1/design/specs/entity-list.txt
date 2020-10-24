@@ -55,6 +55,25 @@
 
 2. About literals
 
+	We would like to be able to handle (a,(b,(c,...(z,'\0')))) the way
+	we handle string literals in C - and this way even use the notation
+	"abc...z" to simplify expressions, while keeping the internal
+	respresentation would be as exposed above.
+
+	However the key problem is in memory management, as e.g.
+		do ~( *list ) // where ((*,list), (a,(b,(c,...(z,'\0')))))
+	would only deprecate the beginning (a,.) relationship instance,
+	whereas do ~( z,'\0' ) would deprecate all lists with the same ending.
+	One possibility though would be to introduce B%'s own terminator
+	entity, namely \0 (without quote: cf. \ as escape character's true
+	and proper usage), whereby
+		"ab...z" would actually be (a,(b,(c,...,(z,\0))))
+	and we could perform
+		do ~( *list ) // where ((*,list), "ab...z" )
+	appropriately, i.e. using reference counting on the records.
+
+	But this is beyond the scope of this release.
+
 ---------------------------------------------------------------------------
 Notes
 
