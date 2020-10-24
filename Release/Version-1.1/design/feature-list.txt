@@ -1,0 +1,45 @@
+
+Execution Model / Narrative Registry
+	These specs are a pre-requisit for most of the planned features implementation below.
+
+File Format extensions
+
+	1. line continuation	\  
+		like this	// note that there can be space after backslash
+	2. standalone % and *
+		support * also as last character in expression (why not supported?)
+	3. single-character identifier entities - e.g. '\0', '(', '\xhh...' etc.
+		cf. https://en.wikipedia.org/wiki/Escape_sequences_in_C
+		=> modify input, output and expression traversal
+	4. registry variable %?
+	4.1. pre-requisite: narrative registry
+	4.2.
+		on ?: expression
+		in ?: expression
+		%?
+	5. narrative definition
+	5.1. pre-requisite: execution model / narrative registry
+	5.2. parser generates list of narratives, instead of one
+	5.3.
+		: prototype	// Q: what if base narrative? can I have %argv there?
+		this		// Q: what if base narrative?
+		%arg		// replace later occurrences of %arg with %(this:exponent)
+				// Q: what if base narrative?
+		.variable	// replace later occurrence of variable with (this,variable)
+				// Q: what if base narrative?
+		%( )		// declaration: does nothing
+		do .( expr )	// same as do ( this, (expr) )
+				// Q: what if base narrative?
+
+		=> Q: what if base narrative?
+
+Input/Output interface
+		do expression : "format" <	// input
+		do > "format": expression	// output
+
+	1. single-character identifier entities (default)
+	2. "%c" in format
+
+	Q: how to convert a ( list, * ) of single character identifier entities
+	   into a standalone entity? could it be by piping output into input?
+
