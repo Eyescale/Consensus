@@ -128,7 +128,7 @@ Notes
 		=> will first do ((*,list),e)
 			=> deprecates the previous ((*,list),(*,list)) assignment
 			=> manifest ((*,list),e)
-		   and then assign (*,list) to ((*,list),e)
+		   and then assign ((*,list),e) to (*,list)
 			=> deprecates the previous ((*,list),e) assignment
 			=> THEN manifests ((*,list),((*,list),e))
 		then on the next frame:
