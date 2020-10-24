@@ -38,7 +38,7 @@ Contents
 Updates
 	2020/10/24:
 		added ./design/feature-list.txt
-		added ./design/single-character-entity.specs
+		added ./design/specs/single-character-entity.txt
 	2020/10/23:
-		added ./design/list.specs
+		added ./design/specs/list.txt
 
