@@ -1,6 +1,6 @@
 
 Execution Model / Narrative Registry
-	The specs are a pre-requisit for most of the planned features implementation below.
+	The specs are a pre-requisite for most of the planned features implementation below.
 
 File Format extensions
 	1. line continuation	\  
