@@ -35,9 +35,10 @@ File Format extensions
 Input/Output interface
 		do expression : "format" <	// input
 		do > "format": expression	// output
-	1. single-character identifier entities (default)
-	2. "%c" in format
+	1. support single-character identifier entities (default)
+	2. support "%c" in format
 
 	Q: how to convert a ( list, * ) of single character identifier entities
-	   into a standalone entity? could it be by piping output into input?
+	   into a standalone entity - aka. B% literal? could it be by piping output
+	   into input? // Out of scope
 
