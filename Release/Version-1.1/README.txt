@@ -32,8 +32,8 @@ Contents
 	The ./design/schema-fork-on-completion .jpg and .txt files describe the
 	entity behavior & relationship model (EBRM) underlying that example.
 
-	More contents will be provided as work progresses. Watch out for updates in
-	this file in order to track the release status.
+	More contents will be provided as work progresses. Watch out for updates
+	below in order to track the release status.
 
 Updates
 	2020/10/24:
