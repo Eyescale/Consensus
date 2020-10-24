@@ -57,14 +57,14 @@
 
 	We would like to be able to handle (a,(b,(c,...(z,'\0')))) the way
 	we handle string literals in C - and this way even use the notation
-	"abc...z" to simplify expressions, while keeping the internal
-	respresentation would be as exposed above.
+	"abc...z" to simplify expressions, while the internal representation
+	would be as exposed above.
 
-	However the key problem is in memory management, as e.g.
+	The key problem here is memory management, as e.g.
 		do ~( *list ) // where ((*,list), (a,(b,(c,...(z,'\0')))))
 	would only deprecate the beginning (a,.) relationship instance,
 	whereas do ~( z,'\0' ) would deprecate all lists with the same ending.
-	One possibility though would be to introduce B%'s own terminator
+	One solution though would be to introduce B%'s own terminator
 	entity, namely \0 (without quote: cf. \ as escape character's true
 	and proper usage), whereby
 		"ab...z" would actually be (a,(b,(c,...,(z,\0))))
