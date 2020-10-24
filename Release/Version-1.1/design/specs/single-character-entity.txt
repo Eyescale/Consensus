@@ -44,8 +44,8 @@
 			. allow '...' as term
 
 	NOTE:
-	. \identifier (internal "\\identifier") entities are reserved for special usage (TBD)
-	. "identifier" (internal "\"identifier\"") are currently limited to input/output format
+	. \identifier entities are reserved for special usage (TBD)
+	. "identifier" are currently limited to input/output format (internal "\"identifier\"")
 	. in yak.story: the '\0' entity we use to terminate schema could be any singleton, e.g.
 	  we could have (a,(b,...(z,end))) - or could introduce B% own \0 (no quote)
 	  to specify literals.
