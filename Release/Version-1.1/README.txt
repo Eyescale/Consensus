@@ -36,9 +36,9 @@ Contents
 	below in order to track the release status.
 
 Updates
-	2020/10/24:
+	2020/10/24
 		added ./design/feature-list.txt
 		added ./design/specs/single-character-entity.txt
-	2020/10/23:
-		added ./design/specs/list.txt
+	2020/10/23
+		added ./design/specs/entity-list.txt
 

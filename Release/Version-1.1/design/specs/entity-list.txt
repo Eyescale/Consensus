@@ -53,8 +53,12 @@
 	and retrieve all the rules that are instantiated in the current frame
 	and not considering the "current" frame pointer itself
 
+2. About literals
 
-NOTES:
+---------------------------------------------------------------------------
+Notes
+
+  1. About lists
 	. Another alternative is to
 		do ((*,list), (list,*))
 		and subsequently do ((*,list), (element,*list))
@@ -117,7 +121,7 @@ NOTES:
 			which would delete ((*,list),((*,list),e))
 		   unless ((*,list),e) is rehabilitated
 			which now would manifest ~((*,list),((*,list),e)
-				- déjà vu
+				- déjà vu ?
 			as well as ((*,list),e)
 			and then now *list would be accessible as e !
 		unless we do ((*,list),(*,list),e)
