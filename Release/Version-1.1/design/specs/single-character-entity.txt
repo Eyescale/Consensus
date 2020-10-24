@@ -17,8 +17,12 @@
 
 	Note that,
 	1. with the exception of '*' and '%', there should be no other way to create
-	   entities whose name is a separator
+	   entities whose name is or contains a separator
 	2. internal representation of e.g. * and '*' is the same
+	3. backslash usage should be restricted to specific characters - e.g. '\*'
+	   should fail, or mean something entirely other than '*' - and not default
+	   to the ascii representation of the backslashed character - with the
+	   coincidental exceptions of '\\' and '\0'.
 
 	TO BE MODIFIED:
 	. input/output

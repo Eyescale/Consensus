@@ -70,7 +70,8 @@
 		"ab...z" would actually be (a,(b,(c,...,(z,\0))))
 	and we could perform
 		do ~( *list ) // where ((*,list), "ab...z" )
-	appropriately, i.e. using reference counting on the records.
+	appropriately, i.e. using reference counting on the records - or
+	alternatively not allowing to release them at all.
 
 	But this is beyond the scope of this release.
 
