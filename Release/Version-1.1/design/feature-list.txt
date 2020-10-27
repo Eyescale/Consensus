@@ -11,13 +11,13 @@ File Format extensions
 		cf. https://en.wikipedia.org/wiki/Escape_sequences_in_C
 		=> modify input, output and expression traversal
 	4. registry variable %?
-	4.1. pre-requisite: narrative registry
+	4.1. pre-requisite: execution model / narrative registry (specs)
 	4.2.
 		on ?: expression
 		in ?: expression
 		%?
 	5. narrative definition
-	5.1. pre-requisite: execution model / narrative registry
+	5.1. pre-requisite: execution model / narrative registry (specs)
 	5.2. modify readNarrative to generate list of narratives, instead of one
 	5.3.
 		: prototype	// Q: what if base narrative? can I have %argv there?

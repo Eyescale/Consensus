@@ -1,0 +1,115 @@
+
+Consensus Version-1.1
+
+	1. Execution Model
+	2. Narrative Registry
+	3. Change Summary
+
+1. Execution Model
+
+	The first fundamental change in this release, as compared to Version-1.0,
+	is that whereas in v1.0 operations involved only a ( narrative, CNDB )
+	association, we now have ( narrative, ( e, CNDB ) ) instances - where e
+	would be NULL in case of the base narrative.
+
+	To support this change, readNarrative now returns a list of
+		narratives: { [ proto, root ] }
+	where
+		. e.g. "((schema,\%position),(\%flag,\%frame))" is a narrative proto
+		. NULL (or "%argv") is the base narrative proto, which we assume comes
+		  first in the list (reordered).
+
+	Then the system's main loop, which in Version-1.0 was
+		while (cnOperate(narrative,db))
+			cnUpdate(db);
+	now becomes
+		Narrative *base = narratives->ptr;
+		while( cnOperate( base, NULL, db ) )
+			for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+				Narrative *n = i->ptr;
+				db_traverse( n->proto, db, operateCB, n );
+			}
+			cnUpdate( db );
+		}
+
+		static int
+		operateCB( CNInstance *e, CNDB *db, Narrative *n )
+		{
+			cnOperate( n, e, db );
+			return CONTINUE;
+		}
+
+	Notes
+	1. In the model above, we invoke db_traverse( expression=proto, ... ) assuming
+	   that db_traverse treats the %arg in the expression as '.', whereas during
+	   the narrative operation, these should be treated as registry variables.
+	2. Furthermore, as of v1.1, db_traverse() actually expects (db,registry) argument,
+	   vs. db only (see below)
+	3. base narrative "init" and "exit" were previously operation flags. should now be
+	   real CNDB entities.
+
+
+2. Narrative Registry
+
+	The second fundamental change is the introduction of register variables, most
+	notably the variable "%?", but also the variables "this", "%arg", and ".identifier", 
+	all pertaining to narrative instance operations.
+
+	To support, cnOperate must now manage a narrative-instance-specific registry
+	where narrative-instance specific pointers into the CNDB are held
+		%?
+		this	// e
+		%arg	// from e and narrative->proto
+		.locals	// created upon declaration
+
+	and so that, whenever db_traverse() looks up an identifier, it must first search
+	the current active registry, and only if that fails, search db.
+
+	Note here that the usage of these variables should arguably not rely on the
+	sequentiality of the implementation, but adhere to the principle that all operations
+	performed during one frame - or Consensus execution cycle - execute simultaneously. 
+
+	For instance, the working code
+
+		on ?: expression
+			do ~( expression:~%? )
+
+	which guarantees the unicity of the instance characterized by expression, should
+	actually be considered a hack, in that it would transpose into the non-working
+
+		on expression
+			do ~( expression:~expression )
+
+	In other words, the usage of the registry variable %? should be considered the same
+	way one would consider using a #define in C - that is: to simplify expression.
+
+
+3. Change Summary
+
+	1. readNarrative()
+		. must now return a list of narratives:{ [ proto, root ] }
+		  instead of its previous return value [ root, init ]
+
+	2. CNDB "init" and "exit" flags to become real CNDB entities
+		. (nil,init) to be created upon CNDB instantiation
+
+	3. cnOperate
+		. must now take ( narrative, ( e, CNDB ) ) - where e NULL for
+		  base narrative - instead of previously ( narrative, CNDB )
+		. cnOperate( ., NULL, db ) to check and return exit condition
+		. must push narrative-instance-specific registry upon entry,
+		  and pop registry before return
+
+	4. db_traverse
+		. must now take ( db, registry ) instead of previously only db
+		. must lookup identifier first into registry, and only if that
+		  fails, into db
+
+	5. The key other db_ functions to modify are therefore those invoking
+		registryLookup( db->index, identifier )
+	   These are:
+		db_register
+		db_lookup
+		db_instantiate
+		db_identifier
+
