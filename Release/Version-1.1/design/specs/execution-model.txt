@@ -12,17 +12,17 @@ Consensus Version-1.1
 	association, we now have ( narrative, ( e, CNDB ) ) instances - where e
 	would be NULL in case of the base narrative.
 
-	To support this change, readNarrative now returns a list of
+	To support this change, readNarrative must now return a list of
 		narratives: { [ proto, root ] }
 	where
 		. e.g. "((schema,\%position),(\%flag,\%frame))" is a narrative proto
-		. NULL (or "%argv") is the base narrative proto, which we assume comes
+		. "" (or "%argv") is the base narrative proto, which we assume comes
 		  first in the list (reordered).
 
 	Then the system's main loop, which in Version-1.0 was
 		while (cnOperate(narrative,db))
 			cnUpdate(db);
-	now becomes
+	must now become
 		Narrative *base = narratives->ptr;
 		while( cnOperate( base, NULL, db ) )
 			for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
@@ -44,7 +44,7 @@ Consensus Version-1.1
 	   that db_traverse treats the %arg in the expression as '.', whereas during
 	   the narrative operation, these should be treated as registry variables.
 	2. Furthermore, as of v1.1, db_traverse() actually expects (db,registry) argument,
-	   vs. db only (see below)
+	   as opposed to db only (see below)
 	3. base narrative "init" and "exit" were previously operation flags. should now be
 	   real CNDB entities.
 
@@ -56,14 +56,14 @@ Consensus Version-1.1
 	all pertaining to narrative instance operations.
 
 	To support, cnOperate must now manage a narrative-instance-specific registry
-	where narrative-instance specific pointers into the CNDB are held
+	where the following narrative-instance specific pointers into the CNDB are held
 		%?
 		this	// e
 		%arg	// from e and narrative->proto
 		.locals	// created upon declaration
 
 	and so that, whenever db_traverse() looks up an identifier, it must first search
-	the current active registry, and only if that fails, search db.
+	the current active registry, and then, only if that fails, search db.
 
 	Note here that the usage of these variables should arguably not rely on the
 	sequentiality of the implementation, but adhere to the principle that all operations
@@ -102,10 +102,10 @@ Consensus Version-1.1
 
 	4. db_traverse
 		. must now take ( db, registry ) instead of previously only db
-		. must lookup identifier first into registry, and only if that
-		  fails, into db
+		. must lookup identifier first into registry, and then, only if
+		  that fails, into db
 
-	5. The key other db_ functions to modify are therefore those invoking
+	5. The key other db_ functions to be modified are therefore those invoking
 		registryLookup( db->index, identifier )
 	   These are:
 		db_register
