@@ -36,6 +36,8 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/10/27
+		added ./design/specs/execution-model.txt
 	2020/10/24
 		added ./design/feature-list.txt
 		added ./design/specs/single-character-entity.txt
