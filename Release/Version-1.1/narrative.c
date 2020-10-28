@@ -108,21 +108,18 @@ readNarrative( char *path )
 					on_other	do_( "/*" )
 					end
 					in_( "/**/" ) bgn_
+						ons( " \t" )	do_( same )
 						on_( '\n' )	do_( "base" )
-						on_( '\t' )	do_( same )
-						on_( ' ' )	do_( same )
 						end
 		in_( "i" ) bgn_
 			on_( 'n' )	do_( "in" )
 			end
 			in_( "in" ) bgn_
-				on_( '\t' )	do_( "in_" )
-				on_( ' ' )	do_( "in_" )
+				ons( " \t" )	do_( "in_" )
 				end
 				in_( "in_" ) bgn_
-					on_( '\t' )	do_( same )
-					on_( ' ' )	do_( same )
-					on_( '/' )	; // err
+					ons( " \t" )	do_( same )
+					ons( "/\n" )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = IN;
 					end
@@ -130,13 +127,11 @@ readNarrative( char *path )
 			on_( 'n' )	do_( "on" )
 			end
 			in_( "on" ) bgn_
-				on_( '\t' )	do_( "on_" )
-				on_( ' ' )	do_( "on_" )
+				ons( " \t")	do_( "on_" )
 				end
 				in_( "on_" ) bgn_
-					on_( '\t' )	do_( same )
-					on_( ' ' )	do_( same )
-					on_( '/' )	; // err
+					ons( " \t" )	do_( same )
+					ons( "/\n" )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = ON;
 					end
@@ -144,13 +139,11 @@ readNarrative( char *path )
 			on_( 'o' )	do_( "do" )
 			end
 			in_( "do" ) bgn_
-				on_( '\t' )	do_( "do_" )
-				on_( ' ' )	do_( "do_" )
+				ons( " \t")	do_( "do_" )
 				end
 				in_( "do_" ) bgn_
-					on_( '\t' )	do_( same )
-					on_( ' ' )	do_( same )
-					on_( '/' )	; // err
+					ons( " \t" )	do_( same )
+					ons( "/\n" )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = DO;
 					end
@@ -164,17 +157,15 @@ readNarrative( char *path )
 					on_( 'e' )	do_( "else" )
 					end
 					in_( "else" ) bgn_
+						ons( " \t")	do_( "else_" )
 						on_( '\n' )	do_( "_expr" )	REENTER
 										type = ELSE;
-						on_( '\t')	do_( "else_" )
-						on_( ' ')	do_( "else_" )
 						on_( '/')	do_( "else/" )
 						end
 						in_( "else_" ) bgn_
+							ons( " \t" )	do_( same )
 							on_( '\n' )	do_( "_expr" )	REENTER
 											type = ELSE;
-							on_( '\t' )	do_( same )
-							on_( ' ' )	do_( same )
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
 							on_( 'd' )	do_( "d" )	typelse = 1;
@@ -235,10 +226,9 @@ readNarrative( char *path )
 					addItem( &parent->data->sub, occurrence );
 					addItem( &stack.occurrence, occurrence );
 	in_( "expr" ) bgn_
+		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "expr_" )	REENTER
 		on_( '/' )	do_( "expr_" )	REENTER
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
 		on_( '*' )	do_( "*" )
 		on_( '%' )	do_( "%" )
 		on_( '~' )	do_( same )	add_item( &sequence, event );
@@ -302,30 +292,25 @@ readNarrative( char *path )
 			}
 		end
 	in_( "\\" ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
+		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "\\_" )
 		end
 		in_( "\\_" ) bgn_
-			on_( '\t' )	do_( same )
-			on_( ' ' )	do_( same )
+			ons( " \t" )	do_( same )
 			on_other	do_( "expr" )	REENTER
 			end
 	in_( ">" ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
+		ons( " \t" )	do_( same )
 		on_( ':' )	do_( "expr" )	add_item( &sequence, event );
 		on_( '\\' )	do_( ">\\" )
 		on_( '\"' )	do_( ">\"" )	add_item( &sequence, event );
 		end
 		in_( ">\\" ) bgn_
-			on_( '\t' )	do_( same )
-			on_( ' ' )	do_( same )
+			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( ">\\_" )
 			end
 			in_( ">\\_" ) bgn_
-				on_( '\t' )	do_( same )
-				on_( ' ' )	do_( same )
+				ons( " \t" )	do_( same )
 				on_other	do_( ">" )	REENTER
 				end
 		in_( ">\"" ) bgn_
@@ -338,45 +323,39 @@ readNarrative( char *path )
 			on_other	do_( same )	add_item( &sequence, event );
 			end
 		in_( ">\"_\\" ) bgn_
-			on_( ' ' )	do_( ">\"\\" )
-			on_( '\t' )	do_( ">\"\\" )
+			ons( " \t" )	do_( ">\"\\" )
 			on_( '\n' )	do_( ">\"\\_" )
 			on_other	do_( ">\"" )	add_item( &sequence, '\\' );
 							add_item( &sequence, event );
 			end
 		in_( ">\"\\" ) bgn_
-			on_( ' ' )	do_( same )
-			on_( '\t' )	do_( same )
+			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( ">\"\\_" )
 			end
 		in_( ">\"\\_" ) bgn_
-			on_( ' ' )	do_( same )
-			on_( '\t' )	do_( same )
+			ons( " \t" )	do_( same )
 			on_other	do_( ">\"" )	REENTER
 			end
 		in_( ">_" ) bgn_
-			on_( '\t' )	do_( same )
-			on_( ' ' )	do_( same )
+			ons( " \t" )	do_( same )
 			on_( ':' )	do_( "expr" )	add_item( &sequence, event );
 			on_( '\n' )	do_( "expr_" )	REENTER
 			end
 	in_( "%" ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
-		on_( '(' )	do_( "expr" )	REENTER
-						add_item( &sequence, '%' );
-						add_item( &stack.counter, counter );
-						add_item( &stack.marked, marked );
-						counter = marked = 0;
+		ons( " \t" )	do_( same )
 		ons( ":,)" )	do_( "expr" )	REENTER
 						add_item( &sequence, '%' );
 						informed = 1;
 		ons( "/\n" )	do_( "expr_" )	REENTER
 						add_item( &sequence, '%' );
+		on_( '(' )	do_( "expr" )	REENTER
+						add_item( &sequence, '%' );
+						add_item( &stack.counter, counter );
+						add_item( &stack.marked, marked );
+						counter = marked = 0;
 		end
 	in_( "*" ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
+		ons( " \t" )	do_( same )
 		ons( ":,)" )	do_( "expr" )	REENTER
 						add_item( &sequence, '*' );
 						informed = 1;
@@ -384,19 +363,16 @@ readNarrative( char *path )
 						add_item( &sequence, '*' );
 		end
 	in_( "?." ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
-		on_( '\n' )	do_( "expr_" )	REENTER
-		on_( '/' )	do_( "expr_" )	REENTER
+		ons( " \t" )	do_( same )
 		ons( ":,)" )	do_( "expr" )	REENTER
+		ons( "/\n" )	do_( "expr_" )	REENTER
 		end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
 		on_other	do_( same )	add_item( &sequence, event );
 		end
 	in_( "expr_" ) bgn_
-		on_( '\t' )	do_( same )
-		on_( ' ' )	do_( same )
+		ons( " \t" )	do_( same )
 		on_( '\n' )
 			if ( level == 0 ) {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );

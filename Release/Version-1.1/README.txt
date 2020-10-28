@@ -40,10 +40,10 @@ Updates
 		added ./design/task-list.txt
 		feature complete: line continuation after \
 			. also applies to format string
-			. added Test/CN.backslash
+			. added ./Test/CN.backslash
 		feature complete: standalone % entity
 			. modified narrative.c expression.c
-			. added Test/CN.percent
+			. added ./Test/CN.percent
 		added code base from ../Version-1.0
 			. including bugfix strmatch()
 			. supporting narrative statements ending with *
