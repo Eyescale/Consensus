@@ -108,7 +108,7 @@ db_verify_sub( int op, int success,
 			not = !not; p++;
 			break;
 		case '*':
-			if ( strmatch( ":,)", p[1] ) ) {
+			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = xp_match( privy, *x, p, star, *exponent, base, db );
 				if ( success < 0 ) { success = 0; not = 0; }
 				else if ( not ) { success = !success; not = 0; }
@@ -288,7 +288,7 @@ db_substantiate( char *expression, CNDB *db )
 		}
 		switch ( *p ) {
 		case '*':
-			if ( strmatch( ":,)", p[1] ) ) {
+			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				e = p_register( p, db );
 				sub[ ndx ] = newItem( e );
 				p++; break;
@@ -371,7 +371,7 @@ db_void( char *expression, CNDB *db )
 		}
 		switch ( *p ) {
 		case '*':
-			if ( strmatch( ":,)", p[1] ) )
+			if ( !p[1] || strmatch( ":,)", p[1] ) )
 				{ p++; break; }
 			// no break
 		case '~':
@@ -636,7 +636,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 		case '*':
 			if ( !(star_exp) && !not ) {
 				// save star in case we cannot find identifier
-				if ( !strmatch( ":,)", p[1] ) ) {
+				if ( p[1] && !strmatch( ":,)", p[1] ) ) {
 					push_exponent( AS_SUB, 0, &star_exp );
 					push_exponent( AS_SUB, 0, &star_exp );
 					push_exponent( SUB, 1, &star_exp );
@@ -646,7 +646,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 				star_p = p;
 			}
 			// apply dereferencing operator to whatever comes next
-			if ( !strmatch( ":,)", p[1] ) ) {
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
 				push_exponent( SUB, 1, exponent );
 				push_exponent( AS_SUB, 0, exponent );
 				push_exponent( AS_SUB, 1, exponent );
@@ -751,7 +751,7 @@ locate_mark( char *expression, listItem **exponent )
 		case '~':
 			p++; break;
 		case '*':
-			if ( !strmatch( ":,)", p[1] ) ) {
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
 				push_exponent( AS_SUB, 1, exponent );
 				push_exponent( SUB, 0, exponent );
 				push_exponent( SUB, 1, exponent );

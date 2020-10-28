@@ -32,8 +32,6 @@ readNarrative( char *path )
 			| %e : %fmt <
 		term	: %/(\*|\.|\?|[A-Za-z0-9_]+)/
 		fmt	: %/".*"/
-
-	Note: narrative statements ending with '*' are not accepted
 */
 {
 	FILE *file = fopen( path, "r" );

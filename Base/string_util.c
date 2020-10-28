@@ -240,9 +240,11 @@ strscanid( char *str, char **identifier )
 int
 strmatch( char *s, int event )
 {
-	do { if ( event == *s ) return 1; }
-	while ( *s++ );
-	return 0;
+	if ( *s ) {
+		do { if ( event == *s++ ) return 1; } while ( *s );
+		return 0;
+	}
+	return event ? 0 : 1;
 }
 
 /*---------------------------------------------------------------------------

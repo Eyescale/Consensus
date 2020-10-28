@@ -16,7 +16,7 @@ Consensus Version-1.1
 		narratives: { [ proto, root ] }
 	where
 		. e.g. "((schema,\%position),(\%flag,\%frame))" is a narrative proto
-		. "" (or "%argv") is the base narrative proto, which we assume comes
+		. "" (or "\%argv") is the base narrative proto, which we assume comes
 		  first in the list (reordered).
 
 	Then the system's main loop, which in Version-1.0 was
