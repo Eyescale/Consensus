@@ -227,8 +227,7 @@ readNarrative( char *path )
 					addItem( &stack.occurrence, occurrence );
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "expr_" )	REENTER
-		on_( '/' )	do_( "expr_" )	REENTER
+		ons( "/\n" )	do_( "expr_" )	REENTER
 		on_( '*' )	do_( "*" )
 		on_( '%' )	do_( "%" )
 		on_( '~' )	do_( same )	add_item( &sequence, event );
