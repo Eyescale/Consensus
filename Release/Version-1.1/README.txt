@@ -37,6 +37,10 @@ Contents
 
 Updates
 	2020/10/28
+		added ./design/task-list.txt
+		feature complete: line continuation after \
+			. also applies to format string
+			. added Test/CN.backslash
 		feature complete: standalone % entity
 			. modified narrative.c expression.c
 			. added Test/CN.percent

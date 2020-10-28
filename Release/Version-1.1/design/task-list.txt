@@ -1,0 +1,18 @@
+TODO
+	. registry variable %?
+		. internal specs: db_traverse, db_verify, ...
+		. code cleanup: naming convention db_xxx
+		. narrative.c: readNarrative
+		. operation registry
+	. single character identifier entities
+		. narrative.c: readNarrative
+		. operation.c: do_input, do_output
+		. expression.c: db_input, db_output, db_outputf
+	...
+
+DONE
+	. line continuation after \
+		. narrative.c: handle '>' in "expr" vs. "base" state
+		. allow \CR in strings
+	. standalone % entity
+	. standalone * entity

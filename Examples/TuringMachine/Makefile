@@ -7,7 +7,7 @@ SHELL = /bin/sh
 .SUFFIXES: .c .o
 
 INCLUDES = -I. -I./include -I../../Base/include -I../../Release/Version-1.0/include
-LFLAGS = -L../../Base -L../../Release/Version-1.0
+LFLAGS = -L../../Base -L../../Release/Version-1.1
 LIBS = -lcn -lbmod
 
 OBJDIR = .ofiles
@@ -32,7 +32,7 @@ $(OBJS): $(OBJDIR)/%.o: %.c
 clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN)
 	cp ../../Base/libcn.so .
-	cp ../../Release/Version-1.0/libbmod.so .
+	cp ../../Release/Version-1.1/libbmod.so .
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^

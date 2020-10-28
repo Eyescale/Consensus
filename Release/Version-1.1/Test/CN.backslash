@@ -1,0 +1,10 @@
+
+	on init
+		do \
+	>\
+	"- hello, \  	
+	world\n"
+
+		do > "- hey,
+	man\n"
+		do exit

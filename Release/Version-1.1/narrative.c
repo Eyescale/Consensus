@@ -150,37 +150,10 @@ readNarrative( char *path )
 				in_( "do_" ) bgn_
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
-					on_( '>' )	do_( "do >" )	add_item( &sequence, event );
 					on_( '/' )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = DO;
 					end
-				in_( "do >" ) bgn_
-					on_( '\t' )	do_( same )
-					on_( ' ' )	do_( same )
-					on_( ':' )	do_( "_expr" )	type = OUTPUT;
-									add_item( &sequence, event );
-					on_( '\"' )	do_( "do >\"" )	add_item( &sequence, event );
-					end
-					in_( "do >\"" ) bgn_
-						on_( '\t' )	do_( same )	add_item( &sequence, '\\' );
-										add_item( &sequence, 't' );
-						on_( '\"' )	do_( "do >_" )	add_item( &sequence, event );
-						on_( '\\' )	do_( "do >\"\\" ) add_item( &sequence, event );
-						on_other	do_( same )	add_item( &sequence, event );
-						end
-						in_( "do >\"\\" ) bgn_
-							on_( '\n' )	; // err
-							on_other	do_( "do >\"" )	add_item( &sequence, event );
-							end
-					in_( "do >_" ) bgn_
-						on_( '\n' )	do_( "_expr" )	REENTER
-										type = OUTPUT;
-						on_( ':' )	do_( "_expr" )	type = OUTPUT;
-										add_item( &sequence, event );
-						on_( '\t' )	do_( same )
-						on_( ' ' )	do_( same )
-						end
 		in_( "e" ) bgn_
 			on_( 'l' )	do_( "el" )
 			end
@@ -256,8 +229,6 @@ readNarrative( char *path )
 						type==IN ? ELSE_IN :
 						type==ON ? ELSE_ON :
 						type==DO ? ELSE_DO :
-						type==INPUT ? ELSE_INPUT :
-						type==OUTPUT ? ELSE_OUTPUT :
 						ROOT : type );
 		in_( "add" ) REENTER
 			do_( "expr" )	CNOccurrence *parent = stack.occurrence->ptr;
@@ -271,6 +242,19 @@ readNarrative( char *path )
 		on_( '*' )	do_( "*" )
 		on_( '%' )	do_( "%" )
 		on_( '~' )	do_( same )	add_item( &sequence, event );
+		on_( '\\' )	do_( "\\" )
+		on_( '>' )
+			if (( type == DO ) && ( sequence == NULL )) {
+				do_( ">" )	add_item( &sequence, event );
+						CNOccurrence *occurrence = stack.occurrence->ptr;
+						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
+			}
+		on_( '<' )
+			if (( first & FILTERED ) && ( type == DO ) && ( level == 0 )) {
+				do_( "expr_" )	add_item( &sequence, event );
+						CNOccurrence *occurrence = stack.occurrence->ptr;
+						occurrence->type = typelse ? ELSE_INPUT : INPUT;
+			}
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++; counter++;
@@ -288,12 +272,6 @@ readNarrative( char *path )
 				do_( same )	add_item( &sequence, event );
 						if ( first ) first |= FILTERED;
 						informed = 0;
-			}
-		on_( '<' )
-			if (( first & FILTERED ) && ( type == DO ) && ( level == 0 )) {
-				do_( "expr_" )	add_item( &sequence, event );
-						CNOccurrence *occurrence = stack.occurrence->ptr;
-						occurrence->type = typelse ? ELSE_INPUT : INPUT;
 			}
 		on_( ')' )
 			if ( informed && ( level > 0 )) {
@@ -323,6 +301,65 @@ readNarrative( char *path )
 						informed = 1;
 			}
 		end
+	in_( "\\" ) bgn_
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
+		on_( '\n' )	do_( "\\_" )
+		end
+		in_( "\\_" ) bgn_
+			on_( '\t' )	do_( same )
+			on_( ' ' )	do_( same )
+			on_other	do_( "expr" )	REENTER
+			end
+	in_( ">" ) bgn_
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
+		on_( ':' )	do_( "expr" )	add_item( &sequence, event );
+		on_( '\\' )	do_( ">\\" )
+		on_( '\"' )	do_( ">\"" )	add_item( &sequence, event );
+		end
+		in_( ">\\" ) bgn_
+			on_( '\t' )	do_( same )
+			on_( ' ' )	do_( same )
+			on_( '\n' )	do_( ">\\_" )
+			end
+			in_( ">\\_" ) bgn_
+				on_( '\t' )	do_( same )
+				on_( ' ' )	do_( same )
+				on_other	do_( ">" )	REENTER
+				end
+		in_( ">\"" ) bgn_
+			on_( '\\' )	do_( ">\"_\\" )
+			on_( '\t' )	do_( same )	add_item( &sequence, '\\' );
+							add_item( &sequence, 't' );
+			on_( '\n' )	do_( same )	add_item( &sequence, '\\' );
+							add_item( &sequence, 'n' );
+			on_( '\"' )	do_( ">_" )	add_item( &sequence, event );
+			on_other	do_( same )	add_item( &sequence, event );
+			end
+		in_( ">\"_\\" ) bgn_
+			on_( ' ' )	do_( ">\"\\" )
+			on_( '\t' )	do_( ">\"\\" )
+			on_( '\n' )	do_( ">\"\\_" )
+			on_other	do_( ">\"" )	add_item( &sequence, '\\' );
+							add_item( &sequence, event );
+			end
+		in_( ">\"\\" ) bgn_
+			on_( ' ' )	do_( same )
+			on_( '\t' )	do_( same )
+			on_( '\n' )	do_( ">\"\\_" )
+			end
+		in_( ">\"\\_" ) bgn_
+			on_( ' ' )	do_( same )
+			on_( '\t' )	do_( same )
+			on_other	do_( ">\"" )	REENTER
+			end
+		in_( ">_" ) bgn_
+			on_( '\t' )	do_( same )
+			on_( ' ' )	do_( same )
+			on_( ':' )	do_( "expr" )	add_item( &sequence, event );
+			on_( '\n' )	do_( "expr_" )	REENTER
+			end
 	in_( "%" ) bgn_
 		on_( '\t' )	do_( same )
 		on_( ' ' )	do_( same )
