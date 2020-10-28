@@ -108,15 +108,14 @@ db_verify_sub( int op, int success,
 			not = !not; p++;
 			break;
 		case '*':
+		case '%':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = xp_match( privy, *x, p, star, *exponent, base, db );
 				if ( success < 0 ) { success = 0; not = 0; }
 				else if ( not ) { success = !success; not = 0; }
-				p++; break;
+				p++;
 			}
-			// no break
-		case '%':
-			if ( xp_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
+			else if ( xp_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
 				success = not; not = 0;
 				p = p_prune( PRUNE_DEFAULT, p+1 );
 			}
@@ -288,6 +287,7 @@ db_substantiate( char *expression, CNDB *db )
 		}
 		switch ( *p ) {
 		case '*':
+		case '%':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				e = p_register( p, db );
 				sub[ ndx ] = newItem( e );
@@ -295,7 +295,6 @@ db_substantiate( char *expression, CNDB *db )
 			}
 			// no break
 		case '~':
-		case '%':
 			// db_void made sure we do have results
 			sub[ ndx ] = db_fetch( p, db );
 			p = p_prune( PRUNE_DEFAULT, p );
@@ -371,11 +370,11 @@ db_void( char *expression, CNDB *db )
 		}
 		switch ( *p ) {
 		case '*':
+		case '%':
 			if ( !p[1] || strmatch( ":,)", p[1] ) )
 				{ p++; break; }
 			// no break
 		case '~':
-		case '%':
 			if ( empty || !db_feel( p, DB_CONDITION, db ) )
 				return 1;
 			p = p_prune( PRUNE_DEFAULT, p );
@@ -581,14 +580,16 @@ static char *
 p_extract( char *p )
 {
 	CNString *s = newString();
-	if ( *p != '*' ) {
-		for ( char *q=p; *q; q++ ) {
-			if ( is_separator( *q ) )
-				break;
+	switch ( *p ) {
+	case '*':
+	case '%':
+		StringAppend( s, *p );
+		break;
+	default:
+		for ( char *q=p; !is_separator(*q); q++ ) {
 			StringAppend( s, *q );
 		}
 	}
-	else StringAppend( s, '*' );
 	char *term = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
@@ -653,8 +654,12 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			locate_mark( p+1, &mark_exp );
-			p++; break;
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
+				locate_mark( p+1, &mark_exp );
+				p++; break;
+			}
+			else if ( not ) p++;
+			else scope = 0;
 		case '(':
 			scope++;
 			icast.value = tuple;
@@ -758,7 +763,10 @@ locate_mark( char *expression, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			p = p_prune( PRUNE_COLON, p );
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
+				p = p_prune( PRUNE_COLON, p );
+			}
+			else p++;
 			break;
 		case '(':
 			scope++;

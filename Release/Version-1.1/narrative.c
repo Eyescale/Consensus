@@ -316,7 +316,6 @@ readNarrative( char *path )
 				do_( "?." )	add_item( &sequence, event );
 						informed = 1;
 			}
-		on_( '/' )	do_( "expr_" )	REENTER
 		on_separator	; // err
 		on_other
 			if ( !informed ) {
@@ -324,33 +323,40 @@ readNarrative( char *path )
 						informed = 1;
 			}
 		end
-		in_( "%" ) bgn_
-			on_( '(' )	do_( "expr" )	REENTER
-							add_item( &sequence, '%' );
-							add_item( &stack.counter, counter );
-							add_item( &stack.marked, marked );
-							counter = marked = 0;
-			end
-		in_( "*" ) bgn_
-			on_( '\t' )	do_( same )
-			on_( ' ' )	do_( same )
-			ons( ":,)" )	do_( "expr" )	REENTER
-							add_item( &sequence, '*' );
-							informed = 1;
-			on_other	do_( "expr" )	REENTER
-							add_item( &sequence, '*' );
-			end
-		in_( "?." ) bgn_
-			on_( '\t' )	do_( same )
-			on_( ' ' )	do_( same )
-			on_( '\n' )	do_( "expr_" )	REENTER
-			on_( '/' )	do_( "expr_" )	REENTER
-			ons( ":,)" )	do_( "expr" )	REENTER
-			end
-		in_( "term" ) bgn_
-			on_separator	do_( "expr" )	REENTER
-			on_other	do_( same )	add_item( &sequence, event );
-			end
+	in_( "%" ) bgn_
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
+		on_( '(' )	do_( "expr" )	REENTER
+						add_item( &sequence, '%' );
+						add_item( &stack.counter, counter );
+						add_item( &stack.marked, marked );
+						counter = marked = 0;
+		ons( ":,)" )	do_( "expr" )	REENTER
+						add_item( &sequence, '%' );
+						informed = 1;
+		ons( "/\n" )	do_( "expr_" )	REENTER
+						add_item( &sequence, '%' );
+		end
+	in_( "*" ) bgn_
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
+		ons( ":,)" )	do_( "expr" )	REENTER
+						add_item( &sequence, '*' );
+						informed = 1;
+		on_other	do_( "expr" )	REENTER
+						add_item( &sequence, '*' );
+		end
+	in_( "?." ) bgn_
+		on_( '\t' )	do_( same )
+		on_( ' ' )	do_( same )
+		on_( '\n' )	do_( "expr_" )	REENTER
+		on_( '/' )	do_( "expr_" )	REENTER
+		ons( ":,)" )	do_( "expr" )	REENTER
+		end
+	in_( "term" ) bgn_
+		on_separator	do_( "expr" )	REENTER
+		on_other	do_( same )	add_item( &sequence, event );
+		end
 	in_( "expr_" ) bgn_
 		on_( '\t' )	do_( same )
 		on_( ' ' )	do_( same )
@@ -364,13 +370,13 @@ readNarrative( char *path )
 				do_( "expr_/" )
 			}
 		end
-		in_( "expr_/" ) bgn_
-			on_( '/' )	do_( "expr_//" )
-			end
-			in_( "expr_//" ) bgn_
-				on_( '\n' )	do_( "expr_" )	REENTER
-				on_other	do_( same )
-				end
+	in_( "expr_/" ) bgn_
+		on_( '/' )	do_( "expr_//" )
+		end
+	in_( "expr_//" ) bgn_
+		on_( '\n' )	do_( "expr_" )	REENTER
+		on_other	do_( same )
+		end
 
 	CNParserDefault
 		in_( "EOF" )

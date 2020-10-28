@@ -1,0 +1,9 @@
+
+	on init
+		do ( %, test )
+		do ((*,test),%)
+	else
+		do >"%_\n":.
+		in *test: %
+			do >"all is well: %_\n" : *test
+		do exit
