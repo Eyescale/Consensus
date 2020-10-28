@@ -36,6 +36,10 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/10/28
+		added code base from ../Version-1.0
+			. including bugfix strmatch()
+			. supporting narrative statements ending with *
 	2020/10/27
 		added ./design/specs/execution-model.txt
 	2020/10/24
