@@ -12,13 +12,7 @@
 //===========================================================================
 //	db_feel
 //===========================================================================
-typedef struct {
-	int privy;
-	char *expression;
-	DBTraverseCB *user_CB;
-	void *user_data;
-} DBTraverseData;
-static DBTraverseCB traverse_CB;
+static int db_verify( int privy, CNInstance *, char *expression, CNDB * );
 
 int
 db_feel( char *expression, CNDB *db, DBLogType type )
@@ -34,16 +28,9 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 		privy = 0;
 		break;
 	}
-
-	DBTraverseData data;
-	data.privy = privy;
-	data.expression = expression;
-	data.user_CB = NULL;
-	data.user_data = NULL;
-
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( traverse_CB( e, db, &data ) == DB_DONE ) {
+		if ( db_verify( privy, e, expression, db ) ) {
 			freeListItem( &s );
 			return 1;
 		}
@@ -54,6 +41,14 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 //===========================================================================
 //	db_traverse
 //===========================================================================
+typedef struct {
+	int privy;
+	char *expression;
+	DBTraverseCB *user_CB;
+	void *user_data;
+} DBTraverseData;
+static DBTraverseCB traverse_CB;
+
 static int xp_traverse( int privy, CNInstance *, listItem *xpn, CNDB *, DBTraverseCB, void * );
 
 int
@@ -93,7 +88,6 @@ db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	}
 }
 
-static int db_verify( int privy, CNInstance *, char *expression, CNDB * );
 static int
 traverse_CB( CNInstance *e, CNDB *db, void *user_data )
 {

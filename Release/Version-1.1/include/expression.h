@@ -15,7 +15,7 @@ void	bm_release( char *expression, CNDB * );
 void	bm_outputf( char *format, char *expression, CNDB * );
 void	bm_output( char *expression, CNDB * );
 int     bm_verify( int op, int success, CNInstance **, char **position,
-        listItem **mark_exp, listItem **mark_pos, VerifyData * );
+        	listItem **mark_exp, listItem **mark_pos, VerifyData * );
 CNInstance * bm_lookup( int privy, char *position, CNDB *db );
 
 typedef enum {

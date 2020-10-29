@@ -364,6 +364,194 @@ p_extract( char *p )
 }
 
 //===========================================================================
+//	bm_verify
+//===========================================================================
+static int bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
+	listItem *exponent, listItem *base, CNDB *db );
+
+int
+bm_verify( int op, int success,
+	CNInstance **x, char **position,
+	listItem **mark_exp, listItem **mark_pos,
+	VerifyData *data )
+/*
+	invoked by xp_verify on each [sub-]expression, i.e.
+	on each expression term starting with '*' or '%'
+	Note that *variable is same as %((*,variable),?)
+*/
+{
+	char *p = *position;
+	listItem *base;
+	int scope, OOS;
+	int not = 0;
+
+	switch ( op ) {
+	case SUB_NONE:
+		success = 0;
+		base = NULL;
+		scope = 1;
+		OOS = 0;
+		break;
+	case SUB_START:
+		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+		// Note that star may be null (not instantiated)
+		if ( *p++ == '*' ) {
+			CNInstance *y = (*x)->sub[ 0 ];
+			if (( y == NULL ) || ( y->sub[ 0 ] == NULL ) ||
+			    ( y->sub[ 0 ] != data->star )) {
+				 *x = NULL; return 0;
+			}
+			else *x = y->sub[ 1 ];
+		}
+		success = 0;
+		base = data->stack.exponent;
+		scope = (int) data->stack.scope->ptr;
+		OOS = scope - 1;
+		break;
+	case SUB_FINISH:;
+		if ((int) popListItem( &data->stack.neg ))
+			success = !success;
+		base = popListItem( &data->stack.base );
+		scope = (int) data->stack.scope->ptr;
+		char *start_p = popListItem( &data->stack.p );
+		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
+			scope++; // e.g. %( ... ) or *( ... )
+		popListItem( &data->stack.scope );
+		OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
+		break;
+	}
+	
+	union { int value; void *ptr; } icast;
+	int privy = data->privy;
+	CNDB *db = data->db;
+	CNInstance *star = data->star;
+	listItem **exponent = &data->stack.exponent;
+
+	int done = 0;
+	while ( *p && !(*mark_exp) && !done ) {
+		// fprintf( stderr, "scanning: '%c'\n", *p );
+		switch ( *p ) {
+		case '~':
+			not = !not; p++;
+			break;
+		case '*':
+		case '%':
+			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				success = bm_match( privy, *x, p, star, *exponent, base, db );
+				if ( success < 0 ) { success = 0; not = 0; }
+				else if ( not ) { success = !success; not = 0; }
+				p++;
+			}
+			else if ( bm_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
+				success = not; not = 0;
+				p = p_prune( PRUNE_DEFAULT, p+1 );
+			}
+			else if ( *p == '*' )
+				xpn_add( mark_exp, SUB, 1 );
+			else {
+				p_locate( p+1, "?", mark_exp );
+				if ( *mark_exp == NULL ) p++;
+			}
+			break;
+		case '(':
+			scope++;
+			icast.value = data->couple;
+			addItem( &data->stack.couple, icast.ptr );
+			if ( p_single( p ) ) data->couple = 0;
+			else {
+				data->couple = 1;
+				xpn_add( exponent, AS_SUB, 0 );
+			}
+			icast.value = not;
+			addItem( &data->stack.not, icast.ptr );
+			not = 0; p++;
+			break;
+		case ':':
+			if (( op == SUB_START ) && ( scope==OOS+1 ))
+				{ done = 1; break; }
+			if ( success ) { p++; }
+			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			break;
+		case ',':
+			if ( scope <= OOS+1 ) { done = 1; break; }
+			popListItem( exponent );
+			xpn_add( exponent, AS_SUB, 1 );
+			if ( success ) { p++; }
+			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			break;
+		case ')':
+			scope--;
+			if ( scope <= OOS ) { done = 1; break; }
+			if ( data->couple ) {
+				popListItem( exponent );
+			}
+			data->couple = (int) popListItem( &data->stack.couple );
+			if (( op == SUB_START ) && ( scope==OOS+1 ))
+			    { done = 1; break; }
+			not = (int) popListItem( &data->stack.not );
+			if ( not ) { success = !success; not = 0; }
+			p++;
+			break;
+		case '.':
+		case '?':
+			if ( not ) { success = 0; not = 0; }
+			else if ( data->empty ) success = 0;
+#ifdef TRIM
+			else if ( wildcard_opt( p, data->btree ) ) success = 1;
+#endif
+			else success = ( bm_match( privy, *x, NULL, star, *exponent, base, db ) > 0 );
+			p++;
+			break;
+		default:
+			success = bm_match( privy, *x, p, star, *exponent, base, db );
+			if ( success < 0 ) { success = 0; not = 0; }
+			else if ( not ) { success = !success; not = 0; }
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		}
+	}
+	if (( *mark_exp )) {
+		for ( listItem *i=*exponent; i!=base; i=i->next )
+			addItem( mark_pos, i->ptr );
+		icast.value = scope;
+		addItem( &data->stack.scope, icast.ptr );
+		icast.value = not;
+		addItem( &data->stack.neg, icast.ptr );
+		addItem( &data->stack.base, base );
+		addItem( &data->stack.p, p );
+	}
+	*position = p;
+#ifdef DEBUG
+	if (( *mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
+	else fprintf( stderr, "bm_verify: returning %d, at %s\n", success, p );
+#endif
+	return success;
+}
+
+static int
+bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
+	listItem *exponent, listItem *base, CNDB *db )
+/*
+	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
+	is either NULL or the exponent of p as expression term
+*/
+{
+	listItem *xpn = NULL;
+	for ( listItem *i = exponent; i!=base; i=i->next ) {
+		addItem( &xpn, i->ptr );
+	}
+	CNInstance *y = x;
+	while (( y ) && (xpn)) {
+		int exp = (int) popListItem( &xpn );
+		y = y->sub[ exp & 1 ];
+	}
+	if ( y == NULL ) return -1;
+	if ( p == NULL ) return 1;
+	if ( *p == '*' ) return ( y == star );
+	return ( y == bm_lookup( privy, p, db ));
+}
+
+//===========================================================================
 //	p_locate
 //===========================================================================
 static char *locate_mark( char *expression, listItem **exponent );
@@ -638,194 +826,6 @@ p_skip( char *p, PruneData *prune )
 		}
 	}
 	return prune->level;
-}
-
-//===========================================================================
-//	bm_verify
-//===========================================================================
-static int bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
-	listItem *exponent, listItem *base, CNDB *db );
-
-int
-bm_verify( int op, int success,
-	CNInstance **x, char **position,
-	listItem **mark_exp, listItem **mark_pos,
-	VerifyData *data )
-/*
-	invoked by xp_verify on each [sub-]expression, i.e.
-	on each expression term starting with '*' or '%'
-	Note that *variable is same as %((*,variable),?)
-*/
-{
-	char *p = *position;
-	listItem *base;
-	int scope, OOS;
-	int not = 0;
-
-	switch ( op ) {
-	case SUB_NONE:
-		success = 0;
-		base = NULL;
-		scope = 1;
-		OOS = 0;
-		break;
-	case SUB_START:
-		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
-		// Note that star may be null (not instantiated)
-		if ( *p++ == '*' ) {
-			CNInstance *y = (*x)->sub[ 0 ];
-			if (( y == NULL ) || ( y->sub[ 0 ] == NULL ) ||
-			    ( y->sub[ 0 ] != data->star )) {
-				 *x = NULL; return 0;
-			}
-			else *x = y->sub[ 1 ];
-		}
-		success = 0;
-		base = data->stack.exponent;
-		scope = (int) data->stack.scope->ptr;
-		OOS = scope - 1;
-		break;
-	case SUB_FINISH:;
-		if ((int) popListItem( &data->stack.neg ))
-			success = !success;
-		base = popListItem( &data->stack.base );
-		scope = (int) data->stack.scope->ptr;
-		char *start_p = popListItem( &data->stack.p );
-		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
-			scope++; // e.g. %( ... ) or *( ... )
-		popListItem( &data->stack.scope );
-		OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
-		break;
-	}
-	
-	union { int value; void *ptr; } icast;
-	int privy = data->privy;
-	CNDB *db = data->db;
-	CNInstance *star = data->star;
-	listItem **exponent = &data->stack.exponent;
-
-	int done = 0;
-	while ( *p && !(*mark_exp) && !done ) {
-		// fprintf( stderr, "scanning: '%c'\n", *p );
-		switch ( *p ) {
-		case '~':
-			not = !not; p++;
-			break;
-		case '*':
-		case '%':
-			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = bm_match( privy, *x, p, star, *exponent, base, db );
-				if ( success < 0 ) { success = 0; not = 0; }
-				else if ( not ) { success = !success; not = 0; }
-				p++;
-			}
-			else if ( bm_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
-				success = not; not = 0;
-				p = p_prune( PRUNE_DEFAULT, p+1 );
-			}
-			else if ( *p == '*' )
-				xpn_add( mark_exp, SUB, 1 );
-			else {
-				p_locate( p+1, "?", mark_exp );
-				if ( *mark_exp == NULL ) p++;
-			}
-			break;
-		case '(':
-			scope++;
-			icast.value = data->couple;
-			addItem( &data->stack.couple, icast.ptr );
-			if ( p_single( p ) ) data->couple = 0;
-			else {
-				data->couple = 1;
-				xpn_add( exponent, AS_SUB, 0 );
-			}
-			icast.value = not;
-			addItem( &data->stack.not, icast.ptr );
-			not = 0; p++;
-			break;
-		case ':':
-			if (( op == SUB_START ) && ( scope==OOS+1 ))
-				{ done = 1; break; }
-			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
-			break;
-		case ',':
-			if ( scope <= OOS+1 ) { done = 1; break; }
-			popListItem( exponent );
-			xpn_add( exponent, AS_SUB, 1 );
-			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
-			break;
-		case ')':
-			scope--;
-			if ( scope <= OOS ) { done = 1; break; }
-			if ( data->couple ) {
-				popListItem( exponent );
-			}
-			data->couple = (int) popListItem( &data->stack.couple );
-			if (( op == SUB_START ) && ( scope==OOS+1 ))
-			    { done = 1; break; }
-			not = (int) popListItem( &data->stack.not );
-			if ( not ) { success = !success; not = 0; }
-			p++;
-			break;
-		case '.':
-		case '?':
-			if ( not ) { success = 0; not = 0; }
-			else if ( data->empty ) success = 0;
-#ifdef TRIM
-			else if ( wildcard_opt( p, data->btree ) ) success = 1;
-#endif
-			else success = ( bm_match( privy, *x, NULL, star, *exponent, base, db ) > 0 );
-			p++;
-			break;
-		default:
-			success = bm_match( privy, *x, p, star, *exponent, base, db );
-			if ( success < 0 ) { success = 0; not = 0; }
-			else if ( not ) { success = !success; not = 0; }
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		}
-	}
-	if (( *mark_exp )) {
-		for ( listItem *i=*exponent; i!=base; i=i->next )
-			addItem( mark_pos, i->ptr );
-		icast.value = scope;
-		addItem( &data->stack.scope, icast.ptr );
-		icast.value = not;
-		addItem( &data->stack.neg, icast.ptr );
-		addItem( &data->stack.base, base );
-		addItem( &data->stack.p, p );
-	}
-	*position = p;
-#ifdef DEBUG
-	if (( *mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
-	else fprintf( stderr, "bm_verify: returning %d, at %s\n", success, p );
-#endif
-	return success;
-}
-
-static int
-bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
-	listItem *exponent, listItem *base, CNDB *db )
-/*
-	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
-	is either NULL or the exponent of p as expression term
-*/
-{
-	listItem *xpn = NULL;
-	for ( listItem *i = exponent; i!=base; i=i->next ) {
-		addItem( &xpn, i->ptr );
-	}
-	CNInstance *y = x;
-	while (( y ) && (xpn)) {
-		int exp = (int) popListItem( &xpn );
-		y = y->sub[ exp & 1 ];
-	}
-	if ( y == NULL ) return -1;
-	if ( p == NULL ) return 1;
-	if ( *p == '*' ) return ( y == star );
-	return ( y == bm_lookup( privy, p, db ));
 }
 
 //===========================================================================
