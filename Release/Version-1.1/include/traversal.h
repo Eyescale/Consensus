@@ -22,6 +22,12 @@ enum {
 typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
 int db_traverse( char *expression, CNDB *, DBTraverseCB, void * );
 
+// utility
+void xpn_out( FILE *stream, listItem *xp );
+
+//===========================================================================
+//	Interface with bm_verify
+//===========================================================================
 enum {
 	SUB_NONE,
 	SUB_START,
@@ -48,7 +54,5 @@ typedef struct {
 	int couple;
 } VerifyData;
 
-// utility
-void xpn_out( FILE *stream, listItem *xp );
 
 #endif	// TRAVERSAL_H
