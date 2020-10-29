@@ -225,52 +225,6 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 //===========================================================================
 //	CNDB operation
 //===========================================================================
-int
-db_feel( char *expression, DBLogType type, CNDB *db )
-{
-	int privy;
-	switch ( type ) {
-	case DB_CONDITION:
-		return db_traverse( expression, db, NULL, NULL );
-	case DB_RELEASED:
-		privy = 1;
-		break;
-	case DB_INSTANTIATED:
-		privy = 0;
-		break;
-	}
-	CNInstance *nil = db->nil;
-#ifdef DEBUG
-	if (( privy )) fprintf( stderr, "db_feel: (%s,) {\n", expression );
-	else fprintf( stderr, "db_feel: (,%s) {\n", expression );
-	for ( listItem *i=nil->as_sub[ privy ]; i!=NULL; i=i->next ) {
-		CNInstance *g = i->ptr;
-		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
-		CNInstance *x = g->sub[ !privy ];
-		if (( x->sub[ 0 ] == nil ) || ( x->sub[ 1 ] == nil ))
-			continue;
-		dbg_out( "db_feel:\t", g, NULL, db );
-		if ( db_verify( privy, x, expression, db ) ) {
-			fprintf( stderr, " - found\n" );
-			fprintf( stderr, "db_feel: }\n" );
-			return 1;
-		}
-		else fprintf( stderr, " - no match\n" );
-	}
-	fprintf( stderr, "db_feel: }\n" );
-#else	// DEBUG
-	for ( listItem *i=nil->as_sub[ privy ]; i!=NULL; i=i->next ) {
-		CNInstance *g = i->ptr;
-		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
-		CNInstance *x = g->sub[ !privy ];
-		if (( x->sub[ 0 ] == nil ) || ( x->sub[ 1 ] == nil ))
-			continue;
-		if ( db_verify( privy, x, expression, db ) )
-			return 1;
-	}
-#endif	// DEBUG
-	return 0;
-}
 CNInstance *
 db_register( char *identifier, CNDB *db )
 {
@@ -397,6 +351,92 @@ db_deprecate( CNInstance *x, CNDB *db )
 //===========================================================================
 //	CNDB query
 //===========================================================================
+int
+db_is_empty( CNDB *db )
+{
+	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		if ( !db_private( 0, entry->value, db ) )
+			return 0;
+	}
+	return 1;
+}
+CNInstance *
+db_first( CNDB *db, listItem **stack )
+{
+	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		CNInstance *e = entry->value;
+		if ( !db_private( 0, e, db ) ) {
+			addItem( stack, i );
+			return e;
+		}
+	}
+	return NULL;
+}
+CNInstance *
+db_next( CNDB *db, CNInstance *e, listItem **stack )
+{
+	if ( e == NULL ) return NULL;
+	if (( e->as_sub[ 0 ] )) {
+		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+			e = i->ptr;
+			if ( e == NULL ) {
+				exit( 0 );
+			}
+			if ( !db_private( 0, e, db ) ) {
+				addItem( stack, i );
+				return e;
+			}
+		}
+	}
+	listItem *i = popListItem( stack );
+	for ( ; ; ) {
+		if (( i->next )) {
+			i = i->next;
+			if (( *stack ))
+				e = i->ptr;
+			else {
+				// e in db->index
+				Pair *entry = i->ptr;
+				e = entry->value;
+			}
+			if ( !db_private( 0, e, db ) ) {
+				addItem( stack, i );
+				return e;
+			}
+		}
+		else if (( *stack )) {
+			i = popListItem( stack );
+		}
+		else return NULL;
+	}
+}
+CNInstance *
+db_log( int first, int released, CNDB *db, listItem **stack )
+/*
+	returns first / next e verifying
+		if released: ( e, nil )
+		if !released: ( nil, e )
+		where e != (nil,.) (.,nil)
+*/
+{
+	CNInstance *nil = db->nil;
+	listItem *i = first ?
+		nil->as_sub[ released ? 1 : 0 ] :
+		((listItem *) popListItem( stack ))->next;
+
+	for ( ; i!=NULL; i=i->next ) {
+		CNInstance *g = i->ptr;
+		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
+		CNInstance *e = g->sub[ released ? 0 : 1 ];
+		if (( e->sub[ 0 ] == nil ) || ( e->sub[ 1 ] == nil ))
+			continue;
+		addItem( stack, i );
+		return e;
+	}
+	return NULL;
+}
 CNInstance *
 db_lookup( int privy, char *identifier, CNDB *db )
 {

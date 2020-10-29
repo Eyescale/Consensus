@@ -8,16 +8,19 @@
 //===========================================================================
 //	DB traversal
 //===========================================================================
+typedef enum {
+        DB_CONDITION,
+        DB_INSTANTIATED,
+        DB_RELEASED
+} DBLogType;
+int db_feel( char *expression, CNDB *, DBLogType );
+
 enum {
 	DB_CONTINUE,
 	DB_DONE
 };
 typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
-
 int db_traverse( char *expression, CNDB *, DBTraverseCB, void * );
-int db_is_empty( CNDB * );
-CNInstance *db_first( CNDB *, listItem ** );
-CNInstance *db_next( CNDB *, CNInstance *, listItem ** );
 
 enum {
 	SUB_NONE,
@@ -44,7 +47,6 @@ typedef struct {
 	CNInstance *star;
 	int couple;
 } VerifyData;
-int xp_verify( int privy, CNInstance *x, char *expression, CNDB *, VerifyData * );
 int xp_match( int privy, CNInstance *x, char *p, CNInstance *star,
 	listItem *exponent, listItem *base, CNDB * );
 
@@ -54,8 +56,8 @@ int xp_match( int privy, CNInstance *x, char *p, CNInstance *star,
 #define	AS_SUB	0
 #define	SUB	2
 
-void	push_exponent( int as_sub, int position, listItem ** );
-void	output_exponent( FILE *stream, listItem * );
+void	xpn_add( listItem **, int as_sub, int position );
+void	xpn_out( FILE *stream, listItem * );
 
 
 #endif	// TRAVERSAL_H

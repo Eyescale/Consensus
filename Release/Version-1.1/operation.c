@@ -107,7 +107,7 @@ static int
 in_condition( char *expression, CNDB *db )
 {
 	// fprintf( stderr, "in condition: %s\n", expression );
-	return db_feel( expression, DB_CONDITION, db );
+	return db_feel( expression, db, DB_CONDITION );
 }
 
 //===========================================================================
@@ -122,9 +122,9 @@ on_event( char *expression, CNDB *db, int init )
 	if ( !strcmp( expression, "init" ) )
 		return init;
 	else if ( test_release( &expression ) )
-		return db_feel( expression, DB_RELEASED, db );
+		return db_feel( expression, db, DB_RELEASED );
 	else
-		return db_feel( expression, DB_INSTANTIATED, db );
+		return db_feel( expression, db, DB_INSTANTIATED );
 
 	return 0;
 }
@@ -149,9 +149,9 @@ do_action( char *expression, CNDB *db )
 	if ( !strcmp( expression, "exit" ) )
 		return 0;
 	else if ( test_release( &expression ) )
-		db_release( expression, db );
+		bm_release( expression, db );
 	else
-		db_substantiate( expression, db );
+		bm_substantiate( expression, db );
 
 	return 1;
 }
@@ -209,7 +209,7 @@ do_input( char *expression, CNDB *db )
 		// release (*,variable)
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
-		db_release( &expression[ 1 ], db );
+		bm_release( &expression[ 1 ], db );
 	}
 	else {
 		// read & instantiate ((*,expression),input)
@@ -220,7 +220,7 @@ do_input( char *expression, CNDB *db )
 		while ( !is_separator( event ) );
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
-		db_substantiate( expression, db );
+		bm_substantiate( expression, db );
 	}
 	freeString( s );
 	return 0;
@@ -246,7 +246,7 @@ do_output( char *expression, CNDB *db )
 		// no format: output expression results
 		expression = format + 1;
 		if ( *expression ) {
-			db_output( expression, db );
+			bm_output( expression, db );
 		}
 		else printf( "\n" );
 		break;
@@ -256,7 +256,7 @@ do_output( char *expression, CNDB *db )
 		case ':':
 			expression++;
 		}
-		db_outputf( format, expression, db );
+		bm_outputf( format, expression, db );
 	}
 	return 0;
 }

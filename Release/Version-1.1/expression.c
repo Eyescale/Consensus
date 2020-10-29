@@ -11,246 +11,13 @@
 static int p_single( char *p );
 
 //===========================================================================
-//	db_verify
+//	bm_substantiate
 //===========================================================================
-// #define DEBUG
-
-int
-db_verify( int privy, CNInstance *x, char *expression, CNDB *db )
-{
-#ifdef DEBUG
-fprintf( stderr, "db_verify: %s / candidate=", expression );
-cn_out( stderr, x, db );
-fprintf( stderr, " ........{\n" );
-#endif
-	VerifyData data;
-	data.stack.exponent = NULL;
-	data.stack.couple = NULL;
-	data.stack.scope = NULL;
-	data.stack.base = NULL;
-	data.stack.not = NULL;
-	data.stack.neg = NULL;
-	data.stack.p = NULL;
-#ifdef TRIM
-	// used by wildcard_opt
-	data.btree = btreefy( expression );
-#endif
-	data.db = db;
-	data.privy = privy;
-	data.empty = db_is_empty( db );
-	data.star = p_lookup( privy, "*", db );
-	data.couple = 0;
-
-	int success = xp_verify( privy, x, expression, db, &data );
-#ifdef TRIM
-	freeBTree( data.btree );
-#endif
-#ifdef DEBUG
-fprintf( stderr, "db_verify:.......} success=%d\n", success );
-#endif
-	return success;
-}
-
-//===========================================================================
-//	db_verify_sub
-//===========================================================================
-typedef struct {
-	listItem *base;
-	int scope, OOS;
-	char *p;
-} VerifyParams;
-static int init_params( VerifyParams *, int, int *, CNInstance **, char *, VerifyData *);
-
-int
-db_verify_sub( int op, int success,
-	CNInstance **x, char **position,
-	listItem **mark_exp, listItem **mark_pos,
-	VerifyData *data )
-/*
-	invoked by xp_verify on each [sub-]expression, i.e.
-	on each expression term starting with '*' or '%'
-	Note that *variable is same as %((*,variable),?)
-*/
-{
-	VerifyParams params;
-	if ( !init_params( &params, op, &success, x, *position, data ) )
-		{ *x = NULL; return 0; }
-#ifdef DEBUG
-	fprintf( stderr, "db_verify_sub: " );
-	switch ( op ) {
-		case SUB_NONE: fprintf( stderr, "INIT %s / ", *position ); break;
-		case SUB_START: fprintf( stderr, "START %s / ", *position + 1 ); break;
-		case SUB_FINISH: fprintf( stderr, "FINISH %s / ", *position ); break;
-	}
-	fprintf( stderr, "success=%d", success );
-	dbg_out( ", candidate=", *x, NULL, data->db );
-	fprintf( stderr, ", exp=" );
-	output_exponent( stderr, data->stack.exponent );
-	fprintf( stderr, "\n" );
-#endif
-	listItem *base = params.base;
-	int scope = params.scope;
-	int OOS = params.OOS;
-	char *p = params.p;
-	int not = 0;
-
-	union { int value; void *ptr; } icast;
-	int privy = data->privy;
-	CNDB *db = data->db;
-	CNInstance *star = data->star;
-	listItem **exponent = &data->stack.exponent;
-
-	int out = 0;
-	while ( *p && !(*mark_exp) && !out ) {
-		// fprintf( stderr, "scanning: '%c'\n", *p );
-		switch ( *p ) {
-		case '~':
-			not = !not; p++;
-			break;
-		case '*':
-		case '%':
-			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = xp_match( privy, *x, p, star, *exponent, base, db );
-				if ( success < 0 ) { success = 0; not = 0; }
-				else if ( not ) { success = !success; not = 0; }
-				p++;
-			}
-			else if ( xp_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
-				success = not; not = 0;
-				p = p_prune( PRUNE_DEFAULT, p+1 );
-			}
-			else if ( *p == '*' )
-				push_exponent( SUB, 1, mark_exp );
-			else {
-				p_locate( p+1, "?", mark_exp );
-				if ( *mark_exp == NULL ) p++;
-			}
-			break;
-		case '(':
-			scope++;
-			icast.value = data->couple;
-			addItem( &data->stack.couple, icast.ptr );
-			if ( p_single( p ) ) data->couple = 0;
-			else {
-				data->couple = 1;
-				push_exponent( AS_SUB, 0, exponent );
-			}
-			icast.value = not;
-			addItem( &data->stack.not, icast.ptr );
-			not = 0; p++;
-			break;
-		case ':':
-			if (( op == SUB_START ) && ( scope==OOS+1 ))
-				{ out = 1; break; }
-			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
-			break;
-		case ',':
-			if ( scope <= OOS+1 ) { out = 1; break; }
-			popListItem( exponent );
-			push_exponent( AS_SUB, 1, exponent );
-			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
-			break;
-		case ')':
-			scope--;
-			if ( scope <= OOS ) { out = 1; break; }
-			if ( data->couple ) {
-				popListItem( exponent );
-			}
-			data->couple = (int) popListItem( &data->stack.couple );
-			if (( op == SUB_START ) && ( scope==OOS+1 ))
-			    { out = 1; break; }
-			not = (int) popListItem( &data->stack.not );
-			if ( not ) { success = !success; not = 0; }
-			p++;
-			break;
-		case '.':
-		case '?':
-			if ( not ) { success = 0; not = 0; }
-			else if ( data->empty ) success = 0;
-#ifdef TRIM
-			else if ( wildcard_opt( p, data->btree ) ) success = 1;
-#endif
-			else success = ( xp_match( privy, *x, NULL, star, *exponent, base, db ) > 0 );
-			p++;
-			break;
-		default:
-			success = xp_match( privy, *x, p, star, *exponent, base, db );
-			if ( success < 0 ) { success = 0; not = 0; }
-			else if ( not ) { success = !success; not = 0; }
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		}
-	}
-	if (( *mark_exp )) {
-		for ( listItem *i=*exponent; i!=base; i=i->next )
-			addItem( mark_pos, i->ptr );
-		icast.value = scope;
-		addItem( &data->stack.scope, icast.ptr );
-		icast.value = not;
-		addItem( &data->stack.neg, icast.ptr );
-		addItem( &data->stack.base, base );
-		addItem( &data->stack.p, p );
-	}
-	*position = p;
-#ifdef DEBUG
-	if (( *mark_exp )) fprintf( stderr, "db_verify_sub: starting SUB, at %s\n", p );
-	else fprintf( stderr, "db_verify_sub: returning %d, at %s\n", success, p );
-#endif
-	return success;
-}
-
-static int
-init_params( VerifyParams *params, int op, int *success, CNInstance **x, char *p, VerifyData *data )
-{
-	switch ( op ) {
-	case SUB_NONE:
-		*success = 0;
-		params->p = p;
-		params->base = NULL;
-		params->scope = 1;
-		params->OOS = 0;
-		break;
-	case SUB_START:
-		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
-		// Note that star may be null (not instantiated)
-		if ( *p++ == '*' ) {
-			CNInstance *y = (*x)->sub[ 0 ];
-			if ( y == NULL ) return 0;
-			if ( y->sub[ 0 ] == NULL ) return 0;
-			if ( y->sub[ 0 ] != data->star ) return 0;
-			*x = y->sub[ 1 ];
-		}
-		*success = 0;
-		params->p = p;
-		params->base = data->stack.exponent;
-		params->scope = (int) data->stack.scope->ptr;
-		params->OOS = params->scope - 1;
-		break;
-	case SUB_FINISH:;
-		if ((int) popListItem( &data->stack.neg ))
-			*success = !*success;
-		params->p = p;
-		params->base = popListItem( &data->stack.base );
-		params->scope = (int) data->stack.scope->ptr;
-		char *start_p = popListItem( &data->stack.p );
-		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
-			params->scope++; // e.g. %( ... ) or *( ... )
-		popListItem( &data->stack.scope );
-		params->OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
-	}
-	return 1;
-}
-	
-//===========================================================================
-//	db_substantiate
-//===========================================================================
-static int db_void( char *, CNDB *db );
-static CNInstance *p_register( char *p, CNDB *db );
+static int bm_void( char *, CNDB *db );
+static CNInstance *bm_register( char *p, CNDB *db );
 
 void
-db_substantiate( char *expression, CNDB *db )
+bm_substantiate( char *expression, CNDB *db )
 /*
 	Substantiates expression by verifying and/or instantiating all
 	relationships involved. Note that, reassignment excepted, only
@@ -258,14 +25,14 @@ db_substantiate( char *expression, CNDB *db )
 	manifested.
 */
 {
-	if ( db_void( expression, db ) ) {
+	if ( bm_void( expression, db ) ) {
 #ifdef DEBUG
-		fprintf( stderr, "db_substantiate: %s - void\n", expression );
+		fprintf( stderr, "bm_substantiate: %s - void\n", expression );
 #endif
 		return;
 	}
 #ifdef DEBUG
-	fprintf( stderr, "db_substantiate: %s {\n", expression );
+	fprintf( stderr, "bm_substantiate: %s {\n", expression );
 #endif
 
 	union { int value; void *ptr; } icast;
@@ -280,8 +47,8 @@ db_substantiate( char *expression, CNDB *db )
 	char *p = expression;
 	while ( *p && scope ) {
 		if ( p_filtered( p )  ) {
-			// db_void made sure we do have results
-			sub[ ndx ] = db_fetch( p, db );
+			// bm_void made sure we do have results
+			sub[ ndx ] = bm_fetch( p, db );
 			p = p_prune( PRUNE_DEFAULT, p );
 			continue;
 		}
@@ -289,14 +56,14 @@ db_substantiate( char *expression, CNDB *db )
 		case '*':
 		case '%':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				e = p_register( p, db );
+				e = bm_register( p, db );
 				sub[ ndx ] = newItem( e );
 				p++; break;
 			}
 			// no break
 		case '~':
-			// db_void made sure we do have results
-			sub[ ndx ] = db_fetch( p, db );
+			// bm_void made sure we do have results
+			sub[ ndx ] = bm_fetch( p, db );
 			p = p_prune( PRUNE_DEFAULT, p );
 			break;
 		case '(':
@@ -336,20 +103,20 @@ db_substantiate( char *expression, CNDB *db )
 			sub[ ndx ] = newItem( NULL );
 			p++; break;
 		default:
-			e = p_register( p, db );
+			e = bm_register( p, db );
 			sub[ ndx ] = newItem( e );
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
 	}
 #ifdef DEBUG
-	if (( sub[ 0 ] )) dbg_out( "db_substantiate: } first=", sub[0]->ptr, "\n", db );
-	else fprintf( stderr, "db_substantiate: } no result\n" );
+	if (( sub[ 0 ] )) dbg_out( "bm_substantiate: } first=", sub[0]->ptr, "\n", db );
+	else fprintf( stderr, "bm_substantiate: } no result\n" );
 #endif
 	freeListItem( &sub[ 0 ] );
 }
 
 static int
-db_void( char *expression, CNDB *db )
+bm_void( char *expression, CNDB *db )
 /*
 	tests if expression is instantiable, ie. that
 	. all inner queries have results
@@ -358,12 +125,12 @@ db_void( char *expression, CNDB *db )
 	returns 0 if it is, 1 otherwise
 */
 {
-	// fprintf( stderr, "db_void: %s\n", expression );
+	// fprintf( stderr, "bm_void: %s\n", expression );
 	int scope=1, empty=db_is_empty( db );
 	char *p = expression;
 	while ( *p && scope ) {
 		if ( p_filtered( p ) ) {
-			if ( empty || !db_feel( p, DB_CONDITION, db ) )
+			if ( empty || !db_feel( p, db, DB_CONDITION ) )
 				return 1;
 			p = p_prune( PRUNE_DEFAULT, p );
 			continue;
@@ -375,7 +142,7 @@ db_void( char *expression, CNDB *db )
 				{ p++; break; }
 			// no break
 		case '~':
-			if ( empty || !db_feel( p, DB_CONDITION, db ) )
+			if ( empty || !db_feel( p, db, DB_CONDITION ) )
 				return 1;
 			p = p_prune( PRUNE_DEFAULT, p );
 			break;
@@ -401,12 +168,12 @@ db_void( char *expression, CNDB *db )
 }
 
 //===========================================================================
-//	db_fetch
+//	bm_fetch
 //===========================================================================
 static DBTraverseCB fetch_CB;
 
 listItem *
-db_fetch( char *expression, CNDB *db )
+bm_fetch( char *expression, CNDB *db )
 {
 	listItem *results = NULL;
 	db_traverse( expression, db, fetch_CB, &results );
@@ -420,19 +187,19 @@ fetch_CB( CNInstance *e, CNDB *db, void *results )
 }
 
 //===========================================================================
-//	db_release
+//	bm_release
 //===========================================================================
 static DBTraverseCB release_CB;
 
 void
-db_release( char *expression, CNDB *db )
+bm_release( char *expression, CNDB *db )
 {
 #ifdef DEBUG
-fprintf( stderr, "db_release: %s {\n", expression );
+fprintf( stderr, "bm_release: %s {\n", expression );
 #endif
 	db_traverse( expression, db, release_CB, NULL );
 #ifdef DEBUG
-fprintf( stderr, "db_release: }\n" );
+fprintf( stderr, "bm_release: }\n" );
 #endif
 }
 static int
@@ -443,10 +210,10 @@ release_CB( CNInstance *e, CNDB *db, void *user_data )
 }
 
 //===========================================================================
-//	db_outputf
+//	bm_outputf
 //===========================================================================
 void
-db_outputf( char *format, char *expression, CNDB *db )
+bm_outputf( char *format, char *expression, CNDB *db )
 {
 	int escaped = 0;
 	for ( char *p=format; *p; p++ ) {
@@ -483,7 +250,7 @@ db_outputf( char *format, char *expression, CNDB *db )
 			switch ( *p ) {
 			case '_':
 				if ( *expression ) {
-					db_output( expression, db );
+					bm_output( expression, db );
 					expression = p_prune( PRUNE_DEFAULT, expression );
 				}
 			}
@@ -511,7 +278,7 @@ db_outputf( char *format, char *expression, CNDB *db )
 }
 
 //===========================================================================
-//	db_output
+//	bm_output
 //===========================================================================
 static DBTraverseCB output_CB;
 typedef struct {
@@ -520,7 +287,7 @@ typedef struct {
 } OutputData;
 
 void
-db_output( char *expression, CNDB *db )
+bm_output( char *expression, CNDB *db )
 /*
 	outputs expression's results
 	note that we rely here on db_traverse to eliminate doublons
@@ -555,12 +322,12 @@ output_CB( CNInstance *e, CNDB *db, void *user_data )
 }
 
 //===========================================================================
-//	p_lookup, p_register
+//	bm_lookup, bm_register
 //===========================================================================
 static char *p_extract( char *p );
 
 CNInstance *
-p_lookup( int privy, char *p, CNDB *db )
+bm_lookup( int privy, char *p, CNDB *db )
 {
 	char *term = p_extract( p );
 	CNInstance *e = db_lookup( privy, term, db );
@@ -568,7 +335,7 @@ p_lookup( int privy, char *p, CNDB *db )
 	return e;
 }
 static CNInstance *
-p_register( char *p, CNDB *db )
+bm_register( char *p, CNDB *db )
 {
 	char *term = p_extract( p );
 	CNInstance *e = db_lookup( 0, term, db );
@@ -638,9 +405,9 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 			if ( !(star_exp) && !not ) {
 				// save star in case we cannot find identifier
 				if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-					push_exponent( AS_SUB, 0, &star_exp );
-					push_exponent( AS_SUB, 0, &star_exp );
-					push_exponent( SUB, 1, &star_exp );
+					xpn_add( &star_exp, AS_SUB, 0 );
+					xpn_add( &star_exp, AS_SUB, 0 );
+					xpn_add( &star_exp, SUB, 1 );
 				}
 				for ( listItem *i=*exponent; i!=NULL; i=i->next )
 					addItem( &star_exp, i->ptr );
@@ -648,9 +415,9 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 			}
 			// apply dereferencing operator to whatever comes next
 			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				push_exponent( SUB, 1, exponent );
-				push_exponent( AS_SUB, 0, exponent );
-				push_exponent( AS_SUB, 1, exponent );
+				xpn_add( exponent, SUB, 1 );
+				xpn_add( exponent, AS_SUB, 0 );
+				xpn_add( exponent, AS_SUB, 1 );
 			}
 			p++; break;
 		case '%':
@@ -672,7 +439,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 				while (( mark_exp ));
 			}
 			if ( tuple & 1 ) {	// not singleton
-				push_exponent( AS_SUB, 0, exponent );
+				xpn_add( exponent, AS_SUB, 0 );
 			}
 			addItem( &stack.level, level );
 			level = *exponent;
@@ -688,7 +455,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 			while ( *exponent != level )
 				popListItem( exponent );
 			popListItem( exponent );
-			push_exponent( AS_SUB, 1, exponent );
+			xpn_add( exponent, AS_SUB, 1 );
 			p++; break;
 		case ')':
 			scope--;
@@ -757,9 +524,9 @@ locate_mark( char *expression, listItem **exponent )
 			p++; break;
 		case '*':
 			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				push_exponent( AS_SUB, 1, exponent );
-				push_exponent( SUB, 0, exponent );
-				push_exponent( SUB, 1, exponent );
+				xpn_add( exponent, AS_SUB, 1 );
+				xpn_add( exponent, SUB, 0 );
+				xpn_add( exponent, SUB, 1 );
 			}
 			p++; break;
 		case '%':
@@ -774,7 +541,7 @@ locate_mark( char *expression, listItem **exponent )
 			addItem( &stack.couple, icast.ptr );
 			couple = !p_single( p );
 			if ( couple ) {
-				push_exponent( SUB, 0, exponent );
+				xpn_add( exponent, SUB, 0 );
 			}
 			addItem( &stack.level, level );
 			level = *exponent;
@@ -788,7 +555,7 @@ locate_mark( char *expression, listItem **exponent )
 			while ( *exponent != level )
 				popListItem( exponent );
 			popListItem( exponent );
-			push_exponent( SUB, 1, exponent );
+			xpn_add( exponent, SUB, 1 );
 			p++; break;
 		case ')':
 			scope--;
@@ -862,6 +629,198 @@ p_skip( char *p, PruneData *prune )
 		}
 	}
 	return prune->level;
+}
+
+//===========================================================================
+//	bm_verify
+//===========================================================================
+typedef struct {
+	listItem *base;
+	int scope, OOS;
+	char *p;
+} VerifyParams;
+static int init_params( VerifyParams *, int, int *, CNInstance **, char *, VerifyData *);
+
+int
+bm_verify( int op, int success,
+	CNInstance **x, char **position,
+	listItem **mark_exp, listItem **mark_pos,
+	VerifyData *data )
+/*
+	invoked by xp_verify on each [sub-]expression, i.e.
+	on each expression term starting with '*' or '%'
+	Note that *variable is same as %((*,variable),?)
+*/
+{
+	VerifyParams params;
+	if ( !init_params( &params, op, &success, x, *position, data ) )
+		{ *x = NULL; return 0; }
+#ifdef DEBUG
+	fprintf( stderr, "bm_verify: " );
+	switch ( op ) {
+		case SUB_NONE: fprintf( stderr, "INIT %s / ", *position ); break;
+		case SUB_START: fprintf( stderr, "START %s / ", *position + 1 ); break;
+		case SUB_FINISH: fprintf( stderr, "FINISH %s / ", *position ); break;
+	}
+	fprintf( stderr, "success=%d", success );
+	dbg_out( ", candidate=", *x, NULL, data->db );
+	fprintf( stderr, ", exp=" );
+	output_exponent( stderr, data->stack.exponent );
+	fprintf( stderr, "\n" );
+#endif
+	listItem *base = params.base;
+	int scope = params.scope;
+	int OOS = params.OOS;
+	char *p = params.p;
+	int not = 0;
+
+	union { int value; void *ptr; } icast;
+	int privy = data->privy;
+	CNDB *db = data->db;
+	CNInstance *star = data->star;
+	listItem **exponent = &data->stack.exponent;
+
+	int out = 0;
+	while ( *p && !(*mark_exp) && !out ) {
+		// fprintf( stderr, "scanning: '%c'\n", *p );
+		switch ( *p ) {
+		case '~':
+			not = !not; p++;
+			break;
+		case '*':
+		case '%':
+			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				success = xp_match( privy, *x, p, star, *exponent, base, db );
+				if ( success < 0 ) { success = 0; not = 0; }
+				else if ( not ) { success = !success; not = 0; }
+				p++;
+			}
+			else if ( xp_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
+				success = not; not = 0;
+				p = p_prune( PRUNE_DEFAULT, p+1 );
+			}
+			else if ( *p == '*' )
+				xpn_add( mark_exp, SUB, 1 );
+			else {
+				p_locate( p+1, "?", mark_exp );
+				if ( *mark_exp == NULL ) p++;
+			}
+			break;
+		case '(':
+			scope++;
+			icast.value = data->couple;
+			addItem( &data->stack.couple, icast.ptr );
+			if ( p_single( p ) ) data->couple = 0;
+			else {
+				data->couple = 1;
+				xpn_add( exponent, AS_SUB, 0 );
+			}
+			icast.value = not;
+			addItem( &data->stack.not, icast.ptr );
+			not = 0; p++;
+			break;
+		case ':':
+			if (( op == SUB_START ) && ( scope==OOS+1 ))
+				{ out = 1; break; }
+			if ( success ) { p++; }
+			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			break;
+		case ',':
+			if ( scope <= OOS+1 ) { out = 1; break; }
+			popListItem( exponent );
+			xpn_add( exponent, AS_SUB, 1 );
+			if ( success ) { p++; }
+			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			break;
+		case ')':
+			scope--;
+			if ( scope <= OOS ) { out = 1; break; }
+			if ( data->couple ) {
+				popListItem( exponent );
+			}
+			data->couple = (int) popListItem( &data->stack.couple );
+			if (( op == SUB_START ) && ( scope==OOS+1 ))
+			    { out = 1; break; }
+			not = (int) popListItem( &data->stack.not );
+			if ( not ) { success = !success; not = 0; }
+			p++;
+			break;
+		case '.':
+		case '?':
+			if ( not ) { success = 0; not = 0; }
+			else if ( data->empty ) success = 0;
+#ifdef TRIM
+			else if ( wildcard_opt( p, data->btree ) ) success = 1;
+#endif
+			else success = ( xp_match( privy, *x, NULL, star, *exponent, base, db ) > 0 );
+			p++;
+			break;
+		default:
+			success = xp_match( privy, *x, p, star, *exponent, base, db );
+			if ( success < 0 ) { success = 0; not = 0; }
+			else if ( not ) { success = !success; not = 0; }
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		}
+	}
+	if (( *mark_exp )) {
+		for ( listItem *i=*exponent; i!=base; i=i->next )
+			addItem( mark_pos, i->ptr );
+		icast.value = scope;
+		addItem( &data->stack.scope, icast.ptr );
+		icast.value = not;
+		addItem( &data->stack.neg, icast.ptr );
+		addItem( &data->stack.base, base );
+		addItem( &data->stack.p, p );
+	}
+	*position = p;
+#ifdef DEBUG
+	if (( *mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
+	else fprintf( stderr, "bm_verify: returning %d, at %s\n", success, p );
+#endif
+	return success;
+}
+
+static int
+init_params( VerifyParams *params, int op, int *success, CNInstance **x, char *p, VerifyData *data )
+{
+	switch ( op ) {
+	case SUB_NONE:
+		*success = 0;
+		params->p = p;
+		params->base = NULL;
+		params->scope = 1;
+		params->OOS = 0;
+		break;
+	case SUB_START:
+		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+		// Note that star may be null (not instantiated)
+		if ( *p++ == '*' ) {
+			CNInstance *y = (*x)->sub[ 0 ];
+			if ( y == NULL ) return 0;
+			if ( y->sub[ 0 ] == NULL ) return 0;
+			if ( y->sub[ 0 ] != data->star ) return 0;
+			*x = y->sub[ 1 ];
+		}
+		*success = 0;
+		params->p = p;
+		params->base = data->stack.exponent;
+		params->scope = (int) data->stack.scope->ptr;
+		params->OOS = params->scope - 1;
+		break;
+	case SUB_FINISH:;
+		if ((int) popListItem( &data->stack.neg ))
+			*success = !*success;
+		params->p = p;
+		params->base = popListItem( &data->stack.base );
+		params->scope = (int) data->stack.scope->ptr;
+		char *start_p = popListItem( &data->stack.p );
+		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
+			params->scope++; // e.g. %( ... ) or *( ... )
+		popListItem( &data->stack.scope );
+		params->OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
+	}
+	return 1;
 }
 
 //===========================================================================

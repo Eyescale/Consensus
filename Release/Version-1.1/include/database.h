@@ -24,14 +24,6 @@ void	db_update( CNDB * );
 //===========================================================================
 //	operation
 //===========================================================================
-typedef enum {
-	DB_CONDITION,
-	DB_INSTANTIATED,
-	DB_RELEASED
-} DBLogType;
-
-int	db_feel( char *expression, DBLogType, CNDB * );
-CNInstance * db_lookup( int privy, char *identifier, CNDB * );
 CNInstance * db_register( char *identifier, CNDB * );
 listItem * db_couple( listItem *sub[2], CNDB * );
 void	db_deprecate( CNInstance *, CNDB * );
@@ -39,6 +31,11 @@ void	db_deprecate( CNInstance *, CNDB * );
 //===========================================================================
 //	utilities
 //===========================================================================
+int	db_is_empty( CNDB * );
+CNInstance * db_first( CNDB *, listItem ** );
+CNInstance * db_next( CNDB *, CNInstance *, listItem ** );
+CNInstance * db_log( int first, int released, CNDB *, listItem ** );
+CNInstance * db_lookup( int privy, char *identifier, CNDB * );
 int	db_private( int privy, CNInstance *, CNDB * );
 
 int	cn_out( FILE *, CNInstance *, CNDB * );

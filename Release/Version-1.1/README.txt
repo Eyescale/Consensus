@@ -36,6 +36,11 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/10/29
+		added ./design/specs/software-architecture.txt
+		code cleanup
+                . moved db_feel() out of database.c, into traversal.c
+                . now use prefix bm_ for language-specific functions
 	2020/10/28
 		added ./design/task-list.txt
 		feature complete: line continuation after \
