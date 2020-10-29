@@ -6,6 +6,9 @@
 #include "traversal.h"
 #include "wildcard.h"
 
+#define AS_SUB	0
+#define SUB	2
+
 void	bm_substantiate( char *expression, CNDB * );
 listItem * bm_fetch( char *expression, CNDB * );
 void	bm_release( char *expression, CNDB * );

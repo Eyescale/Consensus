@@ -47,17 +47,8 @@ typedef struct {
 	CNInstance *star;
 	int couple;
 } VerifyData;
-int xp_match( int privy, CNInstance *x, char *p, CNInstance *star,
-	listItem *exponent, listItem *base, CNDB * );
 
-//===========================================================================
-//	utilities
-//===========================================================================
-#define	AS_SUB	0
-#define	SUB	2
-
-void	xpn_add( listItem **, int as_sub, int position );
-void	xpn_out( FILE *stream, listItem * );
-
+// utility
+void xpn_out( FILE *stream, listItem *xp );
 
 #endif	// TRAVERSAL_H

@@ -508,32 +508,6 @@ trim_end( TrimData *rd, listItem **exponent, listItem **i, listItem **stack )
 }
 
 //===========================================================================
-//	xp_match
-//===========================================================================
-int
-xp_match( int privy, CNInstance *x, char *p, CNInstance *star,
-	listItem *exponent, listItem *base, CNDB *db )
-/*
-	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
-	is either NULL or the exponent of p as expression term
-*/
-{
-	listItem *xpn = NULL;
-	for ( listItem *i = exponent; i!=base; i=i->next ) {
-		addItem( &xpn, i->ptr );
-	}
-	CNInstance *y = x;
-	while (( y ) && (xpn)) {
-		int exp = (int) popListItem( &xpn );
-		y = y->sub[ exp & 1 ];
-	}
-	if ( y == NULL ) return -1;
-	if ( p == NULL ) return 1;
-	if ( *p == '*' ) return ( y == star );
-	return ( y == bm_lookup( privy, p, db ));
-}
-
-//===========================================================================
 //	xp_compare	- unused
 //===========================================================================
 static listItem *xp_div( listItem *exp1, listItem *exp2 );
@@ -614,15 +588,6 @@ xp_inv( listItem *exponent )
 //===========================================================================
 //	Utilities
 //===========================================================================
-
-void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
-}
-
 void
 xpn_out( FILE *stream, listItem *xp )
 {

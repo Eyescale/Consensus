@@ -45,17 +45,11 @@ Component Interfaces*
 		release_CB		db_deprecate
 
 	expression -> traversal interface
-		bm_substantiate		xpn_add
 		bm_void			db_feel
 		bm_fetch		db_traverse
 			invoked by db_substantiate
 		bm_release		db_traverse
 		bm_output		db_traverse
-		bm_verify		xp_match
-					xpn_add
-		p_locate		xpn_add
-		locate_mark		xpn_add
-			invoked by p_locate
 
 	--------------------------------------------------
 
@@ -75,7 +69,6 @@ Component Interfaces*
 					p_prune
 			invoked by db_verify
 			invoked by db_feel and db_traverse
-		xp_match		bm_lookup
 
 Notes
 	. expression.c gathers all functions dealing specifically with the

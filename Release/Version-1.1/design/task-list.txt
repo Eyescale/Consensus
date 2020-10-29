@@ -1,8 +1,4 @@
 TODO
-	. move expression.c:InitParams() to traversal.c
-		. SUB_NONE, SUB_START, SUB_FINISH do not belong
-	  	. may also consider moving xp_match() and xpn_add()
-		  to expression.c
 	. registry variable %?
 		. narrative.c: support "%?" and "?:expression"
 		. operation.c, ...: implement narrative registry
@@ -17,6 +13,7 @@ DONE
 		. software architecture document
 		. moved db_feel() out of database.c, into traversal.c
 		. renamed language-specific functions with prefix bm_
+	  	. moved xpn_add() and bm_match() to expression.c
 	. line continuation after \
 		+ narrative.c: handle '>' in "expr" vs. "base" state
 		+ allow \CR in strings
