@@ -1,11 +1,11 @@
 
 Architecture Diagram*
 				
-				   expression.c
+				   traversal.c
 				 /     | ^      \
-	main.c -> operation.c ->       | |        <-> database.c
+	main.c -> operation.c ->       | |        -> database.c
 			|	 \     v |	/         ^
-			|	    traversal.c           |
+			|	   expression.c           |
 			|			          |
 		         - - - - - - - - - - - - - - - - -
 
@@ -35,24 +35,6 @@ Component Interfaces*
 
 	--------------------------------------------------
 
-	expression -> database interface
-		bm_substantiate		db_couple
-		bm_lookup		db_lookup
-		bm_register		db_lookup
-					db_register
-		bm_output		cn_out
-		output_CB		cn_out
-		release_CB		db_deprecate
-
-	expression -> traversal interface
-		bm_void			db_feel
-		bm_fetch		db_traverse
-			invoked by db_substantiate
-		bm_release		db_traverse
-		bm_output		db_traverse
-
-	--------------------------------------------------
-
 	traversal -> database interface
 		db_feel			db_log
 		db_traverse		db_first
@@ -69,6 +51,24 @@ Component Interfaces*
 					p_prune
 			invoked by db_verify
 			invoked by db_feel and db_traverse
+
+	--------------------------------------------------
+
+	expression -> database interface
+		bm_substantiate		db_couple
+		bm_lookup		db_lookup
+		bm_register		db_lookup
+					db_register
+		bm_output		cn_out
+		output_CB		cn_out
+		release_CB		db_deprecate
+
+	expression -> traversal interface
+		bm_void			db_feel
+		bm_fetch		db_traverse
+			invoked by db_substantiate
+		bm_release		db_traverse
+		bm_output		db_traverse
 
 Notes
 	. expression.c gathers all functions dealing specifically with the
