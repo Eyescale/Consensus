@@ -7,174 +7,10 @@
 #include "narrative_private.h"
 
 //===========================================================================
-//	input
-//===========================================================================
-enum {
-	COMMENT = 0,
-	BACKSLASH,
-	STRING,
-	QUOTE
-};
-static int preprocess( int event, int *mode, int *buffer, int *skipped );
-static int
-input( FILE *file, int *mode, int *buffer, int *c, int *l )
-/*
-	filters out comments and \cr line continuation from input
-*/
-{
-	int event, skipped[ 2 ] = { 0, 0 };
-	do {
-		if ( *buffer ) { event = *buffer; *buffer = 0; }
-		else event = fgetc( file );
-		event = preprocess( event, mode, buffer, skipped );
-	}
-	while ( !event );
-	*c = ( skipped[ 1 ] ? skipped[ 0 ] : *c + skipped[ 0 ] );
-	*l += skipped[ 1 ];
-	return event;
-}
-static int
-preprocess( int event, int *mode, int *buffer, int *skipped )
-{
-	int output = 0;
-	if ( event == EOF )
-		output = event;
-	else if ( mode[ COMMENT ] ) {
-		switch ( event ) {
-		case '/':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 2;
-				skipped[ 0 ] += 2;
-			}
-			else if ( mode[ COMMENT ] == 4 ) {
-				mode[ COMMENT ] = 0;
-				skipped[ 0 ]++;
-			}
-			else skipped[ 0 ]++;
-			break;
-		case '\n':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 0;
-				output = '/';
-				*buffer = '\n';
-			}
-			else if ( mode[ COMMENT ] == 2 ) {
-				mode[ COMMENT ] = 0;
-				output = '\n';
-			}
-			else {
-				if ( mode[ COMMENT ] == 4 )
-					mode[ COMMENT ] = 3;
-				skipped[ 0 ] = 0;
-				skipped[ 1 ]++;
-			}
-			break;
-		case '*':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 3;
-				skipped[ 0 ] += 2;
-			}
-			else if ( mode[ COMMENT ] == 3 ) {
-				mode[ COMMENT ] = 4;
-				skipped[ 0 ]++;
-			}
-			else if ( mode[ COMMENT ] == 4 ) {
-				mode[ COMMENT ] = 3;
-				skipped[ 0 ]++;
-			}
-			else skipped[ 0 ]++;
-			break;
-		default:
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 0;
-				output = '/';
-				*buffer = event;
-			}
-			else {
-				if ( mode[ COMMENT ] == 4 )
-					mode[ COMMENT ] = 3;
-				skipped[ 0 ]++;
-			}
-		}
-	}
-	else if ( mode[ BACKSLASH ] ) {
-		if ( mode[ BACKSLASH ] == 4 ) {
-			mode[ BACKSLASH ] = 0;
-			output = event;
-		}
-		else switch ( event ) {
-		case ' ':
-		case '\t':
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 2;
-				skipped[ 0 ]++;
-			}
-			skipped[ 0 ]++;
-			break;
-		case '\\':
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 4;
-				output = '\\';
-				*buffer = '\\';
-			}
-			else mode[ BACKSLASH ] = 1;
-			break;
-		case '\n':
-			if ( mode[ BACKSLASH ] == 3 ) {
-				mode[ BACKSLASH ] = 0;
-				output = '\n';
-			}
-			else {
-				mode[ BACKSLASH ] = 3;
-				skipped[ 0 ] = 0;
-				skipped[ 1 ]++;
-			}
-			break;
-		default:
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 4;
-				output = '\\';	
-				*buffer = event;
-			}
-			else {
-				mode[ BACKSLASH ] = 0;
-				*buffer = event;
-			}
-		}
-	}
-	else switch ( event ) {
-		case '\\':
-			mode[ BACKSLASH ] = 1;
-			break;
-		case '/':
-			if ( !mode[ STRING ] && !mode[ QUOTE ] )
-				mode[ COMMENT ] = 1;
-			else
-				output = event;
-			break;
-		case '"':
-			if ( !mode[ QUOTE ] )
-				mode[ STRING ] = !mode[ STRING ];
-			output = event;
-			break;
-		case '\'':
-			if ( !mode[ STRING ] )
-				mode[ QUOTE ] = !mode[ QUOTE ];
-			output = event;
-			break;
-		case '\n':
-			skipped[ 0 ] = 0;
-			output = event;
-		default:
-			output = event;
-	}
-	return output;
-}
-
-//===========================================================================
 //	readNarrative
 //===========================================================================
 #define FILTERED 2
+static int input( FILE *file, int *mode, int *buffer, int *c, int *l );
 static void add_item( listItem **, int );
 
 CNNarrative *
@@ -538,6 +374,171 @@ add_item( listItem **stack, int value )
 	union { int value; char *ptr; } icast;
 	icast.value = value;
 	addItem( stack, icast.ptr );
+}
+
+//===========================================================================
+//	input preprocessor
+//===========================================================================
+enum {
+	COMMENT = 0,
+	BACKSLASH,
+	STRING,
+	QUOTE
+};
+static int preprocess( int event, int *mode, int *buffer, int *skipped );
+static int
+input( FILE *file, int *mode, int *buffer, int *c, int *l )
+/*
+	filters out comments and \cr line continuation from input
+*/
+{
+	int event, skipped[ 2 ] = { 0, 0 };
+	do {
+		if ( *buffer ) { event = *buffer; *buffer = 0; }
+		else event = fgetc( file );
+		event = preprocess( event, mode, buffer, skipped );
+	}
+	while ( !event );
+	*c = ( skipped[ 1 ] ? skipped[ 0 ] : *c + skipped[ 0 ] );
+	*l += skipped[ 1 ];
+	return event;
+}
+static int
+preprocess( int event, int *mode, int *buffer, int *skipped )
+{
+	int output = 0;
+	if ( event == EOF )
+		output = event;
+	else if ( mode[ COMMENT ] ) {
+		switch ( event ) {
+		case '/':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 2;
+				skipped[ 0 ] += 2;
+			}
+			else if ( mode[ COMMENT ] == 4 ) {
+				mode[ COMMENT ] = 0;
+				skipped[ 0 ]++;
+			}
+			else skipped[ 0 ]++;
+			break;
+		case '\n':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 0;
+				output = '/';
+				*buffer = '\n';
+			}
+			else if ( mode[ COMMENT ] == 2 ) {
+				mode[ COMMENT ] = 0;
+				output = '\n';
+			}
+			else {
+				if ( mode[ COMMENT ] == 4 )
+					mode[ COMMENT ] = 3;
+				skipped[ 0 ] = 0;
+				skipped[ 1 ]++;
+			}
+			break;
+		case '*':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 3;
+				skipped[ 0 ] += 2;
+			}
+			else if ( mode[ COMMENT ] == 3 ) {
+				mode[ COMMENT ] = 4;
+				skipped[ 0 ]++;
+			}
+			else if ( mode[ COMMENT ] == 4 ) {
+				mode[ COMMENT ] = 3;
+				skipped[ 0 ]++;
+			}
+			else skipped[ 0 ]++;
+			break;
+		default:
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 0;
+				output = '/';
+				*buffer = event;
+			}
+			else {
+				if ( mode[ COMMENT ] == 4 )
+					mode[ COMMENT ] = 3;
+				skipped[ 0 ]++;
+			}
+		}
+	}
+	else if ( mode[ BACKSLASH ] ) {
+		if ( mode[ BACKSLASH ] == 4 ) {
+			mode[ BACKSLASH ] = 0;
+			output = event;
+		}
+		else switch ( event ) {
+		case ' ':
+		case '\t':
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 2;
+				skipped[ 0 ]++;
+			}
+			skipped[ 0 ]++;
+			break;
+		case '\\':
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 4;
+				output = '\\';
+				*buffer = '\\';
+			}
+			else mode[ BACKSLASH ] = 1;
+			break;
+		case '\n':
+			if ( mode[ BACKSLASH ] == 3 ) {
+				mode[ BACKSLASH ] = 0;
+				output = '\n';
+			}
+			else {
+				mode[ BACKSLASH ] = 3;
+				skipped[ 0 ] = 0;
+				skipped[ 1 ]++;
+			}
+			break;
+		default:
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 4;
+				output = '\\';	
+				*buffer = event;
+			}
+			else {
+				mode[ BACKSLASH ] = 0;
+				*buffer = event;
+			}
+		}
+	}
+	else switch ( event ) {
+		case '\\':
+			mode[ BACKSLASH ] = 1;
+			break;
+		case '/':
+			if ( !mode[ STRING ] && !mode[ QUOTE ] )
+				mode[ COMMENT ] = 1;
+			else
+				output = event;
+			break;
+		case '"':
+			if ( !mode[ QUOTE ] )
+				mode[ STRING ] = !mode[ STRING ];
+			output = event;
+			break;
+		case '\'':
+			if ( !mode[ STRING ] )
+				mode[ QUOTE ] = !mode[ QUOTE ];
+			output = event;
+			break;
+		case '\n':
+			skipped[ 0 ] = 0;
+			output = event;
+		default:
+			output = event;
+	}
+	return output;
 }
 
 //===========================================================================
