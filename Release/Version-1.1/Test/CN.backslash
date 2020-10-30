@@ -3,8 +3,9 @@
 		do \
 	>\
 	"- hello, \  	
-	world\n"
+	   world\n"
 
-		do > "- hey,
+		do > \
+"- hey,
 	man\n"
 		do exit

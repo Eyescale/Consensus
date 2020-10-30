@@ -34,12 +34,14 @@ static void narrative_report( CNNarrativeError, int line, int column, int tabmar
 #define	DBGMonitor
 #endif
 
-#define	CNParserBegin( file ) \
+#define	CNParserBegin( file, input ) \
 	char *state = "base"; \
 	int event, line=1, column=0, errnum=0; \
 	struct { int event, state, transition; } caught; \
+	int mode[4] = { 0, 0, 0, 0 }, buffer = 0; \
 	do { \
-		event = fgetc( file ); column++; \
+		event = input( file, mode, &buffer, &column, &line ); \
+		if ( event != EOF ) column++; \
 		do { \
 			caught.transition = 0; \
 			caught.state = 0; \

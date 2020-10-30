@@ -7,6 +7,171 @@
 #include "narrative_private.h"
 
 //===========================================================================
+//	input
+//===========================================================================
+enum {
+	COMMENT = 0,
+	BACKSLASH,
+	STRING,
+	QUOTE
+};
+static int preprocess( int event, int *mode, int *buffer, int *skipped );
+static int
+input( FILE *file, int *mode, int *buffer, int *c, int *l )
+/*
+	filters out comments and \cr line continuation from input
+*/
+{
+	int event, skipped[ 2 ] = { 0, 0 };
+	do {
+		if ( *buffer ) { event = *buffer; *buffer = 0; }
+		else event = fgetc( file );
+		event = preprocess( event, mode, buffer, skipped );
+	}
+	while ( !event );
+	*c = ( skipped[ 1 ] ? skipped[ 0 ] : *c + skipped[ 0 ] );
+	*l += skipped[ 1 ];
+	return event;
+}
+static int
+preprocess( int event, int *mode, int *buffer, int *skipped )
+{
+	int output = 0;
+	if ( event == EOF )
+		output = event;
+	else if ( mode[ COMMENT ] ) {
+		switch ( event ) {
+		case '/':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 2;
+				skipped[ 0 ] += 2;
+			}
+			else if ( mode[ COMMENT ] == 4 ) {
+				mode[ COMMENT ] = 0;
+				skipped[ 0 ]++;
+			}
+			else skipped[ 0 ]++;
+			break;
+		case '\n':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 0;
+				output = '/';
+				*buffer = '\n';
+			}
+			else if ( mode[ COMMENT ] == 2 ) {
+				mode[ COMMENT ] = 0;
+				output = '\n';
+			}
+			else {
+				if ( mode[ COMMENT ] == 4 )
+					mode[ COMMENT ] = 3;
+				skipped[ 0 ] = 0;
+				skipped[ 1 ]++;
+			}
+			break;
+		case '*':
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 3;
+				skipped[ 0 ] += 2;
+			}
+			else if ( mode[ COMMENT ] == 3 ) {
+				mode[ COMMENT ] = 4;
+				skipped[ 0 ]++;
+			}
+			else if ( mode[ COMMENT ] == 4 ) {
+				mode[ COMMENT ] = 3;
+				skipped[ 0 ]++;
+			}
+			else skipped[ 0 ]++;
+			break;
+		default:
+			if ( mode[ COMMENT ] == 1 ) {
+				mode[ COMMENT ] = 0;
+				output = '/';
+				*buffer = event;
+			}
+			else {
+				if ( mode[ COMMENT ] == 4 )
+					mode[ COMMENT ] = 3;
+				skipped[ 0 ]++;
+			}
+		}
+	}
+	else if ( mode[ BACKSLASH ] ) {
+		if ( mode[ BACKSLASH ] == 4 ) {
+			mode[ BACKSLASH ] = 0;
+			output = event;
+		}
+		else switch ( event ) {
+		case ' ':
+		case '\t':
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 2;
+				skipped[ 0 ]++;
+			}
+			skipped[ 0 ]++;
+			break;
+		case '\\':
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 4;
+				output = '\\';
+				*buffer = '\\';
+			}
+			else mode[ BACKSLASH ] = 1;
+			break;
+		case '\n':
+			if ( mode[ BACKSLASH ] == 3 ) {
+				mode[ BACKSLASH ] = 0;
+				output = '\n';
+			}
+			else {
+				mode[ BACKSLASH ] = 3;
+				skipped[ 0 ] = 0;
+				skipped[ 1 ]++;
+			}
+			break;
+		default:
+			if ( mode[ BACKSLASH ] == 1 ) {
+				mode[ BACKSLASH ] = 4;
+				output = '\\';	
+				*buffer = event;
+			}
+			else {
+				mode[ BACKSLASH ] = 0;
+				*buffer = event;
+			}
+		}
+	}
+	else switch ( event ) {
+		case '\\':
+			mode[ BACKSLASH ] = 1;
+			break;
+		case '/':
+			if ( !mode[ STRING ] && !mode[ QUOTE ] )
+				mode[ COMMENT ] = 1;
+			else
+				output = event;
+			break;
+		case '"':
+			if ( !mode[ QUOTE ] )
+				mode[ STRING ] = !mode[ STRING ];
+			output = event;
+			break;
+		case '\'':
+			if ( !mode[ STRING ] )
+				mode[ QUOTE ] = !mode[ QUOTE ];
+			output = event;
+			break;
+		case '\n':
+			skipped[ 0 ] = 0;
+			output = event;
+		default:
+			output = event;
+	}
+	return output;
+}
+
+//===========================================================================
 //	readNarrative
 //===========================================================================
 #define FILTERED 2
@@ -60,7 +225,7 @@ readNarrative( char *path )
 	CNNarrative *narrative = newNarrative();
 	addItem( &stack.occurrence, narrative->root );
 
-	CNParserBegin( file )
+	CNParserBegin( file, input )
 	in_( "base" ) bgn_
 		on_( '#' )
 			if ( tab == 0 ) {
@@ -76,7 +241,6 @@ readNarrative( char *path )
 			}
 		on_( '\n' )	do_( same )	tab = 0;
 		on_( '\t' )	do_( same )	tab++;
-		on_( '/' )	do_( "/" )	tab = 0;
 		on_( 'i' )	do_( "i" )	tabmark = column;
 		on_( 'o' )	do_( "o" )	tabmark = column;
 		on_( 'd' )	do_( "d" )	tabmark = column;
@@ -91,26 +255,6 @@ readNarrative( char *path )
 			on_( '-' )	do_( same )	tab--;
 			on_other	do_( "base" )	REENTER
 			end
-		in_( "/" ) bgn_
-			on_( '/' )	do_( "//" )
-			on_( '*' )	do_( "/*" )
-			end
-			in_( "//" ) bgn_
-				on_( '\n' )	do_( "base" )
-				on_other	do_( same )
-				end
-			in_( "/*" ) bgn_
-				on_( '*' )	do_( "/**" )
-				on_other	do_( same )
-				end
-				in_( "/**" ) bgn_
-					on_( '/' )	do_( "/**/" )
-					on_other	do_( "/*" )
-					end
-					in_( "/**/" ) bgn_
-						ons( " \t" )	do_( same )
-						on_( '\n' )	do_( "base" )
-						end
 		in_( "i" ) bgn_
 			on_( 'n' )	do_( "in" )
 			end
@@ -119,7 +263,7 @@ readNarrative( char *path )
 				end
 				in_( "in_" ) bgn_
 					ons( " \t" )	do_( same )
-					ons( "/\n" )	; // err
+					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = IN;
 					end
@@ -131,7 +275,7 @@ readNarrative( char *path )
 				end
 				in_( "on_" ) bgn_
 					ons( " \t" )	do_( same )
-					ons( "/\n" )	; // err
+					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = ON;
 					end
@@ -143,7 +287,7 @@ readNarrative( char *path )
 				end
 				in_( "do_" ) bgn_
 					ons( " \t" )	do_( same )
-					ons( "/\n" )	; // err
+					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = DO;
 					end
@@ -160,7 +304,6 @@ readNarrative( char *path )
 						ons( " \t")	do_( "else_" )
 						on_( '\n' )	do_( "_expr" )	REENTER
 										type = ELSE;
-						on_( '/')	do_( "else/" )
 						end
 						in_( "else_" ) bgn_
 							ons( " \t" )	do_( same )
@@ -169,16 +312,7 @@ readNarrative( char *path )
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
 							on_( 'd' )	do_( "d" )	typelse = 1;
-							on_( '/' )	do_( "else/" )
 							end
-						in_( "else/" ) bgn_
-							on_( '/' )	do_( "else//" )
-							end
-							in_( "else//" ) bgn_
-								on_( '\n' )	do_( "_expr" )	REENTER
-												type = ELSE;
-								on_other	do_( same )
-								end
 	in_( "_expr" ) REENTER
 		if ( last_tab == -1 ) {
 			// very first occurrence
@@ -227,11 +361,10 @@ readNarrative( char *path )
 					addItem( &stack.occurrence, occurrence );
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
-		ons( "/\n" )	do_( "expr_" )	REENTER
+		on_( '\n' )	do_( "expr_" )	REENTER
 		on_( '*' )	do_( "*" )
 		on_( '%' )	do_( "%" )
 		on_( '~' )	do_( same )	add_item( &sequence, event );
-		on_( '\\' )	do_( "\\" )
 		on_( '>' )
 			if (( type == DO ) && ( sequence == NULL )) {
 				do_( ">" )	add_item( &sequence, event );
@@ -290,50 +423,18 @@ readNarrative( char *path )
 						informed = 1;
 			}
 		end
-	in_( "\\" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "\\_" )
-		end
-		in_( "\\_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_other	do_( "expr" )	REENTER
-			end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' )	do_( "expr" )	add_item( &sequence, event );
-		on_( '\\' )	do_( ">\\" )
 		on_( '\"' )	do_( ">\"" )	add_item( &sequence, event );
 		end
-		in_( ">\\" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( ">\\_" )
-			end
-			in_( ">\\_" ) bgn_
-				ons( " \t" )	do_( same )
-				on_other	do_( ">" )	REENTER
-				end
 		in_( ">\"" ) bgn_
-			on_( '\\' )	do_( ">\"_\\" )
 			on_( '\t' )	do_( same )	add_item( &sequence, '\\' );
 							add_item( &sequence, 't' );
 			on_( '\n' )	do_( same )	add_item( &sequence, '\\' );
 							add_item( &sequence, 'n' );
 			on_( '\"' )	do_( ">_" )	add_item( &sequence, event );
 			on_other	do_( same )	add_item( &sequence, event );
-			end
-		in_( ">\"_\\" ) bgn_
-			ons( " \t" )	do_( ">\"\\" )
-			on_( '\n' )	do_( ">\"\\_" )
-			on_other	do_( ">\"" )	add_item( &sequence, '\\' );
-							add_item( &sequence, event );
-			end
-		in_( ">\"\\" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( ">\"\\_" )
-			end
-		in_( ">\"\\_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_other	do_( ">\"" )	REENTER
 			end
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
@@ -345,7 +446,7 @@ readNarrative( char *path )
 		ons( ":,)" )	do_( "expr" )	REENTER
 						add_item( &sequence, '%' );
 						informed = 1;
-		ons( "/\n" )	do_( "expr_" )	REENTER
+		on_( '\n' )	do_( "expr_" )	REENTER
 						add_item( &sequence, '%' );
 		on_( '(' )	do_( "expr" )	REENTER
 						add_item( &sequence, '%' );
@@ -364,7 +465,7 @@ readNarrative( char *path )
 	in_( "?." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)" )	do_( "expr" )	REENTER
-		ons( "/\n" )	do_( "expr_" )	REENTER
+		on_( '\n' )	do_( "expr_" )	REENTER
 		end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
@@ -377,17 +478,6 @@ readNarrative( char *path )
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
 						typelse = tab = informed = 0;
 			}
-		on_( '/' )
-			if ( level == 0 ) {
-				do_( "expr_/" )
-			}
-		end
-	in_( "expr_/" ) bgn_
-		on_( '/' )	do_( "expr_//" )
-		end
-	in_( "expr_//" ) bgn_
-		on_( '\n' )	do_( "expr_" )	REENTER
-		on_other	do_( same )
 		end
 
 	CNParserDefault
@@ -403,16 +493,11 @@ readNarrative( char *path )
 						narrative = NULL;
 		on_( EOF ) bgn_
 			in_( "base" )	do_( "" )	// occurrence's sequence has been set
-			in_( "/*" )	do_( "" )	// idem
-			in_( "/**" )	do_( "" )	// idem
-			in_( "/**/" )	do_( "" )	// idem
 			in_( "expr" )	do_( "EOF" )	REENTER
 			in_( "term" )	do_( "EOF" )	REENTER
 			in_( "term_" )	do_( "EOF" )	REENTER
 			in_( ">_" )	do_( "EOF" )	REENTER
 			in_( "_<" )	do_( "EOF" )	REENTER
-			in_( "//" )	do_( "EOF" )	REENTER
-			in_( "expr_//" ) do_( "EOF" )	REENTER
 			in_other	do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			end
 		on_other bgn_
