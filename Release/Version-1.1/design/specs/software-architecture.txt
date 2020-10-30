@@ -1,6 +1,6 @@
 
-Architecture Diagram*
-				
+Package Dependencies*
+
 				   traversal.c
 				 /     | ^      \
 	main.c -> operation.c ->       | |        -> database.c

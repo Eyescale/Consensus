@@ -366,6 +366,7 @@ p_extract( char *p )
 //===========================================================================
 //	bm_verify
 //===========================================================================
+static void xpn_add( listItem **xp, int as_sub, int position );
 static int bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
 	listItem *exponent, listItem *base, CNDB *db );
 
@@ -551,11 +552,18 @@ bm_match( int privy, CNInstance *x, char *p, CNInstance *star,
 	return ( y == bm_lookup( privy, p, db ));
 }
 
+static void
+xpn_add( listItem **xp, int as_sub, int position )
+{
+	union { int value; void *ptr; } icast;
+	icast.value = as_sub + position;
+	addItem( xp, icast.ptr );
+}
+
 //===========================================================================
 //	p_locate
 //===========================================================================
 static char *locate_mark( char *expression, listItem **exponent );
-static void xpn_add( listItem **xp, int as_sub, int position );
 
 char *
 p_locate( char *expression, char *fmt, listItem **exponent )
@@ -769,14 +777,6 @@ locate_mark( char *expression, listItem **exponent )
 	freeListItem( &stack.couple );
 	freeListItem( &stack.level );
 	return ((*p=='?') ? p : NULL );
-}
-
-static void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
 }
 
 //===========================================================================

@@ -22,7 +22,7 @@
 	3. backslash usage should be restricted to specific characters - e.g. '\*'
 	   should fail, or mean something entirely other than '*' - and not default
 	   to the ascii representation of the backslashed character - with the
-	   coincidental exceptions of '\\' and '\0'.
+	   exceptions of '\'' '\\' and '\0' - TBD: '"' or '\"' ?
 
 	TO BE MODIFIED:
 	. input/output

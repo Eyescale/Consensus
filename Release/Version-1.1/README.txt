@@ -36,6 +36,8 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/10/30
+		added ./design/specs/db-traverse-implementation.txt
 	2020/10/29
 		added ./design/specs/software-architecture.txt
 		code cleanup
