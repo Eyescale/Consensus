@@ -414,13 +414,11 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 		case '/':
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 2;
-				skipped[ 0 ] += 2;
-			}
-			else if ( mode[ COMMENT ] == 4 ) {
-				mode[ COMMENT ] = 0;
 				skipped[ 0 ]++;
 			}
-			else skipped[ 0 ]++;
+			else if ( mode[ COMMENT ] == 4 )
+				mode[ COMMENT ] = 0;
+			skipped[ 0 ]++;
 			break;
 		case '\n':
 			if ( mode[ COMMENT ] == 1 ) {
@@ -442,17 +440,13 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 		case '*':
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 3;
-				skipped[ 0 ] += 2;
+				skipped[ 0 ]++;
 			}
-			else if ( mode[ COMMENT ] == 3 ) {
+			else if ( mode[ COMMENT ] == 3 )
 				mode[ COMMENT ] = 4;
-				skipped[ 0 ]++;
-			}
-			else if ( mode[ COMMENT ] == 4 ) {
+			else if ( mode[ COMMENT ] == 4 )
 				mode[ COMMENT ] = 3;
-				skipped[ 0 ]++;
-			}
-			else skipped[ 0 ]++;
+			skipped[ 0 ]++;
 			break;
 		default:
 			if ( mode[ COMMENT ] == 1 ) {
@@ -534,7 +528,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			break;
 		case '\n':
 			skipped[ 0 ] = 0;
-			output = event;
+			// no break
 		default:
 			output = event;
 	}
