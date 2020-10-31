@@ -11,6 +11,7 @@ TODO
 	...
 
 DONE
+	. code analysis for narrative registry implementation
 	. yak.story: removed %arg from narrative body
 	. input pre-processing - narrative.c
 		. filters out comments and line continuation from parser
