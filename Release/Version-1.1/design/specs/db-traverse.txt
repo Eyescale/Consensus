@@ -32,7 +32,7 @@ Original Approach - simple, but not working
 	involve different instances between each of the term.exponent sets
 
 
-Version-1.0 Release - working, but complicated
+Version-1.0 Release - correct, but complicated
 
 	The correct approach was to start from the candidate and walk it all
 	the way through the expression to verify that each and every expression
