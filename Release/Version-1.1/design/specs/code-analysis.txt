@@ -63,7 +63,7 @@ Code Analysis - Narrative Registry implementation
 		> bm_lookup	// pivot
 			> db_lookup
 
-	So that overall we have
+	Whereas overall we have
 
 		cnOperate
 			> in_condition
@@ -102,7 +102,7 @@ Change Summary
 		1. created at initialization
 		2. no removal allowed
 	  Q: performances?
-	  A: make sure registry is ordered by increasing order
+	  A: cf. Base/registry.c - registry is ordered by increasing order
 		i.e. '*' comes before 'toto'
 	. call db_star(db) in db_instantiate(), instead of registryLookup
 	. remove 'star' from VerifyData
