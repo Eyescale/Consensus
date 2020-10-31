@@ -63,7 +63,8 @@ Code Analysis - Narrative Registry implementation
 		> bm_lookup	// pivot
 			> db_lookup
 
-	And we have
+	So that overall we have
+
 		cnOperate
 			> in_condition
 		 	> on_event
@@ -87,7 +88,7 @@ Code Analysis - Narrative Registry implementation
 					> bm_output
 						> db_traverse
 
-	So we must transport ( db, registry ) through all these functions - where
+	We must transport ( db, registry ) through all these functions - where
 	before we transported only ( db ) - all the way to bm_lookup and bm_register,
 	which are the only two functions invoking db_lookup() and db_register()
 
