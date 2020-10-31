@@ -104,8 +104,6 @@ Change Summary
 	  Q: performances?
 	  A: make sure registry is ordered by increasing order
 		i.e. '*' comes before 'toto'
-	  Note: nil should then also be moved to index, with identifier ""
-		then cndb *is* index, as opposed to [ index, nil ]
 	. call db_star(db) in db_instantiate(), instead of registryLookup
 	. remove 'star' from VerifyData
 		=> remove bm_lookup from db_verify
