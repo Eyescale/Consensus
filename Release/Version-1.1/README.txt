@@ -36,8 +36,13 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/10/31
+		added ./design/specs/code-analysis.txt
+		added ./design/specs/narrative-states.txt
 	2020/10/30
 		added ./design/specs/db-traverse.txt
+		simplification
+		. implemented input preprocessor in narrative.c
 	2020/10/29
 		added ./design/specs/software-architecture.txt
 		code cleanup
