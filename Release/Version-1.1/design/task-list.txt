@@ -6,16 +6,22 @@ TODO
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
+	. make '+' and '-' logics relative
+	. provide framework for regression testing
 	...
 
 DONE
+	. yak.story: removed %arg from narrative body
+	. input pre-processing - narrative.c
+		. filters out comments and line continuation from parser
 	. code cleanup
 		. software architecture document
 		. moved db_feel() out of database.c, into traversal.c
 		. renamed language-specific functions with prefix bm_
-	  	. moved xpn_add() and bm_match() to expression.c
+	  	. moved xpn_add() and bm_match() - was: xp_match -
+		  from traversal.c to expression.c
 	. line continuation after \
 		+ narrative.c: handle '>' in "expr" vs. "base" state
 		+ allow \CR in strings
-	. standalone % entity
-	. standalone * entity
+	. standalone % identifier entity
+	. standalone * identifier entity

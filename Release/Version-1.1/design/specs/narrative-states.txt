@@ -1,0 +1,31 @@
+
+	base	#	base
+		+/-	base
+		i	in	in_	_expr
+		o	on	on_	_expr
+		d	do	do_	_expr
+		e	el	els	else	else_	_expr
+
+	_expr	build	add	expr
+		sibling build	add	expr
+
+	expr	expr_
+		*	expr
+			expr_
+		%	expr
+			expr_
+		>	expr
+			>\"	>\"\\ 	>\"
+				>_	expr
+					expr_
+		?.	expr
+			expr_
+		term	expr
+
+	expr_	base
+
+CNParserDefault
+
+	EOF	err	""
+		""
+	err	""

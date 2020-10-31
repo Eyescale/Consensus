@@ -1,0 +1,117 @@
+
+Code Analysis - Narrative Registry implementation
+
+	The functions where the Narrative Registry needs to be searched prior
+	to searching the CNDB are those invoking
+		registryLookup( db->index, identifier )
+	namely
+		. db_instantiate
+		. db_identifier
+		. db_register
+		. db_lookup
+
+	We can eliminate db_instantiate and db_identifier from the list, as
+
+	1. db_instantiate
+		calls registryLookup only for * [ which shouldn't be overloaded ]
+		bm_substantiate
+			> db_couple
+				> db_instantiate
+					> registryLookup() but only for *
+		=> change: call db_star(db)
+
+	2.  db_identifier
+		called only from cn_out, assuming we printout the true entity
+		identifier, and not the registry variable name
+		cn_out
+			> db_identifier
+				> registryLookup()
+		=> no change
+
+	That leaves the functions calling db_lookup() and db_register(),
+	which are
+		. bm_register()	- invokes both db_lookup() and db_register()
+		. bm_lookup() - invokes db_lookup()
+
+	3. bm_register
+		is called only from
+		bm_substantiate
+			> bm_register
+				> db_lookup
+				> db_register
+
+	4. bm_lookup()
+		is called from
+			bm_match()	// called only by bm_verify()
+			db_traverse()	// on pivot, returned by p_locate()
+			db_verify()	// but only for star to be transported
+
+	   Here again we can eliminate db_verify() from the list, assuming we
+	   implement db_star(). However db_verify invokes bm_match(), according
+	   to the following stack trace:
+
+	   db_traverse
+		[ > xp_traverse ]
+			> traverseCB
+				> db_verify
+					> xp_verify
+						> bm_verify
+							> bm_match
+								> bm_lookup
+									> db_lookup
+	   db_traverse
+		> bm_lookup	// pivot
+			> db_lookup
+
+	And we have
+		cnOperate
+			> in_condition
+		 	> on_event
+				> db_feel
+					> db_verify
+			> do_action
+			> do_input
+				> bm_substantiate
+					> bm_void
+						> db_feel
+							> db_traverse
+					> bm_fetch
+						> db_traverse
+					> bm_register
+						> db_lookup
+						> db_register
+				> bm_release
+					> db_traverse
+			> do_output
+				[ > bm_outputf ]
+					> bm_output
+						> db_traverse
+
+	So we must transport ( db, registry ) through all these functions - where
+	before we transported only ( db ) - all the way to bm_lookup and bm_register,
+	which are the only two functions invoking db_lookup() and db_register()
+
+	And then we must change bm_lookup and bm_register to do the right thing.
+
+Change Summary
+
+	. create db_star(db) function in database.c
+	  Q: how about privy?
+	  A: could consider keeping star constant
+		1. created at initialization
+		2. no removal allowed
+	  Q: performances?
+	  A: make sure registry is ordered by increasing order
+		i.e. '*' comes before 'toto'
+	  Note: nil should then also be moved to index, with identifier ""
+		then cndb *is* index, as opposed to [ index, nil ]
+	. call db_star(db) in db_instantiate(), instead of registryLookup
+	. remove 'star' from VerifyData
+		=> remove bm_lookup from db_verify
+		use db_star(db) in bm_verify
+		use bm_lookup( privy, p, db ) in bm_match
+	. pass ( db, registry ) all the way from cnOperate
+		to bm_lookup and bm_register
+	. modify bm_lookup and bm_register implementation
+
+

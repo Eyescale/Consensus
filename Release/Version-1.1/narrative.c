@@ -269,8 +269,12 @@ readNarrative( char *path )
 							add_item( &sequence, 't' );
 			on_( '\n' )	do_( same )	add_item( &sequence, '\\' );
 							add_item( &sequence, 'n' );
+			on_( '\\' )	do_( ">\"\\" )	add_item( &sequence, event );
 			on_( '\"' )	do_( ">_" )	add_item( &sequence, event );
 			on_other	do_( same )	add_item( &sequence, event );
+			end
+		in_( ">\"\\" ) bgn_
+			on_any		do_( ">\"" )	add_item( &sequence, event );
 			end
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
@@ -379,13 +383,8 @@ add_item( listItem **stack, int value )
 //===========================================================================
 //	input preprocessor
 //===========================================================================
-enum {
-	COMMENT = 0,
-	BACKSLASH,
-	STRING,
-	QUOTE
-};
 static int preprocess( int event, int *mode, int *buffer, int *skipped );
+
 static int
 input( FILE *file, int *mode, int *buffer, int *c, int *l )
 /*
@@ -403,6 +402,12 @@ input( FILE *file, int *mode, int *buffer, int *c, int *l )
 	*l += skipped[ 1 ];
 	return event;
 }
+enum {
+	COMMENT = 0,
+	BACKSLASH,
+	STRING,
+	QUOTE
+};
 static int
 preprocess( int event, int *mode, int *buffer, int *skipped )
 {
@@ -526,9 +531,6 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				mode[ QUOTE ] = !mode[ QUOTE ];
 			output = event;
 			break;
-		case '\n':
-			skipped[ 0 ] = 0;
-			// no break
 		default:
 			output = event;
 	}

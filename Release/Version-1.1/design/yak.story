@@ -112,12 +112,12 @@
 			do INPUT
 
 
-: (( rule, %rule ), ( %flag, %frame ))
+: (( rule, %id ), ( %flag, %start_frame ))
 	%((schema,.),.)
 
 	on ( this )
 		// instantiate / subscribe to children schemas - feeders
-		do (( %((rule,%rule),?:(schema,.)), (%flag,%frame)), this )
+		do (( %((rule,id),?:(schema,.)), (flag,start_frame)), this )
 
 	else on ~(((schema,.),.), this ) // feeder schema failed
 		in %( ?:((schema,.),.), this ): ~%( this, ? )
@@ -143,18 +143,18 @@
 		else do .( COMPLETE ) // all children schemas complete
 
 
-: (( schema, %position ), ( %flag, %frame ))
+: (( schema, %start_position ), ( %flag, %start_frame ))
 	.position .event
 
 	on ( this )
 		in (((schema,.),.), ( this:((.,'\0'),.), . ))
 			// schema has predecessor AND is in null position
-			do .( %flag, %frame )
+			do .( flag, start_frame )
 			do .( COMPLETE )
 		else
-			do ((*,position), %position )
-			in %flag: UNCONSUMED
-				do ((*,event), %((.,?):%frame))
+			do ((*,position), start_position )
+			in flag: UNCONSUMED
+				do ((*,event), %((.,?):start_frame))
 			else do .( READY )
 
 	else on ~( this, ((rule,.),.))
