@@ -36,6 +36,11 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/02
+		code cleanup
+		. simplified VerifyData - interface to bm_verify / bm_match
+		. optimized bm_match() - using pivot from db_traverse(), db_feel()
+		. changed init and exit from operation flags to CNDB entities
 	2020/10/31
 		added ./design/specs/code-analysis.txt
 		added ./design/specs/narrative-states.txt

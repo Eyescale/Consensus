@@ -383,16 +383,17 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 	int success, not = 0;
 
 	switch ( data->op ) {
-	case SUB_NONE:
+	case INIT:
 		success = 0;
 		base = NULL;
 		scope = 1;
 		OOS = 0;
 		break;
-	case SUB_START:
-		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
-		// Note that star may be null (not instantiated)
-		// whereas x (and hence y) cannot be deprecated
+	case SUB_BGN:
+		/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+		   Note that star may be null (not instantiated)
+		   whereas x (and hence y) cannot be deprecated
+		*/
 		if ( *p++ == '*' ) {
 			CNInstance *y = (*x)->sub[ 0 ];
 			if (( y == NULL ) || ( y->sub[ 0 ] == NULL ) ||
@@ -406,7 +407,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 		scope = (int) data->stack.scope->ptr;
 		OOS = scope - 1;
 		break;
-	case SUB_FINISH:;
+	case SUB_END:;
 		success = data->success;
 		if ((int) popListItem( &data->stack.neg ))
 			success = !success;
@@ -464,7 +465,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 			not = 0; p++;
 			break;
 		case ':':
-			if (( data->op == SUB_START ) && ( scope==OOS+1 ))
+			if (( data->op == SUB_BGN ) && ( scope==OOS+1 ))
 				{ done = 1; break; }
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_DEFAULT, p+1 );
@@ -483,7 +484,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 				popListItem( exponent );
 			}
 			data->couple = (int) popListItem( &data->stack.couple );
-			if (( data->op == SUB_START ) && ( scope==OOS+1 ))
+			if (( data->op == SUB_BGN ) && ( scope==OOS+1 ))
 			    { done = 1; break; }
 			not = (int) popListItem( &data->stack.not );
 			if ( not ) { success = !success; not = 0; }

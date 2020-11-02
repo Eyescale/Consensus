@@ -29,9 +29,9 @@ void xpn_out( FILE *stream, listItem *xp );
 //	Interface with bm_verify
 //===========================================================================
 enum {
-	SUB_NONE,
-	SUB_START,
-	SUB_FINISH
+	INIT,
+	SUB_BGN,
+	SUB_END
 };
 typedef struct {
 	int op, privy, success;

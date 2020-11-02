@@ -175,7 +175,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 		*mark_exp = NULL,
 		*i = newItem( x ),
 		*j;
-	int op = SUB_NONE;
+	int op = INIT;
 	char *p = expression;
 	int success = 0;
 	for ( ; ; ) {
@@ -226,7 +226,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					x = x->sub[ exp & 1 ];
 				}
 				i = newItem( x );
-				op = SUB_START;
+				op = SUB_BGN;
 				continue;
 			}
 			else mark_exp = popListItem( &stack.mark_exp );
@@ -248,7 +248,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 				i = popListItem( &stack.i );
 				popListItem( &stack.p );
 				// p is already at sub-expression closure
-				op = SUB_FINISH;
+				op = SUB_END;
 				continue;
 			}
 			for ( ; ; ) {
@@ -256,7 +256,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					i = i->next;
 					if ( !db_private( privy, i->ptr, db ) ) {
 						p = stack.p->ptr;
-						op = SUB_START;
+						op = SUB_BGN;
 						break;
 					}
 				}
@@ -277,7 +277,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					// p must be at sub-expression closure
 					if ( x == NULL ) p = p_prune( PRUNE_DEFAULT, stack.p->ptr );
 					popListItem( &stack.p );
-					op = SUB_FINISH;
+					op = SUB_END;
 					break;
 				}
 			}
