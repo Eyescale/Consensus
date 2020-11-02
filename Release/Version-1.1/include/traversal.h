@@ -39,6 +39,7 @@ typedef struct {
 	int empty;
 	CNInstance *star;
 	int couple;
+	Pair *pivot;
 	struct {
 		listItem *exponent;
 		listItem *couple;

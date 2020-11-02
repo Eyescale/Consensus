@@ -12,7 +12,7 @@
 //===========================================================================
 //	db_feel
 //===========================================================================
-static int db_verify( int privy, CNInstance *, char *expression, CNDB * );
+static int db_verify( int privy, CNInstance *, char *expression, Pair *pivot, CNDB * );
 
 int
 db_feel( char *expression, CNDB *db, DBLogType type )
@@ -30,7 +30,7 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 	}
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( db_verify( privy, e, expression, db ) ) {
+		if ( db_verify( privy, e, expression, NULL, db ) ) {
 			freeListItem( &s );
 			return 1;
 		}
@@ -44,6 +44,7 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 typedef struct {
 	int privy;
 	char *expression;
+	Pair *pivot;
 	DBTraverseCB *user_CB;
 	void *user_data;
 } DBTraverseData;
@@ -74,9 +75,13 @@ db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	char *pivot = p_locate( expression, "", &exponent );
 	if (( pivot )) {
 		CNInstance *x = bm_lookup( 0, pivot, db );
-		return xp_traverse( 0, x, exponent, db, traverse_CB, &data );
+		data.pivot = newPair( pivot, x );
+		int success = xp_traverse( 0, x, exponent, db, traverse_CB, &data );
+		freePair( data.pivot );
+		return success;
 	}
 	else {
+		data.pivot = NULL;
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
 			if ( traverse_CB( e, db, &data ) == DB_DONE ) {
@@ -92,7 +97,7 @@ static int
 traverse_CB( CNInstance *e, CNDB *db, void *user_data )
 {
 	DBTraverseData *data = user_data;
-	if ( db_verify( data->privy, e, data->expression, db ) ) {
+	if ( db_verify( data->privy, e, data->expression, data->pivot, db ) ) {
 		return data->user_CB ?
 			data->user_CB( e, db, data->user_data ) :
 			DB_DONE;
@@ -106,7 +111,7 @@ traverse_CB( CNInstance *e, CNDB *db, void *user_data )
 static int xp_verify( int privy, CNInstance *, char *expression, CNDB *, VerifyData * );
 
 static int
-db_verify( int privy, CNInstance *x, char *expression, CNDB *db )
+db_verify( int privy, CNInstance *x, char *expression, Pair *pivot, CNDB *db )
 {
 #ifdef DEBUG
 fprintf( stderr, "db_verify: %s / candidate=", expression );
@@ -115,6 +120,7 @@ fprintf( stderr, " ........{\n" );
 #endif
 	VerifyData data;
 	data.db = db;
+	data.pivot = pivot;
 	data.privy = privy;
 	data.empty = db_is_empty( db );
 	data.star = db_lookup( privy, "*", db );

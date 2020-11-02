@@ -546,6 +546,9 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, VerifyData
 	if ( y == NULL ) return -1;
 	if ( p == NULL ) return 1;
 	if ( *p == '*' ) return ( y == data->star );
+	if (( data->pivot ) && ( p == data->pivot->name ))
+		return ( y == data->pivot->value );
+
 	return ( y == bm_lookup( data->privy, p, data->db ));
 }
 
