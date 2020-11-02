@@ -44,6 +44,7 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 			return 1;
 		}
 	}
+	freePair( pivot );
 	return 0;
 }
 
@@ -101,7 +102,6 @@ db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
 		return 0;
 	}
 }
-
 static int
 traverse_CB( CNInstance *e, CNDB *db, void *user_data )
 {
@@ -145,7 +145,6 @@ fprintf( stderr, " ........{\n" );
 	// used by wildcard_opt
 	data.btree = btreefy( expression );
 #endif
-
 	int success = xp_verify( privy, x, expression, db, &data );
 #ifdef TRIM
 	freeBTree( data.btree );
