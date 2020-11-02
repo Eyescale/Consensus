@@ -15,8 +15,12 @@ CNDB *
 newCNDB( void )
 {
 	CNInstance *nil = cn_new( NULL, NULL );
+	CNInstance *init = cn_new( NULL, NULL );
 	Registry *index = newRegistry( IndexedByName );
-	return (CNDB *) newPair( nil, index );
+	CNDB *db = (CNDB *) newPair( nil, index );
+	registryRegister( db->index, strdup("init"), init );
+	cn_new( nil, init );
+	return db;
 }
 
 static freeRegistryCB freename_CB;

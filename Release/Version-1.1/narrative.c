@@ -59,7 +59,7 @@ readNarrative( char *path )
 		marked = 0;
 
 	CNNarrative *narrative = newNarrative();
-	addItem( &stack.occurrence, narrative->root );
+	addItem( &stack.occurrence, narrative );
 
 	CNParserBegin( file, input )
 	in_( "base" ) bgn_
@@ -367,7 +367,7 @@ readNarrative( char *path )
 	freeListItem( &stack.counter );
 	freeListItem( &stack.marked );
 	if ( narrative == NULL ) return NULL;
-	else if ( narrative->root->data->sub == NULL )
+	else if ( ((CNOccurrence *) narrative )->data->sub == NULL )
 		fprintf( stderr, "Warning: read_narrative: narrative empty\n" );
 	else narrative_reorder( narrative );
 	return narrative;
@@ -543,17 +543,12 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 CNNarrative *
 newNarrative( void )
 {
-	union { int value; void *ptr; } icast;
-	icast.value = 1; // init state
-	return (CNNarrative *) newPair( icast.ptr, newOccurrence( ROOT ) );
+	return (CNNarrative *) newOccurrence( ROOT );
 }
 void
 freeNarrative( CNNarrative *narrative )
 {
-	if (( narrative )) {
-		freeOccurrence( narrative->root );
-		freePair((Pair *) narrative );
-	}
+	freeOccurrence((CNOccurrence *) narrative );
 }
 
 //===========================================================================
@@ -563,7 +558,7 @@ static void
 narrative_reorder( CNNarrative *narrative )
 {
 	if ( narrative == NULL ) return;
-	CNOccurrence *occurrence = narrative->root;
+	CNOccurrence *occurrence = (CNOccurrence *) narrative;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
@@ -687,7 +682,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 		fprintf( stderr, "Error: narrative_output: No narrative\n" );
 		return 0;
 	}
-	CNOccurrence *occurrence = narrative->root;
+	CNOccurrence *occurrence = (CNOccurrence *) narrative;
 
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {

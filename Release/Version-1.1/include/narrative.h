@@ -26,10 +26,7 @@ typedef struct {
 	} *data;
 } CNOccurrence;
 
-typedef struct {
-	int init;
-	CNOccurrence *root;
-} CNNarrative;
+typedef CNOccurrence * CNNarrative;
 
 CNNarrative * readNarrative( char *path );
 CNNarrative * newNarrative( void );

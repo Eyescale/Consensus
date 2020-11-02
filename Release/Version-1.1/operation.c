@@ -11,7 +11,7 @@
 // #define DEBUG
 
 static int in_condition( char *, CNDB * );
-static int on_event( char *, CNDB *, int init );
+static int on_event( char *, CNDB * );
 static int do_action( char *, CNDB * );
 static int do_input( char *, CNDB * );
 static int do_output( char *, CNDB * );
@@ -32,14 +32,12 @@ cnOperate( CNNarrative *narrative, CNDB *db )
 fprintf( stderr, "=============================\n" );
 #endif
 	if ( narrative == NULL ) return 0;
+	if ( on_event( "exit", db ) ) return 0;
 
-	CNOccurrence *occurrence = narrative->root;
+	CNOccurrence *occurrence = (CNOccurrence *) narrative;
 	if ( occurrence->data->sub == NULL ) return 0;
 
-	int init = narrative->init;
-	narrative->init = 0;
-
-	int passed = 1, active = 1;
+	int passed = 1;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
@@ -52,11 +50,10 @@ fprintf( stderr, "=============================\n" );
 			passed = in_condition( occurrence->data->expression, db );
 			break;
 		ctrl(ELSE_ON) case ON:
-			passed = on_event( occurrence->data->expression, db, init );
+			passed = on_event( occurrence->data->expression, db );
 			break;
 		ctrl(ELSE_DO) case DO:
-			active &= do_action( occurrence->data->expression, db );
-			if ( !active ) goto RETURN;
+			do_action( occurrence->data->expression, db );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			do_input( occurrence->data->expression, db );
@@ -83,12 +80,11 @@ fprintf( stderr, "=============================\n" );
 		}
 	}
 RETURN:
-	if ( !active ) narrative->init = 1;
 	while (( stack )) {
 		i = popListItem( &stack );
 	}
 	freeItem( i );
-	return active;
+	return 1;
 }
 
 //===========================================================================
@@ -116,12 +112,10 @@ in_condition( char *expression, CNDB *db )
 static int test_release( char ** );
 
 static int
-on_event( char *expression, CNDB *db, int init )
+on_event( char *expression, CNDB *db )
 {
 	// fprintf( stderr, "on_event: %s\n", expression );
-	if ( !strcmp( expression, "init" ) )
-		return init;
-	else if ( test_release( &expression ) )
+	if ( test_release( &expression ) )
 		return db_feel( expression, db, DB_RELEASED );
 	else
 		return db_feel( expression, db, DB_INSTANTIATED );
@@ -146,9 +140,7 @@ static int
 do_action( char *expression, CNDB *db )
 {
 	// fprintf( stderr, "do_action: do %s\n", expression );
-	if ( !strcmp( expression, "exit" ) )
-		return 0;
-	else if ( test_release( &expression ) )
+	if ( test_release( &expression ) )
 		bm_release( expression, db );
 	else
 		bm_substantiate( expression, db );
