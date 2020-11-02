@@ -8,6 +8,7 @@ TODO
 		. expression.c: db_input, db_output, db_outputf
 	. make '+' and '-' logics relative
 	. provide framework for regression testing
+	. optimize db_feel() using db_traverse() - with pivot
 	...
 
 DONE

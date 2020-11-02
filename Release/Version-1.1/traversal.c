@@ -28,10 +28,19 @@ db_feel( char *expression, CNDB *db, DBLogType type )
 		privy = 0;
 		break;
 	}
+	Pair *pivot = NULL;
+	listItem *exponent = NULL;
+	char *p = p_locate( expression, "", &exponent );
+	if (( p )) {
+		CNInstance *x = bm_lookup( privy, p, db );
+		if (( x )) pivot = newPair ( p, x );
+		else return 0;
+	}
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( db_verify( privy, e, expression, NULL, db ) ) {
+		if ( db_verify( privy, e, expression, pivot, db ) ) {
 			freeListItem( &s );
+			freePair( pivot );
 			return 1;
 		}
 	}
@@ -68,20 +77,20 @@ db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	DBTraverseData data;
 	data.privy = 0;
 	data.expression = expression;
+	data.pivot = NULL;
 	data.user_CB = user_CB;
 	data.user_data = user_data;
 
 	listItem *exponent = NULL;
-	char *pivot = p_locate( expression, "", &exponent );
-	if (( pivot )) {
-		CNInstance *x = bm_lookup( 0, pivot, db );
-		data.pivot = newPair( pivot, x );
+	char *p = p_locate( expression, "", &exponent );
+	if (( p )) {
+		CNInstance *x = bm_lookup( 0, p, db );
+		data.pivot = newPair( p, x );
 		int success = xp_traverse( 0, x, exponent, db, traverse_CB, &data );
 		freePair( data.pivot );
 		return success;
 	}
 	else {
-		data.pivot = NULL;
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
 			if ( traverse_CB( e, db, &data ) == DB_DONE ) {
