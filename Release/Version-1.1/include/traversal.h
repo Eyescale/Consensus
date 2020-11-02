@@ -34,6 +34,11 @@ enum {
 	SUB_FINISH
 };
 typedef struct {
+	int op, privy, success;
+	CNDB *db;
+	int empty;
+	CNInstance *star;
+	int couple;
 	struct {
 		listItem *exponent;
 		listItem *couple;
@@ -43,15 +48,10 @@ typedef struct {
 		listItem *neg;
 		listItem *p;
 	} stack;
+	listItem *mark_exp, *sub_exp;
 #ifdef TRIM
 	BTreeNode *btree;
 #endif
-	CNDB *db;
-	int privy;
-	char *pivot;
-	int empty;
-	CNInstance *star;
-	int couple;
 } VerifyData;
 
 

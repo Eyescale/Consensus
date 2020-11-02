@@ -13,12 +13,12 @@ Code Analysis - Narrative Registry implementation
 	We can eliminate db_instantiate and db_identifier from the list, as
 
 	1. db_instantiate
-		calls registryLookup only for * [ which shouldn't be overloaded ]
+		calls registryLookup only for * and for comparison
 		bm_substantiate
 			> db_couple
 				> db_instantiate
 					> registryLookup() but only for *
-		=> change: call db_star(db)
+		=> no change
 
 	2.  db_identifier
 		called only from cn_out, assuming we printout the true entity
@@ -46,9 +46,8 @@ Code Analysis - Narrative Registry implementation
 			db_traverse()	// on pivot, returned by p_locate()
 			db_verify()	// but only for star to be transported
 
-	   Here again we can eliminate db_verify() from the list, assuming we
-	   implement db_star(). However db_verify invokes bm_match(), according
-	   to the following stack trace:
+	   In db_verify(), we can call db_lookup() instead of bm_lookup().
+	   However db_verify invokes bm_match(), as follows:
 
 	   db_traverse
 		[ > xp_traverse ]
@@ -96,19 +95,7 @@ Code Analysis - Narrative Registry implementation
 
 Change Summary
 
-	. create db_star(db) function in database.c
-	  Q: how about privy?
-	  A: could consider keeping star constant
-		1. created at initialization
-		2. no removal allowed
-	  Q: performances?
-	  A: cf. Base/registry.c - registry is ordered by increasing order
-		i.e. '*' comes before 'toto'
-	. call db_star(db) in db_instantiate(), instead of registryLookup
-	. remove 'star' from VerifyData
-		=> remove bm_lookup from db_verify
-		use db_star(db) in bm_verify
-		use bm_lookup( privy, p, db ) in bm_match
+	. invoke db_lookup instead of bm_lookup in db_verify
 	. pass ( db, registry ) all the way from cnOperate
 		to bm_lookup and bm_register
 	. modify bm_lookup and bm_register implementation

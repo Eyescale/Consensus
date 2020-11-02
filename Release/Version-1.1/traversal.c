@@ -114,6 +114,11 @@ cn_out( stderr, x, db );
 fprintf( stderr, " ........{\n" );
 #endif
 	VerifyData data;
+	data.db = db;
+	data.privy = privy;
+	data.empty = db_is_empty( db );
+	data.star = db_lookup( privy, "*", db );
+	data.couple = 0;
 	data.stack.exponent = NULL;
 	data.stack.couple = NULL;
 	data.stack.scope = NULL;
@@ -125,11 +130,6 @@ fprintf( stderr, " ........{\n" );
 	// used by wildcard_opt
 	data.btree = btreefy( expression );
 #endif
-	data.db = db;
-	data.privy = privy;
-	data.empty = db_is_empty( db );
-	data.star = bm_lookup( privy, "*", db );
-	data.couple = 0;
 
 	int success = xp_verify( privy, x, expression, db, &data );
 #ifdef TRIM
@@ -157,8 +157,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 		listItem *i;
 	} stack = { NULL, NULL, NULL, NULL, NULL };
 	listItem *exponent = NULL,
-		*mark_exp,
-		*sub_pos = NULL,
+		*mark_exp = NULL,
 		*i = newItem( x ),
 		*j;
 	int op = SUB_NONE;
@@ -194,9 +193,11 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 		if (( x )) {
 			// backup context, initial
 			addItem( &stack.mark_exp, mark_exp );
-			mark_exp = NULL;
-			success = bm_verify( op, success, &x, &p, &mark_exp, &sub_pos, data );
-			if (( mark_exp )) {
+			data->op = op;
+			data->success = success;
+			data->mark_exp = NULL;
+			success = bm_verify( &x, &p, data );
+			if (( mark_exp = data->mark_exp )) {
 				// backup context, final
 				addItem( &stack.sub, stack.as_sub );
 				addItem( &stack.i, i );
@@ -204,8 +205,9 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 				// setup new sub context
 				stack.as_sub = NULL;
 				exponent = mark_exp;
-				while (( sub_pos )) {
-					int exp = (int) popListItem( &sub_pos );
+				listItem **sub_exp = &data->sub_exp;
+				while (( *sub_exp )) {
+					int exp = (int) popListItem( sub_exp );
 					x = x->sub[ exp & 1 ];
 				}
 				i = newItem( x );
@@ -590,4 +592,3 @@ xpn_out( FILE *stream, listItem *xp )
 		xp = xp->next;
 	}
 }
-
