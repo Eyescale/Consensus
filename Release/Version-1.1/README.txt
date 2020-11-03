@@ -36,6 +36,10 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/03
+		code refactoring
+		. implemented changes according to ./design/specs/code-analysis.txt
+		. added util.c and include/util.h
 	2020/11/02
 		code cleanup
 		. simplified VerifyData - interface to bm_verify / bm_match
