@@ -16,6 +16,7 @@ SRCS =	database.c \
 	narrative.c \
 	operation.c \
 	traversal.c \
+	util.c \
 	wildcard.c
 
 #CFLAGS = -DDEBUG

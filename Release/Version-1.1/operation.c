@@ -10,11 +10,14 @@
 
 // #define DEBUG
 
-static int in_condition( char *, CNDB * );
-static int on_event( char *, CNDB * );
-static int do_action( char *, CNDB * );
-static int do_input( char *, CNDB * );
-static int do_output( char *, CNDB * );
+static BMContext *pushContext( CNNarrative *, CNInstance *, CNDB * );
+static void popContext( BMContext * );
+
+static int in_condition( char *, BMContext * );
+static int on_event( char *, BMContext * );
+static int do_action( char *, BMContext * );
+static int do_input( char *, BMContext * );
+static int do_output( char *, BMContext * );
 
 //===========================================================================
 //	cnOperate
@@ -32,10 +35,12 @@ cnOperate( CNNarrative *narrative, CNDB *db )
 fprintf( stderr, "=============================\n" );
 #endif
 	if ( narrative == NULL ) return 0;
-	if ( on_event( "exit", db ) ) return 0;
 
 	CNOccurrence *occurrence = (CNOccurrence *) narrative;
 	if ( occurrence->data->sub == NULL ) return 0;
+
+	BMContext *ctx = pushContext( narrative, NULL, db );
+	if ( ctx == NULL ) return 0;
 
 	int passed = 1;
 	listItem *i = newItem( occurrence ), *stack = NULL;
@@ -47,19 +52,19 @@ fprintf( stderr, "=============================\n" );
 			passed = 1;
 			break;
 		ctrl(ELSE_IN) case IN:
-			passed = in_condition( occurrence->data->expression, db );
+			passed = in_condition( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_ON) case ON:
-			passed = on_event( occurrence->data->expression, db );
+			passed = on_event( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_DO) case DO:
-			do_action( occurrence->data->expression, db );
+			do_action( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
-			do_input( occurrence->data->expression, db );
+			do_input( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_OUTPUT) case OUTPUT:
-			do_output( occurrence->data->expression, db );
+			do_output( occurrence->data->expression, ctx );
 			break;
 		}
 		if (( j && passed )) {
@@ -84,6 +89,7 @@ RETURN:
 		i = popListItem( &stack );
 	}
 	freeItem( i );
+	popContext( ctx );
 	return 1;
 }
 
@@ -97,13 +103,33 @@ cnUpdate( CNDB *db )
 }
 
 //===========================================================================
+//	pushContext, popContext
+//===========================================================================
+static BMContext *
+pushContext( CNNarrative *n, CNInstance *e, CNDB *db )
+{
+	if (( db_lookup( 0, "exit", db ) ))
+		return NULL;
+	else {
+		Registry *registry = newRegistry( IndexedByName );
+		return (BMContext *) newPair( db, registry );
+	}
+}
+static void
+popContext( BMContext *ctx )
+{
+	freeRegistry( ctx->registry, NULL );
+	freePair((Pair *) ctx );
+}
+
+//===========================================================================
 //	in_condition
 //===========================================================================
 static int
-in_condition( char *expression, CNDB *db )
+in_condition( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "in condition: %s\n", expression );
-	return db_feel( expression, db, DB_CONDITION );
+	return bm_feel( expression, ctx, BM_CONDITION );
 }
 
 //===========================================================================
@@ -112,13 +138,13 @@ in_condition( char *expression, CNDB *db )
 static int test_release( char ** );
 
 static int
-on_event( char *expression, CNDB *db )
+on_event( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "on_event: %s\n", expression );
 	if ( test_release( &expression ) )
-		return db_feel( expression, db, DB_RELEASED );
+		return bm_feel( expression, ctx, BM_RELEASED );
 	else
-		return db_feel( expression, db, DB_INSTANTIATED );
+		return bm_feel( expression, ctx, BM_INSTANTIATED );
 
 	return 0;
 }
@@ -137,13 +163,13 @@ test_release( char **expression )
 //	do_action
 //===========================================================================
 static int
-do_action( char *expression, CNDB *db )
+do_action( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "do_action: do %s\n", expression );
 	if ( test_release( &expression ) )
-		bm_release( expression, db );
+		bm_release( expression, ctx );
 	else
-		bm_substantiate( expression, db );
+		bm_substantiate( expression, ctx );
 
 	return 1;
 }
@@ -152,7 +178,7 @@ do_action( char *expression, CNDB *db )
 //	do_input
 //===========================================================================
 static int
-do_input( char *expression, CNDB *db )
+do_input( char *expression, BMContext *ctx )
 /*
 	Assuming expression is in the form
 		variable : format <
@@ -201,7 +227,7 @@ do_input( char *expression, CNDB *db )
 		// release (*,variable)
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
-		bm_release( &expression[ 1 ], db );
+		bm_release( &expression[ 1 ], ctx );
 	}
 	else {
 		// read & instantiate ((*,expression),input)
@@ -212,7 +238,7 @@ do_input( char *expression, CNDB *db )
 		while ( !is_separator( event ) );
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
-		bm_substantiate( expression, db );
+		bm_substantiate( expression, ctx );
 	}
 	freeString( s );
 	return 0;
@@ -224,7 +250,7 @@ do_input( char *expression, CNDB *db )
 static char * skip_format( char *format );
 
 static int
-do_output( char *expression, CNDB *db )
+do_output( char *expression, BMContext *ctx )
 /*
 	Assuming expression is in the form
 		> format : expression
@@ -238,7 +264,7 @@ do_output( char *expression, CNDB *db )
 		// no format: output expression results
 		expression = format + 1;
 		if ( *expression ) {
-			bm_output( expression, db );
+			bm_output( expression, ctx );
 		}
 		else printf( "\n" );
 		break;
@@ -248,7 +274,7 @@ do_output( char *expression, CNDB *db )
 		case ':':
 			expression++;
 		}
-		bm_outputf( format, expression, db );
+		bm_outputf( format, expression, ctx );
 	}
 	return 0;
 }

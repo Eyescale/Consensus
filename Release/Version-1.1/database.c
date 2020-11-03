@@ -23,7 +23,6 @@ newCNDB( void )
 	return db;
 }
 
-static freeRegistryCB freename_CB;
 void
 freeCNDB( CNDB *db )
 {
@@ -66,14 +65,8 @@ freeCNDB( CNDB *db )
 
 	/* then delete CNDB per se
 	*/
-	freeRegistry( db->index, freename_CB );
+	freeRegistry( db->index, NULL );
 	freePair((Pair *) db );
-}
-static int
-freename_CB( Registry *registry, Pair *entry )
-{
-	free( entry->name );
-	return 1;
 }
 
 //===========================================================================
@@ -785,11 +778,4 @@ cn_out( FILE *stream, CNInstance *e, CNDB *db )
 		}
 	}
 	return 0;
-}
-void
-dbg_out( char *pre, CNInstance *e, char *post, CNDB *db )
-{
-	if (( pre )) fprintf( stderr, "%s", pre );
-	if (( e )) cn_out( stderr, e, db );
-	if (( post )) fprintf( stderr, "%s", post );
 }

@@ -1,376 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "string_util.h"
 #include "database.h"
 #include "expression.h"
+#include "string_util.h"
 #include "traversal.h"
+#include "util.h"
 
 // #define DEBUG
 
-static int p_single( char *p );
-
 //===========================================================================
-//	bm_substantiate
+//	bm_lookup
 //===========================================================================
-static int bm_void( char *, CNDB *db );
-static CNInstance *bm_register( char *p, CNDB *db );
-
-void
-bm_substantiate( char *expression, CNDB *db )
-/*
-	Substantiates expression by verifying and/or instantiating all
-	relationships involved. Note that, reassignment excepted, only
-	new or previously deprecated relationship instances will be
-	manifested.
-*/
-{
-	if ( bm_void( expression, db ) ) {
-#ifdef DEBUG
-		fprintf( stderr, "bm_substantiate: %s - void\n", expression );
-#endif
-		return;
-	}
-#ifdef DEBUG
-	fprintf( stderr, "bm_substantiate: %s {\n", expression );
-#endif
-
-	union { int value; void *ptr; } icast;
-	struct {
-		listItem *results;
-		listItem *ndx;
-	} stack = { NULL, NULL };
-	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
-
-	CNInstance *e;
-	int scope=1, ndx=0;
-	char *p = expression;
-	while ( *p && scope ) {
-		if ( p_filtered( p )  ) {
-			// bm_void made sure we do have results
-			sub[ ndx ] = bm_fetch( p, db );
-			p = p_prune( PRUNE_DEFAULT, p );
-			continue;
-		}
-		switch ( *p ) {
-		case '*':
-		case '%':
-			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				e = bm_register( p, db );
-				sub[ ndx ] = newItem( e );
-				p++; break;
-			}
-			// no break
-		case '~':
-			// bm_void made sure we do have results
-			sub[ ndx ] = bm_fetch( p, db );
-			p = p_prune( PRUNE_DEFAULT, p );
-			break;
-		case '(':
-			scope++;
-			icast.value = ndx;
-			addItem( &stack.ndx, icast.ptr );
-			if ( ndx ) {
-				addItem( &stack.results, sub[ 0 ] );
-				ndx = 0; sub[ 0 ] = NULL;
-			}
-			p++; break;
-		case ':': // should not happen
-			break;
-		case ',':
-			if ( scope == 1 ) { scope=0; break; }
-			ndx = 1;
-			p++; break;
-		case ')':
-			scope--;
-			if ( !scope ) break;
-			switch ( ndx ) {
-			case 0:
-				instances = sub[ 0 ];
-				break;
-			case 1:
-				instances = db_couple( sub, db );
-				freeListItem( &sub[ 0 ] );
-				freeListItem( &sub[ 1 ] );
-				break;
-			}
-			ndx = (int) popListItem( &stack.ndx );
-			sub[ ndx ] = instances;
-			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
-			p++; break;
-		case '?':
-		case '.':
-			sub[ ndx ] = newItem( NULL );
-			p++; break;
-		default:
-			e = bm_register( p, db );
-			sub[ ndx ] = newItem( e );
-			p = p_prune( PRUNE_IDENTIFIER, p );
-		}
-	}
-#ifdef DEBUG
-	if (( sub[ 0 ] )) dbg_out( "bm_substantiate: } first=", sub[0]->ptr, "\n", db );
-	else fprintf( stderr, "bm_substantiate: } no result\n" );
-#endif
-	freeListItem( &sub[ 0 ] );
-}
-
-static int
-bm_void( char *expression, CNDB *db )
-/*
-	tests if expression is instantiable, ie. that
-	. all inner queries have results
-	. all the associations it contains can be made 
-	  e.g. in case the CNDB is empty, '.' fails
-	returns 0 if it is, 1 otherwise
-*/
-{
-	// fprintf( stderr, "bm_void: %s\n", expression );
-	int scope=1, empty=db_is_empty( db );
-	char *p = expression;
-	while ( *p && scope ) {
-		if ( p_filtered( p ) ) {
-			if ( empty || !db_feel( p, db, DB_CONDITION ) )
-				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
-			continue;
-		}
-		switch ( *p ) {
-		case '*':
-		case '%':
-			if ( !p[1] || strmatch( ":,)", p[1] ) )
-				{ p++; break; }
-			// no break
-		case '~':
-			if ( empty || !db_feel( p, db, DB_CONDITION ) )
-				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
-			break;
-		case '(':
-			scope++;
-			p++; break;
-		case ':':
-		case ',':
-			if ( scope == 1 ) { scope=0; break; }
-			p++; break;
-		case ')':
-			scope--;
-			p++; break;
-		case '?':
-		case '.':
-			if ( empty ) return 1;
-			p++; break;
-		default:
-			p = p_prune( PRUNE_IDENTIFIER, p );
-		}
-	}
-	return 0;
-}
-
-//===========================================================================
-//	bm_fetch
-//===========================================================================
-static DBTraverseCB fetch_CB;
-
-listItem *
-bm_fetch( char *expression, CNDB *db )
-{
-	listItem *results = NULL;
-	db_traverse( expression, db, fetch_CB, &results );
-	return results;
-}
-static int
-fetch_CB( CNInstance *e, CNDB *db, void *results )
-{
-	addIfNotThere((listItem **) results, e );
-	return DB_CONTINUE;
-}
-
-//===========================================================================
-//	bm_release
-//===========================================================================
-static DBTraverseCB release_CB;
-
-void
-bm_release( char *expression, CNDB *db )
-{
-#ifdef DEBUG
-fprintf( stderr, "bm_release: %s {\n", expression );
-#endif
-	db_traverse( expression, db, release_CB, NULL );
-#ifdef DEBUG
-fprintf( stderr, "bm_release: }\n" );
-#endif
-}
-static int
-release_CB( CNInstance *e, CNDB *db, void *user_data )
-{
-	db_deprecate( e, db );
-	return DB_CONTINUE;
-}
-
-//===========================================================================
-//	bm_outputf
-//===========================================================================
-void
-bm_outputf( char *format, char *expression, CNDB *db )
-{
-	int escaped = 0;
-	for ( char *p=format; *p; p++ ) {
-		switch ( *p ) {
-		case '\\':
-			switch ( escaped ) {
-			case 0:
-			case 2:
-				escaped++;
-				break;
-			case 1:
-			case 3:
-				putchar( *p );
-				escaped--;
-				break;
-			}
-			break;
-		case '\"':
-			switch ( escaped ) {
-			case 0 :
-				escaped = 2;
-				break;
-			case 2:
-				return;
-			case 1:
-			case 3:
-				putchar( *p );
-				escaped--;
-				break;
-			}
-			break;
-		case '%':
-			p++;
-			switch ( *p ) {
-			case '_':
-				if ( *expression ) {
-					bm_output( expression, db );
-					expression = p_prune( PRUNE_DEFAULT, expression );
-				}
-			}
-			break;
-		default:
-			switch ( escaped ) {
-			case 0:	// should not happen
-				return;
-			case 2:
-				putchar( *p );
-				break;
-			case 1:
-			case 3:
-				switch ( *p ) {
-				case 't': putchar( '\t' ); break;
-				case 'n': putchar( '\n' ); break;
-				default: putchar( *p ); break;
-				}
-				escaped--;
-				break;
-			}
-			break;
-		}
-	}
-}
-
-//===========================================================================
-//	bm_output
-//===========================================================================
-static DBTraverseCB output_CB;
-typedef struct {
-	int first;
-	CNInstance *last;
-} OutputData;
-
-void
-bm_output( char *expression, CNDB *db )
-/*
-	outputs expression's results
-	note that we rely here on db_traverse to eliminate doublons
-*/
-{
-	OutputData data;
-	data.first = 1;
-	data.last = NULL;
-	db_traverse( expression, db, output_CB, &data );
-	if ( data.first )
-		cn_out( stdout, data.last, db );
-	else {
-		printf( ", " );
-		cn_out( stdout, data.last, db );
-		printf( " }" );
-	}
-}
-static int
-output_CB( CNInstance *e, CNDB *db, void *user_data )
-{
-	OutputData *data = user_data;
-	if (( data->last )) {
-		if ( data->first ) {
-			printf( "{ " );
-			data->first = 0;
-		}
-		else printf( ", " );
-		cn_out( stdout, data->last, db );
-	}
-	data->last = e;
-	return DB_CONTINUE;
-}
-
-//===========================================================================
-//	bm_lookup, bm_register
-//===========================================================================
-static char *p_extract( char *p );
-
 CNInstance *
-bm_lookup( int privy, char *p, CNDB *db )
+bm_lookup( int privy, char *p, BMContext *ctx )
 {
 	char *term = p_extract( p );
-	CNInstance *e = db_lookup( privy, term, db );
+	CNInstance *e = db_lookup( privy, term, ctx->db );
 	free( term );
 	return e;
-}
-static CNInstance *
-bm_register( char *p, CNDB *db )
-{
-	char *term = p_extract( p );
-	CNInstance *e = db_lookup( 0, term, db );
-	if ( e == NULL ) e = db_register( term, db ); 
-	free( term );
-	return e;
-}
-static char *
-p_extract( char *p )
-{
-	CNString *s = newString();
-	switch ( *p ) {
-	case '*':
-	case '%':
-		StringAppend( s, *p );
-		break;
-	default:
-		for ( char *q=p; !is_separator(*q); q++ ) {
-			StringAppend( s, *q );
-		}
-	}
-	char *term = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-	return term;
 }
 
 //===========================================================================
 //	bm_verify
 //===========================================================================
-static void xpn_add( listItem **xp, int as_sub, int position );
-static int bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, VerifyData * );
+static int bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverseData * );
 
 int
-bm_verify( CNInstance **x, char **position, VerifyData *data )
+bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 /*
 	invoked by xp_verify on each [sub-]expression, i.e.
 	on each expression term starting with '*' or '%'
@@ -383,16 +40,15 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 	int success, not = 0;
 
 	switch ( data->op ) {
-	case INIT:
+	case BM_INIT:
 		success = 0;
 		base = NULL;
 		scope = 1;
 		OOS = 0;
 		break;
-	case SUB_BGN:
+	case BM_BGN:
 		/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star
 		   Note that star may be null (not instantiated)
-		   whereas x (and hence y) cannot be deprecated
 		*/
 		if ( *p++ == '*' ) {
 			CNInstance *y = (*x)->sub[ 0 ];
@@ -407,7 +63,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 		scope = (int) data->stack.scope->ptr;
 		OOS = scope - 1;
 		break;
-	case SUB_END:;
+	case BM_END:;
 		success = data->success;
 		if ((int) popListItem( &data->stack.neg ))
 			success = !success;
@@ -465,7 +121,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 			not = 0; p++;
 			break;
 		case ':':
-			if (( data->op == SUB_BGN ) && ( scope==OOS+1 ))
+			if (( data->op == BM_BGN ) && ( scope==OOS+1 ))
 				{ done = 1; break; }
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_DEFAULT, p+1 );
@@ -484,7 +140,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 				popListItem( exponent );
 			}
 			data->couple = (int) popListItem( &data->stack.couple );
-			if (( data->op == SUB_BGN ) && ( scope==OOS+1 ))
+			if (( data->op == BM_BGN ) && ( scope==OOS+1 ))
 			    { done = 1; break; }
 			not = (int) popListItem( &data->stack.not );
 			if ( not ) { success = !success; not = 0; }
@@ -529,7 +185,7 @@ bm_verify( CNInstance **x, char **position, VerifyData *data )
 }
 
 static int
-bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, VerifyData *data )
+bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverseData *data )
 /*
 	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
 	is either NULL or the exponent of p as expression term
@@ -550,336 +206,331 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, VerifyData
 	if (( data->pivot ) && ( p == data->pivot->name ))
 		return ( y == data->pivot->value );
 
-	return ( y == bm_lookup( data->privy, p, data->db ));
-}
-
-static void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
+	return ( y == bm_lookup( data->privy, p, data->ctx ));
 }
 
 //===========================================================================
-//	p_locate
+//	bm_substantiate
 //===========================================================================
-static char *locate_mark( char *expression, listItem **exponent );
+static int bm_void( char *, BMContext * );
+static CNInstance *bm_register( char *, BMContext * );
 
-char *
-p_locate( char *expression, char *fmt, listItem **exponent )
+void
+bm_substantiate( char *expression, BMContext *ctx )
 /*
-	if fmt is "?", returns first '?' found in expression, with
-	corresponding exponent (in reverse order). otherwise returns
-	first term which is not a wildcard and is not negated.
+	Substantiates expression by verifying and/or instantiating all
+	relationships involved. Note that, reassignment excepted, only
+	new or previously deprecated relationship instances will be
+	manifested.
 */
 {
-	if ( !strcmp( fmt, "?" ) ) return locate_mark( expression, exponent );
+	if ( bm_void( expression, ctx ) ) {
+#ifdef DEBUG
+		fprintf( stderr, "bm_substantiate: %s - void\n", expression );
+#endif
+		return;
+	}
+#ifdef DEBUG
+	fprintf( stderr, "bm_substantiate: %s {\n", expression );
+#endif
 
 	union { int value; void *ptr; } icast;
 	struct {
-		listItem *not;
-		listItem *tuple;
-		listItem *level;
-		listItem *premark;
-	} stack = { NULL, NULL, NULL, NULL };
-
-	listItem *level = NULL,
-		*mark_exp = NULL,
-		*star_exp = NULL;
-
-	int	scope = 1,
-		identifier = 0,
-		tuple = 0, // default is singleton
-		not = 0;
-
-	char *star_p = NULL, *p = expression;
-	while ( *p && scope ) {
-		switch ( *p ) {
-		case '~':
-			not = !not;
-			p++; break;
-		case '*':
-			if ( !(star_exp) && !not ) {
-				// save star in case we cannot find identifier
-				if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-					xpn_add( &star_exp, AS_SUB, 0 );
-					xpn_add( &star_exp, AS_SUB, 0 );
-					xpn_add( &star_exp, SUB, 1 );
-				}
-				for ( listItem *i=*exponent; i!=NULL; i=i->next )
-					addItem( &star_exp, i->ptr );
-				star_p = p;
-			}
-			// apply dereferencing operator to whatever comes next
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				xpn_add( exponent, SUB, 1 );
-				xpn_add( exponent, AS_SUB, 0 );
-				xpn_add( exponent, AS_SUB, 1 );
-			}
-			p++; break;
-		case '%':
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				locate_mark( p+1, &mark_exp );
-				p++; break;
-			}
-			else if ( not ) p++;
-			else scope = 0;
-			break;
-		case '(':
-			scope++;
-			icast.value = tuple;
-			addItem( &stack.tuple, icast.ptr );
-			tuple = !p_single( p );
-			if (( mark_exp )) {
-				tuple |= 2;
-				addItem( &stack.premark, *exponent );
-				do addItem( exponent, popListItem( &mark_exp ));
-				while (( mark_exp ));
-			}
-			if ( tuple & 1 ) {	// not singleton
-				xpn_add( exponent, AS_SUB, 0 );
-			}
-			addItem( &stack.level, level );
-			level = *exponent;
-			icast.value = not;
-			addItem( &stack.not, icast.ptr );
-			p++; break;
-		case ':':
-			while ( *exponent != level )
-				popListItem( exponent );
-			p++; break;
-		case ',':
-			if ( scope == 1 ) { scope=0; break; }
-			while ( *exponent != level )
-				popListItem( exponent );
-			popListItem( exponent );
-			xpn_add( exponent, AS_SUB, 1 );
-			p++; break;
-		case ')':
-			scope--;
-			if ( !scope ) break;
-			not = (int) popListItem( &stack.not );
-			if ( tuple & 1 ) {	// not singleton
-				while ( *exponent != level )
-					popListItem( exponent );
-				popListItem( exponent );
-			}
-			level = popListItem( &stack.level );
-			if ( tuple & 2 ) {	// sub expression
-				listItem *tag = popListItem( &stack.premark );
-				while ( *exponent != tag )
-					popListItem( exponent );
-			}
-			tuple = (int) popListItem( &stack.tuple );
-			p++; break;
-		case '?':
-		case '.':
-			p++; break;
-		default:
-			if ( not ) p++;
-			else scope = 0;
-		}
-	}
-	freeListItem( &stack.not );
-	freeListItem( &stack.tuple );
-	freeListItem( &stack.level );
-	freeListItem( &stack.premark );
-	if ( *p && *p!=',' && *p!=')' ) {
-		freeListItem( &star_exp );
-		return p;
-	}
-	else if (( star_exp )) {
-		freeListItem( exponent );
-		do { addItem( exponent, popListItem( &star_exp ) ); }
-		while (( star_exp ));
-		return star_p;
-	}
-	return NULL;
-}
-
-static char *
-locate_mark( char *expression, listItem **exponent )
-/*
-	returns first '?' found in expression, together with exponent
-	Note that we ignore the '~' signs and %(...) sub-expressions
-	Note also that the caller is expected to reorder the list
-*/
-{
-	union { int value; void *ptr; } icast;
-	struct {
-		listItem *couple;
-		listItem *level;
+		listItem *results;
+		listItem *ndx;
 	} stack = { NULL, NULL };
-	listItem *level = NULL;
+	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
 
-	int	scope = 1,
-		couple = 0; // default is singleton
-
+	CNInstance *e;
+	CNDB *db = ctx->db;
+	int scope=1, ndx=0;
 	char *p = expression;
 	while ( *p && scope ) {
+		if ( p_filtered( p )  ) {
+			// bm_void made sure we do have results
+			sub[ ndx ] = bm_fetch( p, ctx );
+			p = p_prune( PRUNE_DEFAULT, p );
+			continue;
+		}
 		switch ( *p ) {
-		case '~':
-			p++; break;
 		case '*':
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				xpn_add( exponent, AS_SUB, 1 );
-				xpn_add( exponent, SUB, 0 );
-				xpn_add( exponent, SUB, 1 );
-			}
-			p++; break;
 		case '%':
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				p = p_prune( PRUNE_COLON, p );
+			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				e = bm_register( p, ctx );
+				sub[ ndx ] = newItem( e );
+				p++; break;
 			}
-			else p++;
+			// no break
+		case '~':
+			// bm_void made sure we do have results
+			sub[ ndx ] = bm_fetch( p, ctx );
+			p = p_prune( PRUNE_DEFAULT, p );
 			break;
 		case '(':
 			scope++;
-			icast.value = couple;
-			addItem( &stack.couple, icast.ptr );
-			couple = !p_single( p );
-			if ( couple ) {
-				xpn_add( exponent, SUB, 0 );
+			icast.value = ndx;
+			addItem( &stack.ndx, icast.ptr );
+			if ( ndx ) {
+				addItem( &stack.results, sub[ 0 ] );
+				ndx = 0; sub[ 0 ] = NULL;
 			}
-			addItem( &stack.level, level );
-			level = *exponent;
 			p++; break;
-		case ':':
-			while ( *exponent != level )
-				popListItem( exponent );
-			p++; break;
+		case ':': // should not happen
+			break;
 		case ',':
 			if ( scope == 1 ) { scope=0; break; }
-			while ( *exponent != level )
-				popListItem( exponent );
-			popListItem( exponent );
-			xpn_add( exponent, SUB, 1 );
+			ndx = 1;
 			p++; break;
 		case ')':
 			scope--;
 			if ( !scope ) break;
-			if ( couple ) {
-				while ( *exponent != level )
-					popListItem( exponent );
-				popListItem( exponent );
+			switch ( ndx ) {
+			case 0:
+				instances = sub[ 0 ];
+				break;
+			case 1:
+				instances = db_couple( sub, db );
+				freeListItem( &sub[ 0 ] );
+				freeListItem( &sub[ 1 ] );
+				break;
 			}
-			level = popListItem( &stack.level );
-			couple = (int) popListItem( &stack.couple );
+			ndx = (int) popListItem( &stack.ndx );
+			sub[ ndx ] = instances;
+			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
 		case '?':
-			scope = 0;
-			break;
 		case '.':
+			sub[ ndx ] = newItem( NULL );
+			p++; break;
+		default:
+			e = bm_register( p, ctx );
+			sub[ ndx ] = newItem( e );
+			p = p_prune( PRUNE_IDENTIFIER, p );
+		}
+	}
+#ifdef DEBUG
+	if (( sub[ 0 ] )) dbg_out( "bm_substantiate: } first=", sub[0]->ptr, "\n", db );
+	else fprintf( stderr, "bm_substantiate: } no result\n" );
+#endif
+	freeListItem( &sub[ 0 ] );
+}
+
+static int
+bm_void( char *expression, BMContext *ctx )
+/*
+	tests if expression is instantiable, ie. that
+	. all inner queries have results
+	. all the associations it contains can be made 
+	  e.g. in case the CNDB is empty, '.' fails
+	returns 0 if it is, 1 otherwise
+*/
+{
+	// fprintf( stderr, "bm_void: %s\n", expression );
+	CNDB *db = ctx->db;
+	int scope=1, empty=db_is_empty( db );
+	char *p = expression;
+	while ( *p && scope ) {
+		if ( p_filtered( p ) ) {
+			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
+				return 1;
+			p = p_prune( PRUNE_DEFAULT, p );
+			continue;
+		}
+		switch ( *p ) {
+		case '*':
+		case '%':
+			if ( !p[1] || strmatch( ":,)", p[1] ) )
+				{ p++; break; }
+			// no break
+		case '~':
+			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
+				return 1;
+			p = p_prune( PRUNE_DEFAULT, p );
+			break;
+		case '(':
+			scope++;
+			p++; break;
+		case ':':
+		case ',':
+			if ( scope == 1 ) { scope=0; break; }
+			p++; break;
+		case ')':
+			scope--;
+			p++; break;
+		case '?':
+		case '.':
+			if ( empty ) return 1;
 			p++; break;
 		default:
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
 	}
-	freeListItem( &stack.couple );
-	freeListItem( &stack.level );
-	return ((*p=='?') ? p : NULL );
-}
-
-//===========================================================================
-//	p_prune
-//===========================================================================
-typedef struct {
-	int level;
-	int type;
-} PruneData;
-static void p_set( PruneData *, PruneType type, char * );
-static int p_skip( char *p, PruneData *prune );
-
-char *
-p_prune( PruneType type, char *p )
-{
-	PruneData data;
-	p_set( &data, type, p );
-	while ( p_skip( p, &data ) ) { p++; }
-	return p;
-}
-static void
-p_set( PruneData *prune, PruneType type, char *p )
-{
-	prune->type = type;
-	prune->level = ( *p==')' ? 2 : 1 );
-}
-static int
-p_skip( char *p, PruneData *prune )
-{
-	if ( prune->type == PRUNE_IDENTIFIER ) {
-		if ( is_separator( *p ) )
-			prune->level = 0;
-	}
-	else {
-		switch ( *p ) {
-		case '\0': prune->level=0; break;
-		case '(': prune->level++; break;
-		case ')': prune->level--; break;
-		case ':':
-			if ( prune->type != PRUNE_COLON )
-				break;
-			// no break
-		case ',':
-			if ( prune->level == 1 )
-				prune->level = 0;
-			break;
-		}
-	}
-	return prune->level;
-}
-
-//===========================================================================
-//	p_single
-//===========================================================================
-static int
-p_single( char *p )
-/*
-	assumption: *p == '('
-*/
-{
-	int scope = 1;
-	while ( *p++ ) {
-		switch ( *p ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			scope--;
-			if ( !scope ) return 1;
-			break;
-		case ',':
-			if ( scope == 1 ) return 0;
-			break;
-		}
-	}
-	return 1;
-}
-
-//===========================================================================
-//	p_filtered
-//===========================================================================
-int
-p_filtered( char *p )
-{
-	int scope = 0;
-	while ( *p ) {
-		switch ( *p++ ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			if ( !scope ) return 0;
-			scope--;
-			break;
-		case ',':
-			if ( !scope ) return 0;
-			break;
-		case ':':
-			if ( !scope ) return 1;
-			break;
-		}
-	}
 	return 0;
 }
+
+static CNInstance *
+bm_register( char *p, BMContext *ctx )
+{
+	CNInstance *e = bm_lookup( 0, p, ctx );
+	if ( e == NULL ) {
+		char *term = p_extract( p );
+		e = db_register( term, ctx->db ); 
+		free( term );
+	}
+	return e;
+}
+
+//===========================================================================
+//	bm_fetch
+//===========================================================================
+static BMTraverseCB fetch_CB;
+
+listItem *
+bm_fetch( char *expression, BMContext *ctx )
+{
+	listItem *results = NULL;
+	bm_traverse( expression, ctx, fetch_CB, &results );
+	return results;
+}
+static int
+fetch_CB( CNInstance *e, BMContext *ctx, void *results )
+{
+	addIfNotThere((listItem **) results, e );
+	return BM_CONTINUE;
+}
+
+//===========================================================================
+//	bm_release
+//===========================================================================
+static BMTraverseCB release_CB;
+
+void
+bm_release( char *expression, BMContext *ctx )
+{
+#ifdef DEBUG
+fprintf( stderr, "bm_release: %s {\n", expression );
+#endif
+	bm_traverse( expression, ctx, release_CB, NULL );
+#ifdef DEBUG
+fprintf( stderr, "bm_release: }\n" );
+#endif
+}
+static int
+release_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	db_deprecate( e, ctx->db );
+	return BM_CONTINUE;
+}
+
+//===========================================================================
+//	bm_outputf
+//===========================================================================
+void
+bm_outputf( char *format, char *expression, BMContext *ctx )
+{
+	int escaped = 0;
+	for ( char *p=format; *p; p++ ) {
+		switch ( *p ) {
+		case '\\':
+			switch ( escaped ) {
+			case 0:
+			case 2:
+				escaped++;
+				break;
+			case 1:
+			case 3:
+				putchar( *p );
+				escaped--;
+				break;
+			}
+			break;
+		case '\"':
+			switch ( escaped ) {
+			case 0 :
+				escaped = 2;
+				break;
+			case 2:
+				return;
+			case 1:
+			case 3:
+				putchar( *p );
+				escaped--;
+				break;
+			}
+			break;
+		case '%':
+			p++;
+			switch ( *p ) {
+			case '_':
+				if ( *expression ) {
+					bm_output( expression, ctx );
+					expression = p_prune( PRUNE_DEFAULT, expression );
+				}
+			}
+			break;
+		default:
+			switch ( escaped ) {
+			case 0:	// should not happen
+				return;
+			case 2:
+				putchar( *p );
+				break;
+			case 1:
+			case 3:
+				switch ( *p ) {
+				case 't': putchar( '\t' ); break;
+				case 'n': putchar( '\n' ); break;
+				default: putchar( *p ); break;
+				}
+				escaped--;
+				break;
+			}
+			break;
+		}
+	}
+}
+
+//===========================================================================
+//	bm_output
+//===========================================================================
+static BMTraverseCB output_CB;
+typedef struct {
+	int first;
+	CNInstance *last;
+} OutputData;
+
+void
+bm_output( char *expression, BMContext *ctx )
+/*
+	outputs expression's results
+	note that we rely here on bm_traverse to eliminate doublons
+*/
+{
+	OutputData data;
+	data.first = 1;
+	data.last = NULL;
+	bm_traverse( expression, ctx, output_CB, &data );
+	if ( data.first )
+		cn_out( stdout, data.last, ctx->db );
+	else {
+		printf( ", " );
+		cn_out( stdout, data.last, ctx->db );
+		printf( " }" );
+	}
+}
+static int
+output_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	OutputData *data = user_data;
+	if (( data->last )) {
+		if ( data->first ) {
+			printf( "{ " );
+			data->first = 0;
+		}
+		else printf( ", " );
+		cn_out( stdout, data->last, ctx->db );
+	}
+	data->last = e;
+	return BM_CONTINUE;
+}
+

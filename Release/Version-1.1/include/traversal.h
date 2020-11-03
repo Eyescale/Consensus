@@ -6,40 +6,49 @@
 #include "database.h"
 
 //===========================================================================
-//	DB traversal
+//	expression traversal
 //===========================================================================
+typedef struct {
+	CNDB *db;
+	Registry *registry;
+}
+BMContext;
+
 typedef enum {
-        DB_CONDITION,
-        DB_INSTANTIATED,
-        DB_RELEASED
-} DBLogType;
-int db_feel( char *expression, CNDB *, DBLogType );
+        BM_CONDITION,
+        BM_INSTANTIATED,
+        BM_RELEASED
+} BMLogType;
+int bm_feel( char *expression, BMContext *, BMLogType );
 
 enum {
-	DB_CONTINUE,
-	DB_DONE
+	BM_CONTINUE,
+	BM_DONE
 };
-typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
-int db_traverse( char *expression, CNDB *, DBTraverseCB, void * );
-
-// utility
-void xpn_out( FILE *stream, listItem *xp );
+typedef int BMTraverseCB( CNInstance *, BMContext *, void * );
+int bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
 
 //===========================================================================
 //	Interface with bm_verify
 //===========================================================================
 enum {
-	INIT,
-	SUB_BGN,
-	SUB_END
+	BM_INIT,
+	BM_BGN,
+	BM_END
 };
 typedef struct {
-	int op, privy, success;
-	CNDB *db;
+	BMContext *ctx;
+	int privy;
+	char *expression;
 	int empty;
 	CNInstance *star;
-	int couple;
 	Pair *pivot;
+	listItem *exponent;
+	BMTraverseCB *user_CB;
+	void *user_data;
+
+	int op;
+	int couple;
 	struct {
 		listItem *exponent;
 		listItem *couple;
@@ -50,10 +59,12 @@ typedef struct {
 		listItem *p;
 	} stack;
 	listItem *mark_exp, *sub_exp;
+	int success;
+
 #ifdef TRIM
 	BTreeNode *btree;
 #endif
-} VerifyData;
+} BMTraverseData;
 
 
 #endif	// TRAVERSAL_H

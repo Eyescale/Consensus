@@ -19,7 +19,6 @@ newCNDB( void )
 	return (CNDB *) newPair( nil, index );
 }
 
-static freeRegistryCB freename_CB;
 void
 freeCNDB( CNDB *db )
 {
@@ -62,14 +61,8 @@ freeCNDB( CNDB *db )
 
 	/* then delete CNDB per se
 	*/
-	freeRegistry( db->index, freename_CB );
+	freeRegistry( db->index, NULL );
 	freePair((Pair *) db );
-}
-static int
-freename_CB( Registry *registry, Pair *entry )
-{
-	free( entry->name );
-	return 1;
 }
 
 //===========================================================================

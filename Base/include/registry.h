@@ -10,7 +10,7 @@ typedef enum {
 	IndexedByNumber
 } RegistryType;
 
-typedef int freeRegistryCB( Registry *, Pair * );
+typedef void freeRegistryCB( Registry *, Pair * );
 
 Registry *newRegistry( RegistryType type );
 void	freeRegistry( Registry *registry, freeRegistryCB );

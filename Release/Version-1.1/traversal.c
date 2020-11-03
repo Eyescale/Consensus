@@ -1,69 +1,106 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "string_util.h"
 #include "database.h"
 #include "expression.h"
 #include "traversal.h"
+#include "util.h"
 
 // #define DEBUG
 // #undef TRIM
 
 //===========================================================================
-//	db_feel
+//	bm_feel
 //===========================================================================
-static int db_verify( int privy, CNInstance *, char *expression, Pair *pivot, CNDB * );
+static CNDB *xp_init( BMTraverseData *, char *, BMContext *, int );
+static void xp_release( BMTraverseData * );
+static int xp_verify( CNInstance *, BMTraverseData * );
 
 int
-db_feel( char *expression, CNDB *db, DBLogType type )
+bm_feel( char *expression, BMContext *ctx, BMLogType type )
 {
 	int privy;
 	switch ( type ) {
-	case DB_CONDITION:
-		return db_traverse( expression, db, NULL, NULL );
-	case DB_RELEASED:
+	case BM_CONDITION:
+		return bm_traverse( expression, ctx, NULL, NULL );
+	case BM_RELEASED:
 		privy = 1;
 		break;
-	case DB_INSTANTIATED:
+	case BM_INSTANTIATED:
 		privy = 0;
 		break;
 	}
-	Pair *pivot = NULL;
-	listItem *exponent = NULL;
-	char *p = p_locate( expression, "", &exponent );
-	if (( p )) {
-		CNInstance *x = bm_lookup( privy, p, db );
-		if (( x )) pivot = newPair ( p, x );
-		else return 0;
-	}
+	BMTraverseData data;
+	CNDB *db = xp_init( &data, expression, ctx, privy );
+	if ( db == NULL ) return 0;
+
+	int success = 0;
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( db_verify( privy, e, expression, pivot, db ) ) {
+		if ( xp_verify( e, &data ) ) {
 			freeListItem( &s );
-			freePair( pivot );
-			return 1;
+			success = 1;
+			break;
 		}
 	}
-	freePair( pivot );
-	return 0;
+	xp_release( &data );
+	return success;
+}
+
+static CNDB *
+xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
+{
+	data->ctx = ctx;
+	data->privy = privy;
+	data->expression = expression;
+
+	CNDB *db = ctx->db;
+	data->empty = db_is_empty( db );
+	data->star = db_lookup( privy, "*", db );
+	data->exponent = NULL;
+	char *p = p_locate( expression, "", &data->exponent );
+	if (( p )) {
+		CNInstance *x = bm_lookup( privy, p, ctx );
+		if (( x )) data->pivot = newPair( p, x );
+		else {
+			freeListItem( &data->exponent );
+			return NULL;
+		}
+	}
+	else data->pivot = NULL;
+
+	data->stack.exponent = NULL;
+	data->stack.couple = NULL;
+	data->stack.scope = NULL;
+	data->stack.base = NULL;
+	data->stack.not = NULL;
+	data->stack.neg = NULL;
+	data->stack.p = NULL;
+#ifdef TRIM
+	// used by wildcard_opt
+	data->btree = btreefy( expression );
+#endif
+	return db;
+}
+
+static void
+xp_release( BMTraverseData *data )
+{
+	freePair( data->pivot );
+	freeListItem( &data->exponent );
+#ifdef TRIM
+	freeBTree( data->btree );
+#endif
 }
 
 //===========================================================================
-//	db_traverse
+//	bm_traverse
 //===========================================================================
-typedef struct {
-	int privy;
-	char *expression;
-	Pair *pivot;
-	DBTraverseCB *user_CB;
-	void *user_data;
-} DBTraverseData;
-static DBTraverseCB traverse_CB;
-
-static int xp_traverse( int privy, CNInstance *, listItem *xpn, CNDB *, DBTraverseCB, void * );
+static int xp_traverse( BMTraverseData * );
+static int traverse_CB( CNInstance *e, BMTraverseData *data );
 
 int
-db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
+bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_data )
 /*
 	find the first term other than '.' or '?' in expression which is not
 	negated. if found then test each entity in term.exponent against
@@ -73,94 +110,57 @@ db_traverse( char *expression, CNDB *db, DBTraverseCB user_CB, void *user_data )
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "DB_TRAVERSE: %s\n", expression );
+	fprintf( stderr, "BM_TRAVERSE: %s\n", expression );
 #endif
-	DBTraverseData data;
-	data.privy = 0;
-	data.expression = expression;
-	data.pivot = NULL;
-	data.user_CB = user_CB;
-	data.user_data = user_data;
+	BMTraverseData data;
+	CNDB *db = xp_init( &data, expression, ctx, 0 );
+	if (( db )) {
+		data.user_CB = user_CB;
+		data.user_data = user_data;
+	}
+	else return 0;
 
-	listItem *exponent = NULL;
-	char *p = p_locate( expression, "", &exponent );
-	if (( p )) {
-		CNInstance *x = bm_lookup( 0, p, db );
-		data.pivot = newPair( p, x );
-		int success = xp_traverse( 0, x, exponent, db, traverse_CB, &data );
-		freePair( data.pivot );
-		return success;
+	int success = 0;
+	if (( data.pivot )) {
+		success = xp_traverse( &data );
 	}
 	else {
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
-			if ( traverse_CB( e, db, &data ) == DB_DONE ) {
+			if ( traverse_CB( e, &data ) == BM_DONE ) {
 				freeListItem( &s );
-				return 1;
+				success = 1;
+				break;
 			}
 		}
-		return 0;
 	}
-}
-static int
-traverse_CB( CNInstance *e, CNDB *db, void *user_data )
-{
-	DBTraverseData *data = user_data;
-	if ( db_verify( data->privy, e, data->expression, data->pivot, db ) ) {
-		return data->user_CB ?
-			data->user_CB( e, db, data->user_data ) :
-			DB_DONE;
-	}
-	return DB_CONTINUE;
-}
-
-//===========================================================================
-//	db_verify
-//===========================================================================
-static int xp_verify( int privy, CNInstance *, char *expression, CNDB *, VerifyData * );
-
-static int
-db_verify( int privy, CNInstance *x, char *expression, Pair *pivot, CNDB *db )
-{
-#ifdef DEBUG
-fprintf( stderr, "db_verify: %s / candidate=", expression );
-cn_out( stderr, x, db );
-fprintf( stderr, " ........{\n" );
-#endif
-	VerifyData data;
-	data.db = db;
-	data.pivot = pivot;
-	data.privy = privy;
-	data.empty = db_is_empty( db );
-	data.star = db_lookup( privy, "*", db );
-	data.couple = 0;
-	data.stack.exponent = NULL;
-	data.stack.couple = NULL;
-	data.stack.scope = NULL;
-	data.stack.base = NULL;
-	data.stack.not = NULL;
-	data.stack.neg = NULL;
-	data.stack.p = NULL;
-#ifdef TRIM
-	// used by wildcard_opt
-	data.btree = btreefy( expression );
-#endif
-	int success = xp_verify( privy, x, expression, db, &data );
-#ifdef TRIM
-	freeBTree( data.btree );
-#endif
-#ifdef DEBUG
-fprintf( stderr, "db_verify:.......} success=%d\n", success );
-#endif
+	xp_release( &data );
 	return success;
 }
 
 static int
-xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *data )
+traverse_CB( CNInstance *e, BMTraverseData *data )
 {
+	if ( !xp_verify( e, data ) )
+		return BM_CONTINUE;
+	if ( data->user_CB )
+		return data->user_CB( e, data->ctx, data->user_data );
+	return BM_DONE;
+}
+
+//===========================================================================
+//	xp_verify
+//===========================================================================
+static int
+xp_verify( CNInstance *x, BMTraverseData *data )
+{
+	CNDB *db = data->ctx->db;
+	int privy = data->privy;
+	char *p = data->expression;
 #ifdef DEBUG
-	fprintf( stderr, "XP_VERIFY: %s / ", expression );
-	dbg_out( "candidate=", x, "\n", db );
+fprintf( stderr, "xp_verify: %s / candidate=", p );
+cn_out( stderr, x, db );
+fprintf( stderr, " ........{\n" );
 #endif
 	union { int value; void *ptr; } icast;
 	struct {
@@ -170,13 +170,15 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 		listItem *p;
 		listItem *i;
 	} stack = { NULL, NULL, NULL, NULL, NULL };
+
 	listItem *exponent = NULL,
 		*mark_exp = NULL,
-		*i = newItem( x ),
-		*j;
-	int op = INIT;
-	char *p = expression;
+		*i = newItem( x ), *j;
+
+	int op = BM_INIT;
 	int success = 0;
+	data->couple = 0;
+
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -225,7 +227,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					x = x->sub[ exp & 1 ];
 				}
 				i = newItem( x );
-				op = SUB_BGN;
+				op = BM_BGN;
 				continue;
 			}
 			else mark_exp = popListItem( &stack.mark_exp );
@@ -247,7 +249,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 				i = popListItem( &stack.i );
 				popListItem( &stack.p );
 				// p is already at sub-expression closure
-				op = SUB_END;
+				op = BM_END;
 				continue;
 			}
 			for ( ; ; ) {
@@ -255,7 +257,7 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					i = i->next;
 					if ( !db_private( privy, i->ptr, db ) ) {
 						p = stack.p->ptr;
-						op = SUB_BGN;
+						op = BM_BGN;
 						break;
 					}
 				}
@@ -276,13 +278,26 @@ xp_verify( int privy, CNInstance *x, char *expression, CNDB *db, VerifyData *dat
 					// p must be at sub-expression closure
 					if ( x == NULL ) p = p_prune( PRUNE_DEFAULT, stack.p->ptr );
 					popListItem( &stack.p );
-					op = SUB_END;
+					op = BM_END;
 					break;
 				}
 			}
 		}
-		else { freeItem( i ); return success; }
+		else { freeItem( i ); goto RETURN; }
 	}
+
+RETURN:
+	freeListItem( &data->stack.exponent );
+	freeListItem( &data->stack.couple );
+	freeListItem( &data->stack.scope );
+	freeListItem( &data->stack.base );
+	freeListItem( &data->stack.not );
+	freeListItem( &data->stack.neg );
+	freeListItem( &data->stack.p );
+#ifdef DEBUG
+fprintf( stderr, "xp_verify:.......} success=%d\n", success );
+#endif
+	return success;
 }
 
 //===========================================================================
@@ -302,14 +317,18 @@ static int trimmed( TrimData *, listItem **, listItem **, listItem ** );
 static int trim_end( TrimData *, listItem **, listItem **, listItem ** );
 
 int
-xp_traverse( int privy, CNInstance *x, listItem *exponent, CNDB *db, DBTraverseCB user_CB, void *user_data )
+xp_traverse( BMTraverseData *data )
 /*
-	Traverses x.exponent in db invoking callback on every match
-	If user_CB is NULL, then xp_traverse returns 1 on first match, and 0 otherwise
-	Otherwise xp_traverse returns 1 on the callback's DB_DONE, and 0 otherwise
+	Traverses data->pivot's exponent invoking traverse_CB on every match
+	returns 1 on the callback's BM_DONE, and 0 otherwise
 	Assumption: x is not deprecated - therefore neither are its subs
 */
 {
+	CNDB *db = data->ctx->db;
+	int privy = data->privy;
+	CNInstance *x = data->pivot->value;
+	listItem *exponent = data->exponent;
+
 #ifdef DEBUG
 fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
 cn_out( stderr, x, db );
@@ -351,16 +370,12 @@ fprintf( stderr, "\n" );
 #endif
 			if (( lookupIfThere( trail, x )))
 				; // ward off doublons
-			else if (( user_CB )) {
+			else {
 				addIfNotThere( &trail, x );
-				if ( user_CB( x, db, user_data ) == DB_DONE ) {
+				if ( traverse_CB( x, data ) == BM_DONE ) {
 					success = 1;
 					goto RETURN;
 				}
-			}
-			else {
-				success = 1;
-				goto RETURN;
 			}
 		}
 #ifdef TRIM
@@ -515,94 +530,4 @@ trim_end( TrimData *rd, listItem **exponent, listItem **i, listItem **stack )
 		return 0;
 	}
 	return 1;
-}
-
-//===========================================================================
-//	xp_compare	- unused
-//===========================================================================
-static listItem *xp_div( listItem *exp1, listItem *exp2 );
-static DBTraverseCB compare_CB;
-typedef struct {
-	int cmp;
-	CNInstance *e;
-} CompareData;
-int
-xp_compare( int privy, CNInstance *x, listItem *exp1, CNInstance *e, listItem *exp2, CNDB *db )
-/*
-	tests e.exp2 in x.exp1 - for which we test e in x.exp1.inv(exp2)
-	note: x null means 'any', in which case xp_compare simply verifies
-	that e.exp2.inv(exp1) exists.
-*/
-{
-	CompareData data;
-	data.cmp = 1;
-	if (( x )) {
-		data.e = e;
-		if (( exp2 )){
-			listItem *exponent = xp_div( exp1, exp2 );
-			xp_traverse( privy, x, exponent, db, compare_CB, &data );
-			freeListItem( &exponent );
-		}
-		else xp_traverse( privy, x, exp1, db, compare_CB, &data );
-	}
-	else {
-		// when callback is null, xp_traverse returns 1 on first match
-		if (( exp1 )){
-			listItem *exponent = xp_div( exp2, exp1 );
-			data.cmp = xp_traverse( privy, e, exponent, db, NULL, NULL );
-			freeListItem( &exponent );
-		}
-		else data.cmp = xp_traverse( privy, e, exp2, db, NULL, NULL );
-	}
-	return data.cmp;
-}
-static int
-compare_CB( CNInstance *e, CNDB *db, void *user_data )
-{
-	CompareData *data = user_data;
-	if ( e == data->e ) {
-		data->cmp = 0;
-		return DB_DONE;
-	}
-	return DB_CONTINUE;
-}
-static listItem * xp_inv( listItem *exponent );
-static listItem *
-xp_div( listItem *exp1, listItem *exp2 )
-{
-	listItem *result = NULL;
-	listItem *inverse = xp_inv( exp2 );
-	for ( listItem *i=exp1; i!=NULL; i=i->next )
-		addItem( &result, i->ptr );
-	for ( listItem *i=inverse; i!=NULL; i=i->next )
-		addItem( &result, i->ptr );
-	reorderListItem( &result );
-	freeListItem( &inverse );
-	return result;
-}
-static listItem *
-xp_inv( listItem *exponent )
-{
-	union { int value; void *ptr; } icast;
-
-	listItem *inverse = NULL;
-	for ( listItem *i=exponent; i!=NULL; i=i->next ) {
-		int exp = (int) i->ptr;
-		int xpn = ((exp&2)? 0 : 2 ) + (exp&1);
-		icast.value = xpn;
-		addItem( &inverse, icast.ptr );
-	}
-	return inverse;
-}
-
-//===========================================================================
-//	Utilities
-//===========================================================================
-void
-xpn_out( FILE *stream, listItem *xp )
-{
-	while ( xp ) {
-		fprintf( stream, "%d", (int)xp->ptr );
-		xp = xp->next;
-	}
 }

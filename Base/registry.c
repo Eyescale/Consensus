@@ -23,6 +23,7 @@ freeRegistry( Registry *registry, freeRegistryCB callback )
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		if (( callback )) callback( registry, entry );
+		else free( entry->name );
 		freePair( entry );
 	}
 	freeListItem( &registry->entries );
