@@ -1,17 +1,26 @@
 TODO
 	. registry variable %?
-		. narrative.c: support "%?" and "?:expression"
-		. operation.c, ...: implement narrative registry
+		. bm_feel() and bm_lookup(): narrative registry usage
+		. readNarrative: support "%?" and "?:expression"
+		. test case
+	. narrative instances
+		. readNarrative(): support sub-narratives definition
+		. CNNarrative:[ base:[proto,root], sub:{[proto,root]} ]
+		. refactor cnOperate according to execution-model.txt
 	. single character identifier entities
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
 	. make '+' and '-' logics relative
-	. provide framework for regression testing
-	. optimize db_feel() using db_traverse() - with pivot
+	. regression testing framework
 	...
 
 DONE
+	. code refactoring according to code-analysis.txt
+		. operation.c: implement narrative registry
+		. transport BMContext instead of CNDB
+		. added util.c and include/util.h
+	. optimize db_feel() using db_traverse() - with pivot
 	. code analysis for narrative registry implementation
 	. yak.story: removed %arg from narrative body
 	. input pre-processing - narrative.c
