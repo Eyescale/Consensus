@@ -37,6 +37,7 @@ Contents
 
 Updates
 	2020/11/04
+		feature change: made + and - tab logics relative
 		feature complete: mark register
 		. supporting in/on ?:expression and %? in narrative registry
 		. added ./Test/CN.mark

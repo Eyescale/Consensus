@@ -10,11 +10,11 @@ TODO
 		. expression.c: db_input, db_output, db_outputf
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
 		  => could generalize with '\identifier'
-	. make '+' and '-' logics relative
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
 
 DONE
+	. make '+' and '-' logics relative
 	. implemented db_exit/db_out: instantiates/test (nil,nil)
 	. registry variable %? (aka. mark register)
 		. readNarrative: support "%?" and "?:expression"

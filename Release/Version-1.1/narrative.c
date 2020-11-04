@@ -49,6 +49,7 @@ readNarrative( char *path )
 
 	int	tabmark,
 		tab = 0,
+		tab_base = 0,
 		last_tab = -1,
 		type,
 		typelse = 0,
@@ -69,11 +70,11 @@ readNarrative( char *path )
 			}
 		on_( '+' )
 			if ( tab == 0 ) {
-				do_( "+/-" )	tab++;
+				do_( "+" )	tab_base++;
 			}
 		on_( '-' )
 			if ( tab == 0 ) {
-				do_( "+/-" )	tab--;
+				do_( "-" )	tab_base--;
 			}
 		on_( '\n' )	do_( same )	tab = 0;
 		on_( '\t' )	do_( same )	tab++;
@@ -86,9 +87,12 @@ readNarrative( char *path )
 			on_( '\n' )	do_( "base" )
 			on_other	do_( same )
 			end
-		in_( "+/-" ) bgn_
-			on_( '+' )	do_( same )	tab++;
-			on_( '-' )	do_( same )	tab--;
+		in_( "+" ) bgn_
+			on_( '+' )	do_( same )	tab_base++;
+			on_other	do_( "base" )	REENTER
+			end
+		in_( "-" ) bgn_
+			on_( '-' )	do_( same )	tab_base--;
 			on_other	do_( "base" )	REENTER
 			end
 		in_( "i" ) bgn_
@@ -101,6 +105,7 @@ readNarrative( char *path )
 					ons( " \t" )	do_( same )
 					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
+									tab += tab_base;
 									type = IN;
 					end
 		in_( "o" ) bgn_
@@ -113,6 +118,7 @@ readNarrative( char *path )
 					ons( " \t" )	do_( same )
 					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
+									tab += tab_base;
 									type = ON;
 					end
 		in_( "d" ) bgn_
@@ -125,6 +131,7 @@ readNarrative( char *path )
 					ons( " \t" )	do_( same )
 					on_( '\n' )	; // err
 					on_other	do_( "_expr" )	REENTER
+									tab += tab_base;
 									type = DO;
 					end
 		in_( "e" ) bgn_
@@ -139,11 +146,13 @@ readNarrative( char *path )
 					in_( "else" ) bgn_
 						ons( " \t")	do_( "else_" )
 						on_( '\n' )	do_( "_expr" )	REENTER
+										tab += tab_base;
 										type = ELSE;
 						end
 						in_( "else_" ) bgn_
 							ons( " \t" )	do_( same )
 							on_( '\n' )	do_( "_expr" )	REENTER
+											tab += tab_base;
 											type = ELSE;
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
@@ -381,8 +390,11 @@ readNarrative( char *path )
 	freeListItem( &stack.counter );
 	freeListItem( &stack.marked );
 	if ( narrative == NULL ) return NULL;
-	else if ( ((CNOccurrence *) narrative )->data->sub == NULL )
+	else if ( ((CNOccurrence *) narrative )->data->sub == NULL ) {
 		fprintf( stderr, "Warning: read_narrative: narrative empty\n" );
+		freeNarrative( narrative );
+		return NULL;
+	}
 	else narrative_reorder( narrative );
 	return narrative;
 }

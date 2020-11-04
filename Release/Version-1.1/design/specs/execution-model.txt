@@ -22,7 +22,7 @@ Consensus Version-1.1
 			cnUpdate(db);
 
 	where cnOperate() implements
-		if ( db_exit( db ) ) return 0;
+		if ( db_out( db ) ) return 0;
 		for ( listItem *i=narratives; i!=NULL; i=i->next ) {
 			Narrative *n = i->ptr;
 			db_traverse( n->proto, db, operateCB, n );
