@@ -10,15 +10,14 @@
 
 	expr	expr_
 		*	expr
-			expr_
 		%	expr
-			expr_
+			%_	expr
 		>	expr
 			>\"	>\"\\ 	>\"
 				>_	expr
 					expr_
+		?	expr
 		?.	expr
-			expr_
 		term	expr
 
 	expr_	base

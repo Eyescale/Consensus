@@ -62,12 +62,15 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				locate_mark( p+1, &mark_exp );
-				p++; break;
+			if ( !strncmp( p, "%?", 2 ) ) {
+				if ( not ) p+=2;
+				else scope = 0;
 			}
-			else if ( not ) p++;
-			else scope = 0;
+			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				if ( not ) p++;
+				else scope = 0;
+			}
+			else { locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
 			scope++;
@@ -172,10 +175,11 @@ locate_mark( char *expression, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-				p = p_prune( PRUNE_COLON, p );
-			}
-			else p++;
+			if ( p[1] == '?' )
+				p+=2;
+			else if ( !p[1] || strmatch( ":,)", p[1] ) )
+				p++;
+			else p = p_prune( PRUNE_COLON, p );
 			break;
 		case '(':
 			scope++;
@@ -232,8 +236,13 @@ p_extract( char *p )
 {
 	CNString *s = newString();
 	switch ( *p ) {
+	case '%': // %? should be handled separately
+#if 0
+		if ( p[1] == '?' ) {
+			fprintf( stderr, "Error: p_extract: %%?\n" );
+		}
+#endif
 	case '*':
-	case '%':
 		StringAppend( s, *p );
 		break;
 	default:
@@ -269,7 +278,7 @@ static void
 p_set( PruneData *prune, PruneType type, char *p )
 {
 	prune->type = type;
-	prune->level = ( *p==')' ? 2 : 1 );
+	prune->level = ( *p==')' ) ? 2 : 1;
 }
 static int
 p_skip( char *p, PruneData *prune )

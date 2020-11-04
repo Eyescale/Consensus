@@ -10,6 +10,34 @@
 // #undef TRIM
 
 //===========================================================================
+//	bm_push, bm_pop, bm_assign - context operations
+//===========================================================================
+BMContext *
+bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
+{
+	if (( db_lookup( 0, "exit", db ) ))
+		return NULL;
+	else {
+		Registry *registry = newRegistry( IndexedByName );
+		registryRegister( registry, "?", NULL );
+		return (BMContext *) newPair( db, registry );
+	}
+}
+void
+bm_pop( BMContext *ctx )
+{
+	freeRegistry( ctx->registry, nopCB );
+	freePair((Pair *) ctx );
+}
+void
+bm_assign( BMContext *ctx, char *identifier, CNInstance *e )
+{
+	Registry *registry = ctx->registry;
+	Pair *entry = registryLookup( registry, identifier );
+	if (( entry )) entry->value = e;
+}
+
+//===========================================================================
 //	bm_feel
 //===========================================================================
 static CNDB *xp_init( BMTraverseData *, char *, BMContext *, int );
@@ -38,6 +66,7 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
 		if ( xp_verify( e, &data ) ) {
+			if ( data.mark ) bm_assign( data.ctx, "?", e );
 			freeListItem( &s );
 			success = 1;
 			break;
@@ -52,8 +81,9 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 {
 	data->ctx = ctx;
 	data->privy = privy;
+	data->mark = !strncmp( expression, "?:", 2 );
+	if ( data->mark ) expression += 2;
 	data->expression = expression;
-
 	CNDB *db = ctx->db;
 	data->empty = db_is_empty( db );
 	data->star = db_lookup( privy, "*", db );
@@ -145,6 +175,8 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 		return BM_CONTINUE;
 	if ( data->user_CB )
 		return data->user_CB( e, data->ctx, data->user_data );
+	if ( data->mark )
+		bm_assign( data->ctx, "?", e );
 	return BM_DONE;
 }
 

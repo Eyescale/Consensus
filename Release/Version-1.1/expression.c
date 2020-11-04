@@ -15,6 +15,10 @@
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
+	if ( !strncmp( p, "%?", 2 ) ) {
+		Pair *entry = registryLookup( ctx->registry, "?" );
+		return (( entry ) ? entry->value : NULL );
+	}
 	char *term = p_extract( p );
 	CNInstance *e = db_lookup( privy, term, ctx->db );
 	free( term );
@@ -88,8 +92,15 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 		case '~':
 			not = !not; p++;
 			break;
-		case '*':
 		case '%':
+			if ( !strncmp( p, "%?", 2 ) ) {
+				success = bm_match( *x, p, *exponent, base, data );
+				if ( success < 0 ) { success = 0; not = 0; }
+				else if ( not ) { success = !success; not = 0; }
+				p+=2; break;
+			}
+			// no break
+		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = bm_match( *x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; not = 0; }
@@ -253,8 +264,15 @@ bm_substantiate( char *expression, BMContext *ctx )
 			continue;
 		}
 		switch ( *p ) {
-		case '*':
 		case '%':
+			if ( !strncmp( p, "%?", 2 ) ) {
+				// bm_void made sure we do have result
+				e = bm_lookup( 0, p, ctx );
+				sub[ ndx ] = newItem( e );
+				p+=2; break;
+			}
+			// no break
+		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				e = bm_register( p, ctx );
 				sub[ ndx ] = newItem( e );
@@ -331,14 +349,21 @@ bm_void( char *expression, BMContext *ctx )
 	char *p = expression;
 	while ( *p && scope ) {
 		if ( p_filtered( p ) ) {
+			if ( !strncmp( p, "?:", 2 ) ) p += 2;
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;
 			p = p_prune( PRUNE_DEFAULT, p );
 			continue;
 		}
 		switch ( *p ) {
-		case '*':
 		case '%':
+			if ( !strncmp( p, "%?", 2 ) ) {
+				if ( bm_lookup( 0, p, ctx ) == NULL )
+					return 1;
+				p+=2; break;
+			}
+			// no break
+		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) )
 				{ p++; break; }
 			// no break

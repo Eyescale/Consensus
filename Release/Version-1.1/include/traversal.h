@@ -4,6 +4,7 @@
 #include "list.h"
 #include "btree.h"
 #include "database.h"
+#include "narrative.h"
 
 //===========================================================================
 //	expression traversal
@@ -13,6 +14,9 @@ typedef struct {
 	Registry *registry;
 }
 BMContext;
+BMContext *bm_push( CNNarrative *, CNInstance *, CNDB * );
+void bm_pop( BMContext * );
+void bm_assign( BMContext *, char *, CNInstance * );
 
 typedef enum {
         BM_CONDITION,
@@ -40,6 +44,7 @@ typedef struct {
 	BMContext *ctx;
 	int privy;
 	char *expression;
+	int mark;
 	int empty;
 	CNInstance *star;
 	Pair *pivot;

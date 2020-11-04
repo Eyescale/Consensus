@@ -10,9 +10,6 @@
 
 // #define DEBUG
 
-static BMContext *pushContext( CNNarrative *, CNInstance *, CNDB * );
-static void popContext( BMContext * );
-
 static int in_condition( char *, BMContext * );
 static int on_event( char *, BMContext * );
 static int do_action( char *, BMContext * );
@@ -39,7 +36,7 @@ fprintf( stderr, "=============================\n" );
 	CNOccurrence *occurrence = (CNOccurrence *) narrative;
 	if ( occurrence->data->sub == NULL ) return 0;
 
-	BMContext *ctx = pushContext( narrative, NULL, db );
+	BMContext *ctx = bm_push( narrative, NULL, db );
 	if ( ctx == NULL ) return 0;
 
 	int passed = 1;
@@ -89,7 +86,7 @@ RETURN:
 		i = popListItem( &stack );
 	}
 	freeItem( i );
-	popContext( ctx );
+	bm_pop( ctx );
 	return 1;
 }
 
@@ -100,26 +97,6 @@ void
 cnUpdate( CNDB *db )
 {
 	db_update( db );
-}
-
-//===========================================================================
-//	pushContext, popContext
-//===========================================================================
-static BMContext *
-pushContext( CNNarrative *n, CNInstance *e, CNDB *db )
-{
-	if (( db_lookup( 0, "exit", db ) ))
-		return NULL;
-	else {
-		Registry *registry = newRegistry( IndexedByName );
-		return (BMContext *) newPair( db, registry );
-	}
-}
-static void
-popContext( BMContext *ctx )
-{
-	freeRegistry( ctx->registry, NULL );
-	freePair((Pair *) ctx );
 }
 
 //===========================================================================

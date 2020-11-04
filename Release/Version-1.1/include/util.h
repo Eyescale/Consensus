@@ -24,4 +24,4 @@ int	p_filtered( char * );
 void dbg_out( char *pre, CNInstance *e, char *post, CNDB *db );
 
 
-#endif	// EXPRESSION_H
+#endif	// UTIL_H

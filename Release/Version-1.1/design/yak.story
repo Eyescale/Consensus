@@ -191,10 +191,10 @@
 		else on (( *, frame ), . )
 			do ~.( READY )
 		else
-			on ?:%( %?, ?:(CONSUMED,.)) // TAKE from rule: launch successor schema
-				do .(((schema, %((.,?):*position)),%?), %(this,?:((rule,.),.)))
-			on ?:%( %?, ?:(UNCONSUMED,.)) // TAKE from rule: launch successor schema
-				do .(((schema, %((.,?):*position)),%?), %(this,?:((rule,.),.)))
+			on ?:( %?, (CONSUMED,.)) // TAKE from rule: launch successor schema
+				do .(((schema, %((.,?):*position)),%((.,?):%?)), %(this,?:((rule,.),.)))
+			on ?:( %?, (UNCONSUMED,.)) // TAKE from rule: launch successor schema
+				do .(((schema, %((.,?):*position)),%((.,?):%?)), %(this,?:((rule,.),.)))
 
 	else on ~(((rule,.),.), this )
 		do ~( this ) // FAIL: feeder rule failed

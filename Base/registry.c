@@ -29,6 +29,11 @@ freeRegistry( Registry *registry, freeRegistryCB callback )
 	freeListItem( &registry->entries );
 	freePair((Pair *) registry );
 }
+void
+nopCB( Registry *registry, Pair *entry )
+{
+}
+
 Pair *
 newRegistryEntry( RegistryType type, void *name, void *value )
 {

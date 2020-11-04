@@ -36,6 +36,10 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/04
+		feature complete: mark register
+		. supporting in/on ?:expression and %? in narrative registry
+		. added ./Test/CN.mark
 	2020/11/03
 		code refactoring
 		. implemented changes according to ./design/specs/code-analysis.txt
@@ -47,7 +51,7 @@ Updates
 		. changed init and exit from operation flags to CNDB entities
 	2020/10/31
 		added ./design/specs/code-analysis.txt
-		added ./design/specs/narrative-states.txt
+		added ./design/specs/read-narrative-states.txt
 	2020/10/30
 		added ./design/specs/db-traverse.txt
 		simplification

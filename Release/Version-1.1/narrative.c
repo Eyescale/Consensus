@@ -202,7 +202,7 @@ readNarrative( char *path )
 		on_( '%' )	do_( "%" )
 		on_( '~' )	do_( same )	add_item( &sequence, event );
 		on_( '>' )
-			if (( type == DO ) && ( sequence == NULL )) {
+			if (( sequence == NULL ) && ( type == DO )) {
 				do_( ">" )	add_item( &sequence, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
@@ -243,7 +243,10 @@ readNarrative( char *path )
 						first = (int) popListItem( &stack.position );
 			}
 		on_( '?' )
-			if ( !informed && !marked && (stack.counter)) {
+			if (( sequence == NULL ) && (( type == IN ) || ( type == ON )) ) {
+				do_( "?" )
+			}
+			else if (( stack.counter ) && !informed && !marked ) {
 				do_( "?." )	add_item( &sequence, event );
 						marked = 1; informed = 1;
 			}
@@ -282,30 +285,41 @@ readNarrative( char *path )
 			on_( '\n' )	do_( "expr_" )	REENTER
 			end
 	in_( "%" ) bgn_
-		ons( " \t" )	do_( same )
-		ons( ":,)" )	do_( "expr" )	REENTER
+		ons( " \t" )	do_( "%_" )
+		ons( ":,)\n" )	do_( "expr" )	REENTER
 						add_item( &sequence, '%' );
 						informed = 1;
-		on_( '\n' )	do_( "expr_" )	REENTER
-						add_item( &sequence, '%' );
+		on_( '?' )	do_( "expr" )	add_item( &sequence, '%' );
+						add_item( &sequence, '?' );
+						informed = 1;
 		on_( '(' )	do_( "expr" )	REENTER
 						add_item( &sequence, '%' );
 						add_item( &stack.counter, counter );
 						add_item( &stack.marked, marked );
 						counter = marked = 0;
 		end
+		in_( "%_" ) bgn_
+			ons( " \t" )	do_( same )
+			ons( ":,)\n" )	do_( "expr" )	REENTER
+							add_item( &sequence, '%' );
+							informed = 1;
+			end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
-		ons( ":,)" )	do_( "expr" )	REENTER
+		ons( ":,)\n" )	do_( "expr" )	REENTER
 						add_item( &sequence, '*' );
 						informed = 1;
 		on_other	do_( "expr" )	REENTER
 						add_item( &sequence, '*' );
 		end
+	in_( "?" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "expr" )	add_item( &sequence, '?' );
+						add_item( &sequence, ':' );
+		end
 	in_( "?." ) bgn_
 		ons( " \t" )	do_( same )
-		ons( ":,)" )	do_( "expr" )	REENTER
-		on_( '\n' )	do_( "expr_" )	REENTER
+		ons( ":,)\n" )	do_( "expr" )	REENTER
 		end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER

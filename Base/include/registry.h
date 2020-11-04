@@ -14,6 +14,7 @@ typedef void freeRegistryCB( Registry *, Pair * );
 
 Registry *newRegistry( RegistryType type );
 void	freeRegistry( Registry *registry, freeRegistryCB );
+void	nopCB( Registry *, Pair * );
 Pair *	newRegistryEntry( RegistryType type, void *name, void *value );
 Pair *	registryRegister( Registry *registry, void *name, void *value );
 void	registryDeregister( Registry *registry, void *name, ... );
