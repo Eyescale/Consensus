@@ -1,7 +1,7 @@
 TODO
 	. narrative instances
 		. readNarrative(): support sub-narratives definition
-		. CNNarrative:[ base:[proto,root], sub:{[proto,root]} ]
+		. CNNarrative:{ [ proto, root ] }
 		. refactor cnOperate according to execution-model.txt
 		. Test case(s)
 	. single character identifier entities
@@ -15,6 +15,7 @@ TODO
 	. update software-architecture document(s) to latest architecture
 
 DONE
+	. implemented db_exit/db_out: instantiates/test (nil,nil)
 	. registry variable %? (aka. mark register)
 		. readNarrative: support "%?" and "?:expression"
 		. bm_push(): variable creation

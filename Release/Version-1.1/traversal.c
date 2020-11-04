@@ -15,13 +15,9 @@
 BMContext *
 bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
 {
-	if (( db_lookup( 0, "exit", db ) ))
-		return NULL;
-	else {
-		Registry *registry = newRegistry( IndexedByName );
-		registryRegister( registry, "?", NULL );
-		return (BMContext *) newPair( db, registry );
-	}
+	Registry *registry = newRegistry( IndexedByName );
+	registryRegister( registry, "?", NULL );
+	return (BMContext *) newPair( db, registry );
 }
 void
 bm_pop( BMContext *ctx )

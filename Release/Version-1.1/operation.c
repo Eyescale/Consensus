@@ -19,28 +19,30 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 //	cnOperate
 //===========================================================================
-#define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
+static int operate( CNOccurrence *, BMContext * );
 
 int
 cnOperate( CNNarrative *narrative, CNDB *db )
-/*
-	lets db process one narrative frame
-	returns 0 upon narrative exit, 1 otherwise
-*/
 {
 #ifdef DEBUG
 fprintf( stderr, "=============================\n" );
 #endif
 	if ( narrative == NULL ) return 0;
-
-	CNOccurrence *occurrence = (CNOccurrence *) narrative;
-	if ( occurrence->data->sub == NULL ) return 0;
+	if ( db_out(db) ) return 0;
 
 	BMContext *ctx = bm_push( narrative, NULL, db );
-	if ( ctx == NULL ) return 0;
+	operate((CNOccurrence *) narrative, ctx );
+	bm_pop( ctx );
 
-	int passed = 1;
+	return 1;
+}
+
+#define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
+static int
+operate( CNOccurrence *occurrence, BMContext *ctx )
+{
 	listItem *i = newItem( occurrence ), *stack = NULL;
+	int passed = 1;
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		listItem *j = occurrence->data->sub;
@@ -86,7 +88,6 @@ RETURN:
 		i = popListItem( &stack );
 	}
 	freeItem( i );
-	bm_pop( ctx );
 	return 1;
 }
 
@@ -143,7 +144,9 @@ static int
 do_action( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "do_action: do %s\n", expression );
-	if ( test_release( &expression ) )
+	if ( !strcmp( expression, "exit" ) )
+		db_exit( ctx->db );
+	else if ( test_release( &expression ) )
 		bm_release( expression, ctx );
 	else
 		bm_substantiate( expression, ctx );

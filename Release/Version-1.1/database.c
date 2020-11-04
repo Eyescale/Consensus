@@ -106,6 +106,7 @@ fprintf( stderr, "db_update: 1. actualize past manifestations\n" );
 		g = i->ptr;
 		if (( g->as_sub[ 1 ] )) continue; // to be manifested
 		x = g->sub[ 1 ];
+		if ( x == nil ) continue; // out
 		if ( x->sub[ 0 ] == nil ) continue;
 		if ( x->sub[ 1 ] == nil ) continue;
 		f = cn_instance( x, nil );
@@ -143,6 +144,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 		next_i = i->next;
 		g = i->ptr;
 		f = g->sub[ 0 ];
+		if ( f == nil ) continue; // out
 		if ( f->sub[ 1 ] != nil ) continue;
 		if (( next_i ) && ( next_i->ptr == f ))
 			next_i = next_i->next;
@@ -175,6 +177,7 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
+		if ( f->sub[ 1 ] == nil ) continue; // out
 		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 			// actualize to be manifested entity
 			g = f->as_sub[ 1 ]->ptr;
@@ -196,6 +199,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) continue; // to be released
 		x = f->sub[ 0 ];
+		if ( x == nil ) continue; // out
 		// remove ( x, nil ) and x
 		db_remove( f, db );
 		if ( x->sub[ 0 ] == NULL ) {
@@ -210,6 +214,7 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
+		if ( f->sub[ 0 ] == nil ) continue; // out
 		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 			// actualize to be released entity
 			g = f->as_sub[ 1 ]->ptr;
@@ -344,6 +349,12 @@ db_deprecate( CNInstance *x, CNDB *db )
 		}
 	}
 }
+void
+db_exit( CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	cn_new( nil, nil );
+}
 
 //===========================================================================
 //	CNDB query
@@ -378,9 +389,12 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 	if (( e->as_sub[ 0 ] )) {
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			e = i->ptr;
+#if 0
 			if ( e == NULL ) {
+				fprintf( stderr, "Error: db_next\n" );
 				exit( 0 );
 			}
+#endif
 			if ( !db_private( 0, e, db ) ) {
 				addItem( stack, i );
 				return e;
@@ -427,6 +441,7 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 		CNInstance *g = i->ptr;
 		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
 		CNInstance *e = g->sub[ released ? 0 : 1 ];
+		if ( e == nil ) continue; // exit
 		if (( e->sub[ 0 ] == nil ) || ( e->sub[ 1 ] == nil ))
 			continue;
 		addItem( stack, i );
@@ -699,6 +714,12 @@ db_deprecated( CNInstance *e, CNDB *db )
 		return 1;		// deprecated
 	}
 	return 0;
+}
+int
+db_out( CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	return ( cn_instance(nil,nil) != NULL );
 }
 
 //===========================================================================

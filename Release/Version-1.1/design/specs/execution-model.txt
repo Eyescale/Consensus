@@ -14,28 +14,24 @@ Consensus Version-1.1
 
 	To support this change, readNarrative must now return a list of
 		narratives: { [ proto, root ] }
-	where
-		. e.g. "((schema,\%position),(\%flag,\%frame))" is a narrative proto
-		. "" (or "\%argv") is the base narrative proto, which we assume comes
-		  first in the list (reordered).
+	where, e.g.
+		"((schema,%position),(%flag,%frame))" is a narrative proto
 
-	Then the system's main loop, which in Version-1.0 was
-		while (cnOperate(narrative,db))
+	Then the system's main loop, similar to Version-1.0, does
+		while ( cnOperate( narratives, db ) )
 			cnUpdate(db);
-	must now become
-		Narrative *base = narratives->ptr;
-		while( cnOperate( base, NULL, db ) )
-			for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
-				Narrative *n = i->ptr;
-				db_traverse( n->proto, db, operateCB, n );
-			}
-			cnUpdate( db );
-		}
 
+	where cnOperate() implements
+		if ( db_exit( db ) ) return 0;
+		for ( listItem *i=narratives; i!=NULL; i=i->next ) {
+			Narrative *n = i->ptr;
+			db_traverse( n->proto, db, operateCB, n );
+		}
+	with
 		static int
 		operateCB( CNInstance *e, CNDB *db, Narrative *n )
 		{
-			cnOperate( n, e, db );
+			cn_operate( n, e, db );
 			return CONTINUE;
 		}
 
