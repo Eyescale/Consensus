@@ -1,21 +1,26 @@
 TODO
-	. registry variable %?
-		. bm_feel() and bm_lookup(): narrative registry usage
-		. readNarrative: support "%?" and "?:expression"
-		. test case
 	. narrative instances
 		. readNarrative(): support sub-narratives definition
 		. CNNarrative:[ base:[proto,root], sub:{[proto,root]} ]
 		. refactor cnOperate according to execution-model.txt
+		. Test case(s)
 	. single character identifier entities
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
+		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
+		  => could generalize with '\identifier'
 	. make '+' and '-' logics relative
 	. regression testing framework
 	...
 
 DONE
+	. registry variable %? (aka. mark register)
+		. readNarrative: support "%?" and "?:expression"
+		. bm_push(): variable creation
+		. bm_feel(), bm_traverse(): variable assignment
+		. bm_xxx(), p_locate() and locate_mark(): variable usage
+		. added test case ./Test/CN.mark
 	. code refactoring according to code-analysis.txt
 		. operation.c: implement narrative registry
 		. transport BMContext instead of CNDB
