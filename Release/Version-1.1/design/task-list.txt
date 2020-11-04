@@ -12,7 +12,7 @@ TODO
 		  => could generalize with '\identifier'
 	. make '+' and '-' logics relative
 	. regression testing framework
-	...
+	. update software-architecture document(s) to latest architecture
 
 DONE
 	. registry variable %? (aka. mark register)
