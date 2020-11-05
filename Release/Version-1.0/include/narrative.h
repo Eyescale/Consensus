@@ -3,6 +3,13 @@
 
 #include "list.h"
 
+// Version-1.1 compatibility
+#define CNStory CNNarrative
+#define readStory readNarrative
+#define story_output narrative_output
+#define freeStory freeNarrative
+// -------------------------
+
 typedef enum {
 	ROOT,
 	IN,

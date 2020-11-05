@@ -15,15 +15,15 @@ main( int argc, char *argv[] )
 		exit( - 1 );
 	}
 	CNDB *db = newCNDB();
-	CNNarrative *narrative = readNarrative( argv[ 1 ] );
+	CNStory *story = readStory( argv[ 1 ] );
 #ifdef DEBUG
-	narrative_output( stderr, narrative, 0 );
+	story_output( stderr, story, 0 );
 	exit( 0 );
 #endif
-	while ( cnOperate( narrative, db ) )
+	while ( cnOperate( story, db ) )
 		cnUpdate( db );
 
-	freeNarrative( narrative );
+	freeStory( story );
 	freeCNDB( db );
 }
 

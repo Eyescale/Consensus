@@ -3,10 +3,8 @@
 
 // #define DEBUG
 
-static CNOccurrence *newOccurrence( CNOccurrenceType );
-static void freeOccurrence( CNOccurrence * );
-static void occurrence_set( CNOccurrence *, listItem **sequence );
-static void narrative_reorder( CNNarrative * );
+static int input( FILE *file, int *mode, int *buffer, int *c, int *l );
+static int preprocess( int event, int *mode, int *buffer, int *skipped );
 
 typedef enum {
 	ErrUnknownState,
@@ -22,7 +20,16 @@ typedef enum {
 	ErrMarkNoSub
 } CNNarrativeError;
 
-static void narrative_report( CNNarrativeError, int line, int column, int tabmark );
+static void err_report( CNNarrativeError, int line, int column, int tabmark );
+
+static CNNarrative * newNarrative( void );
+static void freeNarrative( CNNarrative * );
+static void narrative_reorder( CNNarrative * );
+static int narrative_output( FILE *, CNNarrative *, int );
+
+static CNOccurrence *newOccurrence( CNOccurrenceType );
+static void freeOccurrence( CNOccurrence * );
+static void occurrence_set( CNOccurrence *, listItem **sequence );
 
 //===========================================================================
 //	Narrative CNParserBegin / CNParserEnd - macros

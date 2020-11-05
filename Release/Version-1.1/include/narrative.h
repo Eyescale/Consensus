@@ -26,13 +26,16 @@ typedef struct {
 	} *data;
 } CNOccurrence;
 
-typedef CNOccurrence * CNNarrative;
+typedef struct {
+	char *proto;
+	CNOccurrence *base;
+} CNNarrative;
 
-CNNarrative * readNarrative( char *path );
-CNNarrative * newNarrative( void );
-void	freeNarrative( CNNarrative * );
+typedef listItem CNStory;
 
-int	narrative_output( FILE *, CNNarrative *, int );
+CNStory * readStory( char *path );
+int	story_output( FILE *, CNStory *, int );
+void	freeStory( CNStory * );
 
 
 #endif	// NARRATIVE_H

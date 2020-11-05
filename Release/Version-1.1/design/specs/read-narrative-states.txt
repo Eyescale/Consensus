@@ -1,10 +1,18 @@
 
-	base	#	base
-		+/-	base
+	base	:	proto
+		#	base
+		+	base
+		-	base
 		i	in	in_	_expr
 		o	on	on_	_expr
 		d	do	do_	_expr
 		e	el	els	else	else_	_expr
+
+	proto	base
+		:_	proto
+		:%	proto
+			:%_	proto
+			:_	proto
 
 	_expr	[ sibling ]	build	add	expr
 

@@ -19,26 +19,27 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 //	cnOperate
 //===========================================================================
-static int operate( CNOccurrence *, BMContext * );
+static void operate( CNOccurrence *, BMContext * );
 
 int
-cnOperate( CNNarrative *narrative, CNDB *db )
+cnOperate( listItem *narratives, CNDB *db )
 {
 #ifdef DEBUG
 fprintf( stderr, "=============================\n" );
 #endif
-	if ( narrative == NULL ) return 0;
-	if ( db_out(db) ) return 0;
+	if (( narratives == NULL ) || db_out(db) )
+		 return 0;
 
-	BMContext *ctx = bm_push( narrative, NULL, db );
-	operate((CNOccurrence *) narrative, ctx );
-	bm_pop( ctx );
-
+	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
+		CNNarrative *n = i->ptr;
+		BMContext *ctx = bm_push( n, NULL, db );
+		operate( n->base, ctx );
+		bm_pop( ctx );
+	}
 	return 1;
 }
-
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-static int
+static void
 operate( CNOccurrence *occurrence, BMContext *ctx )
 {
 	listItem *i = newItem( occurrence ), *stack = NULL;
@@ -88,7 +89,6 @@ RETURN:
 		i = popListItem( &stack );
 	}
 	freeItem( i );
-	return 1;
 }
 
 //===========================================================================

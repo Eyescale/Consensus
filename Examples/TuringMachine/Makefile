@@ -6,12 +6,12 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../Base/include -I../../Release/Version-1.0/include
+INCLUDES = -I. -I./include -I../../Base/include -I../../Release/Version-1.1/include
 LFLAGS = -L../../Base -L../../Release/Version-1.1
 LIBS = -lcn -lbmod
 
 OBJDIR = .ofiles
-SRCS =	main.c
+SRCS = main.c
 
 #CFLAGS = -DDEBUG
 #CFLAGS = -DTRIM -DPREVIOUS
