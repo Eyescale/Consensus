@@ -3,10 +3,15 @@
 		#	base
 		+	base
 		-	base
+		_%_	_expr
 		i	in	in_	_expr
 		o	on	on_	_expr
 		d	do	do_	_expr
 		e	el	els	else	else_	_expr
+							_%_
+							i
+							o
+							d
 
 	_expr	[ sibling ]	build	add	expr
 
