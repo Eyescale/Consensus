@@ -38,7 +38,6 @@ fprintf( stderr, "=============================\n" );
 
 	/* identify active narratives, in two steps
 	*/
-	listItem *active = NULL;
 	listItem *results = NULL;
 	listItem *tbd = NULL;
 	CNNarrative *n;
@@ -50,13 +49,17 @@ fprintf( stderr, "=============================\n" );
 		if (( n->proto )) addItem( &tbd, n );
 		else addItem( &results, n );
 	}
-	if ( results == NULL ) return 0;
+	if ( results == NULL ) {
+		freeListItem( &tbd );
+		return 0;
+	}
 
 	/* 2. determine active narratives from identified
 	      narratives' EN declarations, in context
 	*/
+	listItem *active = NULL;
 	BMContext *ctx = bm_push( NULL, NULL, db );
-	do {
+	if (( tbd )) do {
 		for ( listItem *i=results; i!=NULL; i=i->next )
 			addItem( &active, i->ptr );
 		listItem *checked = results;
@@ -89,21 +92,21 @@ fprintf( stderr, "=============================\n" );
 	return 1;
 }
 static int
-operate_CB( CNInstance *e, BMContext *ctx, void *data )
-{
-	CNNarrative *n = data;
-	ctx = bm_push( n, e, ctx->db );
-	operate( n->base, ctx, NULL, NULL );
-	bm_pop( ctx );
-	return BM_CONTINUE;
-}
-static int
 active_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	ActiveData *data = user_data;
 	CNNarrative *n = data->n;
 	ctx = bm_push( n, e, ctx->db );
 	operate( n->base, ctx, data->tbd, data->results );
+	bm_pop( ctx );
+	return BM_CONTINUE;
+}
+static int
+operate_CB( CNInstance *e, BMContext *ctx, void *data )
+{
+	CNNarrative *n = data;
+	ctx = bm_push( n, e, ctx->db );
+	operate( n->base, ctx, NULL, NULL );
 	bm_pop( ctx );
 	return BM_CONTINUE;
 }
@@ -151,6 +154,7 @@ operate( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **re
 				}
 				else last_i = i;
 			}
+			if ( *tbd == NULL ) return;
 			break;
 		ctrl(ELSE_DO) case DO:
 			if (( tbd )) break;
@@ -236,28 +240,14 @@ in_condition( char *expression, BMContext *ctx )
 //===========================================================================
 //	on_event
 //===========================================================================
-static int test_release( char ** );
-
 static int
 on_event( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "on_event: %s\n", expression );
-	if ( test_release( &expression ) )
-		return bm_feel( expression, ctx, BM_RELEASED );
-	else
-		return bm_feel( expression, ctx, BM_INSTANTIATED );
-
-	return 0;
-}
-static int
-test_release( char **expression )
-{
-	char *s = *expression;
-	if ( s[ 0 ]=='~' && s[1]=='(' ) {
-		*expression += 1;
-		return 1;
+	if ( !strncmp( expression, "~(", 2 ) ) {
+		return bm_feel( expression+1, ctx, BM_RELEASED );
 	}
-	return 0;
+	else return bm_feel( expression, ctx, BM_INSTANTIATED );
 }
 
 //===========================================================================
@@ -269,11 +259,10 @@ do_action( char *expression, BMContext *ctx )
 	// fprintf( stderr, "do_action: do %s\n", expression );
 	if ( !strcmp( expression, "exit" ) )
 		db_exit( ctx->db );
-	else if ( test_release( &expression ) )
-		bm_release( expression, ctx );
+	else if ( !strncmp( expression, "~(", 2 ) )
+		bm_release( expression+1, ctx );
 	else
 		bm_substantiate( expression, ctx );
-
 	return 1;
 }
 
