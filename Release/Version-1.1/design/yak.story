@@ -112,7 +112,7 @@
 			do INPUT
 
 
-: (( rule, %id ), ( %flag, %start_frame ))
+: (( rule, .id ), ( .flag, .start_frame ))
 	%((schema,.),.)
 
 	on ( this )
@@ -143,7 +143,7 @@
 		else do .( COMPLETE ) // all children schemas complete
 
 
-: (( schema, %start_position ), ( %flag, %start_frame ))
+: (( schema, .start_position ), ( .flag, .start_frame ))
 	.position .event
 
 	on ( this )

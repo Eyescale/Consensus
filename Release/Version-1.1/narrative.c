@@ -5,12 +5,13 @@
 #include "string_util.h"
 #include "narrative.h"
 #include "narrative_private.h"
+#include "util.h"
 
 //===========================================================================
 //	readStory
 //===========================================================================
 static int add_narrative( listItem **story, CNNarrative *narrative );
-static void proto_set( char **, listItem ** );
+static int proto_set( CNNarrative *, listItem ** );
 static void add_item( listItem **, int );
 
 #define FILTERED 2
@@ -71,14 +72,13 @@ readStory( char *path )
 		on_( '\t' )	do_( same )	tab++;
 		on_( ':' )
 			if ( !tab && !tabmark ) {
-				do_( "proto" )	freeListItem( &stack.occurrence );
+				do_( "_:_" )	freeListItem( &stack.occurrence );
 						freeListItem( &stack.first );
 						freeListItem( &stack.counter );
 						freeListItem( &stack.marked );
 						if ( add_narrative( &story, narrative ) )
 							narrative = newNarrative();
 						addItem( &stack.occurrence, narrative->base );
-						add_item( &sequence, ':' );
 			}
 		on_( '#' )
 			if ( !tab && !tabmark ) {
@@ -109,6 +109,11 @@ readStory( char *path )
 		in_( "-" ) bgn_
 			on_( '-' )	do_( same )	tab_base--;
 			on_other	do_( "base" )	REENTER
+			end
+		in_( "_:_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "proto" )	REENTER
+			on_( '\n' )	do_( "base" ) 	tab_base = 0; last_tab = -1;
 			end
 		in_( "_%_" ) bgn_
 			ons( " \t" )	do_( same )
@@ -364,9 +369,9 @@ readStory( char *path )
 	in_( "proto" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-			if ( level == 0 ) {
-				do_( "base" )	proto_set( &narrative->proto, &sequence );
-						informed = tab_base = 0; last_tab = -1;
+			if (( level == 0 ) && proto_set( narrative, &sequence )) {
+				do_( "base" )	informed = 0;
+						tab_base = 0; last_tab = -1;
 			}
 		on_( '(' )
 			if ( !informed ) {
@@ -386,8 +391,11 @@ readStory( char *path )
 						add_item( &sequence, event );
 						first = (int) popListItem( &stack.first );
 			}
-		on_( '%' )	do_( ":%" )	add_item( &sequence, event );
+		on_( '.' )
+			if ( !informed ) {
+				do_( ":." )	add_item( &sequence, event );
 						informed = 1;
+			}
 		on_separator	; // err
 		on_other
 			if ( !informed ) {
@@ -395,20 +403,16 @@ readStory( char *path )
 						informed = 1;
 			}
 		end
-		in_( ":_" ) bgn_
-			on_separator	do_( "proto" )	REENTER
-			on_other	do_( same )	add_item( &sequence, event );
-			end
-		in_( ":%" ) bgn_
-			ons( " \t" )	do_( ":%_" )
+		in_( ":." ) bgn_
+			ons( " \t" )	do_( "proto" )
 			ons( ",)\n" )	do_( "proto" )	REENTER
 			on_separator	; // err
 			on_other	do_( ":_" )	add_item( &sequence, event );
 			end
-			in_( ":%_" ) bgn_
-				ons( " \t" )	do_( same )
-				ons( ",)\n" )	do_( "proto" )	REENTER
-				end
+		in_( ":_" ) bgn_
+			on_separator	do_( "proto" )	REENTER
+			on_other	do_( same )	add_item( &sequence, event );
+			end
 	CNParserDefault
 		in_( "EOF" )
 			if ( level ) {
@@ -441,6 +445,10 @@ readStory( char *path )
 				on_( '?' )	errnum = ( marked ? ErrMarkMultiple : ErrMarkNoSub );
 				on_( '<' )	errnum = ErrInputScheme;
 				on_other	errnum = ErrSequenceSyntaxError;
+				end
+			in_( "proto" ) bgn_
+				on_( '\n' )	errnum = level ? ErrUnexpectedCR : ErrProtoRedundantArg;
+				on_other	errnum = ErrProtoSyntaxError;
 				end
 			in_other bgn_
 				on_( '\n' )	errnum = ErrUnexpectedCR;
@@ -495,10 +503,12 @@ add_narrative( listItem **story, CNNarrative *narrative )
 	}
 	return 0;
 }
-static void
-proto_set( char **proto, listItem **sequence )
+static int
+proto_set( CNNarrative *narrative, listItem **sequence )
 {
-	*proto = l2s( sequence, 0 );
+	char *proto = l2s( sequence, 0 );
+	narrative->proto = proto;
+	return p_valid( proto );
 }
 
 //===========================================================================
@@ -698,6 +708,12 @@ err_report( CNNarrativeError errnum, int line, int column, int tabmark )
 	case ErrMarkNoSub:
 		fprintf( stderr, "Error: read_narrative: l%dc%d: '?' out of scope\n", line, column );
 		break;
+	case ErrProtoSyntaxError:
+		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax not supported in narrative definition\n", line, column );
+		break;
+	case ErrProtoRedundantArg:
+		fprintf( stderr, "Error: read_narrative: l%dc%d: redundant narrative .arg identifier\n", line, column );
+		break;
 	}
 }
 
@@ -733,6 +749,7 @@ static void
 freeNarrative( CNNarrative *narrative )
 {
 	if (( narrative )) {
+		free( narrative->proto );
 		freeOccurrence( narrative->base );
 		freePair((Pair *) narrative );
 	}

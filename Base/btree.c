@@ -236,7 +236,7 @@ freeBTree( BTreeNode *node )
 //===========================================================================
 #ifdef BT_TEST
 char *sequence =
-	"((%?,*toto:(billy,boy)),(tata:ernest,tutu))"
+	"((%?,*toto:(billy,.boy)),%(tata:%ernest,%))"
 //	"%(**?)"
 	;
 

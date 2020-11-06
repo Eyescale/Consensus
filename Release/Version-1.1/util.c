@@ -5,7 +5,51 @@
 #include "util.h"
 
 //===========================================================================
-//	p_strip
+//	p_valid
+//===========================================================================
+static int p_cmp( const char *p, const char *q );
+
+int
+p_valid( char *p )
+/*
+	validates that all .arg names are unique in proto
+*/
+{
+	if ( p == NULL ) return 1;
+	
+	int success = 1;
+	listItem *list = NULL;
+	for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {
+		for ( ; *p!='.' || is_separator(p[1]); p++ )
+			if ( *p == '\0' ) goto RETURN;
+		p++;
+		for ( listItem *i=list; i!=NULL; i=i->next ) {
+			if ( !p_cmp( i->ptr, p ) ) {
+				success = 0;
+				goto RETURN;
+			}
+		}
+		addItem( &list, p );
+	}
+RETURN:
+	freeListItem( &list );
+	return success;
+}
+static int
+p_cmp( const char *p, const char *q )
+{
+	for ( ; ; p++, q++ ) {
+		if ( is_separator(*q) )
+			return is_separator(*p) ? 0 : *(const unsigned char*)p;
+		else if ( is_separator(*p) )
+			return -*(const unsigned char*)q;
+		else if ( *p != *q )
+			return *(const unsigned char*)p - *(const unsigned char*)q;
+	}
+}
+
+//===========================================================================
+//	p_strip	- unused
 //===========================================================================
 char *
 p_strip( char *p )
@@ -26,20 +70,8 @@ p_strip( char *p )
 	for ( p++; *p; p=( arg.end[1]==':' ) ? arg.end+2 : arg.end+1 ) {
 		// locate %arg
 		char *q = p;
-		for ( int done=0; !done; )
-			switch ( *q ) {
-			case '\0':
-				done = 1;
-				break;
-			case '%':
-				if ( !is_separator(q[1]) ) {
-					done = 1;
-					break;
-				}
-				// no break
-			default:
-				q++;
-			}
+		for ( ; *q!='%' || is_separator(p[1]); p++ )
+			if ( *q == '\0' ) break;
 		if ( *q == '\0' ) break;
 		arg.bgn = q; // on the '%'
 		arg.end = p_prune( PRUNE_IDENTIFIER, q+1 );
@@ -180,8 +212,10 @@ p_locate( char *expression, listItem **exponent )
 			tuple = (int) popListItem( &stack.tuple );
 			p++; break;
 		case '?':
-		case '.':
 			p++; break;
+		case '.':
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			break;
 		default:
 			if ( not ) p++;
 			else scope = 0;
@@ -281,7 +315,8 @@ p_locate_mark( char *expression, listItem **exponent )
 			scope = 0;
 			break;
 		case '.':
-			p++; break;
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			break;
 		default:
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
@@ -323,50 +358,31 @@ p_extract( char *p )
 //===========================================================================
 //	p_prune
 //===========================================================================
-typedef struct {
-	int level;
-	int type;
-} PruneData;
-static void p_set( PruneData *, PruneType type, char * );
-static int p_skip( char *p, PruneData *prune );
-
 char *
 p_prune( PruneType type, char *p )
 {
-	PruneData data;
-	p_set( &data, type, p );
-	while ( p_skip( p, &data ) ) { p++; }
-	return p;
-}
-static void
-p_set( PruneData *prune, PruneType type, char *p )
-{
-	prune->type = type;
-	prune->level = ( *p==')' ) ? 2 : 1;
-}
-static int
-p_skip( char *p, PruneData *prune )
-{
-	if ( prune->type == PRUNE_IDENTIFIER ) {
-		if ( is_separator( *p ) )
-			prune->level = 0;
+	if ( type == PRUNE_IDENTIFIER ) {
+		while ( !is_separator( *p ) ) p++;
+		return p;
 	}
-	else {
+	int level = ( *p==')' ) ? 2 : 1;
+	for ( ; ; p++ ) {
 		switch ( *p ) {
-		case '\0': prune->level=0; break;
-		case '(': prune->level++; break;
-		case ')': prune->level--; break;
+		case '\0': return p;
+		case '(': level++; break;
+		case ')':
+			if ( level == 1 ) return p;
+			level--;
+			break;
 		case ':':
-			if ( prune->type != PRUNE_COLON )
+			if ( type != PRUNE_COLON )
 				break;
 			// no break
 		case ',':
-			if ( prune->level == 1 )
-				prune->level = 0;
+			if ( level == 1 ) return p;
 			break;
 		}
 	}
-	return prune->level;
 }
 
 //===========================================================================

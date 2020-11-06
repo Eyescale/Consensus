@@ -205,6 +205,11 @@ prove_wild_CB( listItem **path, int position, listItem *sub, void *user_data )
 	}
 	switch ( *p ) {
 	case '%':
+		if ( p[1] != '(' ) {
+			data->success = 0;
+			return BT_DONE;
+		}
+		// no break
 	case '(': // check couple
 		if (( node->sub[ 0 ] ) && ( node->sub[ 1 ] )) {
 			data->success = 0;
@@ -248,6 +253,11 @@ find_peer_CB( listItem **path, int position, listItem *sub, void *user_data )
 	}
 	switch ( *p ) {
 	case '%':
+		if ( p[1] != '(' ) {
+			data->success = 1;
+			return BT_DONE;
+		}
+		// no break
 	case '(': // found peer couple
 		if (( node->sub[ 0 ] ) && ( node->sub[ 1 ] )) {
 			data->success = 1;

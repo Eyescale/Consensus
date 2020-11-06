@@ -17,7 +17,9 @@ typedef enum {
 	ErrInputScheme,
 	ErrOutputScheme,
 	ErrMarkMultiple,
-	ErrMarkNoSub
+	ErrMarkNoSub,
+	ErrProtoSyntaxError,
+	ErrProtoRedundantArg
 } CNNarrativeError;
 
 static void err_report( CNNarrativeError, int line, int column, int tabmark );

@@ -36,6 +36,9 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/06
+		feature change: using .arg instead of %arg in narrative instance name
+		. updated design/yak.story, operation.c, util.c and expression.c
 	2020/11/04
 		feature change: made + and - tab logics relative
 		feature complete: mark register

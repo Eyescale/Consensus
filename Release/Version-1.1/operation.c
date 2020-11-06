@@ -42,16 +42,14 @@ fprintf( stderr, "=============================\n" );
 	listItem *active = NULL;
 	listItem *results = NULL;
 	listItem *tbd = NULL;
-	Pair *pair;
+	CNNarrative *n;
 
 	/* 1. determine base narratives, if any
 	*/
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
-		CNNarrative *n = i->ptr;
-		char *p = p_strip( n->proto );
-		pair = newPair( p, n );
-		if (( p )) addItem( &tbd, pair );
-		else addItem( &results, pair );
+		n = i->ptr;
+		if (( n->proto )) addItem( &tbd, n );
+		else addItem( &results, n );
 	}
 	if ( results == NULL ) return 0;
 
@@ -64,36 +62,29 @@ fprintf( stderr, "=============================\n" );
 			addItem( &active, i->ptr );
 		listItem *checked = results;
 		results = NULL;
-		while (( pair = popListItem( &checked ) )) {
+		while (( n = popListItem( &checked ) )) {
 			if (( tbd )) {
-				char *p = pair->name;
-				CNNarrative *n = pair->value;
-				if (( p )) {
+				char *proto = n->proto;
+				if (( proto )) {
 					ActiveData data = { n, &tbd, &results };
-					bm_traverse( p, ctx, active_CB, &data );
+					bm_traverse( proto, ctx, active_CB, &data );
 				}
 				else test_active( n->base, ctx, &tbd, &results );
 			}
 		}
 	} while ((tbd) && (results));
-	while (( pair = popListItem( &results ) ))
-		addItem( &active, pair );
-	while (( pair = popListItem( &tbd ) )) {
-		free( pair->name );
-		freePair( pair );
-	}
+	while (( n = popListItem( &results ) ))
+		addItem( &active, n );
+	freeListItem( &tbd );
 
 	/* operate active narratives
 	*/
-	while (( pair = popListItem( &active ) )) {
-		char *p = pair->name;
-		CNNarrative *n = pair->value;
-		if (( p )) {
-			bm_traverse( p, ctx, operate_CB, n );
-			free( p );
+	while (( n = popListItem( &active ) )) {
+		char *proto = n->proto;
+		if (( proto )) {
+			bm_traverse( proto, ctx, operate_CB, n );
 		}
 		else operate( n->base, ctx );
-		freePair( pair );
 	}
 	bm_pop( ctx );
 	return 1;
@@ -180,7 +171,7 @@ active_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	return BM_CONTINUE;
 }
 typedef struct {
-	char *p;
+	char *proto;
 	CNInstance *e;
 	int success;
 } MatchData;
@@ -209,12 +200,12 @@ test_active( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem 
 			listItem *last_i = NULL, *next_i;
 			for ( listItem *i=*tbd; i!=NULL; i=next_i ) {
 				next_i = i->next;
-				Pair *pair = i->ptr;
-				MatchData data = { pair->name, NULL, 0 };
+				CNNarrative *n = i->ptr;
+				MatchData data = { n->proto, NULL, 0 };
 				bm_traverse( expression, ctx, match_CB, &data );
 				if ( data.success ) {
 					clipListItem( tbd, i, last_i, next_i );
-					addItem( results, pair );
+					addItem( results, n );
 				}
 				else last_i = i;
 			}
@@ -256,7 +247,7 @@ match_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	MatchData *data = user_data;
 	data->e = e;
 	ctx = bm_push( NULL, NULL, ctx->db );
-	bm_traverse( data->p, ctx, cmp_CB, data );
+	bm_traverse( data->proto, ctx, cmp_CB, data );
 	bm_pop( ctx );
 	return data->success ? BM_DONE : BM_CONTINUE;
 }

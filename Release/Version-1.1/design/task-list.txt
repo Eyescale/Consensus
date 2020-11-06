@@ -10,6 +10,7 @@ TODO
 		. expression.c: db_input, db_output, db_outputf
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
 		  => could generalize with '\identifier'
+	. update narrative_output
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
 

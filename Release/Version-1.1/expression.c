@@ -165,7 +165,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			else if ( wildcard_opt( p, data->btree ) ) success = 1;
 #endif
 			else success = ( bm_match( *x, NULL, *exponent, base, data ) > 0 );
-			p++;
+			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
 		default:
 			success = bm_match( *x, p, *exponent, base, data );
