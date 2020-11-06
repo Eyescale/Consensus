@@ -114,7 +114,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
-				p_locate( p+1, "?", &mark_exp );
+				p_locate_mark( p+1, &mark_exp );
 				if ( mark_exp == NULL ) p++;
 			}
 			break;

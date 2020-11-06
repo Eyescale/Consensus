@@ -15,7 +15,9 @@ typedef enum {
 	PRUNE_IDENTIFIER,
 	PRUNE_COLON
 } PruneType;
-char *	p_locate( char *expression, char *fmt, listItem **exponent );
+char *	p_strip( char *proto );
+char *	p_locate( char *expression, listItem **exponent );
+char *	p_locate_mark( char *expression, listItem **exponent );
 char *	p_extract( char * );
 char *	p_prune( PruneType type, char * );
 int	p_single( char * );

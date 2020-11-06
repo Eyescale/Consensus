@@ -19,6 +19,13 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 //	cnOperate
 //===========================================================================
+typedef struct {
+	CNNarrative *n;
+	listItem **tbd, **results;
+} ActiveData;
+static BMTraverseCB active_CB;
+static void test_active( CNOccurrence *, BMContext *, listItem **, listItem ** );
+static int operate_CB( CNInstance *, BMContext *, void * );
 static void operate( CNOccurrence *, BMContext * );
 
 int
@@ -30,15 +37,81 @@ fprintf( stderr, "=============================\n" );
 	if (( narratives == NULL ) || db_out(db) )
 		 return 0;
 
+	/* identify active narratives, in two steps
+	*/
+	listItem *active = NULL;
+	listItem *results = NULL;
+	listItem *tbd = NULL;
+	Pair *pair;
+
+	/* 1. determine base narratives, if any
+	*/
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
 		CNNarrative *n = i->ptr;
-		BMContext *ctx = bm_push( n, NULL, db );
-		operate( n->base, ctx );
-		bm_pop( ctx );
+		char *p = p_strip( n->proto );
+		pair = newPair( p, n );
+		if (( p )) addItem( &tbd, pair );
+		else addItem( &results, pair );
 	}
+	if ( results == NULL ) return 0;
+
+	/* 2. determine active narratives from from resulting
+	      narratives' EN declarations, in context
+	*/
+	BMContext *ctx = bm_push( NULL, NULL, db );
+	do {
+		for ( listItem *i=results; i!=NULL; i=i->next )
+			addItem( &active, i->ptr );
+		listItem *checked = results;
+		results = NULL;
+		while (( pair = popListItem( &checked ) )) {
+			if (( tbd )) {
+				char *p = pair->name;
+				CNNarrative *n = pair->value;
+				if (( p )) {
+					ActiveData data = { n, &tbd, &results };
+					bm_traverse( p, ctx, active_CB, &data );
+				}
+				else test_active( n->base, ctx, &tbd, &results );
+			}
+		}
+	} while ((tbd) && (results));
+	while (( pair = popListItem( &results ) ))
+		addItem( &active, pair );
+	while (( pair = popListItem( &tbd ) )) {
+		free( pair->name );
+		freePair( pair );
+	}
+
+	/* operate active narratives
+	*/
+	while (( pair = popListItem( &active ) )) {
+		char *p = pair->name;
+		CNNarrative *n = pair->value;
+		if (( p )) {
+			bm_traverse( p, ctx, operate_CB, n );
+			free( p );
+		}
+		else operate( n->base, ctx );
+		freePair( pair );
+	}
+	bm_pop( ctx );
 	return 1;
 }
+
+//===========================================================================
+//	operate
+//===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
+static int
+operate_CB( CNInstance *e, BMContext *ctx, void *data )
+{
+	CNNarrative *n = data;
+	ctx = bm_push( n, e, ctx->db );
+	operate( n->base, ctx );
+	bm_pop( ctx );
+	return BM_CONTINUE;
+}
 static void
 operate( CNOccurrence *occurrence, BMContext *ctx )
 {
@@ -66,6 +139,8 @@ operate( CNOccurrence *occurrence, BMContext *ctx )
 		ctrl(ELSE_OUTPUT) case OUTPUT:
 			do_output( occurrence->data->expression, ctx );
 			break;
+		default:
+			break;
 		}
 		if (( j && passed )) {
 			addItem( &stack, i );
@@ -89,6 +164,111 @@ RETURN:
 		i = popListItem( &stack );
 	}
 	freeItem( i );
+}
+
+//===========================================================================
+//	test_active
+//===========================================================================
+static int
+active_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	ActiveData *data = user_data;
+	CNNarrative *n = data->n;
+	ctx = bm_push( n, e, ctx->db );
+	test_active( n->base, ctx, data->tbd, data->results );
+	bm_pop( ctx );
+	return BM_CONTINUE;
+}
+typedef struct {
+	char *p;
+	CNInstance *e;
+	int success;
+} MatchData;
+static BMTraverseCB match_CB;
+static void
+test_active( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **results )
+{
+	char *expression;
+	listItem *i = newItem( occurrence ), *stack = NULL;
+	int passed = 1;
+	for ( ; ; ) {
+		occurrence = i->ptr;
+		listItem *j = occurrence->data->sub;
+		switch ( occurrence->type ) {
+		ctrl(ELSE) case ROOT:
+			passed = 1;
+			break;
+		ctrl(ELSE_IN) case IN:
+			passed = in_condition( occurrence->data->expression, ctx );
+			break;
+		ctrl(ELSE_ON) case ON:
+			passed = on_event( occurrence->data->expression, ctx );
+			break;
+		ctrl(ELSE_EN) case EN:
+			expression = occurrence->data->expression;
+			listItem *last_i = NULL, *next_i;
+			for ( listItem *i=*tbd; i!=NULL; i=next_i ) {
+				next_i = i->next;
+				Pair *pair = i->ptr;
+				MatchData data = { pair->name, NULL, 0 };
+				bm_traverse( expression, ctx, match_CB, &data );
+				if ( data.success ) {
+					clipListItem( tbd, i, last_i, next_i );
+					addItem( results, pair );
+				}
+				else last_i = i;
+			}
+			break;
+		default:
+			break;
+		}
+		if (( j && passed )) {
+			addItem( &stack, i );
+			i = j; continue;
+		}
+		for ( ; ; ) {
+			if (( i->next )) {
+				i = i->next;
+				occurrence = i->ptr;
+				break;
+			}
+			else if (( stack )) {
+				i = popListItem( &stack );
+				passed = 1; // otherwise we would not be here
+			}
+			else goto RETURN;
+		}
+	}
+RETURN:
+	while (( stack )) {
+		i = popListItem( &stack );
+	}
+	freeItem( i );
+}
+static int cmp_CB( CNInstance *, BMContext *, void * );
+static int
+match_CB( CNInstance *e, BMContext *ctx, void *user_data )
+/*
+	compares entity matching narrative local EN declaration
+	with entity matching global proto (in base context)
+*/
+{
+	MatchData *data = user_data;
+	data->e = e;
+	ctx = bm_push( NULL, NULL, ctx->db );
+	bm_traverse( data->p, ctx, cmp_CB, data );
+	bm_pop( ctx );
+	return data->success ? BM_DONE : BM_CONTINUE;
+}
+static int
+cmp_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	MatchData *data = user_data;
+	if ( e == data->e ) {
+		data->success = 1;
+		return BM_DONE;
+	}
+	return BM_CONTINUE;
 }
 
 //===========================================================================

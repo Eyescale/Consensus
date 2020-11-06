@@ -8,12 +8,14 @@ typedef enum {
 	IN,
 	ON,
 	DO,
+	EN,
 	INPUT,
 	OUTPUT,
 	ELSE,
 	ELSE_IN,
 	ELSE_ON,
 	ELSE_DO,
+	ELSE_EN,
 	ELSE_INPUT,
 	ELSE_OUTPUT
 } CNOccurrenceType;

@@ -1,5 +1,5 @@
 
-	base	:	proto
+	base	proto
 		#	base
 		+	base
 		-	base
@@ -7,12 +7,6 @@
 		o	on	on_	_expr
 		d	do	do_	_expr
 		e	el	els	else	else_	_expr
-
-	proto	base
-		:_	proto
-		:%	proto
-			:%_	proto
-			:_	proto
 
 	_expr	[ sibling ]	build	add	expr
 
@@ -29,6 +23,12 @@
 		term	expr
 
 	expr_	base
+
+	proto	base
+		:_	proto
+		:%	proto
+			:%_	proto
+			:_	proto
 
 CNParserDefault
 

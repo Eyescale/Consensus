@@ -9,7 +9,7 @@
 //===========================================================================
 //	readStory
 //===========================================================================
-static int story_add( listItem **story, CNNarrative *narrative );
+static int add_narrative( listItem **story, CNNarrative *narrative );
 static void proto_set( char **, listItem ** );
 static void add_item( listItem **, int );
 
@@ -67,30 +67,32 @@ readStory( char *path )
 
 	CNParserBegin( file, input )
 	in_( "base" ) bgn_
+		on_( '\n' )	do_( same )	tab = tabmark = 0;
+		on_( '\t' )	do_( same )	tab++;
 		on_( ':' )
-			if ( tab == 0 ) {
+			if ( !tab && !tabmark ) {
 				do_( "proto" )	freeListItem( &stack.occurrence );
 						freeListItem( &stack.first );
 						freeListItem( &stack.counter );
 						freeListItem( &stack.marked );
-						if ( story_add( &story, narrative ) )
+						if ( add_narrative( &story, narrative ) )
 							narrative = newNarrative();
 						addItem( &stack.occurrence, narrative->base );
+						add_item( &sequence, ':' );
 			}
 		on_( '#' )
-			if ( tab == 0 ) {
+			if ( !tab && !tabmark ) {
 				do_( "#" )
 			}
 		on_( '+' )
-			if ( tab == 0 ) {
-				do_( "+" )	tab_base++;
+			if ( !tab && !tabmark ) {
+				do_( "+" )	tab_base++; tabmark = 1;
 			}
 		on_( '-' )
-			if ( tab == 0 ) {
-				do_( "-" )	tab_base--;
+			if ( !tab && !tabmark ) {
+				do_( "-" )	tab_base--; tabmark = 1;
 			}
-		on_( '\n' )	do_( same )	tab = 0;
-		on_( '\t' )	do_( same )	tab++;
+		on_( '%' )	do_( "_%_" )	tabmark = column;
 		on_( 'i' )	do_( "i" )	tabmark = column;
 		on_( 'o' )	do_( "o" )	tabmark = column;
 		on_( 'd' )	do_( "d" )	tabmark = column;
@@ -107,6 +109,15 @@ readStory( char *path )
 		in_( "-" ) bgn_
 			on_( '-' )	do_( same )	tab_base--;
 			on_other	do_( "base" )	REENTER
+			end
+		in_( "_%_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "_expr" )	REENTER
+							add_item( &stack.counter, 0 );
+							add_item( &stack.marked, 0 );
+							add_item( &sequence, '%' );
+							tab += tab_base;
+							type = EN;
 			end
 		in_( "i" ) bgn_
 			on_( 'n' )	do_( "in" )
@@ -167,58 +178,11 @@ readStory( char *path )
 							on_( '\n' )	do_( "_expr" )	REENTER
 											tab += tab_base;
 											type = ELSE;
+							on_( '%' )	do_( "_%_" )	typelse = 1;
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
 							on_( 'd' )	do_( "d" )	typelse = 1;
 							end
-	in_( "proto" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )
-			if ( level == 0 ) {
-				do_( "base" )	proto_set( &narrative->proto, &sequence );
-						informed = 0;
-			}
-		on_( '(' )
-			if ( !informed ) {
-				do_( same )	level++;
-						add_item( &sequence, event );
-						add_item( &stack.first, first );
-						first = 1;
-			}
-		on_( ',' )
-			if ( first && informed ) {
-				do_( same )	add_item( &sequence, event );
-						first = informed = 0;
-			}
-		on_( ')' )
-			if ( informed && ( level > 0 )) {
-				do_( same )	level--;
-						add_item( &sequence, event );
-						first = (int) popListItem( &stack.first );
-			}
-		on_( '%' )	do_( ":%" )	add_item( &sequence, event );
-						informed = 1;
-		on_separator	; // err
-		on_other
-			if ( !informed ) {
-				do_( ":_" )	add_item( &sequence, event );
-						informed = 1;
-			}
-		end
-		in_( ":_" ) bgn_
-			on_separator	do_( "proto" )	REENTER
-			on_other	do_( same )	add_item( &sequence, event );
-			end
-		in_( ":%" ) bgn_
-			ons( " \t" )	do_( ":%_" )
-			ons( ",)\n" )	do_( "proto" )	REENTER
-			on_separator	; // err
-			on_other	do_( ":_" )	add_item( &sequence, event );
-			end
-			in_( ":%_" ) bgn_
-				ons( " \t" )	do_( same )
-				ons( ",)\n" )	do_( "proto" )	REENTER
-				end
 	in_( "_expr" ) REENTER
 		if ( last_tab == -1 ) {
 			// very first occurrence
@@ -229,10 +193,9 @@ readStory( char *path )
 		else if ( tab == last_tab + 1 ) {
 			CNOccurrence *parent = stack.occurrence->ptr;
 			if ( !typelse && type!=ELSE &&
-			    ( parent->type==ROOT ||
-			      parent->type==IN || parent->type==ON ||
-			      parent->type==ELSE_IN || parent->type==ELSE_ON ||
-			      parent->type==ELSE )) {
+			    ( parent->type==ROOT || parent->type==ELSE ||
+			      parent->type==IN || parent->type==ELSE_IN ||
+			      parent->type==ON || parent->type==ELSE_ON )) {
 				do_( "build" )
 			}
 		}
@@ -249,8 +212,8 @@ readStory( char *path )
 						last_tab--;
 			}
 			else if (( !typelse && type!=ELSE ) ||
-				  sibling->type==IN || sibling->type==ON ||
-				  sibling->type==ELSE_IN || sibling->type==ELSE_ON ) {
+				  sibling->type==IN || sibling->type==ELSE_IN ||
+				  sibling->type==ON || sibling->type==ELSE_ON ) {
 				do_( "build" )
 			}
 
@@ -260,6 +223,7 @@ readStory( char *path )
 						type==IN ? ELSE_IN :
 						type==ON ? ELSE_ON :
 						type==DO ? ELSE_DO :
+						type==EN ? ELSE_EN :
 						ROOT : type );
 		in_( "add" ) REENTER
 			do_( "expr" )	CNOccurrence *parent = stack.occurrence->ptr;
@@ -394,10 +358,57 @@ readStory( char *path )
 		on_( '\n' )
 			if ( level == 0 ) {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
-						typelse = tab = informed = 0;
+						typelse = tab = tabmark = informed = 0;
 			}
 		end
-
+	in_( "proto" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' )
+			if ( level == 0 ) {
+				do_( "base" )	proto_set( &narrative->proto, &sequence );
+						informed = tab_base = 0; last_tab = -1;
+			}
+		on_( '(' )
+			if ( !informed ) {
+				do_( same )	level++;
+						add_item( &sequence, event );
+						add_item( &stack.first, first );
+						first = 1;
+			}
+		on_( ',' )
+			if ( first && informed ) {
+				do_( same )	add_item( &sequence, event );
+						first = informed = 0;
+			}
+		on_( ')' )
+			if ( informed && ( level > 0 )) {
+				do_( same )	level--;
+						add_item( &sequence, event );
+						first = (int) popListItem( &stack.first );
+			}
+		on_( '%' )	do_( ":%" )	add_item( &sequence, event );
+						informed = 1;
+		on_separator	; // err
+		on_other
+			if ( !informed ) {
+				do_( ":_" )	add_item( &sequence, event );
+						informed = 1;
+			}
+		end
+		in_( ":_" ) bgn_
+			on_separator	do_( "proto" )	REENTER
+			on_other	do_( same )	add_item( &sequence, event );
+			end
+		in_( ":%" ) bgn_
+			ons( " \t" )	do_( ":%_" )
+			ons( ",)\n" )	do_( "proto" )	REENTER
+			on_separator	; // err
+			on_other	do_( ":_" )	add_item( &sequence, event );
+			end
+			in_( ":%_" ) bgn_
+				ons( " \t" )	do_( same )
+				ons( ",)\n" )	do_( "proto" )	REENTER
+				end
 	CNParserDefault
 		in_( "EOF" )
 			if ( level ) {
@@ -449,7 +460,7 @@ readStory( char *path )
 		while (( narrative = popListItem( &story ) ))
 			freeNarrative( narrative );
 	}
-	else if ( story_add( &story, narrative ) ) {
+	else if ( add_narrative( &story, narrative ) ) {
 		reorderListItem( &story );
 	}
 	else {
@@ -468,7 +479,7 @@ add_item( listItem **stack, int value )
 	addItem( stack, icast.ptr );
 }
 static int
-story_add( listItem **story, CNNarrative *narrative )
+add_narrative( listItem **story, CNNarrative *narrative )
 {
 	if (( narrative->base->data->sub )) {
 		narrative_reorder( narrative );

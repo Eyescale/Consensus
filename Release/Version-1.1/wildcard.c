@@ -18,9 +18,9 @@ typedef struct {
 } TraverseData;
 
 //===========================================================================
-//	wildcard_opt	- optimizes db_verify()
+//	wildcard_opt	- optimizes bm_verify()
 //===========================================================================
-/* Optimizes db_verify - cf expression.c
+/* Optimizes bm_verify - cf expression.c
    Evaluates the following conditions for a wildcard candidate:
 	. Firstly, if it's a mark, that it is not starred
 	. Secondly that it is neither base nor filtered - that is, if it
@@ -33,11 +33,11 @@ typedef struct {
 	  the sub-expression to which the couple pertains does not contain
 	  other couples or non-wildcards terms.
    Failing any of these conditions (with the exception of the first) will
-   cause wildcard_opt() to return 1 - thereby allowing db_verify() to bypass
+   cause wildcard_opt() to return 1 - thereby allowing bm_verify() to bypass
    any further inquiry on the wildcard, which can result in substantial
    performance optimization depending on the CNDB size.
    Otherwise, that is: either failing the first condition or meeting all
-   of the others, wildcard_opt() will return 0, requiring db_verify() to
+   of the others, wildcard_opt() will return 0, requiring bm_verify() to
    perform a full evaluation on the wildcard.
 */
 static char *term_start( char *, int * );

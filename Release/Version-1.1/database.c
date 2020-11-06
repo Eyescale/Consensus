@@ -392,7 +392,7 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 #if 0
 			if ( e == NULL ) {
 				fprintf( stderr, "Error: db_next\n" );
-				exit( 0 );
+				exit( -1 );
 			}
 #endif
 			if ( !db_private( 0, e, db ) ) {

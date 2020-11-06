@@ -5,20 +5,80 @@
 #include "util.h"
 
 //===========================================================================
-//	p_locate
+//	p_strip
 //===========================================================================
-static char *locate_mark( char *expression, listItem **exponent );
-
 char *
-p_locate( char *expression, char *fmt, listItem **exponent )
+p_strip( char *p )
 /*
-	if fmt is "?", returns first '?' found in expression, with
-	corresponding exponent (in reverse order). otherwise returns
-	first term which is not a wildcard and is not negated.
+	returns string extracted from proto p, where
+	. leading ':' has been removed
+	. ((..%arg..))
+		if followed by ':' has been removed
+		if preceded by ':' has been removed
+		otherwise has been replaced with '.'
 */
 {
-	if ( !strcmp( fmt, "?" ) ) return locate_mark( expression, exponent );
+	if (( p == NULL ) || !strcmp(p,":") || *p!=':' )
+		return NULL;
 
+	CNString *s = newString();
+	struct { char *bgn, *end; } arg;
+	for ( p++; *p; p=( arg.end[1]==':' ) ? arg.end+2 : arg.end+1 ) {
+		// locate %arg
+		char *q = p;
+		for ( int done=0; !done; )
+			switch ( *q ) {
+			case '\0':
+				done = 1;
+				break;
+			case '%':
+				if ( !is_separator(q[1]) ) {
+					done = 1;
+					break;
+				}
+				// no break
+			default:
+				q++;
+			}
+		if ( *q == '\0' ) break;
+		arg.bgn = q; // on the '%'
+		arg.end = p_prune( PRUNE_IDENTIFIER, q+1 );
+
+		// expand to ((..%arg..))
+		while ( arg.bgn!=p && arg.bgn[-1]=='(' && arg.end[1]==')' )
+			{ arg.bgn--; arg.end++; }
+
+		// skip or replace ((..%arg..)) with '.' depending on bordering ':'
+		if ( arg.bgn != p ) {
+			arg.bgn--;
+			for ( char *q=p; q!=arg.bgn; q++ )
+				StringAppend( s, *q );
+
+			if ( arg.bgn[ 0 ] != ':' ) {
+				StringAppend( s, *arg.bgn );
+				if ( arg.end[ 1 ] != ':' )
+					StringAppend( s, '.' );
+			}
+		}
+		else if ( arg.end[ 1 ] != ':' )
+			StringAppend( s, '.' );
+	}
+	p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
+	return p;
+}
+
+//===========================================================================
+//	p_locate
+//===========================================================================
+char *
+p_locate( char *expression, listItem **exponent )
+/*
+	returns first term which is not a wildcard and is not negated,
+	with corresponding exponent (in reverse order).
+*/
+{
 	union { int value; void *ptr; } icast;
 	struct {
 		listItem *not;
@@ -70,7 +130,7 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 				if ( not ) p++;
 				else scope = 0;
 			}
-			else { locate_mark( p+1, &mark_exp ); p++; }
+			else { p_locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
 			scope++;
@@ -144,8 +204,11 @@ p_locate( char *expression, char *fmt, listItem **exponent )
 	return NULL;
 }
 
-static char *
-locate_mark( char *expression, listItem **exponent )
+//===========================================================================
+//	p_locate_mark
+//===========================================================================
+char *
+p_locate_mark( char *expression, listItem **exponent )
 /*
 	returns first '?' found in expression, together with exponent
 	Note that we ignore the '~' signs and %(...) sub-expressions
@@ -240,6 +303,7 @@ p_extract( char *p )
 #if 0
 		if ( p[1] == '?' ) {
 			fprintf( stderr, "Error: p_extract: %%?\n" );
+			exit( -1 );
 		}
 #endif
 	case '*':

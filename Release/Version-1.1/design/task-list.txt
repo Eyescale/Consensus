@@ -15,11 +15,15 @@ TODO
 
 DONE
 	. narrative instances
+		. supported narrative declarations, allowing to activate narrative instances
+		  and more importantly to inhibit them when context does not require
 		. introduced CNStory
 			. in Version-1.1 CNStory:{ CNNarrative:[ proto, base ] }
 			. whereas in ../Version-1.0 CNStory:CNNarrative
 		. refactored ../../Examples/TuringMachine/main.c
-		. refactored cnOperate according to execution-model.txt
+		. refactored operation.c:cnOperate according to execution-model.txt
+		. extended narrative.c:readStory (was: readNarrative) to support
+		  one story = multiple narratives and narrative protos
 	. made '+' and '-' logics relative
 	. implemented db_exit/db_out: instantiates/tests (nil,nil)
 	. registry variable %? (aka. mark register)

@@ -44,7 +44,7 @@ typedef struct {
 	BMContext *ctx;
 	int privy;
 	char *expression;
-	int mark;
+	int assign;
 	int empty;
 	CNInstance *star;
 	Pair *pivot;
