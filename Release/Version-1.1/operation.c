@@ -24,9 +24,8 @@ typedef struct {
 	listItem **tbd, **results;
 } ActiveData;
 static BMTraverseCB active_CB;
-static void test_active( CNOccurrence *, BMContext *, listItem **, listItem ** );
-static int operate_CB( CNInstance *, BMContext *, void * );
-static void operate( CNOccurrence *, BMContext * );
+static BMTraverseCB operate_CB;
+static void operate( CNOccurrence *, BMContext *, listItem **, listItem ** );
 
 int
 cnOperate( listItem *narratives, CNDB *db )
@@ -69,7 +68,7 @@ fprintf( stderr, "=============================\n" );
 					ActiveData data = { n, &tbd, &results };
 					bm_traverse( proto, ctx, active_CB, &data );
 				}
-				else test_active( n->base, ctx, &tbd, &results );
+				else operate( n->base, ctx, &tbd, &results );
 			}
 		}
 	} while ((tbd) && (results));
@@ -84,92 +83,35 @@ fprintf( stderr, "=============================\n" );
 		if (( proto )) {
 			bm_traverse( proto, ctx, operate_CB, n );
 		}
-		else operate( n->base, ctx );
+		else operate( n->base, ctx, NULL, NULL );
 	}
 	bm_pop( ctx );
 	return 1;
 }
-
-//===========================================================================
-//	operate
-//===========================================================================
-#define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 static int
 operate_CB( CNInstance *e, BMContext *ctx, void *data )
 {
 	CNNarrative *n = data;
 	ctx = bm_push( n, e, ctx->db );
-	operate( n->base, ctx );
+	operate( n->base, ctx, NULL, NULL );
 	bm_pop( ctx );
 	return BM_CONTINUE;
 }
-static void
-operate( CNOccurrence *occurrence, BMContext *ctx )
-{
-	listItem *i = newItem( occurrence ), *stack = NULL;
-	int passed = 1;
-	for ( ; ; ) {
-		occurrence = i->ptr;
-		listItem *j = occurrence->data->sub;
-		switch ( occurrence->type ) {
-		ctrl(ELSE) case ROOT:
-			passed = 1;
-			break;
-		ctrl(ELSE_IN) case IN:
-			passed = in_condition( occurrence->data->expression, ctx );
-			break;
-		ctrl(ELSE_ON) case ON:
-			passed = on_event( occurrence->data->expression, ctx );
-			break;
-		ctrl(ELSE_DO) case DO:
-			do_action( occurrence->data->expression, ctx );
-			break;
-		ctrl(ELSE_INPUT) case INPUT:
-			do_input( occurrence->data->expression, ctx );
-			break;
-		ctrl(ELSE_OUTPUT) case OUTPUT:
-			do_output( occurrence->data->expression, ctx );
-			break;
-		default:
-			break;
-		}
-		if (( j && passed )) {
-			addItem( &stack, i );
-			i = j; continue;
-		}
-		for ( ; ; ) {
-			if (( i->next )) {
-				i = i->next;
-				occurrence = i->ptr;
-				break;
-			}
-			else if (( stack )) {
-				i = popListItem( &stack );
-				passed = 1; // otherwise we would not be here
-			}
-			else goto RETURN;
-		}
-	}
-RETURN:
-	while (( stack )) {
-		i = popListItem( &stack );
-	}
-	freeItem( i );
-}
-
-//===========================================================================
-//	test_active
-//===========================================================================
 static int
 active_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	ActiveData *data = user_data;
 	CNNarrative *n = data->n;
 	ctx = bm_push( n, e, ctx->db );
-	test_active( n->base, ctx, data->tbd, data->results );
+	operate( n->base, ctx, data->tbd, data->results );
 	bm_pop( ctx );
 	return BM_CONTINUE;
 }
+
+//===========================================================================
+//	operate
+//===========================================================================
+#define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 typedef struct {
 	char *proto;
 	CNInstance *e;
@@ -177,9 +119,8 @@ typedef struct {
 } MatchData;
 static BMTraverseCB match_CB;
 static void
-test_active( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **results )
+operate( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **results )
 {
-	char *expression;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	int passed = 1;
 	for ( ; ; ) {
@@ -196,7 +137,8 @@ test_active( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem 
 			passed = on_event( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_EN) case EN:
-			expression = occurrence->data->expression;
+			if (!(tbd)) break;
+			char *expression = occurrence->data->expression;
 			listItem *last_i = NULL, *next_i;
 			for ( listItem *i=*tbd; i!=NULL; i=next_i ) {
 				next_i = i->next;
@@ -210,7 +152,17 @@ test_active( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem 
 				else last_i = i;
 			}
 			break;
-		default:
+		ctrl(ELSE_DO) case DO:
+			if (( tbd )) break;
+			do_action( occurrence->data->expression, ctx );
+			break;
+		ctrl(ELSE_INPUT) case INPUT:
+			if (( tbd )) break;
+			do_input( occurrence->data->expression, ctx );
+			break;
+		ctrl(ELSE_OUTPUT) case OUTPUT:
+			if (( tbd )) break;
+			do_output( occurrence->data->expression, ctx );
 			break;
 		}
 		if (( j && passed )) {

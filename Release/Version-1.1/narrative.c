@@ -709,10 +709,10 @@ err_report( CNNarrativeError errnum, int line, int column, int tabmark )
 		fprintf( stderr, "Error: read_narrative: l%dc%d: '?' out of scope\n", line, column );
 		break;
 	case ErrProtoSyntaxError:
-		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax not supported in narrative definition\n", line, column );
+		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax not supported in narrative identifier\n", line, column );
 		break;
 	case ErrProtoRedundantArg:
-		fprintf( stderr, "Error: read_narrative: l%dc%d: redundant narrative .arg identifier\n", line, column );
+		fprintf( stderr, "Error: read_narrative: l%dc%d: redundant .arg in narrative identifier\n", line, column );
 		break;
 	}
 }
