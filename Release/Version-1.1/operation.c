@@ -55,7 +55,7 @@ fprintf( stderr, "=============================\n" );
 	}
 	if ( results == NULL ) return 0;
 
-	/* 2. determine active narratives from from resulting
+	/* 2. determine active narratives from identified
 	      narratives' EN declarations, in context
 	*/
 	BMContext *ctx = bm_push( NULL, NULL, db );
