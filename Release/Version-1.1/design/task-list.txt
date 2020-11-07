@@ -1,21 +1,28 @@
 TODO
 	. narrative instances
-		. bm_push: setup 'this' and other narrative params
-		. support local .variable declaration
+		. extend expression support for narrative identifier / proto
+		  => readNarrative() esp. validation
+		| . support narrative registry as a stack (aka. listItem *)
+		|   Q: support /identifier to bypass registry? ../identifier?
+		|   Separate base registry from subsequent .local definitions
+		| . support local .variable declaration
+		|   NOTE: (this,variable) must be allocated right upon declaration
+		 => first must specify how these work together...
 		. support do .( expression )
-		. Test case(s)
+		. Test case(s): narrative_output
+		. document wildcard logics
 	. single character identifier entities
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
 		  => could generalize with '\identifier'
-	. update narrative_output
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
 
 DONE
 	. narrative instances
+		. bm_push: setup 'this' and other narrative params from passed arguments
 		. supported narrative declarations, allowing to activate narrative instances
 		  and more importantly to inhibit them when context does not require
 		. introduced CNStory

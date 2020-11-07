@@ -15,10 +15,11 @@ typedef enum {
 	PRUNE_IDENTIFIER,
 	PRUNE_COLON
 } PruneType;
+typedef void BMLocateCB( char *, listItem *, void * );
+
 int	p_valid( char *proto );
-char *	p_strip( char *proto );
 char *	p_locate( char *expression, listItem **exponent );
-char *	p_locate_mark( char *expression, listItem **exponent );
+char *	p_locate_arg( char *expression, listItem **exponent, BMLocateCB, void * );
 char *	p_extract( char * );
 char *	p_prune( PruneType type, char * );
 int	p_single( char * );

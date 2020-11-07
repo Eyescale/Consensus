@@ -49,59 +49,6 @@ p_cmp( const char *p, const char *q )
 }
 
 //===========================================================================
-//	p_strip	- unused
-//===========================================================================
-char *
-p_strip( char *p )
-/*
-	returns string extracted from proto p, where
-	. leading ':' has been removed
-	. ((..%arg..))
-		if followed by ':' has been removed
-		if preceded by ':' has been removed
-		otherwise has been replaced with '.'
-*/
-{
-	if (( p == NULL ) || !strcmp(p,":") || *p!=':' )
-		return NULL;
-
-	CNString *s = newString();
-	struct { char *bgn, *end; } arg;
-	for ( p++; *p; p=( arg.end[1]==':' ) ? arg.end+2 : arg.end+1 ) {
-		// locate %arg
-		char *q = p;
-		for ( ; *q!='%' || is_separator(p[1]); p++ )
-			if ( *q == '\0' ) break;
-		if ( *q == '\0' ) break;
-		arg.bgn = q; // on the '%'
-		arg.end = p_prune( PRUNE_IDENTIFIER, q+1 );
-
-		// expand to ((..%arg..))
-		while ( arg.bgn!=p && arg.bgn[-1]=='(' && arg.end[1]==')' )
-			{ arg.bgn--; arg.end++; }
-
-		// skip or replace ((..%arg..)) with '.' depending on bordering ':'
-		if ( arg.bgn != p ) {
-			arg.bgn--;
-			for ( char *q=p; q!=arg.bgn; q++ )
-				StringAppend( s, *q );
-
-			if ( arg.bgn[ 0 ] != ':' ) {
-				StringAppend( s, *arg.bgn );
-				if ( arg.end[ 1 ] != ':' )
-					StringAppend( s, '.' );
-			}
-		}
-		else if ( arg.end[ 1 ] != ':' )
-			StringAppend( s, '.' );
-	}
-	p = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-	return p;
-}
-
-//===========================================================================
 //	p_locate
 //===========================================================================
 char *
@@ -162,7 +109,7 @@ p_locate( char *expression, listItem **exponent )
 				if ( not ) p++;
 				else scope = 0;
 			}
-			else { p_locate_mark( p+1, &mark_exp ); p++; }
+			else { p_locate_arg( p+1, &mark_exp, NULL, NULL ); p++; }
 			break;
 		case '(':
 			scope++;
@@ -239,14 +186,17 @@ p_locate( char *expression, listItem **exponent )
 }
 
 //===========================================================================
-//	p_locate_mark
+//	p_locate_arg
 //===========================================================================
 char *
-p_locate_mark( char *expression, listItem **exponent )
+p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *user_data )
 /*
-	returns first '?' found in expression, together with exponent
-	Note that we ignore the '~' signs and %(...) sub-expressions
-	Note also that the caller is expected to reorder the list
+	if user_CB is set
+		invokes user_CB on each .arg found in expression
+	Otherwise
+		returns first '?' found in expression, together with exponent
+		Note that we ignore the '~' signs and %(...) sub-expressions
+		Note also that the caller is expected to reorder the list
 */
 {
 	union { int value; void *ptr; } icast;
@@ -263,21 +213,20 @@ p_locate_mark( char *expression, listItem **exponent )
 	while ( *p && scope ) {
 		switch ( *p ) {
 		case '~':
-			p++; break;
+		case '%':
+			p = p_prune( PRUNE_COLON, p );
+			break;
 		case '*':
+			if (( user_CB )) {
+				p = p_prune( PRUNE_COLON, p );
+				break;
+			}
 			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
 				xpn_add( exponent, AS_SUB, 1 );
 				xpn_add( exponent, SUB, 0 );
 				xpn_add( exponent, SUB, 1 );
 			}
 			p++; break;
-		case '%':
-			if ( p[1] == '?' )
-				p+=2;
-			else if ( !p[1] || strmatch( ":,)", p[1] ) )
-				p++;
-			else p = p_prune( PRUNE_COLON, p );
-			break;
 		case '(':
 			scope++;
 			icast.value = couple;
@@ -312,10 +261,17 @@ p_locate_mark( char *expression, listItem **exponent )
 			couple = (int) popListItem( &stack.couple );
 			p++; break;
 		case '?':
-			scope = 0;
+			if (( user_CB )) p++;
+			else scope = 0;
 			break;
 		case '.':
-			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			p++;
+			if ( !is_separator(*p) ) {
+				if (( user_CB )) {
+	 				user_CB( p, *exponent, user_data );
+				}
+				else p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			}
 			break;
 		default:
 			p = p_prune( PRUNE_IDENTIFIER, p );
@@ -334,15 +290,20 @@ p_extract( char *p )
 {
 	CNString *s = newString();
 	switch ( *p ) {
-	case '%': // %? should be handled separately
-#if 0
-		if ( p[1] == '?' ) {
-			fprintf( stderr, "Error: p_extract: %%?\n" );
-			exit( -1 );
+	case '%':
+		switch ( p[1] ) {
+		case '(': // should not happen
+			break;
+		case '?':
+			StringAppend( s, '%' );
+			StringAppend( s, '?' );
+			break;
+		default:
+			StringAppend( s, '%' );
 		}
-#endif
+		break;
 	case '*':
-		StringAppend( s, *p );
+		StringAppend( s, '*' );
 		break;
 	default:
 		for ( char *q=p; !is_separator(*q); q++ ) {

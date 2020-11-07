@@ -102,9 +102,9 @@ active_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	return BM_CONTINUE;
 }
 static int
-operate_CB( CNInstance *e, BMContext *ctx, void *data )
+operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	CNNarrative *n = data;
+	CNNarrative *n = user_data;
 	ctx = bm_push( n, e, ctx->db );
 	operate( n->base, ctx, NULL, NULL );
 	bm_pop( ctx );

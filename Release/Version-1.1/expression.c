@@ -15,12 +15,11 @@
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
-	if ( !strncmp( p, "%?", 2 ) ) {
-		Pair *entry = registryLookup( ctx->registry, "?" );
-		return (( entry ) ? entry->value : NULL );
-	}
+	CNInstance *e;
 	char *term = p_extract( p );
-	CNInstance *e = db_lookup( privy, term, ctx->db );
+	Pair *entry = registryLookup( ctx->registry, term );
+	if ((entry)) e = entry->value;
+	else e = db_lookup( privy, term, ctx->db );
 	free( term );
 	return e;
 }
@@ -114,7 +113,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
-				p_locate_mark( p+1, &mark_exp );
+				p_locate_arg( p+1, &mark_exp, NULL, NULL );
 				if ( mark_exp == NULL ) p++;
 			}
 			break;
