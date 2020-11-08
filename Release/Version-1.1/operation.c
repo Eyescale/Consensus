@@ -20,12 +20,14 @@ static int do_output( char *, BMContext * );
 //	cnOperate
 //===========================================================================
 typedef struct {
+	listItem *tbd;
+	listItem *active;
 	CNNarrative *n;
-	listItem **tbd, **results;
-} ActiveData;
-static BMTraverseCB active_CB;
+	CNInstance *e;
+	int success;
+} OperateData;
 static BMTraverseCB operate_CB;
-static void operate( CNOccurrence *, BMContext *, listItem **, listItem ** );
+static void operate( CNOccurrence *, BMContext *, OperateData * );
 
 int
 cnOperate( listItem *narratives, CNDB *db )
@@ -36,77 +38,43 @@ fprintf( stderr, "=============================\n" );
 	if (( narratives == NULL ) || db_out(db) )
 		 return 0;
 
-	/* identify active narratives, in two steps
+	/* determine active narratives, if any
 	*/
-	listItem *results = NULL;
-	listItem *tbd = NULL;
-	CNNarrative *n;
-
-	/* 1. determine base narratives, if any
-	*/
+	OperateData data = { NULL, NULL, NULL, NULL, 0 };
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
-		n = i->ptr;
-		if (( n->proto )) addItem( &tbd, n );
-		else addItem( &results, n );
+		CNNarrative *n = i->ptr;
+		if (( n->proto )) addItem( &data.tbd, n );
+		else addItem( &data.active, n );
 	}
-	if ( results == NULL ) {
-		freeListItem( &tbd );
+	if ( data.active == NULL ) {
+		freeListItem( &data.tbd );
 		return 0;
 	}
 
-	/* 2. determine active narratives from identified
-	      narratives' EN declarations, in context
+	/* operate active narratives, possibly finding more as we go
 	*/
-	listItem *active = NULL;
 	BMContext *ctx = bm_push( NULL, NULL, db );
-	if (( tbd )) do {
-		for ( listItem *i=results; i!=NULL; i=i->next )
-			addItem( &active, i->ptr );
-		listItem *checked = results;
-		results = NULL;
-		while (( n = popListItem( &checked ) )) {
-			if (( tbd )) {
-				char *proto = n->proto;
-				if (( proto )) {
-					ActiveData data = { n, &tbd, &results };
-					bm_traverse( proto, ctx, active_CB, &data );
-				}
-				else operate( n->base, ctx, &tbd, &results );
-			}
-		}
-	} while ((tbd) && (results));
-	while (( n = popListItem( &results ) ))
-		addItem( &active, n );
-	freeListItem( &tbd );
-
-	/* operate active narratives
-	*/
-	while (( n = popListItem( &active ) )) {
+	CNNarrative *n;
+	while (( n = popListItem( &data.active ) )) {
 		char *proto = n->proto;
 		if (( proto )) {
-			bm_traverse( proto, ctx, operate_CB, n );
+			data.n = n;
+			bm_traverse( proto, ctx, operate_CB, &data );
 		}
-		else operate( n->base, ctx, NULL, NULL );
+		else operate( n->root, ctx, &data );
 	}
 	bm_pop( ctx );
+
+	freeListItem( &data.tbd );
 	return 1;
-}
-static int
-active_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	ActiveData *data = user_data;
-	CNNarrative *n = data->n;
-	ctx = bm_push( n, e, ctx->db );
-	operate( n->base, ctx, data->tbd, data->results );
-	bm_pop( ctx );
-	return ( *data->tbd == NULL ) ?  BM_DONE : BM_CONTINUE;
 }
 static int
 operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	CNNarrative *n = user_data;
+	OperateData *data = user_data;
+	CNNarrative *n = data->n;
 	ctx = bm_push( n, e, ctx->db );
-	operate( n->base, ctx, NULL, NULL );
+	operate( n->root, ctx, data );
 	bm_pop( ctx );
 	return BM_CONTINUE;
 }
@@ -115,14 +83,9 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //	operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-typedef struct {
-	char *proto;
-	CNInstance *e;
-	int success;
-} MatchData;
-static BMTraverseCB match_CB;
+static BMTraverseCB activate_CB;
 static void
-operate( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **results )
+operate( CNOccurrence *occurrence, BMContext *ctx, OperateData *data )
 {
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	int passed = 1;
@@ -140,35 +103,20 @@ operate( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **re
 			passed = on_event( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_EN) case EN:
-			if (!(tbd)) break;
+			if (!(data->tbd)) break;
 			char *expression = occurrence->data->expression;
-			listItem *last_i = NULL, *next_i;
-			for ( listItem *i=*tbd; i!=NULL; i=next_i ) {
-				next_i = i->next;
-				CNNarrative *n = i->ptr;
-				MatchData data = { n->proto, NULL, 0 };
-				bm_traverse( expression, ctx, match_CB, &data );
-				if ( data.success ) {
-					clipListItem( tbd, i, last_i, next_i );
-					addItem( results, n );
-				}
-				else last_i = i;
-			}
-			if ( *tbd == NULL ) return;
+			bm_traverse( expression, ctx, activate_CB, data );
 			break;
 		ctrl(ELSE_DO) case DO:
-			if (( tbd )) break;
 			do_action( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
-			if (( tbd )) break;
 			do_input( occurrence->data->expression, ctx );
 			break;
 		ctrl(ELSE_OUTPUT) case OUTPUT:
-			if (( tbd )) break;
 			do_output( occurrence->data->expression, ctx );
 			break;
-		default:
+		case LOCAL:
 			break;
 		}
 		if (( j && passed )) {
@@ -196,23 +144,34 @@ RETURN:
 }
 static int cmp_CB( CNInstance *, BMContext *, void * );
 static int
-match_CB( CNInstance *e, BMContext *ctx, void *user_data )
+activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 /*
-	compares entity matching narrative local EN declaration
-	with entity matching global proto (in base context)
+	compare entity matching narrative local EN declaration
+	with entities matching protos "tbd" - in base context
 */
 {
-	MatchData *data = user_data;
-	data->e = e;
+	OperateData *data = user_data;
 	ctx = bm_push( NULL, NULL, ctx->db );
-	bm_traverse( data->proto, ctx, cmp_CB, data );
+	data->e = e;
+	listItem *last_i = NULL, *next_i;
+	for ( listItem *i=data->tbd; i!=NULL; i=next_i ) {
+		next_i = i->next;
+		CNNarrative *n = i->ptr;
+		bm_traverse( n->proto, ctx, cmp_CB, data );
+		if ( data->success ) {
+			clipListItem( &data->tbd, i, last_i, next_i );
+			addItem( &data->active, n );
+			data->success = 0;
+		}
+		else last_i = i;
+	}
 	bm_pop( ctx );
-	return data->success ? BM_DONE : BM_CONTINUE;
+	return (data->tbd) ? BM_CONTINUE : BM_DONE;
 }
 static int
 cmp_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	MatchData *data = user_data;
+	OperateData *data = user_data;
 	if ( e == data->e ) {
 		data->success = 1;
 		return BM_DONE;
@@ -263,7 +222,7 @@ do_action( char *expression, BMContext *ctx )
 		db_exit( ctx->db );
 	else if ( !strncmp( expression, "~(", 2 ) )
 		bm_release( expression+1, ctx );
-	else
+	else if ( strcmp( expression, "." ) )
 		bm_substantiate( expression, ctx );
 	return 1;
 }

@@ -18,8 +18,9 @@ typedef enum {
 	ELSE_EN,
 	ELSE_INPUT,
 	ELSE_OUTPUT,
-	PROTO
+	LOCAL
 } CNOccurrenceType;
+#define PROTO 2020	// not an occurrence type
 
 typedef struct {
 	CNOccurrenceType type;
@@ -31,7 +32,7 @@ typedef struct {
 
 typedef struct {
 	char *proto;
-	CNOccurrence *base;
+	CNOccurrence *root;
 } CNNarrative;
 
 typedef listItem CNStory;

@@ -2,7 +2,9 @@
 	base	#	base
 		+	base
 		-	base
-		_%_	_expr
+		_:	expr
+		_.	_._	_..	_expr
+		_%	_expr
 		i	in	in_	_expr
 		o	on	on_	_expr
 		d	do	do_	_expr

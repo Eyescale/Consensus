@@ -21,7 +21,6 @@ readStory( char *path )
 /*
 	creates narrative structure
 		occurrence:=[ type, [ char *expression, sub:={ %occurrence } ] ]
-
 	where expression format is
 			: %e
 		e	: %term
@@ -43,17 +42,17 @@ readStory( char *path )
 
 	listItem *s = NULL; // sequence to be informed
 	struct {
-		listItem *occurrence;
 		listItem *first;
 		listItem *counter;
 		listItem *marked;
+		listItem *occurrence;
 	} stack = { NULL, NULL, NULL, NULL };
 	CNOccurrence *occurrence, *sibling;
 
-	int	tabmark,
-		tab = 0,
+	int	tab = 0,
 		tab_base = 0,
 		last_tab = -1,
+		indent,
 		type,
 		typelse = 0,
 		first = 1,
@@ -64,39 +63,34 @@ readStory( char *path )
 
 	CNStory *story = NULL;
 	CNNarrative *narrative = newNarrative();
-	addItem( &stack.occurrence, narrative->base );
+	addItem( &stack.occurrence, narrative->root );
 
 	CNParserBegin( file, input )
 	in_( "base" ) bgn_
-		on_( '\n' )	do_( same )	tab = tabmark = 0;
+		on_( '\n' )	do_( same )	tab = indent = 0;
 		on_( '\t' )	do_( same )	tab++;
-		on_( ':' )
-			if ( !tab && !tabmark ) {
-				do_( "_:_" )	freeListItem( &stack.occurrence );
-						freeListItem( &stack.first );
-						freeListItem( &stack.counter );
-						freeListItem( &stack.marked );
-						if ( add_narrative( &story, narrative ) )
-							narrative = newNarrative();
-						addItem( &stack.occurrence, narrative->base );
-			}
 		on_( '#' )
-			if ( !tab && !tabmark ) {
+			if ( column == 1 ) {
 				do_( "#" )
 			}
 		on_( '+' )
-			if ( !tab && !tabmark ) {
-				do_( "+" )	tab_base++; tabmark = 1;
+			if ( column == 1 ) {
+				do_( "+" )	tab_base++;
 			}
 		on_( '-' )
-			if ( !tab && !tabmark ) {
-				do_( "-" )	tab_base--; tabmark = 1;
+			if ( column == 1 ) {
+				do_( "-" )	tab_base--;
 			}
-		on_( '%' )	do_( "_%_" )	tabmark = column;
-		on_( 'i' )	do_( "i" )	tabmark = column;
-		on_( 'o' )	do_( "o" )	tabmark = column;
-		on_( 'd' )	do_( "d" )	tabmark = column;
-		on_( 'e' )	do_( "e" )	tabmark = column;
+		on_( ':' )
+			if ( column == 1 ) {
+				do_( "_:" )
+			}
+		on_( '.' )	do_( "_." )	indent = column;
+		on_( '%' )	do_( "_%" )	indent = column;
+		on_( 'i' )	do_( "i" )	indent = column;
+		on_( 'o' )	do_( "o" )	indent = column;
+		on_( 'd' )	do_( "d" )	indent = column;
+		on_( 'e' )	do_( "e" )	indent = column;
 		end
 		in_( "#" ) bgn_
 			on_( '\n' )	do_( "base" )
@@ -110,13 +104,37 @@ readStory( char *path )
 			on_( '-' )	do_( same )	tab_base--;
 			on_other	do_( "base" )	REENTER
 			end
-		in_( "_:_" ) bgn_
+		in_( "_:" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "base" ) 	tab_base = 0; last_tab = -1;
-			on_( '(' )	do_( "expr" )	REENTER
+			ons( "(\n" )	do_( "expr" )	REENTER
+							freeListItem( &stack.first );
+							freeListItem( &stack.counter );
+							freeListItem( &stack.marked );
+							if ( add_narrative( &story, narrative ) ) {
+								freeListItem( &stack.occurrence );
+								narrative = newNarrative();
+								addItem( &stack.occurrence, narrative->root );
+							}
 							type = PROTO;
 			end
-		in_( "_%_" ) bgn_
+		in_( "_." ) bgn_
+			on_separator	; // err
+			on_other	do_( "_._" )	add_item( &s, '.' );
+							add_item( &s, event );
+			end
+			in_ ( "_._" ) bgn_
+				ons( " \t\n" )	do_( "_.." )	REENTER
+				on_separator	; // err
+				on_other	do_( same )	add_item( &s, event );
+				end
+			in_( "_.." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '.' )	do_( "_." )
+				on_( '\n' )	do_( "_expr" )	REENTER
+								tab += tab_base;
+								type = LOCAL;
+			end
+		in_( "_%" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
 							add_item( &stack.counter, 0 );
@@ -242,13 +260,13 @@ readStory( char *path )
 		on_( '%' )	do_( "%" )	add_item( &s, event );
 		on_( '~' )	do_( same )	add_item( &s, event );
 		on_( '>' )
-			if (( s == NULL ) && ( type == DO )) {
+			if ( type==DO && s==NULL ) {
 				do_( ">" )	add_item( &s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
 			}
 		on_( '<' )
-			if (( first & FILTERED ) && ( type == DO ) && ( level == 0 )) {
+			if ( type==DO && !level && ( first & FILTERED )) {
 				do_( "expr_" )	add_item( &s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_INPUT : INPUT;
@@ -283,7 +301,7 @@ readStory( char *path )
 						first = (int) popListItem( &stack.first );
 			}
 		on_( '?' )
-			if ( !informed && !marked ) {
+			if ( !informed ) {
 				do_( "?" )
 			}
 		on_( '.' )
@@ -348,13 +366,13 @@ readStory( char *path )
 				do_( "expr" )	add_item( &s, '?' );
 						add_item( &s, ':' );
 			}
-			else if ( stack.counter ) {
+			else if ( stack.counter && !marked ) {
 				do_( "expr" )	REENTER
 						add_item( &s, '?' );
 						marked = informed = 1;
 			}
 		ons( ",)\n" )
-			if ( stack.counter ) {
+			if ( stack.counter && !marked ) {
 				do_( "expr" )	REENTER
 						add_item( &s, '?' );
 						marked = informed = 1;
@@ -379,15 +397,14 @@ readStory( char *path )
 	in_( "expr_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-			if ( level )
-				; // err
+			if ( level ) ; // err
 			else if ( type==PROTO && proto_set( narrative, &s )) {
 				do_( "base" )	informed = 0;
 						tab_base = 0; last_tab = -1;
 			}
 			else {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, &s );
-						typelse = tab = tabmark = informed = 0;
+						typelse = tab = indent = informed = 0;
 			}
 		end
 
@@ -398,7 +415,7 @@ readStory( char *path )
 			}
 			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, &s ); }
 
-		in_( "err" )	do_( "" )	err_report( errnum, line, column, tabmark );
+		in_( "err" )	do_( "" )	err_report( errnum, line, column, indent );
 						freeListItem( &s );
 						freeNarrative( narrative );
 						narrative = NULL;
@@ -425,8 +442,8 @@ readStory( char *path )
 				on_other	errnum = ErrSequenceSyntaxError;
 				end
 			in_other bgn_
-				on_( '\n' )	errnum = type == PROTO ?
-							level ?  ErrUnexpectedCR : ErrProtoRedundantArg :
+				on_( '\n' )	errnum = type == PROTO ? level ?
+							ErrUnexpectedCR : ErrProtoRedundantArg :
 							ErrUnexpectedCR;
 				on_( ' ' )	errnum = ErrSpace;
 				on_other	errnum = ErrSyntaxError;
@@ -465,7 +482,7 @@ add_item( listItem **stack, int value )
 static int
 add_narrative( listItem **story, CNNarrative *narrative )
 {
-	if (( narrative->base->data->sub )) {
+	if (( narrative->root->data->sub )) {
 		narrative_reorder( narrative );
 		addItem( story, narrative );
 		return 1;
@@ -648,7 +665,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 //	err_report
 //===========================================================================
 static void
-err_report( CNNarrativeError errnum, int line, int column, int tabmark )
+err_report( CNNarrativeError errnum, int line, int column, int indent )
 {
 	switch ( errnum ) {
 	case ErrUnknownState:
@@ -664,7 +681,7 @@ err_report( CNNarrativeError errnum, int line, int column, int tabmark )
 		fprintf( stderr, "Error: read_narrative: l%dc%d: statement incomplete\n", line, column );
 		break;
 	case ErrIndentation:
-		fprintf( stderr, "Error: read_narrative: l%dc%d: indentation error\n", line, tabmark );
+		fprintf( stderr, "Error: read_narrative: l%dc%d: indentation error\n", line, indent );
 		break;
 	case ErrSyntaxError:
 		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax error\n", line, column );
@@ -723,7 +740,7 @@ freeNarrative( CNNarrative *narrative )
 {
 	if (( narrative )) {
 		free( narrative->proto );
-		freeOccurrence( narrative->base );
+		freeOccurrence( narrative->root );
 		freePair((Pair *) narrative );
 	}
 }
@@ -731,7 +748,7 @@ static void
 narrative_reorder( CNNarrative *narrative )
 {
 	if ( narrative == NULL ) return;
-	CNOccurrence *occurrence = narrative->base;
+	CNOccurrence *occurrence = narrative->root;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
@@ -763,7 +780,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 		fprintf( stderr, "Error: narrative_output: No narrative\n" );
 		return 0;
 	}
-	CNOccurrence *occurrence = narrative->base;
+	CNOccurrence *occurrence = narrative->root;
 
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
@@ -876,4 +893,3 @@ occurrence_set( CNOccurrence *occurrence, listItem **sequence )
 {
 	occurrence->data->expression = l2s( sequence, 0 );
 }
-
