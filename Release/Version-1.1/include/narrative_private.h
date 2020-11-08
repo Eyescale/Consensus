@@ -18,7 +18,6 @@ typedef enum {
 	ErrOutputScheme,
 	ErrMarkMultiple,
 	ErrMarkNoSub,
-	ErrProtoSyntaxError,
 	ErrProtoRedundantArg
 } CNNarrativeError;
 

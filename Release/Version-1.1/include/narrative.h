@@ -17,7 +17,8 @@ typedef enum {
 	ELSE_DO,
 	ELSE_EN,
 	ELSE_INPUT,
-	ELSE_OUTPUT
+	ELSE_OUTPUT,
+	PROTO
 } CNOccurrenceType;
 
 typedef struct {

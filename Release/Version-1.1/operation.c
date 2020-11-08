@@ -99,7 +99,7 @@ active_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	ctx = bm_push( n, e, ctx->db );
 	operate( n->base, ctx, data->tbd, data->results );
 	bm_pop( ctx );
-	return BM_CONTINUE;
+	return ( *data->tbd == NULL ) ?  BM_DONE : BM_CONTINUE;
 }
 static int
 operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
@@ -167,6 +167,8 @@ operate( CNOccurrence *occurrence, BMContext *ctx, listItem **tbd, listItem **re
 		ctrl(ELSE_OUTPUT) case OUTPUT:
 			if (( tbd )) break;
 			do_output( occurrence->data->expression, ctx );
+			break;
+		default:
 			break;
 		}
 		if (( j && passed )) {

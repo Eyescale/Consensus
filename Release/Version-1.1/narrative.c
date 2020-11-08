@@ -41,7 +41,7 @@ readStory( char *path )
 	FILE *file = fopen( path, "r" );
 	if ( file == NULL ) return NULL;
 
-	listItem *sequence = NULL;
+	listItem *s = NULL; // sequence to be informed
 	struct {
 		listItem *occurrence;
 		listItem *first;
@@ -112,15 +112,16 @@ readStory( char *path )
 			end
 		in_( "_:_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '(' )	do_( "proto" )	REENTER
 			on_( '\n' )	do_( "base" ) 	tab_base = 0; last_tab = -1;
+			on_( '(' )	do_( "expr" )	REENTER
+							type = PROTO;
 			end
 		in_( "_%_" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
 							add_item( &stack.counter, 0 );
 							add_item( &stack.marked, 0 );
-							add_item( &sequence, '%' );
+							add_item( &s, '%' );
 							tab += tab_base;
 							type = EN;
 			end
@@ -237,43 +238,43 @@ readStory( char *path )
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "expr_" )	REENTER
-		on_( '*' )	do_( "*" )	add_item( &sequence, event );
-		on_( '%' )	do_( "%" )	add_item( &sequence, event );
-		on_( '~' )	do_( same )	add_item( &sequence, event );
+		on_( '*' )	do_( "*" )	add_item( &s, event );
+		on_( '%' )	do_( "%" )	add_item( &s, event );
+		on_( '~' )	do_( same )	add_item( &s, event );
 		on_( '>' )
-			if (( sequence == NULL ) && ( type == DO )) {
-				do_( ">" )	add_item( &sequence, event );
+			if (( s == NULL ) && ( type == DO )) {
+				do_( ">" )	add_item( &s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
 			}
 		on_( '<' )
 			if (( first & FILTERED ) && ( type == DO ) && ( level == 0 )) {
-				do_( "expr_" )	add_item( &sequence, event );
+				do_( "expr_" )	add_item( &s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_INPUT : INPUT;
 			}
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++; counter++;
-						add_item( &sequence, event );
+						add_item( &s, event );
 						add_item( &stack.first, first );
 						first = 1; informed = 0;
 			}
 		on_( ',' )
 			if ( first && informed && ( level > 0 )) {
-				do_( same )	add_item( &sequence, event );
+				do_( same )	add_item( &s, event );
 						first = informed = 0;
 			}
 		on_( ':' )
 			if ( informed ) {
-				do_( same )	add_item( &sequence, event );
+				do_( same )	add_item( &s, event );
 						if ( first ) first |= FILTERED;
 						informed = 0;
 			}
 		on_( ')' )
 			if ( informed && ( level > 0 )) {
 				do_( same )	level--;
-						add_item( &sequence, event );
+						add_item( &s, event );
 						if ( counter ) counter--;
 						else {
 							counter = (int) popListItem( &stack.counter );
@@ -282,52 +283,47 @@ readStory( char *path )
 						first = (int) popListItem( &stack.first );
 			}
 		on_( '?' )
-			if (( sequence == NULL ) && (( type == IN ) || ( type == ON )) ) {
+			if ( !informed && !marked ) {
 				do_( "?" )
-			}
-			else if (( stack.counter ) && !informed && !marked ) {
-				do_( "?." )	add_item( &sequence, event );
-						marked = 1; informed = 1;
 			}
 		on_( '.' )
 			if ( !informed ) {
-				do_( "?." )	add_item( &sequence, event );
-						informed = 1;
+				do_( "." )
 			}
 		on_separator	; // err
 		on_other
 			if ( !informed ) {
-				do_( "term" )	add_item( &sequence, event );
+				do_( "term" )	add_item( &s, event );
 						informed = 1;
 			}
 		end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	add_item( &sequence, event );
-		on_( '\"' )	do_( ">\"" )	add_item( &sequence, event );
+		on_( ':' )	do_( "expr" )	add_item( &s, event );
+		on_( '\"' )	do_( ">\"" )	add_item( &s, event );
 		end
 		in_( ">\"" ) bgn_
-			on_( '\t' )	do_( same )	add_item( &sequence, '\\' );
-							add_item( &sequence, 't' );
-			on_( '\n' )	do_( same )	add_item( &sequence, '\\' );
-							add_item( &sequence, 'n' );
-			on_( '\\' )	do_( ">\"\\" )	add_item( &sequence, event );
-			on_( '\"' )	do_( ">_" )	add_item( &sequence, event );
-			on_other	do_( same )	add_item( &sequence, event );
+			on_( '\t' )	do_( same )	add_item( &s, '\\' );
+							add_item( &s, 't' );
+			on_( '\n' )	do_( same )	add_item( &s, '\\' );
+							add_item( &s, 'n' );
+			on_( '\\' )	do_( ">\"\\" )	add_item( &s, event );
+			on_( '\"' )	do_( ">_" )	add_item( &s, event );
+			on_other	do_( same )	add_item( &s, event );
 			end
 		in_( ">\"\\" ) bgn_
-			on_any		do_( ">\"" )	add_item( &sequence, event );
+			on_any		do_( ">\"" )	add_item( &s, event );
 			end
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( ':' )	do_( "expr" )	add_item( &sequence, event );
+			on_( ':' )	do_( "expr" )	add_item( &s, event );
 			on_( '\n' )	do_( "expr_" )	REENTER
 			end
 	in_( "%" ) bgn_
 		ons( " \t" )	do_( "%_" )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						informed = 1;
-		on_( '?' )	do_( "expr" )	add_item( &sequence, '?' );
+		on_( '?' )	do_( "expr" )	add_item( &s, '?' );
 						informed = 1;
 		on_( '(' )	do_( "expr" )	REENTER
 						add_item( &stack.counter, counter );
@@ -347,81 +343,63 @@ readStory( char *path )
 		end
 	in_( "?" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	add_item( &sequence, '?' );
-						add_item( &sequence, ':' );
+		on_( ':' )
+			if ( s==NULL && ( type==IN || type==ON )) {
+				do_( "expr" )	add_item( &s, '?' );
+						add_item( &s, ':' );
+			}
+			else if ( stack.counter ) {
+				do_( "expr" )	REENTER
+						add_item( &s, '?' );
+						marked = informed = 1;
+			}
+		ons( ",)\n" )
+			if ( stack.counter ) {
+				do_( "expr" )	REENTER
+						add_item( &s, '?' );
+						marked = informed = 1;
+			}
 		end
-	in_( "?." ) bgn_
+	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
+						add_item( &s, '.' );
+						informed = 1;
+		on_separator	; // err
+		on_other
+			if ( type==PROTO && !(stack.counter) && strmatch( "(,", (int)s->ptr ) ) {
+				do_( "expr" )	REENTER
+						add_item( &s, '.' );
+			}
 		end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
-		on_other	do_( same )	add_item( &sequence, event );
+		on_other	do_( same )	add_item( &s, event );
 		end
 	in_( "expr_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-			if ( level == 0 ) {
-				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
-						typelse = tab = tabmark = informed = 0;
-			}
-		end
-	in_( "proto" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )
-			if (( level == 0 ) && proto_set( narrative, &sequence )) {
+			if ( level )
+				; // err
+			else if ( type==PROTO && proto_set( narrative, &s )) {
 				do_( "base" )	informed = 0;
 						tab_base = 0; last_tab = -1;
 			}
-		on_( '(' )
-			if ( !informed ) {
-				do_( same )	level++;
-						add_item( &sequence, event );
-						add_item( &stack.first, first );
-						first = 1;
-			}
-		on_( ',' )
-			if ( first && informed ) {
-				do_( same )	add_item( &sequence, event );
-						first = informed = 0;
-			}
-		on_( ')' )
-			if ( informed && ( level > 0 )) {
-				do_( same )	level--;
-						add_item( &sequence, event );
-						first = (int) popListItem( &stack.first );
-			}
-		on_( '.' )
-			if ( !informed ) {
-				do_( ":." )	add_item( &sequence, event );
-						informed = 1;
-			}
-		on_separator	; // err
-		on_other
-			if ( !informed ) {
-				do_( ":_" )	add_item( &sequence, event );
-						informed = 1;
+			else {
+				do_( "base" )	occurrence_set( stack.occurrence->ptr, &s );
+						typelse = tab = tabmark = informed = 0;
 			}
 		end
-		in_( ":." ) bgn_
-			ons( " \t" )	do_( "proto" )
-			ons( ",)\n" )	do_( "proto" )	REENTER
-			on_separator	; // err
-			on_other	do_( ":_" )	add_item( &sequence, event );
-			end
-		in_( ":_" ) bgn_
-			on_separator	do_( "proto" )	REENTER
-			on_other	do_( same )	add_item( &sequence, event );
-			end
+
 	CNParserDefault
 		in_( "EOF" )
 			if ( level ) {
 				do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			}
-			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, &sequence ); }
+			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, &s ); }
 
 		in_( "err" )	do_( "" )	err_report( errnum, line, column, tabmark );
-						freeListItem( &sequence );
+						freeListItem( &s );
 						freeNarrative( narrative );
 						narrative = NULL;
 		on_( EOF ) bgn_
@@ -446,12 +424,10 @@ readStory( char *path )
 				on_( '<' )	errnum = ErrInputScheme;
 				on_other	errnum = ErrSequenceSyntaxError;
 				end
-			in_( "proto" ) bgn_
-				on_( '\n' )	errnum = level ? ErrUnexpectedCR : ErrProtoRedundantArg;
-				on_other	errnum = ErrProtoSyntaxError;
-				end
 			in_other bgn_
-				on_( '\n' )	errnum = ErrUnexpectedCR;
+				on_( '\n' )	errnum = type == PROTO ?
+							level ?  ErrUnexpectedCR : ErrProtoRedundantArg :
+							ErrUnexpectedCR;
 				on_( ' ' )	errnum = ErrSpace;
 				on_other	errnum = ErrSyntaxError;
 				end
@@ -707,9 +683,6 @@ err_report( CNNarrativeError errnum, int line, int column, int tabmark )
 		break;
 	case ErrMarkNoSub:
 		fprintf( stderr, "Error: read_narrative: l%dc%d: '?' out of scope\n", line, column );
-		break;
-	case ErrProtoSyntaxError:
-		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax not supported in narrative identifier\n", line, column );
 		break;
 	case ErrProtoRedundantArg:
 		fprintf( stderr, "Error: read_narrative: l%dc%d: redundant .arg in narrative identifier\n", line, column );

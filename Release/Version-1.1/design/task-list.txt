@@ -1,7 +1,5 @@
 TODO
 	. narrative instances
-		. extend expression support for narrative identifier / proto
-		  => readNarrative() esp. validation
 		| . support narrative registry as a stack (aka. listItem *)
 		|   Q: support /identifier to bypass registry? ../identifier?
 		|   Separate base registry from subsequent .local definitions
@@ -22,16 +20,17 @@ TODO
 
 DONE
 	. narrative instances
+		. generalized narrative identifier/proto format (cf. readNarrative)
 		. bm_push: setup 'this' and other narrative params from passed arguments
+		. refactored operation.c:cnOperate according to execution-model.txt
 		. supported narrative declarations, allowing to activate narrative instances
 		  and more importantly to inhibit them when context does not require
 		. introduced CNStory
 			. in Version-1.1 CNStory:{ CNNarrative:[ proto, base ] }
-			. whereas in ../Version-1.0 CNStory:CNNarrative
-		. refactored ../../Examples/TuringMachine/main.c
-		. refactored operation.c:cnOperate according to execution-model.txt
-		. extended narrative.c:readStory (was: readNarrative) to support
-		  one story = multiple narratives and narrative protos
+			. whereas in ../Version-1.0 we do #define CNStory CNNarrative
+			. refactored ../../Examples/TuringMachine/main.c
+			. extended narrative.c:readStory (was: readNarrative) to support
+			  multiple narratives and narrative protos
 	. made '+' and '-' logics relative
 	. implemented db_exit/db_out: instantiates/tests (nil,nil)
 	. registry variable %? (aka. mark register)

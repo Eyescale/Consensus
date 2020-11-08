@@ -1,6 +1,5 @@
 
-	base	proto
-		#	base
+	base	#	base
 		+	base
 		-	base
 		_%_	_expr
@@ -24,16 +23,10 @@
 				>_	expr
 					expr_
 		?	expr
-		?.	expr
+		.	expr
 		term	expr
 
 	expr_	base
-
-	proto	base
-		:_	proto
-		:%	proto
-			:%_	proto
-			:_	proto
 
 CNParserDefault
 
