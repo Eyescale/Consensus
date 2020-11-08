@@ -277,11 +277,8 @@ static char *
 term_start( char *p, int *starred )
 {
 	if ( *p==':' || *p==',' ) p++;
-	for ( ; ; ) {
-		if ( *p=='*' ) *starred = 1;
-		else if ( *p!='~' ) break;
+	while ( *p=='*' ? (*starred=1) : *p=='~' )
 		p++;
-	}
 	return p;
 }
 

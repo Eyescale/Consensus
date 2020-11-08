@@ -43,10 +43,11 @@ readStory( char *path )
 	listItem *s = NULL; // sequence to be informed
 	struct {
 		listItem *first;
-		listItem *counter;
+		listItem *sub_level;
+		listItem *dirty;
 		listItem *marked;
 		listItem *occurrence;
-	} stack = { NULL, NULL, NULL, NULL };
+	} stack = { NULL, NULL, NULL, NULL, NULL };
 	CNOccurrence *occurrence, *sibling;
 
 	int	tab = 0,
@@ -56,9 +57,10 @@ readStory( char *path )
 		type,
 		typelse = 0,
 		first = 1,
+		dirty_flag = 0,
 		informed = 0,
 		level = 0,
-		counter = 0,
+		sub_level = 0,
 		marked = 0;
 
 	CNStory *story = NULL;
@@ -108,7 +110,8 @@ readStory( char *path )
 			ons( " \t" )	do_( same )
 			ons( "(\n" )	do_( "expr" )	REENTER
 							freeListItem( &stack.first );
-							freeListItem( &stack.counter );
+							freeListItem( &stack.dirty );
+							freeListItem( &stack.sub_level );
 							freeListItem( &stack.marked );
 							if ( add_narrative( &story, narrative ) ) {
 								freeListItem( &stack.occurrence );
@@ -137,8 +140,6 @@ readStory( char *path )
 		in_( "_%" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
-							add_item( &stack.counter, 0 );
-							add_item( &stack.marked, 0 );
 							add_item( &s, '%' );
 							tab += tab_base;
 							type = EN;
@@ -273,10 +274,11 @@ readStory( char *path )
 			}
 		on_( '(' )
 			if ( !informed ) {
-				do_( same )	level++; counter++;
+				do_( same )	level++; sub_level++;
 						add_item( &s, event );
 						add_item( &stack.first, first );
-						first = 1; informed = 0;
+						add_item( &stack.dirty, dirty_flag );
+						first = 1; dirty_flag = informed = 0;
 			}
 		on_( ',' )
 			if ( first && informed && ( level > 0 )) {
@@ -293,12 +295,17 @@ readStory( char *path )
 			if ( informed && ( level > 0 )) {
 				do_( same )	level--;
 						add_item( &s, event );
-						if ( counter ) counter--;
+						if ( sub_level ) sub_level--;
 						else {
-							counter = (int) popListItem( &stack.counter );
+							sub_level = (int) popListItem( &stack.sub_level );
 							marked = (int) popListItem( &stack.marked );
 						}
 						first = (int) popListItem( &stack.first );
+						dirty_flag = (int) popListItem( &stack.dirty );
+						if ( dirty_flag ) {
+							add_item( &s, ')' );
+							dirty_flag = 0;
+						}
 			}
 		on_( '?' )
 			if ( !informed ) {
@@ -344,9 +351,9 @@ readStory( char *path )
 		on_( '?' )	do_( "expr" )	add_item( &s, '?' );
 						informed = 1;
 		on_( '(' )	do_( "expr" )	REENTER
-						add_item( &stack.counter, counter );
+						add_item( &stack.sub_level, sub_level );
 						add_item( &stack.marked, marked );
-						counter = marked = 0;
+						sub_level = marked = 0;
 		end
 		in_( "%_" ) bgn_
 			ons( " \t" )	do_( same )
@@ -366,13 +373,13 @@ readStory( char *path )
 				do_( "expr" )	add_item( &s, '?' );
 						add_item( &s, ':' );
 			}
-			else if ( stack.counter && !marked ) {
+			else if ( stack.sub_level && !marked ) {
 				do_( "expr" )	REENTER
 						add_item( &s, '?' );
 						marked = informed = 1;
 			}
 		ons( ",)\n" )
-			if ( stack.counter && !marked ) {
+			if ( stack.sub_level && !marked ) {
 				do_( "expr" )	REENTER
 						add_item( &s, '?' );
 						marked = informed = 1;
@@ -383,15 +390,35 @@ readStory( char *path )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						add_item( &s, '.' );
 						informed = 1;
+		on_( '(' )
+			if ( type==PROTO ) ; // err
+			else if (( narrative->proto )) {
+				do_( "expr" )	REENTER
+						dirty_flag = 1;
+						for ( char *p = "(this,"; *p; p++ )
+							add_item( &s, *p );
+			}
+			else {	do_( "expr" )	REENTER }
 		on_separator	; // err
 		on_other
-			if ( type==PROTO && !(stack.counter) && strmatch( "(,", (int)s->ptr ) ) {
+			if ( type==PROTO && !(stack.sub_level) && strmatch( "(,", (int)s->ptr ) ) {
 				do_( "expr" )	REENTER
 						add_item( &s, '.' );
 			}
+			else if (( narrative->proto )) {
+				do_( "expr" )	REENTER
+						dirty_flag = 1;
+						for ( char *p = "(this,"; *p; p++ )
+							add_item( &s, *p );
+			}
+			else {	do_( "expr" )	REENTER }
 		end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
+						if ( dirty_flag ) {
+							add_item( &s, ')' );
+							dirty_flag = 0;
+						}
 		on_other	do_( same )	add_item( &s, event );
 		end
 	in_( "expr_" ) bgn_
@@ -455,7 +482,8 @@ readStory( char *path )
 
 	freeListItem( &stack.occurrence );
 	freeListItem( &stack.first );
-	freeListItem( &stack.counter );
+	freeListItem( &stack.dirty );
+	freeListItem( &stack.sub_level );
 	freeListItem( &stack.marked );
 	if ( narrative == NULL ) {
 		while (( narrative = popListItem( &story ) ))

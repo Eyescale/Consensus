@@ -16,7 +16,7 @@ typedef struct {
 BMContext;
 BMContext *bm_push( CNNarrative *, CNInstance *, CNDB * );
 void bm_pop( BMContext * );
-void bm_assign( BMContext *, char *, CNInstance * );
+void bm_register( BMContext *, char *, CNInstance * );
 
 typedef enum {
         BM_CONDITION,
@@ -44,7 +44,6 @@ typedef struct {
 	BMContext *ctx;
 	int privy;
 	char *expression;
-	int assign;
 	int empty;
 	CNInstance *star;
 	Pair *pivot;

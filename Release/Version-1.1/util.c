@@ -178,7 +178,7 @@ p_locate( char *expression, listItem **exponent )
 	}
 	else if (( star_exp )) {
 		freeListItem( exponent );
-		do { addItem( exponent, popListItem( &star_exp ) ); }
+		do addItem( exponent, popListItem( &star_exp ) );
 		while (( star_exp ));
 		return star_p;
 	}

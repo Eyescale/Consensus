@@ -223,7 +223,7 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 //	bm_substantiate
 //===========================================================================
 static int bm_void( char *, BMContext * );
-static CNInstance *bm_register( char *, BMContext * );
+static CNInstance *bm_instantiate( char *, BMContext * );
 
 void
 bm_substantiate( char *expression, BMContext *ctx )
@@ -273,7 +273,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 			// no break
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				e = bm_register( p, ctx );
+				e = bm_instantiate( p, ctx );
 				sub[ ndx ] = newItem( e );
 				p++; break;
 			}
@@ -320,7 +320,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 			sub[ ndx ] = newItem( NULL );
 			p++; break;
 		default:
-			e = bm_register( p, ctx );
+			e = bm_instantiate( p, ctx );
 			sub[ ndx ] = newItem( e );
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
@@ -393,7 +393,7 @@ bm_void( char *expression, BMContext *ctx )
 }
 
 static CNInstance *
-bm_register( char *p, BMContext *ctx )
+bm_instantiate( char *p, BMContext *ctx )
 {
 	CNInstance *e = bm_lookup( 0, p, ctx );
 	if ( e == NULL ) {

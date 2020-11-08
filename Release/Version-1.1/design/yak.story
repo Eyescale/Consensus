@@ -123,14 +123,14 @@
 		in %( ?:((schema,.),.), this ): ~%( this, ? )
 		else do ~( this ) // FAIL
 
-	else in ( this, COMPLETE )
+	else in .COMPLETE
 		on ~( this, ((schema,.),.))
 			do ~( this ) // FAIL: parent schema failed
-	else in ( this, READY )
+	else in .READY
 		on (( *, frame ), . )
-			do ~( this, READY )
-			do ~( this, (CONSUMED,.))
-			do ~( this, (UNCONSUMED,.))
+			do ~( .READY )
+			do ~( .(CONSUMED,.) )
+			do ~( .(UNCONSUMED,.) )
 	else
 		on ?: %( %( ?:((schema,.),.), this ), ?:(CONSUMED,.))
 			do .( %? ) // TAKE
@@ -139,8 +139,8 @@
 
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-			else do .( READY ) // all children schemas ready
-		else do .( COMPLETE ) // all children schemas complete
+			else do .READY	// all children schemas ready
+		else do .COMPLETE	// all children schemas complete
 
 
 : (( schema, .start_position ), ( .flag, .start_frame ))
@@ -150,12 +150,12 @@
 		in (((schema,.),.), ( this:((.,'\0'),.), . ))
 			// schema has predecessor AND is in null position
 			do .( flag, start_frame )
-			do .( COMPLETE )
+			do .COMPLETE
 		else
 			do ((*,position), start_position )
 			in flag: UNCONSUMED
 				do ((*,event), %((.,?):start_frame))
-			else do .( READY )
+			else do .READY
 
 	else on ~( this, ((rule,.),.))
 		do ~( this ) // FAIL: parent rule failed
@@ -163,33 +163,33 @@
 	else on (( *, event ), . )
 		in *position: '\0' // null-schema
 			do .( UNCONSUMED, *frame )
-			do .( COMPLETE )
+			do .COMPLETE
 		else in ?: %((?,.): *position ) // expected @ position
 			in %?: ('%',.)
 				do ((( rule, %((.,?):%?)), (UNCONSUMED,*frame)), this )
 			else in %?: *event
 				in %((.,?):*position)): '\0'
 					do .( CONSUMED, *frame )
-					do .( COMPLETE )
+					do .COMPLETE
 				else
 					do ((*,position), %((.,?):*position))
-					do .( READY )
+					do .READY
 			else do ~( this ) // FAIL
 		else error // *position is a base entity (singleton) other than '\0'
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
-		in ( this, COMPLETE )
-			on ~( this, (((schema,.),.),.)) // successor schema failed
-				in ( this, (((schema,.),.),.))
+		in .COMPLETE
+			on ~( .(((schema,.),.),.) ) // successor schema failed
+				in .(((schema,.),.),.)
 				else do ~( this ) // FAIL: all successor schemas failed
 		else on ( %?, COMPLETE ) // no more TAKE from rule
-			in ( this, (((schema,.),.),.)) // need successor schema to complete
-				do .( COMPLETE )
+			in .(((schema,.),.),.) // need successor schema to complete
+				do .COMPLETE
 			else do ~( this ) // FAIL: no successor schema
 		else on ( %?, READY ) // SYNC
-			do .( READY )
+			do .READY
 		else on (( *, frame ), . )
-			do ~( this, READY )
+			do ~( .READY )
 		else
 			on ?:( %?, (CONSUMED,.)) // TAKE from rule: launch successor schema
 				do .(((schema, %((.,?):*position)),%((.,?):%?)), %(this,?:((rule,.),.)))
@@ -198,9 +198,9 @@
 
 	else on ~(((rule,.),.), this )
 		do ~( this ) // FAIL: feeder rule failed
-	else in ( this, COMPLETE )
-	else in ( this, READY )
+	else in .COMPLETE
+	else in .READY
 		on (( *, frame ), . )
-			do ~( this, READY )
+			do ~( .READY )
 			do ((*,event), %((.,?):*frame) )
 

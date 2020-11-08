@@ -1,25 +1,23 @@
 TODO
 	. narrative instances
-		| . support narrative registry as a stack (aka. listItem *)
-		|   Q: support /identifier to bypass registry? ../identifier?
-		|   Separate base registry from subsequent .local definitions
-		| . support local .variable declaration
-		|   NOTE: (this,variable) must be allocated right upon declaration
-		 => first must specify how these work together...
-		. support do .( expression )
+		. operation.c: perform LOCAL declarations
 		. Test case(s): narrative_output
-		. document wildcard logics
 	. single character identifier entities
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
-		  => could generalize with '\identifier'
+		  => could generalize with \identifier (cf. \this for base narrative's .local)
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
+		. document wildcard logics
+		. document narrative instance registry: this vs. .local vs. .expression
+	. README.txt
 
 DONE
 	. narrative instances
+		. readNarrative support for .local declaration
+		. support do .( expression ) [ NOTE: as input preprocessing ]
 		. generalized narrative identifier/proto format (cf. readNarrative)
 		. bm_push: setup 'this' and other narrative params from passed arguments
 		. refactored operation.c:cnOperate according to execution-model.txt

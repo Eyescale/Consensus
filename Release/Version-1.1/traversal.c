@@ -10,13 +10,13 @@
 // #undef TRIM
 
 //===========================================================================
-//	bm_push, bm_pop, bm_assign - context operations
+//	bm_push, bm_pop, bm_register - context operations
 //===========================================================================
 typedef struct {
 	CNInstance *e;
 	Registry *registry;
 } RegisterData;
-static BMLocateCB register_CB;
+static BMLocateCB arg_CB;
 
 BMContext *
 bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
@@ -28,13 +28,13 @@ bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
 		if ((n) && (n->proto)) {
 			listItem *exponent = NULL;
 			RegisterData data = { e, registry };
-			p_locate_arg( n->proto, &exponent, register_CB, &data );
+			p_locate_arg( n->proto, &exponent, arg_CB, &data );
 		}
 	}
 	return (BMContext *) newPair( db, registry );
 }
 static void
-register_CB( char *p, listItem *exponent, void *user_data )
+arg_CB( char *p, listItem *exponent, void *user_data )
 {
 	RegisterData *data = user_data;
 	listItem *xpn = NULL;
@@ -68,7 +68,7 @@ free_CB( Registry *registry, Pair *entry )
 }
 
 void
-bm_assign( BMContext *ctx, char *identifier, CNInstance *e )
+bm_register( BMContext *ctx, char *identifier, CNInstance *e )
 {
 	Registry *registry = ctx->registry;
 	Pair *entry = registryLookup( registry, identifier );
@@ -78,7 +78,7 @@ bm_assign( BMContext *ctx, char *identifier, CNInstance *e )
 //===========================================================================
 //	bm_feel
 //===========================================================================
-static CNDB *xp_init( BMTraverseData *, char *, BMContext *, int );
+static char *xp_init( BMTraverseData *, char *, BMContext *, int );
 static void xp_release( BMTraverseData * );
 static int xp_verify( CNInstance *, BMTraverseData * );
 
@@ -97,14 +97,16 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 		break;
 	}
 	BMTraverseData data;
-	CNDB *db = xp_init( &data, expression, ctx, privy );
-	if ( db == NULL ) return 0;
+	expression = xp_init( &data, expression, ctx, privy );
+	if ( expression == NULL ) return 0;
 
 	int success = 0;
+	CNDB *db = ctx->db;
 	listItem *s = NULL;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
 		if ( xp_verify( e, &data ) ) {
-			if ( data.assign ) bm_assign( data.ctx, "%?", e );
+			if ( !strncmp(data.expression,"?:",2) )
+				bm_register( data.ctx, "%?", e );
 			freeListItem( &s );
 			success = 1;
 			break;
@@ -114,13 +116,12 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 	return success;
 }
 
-static CNDB *
+static char *
 xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 {
 	data->ctx = ctx;
 	data->privy = privy;
-	data->assign = !strncmp( expression, "?:", 2 );
-	data->expression = data->assign ? expression+2 : expression;
+	data->expression = expression;
 	CNDB *db = ctx->db;
 	data->empty = db_is_empty( db );
 	data->star = db_lookup( privy, "*", db );
@@ -147,7 +148,7 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 	// used by wildcard_opt
 	data->btree = btreefy( expression );
 #endif
-	return db;
+	return strncmp(expression,"?:",2) ? expression : expression+2;
 }
 
 static void
@@ -180,8 +181,8 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 	fprintf( stderr, "BM_TRAVERSE: %s\n", expression );
 #endif
 	BMTraverseData data;
-	CNDB *db = xp_init( &data, expression, ctx, 0 );
-	if (( db )) {
+	expression = xp_init( &data, expression, ctx, 0 );
+	if (( expression )) {
 		data.user_CB = user_CB;
 		data.user_data = user_data;
 	}
@@ -192,6 +193,7 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 		success = xp_traverse( &data );
 	}
 	else {
+		CNDB *db = ctx->db;
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
 			if ( traverse_CB( e, &data ) == BM_DONE ) {
@@ -212,8 +214,8 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 		return BM_CONTINUE;
 	if ( data->user_CB )
 		return data->user_CB( e, data->ctx, data->user_data );
-	if ( data->assign )
-		bm_assign( data->ctx, "%?", e );
+	if ( !strncmp( data->expression, "?:", 2 ) )
+		bm_register( data->ctx, "%?", e );
 	return BM_DONE;
 }
 

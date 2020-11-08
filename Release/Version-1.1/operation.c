@@ -27,7 +27,7 @@ typedef struct {
 	int success;
 } OperateData;
 static BMTraverseCB operate_CB;
-static void operate( CNOccurrence *, BMContext *, OperateData * );
+static void operate( CNNarrative *, BMContext *, OperateData * );
 
 int
 cnOperate( listItem *narratives, CNDB *db )
@@ -61,7 +61,7 @@ fprintf( stderr, "=============================\n" );
 			data.n = n;
 			bm_traverse( proto, ctx, operate_CB, &data );
 		}
-		else operate( n->root, ctx, &data );
+		else operate( n, ctx, &data );
 	}
 	bm_pop( ctx );
 
@@ -74,7 +74,7 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	OperateData *data = user_data;
 	CNNarrative *n = data->n;
 	ctx = bm_push( n, e, ctx->db );
-	operate( n->root, ctx, data );
+	operate( n, ctx, data );
 	bm_pop( ctx );
 	return BM_CONTINUE;
 }
@@ -85,12 +85,12 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 static BMTraverseCB activate_CB;
 static void
-operate( CNOccurrence *occurrence, BMContext *ctx, OperateData *data )
+operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 {
-	listItem *i = newItem( occurrence ), *stack = NULL;
+	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1;
 	for ( ; ; ) {
-		occurrence = i->ptr;
+		CNOccurrence *occurrence = i->ptr;
 		listItem *j = occurrence->data->sub;
 		switch ( occurrence->type ) {
 		ctrl(ELSE) case ROOT:
