@@ -2,9 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "database.h"
 #include "expression.h"
-#include "operation.h"
 #include "traversal.h"
 #include "util.h"
 

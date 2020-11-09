@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "context.h"
-#include "database.h"
 #include "string_util.h"
 #include "util.h"
 

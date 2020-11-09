@@ -3,8 +3,6 @@
 
 #include "database.h"
 #include "db_private.h"
-#include "expression.h"
-#include "traversal.h"
 #include "string_util.h"
 
 // #define DEBUG

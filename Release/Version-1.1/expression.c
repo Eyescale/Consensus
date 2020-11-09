@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "database.h"
 #include "expression.h"
 #include "string_util.h"
 #include "traversal.h"
