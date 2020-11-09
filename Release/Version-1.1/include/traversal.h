@@ -1,11 +1,9 @@
 #ifndef TRAVERSAL_H
 #define TRAVERSAL_H
 
-#include "list.h"
 #include "btree.h"
 #include "database.h"
 #include "context.h"
-#include "narrative.h"
 
 //===========================================================================
 //	expression traversal
@@ -56,7 +54,6 @@ typedef struct {
 	} stack;
 	listItem *mark_exp, *sub_exp;
 	int success;
-
 #ifdef TRIM
 	BTreeNode *btree;
 #endif

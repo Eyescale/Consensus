@@ -1,11 +1,9 @@
 #ifndef EXPRESSION_H
 #define EXPRESSION_H
 
-#include "list.h"
+#include "context.h"
 #include "database.h"
 #include "traversal.h"
-#include "util.h"
-#include "wildcard.h"
 
 int     bm_verify( CNInstance **, char **, BMTraverseData * );
 void	bm_substantiate( char *expression, BMContext * );

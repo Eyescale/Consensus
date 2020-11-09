@@ -5,8 +5,8 @@
 #include "database.h"
 #include "expression.h"
 #include "operation.h"
-#include "narrative.h"
 #include "traversal.h"
+#include "util.h"
 
 // #define DEBUG
 

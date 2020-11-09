@@ -6,6 +6,7 @@
 #include "string_util.h"
 #include "traversal.h"
 #include "util.h"
+#include "wildcard.h"
 
 // #define DEBUG
 

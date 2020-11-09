@@ -2,7 +2,6 @@
 #define UTIL_H
 
 #include "database.h"
-#include "list.h"
 
 #define AS_SUB	0
 #define SUB	2
