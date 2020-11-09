@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "string_util.h"
 #include "database.h"
 #include "db_private.h"
-#include "string_util.h"
 
 // #define DEBUG
 // #define TOKENIZE

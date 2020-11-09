@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "expression.h"
 #include "string_util.h"
+#include "expression.h"
 #include "traversal.h"
 #include "util.h"
 #include "wildcard.h"

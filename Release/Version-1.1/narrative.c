@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "macros.h"
 #include "string_util.h"
+#include "macros.h"
 #include "narrative.h"
 #include "narrative_private.h"
 #include "util.h"
