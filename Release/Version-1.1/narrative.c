@@ -141,6 +141,8 @@ readStory( char *path )
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
 							add_item( &s, '%' );
+							add_item( &stack.sub_level, 0 );
+							add_item( &stack.marked, 0 );
 							tab += tab_base;
 							type = EN;
 			end
