@@ -8,6 +8,7 @@
 #include "string_util.h"
 
 // #define DEBUG
+// #define TOKENIZE
 
 //===========================================================================
 //	CNDB allocate / free
@@ -17,7 +18,11 @@ newCNDB( void )
 {
 	CNInstance *nil = cn_new( NULL, NULL );
 	CNInstance *init = cn_new( NULL, NULL );
+#ifdef TOKENIZE
 	Registry *index = newRegistry( IndexedByToken );
+#else
+	Registry *index = newRegistry( IndexedByName );
+#endif
 	CNDB *db = (CNDB *) newPair( nil, index );
 	registryRegister( db->index, strdup("init"), init );
 	cn_new( nil, init );
@@ -238,15 +243,25 @@ CNInstance *
 db_register( char *p, CNDB *db )
 {
 	if ( p == NULL ) return NULL;
+#ifndef TOKENIZE
+	p = strmake( p );
+#endif
 	CNInstance *e = NULL;
 	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		e = entry->value;
 		db_op( DB_REHABILITATE_OP, e, 0, db );
+#ifndef TOKENIZE
+		free( p );
+#endif
 	}
 	else {
 		e = cn_new( NULL, NULL );
+#ifdef TOKENIZE
 		registryRegister( db->index, strmake(p), e );
+#else
+		registryRegister( db->index, p, e );
+#endif
 		db_op( DB_MANIFEST_OP, e, DB_NEW, db );
 	}
 	return e;
@@ -505,7 +520,13 @@ CNInstance *
 db_lookup( int privy, char *p, CNDB *db )
 {
 	if ( p == NULL ) return NULL;
+#ifdef TOKENIZE
 	Pair *entry = registryLookup( db->index, p );
+#else
+	p = strmake( p );
+	Pair *entry = registryLookup( db->index, p );
+	free( p );
+#endif
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL;
 }

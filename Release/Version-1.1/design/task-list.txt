@@ -1,6 +1,5 @@
 TODO
 	. narrative instances
-		. operation.c: perform LOCAL declarations
 		. Test case(s): narrative_output
 	. single character identifier entities
 		. narrative.c: readNarrative
@@ -16,7 +15,8 @@ TODO
 
 DONE
 	. narrative instances
-		. readNarrative support for .local declaration
+		. tokenized CNDB index and BMContext registry
+		. support for .local declaration
 		. support do .( expression ) [ NOTE: as input preprocessing ]
 		. generalized narrative identifier/proto format (cf. readNarrative)
 		. bm_push: setup 'this' and other narrative params from passed arguments

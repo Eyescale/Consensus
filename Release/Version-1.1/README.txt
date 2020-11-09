@@ -36,6 +36,10 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/09
+		feature complete
+		. narrative instance definition & registry
+		. .local and .( expression )
 	2020/11/06
 		feature change: using .arg instead of %arg in narrative instance name
 		. updated design/yak.story, operation.c, util.c and expression.c

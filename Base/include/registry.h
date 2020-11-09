@@ -6,9 +6,9 @@
 typedef struct { int type; listItem *entries; } Registry;
 typedef enum {
 	IndexedByAddress = 0, // default
+	IndexedByToken,
 	IndexedByName,
-	IndexedByNumber,
-	IndexedByToken
+	IndexedByNumber
 } RegistryType;
 
 typedef void freeRegistryCB( Registry *, Pair * );

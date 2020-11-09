@@ -38,8 +38,10 @@ int
 isanumber( char *p )
 {
 	if (!((p) && *p )) return 0;
-	else do { if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
-		} while ( *p );
+	else
+		do if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
+		while ( *p );
+
 	return 1; 
 }
 
