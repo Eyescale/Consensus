@@ -215,6 +215,8 @@ on_event( char *expression, BMContext *ctx )
 //===========================================================================
 //	do_action
 //===========================================================================
+static BMTraverseCB release_CB;
+
 static int
 do_action( char *expression, BMContext *ctx )
 {
@@ -222,10 +224,16 @@ do_action( char *expression, BMContext *ctx )
 	if ( !strcmp( expression, "exit" ) )
 		db_exit( ctx->db );
 	else if ( !strncmp( expression, "~(", 2 ) )
-		bm_release( expression+1, ctx );
+		bm_traverse( expression+1, ctx, release_CB, NULL );
 	else if ( strcmp( expression, "." ) )
 		bm_substantiate( expression, ctx );
 	return 1;
+}
+static int
+release_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	db_deprecate( e, ctx->db );
+	return BM_CONTINUE;
 }
 
 //===========================================================================
@@ -259,9 +267,9 @@ do_input( char *expression, BMContext *ctx )
 
 	format = p+1;	// not used in this version
 
-	// complete ((*,variable),input) with input, where
-	// input is read (blocking) according to format
-	// Here format is assumed to be default
+	/* complete "((*,variable),input)" string, where input is read
+	   (blocking) according to format - here assumed to be default
+	*/
 	int event, newline = 1;
 	do {
 		switch (( event = getchar() )) {
@@ -281,7 +289,7 @@ do_input( char *expression, BMContext *ctx )
 		// release (*,variable)
 		StringAppend( s, ')' );
 		expression = StringFinish( s, 0 );
-		bm_release( &expression[ 1 ], ctx );
+		bm_traverse( expression+1, ctx, release_CB, NULL );
 	}
 	else {
 		// read & instantiate ((*,expression),input)

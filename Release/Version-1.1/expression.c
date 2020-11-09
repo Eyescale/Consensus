@@ -208,7 +208,7 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 //	bm_substantiate
 //===========================================================================
 static int bm_void( char *, BMContext * );
-static CNInstance *bm_instantiate( char *, BMContext * );
+static BMTraverseCB fetch_CB;
 
 void
 bm_substantiate( char *expression, BMContext *ctx )
@@ -219,15 +219,8 @@ bm_substantiate( char *expression, BMContext *ctx )
 	manifested.
 */
 {
-	if ( bm_void( expression, ctx ) ) {
-#ifdef DEBUG
-		fprintf( stderr, "bm_substantiate: %s - void\n", expression );
-#endif
+	if ( bm_void( expression, ctx ) )
 		return;
-	}
-#ifdef DEBUG
-	fprintf( stderr, "bm_substantiate: %s {\n", expression );
-#endif
 
 	union { int value; void *ptr; } icast;
 	struct {
@@ -243,7 +236,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 	while ( *p && scope ) {
 		if ( p_filtered( p )  ) {
 			// bm_void made sure we do have results
-			sub[ ndx ] = bm_fetch( p, ctx );
+			bm_traverse( p, ctx, fetch_CB, &sub[ ndx ] );
 			p = p_prune( PRUNE_DEFAULT, p );
 			continue;
 		}
@@ -258,14 +251,14 @@ bm_substantiate( char *expression, BMContext *ctx )
 			// no break
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				e = bm_instantiate( p, ctx );
+				e = bm_register( ctx, p, NULL );
 				sub[ ndx ] = newItem( e );
 				p++; break;
 			}
 			// no break
 		case '~':
 			// bm_void made sure we do have results
-			sub[ ndx ] = bm_fetch( p, ctx );
+			bm_traverse( p, ctx, fetch_CB, &sub[ ndx ] );
 			p = p_prune( PRUNE_DEFAULT, p );
 			break;
 		case '(':
@@ -305,7 +298,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 			sub[ ndx ] = newItem( NULL );
 			p++; break;
 		default:
-			e = bm_instantiate( p, ctx );
+			e = bm_register( ctx, p, NULL );
 			sub[ ndx ] = newItem( e );
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
@@ -315,6 +308,12 @@ bm_substantiate( char *expression, BMContext *ctx )
 	else fprintf( stderr, "bm_substantiate: } no result\n" );
 #endif
 	freeListItem( &sub[ 0 ] );
+}
+static int
+fetch_CB( CNInstance *e, BMContext *ctx, void *results )
+{
+	addIfNotThere((listItem **) results, e );
+	return BM_CONTINUE;
 }
 
 static int
@@ -377,48 +376,8 @@ bm_void( char *expression, BMContext *ctx )
 	return 0;
 }
 
-static CNInstance *
-bm_instantiate( char *p, BMContext *ctx )
-{
-	CNInstance *e = bm_lookup( 0, p, ctx );
-	return (e) ? e : db_register( p, ctx->db );
-}
-
-//===========================================================================
-//	bm_fetch
-//===========================================================================
-static BMTraverseCB fetch_CB;
-
-listItem *
-bm_fetch( char *expression, BMContext *ctx )
-{
-	listItem *results = NULL;
-	bm_traverse( expression, ctx, fetch_CB, &results );
-	return results;
-}
-static int
-fetch_CB( CNInstance *e, BMContext *ctx, void *results )
-{
-	addIfNotThere((listItem **) results, e );
-	return BM_CONTINUE;
-}
-
-//===========================================================================
-//	bm_release
-//===========================================================================
 static BMTraverseCB release_CB;
 
-void
-bm_release( char *expression, BMContext *ctx )
-{
-#ifdef DEBUG
-fprintf( stderr, "bm_release: %s {\n", expression );
-#endif
-	bm_traverse( expression, ctx, release_CB, NULL );
-#ifdef DEBUG
-fprintf( stderr, "bm_release: }\n" );
-#endif
-}
 static int
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {

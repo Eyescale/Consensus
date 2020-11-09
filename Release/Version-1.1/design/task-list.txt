@@ -1,6 +1,8 @@
 TODO
 	. narrative instances
-		. Test case(s): narrative_output
+		. Test case(s):
+			. narrative_output
+			. narrative instance
 	. single character identifier entities
 		. narrative.c: readNarrative
 		. operation.c: do_input, do_output

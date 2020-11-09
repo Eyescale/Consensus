@@ -5,36 +5,6 @@
 #include "util.h"
 
 //===========================================================================
-//	p_valid
-//===========================================================================
-int
-p_valid( char *p )
-/*
-	validates that all .arg names are unique in proto
-*/
-{
-	if ( p == NULL ) return 1;
-	
-	int success = 1;
-	listItem *list = NULL;
-	for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {
-		for ( ; *p!='.' || is_separator(p[1]); p++ )
-			if ( *p == '\0' ) goto RETURN;
-		p++;
-		for ( listItem *i=list; i!=NULL; i=i->next ) {
-			if ( !tokcmp( i->ptr, p ) ) {
-				success = 0;
-				goto RETURN;
-			}
-		}
-		addItem( &list, p );
-	}
-RETURN:
-	freeListItem( &list );
-	return success;
-}
-
-//===========================================================================
 //	p_locate
 //===========================================================================
 char *

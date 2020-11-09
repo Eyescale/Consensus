@@ -81,8 +81,7 @@ tokcmp( const char *p, const char *q )
 			else return pval-qval;
 		}
 	}
-	else
-#endif
+#else
 	if ( is_separator(*p) ) {
 		if ( !is_separator(*q) ) return - *(const unsigned char*)q;
 		return *(const unsigned char*)p - *(const unsigned char*)q;
@@ -90,6 +89,7 @@ tokcmp( const char *p, const char *q )
 	else if ( is_separator(*q) ) {
 		return *(const unsigned char*)p;
 	}
+#endif
 	else for ( ; ; p++, q++ ) {
 		if ( is_separator(*p) )
 			return is_separator(*q) ? 0 : - *(const unsigned char*)q;

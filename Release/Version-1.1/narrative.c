@@ -13,6 +13,7 @@
 static int add_narrative( listItem **story, CNNarrative *narrative );
 static int proto_set( CNNarrative *, listItem ** );
 static void add_item( listItem **, int );
+static void s_add( listItem **, char * );
 
 #define FILTERED 2
 
@@ -398,8 +399,7 @@ readStory( char *path )
 			else if (( narrative->proto )) {
 				do_( "expr" )	REENTER
 						dirty_flag = 1;
-						for ( char *p = "(this,"; *p; p++ )
-							add_item( &s, *p );
+						s_add( &s, "(this," );
 			}
 			else {	do_( "expr" )	REENTER }
 		on_separator	; // err
@@ -411,8 +411,7 @@ readStory( char *path )
 			else if (( narrative->proto )) {
 				do_( "expr" )	REENTER
 						dirty_flag = 1;
-						for ( char *p = "(this,"; *p; p++ )
-							add_item( &s, *p );
+						s_add( &s, "(this," );
 			}
 			else {	do_( "expr" )	REENTER }
 		end
@@ -504,11 +503,16 @@ readStory( char *path )
 	return story;
 }
 static void
-add_item( listItem **stack, int value )
+add_item( listItem **list, int value )
 {
 	union { int value; char *ptr; } icast;
 	icast.value = value;
-	addItem( stack, icast.ptr );
+	addItem( list, icast.ptr );
+}
+static void
+s_add( listItem **list, char *p )
+{
+	while ( *p ) add_item( list, *p++ );
 }
 static int
 add_narrative( listItem **story, CNNarrative *narrative )
@@ -530,9 +534,29 @@ add_narrative( listItem **story, CNNarrative *narrative )
 static int
 proto_set( CNNarrative *narrative, listItem **sequence )
 {
-	char *proto = l2s( sequence, 0 );
-	narrative->proto = proto;
-	return p_valid( proto );
+	char *p = l2s( sequence, 0 );
+	narrative->proto = p;
+	if ( p == NULL ) return 1;
+
+        /* validates that all .arg names are unique in proto
+	*/
+	int success = 1;
+	listItem *list = NULL;
+	for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {
+		for ( ; *p!='.' || is_separator(p[1]); p++ )
+			if ( *p == '\0' ) goto RETURN;
+		p++;
+		for ( listItem *i=list; i!=NULL; i=i->next ) {
+			if ( !tokcmp( i->ptr, p ) ) {
+				success = 0;
+				goto RETURN;
+			}
+		}
+		addItem( &list, p );
+	}
+RETURN:
+	freeListItem( &list );
+	return success;
 }
 
 //===========================================================================

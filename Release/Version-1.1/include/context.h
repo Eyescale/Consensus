@@ -12,8 +12,8 @@ BMContext;
 
 BMContext * bm_push( CNNarrative *n, CNInstance *e, CNDB *db );
 void bm_pop( BMContext * );
-void bm_register( BMContext *, char *p, CNInstance *e );
 CNInstance * bm_lookup( int privy, char *p, BMContext *ctx );
+CNInstance * bm_register( BMContext *, char *p, CNInstance *e );
 
 
 #endif	// CONTEXT_H

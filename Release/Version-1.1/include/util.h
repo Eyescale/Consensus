@@ -17,7 +17,6 @@ typedef enum {
 } PruneType;
 typedef void BMLocateCB( char *, listItem *, void * );
 
-int	p_valid( char *proto );
 char *	p_locate( char *expression, listItem **exponent );
 char *	p_locate_arg( char *expression, listItem **exponent, BMLocateCB, void * );
 char *	p_extract( char * );

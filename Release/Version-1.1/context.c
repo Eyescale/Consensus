@@ -58,31 +58,57 @@ bm_pop( BMContext *ctx )
 }
 
 //===========================================================================
+//	bm_lookup
+//===========================================================================
+CNInstance *
+bm_lookup( int privy, char *p, BMContext *ctx )
+{
+	if ( !strncmp(p,"%?",2) ) {
+		Pair *entry = registryLookup( ctx->registry, "?" );
+		return (entry) ? entry->value : NULL;
+	}
+	Pair *entry = registryLookup( ctx->registry, p );
+	return (entry) ? entry->value : db_lookup( privy, p, ctx->db );
+}
+
+//===========================================================================
 //	bm_register
 //===========================================================================
-void
+CNInstance *
 bm_register( BMContext *ctx, char *p, CNInstance *e )
 {
 	Registry *registry = ctx->registry;
+	Pair *entry;
 
-	/* registering %?
-	*/
-	if ( !strncmp( p, "%?", 2 ) ) {
-		Pair *entry = registryLookup( registry, "?" );
-		if (( entry )) entry->value = e;
-		return;
+	switch ( *p ) {
+	case '?':
+		/* registering %?
+		*/
+		entry = registryLookup( registry, "?" );
+		if (( entry )) {
+			entry->value = e;
+			return e;
+		}
+		return NULL;
+	case '.':
+		break; // register .local(s)
+	default:
+		/* registering instance
+		*/
+		entry = registryLookup( registry, p );
+		return (entry) ? entry->value : db_register( p, ctx->db );
 	}
 
 	/* registering .local(s)
 	*/
-	Pair *entry = registryLookup( registry, "this" );
-	if ( entry == NULL ) return;	// base narrative
+	entry = registryLookup( registry, "this" );
+	if ( entry == NULL ) return NULL; // base narrative
 
 	CNDB *db = ctx->db;
 	CNInstance *this = entry->value;
 	for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {
 		for ( ; *p!='.' || is_separator(p[1]); p++ )
-			if ( *p == '\0' ) return;
+			if ( *p == '\0' ) return NULL;
 		p++;
 		entry = registryLookup( registry, p );
 		if (( entry )) {
@@ -104,19 +130,6 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 		}
 		else registryRegister( registry, p, x );
 	}
-}
-
-//===========================================================================
-//	bm_lookup
-//===========================================================================
-CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx )
-{
-	if ( !strncmp(p,"%?",2) ) {
-		Pair *entry = registryLookup( ctx->registry, "?" );
-		return (entry) ? entry->value : NULL;
-	}
-	Pair *entry = registryLookup( ctx->registry, p );
-	return (entry) ? entry->value : db_lookup( privy, p, ctx->db );
+	return NULL;
 }
 

@@ -456,12 +456,6 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 	if (( e->as_sub[ 0 ] )) {
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			e = i->ptr;
-#if 0
-			if ( e == NULL ) {
-				fprintf( stderr, "Error: db_next\n" );
-				exit( -1 );
-			}
-#endif
 			if ( !db_private( 0, e, db ) ) {
 				addItem( stack, i );
 				return e;
