@@ -11,7 +11,10 @@
 int
 is_separator( int event )
 {
-	return !( isalnum(event) || event == '_' );
+	return  ((( event > 96 ) && ( event < 123 )) ||		/* a-z */
+		 (( event > 64 ) && ( event < 91 )) ||		/* A-Z */
+		 (( event > 47 ) && ( event < 58 )) ||		/* 0-9 */
+		  ( event == 95 )) ? 0 : 1;			/* _ */
 }
 
 /*---------------------------------------------------------------------------
@@ -32,12 +35,82 @@ is_space( int event )
 	isanumber
 ---------------------------------------------------------------------------*/
 int
-isanumber( char *string )
+isanumber( char *p )
 {
-	for ( char *str = string; *str; str++ )
-		if ( !isdigit( *str ) )
-			return 0;
+	if (!((p) && *p )) return 0;
+	else do { if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
+		} while ( *p );
 	return 1; 
+}
+
+/*---------------------------------------------------------------------------
+	tokcmp
+---------------------------------------------------------------------------*/
+static int tokval( const char * );
+int
+tokcmp( const char *p, const char *q )
+{
+#if 0
+	if ( *p == '\'' ) {
+		int pval = tokval(p+1);
+		if ( *q == '\'' )
+			return pval - tokval(q+1);
+		else if ( is_separator(*q) )
+			return pval;
+		else {
+			int qval = *(const unsigned char*)q++;
+			if ( pval == qval ) {
+				if ( is_separator(*q) ) return 0;
+				else return -*(const unsigned char*)p;
+			}
+			else return pval-qval;
+		}
+	}
+	else if ( *q == '\'' ) {
+		int qval = tokval(q+1);
+		if ( is_separator(*p) )
+			return -qval;
+		else {
+			int pval = *(const unsigned char*)p++;
+			if ( pval == qval ) {
+				if ( is_separator(*p) ) return 0;
+				else return *(const unsigned char*)p;
+			}
+			else return pval-qval;
+		}
+	}
+	else
+#endif
+	if ( is_separator(*p) ) {
+		if ( !is_separator(*q) ) return - *(const unsigned char*)q;
+		return *(const unsigned char*)p - *(const unsigned char*)q;
+	}
+	else if ( is_separator(*q) ) {
+		return *(const unsigned char*)p;
+	}
+	else for ( ; ; p++, q++ ) {
+		if ( is_separator(*p) )
+			return is_separator(*q) ? 0 : - *(const unsigned char*)q;
+		else if ( is_separator(*q) )
+			return *(const unsigned char*)p;
+		else if ( *p != *q )
+			return *(const unsigned char*)p - *(const unsigned char*)q;
+	}
+}
+static int
+tokval( const char *p )
+{
+	if ( *p == '\\' ) {
+		switch ( p[1] ) {
+		case '0': return 0;	// nul
+		case 't': return 9;	// ht
+		case 'n': return 13;	// cr
+		case '\'': return 39;	// quote
+		case '\\': return 92;	// backslash
+		}
+		return 0; // err
+	}
+	return *(const unsigned char*)p;
 }
 
 /*---------------------------------------------------------------------------
@@ -208,6 +281,24 @@ l2s( listItem **list, int trim )
 	*ptr = 0;
 	freeListItem( list );
 	return str;
+}
+
+/*---------------------------------------------------------------------------
+	strmake
+---------------------------------------------------------------------------*/
+char *
+strmake( char *p )
+{
+	CNString *s = newString();
+	if ( is_separator(*p) )
+		StringAppend( s, *p );
+	else do StringAppend( s, *p++ );
+		while ( !is_separator(*p) );
+
+	p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
+	return p;
 }
 
 /*---------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 #include "registry.h"
+#include "string_util.h"
 
 //===========================================================================
 //	public interface
@@ -20,18 +21,15 @@ newRegistry( RegistryType type )
 void
 freeRegistry( Registry *registry, freeRegistryCB callback )
 {
+	RegistryType type = registry->type;
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		if (( callback )) callback( registry, entry );
-		else free( entry->name );
+		else if ( type == IndexedByName ) free( entry->name );
 		freePair( entry );
 	}
 	freeListItem( &registry->entries );
 	freePair((Pair *) registry );
-}
-void
-nopCB( Registry *registry, Pair *entry )
-{
 }
 
 Pair *
@@ -51,8 +49,13 @@ Pair *
 registryRegister( Registry *registry, void *name, void *value )
 {
 	RegistryType type = registry->type;
-	if (( type == IndexedByName ) && ( name == NULL ))
-		return NULL;
+	switch ( type ) {
+	case IndexedByName:
+	case IndexedByToken:
+		if ( name == NULL ) return NULL;
+	default:
+		break;
+	}
 
 	Pair *r;
         listItem *i, *last_i=NULL;
@@ -176,6 +179,8 @@ compare( RegistryType type, Pair *entry, void *name )
 	switch ( type ) {
 	case IndexedByName:
 		return strcmp( entry->name, (char *) name );
+	case IndexedByToken:
+		return tokcmp( entry->name, (char *) name );
 	case IndexedByNumber:
 		return ( (int) entry->name - *(int *) name );
 	case IndexedByAddress:

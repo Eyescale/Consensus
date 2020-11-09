@@ -38,7 +38,7 @@ fprintf( stderr, "=============================\n" );
 	if (( narratives == NULL ) || db_out(db) )
 		 return 0;
 
-	/* determine active narratives, if any
+	/* determine active (=base, here) narratives, if any
 	*/
 	OperateData data = { NULL, NULL, NULL, NULL, 0 };
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
@@ -83,7 +83,7 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //	operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-static BMTraverseCB activate_CB;
+static BMTraverseCB enable_CB;
 static void
 operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 {
@@ -105,7 +105,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		ctrl(ELSE_EN) case EN:
 			if (!(data->tbd)) break;
 			char *expression = occurrence->data->expression;
-			bm_traverse( expression, ctx, activate_CB, data );
+			bm_traverse( expression, ctx, enable_CB, data );
 			break;
 		ctrl(ELSE_DO) case DO:
 			do_action( occurrence->data->expression, ctx );
@@ -117,6 +117,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 			do_output( occurrence->data->expression, ctx );
 			break;
 		case LOCAL:
+			bm_register( ctx, occurrence->data->expression, NULL );
 			break;
 		}
 		if (( j && passed )) {
@@ -144,7 +145,7 @@ RETURN:
 }
 static int cmp_CB( CNInstance *, BMContext *, void * );
 static int
-activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 /*
 	compare entity matching narrative local EN declaration
 	with entities matching protos "tbd" - in base context

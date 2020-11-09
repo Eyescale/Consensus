@@ -10,21 +10,6 @@
 // #define DEBUG
 
 //===========================================================================
-//	bm_lookup
-//===========================================================================
-CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx )
-{
-	CNInstance *e;
-	char *term = p_extract( p );
-	Pair *entry = registryLookup( ctx->registry, term );
-	if ((entry)) e = entry->value;
-	else e = db_lookup( privy, term, ctx->db );
-	free( term );
-	return e;
-}
-
-//===========================================================================
 //	bm_verify
 //===========================================================================
 static int bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverseData * );
@@ -396,12 +381,7 @@ static CNInstance *
 bm_instantiate( char *p, BMContext *ctx )
 {
 	CNInstance *e = bm_lookup( 0, p, ctx );
-	if ( e == NULL ) {
-		char *term = p_extract( p );
-		e = db_register( term, ctx->db ); 
-		free( term );
-	}
-	return e;
+	return (e) ? e : db_register( p, ctx->db );
 }
 
 //===========================================================================

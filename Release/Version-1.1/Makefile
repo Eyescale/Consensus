@@ -11,7 +11,8 @@ LFLAGS = -L../../Base
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	database.c \
+SRCS =	context.c \
+	database.c \
 	expression.c \
 	narrative.c \
 	operation.c \

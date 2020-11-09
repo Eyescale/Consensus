@@ -5,6 +5,7 @@
 #include "db_private.h"
 #include "expression.h"
 #include "traversal.h"
+#include "string_util.h"
 
 // #define DEBUG
 
@@ -16,13 +17,14 @@ newCNDB( void )
 {
 	CNInstance *nil = cn_new( NULL, NULL );
 	CNInstance *init = cn_new( NULL, NULL );
-	Registry *index = newRegistry( IndexedByName );
+	Registry *index = newRegistry( IndexedByToken );
 	CNDB *db = (CNDB *) newPair( nil, index );
 	registryRegister( db->index, strdup("init"), init );
 	cn_new( nil, init );
 	return db;
 }
 
+static freeRegistryCB free_CB;
 void
 freeCNDB( CNDB *db )
 {
@@ -65,8 +67,13 @@ freeCNDB( CNDB *db )
 
 	/* then delete CNDB per se
 	*/
-	freeRegistry( db->index, NULL );
+	freeRegistry( db->index, free_CB );
 	freePair((Pair *) db );
+}
+static void
+free_CB( Registry *registry, Pair *pair )
+{
+	free( pair->name );
 }
 
 //===========================================================================
@@ -228,22 +235,67 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 //	CNDB operation
 //===========================================================================
 CNInstance *
-db_register( char *identifier, CNDB *db )
+db_register( char *p, CNDB *db )
 {
-	if ( identifier == NULL ) return NULL;
+	if ( p == NULL ) return NULL;
 	CNInstance *e = NULL;
-	Pair *entry = registryLookup( db->index, identifier );
+	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		e = entry->value;
 		db_op( DB_REHABILITATE_OP, e, 0, db );
 	}
 	else {
-		identifier = strdup( identifier );
 		e = cn_new( NULL, NULL );
-		registryRegister( db->index, identifier, e );
+		registryRegister( db->index, strmake(p), e );
 		db_op( DB_MANIFEST_OP, e, DB_NEW, db );
 	}
 	return e;
+}
+CNInstance *
+db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
+/*
+	Assumption: neither e nor f are deprecated
+	Special case: assignment - i.e. e is ( *, variable )
+		in this case must release previous assignment
+		Note that until next frame, variable will hold
+		both the old and the new values (feature)
+*/
+{
+#ifdef DEBUG
+	fprintf( stderr, "db_instantiate: ( " );
+	cn_out( stderr, e, db );
+	dbg_out( ", ", f, " )\n", db );
+#endif
+	CNInstance *instance = NULL;
+	Pair *entry = registryLookup( db->index, "*" );
+	if (( entry ) && ( e->sub[ 0 ] == entry->value )) {
+		/* Assignment case
+		*/
+		CNInstance *reassignment = NULL;
+		// for each instance: ( e:( *, . ), . )
+		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+			instance = i->ptr;
+			if ( instance->sub[ 1 ] == f ) {
+				db_op( DB_REHABILITATE_OP, instance, DB_REASSIGN, db );
+				reassignment = instance;
+			}
+			else if ( !db_deprecated( instance, db ) )
+				db_deprecate( instance, db );
+		}
+		if (( reassignment )) return reassignment;
+	}
+	else {
+		/* General case
+		*/
+		instance = cn_instance( e, f );
+		if (( instance )) {
+			db_op( DB_REHABILITATE_OP, instance, 0, db );
+			return instance;
+		}
+	}
+	instance = cn_new( e, f );
+	db_op( DB_MANIFEST_OP, instance, DB_NEW, db );
+	return instance;
 }
 listItem *
 db_couple( listItem *sub[2], CNDB *db )
@@ -450,10 +502,10 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 	return NULL;
 }
 CNInstance *
-db_lookup( int privy, char *identifier, CNDB *db )
+db_lookup( int privy, char *p, CNDB *db )
 {
-	if ( identifier == NULL ) return NULL;
-	Pair *entry = registryLookup( db->index, identifier );
+	if ( p == NULL ) return NULL;
+	Pair *entry = registryLookup( db->index, p );
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL;
 }
@@ -489,52 +541,6 @@ db_private( int privy, CNInstance *e, CNDB *db )
 //===========================================================================
 //	CNDB private
 //===========================================================================
-static CNInstance *
-db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
-/*
-	Assumption: neither e nor f are deprecated
-	Special case: assignment - i.e. e is ( *, variable )
-		in this case must release previous assignment
-		Note that until next frame, variable will hold
-		both the old and the new values (feature)
-*/
-{
-#ifdef DEBUG
-	fprintf( stderr, "db_instantiate: ( " );
-	cn_out( stderr, e, db );
-	dbg_out( ", ", f, " )\n", db );
-#endif
-	CNInstance *instance = NULL;
-	Pair *entry = registryLookup( db->index, "*" );
-	if (( entry ) && ( e->sub[ 0 ] == entry->value )) {
-		/* Assignment case
-		*/
-		CNInstance *reassignment = NULL;
-		// for each instance: ( e:( *, . ), . )
-		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-			instance = i->ptr;
-			if ( instance->sub[ 1 ] == f ) {
-				db_op( DB_REHABILITATE_OP, instance, DB_REASSIGN, db );
-				reassignment = instance;
-			}
-			else if ( !db_deprecated( instance, db ) )
-				db_deprecate( instance, db );
-		}
-		if (( reassignment )) return reassignment;
-	}
-	else {
-		/* General case
-		*/
-		instance = cn_instance( e, f );
-		if (( instance )) {
-			db_op( DB_REHABILITATE_OP, instance, 0, db );
-			return instance;
-		}
-	}
-	instance = cn_new( e, f );
-	db_op( DB_MANIFEST_OP, instance, DB_NEW, db );
-	return instance;
-}
 static char *
 db_identifier( CNInstance *e, CNDB *db )
 {

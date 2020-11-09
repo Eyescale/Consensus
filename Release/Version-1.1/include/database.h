@@ -25,6 +25,7 @@ void	db_update( CNDB * );
 //	operation
 //===========================================================================
 CNInstance * db_register( char *identifier, CNDB * );
+CNInstance * db_instantiate( CNInstance *, CNInstance *, CNDB * );
 listItem * db_couple( listItem *sub[2], CNDB * );
 void	db_deprecate( CNInstance *, CNDB * );
 void	db_exit( CNDB * );

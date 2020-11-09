@@ -1,7 +1,6 @@
 #ifndef DB_PRIVATE_H
 #define	DB_PRIVATE_H
 
-static CNInstance *db_instantiate( CNInstance *, CNInstance *, CNDB * );
 static char *db_identifier( CNInstance *, CNDB * );
 static void db_deregister( CNInstance *, CNDB * );
 static void db_remove( CNInstance *, CNDB * );

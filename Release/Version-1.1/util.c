@@ -7,8 +7,6 @@
 //===========================================================================
 //	p_valid
 //===========================================================================
-static int p_cmp( const char *p, const char *q );
-
 int
 p_valid( char *p )
 /*
@@ -24,7 +22,7 @@ p_valid( char *p )
 			if ( *p == '\0' ) goto RETURN;
 		p++;
 		for ( listItem *i=list; i!=NULL; i=i->next ) {
-			if ( !p_cmp( i->ptr, p ) ) {
+			if ( !tokcmp( i->ptr, p ) ) {
 				success = 0;
 				goto RETURN;
 			}
@@ -34,18 +32,6 @@ p_valid( char *p )
 RETURN:
 	freeListItem( &list );
 	return success;
-}
-static int
-p_cmp( const char *p, const char *q )
-{
-	for ( ; ; p++, q++ ) {
-		if ( is_separator(*q) )
-			return is_separator(*p) ? 0 : *(const unsigned char*)p;
-		else if ( is_separator(*p) )
-			return -*(const unsigned char*)q;
-		else if ( *p != *q )
-			return *(const unsigned char*)p - *(const unsigned char*)q;
-	}
 }
 
 //===========================================================================
@@ -280,40 +266,6 @@ p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *u
 	freeListItem( &stack.couple );
 	freeListItem( &stack.level );
 	return ((*p=='?') ? p : NULL );
-}
-
-//===========================================================================
-//	p_extract
-//===========================================================================
-char *
-p_extract( char *p )
-{
-	CNString *s = newString();
-	switch ( *p ) {
-	case '%':
-		switch ( p[1] ) {
-		case '(': // should not happen
-			break;
-		case '?':
-			StringAppend( s, '%' );
-			StringAppend( s, '?' );
-			break;
-		default:
-			StringAppend( s, '%' );
-		}
-		break;
-	case '*':
-		StringAppend( s, '*' );
-		break;
-	default:
-		for ( char *q=p; !is_separator(*q); q++ ) {
-			StringAppend( s, *q );
-		}
-	}
-	char *term = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-	return term;
 }
 
 //===========================================================================

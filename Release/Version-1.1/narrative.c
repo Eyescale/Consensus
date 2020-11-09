@@ -126,17 +126,18 @@ readStory( char *path )
 							add_item( &s, event );
 			end
 			in_ ( "_._" ) bgn_
-				ons( " \t\n" )	do_( "_.." )	REENTER
+				ons( " \t" )	do_( "_.." ) 	add_item( &s, ' ' );
+				on_( '\n' )	do_( "_.." )	REENTER
 				on_separator	; // err
 				on_other	do_( same )	add_item( &s, event );
 				end
-			in_( "_.." ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '.' )	do_( "_." )
-				on_( '\n' )	do_( "_expr" )	REENTER
-								tab += tab_base;
-								type = LOCAL;
-			end
+				in_( "_.." ) bgn_
+					ons( " \t" )	do_( same )
+					on_( '.' )	do_( "_." )
+					on_( '\n' )	do_( "_expr" )	REENTER
+									tab += tab_base;
+									type = LOCAL;
+					end
 		in_( "_%" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER

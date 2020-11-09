@@ -10,6 +10,7 @@
 int	is_separator( int event );
 int	is_space( int event );
 int	isanumber( char *string );
+int	tokcmp( const char *p, const char *q );
 
 typedef struct {
 	void *data;
@@ -34,6 +35,7 @@ int	StringAppend( CNString *string, int event );
 char *	StringFinish( CNString *string, int trim );
 char *	l2s( listItem **, int trim );
 
+char *	strmake( char * );
 char *	strscanid( char *, char ** );
 int 	strmatch( char *, int event );
 char *	strskip( char *fmt, char *str );

@@ -4,20 +4,12 @@
 #include "list.h"
 #include "btree.h"
 #include "database.h"
+#include "context.h"
 #include "narrative.h"
 
 //===========================================================================
 //	expression traversal
 //===========================================================================
-typedef struct {
-	CNDB *db;
-	Registry *registry;
-}
-BMContext;
-BMContext *bm_push( CNNarrative *, CNInstance *, CNDB * );
-void bm_pop( BMContext * );
-void bm_register( BMContext *, char *, CNInstance * );
-
 typedef enum {
         BM_CONDITION,
         BM_INSTANTIATED,
