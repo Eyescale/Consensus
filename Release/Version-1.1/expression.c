@@ -208,7 +208,6 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 //	bm_substantiate
 //===========================================================================
 static int bm_void( char *, BMContext * );
-static BMTraverseCB fetch_CB;
 
 void
 bm_substantiate( char *expression, BMContext *ctx )
@@ -236,7 +235,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 	while ( *p && scope ) {
 		if ( p_filtered( p )  ) {
 			// bm_void made sure we do have results
-			bm_traverse( p, ctx, fetch_CB, &sub[ ndx ] );
+			sub[ ndx ] = bm_query( p, ctx );
 			p = p_prune( PRUNE_DEFAULT, p );
 			continue;
 		}
@@ -258,7 +257,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 			// no break
 		case '~':
 			// bm_void made sure we do have results
-			bm_traverse( p, ctx, fetch_CB, &sub[ ndx ] );
+			sub[ ndx ] = bm_query( p, ctx );
 			p = p_prune( PRUNE_DEFAULT, p );
 			break;
 		case '(':
@@ -308,12 +307,6 @@ bm_substantiate( char *expression, BMContext *ctx )
 	else fprintf( stderr, "bm_substantiate: } no result\n" );
 #endif
 	freeListItem( &sub[ 0 ] );
-}
-static int
-fetch_CB( CNInstance *e, BMContext *ctx, void *results )
-{
-	addIfNotThere((listItem **) results, e );
-	return BM_CONTINUE;
 }
 
 static int
@@ -376,8 +369,34 @@ bm_void( char *expression, BMContext *ctx )
 	return 0;
 }
 
+//===========================================================================
+//	bm_query
+//===========================================================================
+static BMTraverseCB query_CB;
+
+listItem *
+bm_query( char *expression, BMContext *ctx )
+{
+	listItem *results = NULL;
+	bm_traverse( expression, ctx, query_CB, &results );
+	return results;
+}
+static int
+query_CB( CNInstance *e, BMContext *ctx, void *results )
+{
+	addIfNotThere((listItem **) results, e );
+	return BM_CONTINUE;
+}
+//===========================================================================
+//	bm_release
+//===========================================================================
 static BMTraverseCB release_CB;
 
+void
+bm_release( char *expression, BMContext *ctx )
+{
+	bm_traverse( expression, ctx, release_CB, NULL );
+}
 static int
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
