@@ -204,7 +204,7 @@ readStory( char *path )
 							on_( '\n' )	do_( "_expr" )	REENTER
 											tab += tab_base;
 											type = ELSE;
-							on_( '%' )	do_( "_%_" )	typelse = 1;
+							on_( '%' )	do_( "_%" )	typelse = 1;
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
 							on_( 'd' )	do_( "d" )	typelse = 1;
@@ -667,7 +667,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 }
 
 //===========================================================================
-//	err_report
+//	err
 //===========================================================================
 static void
 err_report( CNNarrativeError errnum, int line, int column, int indent )

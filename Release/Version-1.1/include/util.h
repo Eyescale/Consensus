@@ -10,16 +10,20 @@ void xpn_add( listItem **xp, int as_sub, int position );
 void xpn_out( FILE *stream, listItem *xp );
 
 typedef enum {
-	PRUNE_DEFAULT,
+	PRUNE_TERM,
+	PRUNE_FILTER,
 	PRUNE_IDENTIFIER,
-	PRUNE_COLON
+	PRUNE_FORMAT
 } PruneType;
+
 typedef void BMLocateCB( char *, listItem *, void * );
+typedef char * BMFormatCB( char *, int, void * );
 
 char *	p_locate( char *expression, listItem **exponent );
 char *	p_locate_arg( char *expression, listItem **exponent, BMLocateCB, void * );
 char *	p_extract( char * );
 char *	p_prune( PruneType type, char * );
+char *	p_traverse( char *, BMFormatCB, void * );
 int	p_single( char * );
 int	p_filtered( char * );
 

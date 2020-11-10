@@ -120,7 +120,7 @@ p_locate( char *expression, listItem **exponent )
 			p = p_prune( PRUNE_IDENTIFIER, p+1 );
 			break;
 		default:
-			if ( not ) p++;
+			if ( not ) p_prune( PRUNE_IDENTIFIER, p );
 			else scope = 0;
 		}
 	}
@@ -145,10 +145,10 @@ p_locate( char *expression, listItem **exponent )
 //	p_locate_arg
 //===========================================================================
 char *
-p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *user_data )
+p_locate_arg( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
 /*
-	if user_CB is set
-		invokes user_CB on each .arg found in expression
+	if arg_CB is set
+		invokes arg_CB on each .arg found in expression
 	Otherwise
 		returns first '?' found in expression, together with exponent
 		Note that we ignore the '~' signs and %(...) sub-expressions
@@ -170,11 +170,11 @@ p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *u
 		switch ( *p ) {
 		case '~':
 		case '%':
-			p = p_prune( PRUNE_COLON, p );
+			p = p_prune( PRUNE_FILTER, p+1 );
 			break;
 		case '*':
-			if (( user_CB )) {
-				p = p_prune( PRUNE_COLON, p );
+			if (( arg_CB )) {
+				p = p_prune( PRUNE_FILTER, p+1 );
 				break;
 			}
 			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
@@ -217,16 +217,16 @@ p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *u
 			couple = (int) popListItem( &stack.couple );
 			p++; break;
 		case '?':
-			if (( user_CB )) p++;
+			if (( arg_CB )) p++;
 			else scope = 0;
 			break;
 		case '.':
 			p++;
 			if ( !is_separator(*p) ) {
-				if (( user_CB )) {
-	 				user_CB( p, *exponent, user_data );
+				if (( arg_CB )) {
+	 				arg_CB( p, *exponent, user_data );
 				}
-				else p = p_prune( PRUNE_IDENTIFIER, p+1 );
+				else p = p_prune( PRUNE_IDENTIFIER, p );
 			}
 			break;
 		default:
@@ -244,11 +244,21 @@ p_locate_arg( char *expression, listItem **exponent, BMLocateCB user_CB, void *u
 char *
 p_prune( PruneType type, char *p )
 {
-	if ( type == PRUNE_IDENTIFIER ) {
-		while ( !is_separator( *p ) ) p++;
+	switch ( type ) {
+	case PRUNE_FORMAT:
+		return p_traverse( p, NULL, NULL );
+	case PRUNE_IDENTIFIER:
+		if ( *p=='\'' ) {
+			if ( p[1]=='\\' ) p++; // for now
+			return p+3;
+		}
+		while ( !is_separator(*p) ) p++;
 		return p;
+	default:
+		break;
 	}
-	int level = ( *p==')' ) ? 2 : 1;
+	if ( *p==')' ) p++;
+	int level = 1;
 	for ( ; ; p++ ) {
 		switch ( *p ) {
 		case '\0': return p;
@@ -258,14 +268,93 @@ p_prune( PruneType type, char *p )
 			level--;
 			break;
 		case ':':
-			if ( type != PRUNE_COLON )
-				break;
-			// no break
+			if (( type==PRUNE_FILTER ) && ( level==1 ))
+				return p;
+			break;
 		case ',':
 			if ( level == 1 ) return p;
 			break;
 		}
 	}
+}
+
+//===========================================================================
+//	p_traverse
+//===========================================================================
+char *
+p_traverse( char *p, BMFormatCB user_CB, void *user_data )
+/*
+	uses the 2-bit variable 'escaped' to represent the following:
+	. if lower bit is set, the previous character was a backslash
+	. if upper bit is set, the current character is within double-quote
+
+	idea is that to allow support for e.g. \t"aslkj"\ \n
+
+	returns either the position after the complete escaped sequence,
+		or the passed argument if not escaped.
+*/
+{
+	int escaped = 0;
+	while ( *p ) {
+		switch ( *p ) {
+		case '\\':
+			switch ( escaped ) {
+			case 0:
+			case 2:
+				p++;
+				escaped++;
+				break;
+			case 1:
+			case 3:
+				if (( user_CB )) {
+					p = user_CB( p, escaped, user_data );
+				}
+				else p++;
+				escaped--;
+				break;
+			}
+			break;
+		case '\"':
+			switch ( escaped ) {
+			case 0 :
+				p++;
+				escaped = 2;
+				break;
+			case 2:
+				return p+1;
+			case 1:
+			case 3:
+				if (( user_CB )) {
+					p = user_CB( p, escaped, user_data );
+				}
+				else p++;
+				escaped--;
+				break;
+			}
+			break;
+		default:
+			switch ( escaped ) {
+			case 0: // not supposed to happen
+				return p;
+			case 2:
+				if (( user_CB )) {
+					p = user_CB( p, escaped, user_data );
+				}
+				else p++;
+				break;
+			case 1:
+			case 3:
+				if (( user_CB )) {
+					p = user_CB( p, escaped, user_data );
+				}
+				else p++;
+				escaped--;
+				break;
+			}
+			break;
+		}
+	}
+	return p;
 }
 
 //===========================================================================

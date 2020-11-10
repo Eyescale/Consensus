@@ -280,7 +280,7 @@ fprintf( stderr, " ........{\n" );
 					stack.as_sub = popListItem( &stack.sub );
 					i = popListItem( &stack.i );
 					// p must be at sub-expression closure
-					if ( x == NULL ) p = p_prune( PRUNE_DEFAULT, stack.p->ptr );
+					if ( x == NULL ) p = p_prune( PRUNE_TERM, stack.p->ptr );
 					popListItem( &stack.p );
 					op = BM_END;
 					break;

@@ -58,7 +58,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 		base = popListItem( &data->stack.base );
 		scope = (int) data->stack.scope->ptr;
 		char *start_p = popListItem( &data->stack.p );
-		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
+		if ( *p==')' &&  p!=p_prune( PRUNE_TERM, start_p ) )
 			scope++; // e.g. %( ... ) or *( ... )
 		popListItem( &data->stack.scope );
 		OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
@@ -93,7 +93,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			}
 			else if ( bm_match( *x, NULL, *exponent, base, data ) < 0 ) {
 				success = not; not = 0;
-				p = p_prune( PRUNE_DEFAULT, p+1 );
+				p = p_prune( PRUNE_TERM, p+1 );
 			}
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
@@ -119,14 +119,14 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			if (( data->op == BM_BGN ) && ( scope==OOS+1 ))
 				{ done = 1; break; }
 			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ',':
 			if ( scope <= OOS+1 ) { done = 1; break; }
 			popListItem( exponent );
 			xpn_add( exponent, AS_SUB, 1 );
 			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ')':
 			scope--;
@@ -150,6 +150,8 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 #endif
 			else success = ( bm_match( *x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		case '\'':
 			break;
 		default:
 			success = bm_match( *x, p, *exponent, base, data );
@@ -236,7 +238,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 		if ( p_filtered( p )  ) {
 			// bm_void made sure we do have results
 			sub[ ndx ] = bm_query( p, ctx );
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			continue;
 		}
 		switch ( *p ) {
@@ -258,7 +260,7 @@ bm_substantiate( char *expression, BMContext *ctx )
 		case '~':
 			// bm_void made sure we do have results
 			sub[ ndx ] = bm_query( p, ctx );
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case '(':
 			scope++;
@@ -328,7 +330,7 @@ bm_void( char *expression, BMContext *ctx )
 			if ( !strncmp( p, "?:", 2 ) ) p += 2;
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			continue;
 		}
 		switch ( *p ) {
@@ -346,7 +348,7 @@ bm_void( char *expression, BMContext *ctx )
 		case '~':
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case '(':
 			scope++;
@@ -407,69 +409,57 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //===========================================================================
 //	bm_outputf
 //===========================================================================
-void
+typedef struct {
+	char **expression;
+	BMContext *ctx;
+} PrintData;
+static BMFormatCB print_CB;
+
+int
 bm_outputf( char *format, char *expression, BMContext *ctx )
 {
-	int escaped = 0;
-	for ( char *p=format; *p; p++ ) {
+	if ( *format ) {
+		PrintData data = { &expression, ctx };
+		p_traverse( format, print_CB, &data );
+	}
+	else if ( *expression ) {
+		// no format string: output expression results
+		do expression = bm_output( expression, ctx );
+		while ( *expression );
+	}
+	else printf( "\n" );
+	return 0;
+}
+static char *
+print_CB( char *p, int escaped, void *user_data )
+{
+	PrintData *data = user_data;
+	switch ( escaped ) {
+	case 1:
+	case 3:
 		switch ( *p ) {
-		case '\\':
-			switch ( escaped ) {
-			case 0:
-			case 2:
-				escaped++;
-				break;
-			case 1:
-			case 3:
-				putchar( *p );
-				escaped--;
-				break;
+		case 't': putchar( '\t' ); break;
+		case 'n': putchar( '\n' ); break;
+		case '\\': putchar( '\\' ); break;
+		case '\"': putchar( '\"' ); break;
+		case '%': putchar( '%' ); break;
+		}
+		p++;
+		break;
+	case 2:
+		switch ( *p ) {
+		case '%':;
+			char *expression = *data->expression;
+			if ( p[1]=='_' && *expression ) {
+				*data->expression = bm_output( expression, data->ctx );
 			}
-			break;
-		case '\"':
-			switch ( escaped ) {
-			case 0 :
-				escaped = 2;
-				break;
-			case 2:
-				return;
-			case 1:
-			case 3:
-				putchar( *p );
-				escaped--;
-				break;
-			}
-			break;
-		case '%':
-			p++;
-			switch ( *p ) {
-			case '_':
-				if ( *expression ) {
-					bm_output( expression, ctx );
-					expression = p_prune( PRUNE_DEFAULT, expression );
-				}
-			}
+			p += 2;
 			break;
 		default:
-			switch ( escaped ) {
-			case 0:	// should not happen
-				return;
-			case 2:
-				putchar( *p );
-				break;
-			case 1:
-			case 3:
-				switch ( *p ) {
-				case 't': putchar( '\t' ); break;
-				case 'n': putchar( '\n' ); break;
-				default: putchar( *p ); break;
-				}
-				escaped--;
-				break;
-			}
-			break;
+			putchar( *p++ );
 		}
 	}
+	return p;
 }
 
 //===========================================================================
@@ -481,11 +471,11 @@ typedef struct {
 	CNInstance *last;
 } OutputData;
 
-void
+char *
 bm_output( char *expression, BMContext *ctx )
 /*
 	outputs expression's results
-	note that we rely here on bm_traverse to eliminate doublons
+	note that we rely on bm_traverse to eliminate doublons
 */
 {
 	OutputData data;
@@ -499,6 +489,10 @@ bm_output( char *expression, BMContext *ctx )
 		cn_out( stdout, data.last, ctx->db );
 		printf( " }" );
 	}
+	expression = p_prune( PRUNE_TERM, expression );
+	while ( strmatch( " \t,", *expression ) )
+		expression++;
+	return expression;
 }
 static int
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )

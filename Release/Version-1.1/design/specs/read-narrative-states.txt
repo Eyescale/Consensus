@@ -3,13 +3,15 @@
 		+	base
 		-	base
 		_:	expr
-		_.	_._	_..	_expr
+		_.	_._	_..	_.
+					_expr
 		_%	_expr
 		i	in	in_	_expr
 		o	on	on_	_expr
 		d	do	do_	_expr
-		e	el	els	else	else_	_expr
-							_%_
+		e	el	els	else	_expr
+						else_	_expr
+							_%
 							i
 							o
 							d
@@ -26,6 +28,8 @@
 					expr_
 		?	expr
 		.	expr
+		char	char_	expr
+			char\\	char_	expr
 		term	expr
 
 	expr_	base

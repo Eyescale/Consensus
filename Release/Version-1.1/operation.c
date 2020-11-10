@@ -81,7 +81,7 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //	operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-static BMTraverseCB enable_CB;
+static BMTraverseCB activate_CB;
 static void
 operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 {
@@ -103,7 +103,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		ctrl(ELSE_EN) case EN:
 			if (!(data->tbd)) break;
 			char *expression = occurrence->data->expression;
-			bm_traverse( expression, ctx, enable_CB, data );
+			bm_traverse( expression, ctx, activate_CB, data );
 			break;
 		ctrl(ELSE_DO) case DO:
 			do_action( occurrence->data->expression, ctx );
@@ -143,7 +143,7 @@ RETURN:
 }
 static int cmp_CB( CNInstance *, BMContext *, void * );
 static int
-enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
+activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 /*
 	compare entity matching narrative local EN declaration
 	with entities matching protos "tbd" - in base context
@@ -226,7 +226,6 @@ do_action( char *expression, BMContext *ctx )
 	return 1;
 }
 
-
 //===========================================================================
 //	do_input
 //===========================================================================
@@ -300,77 +299,19 @@ do_input( char *expression, BMContext *ctx )
 //===========================================================================
 //	do_output
 //===========================================================================
-static char * skip_format( char *format );
-
 static int
 do_output( char *expression, BMContext *ctx )
 /*
 	Assuming expression is in the form
-		> format : expression
-	then outputs expression to stdout according to format
+		> format : expression(s)
+	then outputs expression(s) to stdout according to format
 */
 {
-	// skip the leading '>'
-	char *format = expression + 1;
-	switch ( *format ) {
-	case ':':
-		// no format: output expression results
-		expression = format + 1;
-		if ( *expression ) {
-			bm_output( expression, ctx );
-		}
-		else printf( "\n" );
-		break;
-	default:
-		expression = skip_format( format );
-		switch ( *expression ) {
-		case ':':
-			expression++;
-		}
+	char *format = expression + 1; // skipping '>'
+	expression = p_prune( PRUNE_FORMAT, format );
+	if ( *expression ) expression++; // skipping ':'
+	return ( *format == ':' ) ?
+		bm_outputf( "", expression, ctx ) :
 		bm_outputf( format, expression, ctx );
-	}
-	return 0;
 }
-static char *
-skip_format( char *format )
-{
-	int escaped = 0;
-	for ( char *p=format; *p; p++ ) {
-		switch ( *p ) {
-		case '\\':
-			switch ( escaped ) {
-			case 0:
-			case 2:
-				escaped++;
-				break;
-			case 1:
-			case 3:
-				escaped--;
-				break;
-			}
-			break;
-		case '\"':
-			switch ( escaped ) {
-			case 0 :
-				escaped = 2;
-				break;
-			case 2:
-				return p+1;
-			case 1:
-			case 3:
-				escaped--;
-				break;
-			}
-			break;
-		default:
-			switch ( escaped ) {
-			case 1:
-			case 3:
-				escaped--;
-				break;
-			}
-			break;
-		}
-	}
-	return format;
-}
+
