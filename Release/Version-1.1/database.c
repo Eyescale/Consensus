@@ -6,7 +6,7 @@
 #include "db_private.h"
 
 // #define DEBUG
-// #define TOKENIZE
+#define TOKENIZE
 
 //===========================================================================
 //	CNDB allocate / free
@@ -797,8 +797,24 @@ cn_out( FILE *stream, CNInstance *e, CNDB *db )
 			ndx = 0;
 			continue;
 		}
-		char *name = db_identifier( e, db );
-		if (( name )) fprintf( stream, "%s", name );
+		char *p = db_identifier( e, db );
+		if (( p )) {
+			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p) )
+				fprintf( stream, "%s", p );
+			else {
+				switch (*p) {
+				case '\0': fprintf( stream, "'\\0'" ); break;
+				case '\t': fprintf( stream, "'\\t'" ); break;
+				case '\n': fprintf( stream, "'\\n'" ); break;
+				case '\'': fprintf( stream, "'\\''" ); break;
+				case '\\': fprintf( stream, "'\\\\'" ); break;
+				default:
+					if (( *p < 32 ) || ( *p > 126 ))
+						fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
+					else fprintf( stream, "'%c'", *p );
+				}
+			}
+		}
 		for ( ; ; ) {
 			if (( stack.ndx )) {
 				int parent_ndx = (int) stack.ndx->ptr;

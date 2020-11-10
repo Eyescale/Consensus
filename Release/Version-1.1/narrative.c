@@ -419,7 +419,16 @@ readStory( char *path )
 		end
 		in_( "char\\" ) bgn_
 			ons( "0tn\'\\" ) do_( "char_" )	add_item( &s, event );
+			on_( 'x' )	do_( "char\\x" ) add_item( &s, event );
 			end
+			in_( "char\\x" ) bgn_
+				ons( "0123456789ABCDEF" )
+					do_( "char\\x_" ) add_item( &s, event );
+				end
+			in_( "char\\x_" ) bgn_
+				ons( "0123456789ABCDEF" )
+					do_( "char_" )	add_item( &s, event );
+				end
 		in_( "char_" ) bgn_
 			on_( '\'' )	do_( "expr" )	add_item( &s, event );
 							dirty_go( &dirty, &s );

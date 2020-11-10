@@ -1,7 +1,6 @@
 TODO
 	. single character identifier entities
-		. operation.c: do_input, do_output
-		. expression.c: db_input, db_output, db_outputf
+		. bm_input: refactor using p_traverse( format, cb )
 		. Test cases
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
 		  => could generalize with \identifier (cf. \this for base narrative's .local)
@@ -13,6 +12,12 @@ TODO
 
 DONE
 	. single character identifier entities
+		. added design/specs/test_hval.c
+		. support CNDB internal vs. external representation
+			. context.c: charscan, bm_lookup, bm_register
+			. database.c: cn_out
+		. bm_output: done
+			. refactored bm_outputf() mutualizing p_traverse( format, cb )
 		. support in readNarrative and narrative_output
 	. feature complete: narrative instances
 		. narrative_output: cf ./Test/CN.yak

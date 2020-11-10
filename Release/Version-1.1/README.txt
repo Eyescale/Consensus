@@ -36,14 +36,20 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/11
+		single character identifier entities
+		. added design/specs/test_hval.c validating output
+		. completed cn_out => registration & output complete
+		. completed bm_output and bm_register support
+		. refactored bm_outputf mutualizing p_traverse(format,callback)
 	2020/11/10
-		updated story_ and narrative_output
 		. added ./Test/CN.yak - usage:
 			./B% ./Test/CN.yak > toto
 			./B% toto > titi
 			diff toto titi
 		  diff should show no difference
 		  Note: surely there is a way to write all three lines above as one
+		. updated story_output and narrative_output
 	2020/11/09
 		feature complete: narrative instance registry
 		. narrative instance definition [UNTESTED]

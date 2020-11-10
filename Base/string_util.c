@@ -48,40 +48,9 @@ isanumber( char *p )
 /*---------------------------------------------------------------------------
 	tokcmp
 ---------------------------------------------------------------------------*/
-static int tokval( const char * );
 int
 tokcmp( const char *p, const char *q )
 {
-#if 0
-	if ( *p == '\'' ) {
-		int pval = tokval(p+1);
-		if ( *q == '\'' )
-			return pval - tokval(q+1);
-		else if ( is_separator(*q) )
-			return pval;
-		else {
-			int qval = *(const unsigned char*)q++;
-			if ( pval == qval ) {
-				if ( is_separator(*q) ) return 0;
-				else return -*(const unsigned char*)p;
-			}
-			else return pval-qval;
-		}
-	}
-	else if ( *q == '\'' ) {
-		int qval = tokval(q+1);
-		if ( is_separator(*p) )
-			return -qval;
-		else {
-			int pval = *(const unsigned char*)p++;
-			if ( pval == qval ) {
-				if ( is_separator(*p) ) return 0;
-				else return *(const unsigned char*)p;
-			}
-			else return pval-qval;
-		}
-	}
-#else
 	if ( is_separator(*p) ) {
 		if ( !is_separator(*q) ) return - *(const unsigned char*)q;
 		return *(const unsigned char*)p - *(const unsigned char*)q;
@@ -89,7 +58,6 @@ tokcmp( const char *p, const char *q )
 	else if ( is_separator(*q) ) {
 		return *(const unsigned char*)p;
 	}
-#endif
 	else for ( ; ; p++, q++ ) {
 		if ( is_separator(*p) )
 			return is_separator(*q) ? 0 : - *(const unsigned char*)q;
@@ -98,21 +66,6 @@ tokcmp( const char *p, const char *q )
 		else if ( *p != *q )
 			return *(const unsigned char*)p - *(const unsigned char*)q;
 	}
-}
-static int
-tokval( const char *p )
-{
-	if ( *p == '\\' ) {
-		switch ( p[1] ) {
-		case '0': return 0;	// nul
-		case 't': return 9;	// ht
-		case 'n': return 13;	// cr
-		case '\'': return 39;	// quote
-		case '\\': return 92;	// backslash
-		}
-		return 0; // err
-	}
-	return *(const unsigned char*)p;
 }
 
 /*---------------------------------------------------------------------------

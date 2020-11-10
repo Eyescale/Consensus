@@ -30,6 +30,7 @@
 		.	expr
 		char	char_	expr
 			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
 		term	expr
 
 	expr_	base
