@@ -500,7 +500,7 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 		CNInstance *g = i->ptr;
 		if (( g->as_sub[ 0 ] ) || ( g->as_sub[ 1 ] )) continue;
 		CNInstance *e = g->sub[ released ? 0 : 1 ];
-		if ( e == nil ) continue; // exit
+		if ( e == nil ) continue; // out
 		if (( e->sub[ 0 ] == nil ) || ( e->sub[ 1 ] == nil ))
 			continue;
 		addItem( stack, i );

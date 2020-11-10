@@ -78,28 +78,20 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 {
 	Registry *registry = ctx->registry;
 	Pair *entry;
-
 	switch ( *p ) {
-	case '?':
-		/* registering %?
-		*/
+	case '?': // registering %?
 		entry = registryLookup( registry, "?" );
 		if (( entry )) {
 			entry->value = e;
 			return e;
 		}
 		return NULL;
-	case '.':
-		break; // register .local(s)
-	default:
-		/* registering instance
-		*/
+	case '.': break;
+	default: // registering instance
 		entry = registryLookup( registry, p );
 		return (entry) ? entry->value : db_register( p, ctx->db );
 	}
-
-	/* registering .local(s)
-	*/
+	// registering .local(s)
 	entry = registryLookup( registry, "this" );
 	if ( entry == NULL ) return NULL; // base narrative
 

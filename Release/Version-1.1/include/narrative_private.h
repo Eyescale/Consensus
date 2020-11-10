@@ -23,14 +23,22 @@ typedef enum {
 
 static void err_report( CNNarrativeError, int line, int column, int tabmark );
 
+static int add_narrative( listItem **story, CNNarrative *);
+
 static CNNarrative * newNarrative( void );
 static void freeNarrative( CNNarrative * );
+static int proto_set( CNNarrative *, listItem ** );
 static void narrative_reorder( CNNarrative * );
 static int narrative_output( FILE *, CNNarrative *, int );
 
 static CNOccurrence *newOccurrence( CNOccurrenceType );
 static void freeOccurrence( CNOccurrence * );
 static void occurrence_set( CNOccurrence *, listItem **sequence );
+
+static void dirty_set( int *dirty, listItem **s );
+static void dirty_go( int *dirty, listItem **s );
+static void add_item( listItem **, int );
+static void s_add( listItem **, char * );
 
 //===========================================================================
 //	Narrative CNParserBegin / CNParserEnd - macros

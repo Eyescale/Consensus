@@ -1,12 +1,8 @@
 TODO
-	. narrative instances
-		. Test case(s):
-			. narrative_output
-			. narrative instance
 	. single character identifier entities
-		. narrative.c: readNarrative
 		. operation.c: do_input, do_output
 		. expression.c: db_input, db_output, db_outputf
+		. Test cases
 		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
 		  => could generalize with \identifier (cf. \this for base narrative's .local)
 	. regression testing framework
@@ -16,7 +12,10 @@ TODO
 	. README.txt
 
 DONE
-	. narrative instances
+	. single character identifier entities
+		. support in readNarrative and narrative_output
+	. feature complete: narrative instances
+		. narrative_output: cf ./Test/CN.yak
 		. tokenized CNDB index and BMContext registry
 		. support for .local declaration
 		. support do .( expression ) [ NOTE: as input preprocessing ]

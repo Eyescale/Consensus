@@ -36,10 +36,18 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/10
+		updated story_ and narrative_output
+		. added ./Test/CN.yak - usage:
+			./B% ./Test/CN.yak > toto
+			./B% toto > titi
+			diff toto titi
+		  diff should show no difference
+		  Note: surely there is a way to write all three lines above as one
 	2020/11/09
-		feature complete
-		. narrative instance definition & registry
-		. .local and .( expression )
+		feature complete: narrative instance registry
+		. narrative instance definition [UNTESTED]
+		. support .local declarations and do .( expression )
 	2020/11/06
 		feature change: using .arg instead of %arg in narrative instance name
 		. updated design/yak.story, operation.c, util.c and expression.c
