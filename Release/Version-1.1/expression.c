@@ -601,7 +601,8 @@ bm_read( FILE *stream )
 	in_( "term" ) bgn_
 		on_separator
 			if ( level > 0 ) {
-				do_( "expr" )	informed = 1;
+				do_( "expr" )	REENTER
+						informed = 1;
 			}
 			else {	do_( "" )	ungetc( event, stream ); }
 		on_other	do_( same )	StringAppend( s, event );
