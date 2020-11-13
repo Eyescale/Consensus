@@ -30,7 +30,7 @@ is_space( int event )
 int
 is_escapable( int event )
 {
-	// Note: includes neither 'x' or '\"'
+	// Note: includes neither 'x' nor '\"'
 	return strmatch( "0tn\'\\", event );
 }
 int

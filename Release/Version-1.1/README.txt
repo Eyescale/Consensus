@@ -36,14 +36,21 @@ Contents
 	below in order to track the release status.
 
 Updates
-	2020/11/12
-		added ./Test/CN.char
+	2020/11/13
+		feature complete: single character identifiers
+		. refactored bm_input and bm_output, e.g. input now
+		  support relationship instance identifiers [UNTESTED]
+		  as well as single character identifiers (in quotes)
+		. patched Version-1.0 and TuringMachine example to
+		  resp. recognize and use output format "%s"
+		. introduced input formats "%_", "%c" and "%%", and
+		  output formats "%_", "%s" and "%%"
+		. added ./Test/CN.output
 	2020/11/11
-		added design/specs/test_hval.c validating output
+		added design/specs/test_hval.c validating output for
 		single character identifier entities
-		. completed cn_out => registration & output complete
 		. completed bm_output and bm_register support
-		. refactored bm_outputf mutualizing p_traverse(format,callback)
+		. completed cn_out
 	2020/11/10
 		added ./Test/CN.yak - usage:
 			./B% ./Test/CN.yak > toto
@@ -51,7 +58,7 @@ Updates
 			diff toto titi
 		. diff should show no difference
 		. Note: surely there is a way to write all three lines above as one
-		updated story_output and narrative_output
+		  updated story_output and narrative_output
 	2020/11/09
 		feature complete: narrative instance registry
 		. narrative instance definition [UNTESTED]
@@ -71,7 +78,7 @@ Updates
 	2020/11/02
 		code cleanup
 		. simplified VerifyData - interface to bm_verify / bm_match
-		. optimized bm_match() - using pivot from db_traverse(), db_feel()
+		. optimized bm_match() - using pivot from db_traverse() & db_feel()
 		. changed init and exit from operation flags to CNDB entities
 	2020/10/31
 		added ./design/specs/code-analysis.txt
