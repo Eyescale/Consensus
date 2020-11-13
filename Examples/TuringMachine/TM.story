@@ -131,13 +131,13 @@ else in *phase: OUTPUT
 		do (( *, state ), OUTPUT_CURRENT )
 	else in *state: OUTPUT_CURRENT
 		in *p: *(head,position)
-			do >: %((.,?):*(head,state))
+			do >"%s": %((.,?):*(head,state))
 		else do >" "
 		do (( *, state ), OUTPUT_SYMBOL )
 	else in *state: OUTPUT_SYMBOL
 		in ( TAPE, *p )
-			do >: %((.,?):*(TAPE,*p))
-		else do >: %((.,?):*BLANK)
+			do >"%s": %((.,?):*(TAPE,*p))
+		else do >"%s": %((.,?):*BLANK)
 		do >" "
 		do ~( *, state )
 	else in ( RIGHT, *p )

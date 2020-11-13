@@ -117,10 +117,9 @@ readSchemeFrame( Scheme *scheme, int event )
 
 	BEGIN
 #ifdef SCH_DEBUG
-	end
 	fprintf( stderr, "readSchemeFrame: state=\"%s\" event='%c'\n", state, event );
-	bgn_
 #endif
+	bgn_
 	on_( EOF ) bgn_
 		in_( "base" )	do_( same )
 		in_( "\\n" )	do_( "base" )

@@ -7,28 +7,37 @@
 
 #include "pair.h"
 
+#define MAXCHARSIZE 1
+
 int	is_separator( int event );
+int	is_character( int event );
 int	is_space( int event );
+int	is_escapable( int event );
+int	is_xdigit( int event );
 int	isanumber( char *string );
+int	charscan( char *p, char *q );
 int	tokcmp( const char *p, const char *q );
 
-typedef struct {
-	void *data;
-	int mode;
-} CNString;
-
-enum {
-	CNStringBytes = 0,
-	CNStringText
-};
 enum {
 	CNStringMode = 0,
 	CNStringAll
 };
 
+typedef enum {
+	CNStringBytes = 0,
+	CNStringText
+} CNStringState;
+
+typedef struct {
+	void *data;
+	CNStringState mode;
+} CNString;
+
 CNString *newString( void );
 void	freeString( CNString * );
 
+int	StringInformed( CNString *s );
+int	StringAt( CNString *s );
 void	StringReset( CNString *string, int );
 int	StringStart( CNString *string, int event );
 int	StringAppend( CNString *string, int event );

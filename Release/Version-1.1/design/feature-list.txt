@@ -35,10 +35,34 @@ File Format extensions
 Input/Output interface
 		do expression : "format" <	// input
 		do > "format": expression	// output
-	1. support single-character identifier entities (default)
-	2. support "%c" in format
 
-	Q: how to convert a ( list, * ) of single character identifier entities
-	   into a standalone entity - aka. B% literal? could it be by piping output
-	   into input? // Out of scope
+	Where format can hold
+		%_	represents any entity identifier (including relationship instances)
+		%s	represents any base entity identifier (no relationship instance)
+		%c	represents only single character entity identifier
+		%%	represents %
+
+	"format" can also be omitted, which defaults to "%_"
+
+	Input will read the stream and behave according to the specified format
+		%_	if an identifiable expression is read, it is instantiated
+			and associated with the provided input expression via *
+			otherwise, e.g. in the case of an unquoted separator other
+			than * or %, input just ignores and reads on
+		%s	will instantiate base entity, either as alphanumerical or
+			single character identifier instance
+		%s	will instantiate single character identifier instance.
+		%%	will read and move on if and only if input matches
+
+	if other characters are specified in the format, input will read and move
+	on if and only if the character matches the input
+
+	Notes
+	. Eventually we would like to support e.g.
+		do > "format": { expression1, expression2, ... }
+		do { expression1, expression2, ... }: "format" <
+	  but for now only one expression can be specified
+	. Q: how to convert a ( list, * ) of single character identifier entities
+	     into a standalone entity - aka. B% literal? could it be by piping output
+	     into input? // Out of scope
 

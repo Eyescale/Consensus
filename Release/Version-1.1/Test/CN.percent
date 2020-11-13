@@ -1,9 +1,14 @@
 
 	on init
 		do ( %, test )
-		do ((*,test),%)
+		do (( *, test ), % )
+	else in *test: %
+		do >:.
+		do >:
+		do >"all is well: %_\n" : *test
+		do exit
 	else
-		do >"%_\n":.
-		in *test: %
-			do >"all is well: %_\n" : *test
+		do >"not good: "
+		do >: *test
+		do >:
 		do exit

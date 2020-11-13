@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "macros.h"
 #include "narrative.h"
 #include "narrative_private.h"
 #include "util.h"
@@ -36,7 +35,7 @@ readStory( char *path )
 	FILE *file = fopen( path, "r" );
 	if ( file == NULL ) return NULL;
 
-	listItem *s = NULL; // sequence to be informed
+	CNString *s = newString(); // sequence to be informed
 	struct {
 		listItem *first;
 		listItem *sub_level;
@@ -118,14 +117,14 @@ readStory( char *path )
 			end
 		in_( "_." ) bgn_
 			on_separator	; // err
-			on_other	do_( "_._" )	add_item( &s, '.' );
-							add_item( &s, event );
+			on_other	do_( "_._" )	StringAppend( s, '.' );
+							StringAppend( s, event );
 			end
 			in_ ( "_._" ) bgn_
-				ons( " \t" )	do_( "_.." ) 	add_item( &s, ' ' );
+				ons( " \t" )	do_( "_.." ) 	StringAppend( s, ' ' );
 				on_( '\n' )	do_( "_.." )	REENTER
 				on_separator	; // err
-				on_other	do_( same )	add_item( &s, event );
+				on_other	do_( same )	StringAppend( s, event );
 				end
 				in_( "_.." ) bgn_
 					ons( " \t" )	do_( same )
@@ -137,7 +136,7 @@ readStory( char *path )
 		in_( "_%" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
-							add_item( &s, '%' );
+							StringAppend( s, '%' );
 							add_item( &stack.sub_level, sub_level );
 							add_item( &stack.marked, marked );
 							sub_level = level;
@@ -258,51 +257,51 @@ readStory( char *path )
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "expr_" )	REENTER
-		on_( '*' )	do_( "*" )	add_item( &s, event );
-		on_( '%' )	do_( "%" )	add_item( &s, event );
-		on_( '~' )	do_( same )	add_item( &s, event );
+		on_( '*' )	do_( "*" )	StringAppend( s, event );
+		on_( '%' )	do_( "%" )	StringAppend( s, event );
+		on_( '~' )	do_( same )	StringAppend( s, event );
 		on_( '>' )
-			if ( type==DO && s==NULL ) {
-				do_( ">" )	add_item( &s, event );
+			if ( type==DO && !StringInformed(s) ) {
+				do_( ">" )	StringAppend( s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
 			}
 		on_( '<' )
 			if ( type==DO && !level && ( first & FILTERED )) {
-				do_( "expr_" )	add_item( &s, event );
+				do_( "expr_" )	StringAppend( s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_INPUT : INPUT;
 			}
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++;
-						add_item( &s, event );
+						StringAppend( s, event );
 						add_item( &stack.first, first );
 						add_item( &stack.dirty, dirty );
 						first = 1; dirty = informed = 0;
 			}
 		on_( ',' )
 			if ( first && informed && ( level > 0 )) {
-				do_( same )	add_item( &s, event );
+				do_( same )	StringAppend( s, event );
 						first = informed = 0;
 			}
 		on_( ':' )
 			if ( informed ) {
-				do_( same )	add_item( &s, event );
+				do_( same )	StringAppend( s, event );
 						if ( first ) first |= FILTERED;
 						informed = 0;
 			}
 		on_( ')' )
 			if ( informed && ( level > 0 )) {
 				do_( same )	level--;
-						add_item( &s, event );
+						StringAppend( s, event );
 						if ( sub_level == level ) {
 							sub_level = (int) popListItem( &stack.sub_level );
 							marked = (int) popListItem( &stack.marked );
 						}
 						first = (int) popListItem( &stack.first );
 						dirty = (int) popListItem( &stack.dirty );
-						dirty_go( &dirty, &s );
+						dirty_go( &dirty, s );
 			}
 		on_( '?' )
 			if ( !informed ) {
@@ -314,43 +313,43 @@ readStory( char *path )
 			}
 		on_( '\'' )
 			if ( !informed ) {
-				do_( "char" )	add_item( &s, event );
+				do_( "char" )	StringAppend( s, event );
 						informed = 1;
 			}
 		on_separator	; // err
 		on_other
 			if ( !informed ) {
-				do_( "term" )	add_item( &s, event );
+				do_( "term" )	StringAppend( s, event );
 						informed = 1;
 			}
 		end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	add_item( &s, event );
-		on_( '\"' )	do_( ">\"" )	add_item( &s, event );
+		on_( ':' )	do_( "expr" )	StringAppend( s, event );
+		on_( '\"' )	do_( ">\"" )	StringAppend( s, event );
 		end
 		in_( ">\"" ) bgn_
-			on_( '\t' )	do_( same )	add_item( &s, '\\' );
-							add_item( &s, 't' );
-			on_( '\n' )	do_( same )	add_item( &s, '\\' );
-							add_item( &s, 'n' );
-			on_( '\\' )	do_( ">\"\\" )	add_item( &s, event );
-			on_( '\"' )	do_( ">_" )	add_item( &s, event );
-			on_other	do_( same )	add_item( &s, event );
+			on_( '\t' )	do_( same )	StringAppend( s, '\\' );
+							StringAppend( s, 't' );
+			on_( '\n' )	do_( same )	StringAppend( s, '\\' );
+							StringAppend( s, 'n' );
+			on_( '\\' )	do_( ">\"\\" )	StringAppend( s, event );
+			on_( '\"' )	do_( ">_" )	StringAppend( s, event );
+			on_other	do_( same )	StringAppend( s, event );
 			end
 		in_( ">\"\\" ) bgn_
-			on_any		do_( ">\"" )	add_item( &s, event );
+			on_any		do_( ">\"" )	StringAppend( s, event );
 			end
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( ':' )	do_( "expr" )	add_item( &s, event );
+			on_( ':' )	do_( "expr" )	StringAppend( s, event );
 			on_( '\n' )	do_( "expr_" )	REENTER
 			end
 	in_( "%" ) bgn_
 		ons( " \t" )	do_( "%_" )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						informed = 1;
-		on_( '?' )	do_( "expr" )	add_item( &s, '?' );
+		on_( '?' )	do_( "expr" )	StringAppend( s, '?' );
 						informed = 1;
 		on_( '(' )	do_( "expr" )	REENTER
 						add_item( &stack.sub_level, sub_level );
@@ -372,82 +371,80 @@ readStory( char *path )
 	in_( "?" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' )
-			if ( s==NULL && ( type==IN || type==ON )) {
-				do_( "expr" )	add_item( &s, '?' );
-						add_item( &s, ':' );
+			if ( !StringInformed(s) && ( type==IN || type==ON )) {
+				do_( "expr" )	StringAppend( s, '?' );
+						StringAppend( s, ':' );
 			}
 			else if ( stack.sub_level && !marked ) {
 				do_( "expr" )	REENTER
-						add_item( &s, '?' );
+						StringAppend( s, '?' );
 						marked = informed = 1;
 			}
 		ons( ",)\n" )
 			if ( stack.sub_level && !marked ) {
 				do_( "expr" )	REENTER
-						add_item( &s, '?' );
+						StringAppend( s, '?' );
 						marked = informed = 1;
 			}
 		end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
-						add_item( &s, '.' );
+						StringAppend( s, '.' );
 						informed = 1;
 		ons( "\'(" )
 			if ( type==PROTO ) ; // err
 			else if (( narrative->proto )) {
 				do_( "expr" )	REENTER
-						dirty_set( &dirty, &s );
+						dirty_set( &dirty, s );
 			}
 			else {	do_( "expr" )	REENTER }
 		on_separator	; // err
 		on_other
-			if ( type==PROTO && !(stack.sub_level) && strmatch( "(,", (int)s->ptr ) ) {
+			if ( type==PROTO && !(stack.sub_level) && strmatch( "(,", StringAt(s) ) ) {
 				do_( "expr" )	REENTER
-						add_item( &s, '.' );
+						StringAppend( s, '.' );
 			}
 			else if (( narrative->proto )) {
 				do_( "expr" )	REENTER
-						dirty_set( &dirty, &s );
+						dirty_set( &dirty, s );
 			}
 			else {	do_( "expr" )	REENTER }
 		end
 	in_( "char" ) bgn_
 		on_( '\'' )	; // err
-		on_( '\\' )	do_( "char\\" )	add_item( &s, event );
-		on_other	do_( "char_" )	add_item( &s, event );
+		on_( '\\' )	do_( "char\\" )	StringAppend( s, event );
+		on_character	do_( "char_" )	StringAppend( s, event );
 		end
 		in_( "char\\" ) bgn_
-			ons( "0tn\'\\" ) do_( "char_" )	add_item( &s, event );
-			on_( 'x' )	do_( "char\\x" ) add_item( &s, event );
+			on_escapable	do_( "char_" )	StringAppend( s, event );
+			on_( 'x' )	do_( "char\\x" ) StringAppend( s, event );
 			end
 			in_( "char\\x" ) bgn_
-				ons( "0123456789ABCDEF" )
-					do_( "char\\x_" ) add_item( &s, event );
+				on_xdigit	do_( "char\\x_" ) StringAppend( s, event );
 				end
 			in_( "char\\x_" ) bgn_
-				ons( "0123456789ABCDEF" )
-					do_( "char_" )	add_item( &s, event );
+				on_xdigit	do_( "char_" )	StringAppend( s, event );
 				end
 		in_( "char_" ) bgn_
-			on_( '\'' )	do_( "expr" )	add_item( &s, event );
-							dirty_go( &dirty, &s );
+			on_( '\'' )	do_( "expr" )	StringAppend( s, event );
+							dirty_go( &dirty, s );
 			end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
-						dirty_go( &dirty, &s );
-		on_other	do_( same )	add_item( &s, event );
+						dirty_go( &dirty, s );
+		on_other	do_( same )	StringAppend( s, event );
 		end
 	in_( "expr_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
 			if ( level ) ; // err
-			else if ( type==PROTO && proto_set( narrative, &s )) {
+			else if ( type==PROTO && proto_set( narrative, s )) {
 				do_( "base" )	informed = 0;
 						tab_base = 0; last_tab = -1;
 			}
 			else {
-				do_( "base" )	occurrence_set( stack.occurrence->ptr, &s );
+				do_( "base" )	occurrence_set( stack.occurrence->ptr, s );
 						typelse = tab = indent = informed = 0;
 			}
 		end
@@ -457,10 +454,9 @@ readStory( char *path )
 			if ( level ) {
 				do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			}
-			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, &s ); }
+			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, s ); }
 
 		in_( "err" )	do_( "" )	err_report( errnum, line, column, indent );
-						freeListItem( &s );
 						freeNarrative( narrative );
 						narrative = NULL;
 		on_( EOF ) bgn_
@@ -473,7 +469,7 @@ readStory( char *path )
 			in_other	do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			end
 		on_other bgn_
-			in_none_sofar		fprintf( stderr, ">>>>>> B%%::read_narrative: "
+			in_none_sofar		fprintf( stderr, ">>>>>> B%%::CNParser: "
 						"unknown state \"%s\" <<<<<<\n", state );
 						errnum = ErrUnknownState;
 			in_( "do >" )		errnum = ErrOutputScheme;
@@ -515,6 +511,7 @@ readStory( char *path )
 		}
 		freeNarrative( narrative );
 	}
+	freeString( s );
 	return story;
 }
 
@@ -777,9 +774,10 @@ freeNarrative( CNNarrative *narrative )
 	}
 }
 static int
-proto_set( CNNarrative *narrative, listItem **sequence )
+proto_set( CNNarrative *narrative, CNString *s )
 {
-	char *p = l2s( sequence, 0 );
+	char *p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
 	narrative->proto = p;
 	if ( p == NULL ) return 1;
 
@@ -959,37 +957,32 @@ freeOccurrence( CNOccurrence *occurrence )
 	}
 }
 static void
-occurrence_set( CNOccurrence *occurrence, listItem **sequence )
+occurrence_set( CNOccurrence *occurrence, CNString *s )
 {
-	occurrence->data->expression = l2s( sequence, 0 );
+	occurrence->data->expression = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
 }
 
 //===========================================================================
 //	sequence
 //===========================================================================
 static void
-dirty_set( int *dirty, listItem **s )
+dirty_set( int *dirty, CNString *s )
 {
 	*dirty = 1;
 	s_add( s, "(this," );
 }
 static void
-dirty_go( int *dirty, listItem **s )
+dirty_go( int *dirty, CNString *s )
 {
 	if ( *dirty ) {
-		add_item( s, ')' );
+		StringAppend( s, ')' );
 		*dirty = 0;
 	}
 }
 static void
-s_add( listItem **list, char *p )
+s_add( CNString *s, char *p )
 {
-	while ( *p ) add_item( list, *p++ );
+	while ( *p ) StringAppend( s, *p++ );
 }
-static void
-add_item( listItem **list, int value )
-{
-	union { int value; char *ptr; } icast;
-	icast.value = value;
-	addItem( list, icast.ptr );
-}
+

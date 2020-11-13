@@ -42,6 +42,7 @@ int	db_private( int privy, CNInstance *, CNDB * );
 int	db_out( CNDB * );
 
 int	cn_out( FILE *, CNInstance *, CNDB * );
+int	cn_output( char *format, FILE *, CNInstance *, CNDB * );
 void	dbg_out( char *pre, CNInstance *e, char *post, CNDB * );
 
 

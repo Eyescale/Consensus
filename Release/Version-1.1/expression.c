@@ -3,6 +3,7 @@
 
 #include "string_util.h"
 #include "expression.h"
+#include "expression_private.h"
 #include "traversal.h"
 #include "util.h"
 #include "wildcard.h"
@@ -150,8 +151,6 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 #endif
 			else success = ( bm_match( *x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		case '\'':
 			break;
 		default:
 			success = bm_match( *x, p, *exponent, base, data );
@@ -407,92 +406,293 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 }
 
 //===========================================================================
-//	bm_outputf
+//	bm_inputf
 //===========================================================================
-typedef struct {
-	char **expression;
-	BMContext *ctx;
-} PrintData;
-static BMFormatCB print_CB;
+static int bm_input( char *format, char *expression, BMContext * );
+
+#define DEFAULT_FORMAT "_"
 
 int
-bm_outputf( char *format, char *expression, BMContext *ctx )
+bm_inputf( char *format, listItem *args, BMContext *ctx )
+/*
+	Assumption: format starts and finishes with \" or \0
+*/
 {
-	if ( *format ) {
-		PrintData data = { &expression, ctx };
-		p_traverse( format, print_CB, &data );
+	int event;
+	if ( *format++ ) {
+		while ( *format ) {
+			switch (*format) {
+			case '\"':
+				goto RETURN;
+			case '%':
+				format++;
+				if ( *format == '\0' )
+					break;
+				else if ( *format == '%' ) {
+					event = getc( stdin );
+					if ( event==EOF || event!='%' )
+						goto RETURN;
+				}
+				else if ((args)) {
+					Pair *pair = args->ptr;
+					char *expression = pair->name;
+					event = bm_input( format, expression, ctx );
+					if ( event==EOF ) goto RETURN;
+					args = args->next;
+				}
+				format++;
+				break;
+			default:;
+				char q[ MAXCHARSIZE + 1 ];
+				int delta = charscan( format, q );
+				if ( delta ) {
+					event = getc( stdin );
+					if ( event==EOF || event!=q[0] )
+						goto RETURN;
+					format += delta;
+				}
+				else format++;
+			}
+		}
 	}
-	else if ( *expression ) {
-		// no format string: output expression results
-		do expression = bm_output( expression, ctx );
-		while ( *expression );
+	else {
+		while (( args )) {
+			Pair *pair = args->ptr;
+			char *expression = pair->name;
+			event = bm_input( DEFAULT_FORMAT, expression, ctx );
+			if ( event == EOF ) break;
+			args = args->next;
+		}
 	}
-	else printf( "\n" );
+RETURN:
+	if ( event == EOF ) {
+		while (( args )) {
+			Pair *pair = args->ptr;
+			char *expression = pair->name;
+			asprintf( &expression, "(*,%s)", expression );
+			bm_release( expression, ctx );	// <<<<< PROBLEM: IF WAS NOT EXISTING
+			free( expression );
+			args = args->next;
+		}
+	}
+	else {
+		switch ( *format ) {
+		case '\0':
+		case '\"':
+			break;
+		default:
+			ungetc( event, stdin );
+		}
+	}
+	return 0;
+}
+static char * bm_read( FILE * );
+static int
+bm_input( char *format, char *expression, BMContext *ctx )
+{
+	char *input;
+	int event;
+	switch ( *format ) {
+	case 'c':
+		event = getc( stdin );
+		if ( event == EOF ) return EOF;
+		switch ( event ) {
+		case '\0': asprintf( &input, "'\\0'" ); break;
+		case '\t': asprintf( &input, "'\\t'" ); break;
+		case '\n': asprintf( &input, "'\\n'" ); break;
+		case '\'': asprintf( &input, "'\\\''" ); break;
+		case '\\': asprintf( &input, "'\\\\'" ); break;
+		default:
+			if ( is_character( event ) ) asprintf( &input, "'%c'", event );
+			else asprintf( &input, "'\\x%.2X'", event );
+		}
+		break;
+	case '_':
+		input = bm_read( stdin );
+		if ( input == NULL ) return EOF;
+		break;
+	default:
+		return 0;
+	}
+	asprintf( &expression, "((*,%s),%s)", expression, input );
+	free( input );
+	bm_substantiate( expression, ctx );
+	free( expression );
 	return 0;
 }
 static char *
-print_CB( char *p, int escaped, void *user_data )
+bm_read( FILE *stream )
 {
-	PrintData *data = user_data;
-	switch ( escaped ) {
-	case 1:
-	case 3:
-		switch ( *p ) {
-		case 't': putchar( '\t' ); break;
-		case 'n': putchar( '\n' ); break;
-		case '\\': putchar( '\\' ); break;
-		case '\"': putchar( '\"' ); break;
-		case '%': putchar( '%' ); break;
-		}
-		p++;
-		break;
-	case 2:
-		switch ( *p ) {
-		case '%':;
-			char *expression = *data->expression;
-			if ( p[1]=='_' && *expression ) {
-				*data->expression = bm_output( expression, data->ctx );
+	struct { listItem *first; } stack = { NULL };
+	int	first = 1,
+		informed = 0,
+		level = 0;
+
+	CNString *s = newString();
+
+	BMInputBegin( stream )
+	on_( EOF )
+		freeString( s );
+		return NULL;
+	in_( "base" ) bgn_
+		on_( '#' )	do_( "#" )
+		ons( "*%" )	do_( "" )	StringAppend( s, event );
+		on_( '\'' )	do_( "char" )	StringAppend( s, event );
+		on_( '(' )	do_( "expr" )	StringAppend( s, event );
+		on_separator	do_( same )
+		on_other	do_( "term" )	StringAppend( s, event );
+		end
+		in_( "#" ) bgn_
+			on_( '\n' )	do_( "base" )
+			on_other	do_( same )
+			end
+	in_( "char" ) bgn_
+		on_( '\\' )	do_( "char\\" )
+		on_character	do_( "char_" )	StringAppend( s, event );
+		end
+		in_( "char\\" ) bgn_
+			on_escapable	do_( "char_" )	StringAppend( s, event );
+			on_( 'x' )	do_( "char\\x" ) StringAppend( s, event );
+			end
+		in_( "char\\x" ) bgn_
+			on_xdigit	do_( "char\\x_" ) StringAppend( s, event );
+			end
+		in_( "char\\x" ) bgn_
+			on_xdigit	do_( "char_" )	StringAppend( s, event );
+			end
+		in_( "char_" ) bgn_
+			on_( '\'' )
+				if ( level > 0 ) {
+					do_( "expr" )	StringAppend( s, event );
+							informed = 1;
+				}
+				else {	do_( "" ) }
+			end
+	in_( "expr" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '(' )
+			if ( !informed ) {
+				do_( same )	level++;
+						StringAppend( s, event );
+						add_item( &stack.first, first );
+						first = 1; informed = 0;
 			}
-			p += 2;
-			break;
-		default:
-			putchar( *p++ );
-		}
-	}
+		on_( ',' )
+			if ( first && informed && ( level > 0 )) {
+				do_( same )	StringAppend( s, event );
+						first = informed = 0;
+			}
+		on_( '\'' )
+			if ( !informed ) {
+				do_( "char" )	StringAppend( s, event );
+			}
+		on_( ')' )
+			if ( informed && ( level > 0 )) {
+				do_( "expr" )	level--;
+						StringAppend( s, event );
+						first = (int) popListItem( &stack.first );
+			}
+		on_separator	; // fail
+		on_other
+			if ( !informed ) {
+				do_( "term" )	StringAppend( s, event );
+			}
+		end
+	in_( "term" ) bgn_
+		on_separator
+			if ( level > 0 ) {
+				do_( "expr" )	informed = 1;
+			}
+			else {	do_( "" )	ungetc( event, stream ); }
+		on_other	do_( same )	StringAppend( s, event );
+		end
+
+	BMInputDefault
+		in_none_sofar	fprintf( stderr, ">>>>>> B%%::BMInput: "
+					"unknown state \"%s\" <<<<<<\n", state );
+		in_other	do_( "base" )	StringReset( s, CNStringAll );
+
+	BMInputEnd
+
+	char *p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
 	return p;
 }
 
 //===========================================================================
-//	bm_output
+//	bm_outputf
 //===========================================================================
+static void bm_output( char *format, char *expression, BMContext *);
 static BMTraverseCB output_CB;
 typedef struct {
+	char *format;
 	int first;
 	CNInstance *last;
 } OutputData;
 
-char *
-bm_output( char *expression, BMContext *ctx )
+int
+bm_outputf( char *format, listItem *args, BMContext *ctx )
+/*
+	Assumption: format starts and finishes with \" or \0
+*/
+{
+	if ( *format++ ) {
+		while ( *format ) {
+			switch ( *format ) {
+			case '\"':
+				goto RETURN;
+			case '%':
+				format++;
+				if ( *format == '\0')
+					break;
+				else if ( *format == '%' )
+					putchar( '%' );
+				else if ((args)) {
+					char *expression = args->ptr;
+					bm_output( format, expression, ctx );
+					args = args->next;
+				}
+				format++;
+				break;
+			default:;
+				char q[ MAXCHARSIZE + 1 ];
+				int delta = charscan(format,q);
+				if ( delta ) {
+					printf( "%c", *(unsigned char *)q );
+					format += delta;
+				}
+				else format++;
+			}
+		}
+	}
+	else if ((args)) {
+		do {
+			char *expression = args->ptr;
+			bm_output( DEFAULT_FORMAT, expression, ctx );
+			args = args->next;
+		} while ((args));
+	}
+	else printf( "\n" );
+RETURN:
+	return 0;
+}
+static void
+bm_output( char *format, char *expression, BMContext *ctx )
 /*
 	outputs expression's results
 	note that we rely on bm_traverse to eliminate doublons
 */
 {
-	OutputData data;
-	data.first = 1;
-	data.last = NULL;
+	OutputData data = { format, 1, NULL };
 	bm_traverse( expression, ctx, output_CB, &data );
 	if ( data.first )
-		cn_out( stdout, data.last, ctx->db );
+		cn_output( format, stdout, data.last, ctx->db );
 	else {
 		printf( ", " );
-		cn_out( stdout, data.last, ctx->db );
+		cn_output( DEFAULT_FORMAT, stdout, data.last, ctx->db );
 		printf( " }" );
 	}
-	expression = p_prune( PRUNE_TERM, expression );
-	while ( strmatch( " \t,", *expression ) )
-		expression++;
-	return expression;
 }
 static int
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
@@ -500,13 +700,14 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	OutputData *data = user_data;
 	if (( data->last )) {
 		if ( data->first ) {
+			if ( *data->format == 's' )
+				printf( "\\" );
 			printf( "{ " );
 			data->first = 0;
 		}
 		else printf( ", " );
-		cn_out( stdout, data->last, ctx->db );
+		cn_output( DEFAULT_FORMAT, stdout, data->last, ctx->db );
 	}
 	data->last = e;
 	return BM_CONTINUE;
 }
-

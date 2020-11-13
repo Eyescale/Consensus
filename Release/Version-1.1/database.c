@@ -777,7 +777,21 @@ cn_instance( CNInstance *e, CNInstance *f )
 int
 cn_out( FILE *stream, CNInstance *e, CNDB *db )
 {
+	return cn_output( "", stream, e, db );
+}
+int
+cn_output( char *format, FILE *stream, CNInstance *e, CNDB *db )
+{
 	if ( e == NULL ) return 0;
+	if ( *format == 's' ) {
+		if (( e->sub[ 0 ] ))
+			fprintf( stream, "\\" );
+		else {
+			char *p = db_identifier( e, db );
+			if (( p )) fprintf( stream, "%s", p );
+			return 0;
+		}
+	}
 	union { int value; void *ptr; } icast;
 	struct {
 		listItem *ndx;
@@ -799,8 +813,10 @@ cn_out( FILE *stream, CNInstance *e, CNDB *db )
 		}
 		char *p = db_identifier( e, db );
 		if (( p )) {
-			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p) )
+			if (( *p=='*' ) || ( *p=='%' ))
 				fprintf( stream, "%s", p );
+			else if ( !is_separator(*p) )
+				fprintf( stream, p[1] ? "%s" : "'%s'", p );
 			else {
 				switch (*p) {
 				case '\0': fprintf( stream, "'\\0'" ); break;
@@ -809,9 +825,8 @@ cn_out( FILE *stream, CNInstance *e, CNDB *db )
 				case '\'': fprintf( stream, "'\\''" ); break;
 				case '\\': fprintf( stream, "'\\\\'" ); break;
 				default:
-					if (( *p < 32 ) || ( *p > 126 ))
-						fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
-					else fprintf( stream, "'%c'", *p );
+					if ( is_character(*p) ) fprintf( stream, "'%c'", *p );
+					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
 				}
 			}
 		}

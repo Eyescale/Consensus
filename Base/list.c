@@ -49,6 +49,13 @@ addItem( listItem **list, void *ptr )
 	*list = i;
 	return i;
 }
+listItem *
+add_item( listItem **list, int value )
+{
+        union { int value; char *ptr; } icast;
+        icast.value = value;
+        return addItem( list, icast.ptr );
+}
 void
 removeItem( listItem **list, void *ptr )
 {

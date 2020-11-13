@@ -59,51 +59,30 @@ bm_pop( BMContext *ctx )
 //===========================================================================
 //	bm_lookup
 //===========================================================================
-#define MAXCHARSIZE 1
-static int charscan( char *p, char *q );
-
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
-	char q[ MAXCHARSIZE ];
+	char q[ MAXCHARSIZE + 1 ];
 	Pair *entry;
 	switch ( *p ) {
-	case '%': // looking up %?
+	case '%': // looking up %? or %
 		if ( p[1] == '?' ) {
 			entry = registryLookup( ctx->registry, "?" );
 			return (entry) ? entry->value : NULL;
 		}
-		break;
+		else return db_lookup( privy, p, ctx->db );
 	case '\'': // looking up single character identifier instance
 		if ( charscan( p+1, q ) )
 			return db_lookup( privy, q, ctx->db );
 		break;
 	default: // looking up normal identifier instance
-		entry = registryLookup( ctx->registry, p );
-		return (entry) ? entry->value : db_lookup( privy, p, ctx->db );
+		if ( !is_separator(*p) ) {
+			entry = registryLookup( ctx->registry, p );
+			if (( entry )) return entry->value;
+		}
+		return db_lookup( privy, p, ctx->db );
 	}
 	return NULL;
-}
-#define HVAL(c) (c-((c<58)?48:55))
-static int
-charscan( char *p, char *q )
-{
-	switch ( *p ) {
-	case '\\':
-		switch ( p[1] ) {
-		case 'x':  q[ 0 ] = HVAL(p[2])*16 + HVAL(p[3]); break;
-		case '0':  q[ 0 ] = '\0'; break;
-		case 't':  q[ 0 ] = '\t'; break;
-		case 'n':  q[ 0 ] = '\n'; break;
-		case '\\': q[ 0 ] = '\\'; break;
-		case '\"': q[ 0 ] = '\"'; break;
-		default: return 0;
-		}
-		break;
-	default:
-		q[ 0 ] = *p;
-	}
-	return 1;
 }
 
 //===========================================================================
@@ -113,7 +92,7 @@ CNInstance *
 bm_register( BMContext *ctx, char *p, CNInstance *e )
 {
 	Registry *registry = ctx->registry;
-	char q[ MAXCHARSIZE ];
+	char q[ MAXCHARSIZE + 1 ];
 	Pair *entry;
 	switch ( *p ) {
 	case '?': // registering %?
@@ -138,10 +117,7 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 			/* assuming previous entry was registered
 			   either as .arg or not at all
 			*/
-			CNInstance *x = db_lookup( 0, p, db );
-			if ( x == NULL ) {
-				x = db_register( p, db );
-			}
+			CNInstance *x = db_register( p, db );
 			x = db_instantiate( this, x, db );
 			if (( entry )) {
 				entry->name = p;
@@ -149,14 +125,16 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 			}
 			else registryRegister( registry, p, x );
 		}
-		break;
 	case '\'': // registering single character identifier instance
 		if ( charscan(p+1,q) )
 			return db_register( q, ctx->db );
 		break;
 	default: // registering normal identifier instance
-		entry = registryLookup( registry, p );
-		return (entry) ? entry->value : db_register( p, ctx->db );
+		if ( !is_separator(*p) ) {
+			entry = registryLookup( registry, p );
+			if (( entry )) return entry->value;
+		}
+		return db_register( p, ctx->db );
 	}
 	return NULL;
 }

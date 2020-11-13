@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "string_util.h"
 
 // #define DEBUG
 
 /*---------------------------------------------------------------------------
-	is_separator
+	is_separator, ...
 ---------------------------------------------------------------------------*/
 int
 is_separator( int event )
@@ -16,24 +17,28 @@ is_separator( int event )
 		 (( event > 47 ) && ( event < 58 )) ||		/* 0-9 */
 		  ( event == 95 )) ? 0 : 1;			/* _ */
 }
-
-/*---------------------------------------------------------------------------
-	is_space
----------------------------------------------------------------------------*/
+int
+is_character( int event )
+{
+	return ((event > 31 ) && ( event < 127 ));
+}
 int
 is_space( int event )
 {
-	switch ( event ) {
-	case ' ':
-	case '\t':
-		return 1;
-	}
-	return 0;
+	return strmatch( " \t", event );
 }
-
-/*---------------------------------------------------------------------------
-	isanumber
----------------------------------------------------------------------------*/
+int
+is_escapable( int event )
+{
+	// Note: includes neither 'x' or '\"'
+	return strmatch( "0tn\'\\", event );
+}
+int
+is_xdigit( int event )
+{
+	// Note: not including lower case
+	return strmatch( "0123456789ABCDEF", event );
+}
 int
 isanumber( char *p )
 {
@@ -44,10 +49,28 @@ isanumber( char *p )
 
 	return 1; 
 }
-
-/*---------------------------------------------------------------------------
-	tokcmp
----------------------------------------------------------------------------*/
+#define HVAL(c) (c-((c<58)?48:(c<97)?55:87))
+int
+charscan( char *p, char *q )
+{
+	q[ MAXCHARSIZE ] = (char)0;
+	switch ( *p ) {
+	case '\\':
+		switch ( p[1] ) {
+		case 'x':  q[ 0 ] = HVAL(p[2])<<4 | HVAL(p[3]); return 4;
+		case '0':  q[ 0 ] = '\0'; return 2;
+		case 't':  q[ 0 ] = '\t'; return 2;
+		case 'n':  q[ 0 ] = '\n'; return 2;
+		case '\\': q[ 0 ] = '\\'; return 2;
+		case '\'': q[ 0 ] = '\''; return 2;
+		case '\"': q[ 0 ] = '\"'; return 2;
+		default: return 0;
+		}
+		break;
+	default:
+		q[ 0 ] = *p; return 1;
+	}
+}
 int
 tokcmp( const char *p, const char *q )
 {
@@ -78,7 +101,6 @@ newString( void )
 	icast.value = CNStringBytes;
 	return (CNString *) newPair( NULL, icast.ptr );
 }
-
 void
 freeString( CNString *string )
 {
@@ -92,7 +114,22 @@ freeString( CNString *string )
 	}
 	freePair( (Pair *) string );
 }
-
+int
+StringInformed( CNString *string )
+{
+	return ( string->data != NULL );
+}
+int
+StringAt( CNString *string )
+{
+	if ( string->data == NULL ) return 0;
+	switch ( string->mode ) {
+	case CNStringBytes:
+		return (int)((listItem *)string->data)->ptr;
+	case CNStringText:
+		return *(char *)string->data;
+	}
+}
 /*---------------------------------------------------------------------------
 	StringReset
 ---------------------------------------------------------------------------*/

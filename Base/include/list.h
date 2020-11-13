@@ -16,6 +16,7 @@ void freeItem( listItem *item );
 void clipItem( listItem **, listItem *item );
 
 listItem *addItem( listItem **list, void *ptr );
+listItem *add_item( listItem **list, int value );
 void removeItem( listItem **list, void *ptr );
 void *lookupItem( listItem *list, void *ptr );
 

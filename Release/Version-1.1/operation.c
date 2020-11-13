@@ -235,65 +235,37 @@ do_input( char *expression, BMContext *ctx )
 	Assuming expression is in the form
 		variable : format <
 	. reads input from stdin according to format
-	. instantiates ((*,variable),input)
-
-	Note: this implementation only processes identifiers in the form
-	[A-Z-a-z0-9_]+ treating all other characters as input separators
 */
 {
-	char *format = NULL, *p;
-
-	// generate ((*,variable), from expression
-	CNString *s = newString();
-	StringAppend( s, '(' );
-	StringAppend( s, '(' );
-	StringAppend( s, '*' );
-	StringAppend( s, ',' );
-	for ( p=expression; *p && ((*p!=':')||p_filtered(p+1)); p++ ) {
-		StringAppend( s, *p );
-	}
-	StringAppend( s, ')' );
-	StringAppend( s, ',' );
-
-	format = p+1;	// not used in this version
-
-	/* complete "((*,variable),input)" string, where input is read
-	   (blocking) according to format - here assumed to be default
+	/* extract args:{ expression(s) } and format
 	*/
-	int event, newline = 1;
+	listItem *args = NULL;
+	char *p=expression, *format;
 	do {
-		switch (( event = getchar() )) {
-		case '#':
-			if ( newline ) do { event = getchar(); }
-			while (( event != EOF ) && ( event != '\n' ));
-			break;
-		case '\n':
-			newline = 1;
-			break;
-		default:
-			newline = 0;
-		}
+		for ( char *q = p_prune( PRUNE_FILTER, p ); *q==':'; p=q, q=q+1 )
+			q = p_prune( PRUNE_FILTER, q );
+		*p = (char) 0;
+		addItem( &args, newPair( expression, p ));
 	}
-	while (( event != EOF ) && is_separator( event ));
-	if ( event == EOF ) {
-		// release (*,variable)
-		StringAppend( s, ')' );
-		expression = StringFinish( s, 0 );
-		bm_release( expression+1, ctx );
+	while ( 0 ); // provisional
+	reorderListItem( &args );
+	format = p + 1;
+
+	/* invoke bm_inputf()
+	*/
+	int retval = ( *format == '<' ) ?
+		bm_inputf( "", args, ctx ) :
+		bm_inputf( format, args, ctx );
+
+	/* cleanup
+	*/
+	Pair *pair;
+	while (( pair = popListItem( &args ) )) {
+		p = pair->value;
+		*p = ':';
+		freePair( pair );
 	}
-	else {
-		// read & instantiate ((*,expression),input)
-		do {
-			StringAppend( s, event );
-			event = getchar();
-		}
-		while ( !is_separator( event ) );
-		StringAppend( s, ')' );
-		expression = StringFinish( s, 0 );
-		bm_substantiate( expression, ctx );
-	}
-	freeString( s );
-	return 0;
+	return retval;
 }
 
 //===========================================================================
@@ -307,11 +279,24 @@ do_output( char *expression, BMContext *ctx )
 	then outputs expression(s) to stdout according to format
 */
 {
+	/* extracts format and args:{ expression(s) }
+	*/
 	char *format = expression + 1; // skipping '>'
+
+	listItem *args = NULL;
 	expression = p_prune( PRUNE_FORMAT, format );
 	if ( *expression ) expression++; // skipping ':'
-	return ( *format == ':' ) ?
-		bm_outputf( "", expression, ctx ) :
-		bm_outputf( format, expression, ctx );
+	if ( *expression ) addItem( &args, expression );
+
+	/* invoke bm_outputf()
+	*/
+	int retval = ( *format == ':' ) ?
+		bm_outputf( "", args, ctx ) :
+		bm_outputf( format, args, ctx );
+
+	/* cleanup
+	*/
+	freeListItem( &args );
+	return retval;
 }
 

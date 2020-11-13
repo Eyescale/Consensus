@@ -11,7 +11,7 @@
 	int status = 0;	\
 	for ( char *state=base; !status; p++ ) { \
 		int event = *p; \
-		BEGIN
+		BEGIN; bgn_
 #define CNStringStreamEnd \
 		END \
 	}

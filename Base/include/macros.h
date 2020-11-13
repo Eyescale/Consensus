@@ -5,7 +5,8 @@
 			do { \
 				caught.transition = 0; \
 				caught.state = 0; \
-				caught.event = 1; bgn_
+				caught.event = 1;
+
 #define bgn_				if ( 0 ) {
 #define in_( s )			} else if ( !strcmp( state, s ) ) { \
 						caught.state = 1;
@@ -21,6 +22,12 @@
 						caught.event = 1;
 #define on_separator			} else if ( is_separator( event ) ) { \
 						caught.event = 1;
+#define on_character			} else if ( is_character( event ) ) { \
+						caught.event = 1;
+#define on_escapable			} else if ( is_escapable( event ) ) { \
+						caught.event = 1;
+#define on_xdigit			} else if ( is_xdigit( event ) ) { \
+						caught.event = 1;
 #define on_digit			} else if ( isdigit( event ) ) { \
 						caught.event = 1;
 #define ons( s )			} else if ( strmatch( s, event ) ) { \
@@ -33,6 +40,7 @@
 #define REENTER					caught.event = 0;
 #define same					state
 #define end				}
+
 #define END				end \
 			} while ( !caught.event );
 

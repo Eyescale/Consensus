@@ -1,6 +1,8 @@
 #ifndef NARRATIVE_PRIVATE_H
 #define NARRATIVE_PRIVATE_H
 
+#include "macros.h"
+
 // #define DEBUG
 
 static int input( FILE *file, int *mode, int *buffer, int *c, int *l );
@@ -27,25 +29,24 @@ static int add_narrative( listItem **story, CNNarrative *);
 
 static CNNarrative * newNarrative( void );
 static void freeNarrative( CNNarrative * );
-static int proto_set( CNNarrative *, listItem ** );
+static int proto_set( CNNarrative *, CNString * );
 static void narrative_reorder( CNNarrative * );
 static int narrative_output( FILE *, CNNarrative *, int );
 
 static CNOccurrence *newOccurrence( CNOccurrenceType );
 static void freeOccurrence( CNOccurrence * );
-static void occurrence_set( CNOccurrence *, listItem **sequence );
+static void occurrence_set( CNOccurrence *, CNString *sequence );
 
-static void dirty_set( int *dirty, listItem **s );
-static void dirty_go( int *dirty, listItem **s );
-static void add_item( listItem **, int );
-static void s_add( listItem **, char * );
+static void dirty_set( int *dirty, CNString *s );
+static void dirty_go( int *dirty, CNString *s );
+static void s_add( CNString *, char * );
 
 //===========================================================================
 //	Narrative CNParserBegin / CNParserEnd - macros
 //===========================================================================
 #ifdef DEBUG
 #define	DBGMonitor \
-	fprintf( stderr, "readNarrative:l%dc%d: in \"%s\" on '%c'\n", line, column, state, event );
+	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on '%c'\n", line, column, state, event );
 #else
 #define	DBGMonitor
 #endif
@@ -62,8 +63,7 @@ static void s_add( listItem **, char * );
 			caught.transition = 0; \
 			caught.state = 0; \
 			caught.event = 1; \
-			DBGMonitor \
-			bgn_
+			DBGMonitor; bgn_
 #define CNParserDefault \
 			end \
 			if ( caught.transition ) ; \

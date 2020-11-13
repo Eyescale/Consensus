@@ -483,6 +483,7 @@ db_outputf( char *format, char *expression, CNDB *db )
 			p++;
 			switch ( *p ) {
 			case '_':
+			case 's':
 				if ( *expression ) {
 					db_output( expression, db );
 					expression = p_prune( PRUNE_DEFAULT, expression );

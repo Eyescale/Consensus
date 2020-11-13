@@ -10,7 +10,6 @@
 //	readNarrative
 //===========================================================================
 #define FILTERED 2
-static void add_item( listItem **, int );
 
 CNNarrative *
 readNarrative( char *path )
@@ -428,13 +427,6 @@ readNarrative( char *path )
 		fprintf( stderr, "Warning: read_narrative: narrative empty\n" );
 	else narrative_reorder( narrative );
 	return narrative;
-}
-static void
-add_item( listItem **stack, int value )
-{
-	union { int value; char *ptr; } icast;
-	icast.value = value;
-	addItem( stack, icast.ptr );
 }
 
 //===========================================================================

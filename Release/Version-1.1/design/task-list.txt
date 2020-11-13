@@ -11,8 +11,9 @@ TODO
 	. README.txt
 
 DONE
+	. added Test/CN.char
+	. added design/specs/test_hval.c
 	. single character identifier entities
-		. added design/specs/test_hval.c
 		. support CNDB internal vs. external representation
 			. context.c: charscan, bm_lookup, bm_register
 			. database.c: cn_out

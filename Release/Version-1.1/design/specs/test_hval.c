@@ -28,7 +28,8 @@ main( int argc, char **argv )
 	char upper[16] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 	for ( int i=0; i<16; i++ ) {
 		for ( int j=0; j<16; j++ ) {
-			char c = HVAL(upper[i])*16 + HVAL(lower[j]);
+//			char c = HVAL(upper[i])*16 + HVAL(lower[j]);
+			char c = HVAL(upper[i])<<4 | HVAL(lower[j]);
 			if (( c=='*' ) || ( c=='%' ) || !is_separator(c) )
 				printf( "  %c   ", c );
 			else switch (c) {

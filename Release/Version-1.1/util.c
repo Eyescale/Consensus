@@ -241,117 +241,73 @@ p_locate_arg( char *expression, listItem **exponent, BMLocateCB arg_CB, void *us
 //===========================================================================
 //	p_prune
 //===========================================================================
+static char *prune_format( char * );
+
 char *
 p_prune( PruneType type, char *p )
 {
 	switch ( type ) {
 	case PRUNE_FORMAT:
-		return p_traverse( p, NULL, NULL );
+		return prune_format( p );
 	case PRUNE_IDENTIFIER:
-		if ( *p=='\'' ) {
-			if ( p[1]=='\\' ) p++; // for now
-			return p+3;
-		}
-		while ( !is_separator(*p) ) p++;
-		return p;
-	default:
-		break;
-	}
-	if ( *p==')' ) p++;
-	int level = 1;
-	for ( ; ; p++ ) {
 		switch ( *p ) {
-		case '\0': return p;
-		case '(': level++; break;
-		case ')':
-			if ( level == 1 ) return p;
-			level--;
-			break;
-		case ':':
-			if (( type==PRUNE_FILTER ) && ( level==1 ))
-				return p;
-			break;
-		case ',':
-			if ( level == 1 ) return p;
-			break;
+		case '\'':
+			return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+		default:
+			while ( !is_separator(*p) ) p++;
+			return p;
+		}
+	case PRUNE_TERM:
+	case PRUNE_FILTER:
+		if ( *p==')' ) p++;
+		int level = 1;
+		for ( ; ; p++ ) {
+			switch ( *p ) {
+			case '\0': return p;
+			case '(': level++; break;
+			case ')':
+				if ( level == 1 ) return p;
+				level--;
+				break;
+			case '"':
+				p = prune_format( p );
+				break;
+			case '\'':
+				p += ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+				break;
+			case ':':
+				if (( type==PRUNE_FILTER ) && ( level==1 ))
+					return p;
+				break;
+			case ',':
+				if ( level == 1 ) return p;
+				break;
+			}
 		}
 	}
 }
 
-//===========================================================================
-//	p_traverse
-//===========================================================================
-char *
-p_traverse( char *p, BMFormatCB user_CB, void *user_data )
-/*
-	uses the 2-bit variable 'escaped' to represent the following:
-	. if lower bit is set, the previous character was a backslash
-	. if upper bit is set, the current character is within double-quote
-
-	idea is that to allow support for e.g. \t"aslkj"\ \n
-
-	returns either the position after the complete escaped sequence,
-		or the passed argument if not escaped.
-*/
+static char *
+prune_format( char *p )
 {
-	int escaped = 0;
-	while ( *p ) {
+	char q[ MAXCHARSIZE + 1 ];
+	int escaped = 0, delta;
+	for ( int done=0; !done; ) {
 		switch ( *p ) {
-		case '\\':
-			switch ( escaped ) {
-			case 0:
-			case 2:
-				p++;
-				escaped++;
-				break;
-			case 1:
-			case 3:
-				if (( user_CB )) {
-					p = user_CB( p, escaped, user_data );
-				}
-				else p++;
-				escaped--;
-				break;
-			}
-			break;
+		case '\0':
+			return p;
 		case '\"':
-			switch ( escaped ) {
-			case 0 :
-				p++;
-				escaped = 2;
-				break;
-			case 2:
-				return p+1;
-			case 1:
-			case 3:
-				if (( user_CB )) {
-					p = user_CB( p, escaped, user_data );
-				}
-				else p++;
-				escaped--;
-				break;
-			}
+			if ( escaped ) done = 1;
+			else escaped = 1;
+			p++;
+			break;
+		case '\\':
+			delta = charscan(p,q);
+			p += ( delta ? delta : 2 );
 			break;
 		default:
-			switch ( escaped ) {
-			case 0: // not supposed to happen
-				return p;
-			case 2:
-				if (( user_CB )) {
-					p = user_CB( p, escaped, user_data );
-				}
-				else p++;
-				break;
-			case 1:
-			case 3:
-				if (( user_CB )) {
-					p = user_CB( p, escaped, user_data );
-				}
-				else p++;
-				escaped--;
-				break;
-			}
-			break;
+			if ( escaped ) p++;
+			else return p;
 		}
 	}
 	return p;
