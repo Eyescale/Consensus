@@ -588,7 +588,7 @@ bm_read( FILE *stream )
 			}
 		on_( ')' )
 			if ( informed && ( level > 0 )) {
-				do_( "expr" )	level--;
+				do_(( level==1 ? "" : "expr" )) level--;
 						StringAppend( s, event );
 						first = (int) popListItem( &stack.first );
 			}
@@ -611,11 +611,14 @@ bm_read( FILE *stream )
 		in_none_sofar	fprintf( stderr, ">>>>>> B%%::BMInput: "
 					"unknown state \"%s\" <<<<<<\n", state );
 		in_other	do_( "base" )	StringReset( s, CNStringAll );
+						freeListItem( &stack.first );
+						first = 1; informed = level = 0;
 
 	BMInputEnd
 
 	char *p = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
+	freeListItem( &stack.first );
 	freeString( s );
 	return p;
 }

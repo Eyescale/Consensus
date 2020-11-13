@@ -62,7 +62,6 @@ bm_pop( BMContext *ctx )
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
-	char q[ MAXCHARSIZE + 1 ];
 	Pair *entry;
 	switch ( *p ) {
 	case '%': // looking up %? or %
@@ -71,7 +70,8 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 			return (entry) ? entry->value : NULL;
 		}
 		else return db_lookup( privy, p, ctx->db );
-	case '\'': // looking up single character identifier instance
+	case '\'':; // looking up single character identifier instance
+		char q[ MAXCHARSIZE + 1 ];
 		if ( charscan( p+1, q ) )
 			return db_lookup( privy, q, ctx->db );
 		break;
@@ -92,7 +92,6 @@ CNInstance *
 bm_register( BMContext *ctx, char *p, CNInstance *e )
 {
 	Registry *registry = ctx->registry;
-	char q[ MAXCHARSIZE + 1 ];
 	Pair *entry;
 	switch ( *p ) {
 	case '?': // registering %?
@@ -125,7 +124,8 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 			}
 			else registryRegister( registry, p, x );
 		}
-	case '\'': // registering single character identifier instance
+	case '\'':; // registering single character identifier instance
+		char q[ MAXCHARSIZE + 1 ];
 		if ( charscan(p+1,q) )
 			return db_register( q, ctx->db );
 		break;
