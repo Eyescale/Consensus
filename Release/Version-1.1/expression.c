@@ -99,7 +99,7 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
-				p_locate_arg( p+1, &mark_exp, NULL, NULL );
+				p_locate_param( p+1, &mark_exp, NULL, NULL );
 				if ( mark_exp == NULL ) p++;
 			}
 			break;

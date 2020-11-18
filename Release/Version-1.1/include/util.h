@@ -20,7 +20,7 @@ typedef void BMLocateCB( char *, listItem *, void * );
 typedef char * BMFormatCB( char *, int, void * );
 
 char *	p_locate( char *expression, listItem **exponent );
-char *	p_locate_arg( char *expression, listItem **exponent, BMLocateCB, void * );
+char *	p_locate_param( char *expression, listItem **exponent, BMLocateCB, void * );
 char *	p_extract( char * );
 char *	p_prune( PruneType type, char * );
 char *	p_traverse( char *, BMFormatCB, void * );

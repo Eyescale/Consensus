@@ -38,7 +38,7 @@
 			do ((*,s), base )
 			do ((*,f), (frame,*)) // initial frame
 
-		else on ((*,s), %(?,*r)) // s either set along with r or set to successor
+		else on ((*,s), %(?,*r)) // s either set together with r or set to successor
 			// test if other feeders starting at the same (flag,frame)
 			in %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
 				do > " *** Warning: rule %_: multiple interpretations *** ": %(*r:((.,?),.))

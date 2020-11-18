@@ -65,7 +65,7 @@ p_locate( char *expression, listItem **exponent )
 				if ( not ) p++;
 				else scope = 0;
 			}
-			else { p_locate_arg( p+1, &mark_exp, NULL, NULL ); p++; }
+			else { p_locate_param( p+1, &mark_exp, NULL, NULL ); p++; }
 			break;
 		case '(':
 			scope++;
@@ -142,10 +142,10 @@ p_locate( char *expression, listItem **exponent )
 }
 
 //===========================================================================
-//	p_locate_arg
+//	p_locate_param
 //===========================================================================
 char *
-p_locate_arg( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
+p_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
 /*
 	if arg_CB is set
 		invokes arg_CB on each .arg found in expression
@@ -276,7 +276,7 @@ p_prune( PruneType type, char *p )
 				p += ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
 				break;
 			case ':':
-				if (( type==PRUNE_FILTER ) && ( level==1 ))
+				if ( type==PRUNE_FILTER && level==1 )
 					return p;
 				break;
 			case ',':
@@ -290,26 +290,12 @@ p_prune( PruneType type, char *p )
 static char *
 prune_format( char *p )
 {
-	char q[ MAXCHARSIZE + 1 ];
-	int escaped = 0, delta;
-	for ( int done=0; !done; ) {
-		switch ( *p ) {
-		case '\0':
-			return p;
-		case '\"':
-			if ( escaped ) done = 1;
-			else escaped = 1;
-			p++;
-			break;
-		case '\\':
-			delta = charscan(p,q);
-			p += ( delta ? delta : 2 );
-			break;
-		default:
-			if ( escaped ) p++;
-			else return p;
-		}
-	}
+	if ( *p == '"' )
+		for ( p++; *p; )
+			switch ( *p++ ) {
+			case '\"': return p;
+			case '\\': p++;
+			}
 	return p;
 }
 

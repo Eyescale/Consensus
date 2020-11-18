@@ -46,8 +46,8 @@ readStory( char *path )
 	CNOccurrence *occurrence, *sibling;
 
 	int	tab = 0,
-		tab_base = 0,
 		last_tab = -1,
+		tab_base = 0,
 		indent,
 		type,
 		typelse = 0,
@@ -64,7 +64,7 @@ readStory( char *path )
 
 	CNParserBegin( file, input )
 	in_( "base" ) bgn_
-		on_( '\n' )	do_( same )	tab = indent = 0;
+		on_( '\n' )	do_( same )	tab = 0;
 		on_( '\t' )	do_( same )	tab++;
 		on_( '#' )
 			if ( column == 1 ) {
@@ -230,8 +230,7 @@ readStory( char *path )
 		}
 
 		in_( "sibling" ) REENTER
-			if ( sibling->type == ROOT )
-				; // err
+			if ( sibling->type == ROOT ) ; // err
 			else if ( tab <= last_tab ) {
 				do_( same )	sibling = popListItem( &stack.occurrence );
 						last_tab--;
@@ -445,7 +444,7 @@ readStory( char *path )
 			}
 			else {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, s );
-						typelse = tab = indent = informed = 0;
+						typelse = tab = informed = 0;
 			}
 		end
 
@@ -456,7 +455,7 @@ readStory( char *path )
 			}
 			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, s ); }
 
-		in_( "err" )	do_( "" )	err_report( errnum, line, column, indent );
+		in_( "err" )	do_( "" )	err_report( errnum, line, column );
 						freeNarrative( narrative );
 						narrative = NULL;
 		on_( EOF ) bgn_
@@ -474,8 +473,8 @@ readStory( char *path )
 						errnum = ErrUnknownState;
 			in_( "do >" )		errnum = ErrOutputScheme;
 			in_( "do >_" )		errnum = ErrOutputScheme;
-			in_( "_expr" )		errnum = ErrIndentation;
-			in_( "sibling" )	errnum = ErrIndentation;
+			in_( "_expr" )		errnum = ErrIndentation; column = indent;
+			in_( "sibling" )	errnum = ErrIndentation; column = indent;
 			in_( "?" )		errnum = ( marked ? ErrMarkMultiple : ErrMarkNoSub );
 			in_( "expr" ) bgn_
 				on_( '<' )	errnum = ErrInputScheme;
@@ -676,7 +675,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 //	err
 //===========================================================================
 static void
-err_report( CNNarrativeError errnum, int line, int column, int indent )
+err_report( CNNarrativeError errnum, int line, int column )
 {
 	switch ( errnum ) {
 	case ErrUnknownState:
@@ -692,7 +691,7 @@ err_report( CNNarrativeError errnum, int line, int column, int indent )
 		fprintf( stderr, "Error: read_narrative: l%dc%d: statement incomplete\n", line, column );
 		break;
 	case ErrIndentation:
-		fprintf( stderr, "Error: read_narrative: l%dc%d: indentation error\n", line, indent );
+		fprintf( stderr, "Error: read_narrative: l%dc%d: indentation error\n", line, column );
 		break;
 	case ErrSyntaxError:
 		fprintf( stderr, "Error: read_narrative: l%dc%d: syntax error\n", line, column );

@@ -24,7 +24,7 @@ bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
 		if ((n) && (n->proto)) {
 			listItem *exponent = NULL;
 			RegisterData data = { e, registry };
-			p_locate_arg( n->proto, &exponent, arg_register_CB, &data );
+			p_locate_param( n->proto, &exponent, arg_register_CB, &data );
 		}
 	}
 	return (BMContext *) newPair( db, registry );

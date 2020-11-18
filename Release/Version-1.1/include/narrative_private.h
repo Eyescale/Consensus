@@ -23,7 +23,7 @@ typedef enum {
 	ErrProtoRedundantArg
 } CNNarrativeError;
 
-static void err_report( CNNarrativeError, int line, int column, int tabmark );
+static void err_report( CNNarrativeError, int line, int column );
 
 static int add_narrative( listItem **story, CNNarrative *);
 
