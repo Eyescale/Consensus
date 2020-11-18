@@ -115,10 +115,19 @@ demult( char *expression )
 	if (( stack.alternative )) {
 		do {
 			if (( alternative )) {
-				reorderListItem( &sequence );
-				addItem( &alternative, sequence );
-				sequence = popListItem( &stack.sequence );
-				sequence = addItem( &sequence, alternative );
+				if (( sequence )) {
+					reorderListItem( &sequence );
+					addItem( &alternative, sequence );
+				}
+				if (( alternative->next )) {
+					reorderListItem( &alternative );
+					sequence = popListItem( &stack.sequence );
+					sequence = addItem( &sequence, alternative );
+				}
+				else {
+					listItem *s = popListItem( &stack.sequence );
+					sequence = catListItem( sequence, s );
+				}
 			}
 			else {
 				listItem *s = popListItem( &stack.sequence );
@@ -128,7 +137,7 @@ demult( char *expression )
 		}
 		while (( stack.alternative ));
 	}
-	else reorderListItem( &sequence );
+	reorderListItem( &sequence );
 	return sequence;
 }
 
@@ -294,6 +303,7 @@ cycle_through( listItem **stack )
 
 #ifdef DEBUG
 char *expression = "{ hello, hi }, { }{ \n\\0, world, { dear\\ ,, poor\\ , }{ you }}.\n";
+// char *expression = "{ hello, hi }, { }{ \n\\0, world\n, { dear\\ ,, poor\\ , }{ you \n";
 int
 main( int argc, char *argv[] )
 {
