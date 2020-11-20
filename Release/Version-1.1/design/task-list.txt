@@ -1,19 +1,26 @@
 TODO
-	. single character identifier entities
-		. bm_input: refactor using p_traverse( format, cb )
-		. Test cases
-		. NOTE: 'p' MUST be used when testing base entity p when .p is declared
-		  => could generalize with \identifier (cf. \this for base narrative's .local)
+	. support range in regex identifier, e.g. /[A-Z]/ or /[\0-\x1F]/
+	. support do { ... } and B% literals (: ... ) - specs to be added
+	. support :< file:xxx
+	. support external CNDB config file, as in ./B% file.story file.cndb
+	. Testing
+		. input: single character entities
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
 		. document wildcard logics
 		. document narrative instance registry: this vs. .local vs. .expression
 	. README.txt
+	. NOTE: 'p' MUST be used when testing base single character entity p when .p is declared
 
 DONE
-	. added Test/CN.char
-	. added design/specs/test_hval.c
-	. single character identifier entities
+	. added ../../Base/sequence.c to support do { ... } esp. in config file
+	. added on ~. expressions to support handling deadlocks
+		. also added in ~. for symmetry
+	. introduced regex identifiers, e.g. in *event:/[ \t]/
+		. added Test/CN.rx
+	. feature complete: single character identifier entities
+		. added Test/CN.char
+		. added design/specs/test_hval.c
 		. support CNDB internal vs. external representation
 			. context.c: charscan, bm_lookup, bm_register
 			. database.c: cn_out

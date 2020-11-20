@@ -36,6 +36,15 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/11/20
+		introduced on ~. meaning no event during last frame
+		. needed to detect deadlock and exit schema threads
+		introduced regex identifiers
+		. needed to allow in *event:/[ \t]/ or /[A-Za-z0-9_]/
+		. added ./Test/CN.rx
+		created ../../Base/sequence.c
+		. needed to allow do (( rule, id ), ( schema, { ... } ))
+		  and eventually do > format: { arg1, arg2, ... }
 	2020/11/13
 		feature complete: single character identifiers
 		. refactored bm_input and bm_output, e.g. input now
