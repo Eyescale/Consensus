@@ -17,7 +17,7 @@ static BMLocateCB arg_register_CB;
 BMContext *
 bm_push( CNNarrative *n, CNInstance *e, CNDB *db )
 {
-	Registry *registry = newRegistry( IndexedByToken );
+	Registry *registry = newRegistry( IndexedByCharacter );
 	registryRegister( registry, "?", NULL ); // aka. %?
 	if (( e )) {
 		registryRegister( registry, "this", e );

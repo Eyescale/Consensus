@@ -1105,7 +1105,7 @@ static int
 escaped( int c )
 {
 	switch ( c ) {
-		case '0': return 0;
+		case '0': return '\0';
 		case 'n': return '\n';
 		case 't': return '\t';
 		default : return c;

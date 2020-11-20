@@ -22,7 +22,7 @@
 						caught.event = 1;
 #define on_separator			} else if ( is_separator( event ) ) { \
 						caught.event = 1;
-#define on_character			} else if ( is_character( event ) ) { \
+#define on_printable			} else if ( is_printable( event ) ) { \
 						caught.event = 1;
 #define on_escapable			} else if ( is_escapable( event ) ) { \
 						caught.event = 1;

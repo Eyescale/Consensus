@@ -10,13 +10,12 @@
 #define MAXCHARSIZE 1
 
 int	is_separator( int event );
-int	is_character( int event );
+int	is_printable( int event );
 int	is_space( int event );
 int	is_escapable( int event );
 int	is_xdigit( int event );
 int	isanumber( char *string );
 int	charscan( char *p, char *q );
-int	tokcmp( const char *p, const char *q );
 
 enum {
 	CNStringMode = 0,
@@ -45,6 +44,7 @@ char *	StringFinish( CNString *string, int trim );
 char *	l2s( listItem **, int trim );
 
 char *	strmake( char * );
+int	strcomp( char *, char *, int );
 char *	strscanid( char *, char ** );
 int 	strmatch( char *, int event );
 char *	strskip( char *fmt, char *str );

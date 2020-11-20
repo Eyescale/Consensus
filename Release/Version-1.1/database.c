@@ -3,10 +3,10 @@
 
 #include "string_util.h"
 #include "database.h"
-#include "db_private.h"
+#include "database_private.h"
 
 // #define DEBUG
-#define TOKENIZE
+#define NULL_TERMINATED
 
 //===========================================================================
 //	CNDB allocate / free
@@ -16,10 +16,10 @@ newCNDB( void )
 {
 	CNInstance *nil = cn_new( NULL, NULL );
 	CNInstance *init = cn_new( NULL, NULL );
-#ifdef TOKENIZE
-	Registry *index = newRegistry( IndexedByToken );
-#else
+#ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
+#else
+	Registry *index = newRegistry( IndexedByCharacter );
 #endif
 	CNDB *db = (CNDB *) newPair( nil, index );
 	registryRegister( db->index, strdup("init"), init );
@@ -241,7 +241,7 @@ CNInstance *
 db_register( char *p, CNDB *db )
 {
 	if ( p == NULL ) return NULL;
-#ifndef TOKENIZE
+#ifdef NULL_TERMINATED
 	p = strmake( p );
 #endif
 	CNInstance *e = NULL;
@@ -249,16 +249,16 @@ db_register( char *p, CNDB *db )
 	if (( entry )) {
 		e = entry->value;
 		db_op( DB_REHABILITATE_OP, e, 0, db );
-#ifndef TOKENIZE
+#ifdef NULL_TERMINATED
 		free( p );
 #endif
 	}
 	else {
 		e = cn_new( NULL, NULL );
-#ifdef TOKENIZE
-		registryRegister( db->index, strmake(p), e );
-#else
+#ifdef NULL_TERMINATED
 		registryRegister( db->index, p, e );
+#else
+		registryRegister( db->index, strmake(p), e );
 #endif
 		db_op( DB_MANIFEST_OP, e, DB_NEW, db );
 	}
@@ -434,6 +434,12 @@ db_is_empty( CNDB *db )
 	}
 	return 1;
 }
+int
+db_still( CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	return !(nil->as_sub[0]) && !(nil->as_sub[1]);
+}
 CNInstance *
 db_first( CNDB *db, listItem **stack )
 {
@@ -511,16 +517,25 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db )
 {
-	if ( p == NULL ) return NULL;
-#ifdef TOKENIZE
-	Pair *entry = registryLookup( db->index, p );
-#else
+	Pair *entry;
+	if ( p == NULL )
+		return NULL;
+#ifdef NULL_TERMINATED
 	p = strmake( p );
-	Pair *entry = registryLookup( db->index, p );
+	entry = registryLookup( db->index, p );
 	free( p );
+#else
+	entry = registryLookup( db->index, p );
 #endif
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL;
+}
+char *
+db_identifier( CNInstance *e, CNDB *db )
+{
+	if ( e == NULL ) return NULL;
+	Pair *entry = registryLookup( db->index, NULL, e );
+	return ( entry ) ? entry->name : NULL;
 }
 int
 db_private( int privy, CNInstance *e, CNDB *db )
@@ -554,14 +569,6 @@ db_private( int privy, CNInstance *e, CNDB *db )
 //===========================================================================
 //	CNDB private
 //===========================================================================
-static char *
-db_identifier( CNInstance *e, CNDB *db )
-{
-	if ( e == NULL ) return NULL;
-	Pair *entry = registryLookup( db->index, NULL, e );
-	if (( entry )) return entry->name;
-	return NULL;
-}
 static void
 db_deregister( CNInstance *e, CNDB *db )
 /*
@@ -825,7 +832,7 @@ cn_output( char *format, FILE *stream, CNInstance *e, CNDB *db )
 				case '\'': fprintf( stream, "'\\''" ); break;
 				case '\\': fprintf( stream, "'\\\\'" ); break;
 				default:
-					if ( is_character(*p) ) fprintf( stream, "'%c'", *p );
+					if ( is_printable(*p) ) fprintf( stream, "'%c'", *p );
 					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
 				}
 			}

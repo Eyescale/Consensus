@@ -194,7 +194,10 @@ static int
 in_condition( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "in condition: %s\n", expression );
-	return bm_feel( expression, ctx, BM_CONDITION );
+	if ( !strcmp( expression, "~." ) ) {
+		return db_is_empty( ctx->db );
+	}
+	else return bm_feel( expression, ctx, BM_CONDITION );
 }
 
 //===========================================================================
@@ -204,9 +207,10 @@ static int
 on_event( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "on_event: %s\n", expression );
-	if ( !strncmp( expression, "~(", 2 ) ) {
+	if ( !strcmp( expression, "~." ) )
+		return db_still( ctx->db );
+	else if ( !strncmp( expression, "~(", 2 ) )
 		return bm_feel( expression+1, ctx, BM_RELEASED );
-	}
 	else return bm_feel( expression, ctx, BM_INSTANTIATED );
 }
 
@@ -253,7 +257,7 @@ do_input( char *expression, BMContext *ctx )
 
 	/* invoke bm_inputf()
 	*/
-	int retval = ( *format == '<' ) ?
+	int retval = ( *format != '"' ) ?
 		bm_inputf( "", args, ctx ) :
 		bm_inputf( format, args, ctx );
 
@@ -279,20 +283,29 @@ do_output( char *expression, BMContext *ctx )
 	then outputs expression(s) to stdout according to format
 */
 {
+	expression++; // skipping the leading '>'
+
 	/* extracts format and args:{ expression(s) }
 	*/
-	char *format = expression + 1; // skipping '>'
-
+	char *format;
+	switch ( *expression ) {
+	case '"':
+		format = expression;
+		expression = p_prune( PRUNE_FORMAT, format );
+		if ( *expression ) expression++; // skipping ':'
+		break;
+	case ':':
+		expression++;
+		// no break
+	default:
+		format = "";
+	}
 	listItem *args = NULL;
-	expression = p_prune( PRUNE_FORMAT, format );
-	if ( *expression ) expression++; // skipping ':'
 	if ( *expression ) addItem( &args, expression );
 
 	/* invoke bm_outputf()
 	*/
-	int retval = ( *format == ':' ) ?
-		bm_outputf( "", args, ctx ) :
-		bm_outputf( format, args, ctx );
+	int retval = bm_outputf( format, args, ctx );
 
 	/* cleanup
 	*/

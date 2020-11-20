@@ -198,10 +198,15 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 	}
 	if ( y == NULL ) return -1;
 	if ( p == NULL ) return 1;
-	if ( *p == '*' ) return ( y == data->star );
-	if (( data->pivot ) && ( p == data->pivot->name ))
-		return ( y == data->pivot->value );
-
+	switch ( *p ) {
+	case '*':
+		return ( y == data->star );
+	case '/':
+		return !(y->sub[0]) && !strcomp( p, db_identifier( y, data->ctx->db ), 2 );
+	default:
+		if (( data->pivot ) && ( p == data->pivot->name ))
+			return ( y == data->pivot->value );
+	}
 	return ( y == bm_lookup( data->privy, p, data->ctx ));
 }
 
@@ -503,7 +508,7 @@ bm_input( char *format, char *expression, BMContext *ctx )
 		case '\'': asprintf( &input, "'\\\''" ); break;
 		case '\\': asprintf( &input, "'\\\\'" ); break;
 		default:
-			if ( is_character( event ) ) asprintf( &input, "'%c'", event );
+			if ( is_printable( event ) ) asprintf( &input, "'%c'", event );
 			else asprintf( &input, "'\\x%.2X'", event );
 		}
 		break;
@@ -548,7 +553,7 @@ bm_read( FILE *stream )
 			end
 	in_( "char" ) bgn_
 		on_( '\\' )	do_( "char\\" )
-		on_character	do_( "char_" )	StringAppend( s, event );
+		on_printable	do_( "char_" )	StringAppend( s, event );
 		end
 		in_( "char\\" ) bgn_
 			on_escapable	do_( "char_" )	StringAppend( s, event );

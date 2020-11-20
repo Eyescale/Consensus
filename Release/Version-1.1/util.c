@@ -119,6 +119,9 @@ p_locate( char *expression, listItem **exponent )
 		case '.':
 			p = p_prune( PRUNE_IDENTIFIER, p+1 );
 			break;
+		case '/':
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
 		default:
 			if ( not ) p_prune( PRUNE_IDENTIFIER, p );
 			else scope = 0;
@@ -242,6 +245,7 @@ p_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *
 //	p_prune
 //===========================================================================
 static char *prune_format( char * );
+static char *prune_regex( char * );
 
 char *
 p_prune( PruneType type, char *p )
@@ -253,6 +257,8 @@ p_prune( PruneType type, char *p )
 		switch ( *p ) {
 		case '\'':
 			return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+		case '/':
+			return prune_regex( p );
 		default:
 			while ( !is_separator(*p) ) p++;
 			return p;
@@ -261,13 +267,18 @@ p_prune( PruneType type, char *p )
 	case PRUNE_FILTER:
 		if ( *p==')' ) p++;
 		int level = 1;
-		for ( ; ; p++ ) {
+		for ( ; ; ) {
 			switch ( *p ) {
 			case '\0': return p;
-			case '(': level++; break;
+			case '(':
+				level++;
+				p++; break;
 			case ')':
 				if ( level == 1 ) return p;
 				level--;
+				p++; break;
+			case '/':
+				p = prune_regex( p );
 				break;
 			case '"':
 				p = prune_format( p );
@@ -278,24 +289,45 @@ p_prune( PruneType type, char *p )
 			case ':':
 				if ( type==PRUNE_FILTER && level==1 )
 					return p;
-				break;
+				p++; break;
 			case ',':
 				if ( level == 1 ) return p;
-				break;
+				p++; break;
+			default:
+				p++; break;
 			}
 		}
 	}
 }
-
 static char *
 prune_format( char *p )
 {
-	if ( *p == '"' )
-		for ( p++; *p; )
-			switch ( *p++ ) {
-			case '\"': return p;
-			case '\\': p++;
-			}
+	for ( p++; *p; )
+		switch ( *p++ ) {
+		case '\"': return p;
+		case '\\': p++; break;
+		}
+	return p;
+}
+static char *
+prune_regex( char *p )
+{
+	int bracket = 0;
+	for ( p++; *p; )
+		switch ( *p++ ) {
+		case '/':
+			if ( !bracket )
+				return p;
+			break;
+		case '\\':
+			p++; break;
+		case '[':
+			bracket = 1;
+			break;
+		case ']':
+			bracket = 0;
+			break;
+		}
 	return p;
 }
 

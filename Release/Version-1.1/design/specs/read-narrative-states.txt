@@ -2,10 +2,10 @@
 	base	#	base
 		+	base
 		-	base
-		_:	expr
-		_.	_._	_..	_.
+		^:	expr
+		^.	^._	^..	^.
 					_expr
-		_%	_expr
+		^%	_expr
 		i	in	in_	_expr
 		o	on	on_	_expr
 		d	do	do_	_expr
@@ -19,15 +19,28 @@
 	_expr	[ sibling ]	build	add	expr
 
 	expr	expr_
+		~	expr
 		*	expr
 		%	expr
 			%_	expr
 		>	expr
+			:
 			>\"	>\"\\ 	>\"
-				>_	expr
-					expr_
+				>_	expr_
+					:
+		:	expr
+			:~	expr
+				:
+			:\"	:\"\\ 	:\"
+				:_	expr_
 		?	expr
 		.	expr
+		/ 	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
 		char	char_	expr
 			char\\	char_	expr
 				char\\x	char\\x_ char_ expr

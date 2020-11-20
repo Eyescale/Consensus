@@ -52,7 +52,7 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 static char *
 xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 {
-	if (!((expression)&&(*expression)))
+	if (!((expression) && (*expression)) )
 		return NULL;
 
 	data->ctx = ctx;

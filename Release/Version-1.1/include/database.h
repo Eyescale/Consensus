@@ -34,10 +34,12 @@ void	db_exit( CNDB * );
 //	utilities
 //===========================================================================
 int	db_is_empty( CNDB * );
+int	db_still( CNDB * );
 CNInstance * db_first( CNDB *, listItem ** );
 CNInstance * db_next( CNDB *, CNInstance *, listItem ** );
 CNInstance * db_log( int first, int released, CNDB *, listItem ** );
 CNInstance * db_lookup( int privy, char *identifier, CNDB * );
+char *	db_identifier( CNInstance *, CNDB * );
 int	db_private( int privy, CNInstance *, CNDB * );
 int	db_out( CNDB * );
 

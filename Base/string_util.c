@@ -18,7 +18,7 @@ is_separator( int event )
 		  ( event == 95 )) ? 0 : 1;			/* _ */
 }
 int
-is_character( int event )
+is_printable( int event )
 {
 	return ((event > 31 ) && ( event < 127 ));
 }
@@ -69,25 +69,6 @@ charscan( char *p, char *q )
 		break;
 	default:
 		q[ 0 ] = *p; return 1;
-	}
-}
-int
-tokcmp( const char *p, const char *q )
-{
-	if ( is_separator(*p) ) {
-		if ( !is_separator(*q) ) return - *(const unsigned char*)q;
-		return *(const unsigned char*)p - *(const unsigned char*)q;
-	}
-	else if ( is_separator(*q) ) {
-		return *(const unsigned char*)p;
-	}
-	else for ( ; ; p++, q++ ) {
-		if ( is_separator(*p) )
-			return is_separator(*q) ? 0 : - *(const unsigned char*)q;
-		else if ( is_separator(*q) )
-			return *(const unsigned char*)p;
-		else if ( *p != *q )
-			return *(const unsigned char*)p - *(const unsigned char*)q;
 	}
 }
 
@@ -207,7 +188,6 @@ StringFinish( CNString *string, int trim )
 	string->data = str;
 	return str;
 }
-
 char *
 l2s( listItem **list, int trim )
 {
@@ -291,6 +271,121 @@ strmake( char *p )
 	StringReset( s, CNStringMode );
 	freeString( s );
 	return p;
+}
+
+/*---------------------------------------------------------------------------
+	strcomp
+---------------------------------------------------------------------------*/
+static int rxcmp( char *r, int event );
+static int equivocal( char *regex, char *p );
+static char *rxnext( char *regex, char *r );
+int
+strcomp( char *p, char *q, int cmptype )
+{
+	switch ( cmptype ) {
+	case 0:	// both p and q are null-terminated
+		for ( ; *p; p++, q++ ) {
+			if ( *p == *q ) continue;
+			return *(const unsigned char*)p - *(const unsigned char*)q;
+		}
+		return - *(const unsigned char*)q;
+	case 1:	// both p and q are separator-terminated
+		for ( ; !is_separator(*p); p++, q++ ) {
+			if ( *p == *q ) continue;
+			return is_separator(*q) ?
+				*(const unsigned char*)p :
+				*(const unsigned char*)p - *(const unsigned char*)q;
+		}
+		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
+	case 2:; // p is a regex, q is null-terminated
+		char *r = p+1; // skip the leading '/'
+		int comparison;
+		for ( ; *q && (r); q++, r=rxnext(p,r) ) {
+			if (( comparison = rxcmp( r, *q ) )) {
+				if ( !equivocal(p,r) ) return comparison;
+				else return -1;
+			}
+		}
+		return (r) ? -1 : 0;
+	default:
+		return 1;
+	}
+}
+static int
+equivocal( char *regex, char *p )
+{
+	switch ( *p ) {
+	case '.':
+	case '[':
+		return 1;
+	}
+	char *r = regex+1; // skip the leading '/'
+	while ( r != p ) {
+		switch ( *r ) {
+		case '.':
+		case '[':
+			return 1;
+		case '\\':
+			r += ( r[1]=='x' ? 4 : 2 );
+			break;
+		default:
+			r++;
+		}
+	}
+	return 0;
+}
+static char *
+rxnext( char *regex, char *r )
+{
+	int bracket = 0;
+	do {
+		switch ( *r ) {
+		case '[':
+			bracket = 1;
+			r++; break;
+		case ']':
+			bracket = 0;
+			r++; break;
+		case '\\':
+			r += ( r[1]=='x' ? 4 : 2 );
+			break;
+		default:
+			r++;
+		}
+	}
+	while ( bracket );
+	return ( *r=='\0' || *r=='/' ) ? NULL : r;
+}
+static int
+rxcmp( char *r, int event )
+{
+	int delta;
+	char q[ MAXCHARSIZE + 1 ];
+	switch ( *r ) {
+	case '.': return 0;
+	case '[':
+		for ( r++; *r && *r!=']'; ) {
+			switch ( *r ) {
+			case '\\': 
+				delta = charscan(r,q);
+				if ( delta ) {
+					if ( event == q[0] ) return 0;
+					else r += delta;
+				}
+				else if ( event == r[1] ) return 0;
+				else r += 2;
+				break;
+			default:
+				if ( event == *r++ ) return 0;
+		   	}
+		   }
+		   return -1; // no match
+	case '\\':
+		return event - (charscan(r,q) ?
+			*(const unsigned char*)q : *(const unsigned char*)(r+1) );
+	default:
+		return event - *(const unsigned char*)r;
+	}
 }
 
 /*---------------------------------------------------------------------------
@@ -464,3 +559,4 @@ strxchange( char *expression, char *identifier, char *value )
 	freeString( result );
 	return retval;
 }
+

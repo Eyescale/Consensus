@@ -6,11 +6,11 @@
 #include "registry.h"
 #include "string_util.h"
 
+static int compare( RegistryType, Pair *entry, void *name );
+
 //===========================================================================
 //	public interface
 //===========================================================================
-static int compare( RegistryType, Pair *entry, void *name );
-
 Registry *
 newRegistry( RegistryType type )
 {
@@ -51,7 +51,7 @@ registryRegister( Registry *registry, void *name, void *value )
 	RegistryType type = registry->type;
 	switch ( type ) {
 	case IndexedByName:
-	case IndexedByToken:
+	case IndexedByCharacter:
 		if ( name == NULL ) return NULL;
 	default:
 		break;
@@ -178,9 +178,9 @@ compare( RegistryType type, Pair *entry, void *name )
 {
 	switch ( type ) {
 	case IndexedByName:
-		return strcmp( entry->name, (char *) name );
-	case IndexedByToken:
-		return tokcmp( entry->name, (char *) name );
+		return strcomp( entry->name, (char *) name, 0 );
+	case IndexedByCharacter:
+		return strcomp( entry->name, (char *) name, 1 );
 	case IndexedByNumber:
 		return ( (int) entry->name - *(int *) name );
 	case IndexedByAddress:

@@ -6,9 +6,6 @@
 	database.c: cn_out() 
 	context.c: charscan(), bm_lookup(), bm_register()
 	string_util.c: tokcmp(), strmake()
-
-   Note that readNarrative() limits hexadecimal representations
-   to upper cases, hence in charscan() we use a simplified HVAL
 */
 
 int

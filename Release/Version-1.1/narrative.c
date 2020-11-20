@@ -9,8 +9,6 @@
 //===========================================================================
 //	readStory
 //===========================================================================
-#define FILTERED 2
-
 CNStory *
 readStory( char *path )
 /*
@@ -80,10 +78,10 @@ readStory( char *path )
 			}
 		on_( ':' )
 			if ( column == 1 ) {
-				do_( "_:" )
+				do_( "^:" )
 			}
-		on_( '.' )	do_( "_." )	indent = column;
-		on_( '%' )	do_( "_%" )	indent = column;
+		on_( '.' )	do_( "^." )	indent = column;
+		on_( '%' )	do_( "^%" )	indent = column;
 		on_( 'i' )	do_( "i" )	indent = column;
 		on_( 'o' )	do_( "o" )	indent = column;
 		on_( 'd' )	do_( "d" )	indent = column;
@@ -101,7 +99,7 @@ readStory( char *path )
 			on_( '-' )	do_( same )	tab_base--;
 			on_other	do_( "base" )	REENTER
 			end
-		in_( "_:" ) bgn_
+		in_( "^:" ) bgn_
 			ons( " \t" )	do_( same )
 			ons( "(\n" )	do_( "expr" )	REENTER
 							freeListItem( &stack.first );
@@ -115,25 +113,25 @@ readStory( char *path )
 							}
 							type = PROTO;
 			end
-		in_( "_." ) bgn_
+		in_( "^." ) bgn_
 			on_separator	; // err
-			on_other	do_( "_._" )	StringAppend( s, '.' );
+			on_other	do_( "^._" )	StringAppend( s, '.' );
 							StringAppend( s, event );
 			end
-			in_ ( "_._" ) bgn_
-				ons( " \t" )	do_( "_.." ) 	StringAppend( s, ' ' );
-				on_( '\n' )	do_( "_.." )	REENTER
+			in_ ( "^._" ) bgn_
+				ons( " \t" )	do_( "^.." ) 	StringAppend( s, ' ' );
+				on_( '\n' )	do_( "^.." )	REENTER
 				on_separator	; // err
 				on_other	do_( same )	StringAppend( s, event );
 				end
-				in_( "_.." ) bgn_
+				in_( "^.." ) bgn_
 					ons( " \t" )	do_( same )
-					on_( '.' )	do_( "_." )
+					on_( '.' )	do_( "^." )
 					on_( '\n' )	do_( "_expr" )	REENTER
 									tab += tab_base;
 									type = LOCAL;
 					end
-		in_( "_%" ) bgn_
+		in_( "^%" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
 							StringAppend( s, '%' );
@@ -256,20 +254,14 @@ readStory( char *path )
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "expr_" )	REENTER
+		on_( '~' )	do_( "~" )
 		on_( '*' )	do_( "*" )	StringAppend( s, event );
 		on_( '%' )	do_( "%" )	StringAppend( s, event );
-		on_( '~' )	do_( same )	StringAppend( s, event );
 		on_( '>' )
 			if ( type==DO && !StringInformed(s) ) {
 				do_( ">" )	StringAppend( s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
-			}
-		on_( '<' )
-			if ( type==DO && !level && ( first & FILTERED )) {
-				do_( "expr_" )	StringAppend( s, event );
-						CNOccurrence *occurrence = stack.occurrence->ptr;
-						occurrence->type = typelse ? ELSE_INPUT : INPUT;
 			}
 		on_( '(' )
 			if ( !informed ) {
@@ -286,8 +278,7 @@ readStory( char *path )
 			}
 		on_( ':' )
 			if ( informed ) {
-				do_( same )	StringAppend( s, event );
-						if ( first ) first |= FILTERED;
+				do_( ":" )	StringAppend( s, event );
 						informed = 0;
 			}
 		on_( ')' )
@@ -310,6 +301,11 @@ readStory( char *path )
 			if ( !informed ) {
 				do_( "." )
 			}
+		on_( '/' )
+			if ( !informed ) {
+				do_( "/" )	StringAppend( s, event );
+						informed = 1;
+			}
 		on_( '\'' )
 			if ( !informed ) {
 				do_( "char" )	StringAppend( s, event );
@@ -324,7 +320,7 @@ readStory( char *path )
 		end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	StringAppend( s, event );
+		on_( ':' )	do_( ":" )	StringAppend( s, event );
 		on_( '\"' )	do_( ">\"" )	StringAppend( s, event );
 		end
 		in_( ">\"" ) bgn_
@@ -341,9 +337,15 @@ readStory( char *path )
 			end
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( ':' )	do_( "expr" )	StringAppend( s, event );
+			on_( ':' )	do_( ":" )	StringAppend( s, event );
 			on_( '\n' )	do_( "expr_" )	REENTER
 			end
+	in_( "~" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '~' )	do_( "expr" )
+		on_other	do_( "expr" )	REENTER
+						StringAppend( s, '~' );
+		end
 	in_( "%" ) bgn_
 		ons( " \t" )	do_( "%_" )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
@@ -386,12 +388,49 @@ readStory( char *path )
 						marked = informed = 1;
 			}
 		end
+	in_( ":" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '~' )	do_( ":~" )
+		on_( '<' )
+			if ( type==DO && !level ) {
+				do_( ":_" )	REENTER
+			}
+		on_( '\"' )
+			if ( type==DO && !level ) {
+				do_( ":\"" )	StringAppend( s, event );
+			}
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( ":~" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '~' )	do_( ":" )
+			on_other	do_( "expr" )	REENTER
+							StringAppend( s, '~' );
+			end
+		in_( ":\"" ) bgn_
+			on_( '\t' )	do_( same )	StringAppend( s, '\\' );
+							StringAppend( s, 't' );
+			on_( '\n' )	do_( same )	StringAppend( s, '\\' );
+							StringAppend( s, 'n' );
+			on_( '\\' )	do_( ":\"\\" )	StringAppend( s, event );
+			on_( '\"' )	do_( ":_" )	StringAppend( s, event );
+			on_other	do_( same )	StringAppend( s, event );
+			end
+		in_( ":\"\\" ) bgn_
+			on_any		do_( ":\"" )	StringAppend( s, event );
+			end
+		in_( ":_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '<' )	do_( "expr_" )	StringAppend( s, event );
+							CNOccurrence *occurrence = stack.occurrence->ptr;
+							occurrence->type = typelse ? ELSE_INPUT : INPUT;
+			end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						StringAppend( s, '.' );
 						informed = 1;
-		ons( "\'(" )
+		on_( '(' )
 			if ( type==PROTO ) ; // err
 			else if (( narrative->proto )) {
 				do_( "expr" )	REENTER
@@ -410,10 +449,40 @@ readStory( char *path )
 			}
 			else {	do_( "expr" )	REENTER }
 		end
+	in_( "/" ) bgn_
+		on_( '/' )	do_( "expr" )	StringAppend( s, event );
+		on_( '\\' )	do_( "/\\" )	StringAppend( s, event );
+		on_( '[' )	do_( "/[" )	StringAppend( s, event );
+		on_printable	do_( same )	StringAppend( s, event );
+		end
+		in_( "/\\" ) bgn_
+			ons( "nt0\\./[]" ) do_( "/" )	StringAppend( s, event );
+			on_( 'x' )	do_( "/\\x" )	StringAppend( s, event );
+			end
+		in_( "/\\x" ) bgn_
+			on_xdigit	do_( "/\\x_" )	StringAppend( s, event );
+			end
+		in_( "/\\x_" ) bgn_
+			on_xdigit	do_( "/" )	StringAppend( s, event );
+			end
+		in_( "/[" ) bgn_
+			on_( '\\' )	do_( "/[\\" )	StringAppend( s, event );
+			on_( ']' )	do_( "/" )	StringAppend( s, event );
+			on_printable	do_( same )	StringAppend( s, event );
+			end
+		in_( "/[\\" ) bgn_
+			ons( "nt0\\[]" ) do_( "/[" )	StringAppend( s, event );
+			on_( 'x' )	do_( "/[\\x" )	StringAppend( s, event );
+			end
+		in_( "/[\\x" ) bgn_
+			on_xdigit	do_( "/[\\x_" ) StringAppend( s, event );
+			end
+		in_( "/[\\x_" ) bgn_
+			on_xdigit	do_( "/[" )	StringAppend( s, event );
+			end
 	in_( "char" ) bgn_
-		on_( '\'' )	; // err
 		on_( '\\' )	do_( "char\\" )	StringAppend( s, event );
-		on_character	do_( "char_" )	StringAppend( s, event );
+		on_printable	do_( "char_" )	StringAppend( s, event );
 		end
 		in_( "char\\" ) bgn_
 			on_escapable	do_( "char_" )	StringAppend( s, event );
@@ -427,7 +496,6 @@ readStory( char *path )
 				end
 		in_( "char_" ) bgn_
 			on_( '\'' )	do_( "expr" )	StringAppend( s, event );
-							dirty_go( &dirty, s );
 			end
 	in_( "term" ) bgn_
 		on_separator	do_( "expr" )	REENTER
@@ -789,7 +857,7 @@ proto_set( CNNarrative *narrative, CNString *s )
 			if ( *p == '\0' ) goto RETURN;
 		p++;
 		for ( listItem *i=list; i!=NULL; i=i->next ) {
-			if ( !tokcmp( i->ptr, p ) ) {
+			if ( !strcomp( i->ptr, p, 1 ) ) {
 				success = 0;
 				goto RETURN;
 			}
