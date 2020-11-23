@@ -12,7 +12,7 @@ main( int argc, char *argv[] )
 {
 	if ( argc < 2 ) {
 		fprintf( stderr, "Example usage: ./B%% Test/CN.suite\n" );
-		exit( - 1 );
+		exit( -1 );
 	}
 	CNDB *db = newCNDB();
 	CNStory *story = readStory( argv[ 1 ] );

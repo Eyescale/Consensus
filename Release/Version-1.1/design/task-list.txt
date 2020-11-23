@@ -1,22 +1,22 @@
 TODO
-	. support range in regex identifier, e.g. /[A-Z]/ or /[\0-\x1F]/
-	. support do { ... } and B% literals (: ... ) - specs to be added
-	. support :< file:xxx
 	. support external CNDB config file, as in ./B% file.story file.cndb
+		. support do { ... } and B% literals (: ... ) - specs to be added
+	. support :< file:xxx
 	. Testing
 		. input: single character entities
+		  NOTE: 'p' MUST be used when testing base single character entity p
+			when the local variable entity .p is declared
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
 		. document wildcard logics
 		. document narrative instance registry: this vs. .local vs. .expression
-	. README.txt
-	. NOTE: 'p' MUST be used when testing base single character entity p when .p is declared
+	. finalize README.txt
 
 DONE
-	. added ../../Base/sequence.c to support do { ... } esp. in config file
+	. added ../../Base/sequence.c implementing string demultiplication
 	. added on ~. expressions to support handling deadlocks
 		. also added in ~. for symmetry
-	. introduced regex identifiers, e.g. in *event:/[ \t]/
+	. introduced regex type identifiers, allowing e.g. in *event:/[ \t]/
 		. added Test/CN.rx
 	. feature complete: single character identifier entities
 		. added Test/CN.char
@@ -25,7 +25,7 @@ DONE
 			. context.c: charscan, bm_lookup, bm_register
 			. database.c: cn_out
 		. bm_output: done
-			. refactored bm_outputf() mutualizing p_traverse( format, cb )
+			. refactored bm_outputf() and bm_inputf()
 		. support in readNarrative and narrative_output
 	. feature complete: narrative instances
 		. narrative_output: cf ./Test/CN.yak
@@ -40,9 +40,9 @@ DONE
 		. introduced CNStory
 			. in Version-1.1 CNStory:{ CNNarrative:[ proto, base ] }
 			. whereas in ../Version-1.0 we do #define CNStory CNNarrative
-			. refactored ../../Examples/TuringMachine/main.c
 			. extended narrative.c:readStory (was: readNarrative) to support
 			  multiple narratives and narrative protos
+			. refactored ../../Examples/TuringMachine/main.c
 	. made '+' and '-' logics relative
 	. implemented db_exit/db_out: instantiates/tests (nil,nil)
 	. registry variable %? (aka. mark register)
@@ -65,7 +65,7 @@ DONE
 		. moved db_feel() out of database.c, into traversal.c
 		. renamed language-specific functions with prefix bm_
 	  	. moved xpn_add() and bm_match() - was: xp_match -
-		  from traversal.c to expression.c
+		  from traversal.c to util.c
 	. line continuation after \
 		+ narrative.c: handle '>' in "expr" vs. "base" state
 		+ allow \CR in strings

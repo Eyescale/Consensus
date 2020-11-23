@@ -302,8 +302,8 @@ strcomp( char *p, char *q, int cmptype )
 		int comparison;
 		for ( ; *q && (r); q++, r=rxnext(p,r) ) {
 			if (( comparison = rxcmp( r, *q ) )) {
-				if ( !equivocal(p,r) ) return comparison;
-				else return -1;
+				if ( equivocal(p,r) ) return -1;
+				else return comparison;
 			}
 		}
 		return (r) ? -1 : 0;
@@ -365,23 +365,36 @@ rxcmp( char *r, int event )
 	case '.': return 0;
 	case '[':
 		for ( r++; *r && *r!=']'; ) {
+			int range[ 2 ];
 			switch ( *r ) {
 			case '\\': 
 				delta = charscan(r,q);
-				if ( delta ) {
-					if ( event == q[0] ) return 0;
-					else r += delta;
-				}
-				else if ( event == r[1] ) return 0;
-				else r += 2;
+				if ( delta ) { range[0]=q[0]; r+=delta; }
+				else { range[0]=r[1]; r+=2; }
 				break;
 			default:
-				if ( event == *r++ ) return 0;
+				range[0] = *r++;
 		   	}
-		   }
-		   return -1; // no match
+			if ( *r == '-' ) {
+				r++;
+				switch ( *r ) {
+				case '\0': break;
+				case '\\': 
+					delta = charscan(r,q);
+					if ( delta ) { range[1]=q[0]; r+=delta; }
+					else { range[1]=r[1]; r+=2; }
+					break;
+				default:
+					range[1] = *r++;
+			   	}
+				if ( event>=range[0] || event<=range[1] )
+					return 0;
+			}
+			else if ( event==range[0] ) return 0;
+		}
+		return -1; // no match
 	case '\\':
-		return event - (charscan(r,q) ?
+		return event - ( charscan(r,q) ?
 			*(const unsigned char*)q : *(const unsigned char*)(r+1) );
 	default:
 		return event - *(const unsigned char*)r;

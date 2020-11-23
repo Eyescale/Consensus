@@ -22,10 +22,9 @@ typedef char * BMFormatCB( char *, int, void * );
 char *	p_locate( char *expression, listItem **exponent );
 char *	p_locate_param( char *expression, listItem **exponent, BMLocateCB, void * );
 char *	p_extract( char * );
-char *	p_prune( PruneType type, char * );
-char *	p_traverse( char *, BMFormatCB, void * );
 int	p_single( char * );
 int	p_filtered( char * );
+char *	p_prune( PruneType type, char * );
 
 void dbg_out( char *pre, CNInstance *e, char *post, CNDB *db );
 

@@ -242,8 +242,32 @@ p_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *
 }
 
 //===========================================================================
+//	p_single
+//===========================================================================
+int
+p_single( char *p )
+/*
+	Assumption: *p == '('
+*/
+{
+	p = p_prune( PRUNE_TERM, p+1 );
+	return ( *p != ',' );
+}
+
+//===========================================================================
+//	p_filtered
+//===========================================================================
+int
+p_filtered( char *p )
+{
+	p = p_prune( PRUNE_FILTER, p );
+	return ( *p == ':' );
+}
+
+//===========================================================================
 //	p_prune
 //===========================================================================
+static char *prune_character( char * );
 static char *prune_format( char * );
 static char *prune_regex( char * );
 
@@ -256,7 +280,7 @@ p_prune( PruneType type, char *p )
 	case PRUNE_IDENTIFIER:
 		switch ( *p ) {
 		case '\'':
-			return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+			return prune_character( p );
 		case '/':
 			return prune_regex( p );
 		default:
@@ -264,9 +288,8 @@ p_prune( PruneType type, char *p )
 			return p;
 		}
 	case PRUNE_TERM:
-	case PRUNE_FILTER:
-		if ( *p==')' ) p++;
-		int level = 1;
+	case PRUNE_FILTER:;
+		int level = 0;
 		for ( ; ; ) {
 			switch ( *p ) {
 			case '\0': return p;
@@ -274,33 +297,45 @@ p_prune( PruneType type, char *p )
 				level++;
 				p++; break;
 			case ')':
-				if ( level == 1 ) return p;
+				if ( !level ) return p;
 				level--;
 				p++; break;
-			case '/':
-				p = prune_regex( p );
+			case '\'':
+				p = prune_character( p );
 				break;
 			case '"':
 				p = prune_format( p );
 				break;
-			case '\'':
-				p += ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+			case '/':
+				p = prune_regex( p );
 				break;
 			case ':':
-				if ( type==PRUNE_FILTER && level==1 )
+				if ( type==PRUNE_FILTER && !level )
 					return p;
 				p++; break;
 			case ',':
-				if ( level == 1 ) return p;
+				if ( !level ) return p;
 				p++; break;
 			default:
 				p++; break;
 			}
 		}
+		break;
 	}
 }
 static char *
+prune_character( char *p )
+/*
+	Assumption: *p == '\''
+*/
+{
+	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+}
+static char *
 prune_format( char *p )
+/*
+	Assumption: *p == '"'
+*/
 {
 	for ( p++; *p; )
 		switch ( *p++ ) {
@@ -311,6 +346,9 @@ prune_format( char *p )
 }
 static char *
 prune_regex( char *p )
+/*
+	Assumption: *p == '/'
+*/
 {
 	int bracket = 0;
 	for ( p++; *p; )
@@ -329,60 +367,6 @@ prune_regex( char *p )
 			break;
 		}
 	return p;
-}
-
-//===========================================================================
-//	p_single
-//===========================================================================
-int
-p_single( char *p )
-/*
-	assumption: *p == '('
-*/
-{
-	int scope = 1;
-	while ( *p++ ) {
-		switch ( *p ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			scope--;
-			if ( !scope ) return 1;
-			break;
-		case ',':
-			if ( scope == 1 ) return 0;
-			break;
-		}
-	}
-	return 1;
-}
-
-//===========================================================================
-//	p_filtered
-//===========================================================================
-int
-p_filtered( char *p )
-{
-	int scope = 0;
-	while ( *p ) {
-		switch ( *p++ ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			if ( !scope ) return 0;
-			scope--;
-			break;
-		case ',':
-			if ( !scope ) return 0;
-			break;
-		case ':':
-			if ( !scope ) return 1;
-			break;
-		}
-	}
-	return 0;
 }
 
 //===========================================================================

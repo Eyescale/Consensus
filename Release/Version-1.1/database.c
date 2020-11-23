@@ -517,15 +517,14 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db )
 {
-	Pair *entry;
 	if ( p == NULL )
 		return NULL;
 #ifdef NULL_TERMINATED
 	p = strmake( p );
-	entry = registryLookup( db->index, p );
+	Pair *entry = registryLookup( db->index, p );
 	free( p );
 #else
-	entry = registryLookup( db->index, p );
+	Pair *entry = registryLookup( db->index, p );
 #endif
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL;
