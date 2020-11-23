@@ -11,7 +11,7 @@ int
 main( int argc, char *argv[] )
 {
 	if ( argc < 2 ) {
-		fprintf( stderr, "Example usage: ./B%% TM.story < Turing.Machine\n" );
+		fprintf( stderr, "Example usage: ./B%% yak.story\n" );
 		exit( - 1 );
 	}
 	CNDB *db = newCNDB();

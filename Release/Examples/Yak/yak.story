@@ -20,7 +20,7 @@
 			on ( %?, COMPLETE )
 				do ~( INPUT )
 			else on ( %?, READY )
-				do input:<
+				do input:"%c"<
 			else on (( *, input ), . )
 				// could do some preprocessing here
 				do (( *, frame ), ( *frame, *input ))
@@ -51,7 +51,7 @@
 				   start UNCONSUMED - so no starting event here.
 				*/
 				in *s: ((schema,'\0'),.) // silence null-schema output
-				else do >"\%%_{ ": %(*r:((.,?),.))
+				else do >"%%%_{ ": %(*r:((.,?),.))
 
 		else on ((*,s), . ) // s set alone
 			// set r to the rule which s fed
