@@ -169,7 +169,7 @@ D. Consensus queries
 
 E. Example: Turing Machine
 
-	The directory ./Examples/TuringMachine of this site features a Turing Machine[1]
+	The directory ./Release/Examples/TuringMachine features a Turing Machine[1]
 	implementation based on the above-described Consensus programming language
 	(the language itself has been named B%, say B-mod, for Behavioral Modeling)
 	thereby demonstrating the Turing completeness of the language.
