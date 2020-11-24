@@ -1,25 +1,29 @@
 :
-	.rule .schema .base .frame
-	.CONSUMED .UNCONSUMED
-	.EOF
-
 	on init
 #		do (( rule, identifier ), ( schema, (a,(b,...((%,id),...(z,'\0')))) ))
 #		...
+		do (( rule, identifier ), ( schema, '\0' ))
 		do (( *, base ), identifier )
 		do (( *, frame ), ( frame, * ))
 		do INPUT
 
 	else in INPUT
-		.input .READY .COMPLETE
-		%((rule,.),.)
+		%((rule,.),(~schema,.))
 
 		on ( INPUT ) // start base rule instance
-			do ( ((rule,*base),(CONSUMED,*frame)), base )
+			in (( rule, *base ), ( schema, . ))
+				do ( ((rule,*base),(CONSUMED,*frame)), base )
+			else
+				in ( rule, *base )
+					do >"Error: Yak: rule '%_': no schema found\n":*base
+				else
+					do >"Error: Yak: rule '%_' not found\n":*base
+				do exit
 		else in ?: %( ?:((rule,.),.), base )
 			on ( %?, COMPLETE )
 				do ~( INPUT )
 			else on ( %?, READY )
+				do >"BINGO1\n"
 				do input:"%c"<
 			else on (( *, input ), . )
 				// could do some preprocessing here
@@ -33,7 +37,6 @@
 		do OUTPUT
 
 	else in ( OUTPUT )
-		.s .f .r
 		on ( OUTPUT )
 			do ((*,s), base )
 			do ((*,f), (frame,*)) // initial frame
@@ -116,6 +119,7 @@
 	%((schema,.),.)
 
 	on ( this )
+		do >"rule '%_' launched\n": id
 		// instantiate / subscribe to children schemas - feeders
 		do (( %((rule,id),?:(schema,.)), (flag,start_frame)), this )
 
@@ -137,9 +141,13 @@
 		on ?: %( %( ?:((schema,.),.), this ), ?:(UNCONSUMED,.))
 			do .( %? ) // TAKE
 
+		in ( %( ?:((schema,.),.), this ), READY )
+			do >"BINGOOOOO\n"
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-			else do .READY	// all children schemas ready
+				// do >"IN THERE\n"
+			else 
+				do .READY	// all children schemas ready
 		else do .COMPLETE	// all children schemas complete
 
 
@@ -161,13 +169,14 @@
 		do ~( this ) // FAIL: parent rule failed
 
 	else on (( *, event ), . )
-		in *position: '\0' // null-schema
+		do >"BINGO!!\n"
+		in *position: ( ., '\0' ) // null-schema
 			do .( UNCONSUMED, *frame )
 			do .COMPLETE
 /*
-		else in *position: space
+		else in *position: ( ., space )
 			%( .event )
-		else in *position: blank
+		else in *position: ( ., blank )
 			%( .event )
 */
 		else in ?: %((?,.): *position ) // expected @ position

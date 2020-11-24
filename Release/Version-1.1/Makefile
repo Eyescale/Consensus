@@ -34,13 +34,14 @@ B%: $(OBJS)
 
 $(TARGET): $(OBJS) 
 	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
+	cp ../../Base/libcn.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN)
-	cp ../../Base/libcn.so .
+	$(RM) *.so
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^

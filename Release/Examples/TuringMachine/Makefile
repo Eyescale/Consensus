@@ -23,11 +23,11 @@ all:$(MAIN)
 
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	cp ../../Version-1.1/libbmod.so .
+	cp ../../../Base/libcn.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
-	cp ../../Version-1.1/libbmod.so .
-	cp ../../../Base/libcn.so .
 
 clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN)

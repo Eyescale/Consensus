@@ -23,13 +23,14 @@ all:$(MAIN)
 
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	cp ../../libcn.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN)
-	cp ../../libcn.so .
+	$(RM) *.so
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^

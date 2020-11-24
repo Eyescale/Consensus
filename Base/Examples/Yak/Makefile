@@ -26,13 +26,14 @@ all:$(MAIN)
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
 	cc -shared -o libyak.so $(INCLUDES) parser.c scheme.c regex.c $(LFLAGS) $(LIBS)
+	cp ../../libcn.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN) libyak.so
-	cp ../../libcn.so .
+	$(RM) *.so
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^

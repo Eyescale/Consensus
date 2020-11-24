@@ -22,14 +22,15 @@ all:$(MAIN)
 
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	cp ../../libcn.so .
+	cp ../Yak/libyak.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
 	$(RM) $(OBJDIR)/*.o ../base/.ofiles/*.o $(MAIN)
-	cp ../../libcn.so .
-	cp ../Yak/libyak.so .
+	$(RM) *.so
 
 depend: $(SRCS)
 	makedepend $(INCLUDES) $^
