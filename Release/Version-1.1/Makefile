@@ -20,7 +20,8 @@ SRCS =	context.c \
 	util.c \
 	wildcard.c
 
-#CFLAGS = -DDEBUG
+#CFLAGS = -DDEBUG -DPREVIOUS
+CFLAGS = -DTRIM
 CFLAGS = -DTRIM
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so

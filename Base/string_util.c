@@ -290,7 +290,14 @@ strcomp( char *p, char *q, int cmptype )
 		}
 		return - *(const unsigned char*)q;
 	case 1:	// both p and q are separator-terminated
-		for ( ; !is_separator(*p); p++, q++ ) {
+		if ( is_separator(*p) ) {
+			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
+			return *(const unsigned char*)p - *(const unsigned char*)q;
+		}
+		else if ( is_separator(*q) ) {
+			return *(const unsigned char*)p;
+		}
+		else for ( ; !is_separator(*p); p++, q++ ) {
 			if ( *p == *q ) continue;
 			return is_separator(*q) ?
 				*(const unsigned char*)p :

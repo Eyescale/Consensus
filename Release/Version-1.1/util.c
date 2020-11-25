@@ -123,7 +123,7 @@ p_locate( char *expression, listItem **exponent )
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
 		default:
-			if ( not ) p_prune( PRUNE_IDENTIFIER, p );
+			if ( not ) p = p_prune( PRUNE_IDENTIFIER, p );
 			else scope = 0;
 		}
 	}

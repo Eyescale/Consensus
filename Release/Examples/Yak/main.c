@@ -5,7 +5,7 @@
 #include "narrative.h"
 #include "operation.h"
 
-#define DEBUG
+// #define DEBUG
 
 int
 main( int argc, char *argv[] )

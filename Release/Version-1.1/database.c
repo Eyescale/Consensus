@@ -6,7 +6,7 @@
 #include "database_private.h"
 
 // #define DEBUG
-#define NULL_TERMINATED
+// #define NULL_TERMINATED
 
 //===========================================================================
 //	CNDB allocate / free
@@ -96,7 +96,6 @@ db_update( CNDB *db )
 	x can be both manifested AND newborn (reassigned)
 	x can be both released AND to-be-manifested (reborn)
 	x can be both newborn AND to-be-released
-
 	x cannot be both manifested AND released
 	x cannot be both released AND to-be-released
 	x cannot be both newborn AND released

@@ -8,22 +8,21 @@
 		do INPUT
 
 	else in INPUT
-		%((rule,.),(~schema,.))
-
+		%((rule,.),.)
 		on ( INPUT ) // start base rule instance
 			in (( rule, *base ), ( schema, . ))
 				do ( ((rule,*base),(CONSUMED,*frame)), base )
 			else
 				in ( rule, *base )
 					do >"Error: Yak: rule '%_': no schema found\n":*base
-				else
-					do >"Error: Yak: rule '%_' not found\n":*base
+				else do >"Error: Yak: rule '%_' not found\n":*base
 				do exit
 		else in ?: %( ?:((rule,.),.), base )
 			on ( %?, COMPLETE )
 				do ~( INPUT )
 			else on ( %?, READY )
-				do >"BINGO1\n"
+				do >"IN HERE\n"
+				do exit
 				do input:"%c"<
 			else on (( *, input ), . )
 				// could do some preprocessing here
@@ -115,11 +114,10 @@
 			do INPUT
 
 
-: (( rule, .id ), ( .flag, .start_frame ))
+: (( rule, .id ), ( .flag:~schema, .start_frame ))
 	%((schema,.),.)
 
 	on ( this )
-		do >"rule '%_' launched\n": id
 		// instantiate / subscribe to children schemas - feeders
 		do (( %((rule,id),?:(schema,.)), (flag,start_frame)), this )
 
@@ -141,14 +139,22 @@
 		on ?: %( %( ?:((schema,.),.), this ), ?:(UNCONSUMED,.))
 			do .( %? ) // TAKE
 
-		in ( %( ?:((schema,.),.), this ), READY )
-			do >"BINGOOOOO\n"
+		in ?: %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
+#		in ?: %( ?:((schema,.),.), this ): ~%(?,COMPLETE): ~%(?,READY): ~%(this,?)
+			do >"ZRBI: %_\n": %?
+		else do >"FOUND\n"
+
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
+			do >"in there1\n"
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-				// do >"IN THERE\n"
-			else 
+#			in %( ?:((schema,.),.), this ): ~%(?,COMPLETE): ~%(?,READY): ~%(this,?)
+				do >"in there2\n"
+			else
+				do >"BINGO2!\n"
+				do exit
 				do .READY	// all children schemas ready
 		else do .COMPLETE	// all children schemas complete
+		do >"done\n"
 
 
 : (( schema, .start_position ), ( .flag, .start_frame ))
@@ -169,7 +175,6 @@
 		do ~( this ) // FAIL: parent rule failed
 
 	else on (( *, event ), . )
-		do >"BINGO!!\n"
 		in *position: ( ., '\0' ) // null-schema
 			do .( UNCONSUMED, *frame )
 			do .COMPLETE
