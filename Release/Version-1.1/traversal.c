@@ -231,16 +231,22 @@ fprintf( stderr, " ........{\n" );
 				// setup new sub context
 				mark_exp = data->mark_exp;
 				stack.as_sub = NULL;
-				exponent = mark_exp;
 				listItem **sub_exp = &data->sub_exp;
-				while (( *sub_exp )) {
+				while (( x ) && (*sub_exp)) {
 					int exp = (int) popListItem( sub_exp );
 					x = x->sub[ exp & 1 ];
 				}
 				i = newItem( x );
-				success = 0;
-				op = BM_BGN;
-				continue;
+				if (( x )) {
+					exponent = mark_exp;
+					success = 0;
+					op = BM_BGN;
+					continue;
+				}
+				else {
+					freeListItem( sub_exp );
+					success = 0;
+				}
 			}
 			else success = data->success;
 		}
@@ -277,10 +283,10 @@ fprintf( stderr, " ........{\n" );
 					if ( not ) success = !success;
 					if ( x == NULL ) {
 						if ( success ) {
-							p = p_prune( PRUNE_FILTER, start_p );
+							p = p_prune( PRUNE_FILTER, start_p+1 );
 							if ( *p == ':' ) p++;
 						}
-						else p = p_prune( PRUNE_TERM, start_p );
+						else p = p_prune( PRUNE_TERM, start_p+1 );
 					}
 					exponent = NULL;
 					op = BM_END;
@@ -290,7 +296,6 @@ fprintf( stderr, " ........{\n" );
 		}
 		else { freeItem( i ); goto RETURN; }
 	}
-
 RETURN:
 #ifdef DEBUG
 	if ((data->stack.exponent) || (data->stack.couple) || (data->stack.not))

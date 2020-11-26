@@ -79,10 +79,6 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if ( not ) { success = !success; not = 0; }
 				p++;
 			}
-			else if ( bm_match( x, NULL, *exponent, base, data ) < 0 ) {
-				success = not; not = 0;
-				p = p_prune( PRUNE_TERM, p+1 );
-			}
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
