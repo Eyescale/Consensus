@@ -1,0 +1,17 @@
+
+	on init
+		do ( titi, READY )
+		do ( titi, COMPLETE )
+		do ( toto, READY )
+#		do ( toto, COMPLETE )
+
+		do ( tata, titi )
+		do ( tata, toto )
+		do ( this, tata )
+	else
+		in %(tata,?): ~%(this,?): ~%(?,COMPLETE)
+#			in %(tata,?): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
+			in %(tata,?): ~%(?,COMPLETE): ~%(?,READY): ~%(this,?)
+			else do >"ALL READY\n"
+		else do >"ALL COMPLETE\n"
+		do exit

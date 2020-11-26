@@ -139,22 +139,14 @@
 		on ?: %( %( ?:((schema,.),.), this ), ?:(UNCONSUMED,.))
 			do .( %? ) // TAKE
 
-		in ?: %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-#		in ?: %( ?:((schema,.),.), this ): ~%(?,COMPLETE): ~%(?,READY): ~%(this,?)
-			do >"ZRBI: %_\n": %?
-		else do >"FOUND\n"
-
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
-			do >"in there1\n"
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-#			in %( ?:((schema,.),.), this ): ~%(?,COMPLETE): ~%(?,READY): ~%(this,?)
-				do >"in there2\n"
 			else
-				do >"BINGO2!\n"
-				do exit
+				do >"READY\n"
 				do .READY	// all children schemas ready
-		else do .COMPLETE	// all children schemas complete
-		do >"done\n"
+		else
+			do >"COMPLETE\n"
+			do .COMPLETE	// all children schemas complete
 
 
 : (( schema, .start_position ), ( .flag, .start_frame ))

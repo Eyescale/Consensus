@@ -40,20 +40,18 @@ typedef struct {
 	listItem *exponent;
 	BMTraverseCB *user_CB;
 	void *user_data;
-
-	int op;
+	listItem *mark_exp;
+	listItem *sub_exp;
+	int success;
 	int couple;
+	int not;
 	struct {
 		listItem *exponent;
 		listItem *couple;
 		listItem *scope;
 		listItem *base;
 		listItem *not;
-		listItem *neg;
-		listItem *p;
 	} stack;
-	listItem *mark_exp, *sub_exp;
-	int success;
 #ifdef TRIM
 	BTreeNode *btree;
 #endif

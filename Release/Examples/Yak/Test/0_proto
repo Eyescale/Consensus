@@ -1,0 +1,20 @@
+:
+	%((rule,.), frame )
+
+	on init
+		do (( rule, identifier ), ( schema, '\0' ))
+		do INPUT
+	else on ( INPUT )
+		do ((rule,identifier), frame )
+
+: (( rule, .id ), frame )
+	on ( this )
+		do >"IN THERE\n"
+		// instantiate / subscribe to children schemas - feeders
+		do ( %((rule,id),?:(schema,.)), this )
+
+	else // in ((schema,.), this )
+		do >"this: %_\n": this
+		do >"CNDB: %_\n": .
+		do exit
+

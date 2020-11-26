@@ -9,6 +9,7 @@
 #include "wildcard.h"
 
 // #define DEBUG
+// #define VERBOSE
 
 //===========================================================================
 //	bm_verify
@@ -16,70 +17,56 @@
 static int bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverseData * );
 
 int
-bm_verify( CNInstance **x, char **position, BMTraverseData *data )
+bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 /*
 	invoked by xp_verify on each [sub-]expression, i.e.
 	on each expression term starting with '*' or '%'
 	Note that *variable is same as %((*,variable),?)
 */
 {
+#ifdef VERBOSE
+	fprintf( stderr, "bm_verify: " );
+	switch ( op ) {
+	case BM_INIT: fprintf( stderr, "BM_INIT " ); break;
+	case BM_BGN: fprintf( stderr, "BM_BGN " ); break;
+	case BM_END: fprintf( stderr, "BM_END " ); break;
+	}
+	fprintf( stderr, "'%s'\n", *position );
+#endif
 	char *p = *position;
 	listItem *base;
-	int scope, OOS;
-	int success, not = 0;
-
-	switch ( data->op ) {
+	int	level, OOS,
+		success = data->success,
+		not = 0;
+	switch ( op ) {
 	case BM_INIT:
-		success = 0;
 		base = NULL;
-		scope = 1;
+		level = 0;
 		OOS = 0;
 		break;
 	case BM_BGN:
-		/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star
-		   Note that star may be null (not instantiated)
-		*/
-		if ( *p++ == '*' ) {
-			CNInstance *y = (*x)->sub[ 0 ];
-			if (( y == NULL ) || ( y->sub[ 0 ] == NULL ) ||
-			    ( y->sub[ 0 ] != data->star )) {
-				 *x = NULL; return 0;
-			}
-			else *x = y->sub[ 1 ];
-		}
-		success = 0;
 		base = data->stack.exponent;
-		scope = (int) data->stack.scope->ptr;
-		OOS = scope - 1;
+		level = (int) data->stack.scope->ptr;
+		OOS = level;
 		break;
 	case BM_END:;
-		success = data->success;
-		if ((int) popListItem( &data->stack.neg ))
-			success = !success;
 		base = popListItem( &data->stack.base );
-		scope = (int) data->stack.scope->ptr;
-		char *start_p = popListItem( &data->stack.p );
-		if ( *p==')' &&  p!=p_prune( PRUNE_TERM, start_p ) )
-			scope++; // e.g. %( ... ) or *( ... )
-		popListItem( &data->stack.scope );
+		level = (int) popListItem( &data->stack.scope );
 		OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
 		break;
 	}
-	
-	union { int value; void *ptr; } icast;
 	listItem **exponent = &data->stack.exponent;
 	listItem *mark_exp = NULL;
-
 	int done = 0;
 	while ( *p && !(mark_exp) && !done ) {
-		// fprintf( stderr, "scanning: '%c'\n", *p );
+		// fprintf( stderr, "scanning: '%s'\n", p );
 		switch ( *p ) {
 		case '~':
 			not = !not; p++;
 			break;
 		case '%':
 			if ( !strncmp( p, "%?", 2 ) ) {
-				success = bm_match( *x, p, *exponent, base, data );
+				success = bm_match( x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; not = 0; }
 				else if ( not ) { success = !success; not = 0; }
 				p+=2; break;
@@ -87,12 +74,12 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			// no break
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = bm_match( *x, p, *exponent, base, data );
+				success = bm_match( x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; not = 0; }
 				else if ( not ) { success = !success; not = 0; }
 				p++;
 			}
-			else if ( bm_match( *x, NULL, *exponent, base, data ) < 0 ) {
+			else if ( bm_match( x, NULL, *exponent, base, data ) < 0 ) {
 				success = not; not = 0;
 				p = p_prune( PRUNE_TERM, p+1 );
 			}
@@ -104,40 +91,36 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 			}
 			break;
 		case '(':
-			scope++;
-			icast.value = data->couple;
-			addItem( &data->stack.couple, icast.ptr );
+			level++;
+			add_item( &data->stack.couple, data->couple );
 			if ( p_single( p ) ) data->couple = 0;
 			else {
 				data->couple = 1;
 				xpn_add( exponent, AS_SUB, 0 );
 			}
-			icast.value = not;
-			addItem( &data->stack.not, icast.ptr );
+			add_item( &data->stack.not, not );
 			not = 0; p++;
 			break;
 		case ':':
-			if (( data->op == BM_BGN ) && ( scope==OOS+1 ))
+			if (( op == BM_BGN ) && ( level==OOS ))
 				{ done = 1; break; }
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ',':
-			if ( scope <= OOS+1 ) { done = 1; break; }
+			if ( level == OOS ) { done = 1; break; }
 			popListItem( exponent );
 			xpn_add( exponent, AS_SUB, 1 );
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ')':
-			scope--;
-			if ( scope <= OOS ) { done = 1; break; }
+			if ( level == OOS ) { done = 1; break; }
+			level--;
 			if ( data->couple ) {
 				popListItem( exponent );
 			}
 			data->couple = (int) popListItem( &data->stack.couple );
-			if (( data->op == BM_BGN ) && ( scope==OOS+1 ))
-			    { done = 1; break; }
 			not = (int) popListItem( &data->stack.not );
 			if ( not ) { success = !success; not = 0; }
 			p++;
@@ -149,11 +132,11 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 #ifdef TRIM
 			else if ( wildcard_opt( p, data->btree ) ) success = 1;
 #endif
-			else success = ( bm_match( *x, NULL, *exponent, base, data ) > 0 );
+			else success = ( bm_match( x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
 		default:
-			success = bm_match( *x, p, *exponent, base, data );
+			success = bm_match( x, p, *exponent, base, data );
 			if ( success < 0 ) { success = 0; not = 0; }
 			else if ( not ) { success = !success; not = 0; }
 			p = p_prune( PRUNE_IDENTIFIER, p );
@@ -161,22 +144,20 @@ bm_verify( CNInstance **x, char **position, BMTraverseData *data )
 		}
 	}
 	if (( data->mark_exp = mark_exp )) {
+		data->not = not;
 		listItem *sub_exp = NULL;
 		for ( listItem *i=*exponent; i!=base; i=i->next )
 			addItem( &sub_exp, i->ptr );
 		data->sub_exp = sub_exp;
-		icast.value = scope;
-		addItem( &data->stack.scope, icast.ptr );
-		icast.value = not;
-		addItem( &data->stack.neg, icast.ptr );
+		add_item( &data->stack.scope, level );
 		addItem( &data->stack.base, base );
-		addItem( &data->stack.p, p );
 	}
 	*position = p;
 #ifdef DEBUG
-	if (( *mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
+	if (( mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
 	else fprintf( stderr, "bm_verify: returning %d, at %s\n", success, p );
 #endif
+	data->success = success;
 	return success;
 }
 
@@ -224,10 +205,16 @@ bm_substantiate( char *expression, BMContext *ctx )
 	manifested.
 */
 {
-	if ( bm_void( expression, ctx ) )
+#ifdef DEBUG
+	if ( bm_void( expression, ctx ) ) {
+		fprintf( stderr, "VOID: %s\n", expression );
 		return;
+	}
+	else fprintf( stderr, "bm_substantiate: %s {", expression );
+#else
+	if ( bm_void( expression, ctx ) ) return;
+#endif
 
-	union { int value; void *ptr; } icast;
 	struct {
 		listItem *results;
 		listItem *ndx;
@@ -236,9 +223,9 @@ bm_substantiate( char *expression, BMContext *ctx )
 
 	CNInstance *e;
 	CNDB *db = ctx->db;
-	int scope=1, ndx=0;
+	int level=1, ndx=0;
 	char *p = expression;
-	while ( *p && scope ) {
+	while ( *p && level ) {
 		if ( p_filtered( p )  ) {
 			// bm_void made sure we do have results
 			sub[ ndx ] = bm_query( p, ctx );
@@ -267,9 +254,8 @@ bm_substantiate( char *expression, BMContext *ctx )
 			p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case '(':
-			scope++;
-			icast.value = ndx;
-			addItem( &stack.ndx, icast.ptr );
+			level++;
+			add_item( &stack.ndx, ndx );
 			if ( ndx ) {
 				addItem( &stack.results, sub[ 0 ] );
 				ndx = 0; sub[ 0 ] = NULL;
@@ -278,12 +264,12 @@ bm_substantiate( char *expression, BMContext *ctx )
 		case ':': // should not happen
 			break;
 		case ',':
-			if ( scope == 1 ) { scope=0; break; }
+			if ( level == 1 ) { level=0; break; }
 			ndx = 1;
 			p++; break;
 		case ')':
-			scope--;
-			if ( !scope ) break;
+			level--;
+			if ( !level ) break;
 			switch ( ndx ) {
 			case 0:
 				instances = sub[ 0 ];
@@ -327,9 +313,9 @@ bm_void( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "bm_void: %s\n", expression );
 	CNDB *db = ctx->db;
-	int scope=1, empty=db_is_empty( db );
+	int level=1, empty=db_is_empty( db );
 	char *p = expression;
-	while ( *p && scope ) {
+	while ( *p && level ) {
 		if ( p_filtered( p ) ) {
 			if ( !strncmp( p, "?:", 2 ) ) p += 2;
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
@@ -355,14 +341,14 @@ bm_void( char *expression, BMContext *ctx )
 			p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case '(':
-			scope++;
+			level++;
 			p++; break;
 		case ':':
 		case ',':
-			if ( scope == 1 ) { scope=0; break; }
+			if ( level == 1 ) { level=0; break; }
 			p++; break;
 		case ')':
-			scope--;
+			level--;
 			p++; break;
 		case '?':
 		case '.':
@@ -475,7 +461,7 @@ RETURN:
 			Pair *pair = args->ptr;
 			char *expression = pair->name;
 			asprintf( &expression, "(*,%s)", expression );
-			bm_release( expression, ctx );	// <<<<< PROBLEM: IF WAS NOT EXISTING
+			bm_release( expression, ctx );
 			free( expression );
 			args = args->next;
 		}

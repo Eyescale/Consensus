@@ -50,41 +50,21 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 }
 
 static char *
-xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
+xp_init( BMTraverseData *data, char *p, BMContext *ctx, int privy )
 {
-	if (!((expression) && (*expression)) )
-		return NULL;
-
+	if (!((p) && (*p)) ) return NULL;
+	memset( data, 0, sizeof(BMTraverseData));
 	data->ctx = ctx;
 	data->privy = privy;
-	data->expression = expression;
+	data->expression = p;
 	CNDB *db = ctx->db;
 	data->empty = db_is_empty( db );
 	data->star = db_lookup( privy, "*", db );
-	data->exponent = NULL;
-	char *p = p_locate( expression, &data->exponent );
-	if (( p )) {
-		CNInstance *x = bm_lookup( privy, p, ctx );
-		if (( x )) data->pivot = newPair( p, x );
-		else {
-			freeListItem( &data->exponent );
-			return NULL;
-		}
-	}
-	else data->pivot = NULL;
-
-	data->stack.exponent = NULL;
-	data->stack.couple = NULL;
-	data->stack.scope = NULL;
-	data->stack.base = NULL;
-	data->stack.not = NULL;
-	data->stack.neg = NULL;
-	data->stack.p = NULL;
 #ifdef TRIM
 	// used by wildcard_opt
-	data->btree = btreefy( expression );
+	data->btree = btreefy( p );
 #endif
-	return strncmp(expression,"?:",2) ? expression : expression+2;
+	return strncmp( p, "?:", 2 ) ? p : p+2;
 }
 
 static void
@@ -119,15 +99,23 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 	BMTraverseData data;
 	expression = xp_init( &data, expression, ctx, 0 );
 	if (( expression )) {
+		char *p = p_locate( expression, &data.exponent );
+		if (( p )) {
+			CNInstance *x = bm_lookup( 0, p, ctx );
+			if (( x )) data.pivot = newPair( p, x );
+			else {
+				freeListItem( &data.exponent );
+				return 0;
+			}
+		}
 		data.user_CB = user_CB;
 		data.user_data = user_data;
 	}
 	else return 0;
 
 	int success = 0;
-	if (( data.pivot )) {
+	if (( data.pivot ))
 		success = xp_traverse( &data );
-	}
 	else {
 		CNDB *db = ctx->db;
 		listItem *s = NULL;
@@ -158,34 +146,37 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 //===========================================================================
 //	xp_verify
 //===========================================================================
+typedef struct {
+	listItem *mark_exp;
+	listItem *not;
+	listItem *sub;
+	listItem *as_sub;
+	listItem *p;
+	listItem *i;
+} XPVerifyStack;
+static char *pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark, int *not );
+
 static int
 xp_verify( CNInstance *x, BMTraverseData *data )
 {
 	CNDB *db = data->ctx->db;
 	int privy = data->privy;
 	char *p = data->expression;
+	if ( !strncmp( p, "?:", 2 ) )
+		p += 2;
 #ifdef DEBUG
 fprintf( stderr, "xp_verify: %s / candidate=", p );
 cn_out( stderr, x, db );
 fprintf( stderr, " ........{\n" );
 #endif
-	union { int value; void *ptr; } icast;
-	struct {
-		listItem *mark_exp;
-		listItem *sub;
-		listItem *as_sub;
-		listItem *p;
-		listItem *i;
-	} stack = { NULL, NULL, NULL, NULL, NULL };
-
+	XPVerifyStack stack;
+	memset( &stack, 0, sizeof(stack) );
 	listItem *exponent = NULL,
 		*mark_exp = NULL,
 		*i = newItem( x ), *j;
-
-	int op = BM_INIT;
-	int success = 0;
-	data->couple = 0;
-
+	int	op = BM_INIT,
+		success = 0,
+		not = 0;
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -199,7 +190,7 @@ fprintf( stderr, " ........{\n" );
 					exponent = exponent->next;
 					i = j; continue;
 				}
-				else { x = NULL; success = 0; }
+				else x = NULL;
 			}
 			else {
 				x = x->sub[ exp & 1 ];
@@ -210,22 +201,35 @@ fprintf( stderr, " ........{\n" );
 					i = newItem( x );
 					continue;
 				}
-				else success = 0;
 			}
 		}
 		if (( x )) {
-			// backup context, initial
-			addItem( &stack.mark_exp, mark_exp );
-			data->op = op;
-			data->success = success;
 			data->mark_exp = NULL;
-			success = bm_verify( &x, &p, data );
-			if (( mark_exp = data->mark_exp )) {
-				// backup context, final
+			data->success = success;
+			switch ( op ) {
+			case BM_BGN:
+				/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+				   Note that star may be null (not instantiated)
+				*/
+				if ( *p++ == '*' ) {
+					CNInstance *y = x->sub[ 0 ];
+					if ((y) && (y->sub[0]) && (y->sub[0]==data->star))
+						x = y->sub[ 1 ];
+					else { x = NULL; data->success = 0; break; }
+				}
+				// no break
+			default:
+				bm_verify( op, x, &p, data );
+			}
+			if (( data->mark_exp )) {
+				// backup context
+				addItem( &stack.mark_exp, mark_exp );
+				add_item( &stack.not, data->not );
 				addItem( &stack.sub, stack.as_sub );
 				addItem( &stack.i, i );
 				addItem( &stack.p, p );
 				// setup new sub context
+				mark_exp = data->mark_exp;
 				stack.as_sub = NULL;
 				exponent = mark_exp;
 				listItem **sub_exp = &data->sub_exp;
@@ -234,28 +238,20 @@ fprintf( stderr, " ........{\n" );
 					x = x->sub[ exp & 1 ];
 				}
 				i = newItem( x );
+				success = 0;
 				op = BM_BGN;
 				continue;
 			}
-			else mark_exp = popListItem( &stack.mark_exp );
+			else success = data->success;
 		}
+		else success = 0;
+
 		if (( mark_exp )) {
 			if ( success ) {
 				// move on past sub-expression
-				while (( stack.as_sub )) {
-					exponent = popListItem( &stack.as_sub );
-					int exp = (int) exponent->ptr;
-					if (!( exp & 2 )) freeItem( i );
-					i = popListItem( &stack.as_sub );
-				}
+				pop_stack( &stack, &i, &mark_exp, &not );
+				if ( not ) success = !success;
 				exponent = NULL;
-				freeItem( i );
-				freeListItem( &mark_exp );
-				mark_exp = popListItem( &stack.mark_exp );
-				stack.as_sub = popListItem( &stack.sub );
-				i = popListItem( &stack.i );
-				popListItem( &stack.p );
-				// p is already at sub-expression closure
 				op = BM_END;
 				continue;
 			}
@@ -264,6 +260,7 @@ fprintf( stderr, " ........{\n" );
 					i = i->next;
 					if ( !db_private( privy, i->ptr, db ) ) {
 						p = stack.p->ptr;
+						success = 0;
 						op = BM_BGN;
 						break;
 					}
@@ -276,15 +273,16 @@ fprintf( stderr, " ........{\n" );
 				}
 				else {
 					// move on past sub-expression
+					char *start_p = pop_stack( &stack, &i, &mark_exp, &not );
+					if ( not ) success = !success;
+					if ( x == NULL ) {
+						if ( success ) {
+							p = p_prune( PRUNE_FILTER, start_p );
+							if ( *p == ':' ) p++;
+						}
+						else p = p_prune( PRUNE_TERM, start_p );
+					}
 					exponent = NULL;
-					freeItem( i );
-					freeListItem( &mark_exp );
-					mark_exp = popListItem( &stack.mark_exp );
-					stack.as_sub = popListItem( &stack.sub );
-					i = popListItem( &stack.i );
-					// p must be at sub-expression closure
-					if ( x == NULL ) p = p_prune( PRUNE_TERM, stack.p->ptr );
-					popListItem( &stack.p );
 					op = BM_END;
 					break;
 				}
@@ -294,17 +292,38 @@ fprintf( stderr, " ........{\n" );
 	}
 
 RETURN:
+#ifdef DEBUG
+	if ((data->stack.exponent) || (data->stack.couple) || (data->stack.not))
+		fprintf( stderr, "xp_verify: memory leak on exponent\n" );
+	if ((data->stack.scope) || (data->stack.base))
+		fprintf( stderr, "xp_verify: memory leak on scope\n" );
 	freeListItem( &data->stack.exponent );
 	freeListItem( &data->stack.couple );
 	freeListItem( &data->stack.scope );
 	freeListItem( &data->stack.base );
 	freeListItem( &data->stack.not );
-	freeListItem( &data->stack.neg );
-	freeListItem( &data->stack.p );
-#ifdef DEBUG
 fprintf( stderr, "xp_verify:.......} success=%d\n", success );
 #endif
 	return success;
+}
+
+static char *
+pop_stack( XPVerifyStack *stack, listItem **item, listItem **mark_exp, int *not )
+{
+	listItem *i = *item;
+	while (( stack->as_sub )) {
+		listItem *xpn = popListItem( &stack->as_sub );
+		int exp = (int) xpn->ptr;
+		if (!( exp & 2 )) freeItem( i );
+		i = popListItem( &stack->as_sub );
+	}
+	freeItem( i );
+	stack->as_sub = popListItem( &stack->sub );
+	*item = popListItem( &stack->i );
+	freeListItem( mark_exp );
+	*mark_exp = popListItem( &stack->mark_exp );
+	*not = (int) popListItem( &stack->not );
+	return (char *) popListItem( &stack->p );
 }
 
 //===========================================================================
