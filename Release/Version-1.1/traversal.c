@@ -177,6 +177,7 @@ fprintf( stderr, " ........{\n" );
 	int	op = BM_INIT,
 		success = 0,
 		not = 0;
+
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -313,19 +314,19 @@ fprintf( stderr, "xp_verify:.......} success=%d\n", success );
 }
 
 static char *
-pop_stack( XPVerifyStack *stack, listItem **item, listItem **mark_exp, int *not )
+pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *not )
 {
-	listItem *i = *item;
+	listItem *j = *i;
 	while (( stack->as_sub )) {
 		listItem *xpn = popListItem( &stack->as_sub );
 		int exp = (int) xpn->ptr;
-		if (!( exp & 2 )) freeItem( i );
-		i = popListItem( &stack->as_sub );
+		if (!( exp & 2 )) freeItem( j );
+		j = popListItem( &stack->as_sub );
 	}
-	freeItem( i );
-	stack->as_sub = popListItem( &stack->sub );
-	*item = popListItem( &stack->i );
+	freeItem( j );
 	freeListItem( mark_exp );
+	stack->as_sub = popListItem( &stack->sub );
+	*i = popListItem( &stack->i );
 	*mark_exp = popListItem( &stack->mark_exp );
 	*not = (int) popListItem( &stack->not );
 	return (char *) popListItem( &stack->p );
