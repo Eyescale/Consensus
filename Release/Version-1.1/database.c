@@ -782,10 +782,10 @@ cn_instance( CNInstance *e, CNInstance *f )
 int
 cn_out( FILE *stream, CNInstance *e, CNDB *db )
 {
-	return cn_output( "", stream, e, db );
+	return db_output( stream, "", e, db );
 }
 int
-cn_output( char *format, FILE *stream, CNInstance *e, CNDB *db )
+db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
 {
 	if ( e == NULL ) return 0;
 	if ( *format == 's' ) {
@@ -818,10 +818,8 @@ cn_output( char *format, FILE *stream, CNInstance *e, CNDB *db )
 		}
 		char *p = db_identifier( e, db );
 		if (( p )) {
-			if (( *p=='*' ) || ( *p=='%' ))
+			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
-			else if ( !is_separator(*p) )
-				fprintf( stream, p[1] ? "%s" : "'%s'", p );
 			else {
 				switch (*p) {
 				case '\0': fprintf( stream, "'\\0'" ); break;

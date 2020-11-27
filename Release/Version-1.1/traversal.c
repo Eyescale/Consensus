@@ -308,6 +308,8 @@ RETURN:
 	freeListItem( &data->stack.scope );
 	freeListItem( &data->stack.base );
 	freeListItem( &data->stack.not );
+#endif
+#ifdef DEBUG
 fprintf( stderr, "xp_verify:.......} success=%d\n", success );
 #endif
 	return success;

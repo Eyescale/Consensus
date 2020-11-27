@@ -5,6 +5,7 @@
 		do (( rule, identifier ), ( schema, '\0' ))
 		do (( *, base ), identifier )
 		do (( *, frame ), ( frame, * ))
+		do ( *, input )	// required in order to catch EOF
 		do INPUT
 
 	else in INPUT
@@ -18,15 +19,13 @@
 				else do >"Error: Yak: rule '%_' not found\n":*base
 				do exit
 		else in ?: %( ?:((rule,.),.), base )
-			on ( %?, COMPLETE )
-				do ~( INPUT )
-			else on ( %?, READY )
-				do >"IN HERE\n"
-				do exit
+			on ( %?, READY )
 				do input:"%c"<
 			else on (( *, input ), . )
 				// could do some preprocessing here
 				do (( *, frame ), ( *frame, *input ))
+			else on ( %?, COMPLETE )
+				do ~( INPUT )
 			else on ~( *, input )
 				do EOF
 				do ~( INPUT )
@@ -36,14 +35,17 @@
 		do OUTPUT
 
 	else in ( OUTPUT )
+		do >"output frame\n"
 		on ( OUTPUT )
 			do ((*,s), base )
 			do ((*,f), (frame,*)) // initial frame
 
 		else on ((*,s), %(?,*r)) // s either set together with r or set to successor
 			// test if other feeders starting at the same (flag,frame)
-			in %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
-				do > " *** Warning: rule %_: multiple interpretations *** ": %(*r:((.,?),.))
+			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
+				do > " *** Warning: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
+				do > "FOUND: %_ ": %?
+				do > "vs: %_ \n": *s
 			in (((schema,.),.), (*s,.))
 				// s has predecessor: output s starting event
 				in *s:(.,(CONSUMED,.))
@@ -52,12 +54,17 @@
 				   with no event to speak of, and other rules always
 				   start UNCONSUMED - so no starting event here.
 				*/
+				do >"%%%_:{ ": %(*r:((.,?),.))
+/*
 				in *s: ((schema,'\0'),.) // silence null-schema output
-				else do >"%%%_{ ": %(*r:((.,?),.))
+				else do >"%%%_:{ ": %(*r:((.,?),.))
+*/
 
 		else on ((*,s), . ) // s set alone
+			do >"s set alone\n"
 			// set r to the rule which s fed
 			in *s: base
+				do >"*s: base\n"
 			else in ?: %( *s, ?:((rule,.),.) )
 				in ( %?, base )
 					// output base rule end
@@ -67,16 +74,20 @@
 #			else error
 
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
+			do >"found rule: %_\n":%?
 			do ((*,r), %? )
 			// set s to the feeder that started at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(%?:(.,?))), %? )
+				do >"setting *s to: %_\n": %?
 				do ((*,s), %? )
 #			else error
 
 		else in ?: %( *s, (?:((schema,.),(.,*f)),.)) // *s has successor starting this frame
+			do >"found successor\n"
 			do ((*,s), %? ) // set s to successor
 
 		else in ( *s, (.,*f)) // this frame is s's last frame
+			do >"found last frame\n"
 			// output finishing event, which here cannot be initial frame
 			in *s: ((schema,'\0'),.) // silence null-schema output
 			else
@@ -91,6 +102,7 @@
 				do ((*,s), %? )
 #			else error
 		else
+			do >"others...\n"
 			// output event, unless *f is a first CONSUMED schema frame
 			in *f:( frame, * )
 			else in *s:(.,(CONSUMED,*f))
@@ -141,12 +153,8 @@
 
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-			else
-				do >"READY\n"
-				do .READY	// all children schemas ready
-		else
-			do >"COMPLETE\n"
-			do .COMPLETE	// all children schemas complete
+			else do .READY	// all children schemas ready
+		else do .COMPLETE	// all children schemas complete
 
 
 : (( schema, .start_position ), ( .flag, .start_frame ))
@@ -167,13 +175,13 @@
 		do ~( this ) // FAIL: parent rule failed
 
 	else on (( *, event ), . )
-		in *position: ( ., '\0' ) // null-schema
+		in *position: '\0' // null-schema
 			do .( UNCONSUMED, *frame )
 			do .COMPLETE
 /*
-		else in *position: ( ., space )
+		else in *position: space
 			%( .event )
-		else in *position: ( ., blank )
+		else in *position: blank
 			%( .event )
 */
 		else in ?: %((?,.): *position ) // expected @ position

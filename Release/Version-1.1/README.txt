@@ -4,7 +4,7 @@ Name
 Description
 	The objective of this version is to extend the language to support a full
 	transducer example implementation - starting from the example provided, in
-	C code, under the ./Examples/Yak directory of this site.
+	C code, under the ./Base/Examples/Yak directory of this site.
 
 	A key target outcome is to allow the definition and usage of "functions",
 	or methods, as part of the language.
@@ -38,7 +38,7 @@ Contents
 Updates
 	2020/11/20
 		introduced on ~. meaning no event during last frame
-		. needed to detect deadlock and exit schema threads
+		. needed for detecting deadlock and exiting schema threads
 		introduced regex identifiers
 		. needed to allow in *event:/[ \t]/ or /[A-Za-z0-9_]/
 		. added ./Test/CN.rx
@@ -61,7 +61,7 @@ Updates
 		. completed bm_output and bm_register support
 		. completed cn_out
 	2020/11/10
-		added ./Test/CN.yak - usage:
+		added ./Test/CN.yak - usage (main.c compiled with DEBUG):
 			./B% ./Test/CN.yak > toto
 			./B% toto > titi
 			diff toto titi

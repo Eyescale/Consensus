@@ -24,8 +24,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	Note that *variable is same as %((*,variable),?)
 */
 {
-#ifdef VERBOSE
-	fprintf( stderr, "bm_verify: " );
+#ifdef DEBUG
+	fprintf( stderr, "bm_verify: %d ", data->success );
 	switch ( op ) {
 	case BM_INIT: fprintf( stderr, "BM_INIT " ); break;
 	case BM_BGN: fprintf( stderr, "BM_BGN " ); break;
@@ -98,8 +98,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			not = 0; p++;
 			break;
 		case ':':
-			if (( op == BM_BGN ) && ( level==OOS ))
-				{ done = 1; break; }
+			if ( op==BM_BGN && level==OOS ) { done = 1; break; }
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
@@ -120,6 +119,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			not = (int) popListItem( &data->stack.not );
 			if ( not ) { success = !success; not = 0; }
 			p++;
+			if ( op==BM_END && level==OOS ) { done = 1; break; }
 			break;
 		case '.':
 		case '?':
@@ -678,10 +678,10 @@ bm_output( char *format, char *expression, BMContext *ctx )
 	OutputData data = { format, 1, NULL };
 	bm_traverse( expression, ctx, output_CB, &data );
 	if ( data.first )
-		cn_output( format, stdout, data.last, ctx->db );
+		db_output( stdout, format, data.last, ctx->db );
 	else {
 		printf( ", " );
-		cn_output( DEFAULT_FORMAT, stdout, data.last, ctx->db );
+		db_output( stdout, DEFAULT_FORMAT, data.last, ctx->db );
 		printf( " }" );
 	}
 }
@@ -697,7 +697,7 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 			data->first = 0;
 		}
 		else printf( ", " );
-		cn_output( DEFAULT_FORMAT, stdout, data->last, ctx->db );
+		db_output( stdout, DEFAULT_FORMAT, data->last, ctx->db );
 	}
 	data->last = e;
 	return BM_CONTINUE;

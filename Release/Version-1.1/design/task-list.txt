@@ -8,14 +8,20 @@ TODO
 			when the local variable entity .p is declared
 	. regression testing framework
 	. update software-architecture document(s) to latest architecture
-		. document wildcard logics
+		. document wildcard logics (actually somwehat documented in wildcard.c)
 		. document narrative instance registry: this vs. .local vs. .expression
 	. finalize README.txt
+	. NOTE somewhere:
+		on some_event
+			do exit
+			do input:<
+	  will still block on input - as actual input is performed right away, as opposed
+	  to after frame, as it should (later).
 
 DONE
 	. added ../../Base/sequence.c implementing string demultiplication
-	. added on ~. expressions to support handling deadlocks
-		. also added in ~. for symmetry
+	. added "on ~." expression to support handling deadlocks
+		. also added "in ~." for symmetry
 	. introduced regex type identifiers, allowing e.g. in *event:/[ \t]/
 		. added Test/CN.rx
 	. feature complete: single character identifier entities
