@@ -65,24 +65,12 @@ readStory( char *path )
 
 	CNParserBegin( file, input )
 	in_( "base" ) bgn_
+		on_( '#' ) if ( column == 1 ) {	do_( "#" ) }
+		on_( '+' ) if ( column == 1 ) {	do_( "+" ) tab_base++; }
+		on_( '-' ) if ( column == 1 ) {	do_( "-" ) tab_base--; }
+		on_( ':' ) if ( column == 1 ) {	do_( "^:" ) }
 		on_( '\n' )	do_( same )	tab = 0;
 		on_( '\t' )	do_( same )	tab++;
-		on_( '#' )
-			if ( column == 1 ) {
-				do_( "#" )
-			}
-		on_( '+' )
-			if ( column == 1 ) {
-				do_( "+" )	tab_base++;
-			}
-		on_( '-' )
-			if ( column == 1 ) {
-				do_( "-" )	tab_base--;
-			}
-		on_( ':' )
-			if ( column == 1 ) {
-				do_( "^:" )
-			}
 		on_( '.' )	do_( "^." )	indent = column;
 		on_( '%' )	do_( "^%" )	indent = column;
 		on_( 'i' )	do_( "i" )	indent = column;
@@ -486,12 +474,12 @@ readStory( char *path )
 			on_escapable	do_( "char_" )	StringAppend( s, event );
 			on_( 'x' )	do_( "char\\x" ) StringAppend( s, event );
 			end
-			in_( "char\\x" ) bgn_
-				on_xdigit	do_( "char\\x_" ) StringAppend( s, event );
-				end
-			in_( "char\\x_" ) bgn_
-				on_xdigit	do_( "char_" )	StringAppend( s, event );
-				end
+		in_( "char\\x" ) bgn_
+			on_xdigit	do_( "char\\x_" ) StringAppend( s, event );
+			end
+		in_( "char\\x_" ) bgn_
+			on_xdigit	do_( "char_" )	StringAppend( s, event );
+			end
 		in_( "char_" ) bgn_
 			on_( '\'' )	do_( "expr" )	StringAppend( s, event );
 							informed = 1;

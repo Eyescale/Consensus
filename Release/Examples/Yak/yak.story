@@ -44,8 +44,6 @@
 			// test if other feeders starting at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
 				do > " *** Warning: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
-				do > "FOUND: %_ ": %?
-				do > "vs: %_ \n": *s
 			in (((schema,.),.), (*s,.))
 				// s has predecessor: output s starting event
 				in *s:(.,(CONSUMED,.))
@@ -55,6 +53,7 @@
 				   start UNCONSUMED - so no starting event here.
 				*/
 				do >"%%%_:{ ": %(*r:((.,?),.))
+#				do exit
 /*
 				in *s: ((schema,'\0'),.) // silence null-schema output
 				else do >"%%%_:{ ": %(*r:((.,?),.))
