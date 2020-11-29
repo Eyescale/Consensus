@@ -342,13 +342,10 @@ db_deprecate( CNInstance *x, CNDB *db )
 */
 {
 	if ( x == NULL ) return;
-
-	union { int value; void *ptr; } icast;
-	listItem *stack = NULL;
-
-	int	position = 0;
-
-	listItem *i = newItem( x ), *j;
+	listItem * stack = NULL,
+		 * i = newItem( x ),
+		 * j;
+	int position = 0;
 	for ( ; ; ) {
 		x = i->ptr;
 		for ( j=x->as_sub[ position ]; j!=NULL; j=j->next )

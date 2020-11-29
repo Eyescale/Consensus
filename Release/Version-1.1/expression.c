@@ -119,7 +119,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			not = (int) popListItem( &data->stack.not );
 			if ( not ) { success = !success; not = 0; }
 			p++;
-			if ( op==BM_END && level==OOS ) { done = 1; break; }
+			if ( op==BM_END && level==OOS && (data->stack.scope))
+				{ done = 1; break; }
 			break;
 		case '.':
 		case '?':
@@ -483,7 +484,6 @@ bm_input( char *format, char *expression, BMContext *ctx )
 	case 'c':
 		event = getc( stdin );
 		if ( event == EOF ) {
-			fprintf( stderr, "GOTCHA!!!!\n" );
 			return EOF;
 		}
 		switch ( event ) {

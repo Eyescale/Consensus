@@ -2,7 +2,10 @@
 	on init
 #		do (( rule, identifier ), ( schema, (a,(b,...((%,id),...(z,'\0')))) ))
 #		...
-#		do (( rule, null ), ( schema, '\0' ))
+/*
+		do (( rule, null ), ( schema, '\0' ))
+		do (( *, base ), null )
+*/
 		do (( rule, hello ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
 		do (( *, base ), hello )
 		do (( *, frame ), ( frame, * ))
@@ -28,9 +31,7 @@
 			else on ( %?, COMPLETE )
 				do ~( INPUT )
 			else on ~( *, input )
-				do >"GOT EOF***************\n"
-				do EOF
-				do ~( INPUT )
+				do (( *, frame ), ( *frame, EOF ))
 		else on ~( ((rule,.),.), base ) // FAIL
 			do ~( INPUT )
 	else on ~( INPUT )
@@ -93,9 +94,9 @@
 #			else error
 		else
 			// output event, unless *f is a first CONSUMED schema frame
-			in *f:( frame, * )
-			else in *s:(.,(CONSUMED,*f))
-			else do >: %((.,?):*f)
+			in *s:(.,(CONSUMED,*f))
+			else in *f:~(frame,*):~(.,EOF)
+				do >: %((.,?):*f)
 
 			// move on to next frame
 			in ?: ( *f, . )
@@ -104,18 +105,16 @@
 				do ~( OUTPUT )
 	else on ~( OUTPUT )
 		// destroys the whole frame structure, including rule
-		// and schema instances, all in ONE Consensus cycle
-		do >:
-		do ~( frame )
+		// and schema instances - all in ONE Consensus cycle
+		in *frame:~(.,EOF)
+			do >:
+			do ~( frame )
+		else do exit
 
 	else on ~( frame )
-		in ( EOF )
-			do >:
-			do exit
-		else
-			// we do not want base rule to catch this frame
-			do (( *, frame ), ( frame, * ))
-			do INPUT
+		// we do not want base rule to catch this frame
+		do (( *, frame ), ( frame, * ))
+		do INPUT
 
 
 : (( rule, .id ), ( .flag:~schema, .start_frame ))
