@@ -13,12 +13,12 @@
 #define DBGMonitor
 #endif
 
-#define BMInputBegin( stream ) \
+#define BMInputBegin( stream, input ) \
 	char *state = "base"; \
 	int event; \
 	struct { int event, state, transition; } caught; \
 	do { \
-		event = getc( stream ); \
+		event = input( stream ); \
 		do { \
                         caught.transition = 0; \
                         caught.state = 0; \

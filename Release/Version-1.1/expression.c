@@ -482,7 +482,10 @@ bm_input( char *format, char *expression, BMContext *ctx )
 	switch ( *format ) {
 	case 'c':
 		event = getc( stdin );
-		if ( event == EOF ) return EOF;
+		if ( event == EOF ) {
+			fprintf( stderr, "GOTCHA!!!!\n" );
+			return EOF;
+		}
 		switch ( event ) {
 		case '\0': asprintf( &input, "'\\0'" ); break;
 		case '\t': asprintf( &input, "'\\t'" ); break;
@@ -517,7 +520,7 @@ bm_read( FILE *stream )
 
 	CNString *s = newString();
 
-	BMInputBegin( stream )
+	BMInputBegin( stream, getc )
 	on_( EOF )
 		freeString( s );
 		return NULL;

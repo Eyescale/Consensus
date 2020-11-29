@@ -5,7 +5,7 @@
 #include "narrative.h"
 #include "operation.h"
 
-#define DEBUG
+// #define DEBUG
 
 int
 main( int argc, char *argv[] )
@@ -20,8 +20,10 @@ main( int argc, char *argv[] )
 	story_output( stdout, story, 0 );
 	exit( 0 );
 #endif
-	while ( cnOperate( story, db ) )
+	while ( cnOperate( story, db ) ) {
 		cnUpdate( db );
+//		printf( "==============================================\n" );
+	}
 
 	freeStory( story );
 	freeCNDB( db );

@@ -30,9 +30,6 @@ static void operate( CNNarrative *, BMContext *, OperateData * );
 int
 cnOperate( listItem *narratives, CNDB *db )
 {
-#ifdef DEBUG
-fprintf( stderr, "=============================\n" );
-#endif
 	if (( narratives == NULL ) || db_out(db) )
 		 return 0;
 

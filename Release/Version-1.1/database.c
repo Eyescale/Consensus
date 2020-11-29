@@ -96,6 +96,7 @@ db_update( CNDB *db )
 	x can be both manifested AND newborn (reassigned)
 	x can be both released AND to-be-manifested (reborn)
 	x can be both newborn AND to-be-released
+
 	x cannot be both manifested AND released
 	x cannot be both released AND to-be-released
 	x cannot be both newborn AND released
@@ -106,10 +107,10 @@ db_update( CNDB *db )
 	CNInstance *nil = db->nil;
 	CNInstance *e, *f, *g, *x;
 #ifdef DEBUG
-fprintf( stderr, "db_update: 1. actualize past manifestations\n" );
+fprintf( stderr, "db_update: 1. actualize last frame's manifestations\n" );
 #endif
 	// for each g: ( nil, x ) where ( nil, g ) does not exist and
-	//	x is neither ( ., nil ) nor ( nil, . )
+	//	x is neither nil nor ( ., nil ) nor ( nil, . )
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
@@ -119,26 +120,11 @@ fprintf( stderr, "db_update: 1. actualize past manifestations\n" );
 		if ( x->sub[ 0 ] == nil ) continue;
 		if ( x->sub[ 1 ] == nil ) continue;
 		f = cn_instance( x, nil );
-		if (( f )) {
-			if (( f->as_sub[ 0 ] )) { // reassigned
-				// remove (( x, nil ), nil ) and ( x, nil )
-				g = f->as_sub[ 0 ]->ptr;
-				db_remove( g, db );
-				db_remove( f, db );
-			}
-			else if (( f->as_sub[ 1 ] )) { // to be released
-				// remove ( nil, x )
-				db_remove( g, db );
-				// remove ( nil, ( x, nil ))
-				g = f->as_sub[ 1 ]->ptr;
-				db_remove( g, db );
-				// remove ( x, nil ) and x
-				db_remove( f, db );
-				if ( x->sub[ 0 ] == NULL ) {
-					db_deregister( x, db );
-				}
-				db_remove( x, db );
-			}
+		if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
+			// remove (( x, nil ), nil ) and ( x, nil )
+			g = f->as_sub[ 0 ]->ptr;
+			db_remove( g, db );
+			db_remove( f, db );
 		}
 		else {
 			// remove ( nil, x )
@@ -202,6 +188,7 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
 #endif
+	listItem *trash[2] = { NULL, NULL };
 	// for each f: ( x, nil ) where ( nil, f ) does not exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
@@ -211,9 +198,12 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		if ( x == nil ) continue; // out
 		// remove ( x, nil ) and x
 		db_remove( f, db );
-		if ( x->sub[ 0 ] == NULL ) {
-			db_deregister( x, db );
-		}
+		addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x );
+	}
+	while (( x = popListItem( &trash[0] ) ))
+		db_remove( x, db );
+	while (( x = popListItem( &trash[1] ) )) {
+		db_deregister( x, db );
 		db_remove( x, db );
 	}
 #ifdef DEBUG
@@ -364,54 +354,35 @@ db_deprecate( CNInstance *x, CNDB *db )
 		for ( j=x->as_sub[ position ]; j!=NULL; j=j->next )
 			if ( !db_deprecated( j->ptr, db ) ) break;
 		if (( j )) {
-			if ( position == 0 ) {
-				icast.value = position;
-				addItem( &stack, i );
-				addItem( &stack, icast.ptr );
-			}
-			i = j;
+			addItem( &stack, i );
+			add_item( &stack, position );
 			position = 0;
+			i = j;
 			continue;
 		}
 		for ( ; ; ) {
-			if (( x )) {
-				db_op( DB_DEPRECATE_OP, x, 0, db );
+			if ( position == 0 ) {
+				position = 1;
+				break;
 			}
+			if ((x)) db_op( DB_DEPRECATE_OP, x, 0, db );
+
 			if (( i->next )) {
 				i = i->next;
-				if ( !db_deprecated( i->ptr, db ) ) {
+				if ( !db_deprecated( i->ptr, db ) )
 					break;
-				}
 				else x = NULL;
 			}
 			else if (( stack )) {
-				int x_position = (int) stack->ptr;
-				if ( x_position == 0 ) {
-					icast.value = 1;
-					stack->ptr = icast.ptr;
-					listItem *k = stack->next->ptr;
-					CNInstance *sup = k->ptr;
-					for ( j = sup->as_sub[ 1 ]; j!=NULL; j=j->next )
-						if ( !db_deprecated( j->ptr, db ) ) break;
-					if (( j )) {
-						i = j;
-						position = 0;
-						break;
-					}
-					else x = NULL;
-				}
-				else {
-					position = (int) popListItem( &stack );
-					i = popListItem( &stack );
-					x = i->ptr;
-				}
+				position = (int) popListItem( &stack );
+				i = popListItem( &stack );
+				if ( position ) x = i->ptr;
 			}
-			else {
-				freeItem( i );
-				return;
-			}
+			else goto RETURN;
 		}
 	}
+RETURN:
+	freeItem( i );
 }
 void
 db_exit( CNDB *db )
@@ -574,6 +545,9 @@ db_deregister( CNInstance *e, CNDB *db )
 	Note: db_remove MUST be called, but is called separately
 */
 {
+#ifdef DEBUG
+dbg_out( "db_deregister:\t", e, "\n", db );
+#endif
 	Registry *index = db->index;
 	listItem *next_i, *last_i=NULL;
 	for ( listItem *i=index->entries; i!=NULL; last_i=i, i=next_i ) {

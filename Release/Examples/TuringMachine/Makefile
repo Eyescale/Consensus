@@ -6,8 +6,8 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../../Base/include -I../../Version-1.1/include
-LFLAGS = -L../../../Base -L../../Version-1.1
+INCLUDES = -I. -I./include -I../../../Base/include -I../../Version-1.0/include
+LFLAGS = -L../../../Base -L../../Version-1.0
 LIBS = -lcn -lbmod
 
 OBJDIR = .ofiles
@@ -23,7 +23,7 @@ all:$(MAIN)
 
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
-	cp ../../Version-1.1/libbmod.so .
+	cp ../../Version-1.0/libbmod.so .
 	cp ../../../Base/libcn.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c

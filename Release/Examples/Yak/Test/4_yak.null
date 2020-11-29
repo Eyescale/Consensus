@@ -2,9 +2,8 @@
 	on init
 #		do (( rule, identifier ), ( schema, (a,(b,...((%,id),...(z,'\0')))) ))
 #		...
-#		do (( rule, null ), ( schema, '\0' ))
-		do (( rule, hello ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
-		do (( *, base ), hello )
+		do (( rule, null ), ( schema, '\0' ))
+		do (( *, base ), null )
 		do (( *, frame ), ( frame, * ))
 		do ( *, input )	// required to catch EOF first frame
 		do INPUT
@@ -28,7 +27,6 @@
 			else on ( %?, COMPLETE )
 				do ~( INPUT )
 			else on ~( *, input )
-				do >"GOT EOF***************\n"
 				do EOF
 				do ~( INPUT )
 		else on ~( ((rule,.),.), base ) // FAIL
@@ -53,10 +51,10 @@
 				   with no event to speak of, and other rules always
 				   start UNCONSUMED - so no starting event here.
 				*/
-				in *s: ((schema,'\0'),.) // silence null-schema output
-				else
-					do >"%%%_:{": %(*r:((.,?),.))
-
+#				in *s: ((schema,'\0'),.) // silence null-schema output
+#				else
+-					do >"%%%_:{": %(*r:((.,?),.))
++
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
 			do ((*,r), %? )
 			// set s to the feeder that started at the same (flag,frame)
@@ -69,12 +67,12 @@
 
 		else in ( *s, (.,*f)) // this frame is s's last frame
 			// output finishing event, which here cannot be initial frame
-			in *s: ((schema,'\0'),.) // silence null-schema output
-			else
-				in ( *s, (CONSUMED,.))
+#			in *s: ((schema,'\0'),.) // silence null-schema output
+#			else
+-				in ( *s, (CONSUMED,.))
 					do >"%s}": %((.,?):*f)
 				else do >"}"
-
++
 			/* set s to the successor of the schema which the current r
 			   fed and which started at finishing (flag,frame) = %(*s,?)
 			*/
@@ -93,8 +91,7 @@
 #			else error
 		else
 			// output event, unless *f is a first CONSUMED schema frame
-			in *f:( frame, * )
-			else in *s:(.,(CONSUMED,*f))
+			in *s:(.,(CONSUMED,*f))
 			else do >: %((.,?):*f)
 
 			// move on to next frame
@@ -105,7 +102,6 @@
 	else on ~( OUTPUT )
 		// destroys the whole frame structure, including rule
 		// and schema instances, all in ONE Consensus cycle
-		do >:
 		do ~( frame )
 
 	else on ~( frame )

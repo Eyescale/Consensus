@@ -17,6 +17,8 @@ TODO
 			do input:<
 	  will still block on input - as actual input is performed right away, as opposed
 	  to after frame, as it should (later).
+	. MUST implement custom getc/ungetc/fgetc to work around OSX terminal bug (EOF)
+	  see below "OSX Terminal bug illustrated"
 
 DONE
 	. added ../../Base/sequence.c implementing string demultiplication
@@ -77,3 +79,30 @@ DONE
 		+ allow \CR in strings
 	. standalone % identifier entity
 	. standalone * identifier entity
+
+OSX Terminal bug illustrated - with input "hello(ctrD)"
+
+	#include <stdio.h>
+	#include <stdlib.h>
+
+	#include <sys/types.h>
+	#include <sys/uio.h>
+	#include <unistd.h>
+
+	int main( int argc, char *argv[] )
+	{
+		int input = 0;
+		do {
+#if 0           
+	                switch ( read( STDIN_FILENO, &input, 1 ) ) {
+			case 0: input = EOF; break;
+			default: printf( "%c", input );
+			}
+#else           
+			input = fgetc( stdin );
+			printf( "%c", input );
+#endif  
+		}
+        	while ( input != EOF );
+	}
+
