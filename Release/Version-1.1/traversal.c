@@ -145,7 +145,7 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 //===========================================================================
 //	xp_traverse
 //===========================================================================
-int
+static int
 xp_traverse( BMTraverseData *data )
 /*
 	Traverses data->pivot's exponent invoking traverse_CB on every match

@@ -64,11 +64,6 @@
 			else in *s: ~((schema,'\0'),.)
 				do >"%%%_:{": %(*r:((.,?),.)) // output r begin
 
-		else on ((*,s), . ) // s set alone
-			in ?: %( *s, ?:((rule,.),.)) // set r to rule which s fed
-				do >"}" // output r end
-				do ((*,r), %? )
-
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
 			do ((*,r), %? )
 			// set s to the feeder that started at the same (flag,frame)
@@ -81,33 +76,29 @@
 
 		else in ( *s, (.,*f)) // this frame is s's last frame
 			// output finishing event, which here cannot be initial frame
-			in ( *s:~((schema,'\0'),.), (CONSUMED,.))
-				do >"%s": %((.,?):*f)
+			in ( %((?,.):*r), (schema,'\0'))
+			else in ( *s:~((schema,'\0'),.), (CONSUMED,.))
+				do >"%s}": %((.,?):*f)
+			else do >"}"
 
 			/* set s to the successor of the schema which the current r
 			   fed and which started at finishing (flag,frame) = %(*s,?)
 			*/
 			in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
 				do ((*,s), %? )
+				do ((*,r), %( %?, ?:((rule,.),.)) )
 
-			// no such successor, therefore we must have %( *r, base )
-			else in ?: ( *f, . ) // start flushing
-				in ( *s, (CONSUMED,.))
-					do ((*,f), (*f,.))
-				do ((*,s), base )
+			/* no such successor, therefore we must have (*r,base)
+			   	and f is the last frame on record */
 			else
-				do ~( *, s )
-
-		else on ~( *, s )
-			do >"}" // output base rule end
-			do ~( OUTPUT )
-
+				in ( *s, (UNCONSUMED,~(.,EOF)))
+					do >"%s": %((.,?):*f)
+				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first CONSUMED schema frame
 			in *s:(.,(CONSUMED,*f))
 			else in *f:~(frame,*):~(.,EOF)
 				do >"%s": %((.,?):*f)
-
 			// move on to next frame
 			in ?: ( *f, . )
 				do ((*,f), %? )
