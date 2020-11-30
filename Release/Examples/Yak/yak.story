@@ -6,7 +6,6 @@
 		do (( rule, null ), ( schema, '\0' ))
 		do (( *, base ), null )
 
-
 		do (( rule, hello ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
 		do (( rule, hello ), ( schema, (h,(i,'\0')) ))
 		do (( *, base ), hello )
@@ -41,12 +40,10 @@
 				// could do some preprocessing here
 				do (( *, frame ), ( *frame, *input ))
 			else on ( %?, COMPLETE )
-				do >"----------- COMPLETE ------------\n"
 				do ~( INPUT )
 			else on ~( *, input )
 				do (( *, frame ), ( *frame, EOF ))
 		else on ~( ((rule,.),.), base ) // FAIL
-			do >"----------- FAILED ------------\n"
 			do ~( INPUT )
 	else on ~( INPUT )
 		do OUTPUT
@@ -117,11 +114,9 @@
 			else
 				do ~( OUTPUT )
 	else on ~( OUTPUT )
-		// do exit
 		// destroys the whole frame structure, including rule
 		// and schema instances - all in ONE Consensus cycle
 		in *frame:~(.,EOF)
-			do >:
 			do ~( frame )
 		else do exit
 
@@ -152,9 +147,9 @@
 			do ~( .(CONSUMED,.) )
 			do ~( .(UNCONSUMED,.) )
 	else
-		on ?: %( %( ?:((schema,.),.), this ), (CONSUMED,.))
+		on ?: ( %( ?:((schema,.),.), this ), (CONSUMED,.))
 			do .( %((.,?):%?) ) // TAKE
-		on ?: %( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
+		on ?: ( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
 			do .( %((.,?):%?) ) // TAKE
 
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
