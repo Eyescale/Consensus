@@ -6,7 +6,6 @@
 #include "util.h"
 
 // #define DEBUG
-// #undef TRIM
 
 //===========================================================================
 //	bm_feel
@@ -141,6 +140,102 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 	if ( !strncmp( data->expression, "?:", 2 ) )
 		bm_register( data->ctx, "?", e );
 	return BM_DONE;
+}
+
+//===========================================================================
+//	xp_traverse
+//===========================================================================
+int
+xp_traverse( BMTraverseData *data )
+/*
+	Traverses data->pivot's exponent invoking traverse_CB on every match
+	returns 1 on the callback's BM_DONE, and 0 otherwise
+	Assumption: x is not deprecated - therefore neither are its subs
+*/
+{
+	CNDB *db = data->ctx->db;
+	int privy = data->privy;
+	CNInstance *x = data->pivot->value;
+	listItem *exponent = data->exponent;
+
+#ifdef DEBUG
+fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
+cn_out( stderr, x, db );
+fprintf( stderr, ", exponent=" );
+xpn_out( stderr, exponent );
+fprintf( stderr, "\n" );
+#endif
+	if ( x == NULL ) return 0;
+
+	int exp, success = 0;
+	listItem *trail = NULL;
+
+	listItem *stack = NULL, *i = newItem( x ), *j;
+	for ( ; ; ) {
+		x = i->ptr;
+		if (( exponent )) {
+			exp = (int) exponent->ptr;
+			if ( exp & 2 ) {
+				CNInstance *sub = x->sub[ exp & 1 ];
+				if (( sub )) {
+					addItem ( &stack, i );
+					addItem( &stack, exponent );
+					exponent = exponent->next;
+					i = newItem( sub );
+					continue;
+				}
+				else x = NULL;
+			}
+		}
+		if ( x == NULL )
+			; // failed x->sub
+		else if ( exponent == NULL ) {
+			if (( lookupIfThere( trail, x )))
+				; // ward off doublons
+			else {
+				addIfNotThere( &trail, x );
+				if ( traverse_CB( x, data ) == BM_DONE ) {
+					success = 1;
+					goto RETURN;
+				}
+			}
+		}
+		else {
+			for ( j=x->as_sub[ exp & 1 ]; j!=NULL; j=j->next )
+				if ( !db_private( privy, j->ptr, db ) )
+					break;
+			if (( j )) {
+				addItem( &stack, i );
+				addItem( &stack, exponent );
+				exponent = exponent->next;
+				i = j; continue;
+			}
+		}
+		for ( ; ; ) {
+			if (( i->next )) {
+				i = i->next;
+				if ( !db_private( privy, i->ptr, db ) )
+					break;
+			}
+			else if (( stack )) {
+				exponent = popListItem( &stack );
+				exp = (int) exponent->ptr;
+				if ( exp & 2 ) freeItem( i );
+				i = popListItem( &stack );
+			}
+			else goto RETURN;
+		}
+	}
+RETURN:
+	freeListItem( &trail );
+	while (( stack )) {
+		exponent = popListItem( &stack );
+		exp = (int) exponent->ptr;
+		if ( exp & 2 ) freeItem( i );
+		i = popListItem( &stack );
+	}
+	freeItem( i );
+	return success;
 }
 
 //===========================================================================
@@ -334,234 +429,3 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *not )
 	return (char *) popListItem( &stack->p );
 }
 
-//===========================================================================
-//	xp_traverse
-//===========================================================================
-typedef struct {
-	int active;
-	listItem *half;
-	listItem *next;
-	struct {
-		listItem *i;
-		listItem *stack;
-	} restore;
-} TrimData;
-static int trim_bgn( TrimData *, listItem **, listItem *, listItem ** );
-static int trimmed( TrimData *, listItem **, listItem **, listItem ** );
-static int trim_end( TrimData *, listItem **, listItem **, listItem ** );
-
-int
-xp_traverse( BMTraverseData *data )
-/*
-	Traverses data->pivot's exponent invoking traverse_CB on every match
-	returns 1 on the callback's BM_DONE, and 0 otherwise
-	Assumption: x is not deprecated - therefore neither are its subs
-*/
-{
-	CNDB *db = data->ctx->db;
-	int privy = data->privy;
-	CNInstance *x = data->pivot->value;
-	listItem *exponent = data->exponent;
-
-#ifdef DEBUG
-fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
-cn_out( stderr, x, db );
-fprintf( stderr, ", exponent=" );
-xpn_out( stderr, exponent );
-fprintf( stderr, "\n" );
-#endif
-	if ( x == NULL ) return 0;
-
-	int exp, success = 0;
-	TrimData rd;
-	rd.active = 0;
-	listItem *trail = NULL;
-
-	listItem *stack = NULL, *i = newItem( x ), *j;
-	for ( ; ; ) {
-		x = i->ptr;
-		if (( exponent )) {
-			exp = (int) exponent->ptr;
-			if ( exp & 2 ) {
-				CNInstance *sub = x->sub[ exp & 1 ];
-				if (( sub )) {
-					addItem ( &stack, i );
-					addItem( &stack, exponent );
-					exponent = exponent->next;
-					i = newItem( sub );
-					continue;
-				}
-				else x = NULL;
-			}
-		}
-		if ( x == NULL )
-			; // failed x->sub
-		else if ( exponent == NULL ) {
-#ifdef TRIM
-			if ( trimmed( &rd, &exponent, &i, &stack ) )
-				continue;
-			else
-#endif
-			if (( lookupIfThere( trail, x )))
-				; // ward off doublons
-			else {
-				addIfNotThere( &trail, x );
-				if ( traverse_CB( x, data ) == BM_DONE ) {
-					success = 1;
-					goto RETURN;
-				}
-			}
-		}
-#ifdef TRIM
-		else if ( trim_bgn( &rd, &exponent, i, &stack ) )
-			continue;
-#endif
-		else {
-			for ( j=x->as_sub[ exp & 1 ]; j!=NULL; j=j->next )
-				if ( !db_private( privy, j->ptr, db ) )
-					break;
-			if (( j )) {
-				addItem( &stack, i );
-				addItem( &stack, exponent );
-				exponent = exponent->next;
-				i = j; continue;
-			}
-		}
-		for ( ; ; ) {
-			if (( i->next )) {
-				i = i->next;
-				if ( !db_private( privy, i->ptr, db ) )
-					break;
-			}
-			else if (( stack )) {
-				exponent = popListItem( &stack );
-				exp = (int) exponent->ptr;
-				if ( exp & 2 ) freeItem( i );
-				i = popListItem( &stack );
-			}
-#ifdef TRIM
-			else if ( trim_end( &rd, &exponent, &i, &stack ) ) {
-#else
-			else {
-#endif
-				goto RETURN;
-			}
-		}
-	}
-RETURN:
-	freeListItem( &trail );
-	while (( stack )) {
-		exponent = popListItem( &stack );
-		exp = (int) exponent->ptr;
-		if ( exp & 2 ) freeItem( i );
-		i = popListItem( &stack );
-	}
-	freeItem( i );
-	return success;
-}
-static int reduceable( listItem *exponent, listItem **half, listItem **next );
-static int
-trim_bgn( TrimData *rd, listItem **exponent, listItem *i, listItem **stack )
-/*
-	Allows both better performances and to eliminate doublons, by
-	bypassing as_sub[k0]...as_sub[kn].sub[kn]...sub[k0] in exponent.
-	If found, sets rd->next to the subsequent exponent term, and
-	allocates rd->half to hold the series of as_sub's - which
-	should be tested, but only once for all, by the caller.
-	Assumption: exponent is not NULL and first term is AS_SUB
-*/
-{
-	if ( rd->active || !reduceable( *exponent, &rd->half, &rd->next ) )
-		return 0;
-#ifdef DEBUG
-fprintf( stderr, "TRIMMING: exponent=" );
-xpn_out( stderr, *exponent );
-fprintf( stderr, " -> [ half:" );
-xpn_out( stderr, rd->half );
-fprintf( stderr, ", next:" );
-xpn_out( stderr, rd->next );
-fprintf( stderr, " ]\n" );
-#endif
-	rd->active = 1;
-	rd->restore.i = i;
-	rd->restore.stack = *stack;
-	*exponent = rd->half;
-	*stack = NULL;
-	return 1;
-}
-static int
-reduceable( listItem *exponent, listItem **half, listItem **next )
-{
-	// register the full series of consecutive as_sub's, if there are any
-	listItem *stack = NULL;
-	do {
-		int exp = (int) exponent->ptr;
-		if ( exp & 2 ) break;
-		else {
-			union { int value; void *ptr; } icast;
-			icast.value = exp;
-			addItem( &stack, icast.ptr );
-			exponent = exponent->next;
-		}
-	} while (( exponent ));
-
-	// see if these are followed (in reverse order) by matching sub's
-	for ( listItem *i=stack; i!=NULL; i=i->next ) {
-		if ( exponent == NULL ) {
-			freeListItem( &stack );
-			return 0;
-		}
-		int xpn = (int) i->ptr;
-		int exp = (int) exponent->ptr;
-		if ((!exp&2) || ((exp&1)!=(xpn&1)) ) {
-			freeListItem( &stack );
-			return 0;
-		}
-		exponent = exponent->next;
-	}
-	reorderListItem( &stack );
-	*next = exponent;
-	*half = stack;
-	return 1;
-}
-static int
-trimmed( TrimData *rd, listItem **exponent, listItem **i, listItem **stack )
-/*
-	x.half (x=i->ptr) successfully trimmed to x => restore context
-*/
-{
-	if ( rd->active ) {
-#ifdef DEBUG
-fprintf( stderr, "trimmed: success\n" );
-#endif
-		rd->active = 0;
-		*exponent = rd->next;
-		freeListItem( &rd->half );
-		*stack = rd->restore.stack;
-		*i = rd->restore.i;
-		return 1;
-	}
-	return 0;
-}
-static int
-trim_end( TrimData *rd, listItem **exponent, listItem **i, listItem **stack )
-/*
-	x.half (x=i->ptr) failed => try i->next
-*/
-{
-	if ( rd->active ) {
-		*i = rd->restore.i;
-		listItem *next_i = (*i)->next;
-		if (( next_i )) {
-			rd->restore.i = next_i;
-			*exponent = rd->half;
-		}
-		else {
-			rd->active = 0;
-			freeListItem( &rd->half );
-			*stack = rd->restore.stack;
-		}
-		return 0;
-	}
-	return 1;
-}

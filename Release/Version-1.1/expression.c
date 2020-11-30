@@ -9,7 +9,6 @@
 #include "wildcard.h"
 
 // #define DEBUG
-// #define VERBOSE
 
 //===========================================================================
 //	bm_verify
@@ -25,11 +24,11 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "bm_verify: %d ", data->success );
+	fprintf( stderr, "bm_verify: " );
 	switch ( op ) {
-	case BM_INIT: fprintf( stderr, "BM_INIT " ); break;
-	case BM_BGN: fprintf( stderr, "BM_BGN " ); break;
-	case BM_END: fprintf( stderr, "BM_END " ); break;
+	case BM_INIT: fprintf( stderr, "BM_INIT success=%d ", data->success ); break;
+	case BM_BGN: fprintf( stderr, "BM_BGN success=%d ", data->success ); break;
+	case BM_END: fprintf( stderr, "BM_END success=%d ", data->success ); break;
 	}
 	fprintf( stderr, "'%s'\n", *position );
 #endif
