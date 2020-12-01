@@ -1,0 +1,9 @@
+
+	on init
+		do ( ((schema,titi),(CONSUMED,frame)), (CONSUMED,frame) )
+		do ( ((schema,titi),(CONSUMED,frame)), this )
+	else
+		in ?: %( %( ?:((schema,.),.), this ), ?:(CONSUMED,.))
+			do >"FOUND: %_\n": %?
+		else do >"BUG\n"
+		do exit

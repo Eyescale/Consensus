@@ -233,12 +233,12 @@
 					else do .FAIL
 				else in %?: ( ., w )
 					in *event: /[A-Za-z0-9_]/
+						do .CHECK
 						do .READY
-						do .HOLD
-					else in .HOLD
+					else in .CHECK
 						do ((*,position), %((.,?):*position))
 						do ((*,event), *event ) // REENTER
-						do ~( .HOLD )
+						do ~( .CHECK )
 					else do .FAIL
 			else in %?: /[ \t]/
 				in *event: /[ \t]/

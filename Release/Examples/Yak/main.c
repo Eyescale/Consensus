@@ -17,7 +17,7 @@ main( int argc, char *argv[] )
 	CNDB *db = newCNDB();
 	CNStory *story = readStory( argv[ 1 ] );
 #ifdef DEBUG
-	story_output( stderr, story, 0 );
+	story_output( stdout, story, 0 );
 	exit( 0 );
 #endif
 	while ( cnOperate( story, db ) )
