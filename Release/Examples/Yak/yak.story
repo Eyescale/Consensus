@@ -70,12 +70,8 @@
 
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
 			do ((*,r), %? )
-			// set s to the feeder that started at the same (flag,frame)
-			in ?: %( ?:((schema,.),%(%?:(.,?))), %? )
-				do ((*,s), %? )
-			else
-				do > " *** Error: Yak: unable to find rule\n"
-				do ~( *, s )
+			// set s to the feeder which started at the same (flag,frame)
+			do ((*,s), %( ?:((schema,.),%(%?:(.,?))), %? ))
 
 		else in ?: %( *s, (?:((schema,.),(.,*f)),.)) // s has successor starting this frame
 			do ((*,s), %? ) // set s to successor
@@ -100,8 +96,7 @@
 			in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
 				do ((*,s), %? )
 				do ((*,r), %( %?, ?:((rule,.),.)) )
-			/* no such successor, therefore we must have (*r,base) */
-			else
+			else // if no such successor, then we must have (*r,base)
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first CONSUMED schema frame
@@ -156,7 +151,7 @@
 		on ( %( ?:((schema,.),.), this ), (CONSUMED,.))
 			do .( CONSUMED, *frame ) // TAKE
 		on ( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
-			do .( UNCONSUMED, *frame) // TAKE
+			do .( UNCONSUMED, *frame ) // TAKE
 
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
@@ -244,7 +239,7 @@
 				in *event: /[ \t]/
 					do .READY
 				else
-					do ((*,position),%((.,?):*position))
+					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
 			else
 				in *event: %?
