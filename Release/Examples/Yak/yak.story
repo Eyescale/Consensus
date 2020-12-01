@@ -13,6 +13,12 @@
 		do (( rule, greet ), ( schema, ((%,hello),'\0') ))
 		do (( rule, hello ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
 		do (( *, base ), greet )
+
+		do (( rule, word ), ( schema, (('\\',w),'\0') ))
+		do (( *, base ), word )
+
+		do (( rule, deadlock ), ( schema, ((%,deadlock),'\0') ))
+		do (( *, base ), deadlock )
 */
 		do (( rule, g ), ( schema, ((%,h),(',',(' ',((%,w),'\0')))) ))
 		do (( rule, h ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
@@ -26,12 +32,10 @@
 	else in INPUT
 		%((rule,.),.)
 		on ( INPUT ) // start base rule instance
-			in (( rule, *base ), ( schema, . ))
+			in ( rule, *base )
 				do ( ((rule,*base),(CONSUMED,*frame)), base )
 			else
-				in ( rule, *base )
-					do >"Error: Yak: rule '%_': no schema found\n":*base
-				else do >"Error: Yak: rule '%_' not found\n":*base
+				do >"Error: Yak: rule '%_' not found\n":*base
 				do exit
 		else in ?: %( ?:((rule,.),.), base )
 			on ( %?, READY )
@@ -39,10 +43,10 @@
 			else on (( *, input ), . )
 				// could do some preprocessing here
 				do (( *, frame ), ( *frame, *input ))
-			else on ( %?, COMPLETE )
-				do ~( INPUT )
 			else on ~( *, input )
 				do (( *, frame ), ( *frame, EOF ))
+			else on ( %?, COMPLETE )
+				do ~( INPUT )
 		else on ~( ((rule,.),.), base ) // FAIL
 			do ~( INPUT )
 	else on ~( INPUT )
@@ -56,7 +60,7 @@
 		else on ((*,s), %(?,*r)) // s set together with r
 			// test if other feeders starting at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
-				do > " *** Warning: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
+				do > " *** Warning: Yak: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
 			in (((schema,.),.), (*s,.))
 				// s has predecessor: output s starting event
 				in *s:(.,(UNCONSUMED,.)): ~((schema,'\0'),.)
@@ -69,16 +73,25 @@
 			// set s to the feeder that started at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(%?:(.,?))), %? )
 				do ((*,s), %? )
-#			else error
+			else
+				do > " *** Error: Yak: unable to find rule\n"
+				do ~( *, s )
 
 		else in ?: %( *s, (?:((schema,.),(.,*f)),.)) // s has successor starting this frame
 			do ((*,s), %? ) // set s to successor
 
 		else in ( *s, (.,*f)) // this frame is s's last frame
 			// output finishing event, which here cannot be initial frame
-			in ( %((?,.):*r), (schema,'\0'))
-			else in ( *s:~((schema,'\0'),.), (CONSUMED,.))
+			in ( *s:~((schema,'\0'),.), (CONSUMED,.))
 				do >"%s}": %((.,?):*f)
+			else in ( %(?:*s,(UNCONSUMED,.)), %(?:*r,base) )
+				// special case: null-schema with no predecessor
+				in *s:((schema,'\0'),.):~%(((schema,.),.),(?,.))
+					in *f:~(.,EOF)
+						do >"%s": %((.,?):*f)
+				else in *f:~(.,EOF)
+					do >"}%s": %((.,?):*f)
+				else do >"}"
 			else do >"}"
 
 			/* set s to the successor of the schema which the current r
@@ -87,12 +100,8 @@
 			in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
 				do ((*,s), %? )
 				do ((*,r), %( %?, ?:((rule,.),.)) )
-
-			/* no such successor, therefore we must have (*r,base)
-			   	and f is the last frame on record */
+			/* no such successor, therefore we must have (*r,base) */
 			else
-				in ( *s, (UNCONSUMED,~(.,EOF)))
-					do >"%s": %((.,?):*f)
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first CONSUMED schema frame
@@ -122,7 +131,11 @@
 
 	on ( this )
 		// instantiate / subscribe to children schemas - feeders
-		do (( %((rule,id),?:(schema,.)), (flag,start_frame)), this )
+		in ((rule,id), (schema,.))
+			do (( %((rule,id),?:(schema,.)), (flag,start_frame)), this )
+		else
+			do >"Error: Yak: rule '%_': no schema found\n": id
+			do ~( this )
 
 	else on ~( this, ((schema,.),.))
 		do ~( this ) // FAIL: parent schema failed
@@ -134,14 +147,16 @@
 	else in .COMPLETE // chill
 	else in .READY
 		on (( *, frame ), . )
-			do ~( .READY )
-			do ~( .(CONSUMED,.) )
 			do ~( .(UNCONSUMED,.) )
-	else
-		on ?: ( %( ?:((schema,.),.), this ), (CONSUMED,.))
-			do .( %((.,?):%?) ) // TAKE
-		on ?: ( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
-			do .( %((.,?):%?) ) // TAKE
+			do ~( .(CONSUMED,.) )
+			do ~( .READY )
+
+	else in %( ?:%((schema,.),.), this ): ~%(this,?)
+
+		on ( %( ?:((schema,.),.), this ), (CONSUMED,.))
+			do .( CONSUMED, *frame ) // TAKE
+		on ( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
+			do .( UNCONSUMED, *frame) // TAKE
 
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
@@ -174,53 +189,77 @@
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)
 				else do ~( this )   // all successor schemas failed
+		else on ~. // system is deadlocked
+			do ~( this )
 		else on ( %?, READY ) // SYNC
 			do .READY // propagate to parent rule
 		else on (( *, frame ), . )
 			do ~( .READY ) // expecting TAKE from rule
 		else
-			on ( %?, COMPLETE ) // last possible TAKE from rule
+			on ( %?, (CONSUMED,.)) // TAKE from rule: launch successor schema
+				do .(((schema, %((.,?):*position)),(CONSUMED,*frame)), %(this,?:((rule,.),.)))
+			on ( %?, (UNCONSUMED,.)) // TAKE from rule: launch successor schema
+				do .(((schema, %((.,?):*position)),(UNCONSUMED,*frame)), %(this,?:((rule,.),.)))
+			on ( %?, COMPLETE ) // no more TAKE from rule
 				do .COMPLETE
-			on ?:( %?, (CONSUMED,.)) // TAKE from rule: launch successor schema
-				do .(((schema, %((.,?):*position)),%((.,?):%?)), %(this,?:((rule,.),.)))
-			on ?:( %?, (UNCONSUMED,.)) // TAKE from rule: launch successor schema
-				do .(((schema, %((.,?):*position)),%((.,?):%?)), %(this,?:((rule,.),.)))
 
 	else in .COMPLETE // chill
 	else in .READY
 		on (( *, frame ), . )
 			do ((*,event), %((.,?):*frame) )
+			do ~( .(PASS,.) )
+			do ~( .FAIL )
 			do ~( .READY )
+
 	else on (( *, event ), . )
-		in *position: '\0' // null-schema or base rule's schema finishing
+		in *position: '\0'
 			do .( UNCONSUMED, *frame ) // TAKE
 			do .COMPLETE
-/*
-		else in *position: space
-			%( .event )
-		else in *position: blank
-			%( .event )
-*/
-		else in ?: %((?,.): *position ) // expected @ position
-			in %?: ( % , . )
-				do ((( rule, %((.,?):%?)), (UNCONSUMED,*frame)), this )
-			else in %?: *event
-				in %((.,?):*position): '\0'
-					do .( CONSUMED, *frame ) // TAKE
-					do .COMPLETE
+		else in ?: %((?,.): *position ) // expected @ current, not terminating position
+			in %?: ( %, . )
+				in ?: ( rule, %((.,?):%?) )
+					do (( %?, (UNCONSUMED,*frame)), this )
 				else
-					do ((*,position), %((.,?):*position))
+					do >"Error: Yak: rule '%_' not found\n": %((.,?):%?)
+					do ~( this )
+			else in %?: ( '\\', . )
+				in %?: ( ., ' ' )
+					in *event: ' '
+						do .( PASS, CONSUMED )
+					else do .FAIL
+				else in %?: ( ., t )
+					in *event: '\t'
+						do .( PASS, CONSUMED )
+					else do .FAIL
+				else in %?: ( ., w )
+					in *event: /[A-Za-z0-9_]/
+						do .READY
+						do .HOLD
+					else in .HOLD
+						do ((*,position), %((.,?):*position))
+						do ((*,event), *event ) // REENTER
+						do ~( .HOLD )
+					else do .FAIL
+			else in %?: /[ \t]/
+				in *event: /[ \t]/
 					do .READY
-			else do ~( this ) // FAIL
-#		else error // *position is a base entity (singleton) other than '\0'
-/*
-		else %( .event ) // *position is a base entity (singleton) other than '\0'
-		// Note that we must have *position:start_position, since we use (: )
-		// Issue: we assume there is a narrative for it. How do we make sure?
+				else
+					do ((*,position),%((.,?):*position))
+					do ((*,event), *event ) // REENTER
+			else
+				in *event: %?
+					do .( PASS, CONSUMED )
+				else do .FAIL
+		else // *position is a base entity (singleton) other than '\0'
+			do >"Error: Yak: %_-terminated schema not supported\n": *position
+			do ~( this )
 	else on .( PASS, . )
-		do .( %(.(PASS,?)), *frame ) // TAKE
-		do .COMPLETE
+		in %((.,?):*position): '\0'
+			do .( %(.(PASS,?)), *frame ) // TAKE
+			do .COMPLETE
+		else
+			do ((*,position), %((.,?):*position))
+			do .READY
 	else on .( FAIL )
 		do ~( this )
-*/
 

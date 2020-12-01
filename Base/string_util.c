@@ -278,7 +278,7 @@ strmake( char *p )
 ---------------------------------------------------------------------------*/
 static int rxcmp( char *r, int event );
 static int equivocal( char *regex, char *p );
-static char *rxnext( char *regex, char *r );
+static int rxnext( char *regex, char **r );
 int
 strcomp( char *p, char *q, int cmptype )
 {
@@ -307,13 +307,17 @@ strcomp( char *p, char *q, int cmptype )
 	case 2:; // p is a regex, q is null-terminated
 		char *r = p+1; // skip the leading '/'
 		int comparison;
-		for ( ; *q && (r); q++, r=rxnext(p,r) ) {
+		for ( ; *q; q++, rxnext(p,&r) ) {
 			if (( comparison = rxcmp( r, *q ) )) {
 				if ( equivocal(p,r) ) return -1;
 				else return comparison;
 			}
 		}
-		return (r) ? -1 : 0;
+		if (( comparison = rxcmp( r, *q ) )) {
+			if ( equivocal(p,r) ) return -1;
+			else return comparison;
+		}
+		return 0;
 	default:
 		return 1;
 	}
@@ -341,12 +345,16 @@ equivocal( char *regex, char *p )
 	}
 	return 0;
 }
-static char *
-rxnext( char *regex, char *r )
+static int
+rxnext( char *regex, char **p )
 {
+	char *r = *p;
+	if ( *r=='/' ) return 0;
 	int bracket = 0;
 	do {
 		switch ( *r ) {
+		case '\0':
+			return 0;
 		case '[':
 			bracket = 1;
 			r++; break;
@@ -361,15 +369,22 @@ rxnext( char *regex, char *r )
 		}
 	}
 	while ( bracket );
-	return ( *r=='\0' || *r=='/' ) ? NULL : r;
+	*p = r;
+	return 1;
 }
 static int
 rxcmp( char *r, int event )
 {
+	if ( *r=='\0' || *r=='/' )
+		return event;
+	else if ( !event )
+		return -1;
+
 	int delta;
 	char q[ MAXCHARSIZE + 1 ];
 	switch ( *r ) {
-	case '.': return 0;
+	case '.':
+		return 0;
 	case '[':
 		for ( r++; *r && *r!=']'; ) {
 			int range[ 2 ];
@@ -394,7 +409,7 @@ rxcmp( char *r, int event )
 				default:
 					range[1] = *r++;
 			   	}
-				if ( event>=range[0] || event<=range[1] )
+				if ( event>=range[0] && event<=range[1] )
 					return 0;
 			}
 			else if ( event==range[0] ) return 0;
