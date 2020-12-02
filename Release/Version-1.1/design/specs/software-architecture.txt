@@ -23,10 +23,10 @@ Package Dependencies
 	             |                                               v          |
 		     .------------------------------------------- context.c ----.
 	             v                                               ^          v
-		database.c                                            ------- util.c
+		database.c                                            - - - - util.c
 	
 
-Component Interfaces*
+Component Interfaces
 
 	main.c
 			     -> narrative.c
@@ -90,18 +90,24 @@ Component Interfaces*
 		bm_traverse	    db_first
 				    db_next
 			     -> context.c
+		bm_feel		    push_mark_register
 		bm_traverse	    bm_lookup
+		traverse_CB*	    push_mark_register  *invoked by bm_traverse
 		bm_match*	    bm_lookup  *invoked by bm_verify
-			     -> operation.c
-		traverse_CB*	    operate_CB *invoked by bm_traverse
-				    activate_CB
-			     -> expression.c
-		traverse_CB*	    query_CB   *invoked by bm_traverse
-				    release_CB
-				    output_CB
 			     -> util.c
 		bm_traverse	    p_locate
 		bm_verify	    p_locate_mark
+		---------------------------------------------------------------
+		traverse_CB
+			     -> expression.c
+		                    query_CB**
+				    release_CB**
+				    output_CB**
+			     -> operation.c
+		                    operate_CB**
+				    activate_CB**
+		    **callback invocations (via bm_traverse)
+		---------------------------------------------------------------
 
 	context.c
 			     -> database.c
@@ -113,6 +119,7 @@ Component Interfaces*
 
 	util.c
 	    		     -> context.c
-	    p_locate_param	    arg_register_CB
+	    p_locate_param	    arg_register_CB**
+	        **callback invocation
 
 
