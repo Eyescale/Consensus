@@ -40,6 +40,7 @@ Updates
 		engineering complete - part I
 		. completed ./Release/Examples/Yak with test cases
 		. cleanup architecture (package dependencies)
+		. updated design/specs/software-architecture.txt
 	2020/11/20
 		introduced on ~. meaning no event during last frame
 		. needed for detecting deadlock and exiting schema threads

@@ -93,10 +93,10 @@ Component Interfaces*
 		bm_traverse	    bm_lookup
 		bm_match*	    bm_lookup  *invoked by bm_verify
 			     -> operation.c
-				    operate_CB
+		traverse_CB*	    operate_CB *invoked by bm_traverse
 				    activate_CB
 			     -> expression.c
-		traverse_CB*	    query_CB  *invoked by bm_traverse
+		traverse_CB*	    query_CB   *invoked by bm_traverse
 				    release_CB
 				    output_CB
 			     -> util.c
