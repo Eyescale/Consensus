@@ -97,6 +97,7 @@ Component Interfaces
 			     -> util.c
 		bm_traverse	    p_locate
 		bm_verify	    p_locate_mark
+				    xpn_add
 		---------------------------------------------------------------
 		traverse_CB
 			     -> expression.c
@@ -106,7 +107,7 @@ Component Interfaces
 			     -> operation.c
 		                    operate_CB**
 				    activate_CB**
-		    **callback invocations (via bm_traverse)
+		    **called back (via bm_traverse)
 		---------------------------------------------------------------
 
 	context.c
@@ -120,6 +121,6 @@ Component Interfaces
 	util.c
 	    		     -> context.c
 	    p_locate_param	    arg_register_CB**
-	        **callback invocation
+	        **called back
 
 
