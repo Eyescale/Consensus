@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "expression.h"
 #include "traversal.h"
-#include "util.h"
 
 // #define DEBUG
 
@@ -149,20 +148,6 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		}
 	}
 RETURN:
-	while (( stack )) {
-		i = popListItem( &stack );
-		CNOccurrence *occurrence = i->ptr;
-		char *expression = occurrence->data->expression;
-		switch ( occurrence->type ) {
-		case IN: case ELSE_IN:
-		case ON: case ELSE_ON:
-			if ( !strncmp( expression, "?:", 2 ) )
-				pop_mark_register( ctx );
-			// no break
-		default:
-			break;
-		}
-	}
 	freeItem( i );
 }
 static int cmp_CB( CNInstance *, BMContext *, void * );

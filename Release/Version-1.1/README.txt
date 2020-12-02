@@ -36,6 +36,10 @@ Contents
 	below in order to track the release status.
 
 Updates
+	2020/12/02
+		engineering complete - part I
+		. completed ./Release/Examples/Yak with test cases
+		. cleanup architecture (package dependencies)
 	2020/11/20
 		introduced on ~. meaning no event during last frame
 		. needed for detecting deadlock and exiting schema threads

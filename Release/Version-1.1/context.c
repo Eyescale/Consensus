@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "string_util.h"
 #include "context.h"
 #include "util.h"
 

@@ -17,7 +17,7 @@ TODO
 			do input:<
 	  will still block on input - as actual input is performed right away, as opposed
 	  to after frame, as it should (later).
-	. MUST implement custom getc/ungetc/fgetc to work around OSX terminal bug (EOF)
+	. implement custom getc/ungetc/fgetc to work around OSX terminal bug (EOF)
 	  see below "OSX Terminal bug illustrated"
 
 DONE

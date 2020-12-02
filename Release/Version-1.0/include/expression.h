@@ -18,13 +18,5 @@ void	db_output( char *expression, CNDB * );
 char *	p_locate( char *expression, char *fmt, listItem **exponent );
 CNInstance *p_lookup( int privy, char *position, CNDB *db );
 
-typedef enum {
-	PRUNE_DEFAULT,
-	PRUNE_IDENTIFIER,
-	PRUNE_COLON
-} PruneType;
-char *	p_prune( PruneType type, char *p );
-int	p_filtered( char *position );
-
 
 #endif	// EXPRESSION_H

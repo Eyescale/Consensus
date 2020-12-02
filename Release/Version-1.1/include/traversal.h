@@ -22,40 +22,5 @@ enum {
 typedef int BMTraverseCB( CNInstance *, BMContext *, void * );
 int bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
 
-//===========================================================================
-//	Interface with bm_verify
-//===========================================================================
-enum {
-	BM_INIT,
-	BM_BGN,
-	BM_END
-};
-typedef struct {
-	BMContext *ctx;
-	int privy;
-	char *expression;
-	int empty;
-	CNInstance *star;
-	Pair *pivot;
-	listItem *exponent;
-	BMTraverseCB *user_CB;
-	void *user_data;
-	listItem *mark_exp;
-	listItem *sub_exp;
-	int success;
-	int couple;
-	int not;
-	struct {
-		listItem *exponent;
-		listItem *couple;
-		listItem *scope;
-		listItem *base;
-		listItem *not;
-	} stack;
-#ifdef TRIM
-	BTreeNode *btree;
-#endif
-} BMTraverseData;
-
 
 #endif	// TRAVERSAL_H

@@ -8,8 +8,6 @@
 
 // #define DEBUG
 
-static int p_single( char *p );
-
 //===========================================================================
 //	db_verify
 //===========================================================================
@@ -118,7 +116,7 @@ db_verify_sub( int op, int success,
 		case '%':
 			if ( xp_match( privy, *x, NULL, star, *exponent, base, db ) < 0 ) {
 				success = not; not = 0;
-				p = p_prune( PRUNE_DEFAULT, p+1 );
+				p = p_prune( PRUNE_TERM, p+1 );
 			}
 			else if ( *p == '*' )
 				push_exponent( SUB, 1, mark_exp );
@@ -144,14 +142,14 @@ db_verify_sub( int op, int success,
 			if (( op == SUB_START ) && ( scope==OOS+1 ))
 				{ out = 1; break; }
 			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ',':
 			if ( scope <= OOS+1 ) { out = 1; break; }
 			popListItem( exponent );
 			push_exponent( AS_SUB, 1, exponent );
 			if ( success ) { p++; }
-			else p = p_prune( PRUNE_DEFAULT, p+1 );
+			else p = p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ')':
 			scope--;
@@ -236,7 +234,7 @@ init_params( VerifyParams *params, int op, int *success, CNInstance **x, char *p
 		params->base = popListItem( &data->stack.base );
 		params->scope = (int) data->stack.scope->ptr;
 		char *start_p = popListItem( &data->stack.p );
-		if ( *p==')' &&  p!=p_prune( PRUNE_DEFAULT, start_p ) )
+		if ( *p==')' &&  p!=p_prune( PRUNE_TERM, start_p ) )
 			params->scope++; // e.g. %( ... ) or *( ... )
 		popListItem( &data->stack.scope );
 		params->OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
@@ -283,7 +281,7 @@ db_substantiate( char *expression, CNDB *db )
 		if ( p_filtered( p )  ) {
 			// db_void made sure we do have results
 			sub[ ndx ] = db_fetch( p, db );
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			continue;
 		}
 		switch ( *p ) {
@@ -298,7 +296,7 @@ db_substantiate( char *expression, CNDB *db )
 		case '%':
 			// db_void made sure we do have results
 			sub[ ndx ] = db_fetch( p, db );
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			break;
 		case '(':
 			scope++;
@@ -366,7 +364,7 @@ db_void( char *expression, CNDB *db )
 		if ( p_filtered( p ) ) {
 			if ( empty || !db_feel( p, DB_CONDITION, db ) )
 				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			continue;
 		}
 		switch ( *p ) {
@@ -378,7 +376,7 @@ db_void( char *expression, CNDB *db )
 		case '%':
 			if ( empty || !db_feel( p, DB_CONDITION, db ) )
 				return 1;
-			p = p_prune( PRUNE_DEFAULT, p );
+			p = p_prune( PRUNE_TERM, p );
 			break;
 		case '(':
 			scope++;
@@ -486,7 +484,7 @@ db_outputf( char *format, char *expression, CNDB *db )
 			case 's':
 				if ( *expression ) {
 					db_output( expression, db );
-					expression = p_prune( PRUNE_DEFAULT, expression );
+					expression = p_prune( PRUNE_TERM, expression );
 				}
 			}
 			break;
@@ -759,7 +757,7 @@ locate_mark( char *expression, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			p = p_prune( PRUNE_COLON, p );
+			p = p_prune( PRUNE_FILTER, p );
 			break;
 		case '(':
 			scope++;
@@ -806,108 +804,5 @@ locate_mark( char *expression, listItem **exponent )
 	freeListItem( &stack.couple );
 	freeListItem( &stack.level );
 	return ((*p=='?') ? p : NULL );
-}
-
-//===========================================================================
-//	p_prune
-//===========================================================================
-typedef struct {
-	int level;
-	int type;
-} PruneData;
-static void p_set( PruneData *, PruneType type, char * );
-static int p_skip( char *p, PruneData *prune );
-
-char *
-p_prune( PruneType type, char *p )
-{
-	PruneData data;
-	p_set( &data, type, p );
-	while ( p_skip( p, &data ) ) { p++; }
-	return p;
-}
-static void
-p_set( PruneData *prune, PruneType type, char *p )
-{
-	prune->type = type;
-	prune->level = ( *p==')' ? 2 : 1 );
-}
-static int
-p_skip( char *p, PruneData *prune )
-{
-	if ( prune->type == PRUNE_IDENTIFIER ) {
-		if ( is_separator( *p ) )
-			prune->level = 0;
-	}
-	else {
-		switch ( *p ) {
-		case '\0': prune->level=0; break;
-		case '(': prune->level++; break;
-		case ')': prune->level--; break;
-		case ':':
-			if ( prune->type != PRUNE_COLON )
-				break;
-			// no break
-		case ',':
-			if ( prune->level == 1 )
-				prune->level = 0;
-			break;
-		}
-	}
-	return prune->level;
-}
-
-//===========================================================================
-//	p_single
-//===========================================================================
-static int
-p_single( char *p )
-/*
-	assumption: *p == '('
-*/
-{
-	int scope = 1;
-	while ( *p++ ) {
-		switch ( *p ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			scope--;
-			if ( !scope ) return 1;
-			break;
-		case ',':
-			if ( scope == 1 ) return 0;
-			break;
-		}
-	}
-	return 1;
-}
-
-//===========================================================================
-//	p_filtered
-//===========================================================================
-int
-p_filtered( char *p )
-{
-	int scope = 0;
-	while ( *p ) {
-		switch ( *p++ ) {
-		case '(':
-			scope++;
-			break;
-		case ')':
-			if ( !scope ) return 0;
-			scope--;
-			break;
-		case ',':
-			if ( !scope ) return 0;
-			break;
-		case ':':
-			if ( !scope ) return 1;
-			break;
-		}
-	}
-	return 0;
 }
 

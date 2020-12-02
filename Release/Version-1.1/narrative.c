@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "narrative.h"
 #include "narrative_private.h"
-#include "util.h"
 
 //===========================================================================
 //	readStory
@@ -830,14 +829,14 @@ freeNarrative( CNNarrative *narrative )
 }
 static int
 proto_set( CNNarrative *narrative, CNString *s )
+/*
+	validates that all .arg names are unique in proto
+*/
 {
 	char *p = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	narrative->proto = p;
 	if ( p == NULL ) return 1;
-
-        /* validates that all .arg names are unique in proto
-	*/
 	int success = 1;
 	listItem *list = NULL;
 	for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {

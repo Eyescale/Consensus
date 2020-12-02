@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "string_util.h"
 #include "util.h"
 
 //===========================================================================
@@ -65,7 +64,7 @@ p_locate( char *expression, listItem **exponent )
 				if ( not ) p++;
 				else scope = 0;
 			}
-			else { p_locate_param( p+1, &mark_exp, NULL, NULL ); p++; }
+			else { p_locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
 			scope++;
@@ -142,6 +141,15 @@ p_locate( char *expression, listItem **exponent )
 		return star_p;
 	}
 	return NULL;
+}
+
+//===========================================================================
+//	p_locate_mark
+//===========================================================================
+char *
+p_locate_mark( char *expression, listItem **exponent )
+{
+	return p_locate_param( expression, exponent, NULL, NULL );
 }
 
 //===========================================================================
@@ -239,134 +247,6 @@ p_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *
 	freeListItem( &stack.couple );
 	freeListItem( &stack.level );
 	return ((*p=='?') ? p : NULL );
-}
-
-//===========================================================================
-//	p_single
-//===========================================================================
-int
-p_single( char *p )
-/*
-	Assumption: *p == '('
-*/
-{
-	p = p_prune( PRUNE_TERM, p+1 );
-	return ( *p != ',' );
-}
-
-//===========================================================================
-//	p_filtered
-//===========================================================================
-int
-p_filtered( char *p )
-{
-	p = p_prune( PRUNE_FILTER, p );
-	return ( *p == ':' );
-}
-
-//===========================================================================
-//	p_prune
-//===========================================================================
-static char *prune_character( char * );
-static char *prune_format( char * );
-static char *prune_regex( char * );
-
-char *
-p_prune( PruneType type, char *p )
-{
-	switch ( type ) {
-	case PRUNE_FORMAT:
-		return prune_format( p );
-	case PRUNE_IDENTIFIER:
-		switch ( *p ) {
-		case '\'':
-			return prune_character( p );
-		case '/':
-			return prune_regex( p );
-		default:
-			while ( !is_separator(*p) ) p++;
-			return p;
-		}
-	case PRUNE_TERM:
-	case PRUNE_FILTER:;
-		int level = 0;
-		for ( ; ; ) {
-			switch ( *p ) {
-			case '\0': return p;
-			case '(':
-				level++;
-				p++; break;
-			case ')':
-				if ( !level ) return p;
-				level--;
-				p++; break;
-			case '\'':
-				p = prune_character( p );
-				break;
-			case '"':
-				p = prune_format( p );
-				break;
-			case '/':
-				p = prune_regex( p );
-				break;
-			case ':':
-				if ( type==PRUNE_FILTER && !level )
-					return p;
-				p++; break;
-			case ',':
-				if ( !level ) return p;
-				p++; break;
-			default:
-				p++; break;
-			}
-		}
-		break;
-	}
-}
-static char *
-prune_character( char *p )
-/*
-	Assumption: *p == '\''
-*/
-{
-	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
-}
-static char *
-prune_format( char *p )
-/*
-	Assumption: *p == '"'
-*/
-{
-	for ( p++; *p; )
-		switch ( *p++ ) {
-		case '\"': return p;
-		case '\\': p++; break;
-		}
-	return p;
-}
-static char *
-prune_regex( char *p )
-/*
-	Assumption: *p == '/'
-*/
-{
-	int bracket = 0;
-	for ( p++; *p; )
-		switch ( *p++ ) {
-		case '/':
-			if ( !bracket )
-				return p;
-			break;
-		case '\\':
-			p++; break;
-		case '[':
-			bracket = 1;
-			break;
-		case ']':
-			bracket = 0;
-			break;
-		}
-	return p;
 }
 
 //===========================================================================

@@ -17,16 +17,26 @@ int	is_xdigit( int event );
 int	isanumber( char *string );
 int	charscan( char *p, char *q );
 
+
+typedef enum {
+	PRUNE_TERM,
+	PRUNE_FILTER,
+	PRUNE_IDENTIFIER,
+	PRUNE_FORMAT
+} PruneType;
+char *	p_prune( PruneType type, char * );
+int	p_filtered( char * );
+int	p_single( char * );
+
+
 enum {
 	CNStringMode = 0,
 	CNStringAll
 };
-
 typedef enum {
 	CNStringBytes = 0,
 	CNStringText
 } CNStringState;
-
 typedef struct {
 	void *data;
 	CNStringState mode;
