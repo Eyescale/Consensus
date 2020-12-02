@@ -123,7 +123,6 @@
 
 : (( rule, .id ), ( .flag:~schema, .start_frame ))
 	%((schema,.),.)
-
 	on ( this )
 		// instantiate / subscribe to children schemas - feeders
 		in ((rule,id), (schema,.))
@@ -131,37 +130,30 @@
 		else
 			do >"Error: Yak: rule '%_': no schema found\n": id
 			do ~( this )
-
 	else on ~( this, ((schema,.),.))
 		do ~( this ) // FAIL: parent schema failed
-
 	else on ~(((schema,.),.), this ) // feeder schema failed
 		in %( ?:((schema,.),.), this ): ~%( this, ? )
-		else do ~( this ) // FAIL
-
+		else do ~( this ) // all feeder schemas failed
 	else in .COMPLETE // chill
 	else in .READY
 		on (( *, frame ), . )
 			do ~( .(UNCONSUMED,.) )
 			do ~( .(CONSUMED,.) )
 			do ~( .READY )
-
 	else in %( ?:%((schema,.),.), this ): ~%(this,?)
-
 		on ( %( ?:((schema,.),.), this ), (CONSUMED,.))
 			do .( CONSUMED, *frame ) // TAKE
 		on ( %( ?:((schema,.),.), this ), (UNCONSUMED,.))
 			do .( UNCONSUMED, *frame ) // TAKE
-
 		in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE)
 			in %( ?:((schema,.),.), this ): ~%(this,?): ~%(?,COMPLETE): ~%(?,READY)
-			else do .READY	// all children schemas ready
-		else do .COMPLETE	// all children schemas complete
+			else do .READY // all children schemas ready
+		else do .COMPLETE // all children schemas complete
 
 
 : (( schema, .start_position ), ( .flag, .start_frame ))
 	.position .event
-
 	on ( this )
 		in (((schema,.),.), ( this:((.,'\0'),.), . ))
 			// schema has predecessor AND is in null position
@@ -172,18 +164,15 @@
 			in flag: UNCONSUMED
 				do ((*,event), %((.,?):start_frame))
 			else do .READY
-
 	else on ~( this, ((rule,.),.))
 		do ~( this ) // FAIL: parent rule failed
-
 	else on ~(((rule,.),.), this )
 		do ~( this ) // FAIL: feeder rule failed (if there was one)
-
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
 		in .COMPLETE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)
-				else do ~( this )   // all successor schemas failed
+				else do ~( this ) // all successor schemas failed
 		else on ~. // system is deadlocked
 			do ~( this )
 		else on ( %?, READY ) // SYNC
@@ -197,7 +186,6 @@
 				do .(((schema, %((.,?):*position)),(UNCONSUMED,*frame)), %(this,?:((rule,.),.)))
 			on ( %?, COMPLETE ) // no more TAKE from rule
 				do .COMPLETE
-
 	else in .COMPLETE // chill
 	else in .READY
 		on (( *, frame ), . )
@@ -205,7 +193,6 @@
 			do ~( .(PASS,.) )
 			do ~( .FAIL )
 			do ~( .READY )
-
 	else on (( *, event ), . )
 		in *position: '\0'
 			do .( UNCONSUMED, *frame ) // TAKE

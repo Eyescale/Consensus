@@ -6,7 +6,7 @@
 #include "util.h"
 
 //===========================================================================
-//	bm_push
+//	bm_push / bm_pop
 //===========================================================================
 typedef struct {
 	CNInstance *e;
@@ -43,9 +43,6 @@ arg_register_CB( char *p, listItem *exponent, void *user_data )
 	registryRegister( data->registry, p, x );
 }
 
-//===========================================================================
-//	bm_pop
-//===========================================================================
 void
 bm_pop( BMContext *ctx )
 {
@@ -57,32 +54,25 @@ bm_pop( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_lookup
+//	push_mark_register / pop_mark_register
 //===========================================================================
-CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx )
+listItem *
+push_mark_register( BMContext *ctx, CNInstance *e )
 {
-	Pair *entry;
-	switch ( *p ) {
-	case '%': // looking up %? or %
-		if ( p[1] == '?' ) {
-			entry = registryLookup( ctx->registry, "?" );
-			return (entry) ? entry->value : NULL;
-		}
-		else return db_lookup( privy, p, ctx->db );
-	case '\'':; // looking up single character identifier instance
-		char q[ MAXCHARSIZE + 1 ];
-		if ( charscan( p+1, q ) )
-			return db_lookup( privy, q, ctx->db );
-		break;
-	default: // looking up normal identifier instance
-		if ( !is_separator(*p) ) {
-			entry = registryLookup( ctx->registry, p );
-			if (( entry )) return entry->value;
-		}
-		return db_lookup( privy, p, ctx->db );
-	}
-	return NULL;
+	Pair *entry = registryLookup( ctx->registry, "?" );
+	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
+}
+CNInstance *
+pop_mark_register( BMContext *ctx )
+{
+	Pair *entry = registryLookup( ctx->registry, "?" );
+	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
+}
+static CNInstance *
+lookup_mark_register( BMContext *ctx )
+{
+	Pair *entry = registryLookup( ctx->registry, "?" );
+	return (entry) && (entry->value) ? ((listItem*)entry->value)->ptr : NULL;
 }
 
 //===========================================================================
@@ -94,9 +84,6 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 	Registry *registry = ctx->registry;
 	Pair *entry;
 	switch ( *p ) {
-	case '?': // registering %?
-		entry = registryLookup( registry, "?" );
-		return ( entry ) ? (entry->value=e) : NULL;
 	case '.': // registering .local(s)
 		entry = registryLookup( registry, "this" );
 		if ( entry == NULL ) return NULL; // base narrative
@@ -137,5 +124,29 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 		return db_register( p, ctx->db );
 	}
 	return NULL;
+}
+
+//===========================================================================
+//	bm_lookup
+//===========================================================================
+CNInstance *
+bm_lookup( int privy, char *p, BMContext *ctx )
+{
+	Pair *entry;
+	char q[ MAXCHARSIZE + 1 ];
+	switch ( *p ) {
+	case '%': // looking up %? or %
+		return ( p[1] == '?' ) ? lookup_mark_register( ctx ) :
+			db_lookup( privy, p, ctx->db );
+	case '\'': // looking up single character identifier instance
+		return ( charscan( p+1, q ) ) ?
+			db_lookup( privy, q, ctx->db ) : NULL;
+	default: // looking up normal identifier instance
+		if ( !is_separator(*p) ) {
+			entry = registryLookup( ctx->registry, p );
+			if (( entry )) return entry->value;
+		}
+		return db_lookup( privy, p, ctx->db );
+	}
 }
 

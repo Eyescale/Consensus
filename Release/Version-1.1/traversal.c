@@ -17,18 +17,11 @@ static int xp_verify( CNInstance *, BMTraverseData * );
 int
 bm_feel( char *expression, BMContext *ctx, BMLogType type )
 {
-	int privy;
-	switch ( type ) {
-	case BM_CONDITION:
+	if ( type == BM_CONDITION )
 		return bm_traverse( expression, ctx, NULL, NULL );
-	case BM_RELEASED:
-		privy = 1;
-		break;
-	case BM_INSTANTIATED:
-		privy = 0;
-		break;
-	}
+
 	BMTraverseData data;
+	int privy = ( type == BM_RELEASED );
 	expression = xp_init( &data, expression, ctx, privy );
 	if ( expression == NULL ) return 0;
 
@@ -38,7 +31,7 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
 		if ( xp_verify( e, &data ) ) {
 			if ( !strncmp(data.expression,"?:",2) )
-				bm_register( data.ctx, "?", e );
+				push_mark_register( data.ctx, e );
 			freeListItem( &s );
 			success = 1;
 			break;
@@ -49,21 +42,21 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 }
 
 static char *
-xp_init( BMTraverseData *data, char *p, BMContext *ctx, int privy )
+xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 {
-	if (!((p) && (*p)) ) return NULL;
+	if (!((expression) && (*expression)) ) return NULL;
 	memset( data, 0, sizeof(BMTraverseData));
-	data->ctx = ctx;
 	data->privy = privy;
-	data->expression = p;
+	data->expression = expression;
+	data->ctx = ctx;
 	CNDB *db = ctx->db;
 	data->empty = db_is_empty( db );
 	data->star = db_lookup( privy, "*", db );
 #ifdef TRIM
 	// used by wildcard_opt
-	data->btree = btreefy( p );
+	data->btree = btreefy( expression );
 #endif
-	return strncmp( p, "?:", 2 ) ? p : p+2;
+	return strncmp( expression, "?:", 2 ) ? expression : expression+2;
 }
 
 static void
@@ -138,7 +131,7 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 	if ( data->user_CB )
 		return data->user_CB( e, data->ctx, data->user_data );
 	if ( !strncmp( data->expression, "?:", 2 ) )
-		bm_register( data->ctx, "?", e );
+		push_mark_register( data->ctx, e );
 	return BM_DONE;
 }
 

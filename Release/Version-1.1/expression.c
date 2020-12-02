@@ -313,7 +313,6 @@ bm_void( char *expression, BMContext *ctx )
 	char *p = expression;
 	while ( *p && level ) {
 		if ( p_filtered( p ) ) {
-			if ( !strncmp( p, "?:", 2 ) ) p += 2;
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;
 			p = p_prune( PRUNE_TERM, p );

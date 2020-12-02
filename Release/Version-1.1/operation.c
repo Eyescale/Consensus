@@ -83,51 +83,67 @@ static void
 operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 {
 	listItem *i = newItem( narrative->root ), *stack = NULL;
-	int passed = 1;
+	int passed = 1, pushed = 0;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
+		char *expression = occurrence->data->expression;
 		listItem *j = occurrence->data->sub;
 		switch ( occurrence->type ) {
 		ctrl(ELSE) case ROOT:
 			passed = 1;
 			break;
 		ctrl(ELSE_IN) case IN:
-			passed = in_condition( occurrence->data->expression, ctx );
+			passed = in_condition( expression, ctx );
+			pushed = ( passed && !strncmp( expression, "?:", 2 ));
 			break;
 		ctrl(ELSE_ON) case ON:
-			passed = on_event( occurrence->data->expression, ctx );
+			passed = on_event( expression, ctx );
+			pushed = ( passed && !strncmp( expression, "?:", 2 ));
 			break;
 		ctrl(ELSE_EN) case EN:
 			if (!(data->tbd)) break;
-			char *expression = occurrence->data->expression;
 			bm_traverse( expression, ctx, activate_CB, data );
 			break;
 		ctrl(ELSE_DO) case DO:
-			do_action( occurrence->data->expression, ctx );
+			do_action( expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
-			do_input( occurrence->data->expression, ctx );
+			do_input( expression, ctx );
 			break;
 		ctrl(ELSE_OUTPUT) case OUTPUT:
-			do_output( occurrence->data->expression, ctx );
+			do_output( expression, ctx );
 			break;
 		case LOCAL:
-			bm_register( ctx, occurrence->data->expression, NULL );
+			bm_register( ctx, expression, NULL );
 			break;
 		}
 		if (( j && passed )) {
 			addItem( &stack, i );
-			i = j; continue;
+			i = j; pushed = 0;
+			continue;
 		}
 		for ( ; ; ) {
+			if (( pushed )) {
+				pop_mark_register( ctx );
+				pushed = 0;
+			}
 			if (( i->next )) {
 				i = i->next;
-				occurrence = i->ptr;
 				break;
 			}
 			else if (( stack )) {
 				i = popListItem( &stack );
+				occurrence = i->ptr;
 				passed = 1; // otherwise we would not be here
+				switch ( occurrence->type ) {
+				case IN: case ELSE_IN:
+				case ON: case ELSE_ON:
+					expression = occurrence->data->expression;
+					pushed = !strncmp( expression, "?:", 2 );
+					// no break
+				default:
+					break;
+				}
 			}
 			else goto RETURN;
 		}
@@ -135,6 +151,17 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 RETURN:
 	while (( stack )) {
 		i = popListItem( &stack );
+		CNOccurrence *occurrence = i->ptr;
+		char *expression = occurrence->data->expression;
+		switch ( occurrence->type ) {
+		case IN: case ELSE_IN:
+		case ON: case ELSE_ON:
+			if ( !strncmp( expression, "?:", 2 ) )
+				pop_mark_register( ctx );
+			// no break
+		default:
+			break;
+		}
 	}
 	freeItem( i );
 }
@@ -191,9 +218,8 @@ static int
 in_condition( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "in condition: %s\n", expression );
-	if ( !strcmp( expression, "~." ) ) {
+	if ( !strcmp( expression, "~." ) )
 		return db_is_empty( ctx->db );
-	}
 	else return bm_feel( expression, ctx, BM_CONDITION );
 }
 
