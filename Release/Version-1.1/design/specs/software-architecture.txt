@@ -1,5 +1,5 @@
 
-Package Dependencies
+1. Package Dependencies
 
 	main.c	database.c
 		narrative.c
@@ -24,7 +24,7 @@ Package Dependencies
 		database.c
 	
 
-Component Interfaces
+2. Component Interfaces
 
 	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
   narrative.c

@@ -730,8 +730,8 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 		int exp = (int) popListItem( &xpn );
 		y = y->sub[ exp & 1 ];
 	}
-	if ( y == NULL ) return -1;
-	if ( p == NULL ) return 1;
+	if ( y == NULL ) { freeListItem( &xpn ); return -1; }
+	if ( p == NULL ) { return 1; }
 	switch ( *p ) {
 	case '*':
 		return ( y == data->star );
