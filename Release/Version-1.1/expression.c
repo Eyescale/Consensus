@@ -112,7 +112,11 @@ bm_substantiate( char *expression, BMContext *ctx )
 		}
 	}
 #ifdef DEBUG
-	if (( sub[ 0 ] )) dbg_out( "bm_substantiate: } first=", sub[0]->ptr, "\n", db );
+	if (( sub[ 0 ] )) {
+		fprintf( stderr, "bm_substantiate: } first=" );
+		cn_out( stderr, sub[0]->ptr, db );
+		fprintf( stderr, "\n" );
+	}
 	else fprintf( stderr, "bm_substantiate: } no result\n" );
 #endif
 	freeListItem( &sub[ 0 ] );

@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "string_util.h"
 #include "context.h"
-#include "util.h"
+
+typedef void BMLocateCB( char *, listItem *, void * );
+static char *p_locate_param( char *, listItem **, BMLocateCB, void * );
 
 //===========================================================================
 //	bm_push / bm_pop
@@ -53,7 +56,7 @@ bm_pop( BMContext *ctx )
 }
 
 //===========================================================================
-//	push_mark_register / pop_mark_register
+//	push_mark_register / pop_mark_register / lookup_mark_register
 //===========================================================================
 listItem *
 push_mark_register( BMContext *ctx, CNInstance *e )
@@ -72,6 +75,30 @@ lookup_mark_register( BMContext *ctx )
 {
 	Pair *entry = registryLookup( ctx->registry, "?" );
 	return (entry) && (entry->value) ? ((listItem*)entry->value)->ptr : NULL;
+}
+
+//===========================================================================
+//	bm_lookup
+//===========================================================================
+CNInstance *
+bm_lookup( int privy, char *p, BMContext *ctx )
+{
+	Pair *entry;
+	char q[ MAXCHARSIZE + 1 ];
+	switch ( *p ) {
+	case '%': // looking up %? or %
+		return ( p[1] == '?' ) ? lookup_mark_register( ctx ) :
+			db_lookup( privy, p, ctx->db );
+	case '\'': // looking up single character identifier instance
+		return ( charscan( p+1, q ) ) ?
+			db_lookup( privy, q, ctx->db ) : NULL;
+	default: // looking up normal identifier instance
+		if ( !is_separator(*p) ) {
+			entry = registryLookup( ctx->registry, p );
+			if (( entry )) return entry->value;
+		}
+		return db_lookup( privy, p, ctx->db );
+	}
 }
 
 //===========================================================================
@@ -126,26 +153,127 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 }
 
 //===========================================================================
-//	bm_lookup
+//	bm_locate_mark
 //===========================================================================
-CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx )
+char *
+bm_locate_mark( char *expression, listItem **exponent )
 {
-	Pair *entry;
-	char q[ MAXCHARSIZE + 1 ];
-	switch ( *p ) {
-	case '%': // looking up %? or %
-		return ( p[1] == '?' ) ? lookup_mark_register( ctx ) :
-			db_lookup( privy, p, ctx->db );
-	case '\'': // looking up single character identifier instance
-		return ( charscan( p+1, q ) ) ?
-			db_lookup( privy, q, ctx->db ) : NULL;
-	default: // looking up normal identifier instance
-		if ( !is_separator(*p) ) {
-			entry = registryLookup( ctx->registry, p );
-			if (( entry )) return entry->value;
+	return p_locate_param( expression, exponent, NULL, NULL );
+}
+static char *
+p_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
+/*
+	if arg_CB is set
+		invokes arg_CB on each .arg found in expression
+	Otherwise
+		returns first '?' found in expression, together with exponent
+		Note that we ignore the '~' signs and %(...) sub-expressions
+		Note also that the caller is expected to reorder the list
+*/
+{
+	union { int value; void *ptr; } icast;
+	struct {
+		listItem *couple;
+		listItem *level;
+	} stack = { NULL, NULL };
+	listItem *level = NULL;
+
+	int	scope = 1,
+		couple = 0; // default is singleton
+
+	char *p = expression;
+	while ( *p && scope ) {
+		switch ( *p ) {
+		case '~':
+		case '%':
+			p = p_prune( PRUNE_FILTER, p+1 );
+			break;
+		case '*':
+			if (( arg_CB )) {
+				p = p_prune( PRUNE_FILTER, p+1 );
+				break;
+			}
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
+				xpn_add( exponent, AS_SUB, 1 );
+				xpn_add( exponent, SUB, 0 );
+				xpn_add( exponent, SUB, 1 );
+			}
+			p++; break;
+		case '(':
+			scope++;
+			icast.value = couple;
+			addItem( &stack.couple, icast.ptr );
+			couple = !p_single( p );
+			if ( couple ) {
+				xpn_add( exponent, SUB, 0 );
+			}
+			addItem( &stack.level, level );
+			level = *exponent;
+			p++; break;
+		case ':':
+			while ( *exponent != level )
+				popListItem( exponent );
+			p++; break;
+		case ',':
+			if ( scope == 1 ) { scope=0; break; }
+			while ( *exponent != level )
+				popListItem( exponent );
+			popListItem( exponent );
+			xpn_add( exponent, SUB, 1 );
+			p++; break;
+		case ')':
+			scope--;
+			if ( !scope ) break;
+			if ( couple ) {
+				while ( *exponent != level )
+					popListItem( exponent );
+				popListItem( exponent );
+			}
+			level = popListItem( &stack.level );
+			couple = (int) popListItem( &stack.couple );
+			p++; break;
+		case '?':
+			if (( arg_CB )) p++;
+			else scope = 0;
+			break;
+		case '.':
+			p++;
+			if ( !is_separator(*p) ) {
+				if (( arg_CB )) {
+	 				arg_CB( p, *exponent, user_data );
+				}
+				else p = p_prune( PRUNE_IDENTIFIER, p );
+			}
+			break;
+		default:
+			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
-		return db_lookup( privy, p, ctx->db );
+	}
+	freeListItem( &stack.couple );
+	freeListItem( &stack.level );
+	return ((*p=='?') ? p : NULL );
+}
+
+//===========================================================================
+//	xpn_add
+//===========================================================================
+void
+xpn_add( listItem **xp, int as_sub, int position )
+{
+	union { int value; void *ptr; } icast;
+	icast.value = as_sub + position;
+	addItem( xp, icast.ptr );
+}
+
+//===========================================================================
+//	xpn_out
+//===========================================================================
+void
+xpn_out( FILE *stream, listItem *xp )
+{
+	while ( xp ) {
+		fprintf( stream, "%d", (int)xp->ptr );
+		xp = xp->next;
 	}
 }
 

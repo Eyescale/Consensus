@@ -9,118 +9,79 @@ Package Dependencies
 						traversal.c
 				traversal.c	database.c
 						context.c
-						util.c
 				context.c	database.c
-						util.c
 
 	    ------ main.c ------ 
 	   v         |          v
      narrative.c     .----- operation.c ----.------------.----------- 
 	             |          ^           v            |           |
-		     .----------:----- expression.c -----.-----------.
+		     .----------|----- expression.c -----.-----------.
 	             |          |           ^            v           |
-		     .----------:-----------:------- traversal.c ----.----------
-	             |                                               v          |
-		     .------------------------------------------- context.c ----.
-	             v                                               ^          v
-		database.c                                            - - - - util.c
+		     .----------:-----------:------- traversal.c ----.
+	             |                                               v
+		     .------------------------------------------- context.c
+	             v
+		database.c
 	
 
 Component Interfaces
 
-	main.c
-			     -> narrative.c
-	    main		    readNarrative
-				    freeNarrative
-		             -> database.c
-	    main		    newCNDB
-				    freeCNDB
-		             -> operation.c
-	    main		    cnOperate
-				    cnUpdate
-
-	operation.c
-			     -> database.c
-	    cnOperate		    db_out
-	    cnUpdate		    db_update
-	    in_condition	    db_is_empty
-	    on_event		    db_still
-	    do_action		    db_exit
-		             -> expression.c
-	    do_action		    bm_substantiate
-				    bm_release	
-	    do_output		    bm_outputf
-	    do_input		    bm_inputf
-		             -> traversal.c
-	    cnOperate		    bm_traverse
-	    operate		    bm_traverse
-	    activate_CB		    bm_traverse
-	    in_condition	    bm_feel
-	    on_event		    bm_feel
-		             -> context.c
-	    cnOperate		    bm_push
-				    bm_pop
-	    operate		    bm_register	// .LOCAL
-				    pop_mark_register
-	    operate_CB		    bm_push
-				    bm_pop
-	    activate_CB		    bm_push
-				    bm_pop
-
-	expression.c
-			     -> database.c
-	    bm_substantiate*	    db_couple	  *also invoked by bm_inputf
-	    bm_void*		    db_is_empty	  *invoked by bm_substantiate
-	    release_CB*		    db_deprecate  *invoked by bm_release
-	    bm_output*		    db_output	  *invoked by bm_outputf
-	    output_CB*		    db_output	  *invoked by bm_output
-		             -> traversal.c
-	    bm_void*		    bm_feel	 *invoked by bm_substantiate
-	    bm_query*		    bm_traverse  *invoked by bm_substantiate
-	    bm_release*		    bm_traverse  *invoked by bm_inputf
-	    bm_output*		    bm_traverse  *invoked by bm_outputf
-		             -> context.c
-	    bm_substantiate	    bm_register
-				    bm_lookup
-	    bm_void*		    bm_lookup	 *invoked by bm_substantiate
-
-	traversal.c
-			     -> database.c
-		bm_feel		    db_log
-		bm_traverse	    db_first
-				    db_next
-			     -> context.c
-		bm_feel		    push_mark_register
-		bm_traverse	    bm_lookup
-		traverse_CB*	    push_mark_register  *invoked by bm_traverse
-		bm_match*	    bm_lookup  *invoked by bm_verify
-			     -> util.c
-		bm_traverse	    p_locate
-		bm_verify	    p_locate_mark
-				    xpn_add
-		---------------------------------------------------------------
-		traverse_CB
-			     -> expression.c
-		                    query_CB**
-				    release_CB**
-				    output_CB**
-			     -> operation.c
-		                    operate_CB**
-				    activate_CB**
-		    **called back (via bm_traverse)
-		---------------------------------------------------------------
-
-	context.c
-			     -> database.c
-	    bm_lookup		    db_lookup
-	    bm_register		    db_register
-				    db_instantiate
-			     -> util.c
-	    bm_push		    p_locate_param
-
-	util.c
-	    		     -> context.c
-	    p_locate_param	    arg_register_CB**
-	        **called back
-
+	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
+  narrative.c
+	readNarrative									main
+	freeNarrative									main
+  database.c
+	newCNDB										main
+	freeCNDB									main
+	db_out								cnOperate
+	db_update							cnUpdate
+	db_exit								do_action
+	db_still							on_event
+	db_is_empty			xp_init		bm_void		in_condition
+	db_couple					bm_substantiate
+	db_deprecate					release_CB
+	db_output					bm_output
+							output_CB
+	db_lookup			xp_init
+	db_log				bm_feel
+	db_first			bm_traverse
+	db_next				bm_traverse
+	db_lookup	bm_lookup
+	db_register	bm_register
+	db_instantiate	bm_register
+  operation.c
+	cnUpdate									main
+	cnOperate									main
+	operate_CB			traverse_CB
+	activate_CB			traverse_CB
+  expression.c
+	bm_substantiate							do_action
+	bm_release							do_action
+	bm_outputf							do_output
+	bm_inputf							do_input
+	query_CB			traverse_CB
+	release_CB			traverse_CB
+	output_CB			traverse_CB
+  traversal.c
+	bm_traverse					bm_void		cnOperate
+							bm_query	operate
+							bm_release	activate_CB
+							bm_output
+	bm_feel						bm_void		in_condition
+									on_event
+  context.c
+	bm_push								cnOperate
+									operate_CB
+									activate_CB
+	bm_pop								cnOperate
+									operate_CB
+									activate_CB
+	pop_mark_register						operate
+	bm_register					bm_substantiate	operate (.LOCAL)
+	bm_lookup			bm_traverse	bm_void
+					bm_match
+	push_mark_register		bm_feel
+					traverse_CB
+	bm_locate_mark			bm_verify
+	xpn_add				bm_verify
 

@@ -17,10 +17,9 @@ SRCS =	context.c \
 	narrative.c \
 	operation.c \
 	traversal.c \
-	util.c \
 	wildcard.c
 
-#CFLAGS = -DDEBUG -DPREVIOUS
+#CFLAGS = -DDEBUG
 CFLAGS = -DTRIM
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so

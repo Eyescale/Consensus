@@ -266,7 +266,9 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 #ifdef DEBUG
 	fprintf( stderr, "db_instantiate: ( " );
 	cn_out( stderr, e, db );
-	dbg_out( ", ", f, " )\n", db );
+	fprintf( stderr, ", " );
+	cn_out( stderr, f, db );
+	fprintf( stderr, " )\n" );
 #endif
 	CNInstance *instance = NULL;
 	Pair *entry = registryLookup( db->index, "*" );
@@ -543,7 +545,9 @@ db_deregister( CNInstance *e, CNDB *db )
 */
 {
 #ifdef DEBUG
-dbg_out( "db_deregister:\t", e, "\n", db );
+fprintf( stderr, "db_deregister:\t" );
+cn_out( stderr, e, db );
+fprintf( stderr, "\n" );
 #endif
 	Registry *index = db->index;
 	listItem *next_i, *last_i=NULL;
@@ -570,7 +574,9 @@ db_remove( CNInstance *e, CNDB *db )
 */
 {
 #ifdef DEBUG
-dbg_out( "db_remove:\t", e, "\n", db );
+fprintf( stderr, "db_remove:\t" );
+cn_out( stderr, e, db );
+fprintf( stderr, "\n" );
 #endif
 	/* nullify e as sub of its as_sub's
 	   note: these will be free'd as well, as e was deprecated

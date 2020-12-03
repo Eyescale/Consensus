@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "string_util.h"
 #include "context.h"
 #include "traversal.h"
 #include "traversal_private.h"
-#include "util.h"
 
 // #define DEBUG
 
@@ -73,6 +73,7 @@ xp_release( BMTraverseData *data )
 //===========================================================================
 //	bm_traverse
 //===========================================================================
+static char *bm_locate( char *expression, listItem **exponent );
 static int xp_traverse( BMTraverseData * );
 static int traverse_CB( CNInstance *e, BMTraverseData *data );
 
@@ -92,7 +93,7 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 	BMTraverseData data;
 	expression = xp_init( &data, expression, ctx, 0 );
 	if (( expression )) {
-		char *p = p_locate( expression, &data.exponent );
+		char *p = bm_locate( expression, &data.exponent );
 		if (( p )) {
 			CNInstance *x = bm_lookup( 0, p, ctx );
 			if (( x )) data.pivot = newPair( p, x );
@@ -136,6 +137,146 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 			push_mark_register( data->ctx, e );
 		return BM_DONE;
 	}
+}
+
+//===========================================================================
+//	bm_locate
+//===========================================================================
+static char *
+bm_locate( char *expression, listItem **exponent )
+/*
+	returns first term which is not a wildcard and is not negated,
+	with corresponding exponent (in reverse order).
+*/
+{
+	union { int value; void *ptr; } icast;
+	struct {
+		listItem *not;
+		listItem *tuple;
+		listItem *level;
+		listItem *premark;
+	} stack = { NULL, NULL, NULL, NULL };
+
+	listItem *level = NULL,
+		*mark_exp = NULL,
+		*star_exp = NULL;
+
+	int	scope = 1,
+		identifier = 0,
+		tuple = 0, // default is singleton
+		not = 0;
+
+	char *star_p = NULL, *p = expression;
+	while ( *p && scope ) {
+		switch ( *p ) {
+		case '~':
+			not = !not;
+			p++; break;
+		case '*':
+			if ( !(star_exp) && !not ) {
+				// save star in case we cannot find identifier
+				if ( p[1] && !strmatch( ":,)", p[1] ) ) {
+					xpn_add( &star_exp, AS_SUB, 0 );
+					xpn_add( &star_exp, AS_SUB, 0 );
+					xpn_add( &star_exp, SUB, 1 );
+				}
+				for ( listItem *i=*exponent; i!=NULL; i=i->next )
+					addItem( &star_exp, i->ptr );
+				star_p = p;
+			}
+			// apply dereferencing operator to whatever comes next
+			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
+				xpn_add( exponent, SUB, 1 );
+				xpn_add( exponent, AS_SUB, 0 );
+				xpn_add( exponent, AS_SUB, 1 );
+			}
+			p++; break;
+		case '%':
+			if ( !strncmp( p, "%?", 2 ) ) {
+				if ( not ) p+=2;
+				else scope = 0;
+			}
+			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				if ( not ) p++;
+				else scope = 0;
+			}
+			else { bm_locate_mark( p+1, &mark_exp ); p++; }
+			break;
+		case '(':
+			scope++;
+			icast.value = tuple;
+			addItem( &stack.tuple, icast.ptr );
+			tuple = !p_single( p );
+			if (( mark_exp )) {
+				tuple |= 2;
+				addItem( &stack.premark, *exponent );
+				do addItem( exponent, popListItem( &mark_exp ));
+				while (( mark_exp ));
+			}
+			if ( tuple & 1 ) {	// not singleton
+				xpn_add( exponent, AS_SUB, 0 );
+			}
+			addItem( &stack.level, level );
+			level = *exponent;
+			icast.value = not;
+			addItem( &stack.not, icast.ptr );
+			p++; break;
+		case ':':
+			while ( *exponent != level )
+				popListItem( exponent );
+			p++; break;
+		case ',':
+			if ( scope == 1 ) { scope=0; break; }
+			while ( *exponent != level )
+				popListItem( exponent );
+			popListItem( exponent );
+			xpn_add( exponent, AS_SUB, 1 );
+			p++; break;
+		case ')':
+			scope--;
+			if ( !scope ) break;
+			not = (int) popListItem( &stack.not );
+			if ( tuple & 1 ) {	// not singleton
+				while ( *exponent != level )
+					popListItem( exponent );
+				popListItem( exponent );
+			}
+			level = popListItem( &stack.level );
+			if ( tuple & 2 ) {	// sub expression
+				listItem *tag = popListItem( &stack.premark );
+				while ( *exponent != tag )
+					popListItem( exponent );
+			}
+			tuple = (int) popListItem( &stack.tuple );
+			p++; break;
+		case '?':
+			p++; break;
+		case '.':
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			break;
+		case '/':
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		default:
+			if ( not ) p = p_prune( PRUNE_IDENTIFIER, p );
+			else scope = 0;
+		}
+	}
+	freeListItem( &stack.not );
+	freeListItem( &stack.tuple );
+	freeListItem( &stack.level );
+	freeListItem( &stack.premark );
+	if ( *p && *p!=',' && *p!=')' ) {
+		freeListItem( &star_exp );
+		return p;
+	}
+	else if (( star_exp )) {
+		freeListItem( exponent );
+		do addItem( exponent, popListItem( &star_exp ) );
+		while (( star_exp ));
+		return star_p;
+	}
+	return NULL;
 }
 
 //===========================================================================
@@ -497,7 +638,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			else if ( *p == '*' )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
-				p_locate_mark( p+1, &mark_exp );
+				bm_locate_mark( p+1, &mark_exp );
 				if ( mark_exp == NULL ) p++;
 			}
 			break;
