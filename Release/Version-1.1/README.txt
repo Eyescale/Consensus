@@ -4,7 +4,7 @@ Name
 Description
 	The objective of this version is to extend the language to support a full
 	transducer example implementation - starting from the example provided, in
-	C code, under the ./Base/Examples/Yak directory of this site.
+	C code, under the /Base/Examples/Yak directory of this site.
 
 	A key target outcome is to allow the definition and usage of "functions",
 	or methods, as part of the language.
@@ -25,10 +25,10 @@ Contents
 	This release directory holds the latest source code for this version (under
 	development).
 
+	The /Base/Release/Examples/Yak directory holds the yak.story example which
+	was the prime objective of this release.
 	The ./design sub-directory holds both external and internal specifications,
 	as well as documentation for this release.
-	The ./design/yak.story file is a prototype, in B% pseudo-code, of the first
-	target example implementation.
 	The ./design/schema-fork-on-completion .jpg and .txt files describe the
 	entity behavior & relationship model (EBRM) underlying that example.
 
@@ -38,8 +38,7 @@ Contents
 Updates
 	2020/12/02
 		engineering complete - part I
-		. completed ./Release/Examples/Yak with test cases
-		. cleanup architecture (package dependencies)
+		. completed /Base/Release/Examples/Yak with test cases
 		. updated design/specs/software-architecture.txt
 	2020/11/20
 		introduced on ~. meaning no event during last frame

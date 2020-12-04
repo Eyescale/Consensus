@@ -32,7 +32,7 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
 		if ( xp_verify( e, &data ) ) {
 			if ( !strncmp(data.expression,"?:",2) )
-				push_mark_register( data.ctx, e );
+				bm_push_mark( data.ctx, e );
 			freeListItem( &s );
 			success = 1;
 			break;
@@ -134,7 +134,7 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 		return data->user_CB( e, data->ctx, data->user_data );
 	else {
 		if ( !strncmp( data->expression, "?:", 2 ) )
-			push_mark_register( data->ctx, e );
+			bm_push_mark( data->ctx, e );
 		return BM_DONE;
 	}
 }

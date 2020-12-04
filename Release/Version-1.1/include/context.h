@@ -13,8 +13,8 @@ typedef struct {
 BMContext;
 BMContext *  bm_push( CNNarrative *n, CNInstance *e, CNDB *db );
 void	     bm_pop( BMContext * );
-listItem *   push_mark_register( BMContext *, CNInstance * );	
-CNInstance * pop_mark_register( BMContext * );
+listItem *   bm_push_mark( BMContext *, CNInstance * );	
+CNInstance * bm_pop_mark( BMContext * );
 CNInstance * bm_register( BMContext *, char *p, CNInstance *e );
 CNInstance * bm_lookup( int privy, char *p, BMContext *ctx );
 

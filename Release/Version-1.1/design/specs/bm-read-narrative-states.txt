@@ -1,4 +1,8 @@
 
+Consensus B% Version-1.1
+
+	narrative.c: readNarrative - state transitions
+
 	base	#	base
 		+	base
 		-	base

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 /*
-   cf.	narrative.c: readNarrative()
-	database.c: cn_out() 
-	context.c: charscan(), bm_lookup(), bm_register()
-	string_util.c: tokcmp(), strmake()
+   cf.
+	string_util.c: charscan()
+	narrative.c: readNarrative()
+	database.c: db_output() 
+	context.c: bm_lookup(), bm_register()
 */
 
 int

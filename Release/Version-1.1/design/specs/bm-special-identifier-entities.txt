@@ -1,0 +1,212 @@
+Consensus B% Version-1.1
+
+	1. Single Character Identifier Entities (SCIE)
+	2. String Literals
+	3. Lists
+
+1. Single Character Identifier Entities (SCIE)
+
+	B% Version-1.1 supports single character identifier entities - in addition
+	to those representing [A-Za-z0-9_] characters - using quotes:
+
+		identifier	internal	C representation
+
+		'\0'		"\0"		(char*) { '\0' }
+		'('		"("		(char*) {'(','\0'}
+		')'		")"		(char*) {')','\0'}
+		','		","		(char*) {',','\0'}
+		'\n'		"\n"		(char*) {'\n','\0'}
+		'\t'		"\t"		(char*) {'\t','\0'}
+		'\\'		"\\"		(char*) {'\\','\0'}
+		'\xhh'		"\xhh"		(char*) {'\xhh','\0'} where h is hexadecimal
+
+	So that:
+	1. The internal representations of e.g.
+		'*' and * (without quotes)
+		'%' and % (idem)
+		'a' and a (idem)
+		... and all other non-separator character
+	   are the same
+	2. * and % excepted, there should be no other way to create entities whose name
+	   is or contains a separator.
+	3. although backslash usage should be restricted to specific characters and not
+	   default to the ascii representation of the backslashed character - e.g. '\*'
+	   should fail, or mean something entirely other than '*' - in Version-1.1 we
+	   do exactly that.
+
+	Notes
+	. \identifier entities are reserved for special usage (TBD)
+	. "string" usage is currently reserved to input/output formats
+	. in yak.story: the '\0' entity we use to terminate schema could be any singleton, e.g.
+	  we could have (a,(b,...(z,end))) - or could introduce B% own \0 (no quote)
+	  to specify literals.
+
+	References
+	. /Release/Base/string_util.c
+	  is_escapable() -- returns true if the passed character is considered escapable
+	  charscan() -- converts in-quote characters into their internal representation
+	. /Release/Base/test_hval.c
+	  used to validate external hexadecimal to internal SCIE conversion
+	. /Release/Version-1.1/narrative.c
+	  readNarrative() -- invokes on_escapable() to accept or not escapable character
+	. /Release/Version-1.1/database.c
+	  db_output() -- translates internal into external representation
+	. /Release/Version-1.1/context.c
+	  bm_lookup() -- invokes charscan() to lookup SCIE
+	  bm_register() -- invokes charscan() to register SCIE
+
+2. String literals
+
+	We would like to be able to handle (a,(b,(c,...(z,'\0')))) the way
+	string literals are handled in C - and this way even use the notation
+	"abc...z" to simplify expressions while the internal representation
+	would be as described.
+
+	However the key issue here is memory management, as e.g.
+		do ~( *list ) - assuming we have ((*,list), (a,(...(z,'\0')))
+	would only deprecate the topmost (a,.) relationship instance, whereas
+		do ~( z,'\0' )
+	would deprecate all literals with the same ending.
+
+	A solution to this issue would be to introduce B%'s own terminator
+	entity, namely \0 (without quote), so that
+		"ab...z" would actually be (a,(b,(...,(z,\0))))
+	and
+		do ~( *list ) - assuming ((*,list), "ab...z" )
+	would actually use reference counting on each SCIE / record
+
+	But there is no such necessity as per Version-1.1 scope.
+
+3. Lists
+	. we have a "list" implementation, starting with
+		do (( *, list ), ( list, * ))
+
+			    v----------- 
+			 ---.--- 	|
+			|       v	|
+		       list     *	|
+			^       |	|
+			 ---.---	|
+			     -----.-----
+			((*,list), current )
+
+	  and subsequently
+		do (( *, list ), ( *list, element ))
+	  	to build
+
+			 rec	 v-------
+			    \ ---.---	 |
+		 rec      ---.---    v	 |
+		    \ ---.---    v   g	 |
+		  ---.---    v   f	 |
+	     	 |       v   e		 |
+	      	list     *		 |
+	     	 ^       |		 |
+	     	  ---.---		 |
+		      ---------.---------
+		     ((*,list), current )
+
+
+	  So that at any time:
+		%(( list, * ), . ) is the first actual record
+		%((( list, * ), . ) . ) is the second record
+		etc.
+		%((( list, * ), ? ) is the first actual element
+		%((( list, * ), . ), ? ) is the second element
+		etc.
+		*list is the current record		// if not (list,*)
+		%((.,?): *list) is the current element	// if not *
+		%((?,.):*list) is the previous record	// if not list
+		etc.
+
+		do { ~(*,list), ~(list,*) } destroys the list entirely
+		do { ~((list,*),.), ((*,list),(list,*)) } destroys the list's contents.
+
+	and we can point to any record (.) in the list, without interfering with
+	the list navigation - e.g. assuming that we have a list of frames, and
+	rule instances created via do ( rule, *frame ), we can query
+		%( ?, *frame ):~( *, frame )
+	and retrieve all the rules that are instantiated in the current frame
+	and not considering the "current" frame pointer itself
+
+	Notes
+	. An alternative would be to
+		do ((*,list), (list,*))
+		and subsequently do ((*,list), (element,*list))
+
+		    --------v
+		   |     ---.---v
+		   |    g    ---.---v
+		   |        f	 ---.---v
+		   |    	e    ---.---
+		   |		    |	    v 
+		   |    	   list     *
+		   |		    ^	    |
+		   |    	     ---.---
+		    ---------.----------
+		    ((*,list), current )
+
+	  the first element then being 'list', as opposed to '*'
+
+		It would seem that (list,*) would then be more easily extractable
+		into a standalone literal. However the extracted literal would still
+		be in LIFO order, as there is simply no easy formalism to grow a list
+		from the inside
+				(a,(b,( ... )))
+			------------------^
+
+	. Another alternative would be to
+		do ((*,list), (*,list))
+		and subsequently do ((*,list) , (element,*list))
+
+		    --------v
+		   |     ---.---v
+		   |    g    ---.---v
+		   |        f	 ---.---v
+		   |    	e    ---.---v
+		   |		    *	|  list
+		    ---------.----------
+		    ((*,list), current )
+
+	  The ( *, list ) entity being pointed to and from, which could make
+	  navigation tricky.
+
+	. Q: How about
+		do ((*,list),(*,list))
+		and then do ((*,list),(*list,element)) ?
+
+	  A: do ((*,list),((*,list),e))
+		first does ((*,list),e)
+			deprecates the previous ((*,list),(*,list)) assignment
+			manifests ((*,list),e)
+		   then assigns ((*,list),e) to (*,list)
+			deprecates the previous ((*,list),e) assignment
+			THEN manifests ((*,list),((*,list),e))
+		then on the next frame:
+			the event ((*,list),.) would be manifested
+			the event ~((*,list),e) would be manifested as well
+			the event ~((*,list),(*,list)) would be manifested as well
+			while the value *list would be inaccessible (deprecated)
+		then on the next frame:
+			the entity ((*,list),e) would be removed
+			which would remove ((*,list),((*,list),e))
+		   unless ((*,list),e) is rehabilitated
+			which then would manifest ~((*,list),((*,list),e)
+				- déjà vu ? -
+			as well as ((*,list),e)
+			so that now *list would be accessible as e !
+		   and unless we do ((*,list),(*,list),e)
+			which would then manifest ~((*,list),((*,list),e)
+			as well as ~((*,list),e)
+			etc.
+
+	in summary:
+	. doing ((*,list),((*,list),e)) could be an interesting way to have
+	  one time events ((*,list),.) with unaccessible *list value, so that
+	  the program could instruct e.g.
+		do ((*,flash),((*,flash),e))
+	  and then test either one of the following
+		on ((*,flash),.)
+		on ((*,flash),e)
+	  while never being able to access *flash
+

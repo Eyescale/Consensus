@@ -1,5 +1,4 @@
-
-Consensus Version-1.1
+Consensus B% Version-1.1
 
 	1. Execution Model
 	2. Narrative Registry
@@ -63,9 +62,9 @@ Consensus Version-1.1
 
 	Note here that the usage of these variables should arguably not rely on the
 	sequentiality of the implementation, but adhere to the principle that all operations
-	performed during one frame - or Consensus execution cycle - execute simultaneously. 
+	registered during one frame - or Consensus execution cycle - execute simultaneously. 
 
-	For instance, the working code
+	For instance, the (working) code
 
 		on ?: expression
 			do ~( expression:~%? )
@@ -83,11 +82,12 @@ Consensus Version-1.1
 3. Change Summary
 
 	1. readNarrative()
-		. must now return a list of narratives:{ [ proto, root ] }
-		  instead of its previous return value [ root, init ]
+		. now returns a list of narratives:{ [ proto, root ] }
+		  instead of previously returning [ root, init ]
 
-	2. CNDB "init" and "exit" flags to become real CNDB entities
-		. (nil,init) to be created upon CNDB instantiation
+	2. CNDB "init" and "exit" flags now real CNDB entities
+		. (nil,init) is created upon CNDB instantiation
+		. (nil,nil) is created by db_exit()
 
 	3. cnOperate
 		. must now take ( narrative, ( e, CNDB ) ) - where e NULL for
@@ -96,12 +96,12 @@ Consensus Version-1.1
 		. must push narrative-instance-specific registry upon entry,
 		  and pop registry before return
 
-	4. db_traverse
+	4. bm_traverse
 		. must now take ( db, registry ) instead of previously only db
 		. must lookup identifier first into registry, and then, only if
 		  that fails, into db
 
-	5. The key other db_ functions to be modified are therefore those invoking
+	5. The key other bm_ functions to be modified are therefore those invoking
 		registryLookup( db->index, identifier )
 	   These are:
 		db_register

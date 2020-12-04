@@ -1,3 +1,7 @@
+Consensus B% Version-1.1
+
+	1. Package Dependencies
+	2. Component Interfaces
 
 1. Package Dependencies
 
@@ -5,8 +9,8 @@
 		narrative.c
 		operation.c	database.c
 				expression.c	database.c
-						context.c
 						traversal.c
+						context.c
 				traversal.c	database.c
 						context.c
 				context.c	database.c
@@ -27,9 +31,11 @@
 2. Component Interfaces
 
 	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
+  ________________________________________________________________________________________________
   narrative.c
 	readNarrative									main
 	freeNarrative									main
+  ________________________________________________________________________________________________
   database.c
 	newCNDB										main
 	freeCNDB									main
@@ -42,18 +48,19 @@
 	db_deprecate					release_CB
 	db_output					bm_output
 							output_CB
-	db_lookup			xp_init
 	db_log				bm_feel
 	db_first			bm_traverse
 	db_next				bm_traverse
-	db_lookup	bm_lookup
+	db_lookup	bm_lookup	xp_init
 	db_register	bm_register
 	db_instantiate	bm_register
+  ________________________________________________________________________________________________
   operation.c
-	cnUpdate									main
 	cnOperate									main
+	cnUpdate									main
 	operate_CB			traverse_CB
 	activate_CB			traverse_CB
+  ________________________________________________________________________________________________
   expression.c
 	bm_substantiate							do_action
 	bm_release							do_action
@@ -62,13 +69,14 @@
 	query_CB			traverse_CB
 	release_CB			traverse_CB
 	output_CB			traverse_CB
+  ________________________________________________________________________________________________
   traversal.c
-	bm_traverse					bm_void		cnOperate
-							bm_query	operate
-							bm_release	activate_CB
-							bm_output
+	bm_traverse					bm_query	cnOperate
+							bm_release	operate
+							bm_output	activate_CB
 	bm_feel						bm_void		in_condition
 									on_event
+  ________________________________________________________________________________________________
   context.c
 	bm_push								cnOperate
 									operate_CB
@@ -76,12 +84,14 @@
 	bm_pop								cnOperate
 									operate_CB
 									activate_CB
-	pop_mark_register						operate
+	bm_pop_mark						operate
 	bm_register					bm_substantiate	operate (.LOCAL)
 	bm_lookup			bm_traverse	bm_void
 					bm_match
-	push_mark_register		bm_feel
+	bm_push_mark			bm_feel
 					traverse_CB
 	bm_locate_mark			bm_verify
 	xpn_add				bm_verify
+  ________________________________________________________________________________________________
+    	called \ from	context.c	traversal.c	expression.c	operation.c	main.c 
 

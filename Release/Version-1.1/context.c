@@ -56,16 +56,16 @@ bm_pop( BMContext *ctx )
 }
 
 //===========================================================================
-//	push_mark_register / pop_mark_register / lookup_mark_register
+//	bm_push_mark / bm_pop_mark / lookup_mark_register
 //===========================================================================
 listItem *
-push_mark_register( BMContext *ctx, CNInstance *e )
+bm_push_mark( BMContext *ctx, CNInstance *e )
 {
 	Pair *entry = registryLookup( ctx->registry, "?" );
 	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
 }
 CNInstance *
-pop_mark_register( BMContext *ctx )
+bm_pop_mark( BMContext *ctx )
 {
 	Pair *entry = registryLookup( ctx->registry, "?" );
 	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;

@@ -123,7 +123,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		}
 		for ( ; ; ) {
 			if (( pushed )) {
-				pop_mark_register( ctx );
+				bm_pop_mark( ctx );
 				pushed = 0;
 			}
 			if (( i->next )) {

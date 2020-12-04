@@ -1,0 +1,86 @@
+Consensus B% Version-1.1
+
+	bm_feel / bm_traverse implementation
+
+	Call stack
+		bm_feel
+		      [ > bm_push_mark ]
+			> xp_verify
+				> bm_verify
+					> bm_match
+		bm_traverse
+			[ > xp_traverse ]
+				> traverse_CB
+				      [ > bm_push_mark ]
+				      [ > user_CB ]
+					> xp_verify
+						> bm_verify
+							> bm_match
+
+	Originally xp_verify implemented the following, incorrect approach*:
+
+		for each candidate (e.g. from xp_traverse)
+			for each term of the expression
+				verify that there is a term.exponent instance
+				matching* the candidate
+			end for
+		end for
+		*using xp_compare, which is left unused in Version-1.0/traversal.c
+
+	It didn't work, because the verification was comparing each term.exponent
+	individually with the candidate, not considering that the overall match may
+	involve different term.exponent instances within the same expression.
+
+	The correct approach walks each candidate through each term of the expression
+	and verifies that each expression term is matched by the self-same candidate.
+	The following analysis illustrates the approach:
+
+		1. unmarked expression
+			candidate verifies ( a, b ) if and only if
+			    BOTH
+				candidate.sub[ 0 ] verifies a
+				<=> a :: candidate.sub[ 0 ]
+			    AND
+				candidate.sub[ 1 ] verifies b
+				<=> b :: candidate.sub[ 1 ]
+
+		2. marked expression
+		   candidate i verifies %( a, expr( ? ) ) if and only if
+		   there EXISTS j in
+			i.exponent( ? )
+			where exponent( ? ) is ?'s exponent in expr
+		   so that
+			j.sub[ 0 ] verifies a
+			<=> a :: j.sub[ 0 ]
+		    AND
+			j.sub[ 1 ] verifies ALL expr terms
+
+		(and recursively)
+
+		3. Examples
+		3.1. i verifies %((a,(b,c)), ? ) if and only if
+		     there EXISTS j in
+			i.as_sub[ 1 ]
+		     so that
+			a :: j.sub[0].sub[0]
+			b :: j.sub[0].sub[1].sub[0]
+			c :: j.sub[0].sub[1].sub[1]	// Note: outside-in
+
+		3.2. Now using the same expression as in 3.1. but with
+			c = %(((d,e),?),f)
+		     we have 
+
+		     i verifies %((a,(b,%((d,e),?),f))), ? ) if and only if
+		     there EXISTS j in
+			i.as_sub[ 1 ]
+		     so that
+			a :: j.sub[0].sub[0]
+			b :: j.sub[0].sub[1].sub[0]
+			there EXISTS k in
+				(j.sub[0].sub[1].sub[1]).as_sub[1].as_sub[0]	// Note: inside-out
+			so that
+				d :: k.sub[0].sub[0].sub[0]
+				e :: k.sub[0].sub[0].sub[1]
+				f :: k.sub[1]
+		etc.
+
