@@ -30,8 +30,66 @@ Consensus B% Version-1.1
 
 2. Component Interfaces
 
-	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
+    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
+  ==================================================================================================
+    main.c
+	main		newCNDB						cnOperate
+			freeCNDB					cnUpdate
   ________________________________________________________________________________________________
+    operation.c
+	cnOperate	db_out		bm_push		bm_traverse	operate
+					bm_pop
+	operate_CB			bm_push		bm_traverse	operate
+					bm_pop
+	operate				bm_pop_mark 	bm_traverse	in_condition
+					bm_register (.LOCAL)		on_event
+									do_action
+									do_input
+									do_output
+	activate_CB			bm_push		bm_traverse
+					bm_pop
+	cnUpdate	db_update
+	in_condition	db_is_empty			bm_feel
+	on_event	db_still			bm_feel
+	do_action	db_exit								bm_substantiate
+											bm_release
+	do_input									bm_inputf
+	do_output									bm_outputf
+  ________________________________________________________________________________________________
+    expression.c
+	bm_substantiate	db_couple	bm_register					bm_void	
+											bm_query
+	bm_void		db_is_empty	bm_lookup	bm_feel
+	bm_query					bm_traverse
+	bm_release					bm_traverse
+	release_CB	db_deprecate
+	bm_inputf									bm_substantiate
+	bm_outputf									bm_output
+	bm_output	db_output			bm_traverse
+	output_CB	db_output
+  ________________________________________________________________________________________________
+    traversal.c
+	xp_init		db_is_empty
+			db_lookup
+	bm_feel		db_log		bm_push_mark
+	bm_traverse	db_first	bm_lookup
+			db_next
+	traverse_CB			bm_push_mark
+	bm_verify			bm_locate_mark
+					xpn_add
+	bm_match			bm_lookup
+  ________________________________________________________________________________________________
+    context.c
+	bm_lookup	db_lookup	lookup_mark_register
+	bm_register	db_instantiate
+			db_register
+  ==================================================================================================
+    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
+
+
+
+	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
+  ==================================================================================================
   narrative.c
 	readNarrative									main
 	freeNarrative									main
@@ -92,6 +150,7 @@ Consensus B% Version-1.1
 					traverse_CB
 	bm_locate_mark			bm_verify
 	xpn_add				bm_verify
-  ________________________________________________________________________________________________
+  ==================================================================================================
     	called \ from	context.c	traversal.c	expression.c	operation.c	main.c 
+
 

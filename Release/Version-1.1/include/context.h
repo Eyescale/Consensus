@@ -4,19 +4,18 @@
 #include "database.h"
 #include "narrative.h"
 
-char * bm_locate_mark( char *expression, listItem **exponent );
-
 typedef struct {
 	CNDB *db;
 	Registry *registry;
 }
 BMContext;
-BMContext *  bm_push( CNNarrative *n, CNInstance *e, CNDB *db );
+BMContext *  bm_push( CNNarrative *, CNInstance *, CNDB * );
 void	     bm_pop( BMContext * );
+char *       bm_locate_mark( char *, listItem ** );
 listItem *   bm_push_mark( BMContext *, CNInstance * );	
 CNInstance * bm_pop_mark( BMContext * );
-CNInstance * bm_register( BMContext *, char *p, CNInstance *e );
-CNInstance * bm_lookup( int privy, char *p, BMContext *ctx );
+CNInstance * bm_register( BMContext *, char *, CNInstance * );
+CNInstance * bm_lookup( int privy, char *, BMContext * );
 
 #define AS_SUB  0
 #define SUB     2

@@ -68,8 +68,8 @@ Consensus B% Version-1.1
 		do ~( z,'\0' )
 	would deprecate all literals with the same ending.
 
-	A solution to this issue would be to introduce B%'s own terminator
-	entity, namely \0 (without quote), so that
+	A solution would be to introduce B%'s own terminator entity, namely
+	\0 (without quote), so that
 		"ab...z" would actually be (a,(b,(...,(z,\0))))
 	and
 		do ~( *list ) - assuming ((*,list), "ab...z" )

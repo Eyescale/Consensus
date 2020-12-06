@@ -1,37 +1,35 @@
 Consensus B% Version-1.1
 
-	bm_feel / bm_traverse implementation
+	traverse.c: bm_feel / bm_traverse implementation
 
 	Call stack
 		bm_feel
-		      [ > bm_push_mark ]
 			> xp_verify
 				> bm_verify
 					> bm_match
+		      [ > bm_push_mark ]
 		bm_traverse
 			[ > xp_traverse ]
 				> traverse_CB
-				      [ > bm_push_mark ]
 				      [ > user_CB ]
 					> xp_verify
 						> bm_verify
 							> bm_match
+				      [ > bm_push_mark ]
 
 	Originally xp_verify implemented the following, incorrect approach*:
 
-		for each candidate (e.g. from xp_traverse)
-			for each term of the expression
-				verify that there is a term.exponent instance
-				matching* the candidate
-			end for
+		for each term of the expression
+			verify that there is a term.exponent instance
+			matching* the candidate passed as argument
 		end for
 		*using xp_compare, which is left unused in Version-1.0/traversal.c
 
 	It didn't work, because the verification was comparing each term.exponent
-	individually with the candidate, not considering that the overall match may
-	involve different term.exponent instances within the same expression.
+	individually with the candidate, not considering that the overall match was
+	involving different term.exponent instances within the same expression.
 
-	The correct approach walks each candidate through each term of the expression
+	The correct approach walks the candidate through each term of the expression
 	and verifies that each expression term is matched by the self-same candidate.
 	The following analysis illustrates the approach:
 

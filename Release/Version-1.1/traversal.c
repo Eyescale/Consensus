@@ -12,7 +12,7 @@
 //	bm_feel
 //===========================================================================
 static char *xp_init( BMTraverseData *, char *, BMContext *, int );
-static void xp_release( BMTraverseData * );
+static int xp_release( BMTraverseData * );
 static int xp_verify( CNInstance *, BMTraverseData * );
 
 int
@@ -60,7 +60,7 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 	return strncmp( expression, "?:", 2 ) ? expression : expression+2;
 }
 
-static void
+static int
 xp_release( BMTraverseData *data )
 {
 	freePair( data->pivot );
@@ -68,6 +68,7 @@ xp_release( BMTraverseData *data )
 #ifdef TRIM
 	freeBTree( data->btree );
 #endif
+	return 0;
 }
 
 //===========================================================================
@@ -97,10 +98,7 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 		if (( p )) {
 			CNInstance *x = bm_lookup( 0, p, ctx );
 			if (( x )) data.pivot = newPair( p, x );
-			else {
-				freeListItem( &data.exponent );
-				return 0;
-			}
+			else return xp_release( &data );
 		}
 		data.user_CB = user_CB;
 		data.user_data = user_data;

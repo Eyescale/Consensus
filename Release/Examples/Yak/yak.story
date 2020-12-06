@@ -19,11 +19,15 @@
 
 		do (( rule, deadlock ), ( schema, ((%,deadlock),'\0') ))
 		do (( *, base ), deadlock )
-*/
+
 		do (( rule, g ), ( schema, ((%,h),(',',(' ',((%,w),'\0')))) ))
 		do (( rule, h ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
 		do (( rule, w ), ( schema, (w,(o,(r,(l,(d,'\0'))))) ))
 		do (( *, base ), g )
+*/
+		do (( rule, test ), ( schema, ((%,h),(l,(o,'\0'))) ))
+		do (( rule, h ), ( schema, (h,(e,(l,'\0'))) ))
+		do (( *, base ), test )
 
 		do (( *, frame ), ( frame, * ))
 		do ( *, input )	// required to catch EOF first frame
@@ -229,7 +233,7 @@
 					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
 			else
-				in *event: %?
+				in %?: *event
 					do .( PASS, CONSUMED )
 				else do .FAIL
 		else // *position is a base entity (singleton) other than '\0'
