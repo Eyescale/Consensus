@@ -774,21 +774,13 @@ db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
 			return 0;
 		}
 	}
-	union { int value; void *ptr; } icast;
-	struct {
-		listItem *ndx;
-		listItem *e;
-	} stack = { NULL, NULL };
+	listItem *stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {
 		if (( e->sub[ ndx ] )) {
-			if ( ndx ) fprintf( stream, "," );
-			else {
-				fprintf( stream, "(" );
-				icast.value = ndx;
-				addItem( &stack.ndx, icast.ptr );
-				addItem( &stack.e, e );
-			}
+			fprintf( stream, ndx==0 ? "(" : "," );
+			add_item( &stack, ndx );
+			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx = 0;
 			continue;
@@ -811,22 +803,16 @@ db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
 			}
 		}
 		for ( ; ; ) {
-			if (( stack.ndx )) {
-				int parent_ndx = (int) stack.ndx->ptr;
-				if ( parent_ndx ) {
-					ndx = (int) popListItem( &stack.ndx );
-					e = popListItem( &stack.e );
+			if (( stack )) {
+				e = popListItem( &stack );
+				ndx = (int) popListItem( &stack );
+				if ( ndx==1 || !(e->sub[1]))
 					fprintf( stream, ")" );
-				}
-				else {
-					icast.value = ndx = 1;
-					stack.ndx->ptr = icast.ptr;
-					e = stack.e->ptr;
-					break;
-				}
+				else { ndx = 1; break; }
 			}
-			else return 0;
+			else goto RETURN;
 		}
 	}
+RETURN:
 	return 0;
 }
