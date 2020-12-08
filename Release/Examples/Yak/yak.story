@@ -23,9 +23,14 @@
 		do (( rule, test ), ( schema, ((%,h),(l,(o,'\0'))) ))
 		do (( rule, h ), ( schema, (h,(e,(l,'\0'))) ))
 		do (( *, base ), test )
-*/
+
 		do (( rule, g ), ( schema, ((%,h),(',',(' ',((%,w),'\0')))) ))
 		do (( rule, h ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
+		do (( rule, w ), ( schema, (w,(o,(r,(l,(d,'\0'))))) ))
+		do (( *, base ), g )
+*/
+		do (( rule, g ), ( schema, ((%,h),(',',(' ',((%,w),'\0')))) ))
+		do (( rule, h ), ( schema, (('\\',w),'\0') ))
 		do (( rule, w ), ( schema, (w,(o,(r,(l,(d,'\0'))))) ))
 		do (( *, base ), g )
 
@@ -65,36 +70,29 @@
 			// test if other feeders starting at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
 				do > " *** Warning: Yak: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
-			in (((schema,.),.), (*s,.))
-				/* s has predecessor: output s starting event if UNCONSUMED
-				   and not last frame (handled below)
-				*/
-				in *s:(.,(UNCONSUMED,.)):~%( ?, (.,*f))
-					do >"%s": %((.,?):*f)
-			else in *s: ~((schema,'\0'),.)
+			in *s: ~%(((schema,.),.), (?,.)): ~((schema,'\0'),.)
 				do >"%%%_:{": %(*r:((.,?),.)) // output r begin
 
-		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
-			/* set s to the feeder which started at the same (flag,frame)
+		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame - pushing up
+			/* set s to the feeder which started at the same (flag,frame) -
 			   we know that, base excepted, rules start with event UNCONSUMED
-			   so no event to be output here - r begin will be done above
+			   so no event to be output here - r begin output will be done above
 			*/
-			do ((*,s), %( ?:((schema,.),%(%?:(.,?))), %? ))
+			do ((*,s), %( ?:((schema,.),%((.,?):%?)), %? ))
 			do ((*,r), %? )
 
 		else in ( *s, (.,*f)) // this frame is s's last frame - popping down
 			in *r: ~%( ?, base )
+				/* set s to the successor of the schema which the current r
+				   fed and which started at finishing (flag,frame) = %(*s,?)
+				*/
 				// output finishing event, which here cannot be initial frame
 				in ( *s:~((schema,'\0'),.), (CONSUMED,.))
 					do >"%s}": %((.,?):*f)
 				else do >"}"
-
-				/* set s to the successor of the schema which the current r
-				   fed and which started at finishing (flag,frame) = %(*s,?)
-				*/
-				in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
-					do ((*,s), %? )
-					do ((*,r), %( %?, ?:((rule,.),.)) )
+				in ?: %( %(*r,?:((schema,.),.)), ?:(((schema,.),%(*s,?)), . ))
+					do ((*,s), %((?,.):%?))
+					do ((*,r), %((.,?):%?))
 				// if no such successor, then we must have (*r,base)
 			else
 				in *s: ((schema,'\0'),.)
@@ -108,9 +106,7 @@
 					in *f:~(.,EOF)
 						do >"}%s": %((.,?):*f)
 					else do >"}"
-				else
-					do >"%s}": %((.,?):*f)
-
+				else do >"%s}": %((.,?):*f)
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first CONSUMED schema frame
@@ -120,8 +116,7 @@
 			// move on to next frame
 			in ?: ( *f, . )
 				do ((*,f), %? )
-			else
-				do ~( OUTPUT )
+			else do ~( OUTPUT )
 	else on ~( OUTPUT )
 		// destroys the whole frame structure, including rule
 		// and schema instances - all in ONE Consensus cycle
