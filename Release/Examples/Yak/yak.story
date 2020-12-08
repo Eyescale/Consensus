@@ -20,14 +20,14 @@
 		do (( rule, deadlock ), ( schema, ((%,deadlock),'\0') ))
 		do (( *, base ), deadlock )
 
+		do (( rule, test ), ( schema, ((%,h),(l,(o,'\0'))) ))
+		do (( rule, h ), ( schema, (h,(e,(l,'\0'))) ))
+		do (( *, base ), test )
+*/
 		do (( rule, g ), ( schema, ((%,h),(',',(' ',((%,w),'\0')))) ))
 		do (( rule, h ), ( schema, (h,(e,(l,(l,(o,'\0'))))) ))
 		do (( rule, w ), ( schema, (w,(o,(r,(l,(d,'\0'))))) ))
 		do (( *, base ), g )
-*/
-		do (( rule, test ), ( schema, ((%,h),(l,(o,'\0'))) ))
-		do (( rule, h ), ( schema, (h,(e,(l,'\0'))) ))
-		do (( *, base ), test )
 
 		do (( *, frame ), ( frame, * ))
 		do ( *, input )	// required to catch EOF first frame
@@ -61,46 +61,56 @@
 			do ((*,s), base )
 			do ((*,f), (frame,*)) // initial frame
 
-		else on ((*,s), %(?,*r)) // s set together with r
+		else on ((*,s), %(?,*r)) // s set with r informed
 			// test if other feeders starting at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
 				do > " *** Warning: Yak: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
 			in (((schema,.),.), (*s,.))
-				// s has predecessor: output s starting event
-				in *s:(.,(UNCONSUMED,.)): ~((schema,'\0'),.)
+				/* s has predecessor: output s starting event if UNCONSUMED
+				   and not last frame (handled below)
+				*/
+				in *s:(.,(UNCONSUMED,.)):~%( ?, (.,*f))
 					do >"%s": %((.,?):*f)
 			else in *s: ~((schema,'\0'),.)
 				do >"%%%_:{": %(*r:((.,?),.)) // output r begin
 
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame
-			do ((*,r), %? )
-			// set s to the feeder which started at the same (flag,frame)
-			do ((*,s), %( ?:((schema,.),%(%?:(.,?))), %? ))
-
-		else in ?: %( *s, (?:((schema,.),(.,*f)),.)) // s has successor starting this frame
-			do ((*,s), %? ) // set s to successor
-
-		else in ( *s, (.,*f)) // this frame is s's last frame
-			// output finishing event, which here cannot be initial frame
-			in ( *s:~((schema,'\0'),.), (CONSUMED,.))
-				do >"%s}": %((.,?):*f)
-			else in ( %(?:*s,(UNCONSUMED,.)), %(?:*r,base) )
-				// special case: null-schema with no predecessor
-				in *s:((schema,'\0'),.):~%(((schema,.),.),(?,.))
-					in *f:~(.,EOF)
-						do >"%s": %((.,?):*f)
-				else in *f:~(.,EOF)
-					do >"}%s": %((.,?):*f)
-				else do >"}"
-			else do >"}"
-
-			/* set s to the successor of the schema which the current r
-			   fed and which started at finishing (flag,frame) = %(*s,?)
+			/* set s to the feeder which started at the same (flag,frame)
+			   we know that, base excepted, rules start with event UNCONSUMED
+			   so no event to be output here - r begin will be done above
 			*/
-			in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
-				do ((*,s), %? )
-				do ((*,r), %( %?, ?:((rule,.),.)) )
-			else // if no such successor, then we must have (*r,base)
+			do ((*,s), %( ?:((schema,.),%(%?:(.,?))), %? ))
+			do ((*,r), %? )
+
+		else in ( *s, (.,*f)) // this frame is s's last frame - popping down
+			in *r: ~%( ?, base )
+				// output finishing event, which here cannot be initial frame
+				in ( *s:~((schema,'\0'),.), (CONSUMED,.))
+					do >"%s}": %((.,?):*f)
+				else do >"}"
+
+				/* set s to the successor of the schema which the current r
+				   fed and which started at finishing (flag,frame) = %(*s,?)
+				*/
+				in ?: %( %(*r,?:((schema,.),.)), ( ?:((schema,.),%(*s,?)), . ))
+					do ((*,s), %? )
+					do ((*,r), %( %?, ?:((rule,.),.)) )
+				// if no such successor, then we must have (*r,base)
+			else
+				in *s: ((schema,'\0'),.)
+					// special case: null-schema with no predecessor
+					in *s:~%(((schema,.),.),(?,.))
+						in *f:~(.,EOF) // just pass-through
+							do >"%s": %((.,?):*f)
+					else do >"}"
+				else in ( *s, (UNCONSUMED,.))
+					// special case: base rule completed on UNCONSUMED
+					in *f:~(.,EOF)
+						do >"}%s": %((.,?):*f)
+					else do >"}"
+				else
+					do >"%s}": %((.,?):*f)
+
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first CONSUMED schema frame
