@@ -70,7 +70,8 @@
 			// test if other feeders starting at the same (flag,frame)
 			in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
 				do > " *** Warning: Yak: rule '%_': multiple interpretations ***\n": %(*r:((.,?),.))
-			in *s: ~%(((schema,.),.), (?,.)): ~((schema,'\0'),.)
+			in *s: %(((schema,.),.), (?,.))	// r popped - s set as successor
+			else in *s: ~((schema,'\0'),.)	// r pushed
 				do >"%%%_:{": %(*r:((.,?),.)) // output r begin
 
 		else in ?: %( ?:((rule,.),(.,*f)), *s ) // s has rule starting this frame - pushing up
@@ -96,7 +97,7 @@
 				// if no such successor, then we must have (*r,base)
 			else
 				in *s: ((schema,'\0'),.)
-					// special case: null-schema with no predecessor
+					// special case: null-schema base with no predecessor
 					in *s:~%(((schema,.),.),(?,.))
 						in *f:~(.,EOF) // just pass-through
 							do >"%s": %((.,?):*f)
