@@ -1,0 +1,14 @@
+:
+	%( a, ( b, c ))
+	on init
+		do ( a, ( b, c ))
+	else on ~.
+		do exit
+
+:( a, ( b, c ) )
+	.position
+	on ( this )
+		do ((*,position),b)
+	else
+		do >"exiting\n"
+		do ~( %(?,.):this )

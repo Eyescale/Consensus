@@ -36,7 +36,7 @@
 						caught.event = 1;
 #define on_any				} else { \
 						caught.event = 1;
-#define do_( next )				caught.transition = 1; state = next;
+#define do_( next )				caught.transition = 1; state = (next);
 #define REENTER					caught.event = 0;
 #define same					state
 #define end				}

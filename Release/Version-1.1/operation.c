@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "database.h"
 #include "expression.h"
 #include "traversal.h"
 
@@ -12,6 +13,25 @@ static int on_event( char *, BMContext * );
 static int do_action( char *, BMContext * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
+
+//===========================================================================
+//	cnLoad
+//===========================================================================
+void
+cnLoad( char *path, CNDB *db )
+{
+	char *expression;
+	FILE *stream = strcmp(path,"") ? fopen( path, "r" ) : stdin;
+	if ( stream == NULL ) {
+		fprintf( stderr, "B%%: %s: no such file or directory\n", path );
+		return;
+	}
+	while (( expression = db_input(stream,1) )) {
+		bm_substantiate( expression, db );
+		free( expression );
+	}
+	if ( strcmp(path,"") ) fclose( stream );
+}
 
 //===========================================================================
 //	cnOperate
@@ -113,7 +133,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 			do_output( expression, ctx );
 			break;
 		case LOCAL:
-			bm_register( ctx, expression, NULL );
+			bm_register( ctx, expression );
 			break;
 		}
 		if (( j && passed )) {
@@ -234,7 +254,7 @@ do_action( char *expression, BMContext *ctx )
 	else if ( !strncmp( expression, "~(", 2 ) )
 		bm_release( expression+1, ctx );
 	else if ( strcmp( expression, "." ) )
-		bm_substantiate( expression, ctx );
+		bm_instantiate( expression, ctx );
 	return 1;
 }
 

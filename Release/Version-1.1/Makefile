@@ -11,16 +11,20 @@ LFLAGS = -L../../Base
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	context.c \
-	database.c \
+SRCS =	database.c \
+	db_io.c \
+	db_op.c \
+	context.c \
 	expression.c \
 	narrative.c \
 	operation.c \
 	traversal.c \
 	wildcard.c
 
-#CFLAGS = -DDEBUG
-CFLAGS = -DTRIM
+#CFLAGS = -O2
+CFLAGS = -O2 -DUNIFIED
+#CFLAGS = -O2 -DDB_DEBUG_C
+#CFLAGS = -DDEBUG -DTRIM
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so
 

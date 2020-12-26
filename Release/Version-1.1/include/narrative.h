@@ -3,6 +3,12 @@
 
 #include "list.h"
 
+typedef listItem CNStory;
+
+CNStory *readStory( char *path );
+int	story_output( FILE *, CNStory * );
+void	freeStory( CNStory * );
+
 typedef enum {
 	ROOT,
 	IN,
@@ -34,12 +40,6 @@ typedef struct {
 	char *proto;
 	CNOccurrence *root;
 } CNNarrative;
-
-typedef listItem CNStory;
-
-CNStory * readStory( char *path );
-int	story_output( FILE *, CNStory *, int );
-void	freeStory( CNStory * );
 
 
 #endif	// NARRATIVE_H

@@ -1,19 +1,19 @@
-#ifndef EXPRESSION_PRIVATE_H
-#define EXPRESSION_PRIVATE_H
+#ifndef DB_IO_H
+#define DB_IO_H
 
 #include "macros.h"
 
 //===========================================================================
-//      Expression BMInputBegin / BMInputEnd - macros
+//      DBInputBegin / DBInputEnd - macros
 //===========================================================================
 #ifdef DEBUG
 #define DBGMonitor \
-        fprintf( stderr, "BMInput: in \"%s\" on '%c'\n", state, event );
+        fprintf( stderr, "DBInput: in \"%s\" on '%c'\n", state, event );
 #else
 #define DBGMonitor
 #endif
 
-#define BMInputBegin( stream, input ) \
+#define DBInputBegin( stream, input ) \
 	char *state = "base"; \
 	int event; \
 	struct { int event, state, transition; } caught; \
@@ -24,15 +24,15 @@
                         caught.state = 0; \
                         caught.event = 1; \
                         DBGMonitor; bgn_
-#define BMInputDefault \
+#define DBInputDefault \
                         end \
                         if ( caught.transition ) ; \
                         else bgn_
-#define BMInputEnd \
+#define DBInputEnd \
                         end \
                 } while ( !caught.event ); \
 	} while ( strcmp( state, "" ) );
 
 
 
-#endif	// EXPRESSION_PRIVATE_H
+#endif	// DB_IO_H

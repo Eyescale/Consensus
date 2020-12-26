@@ -168,7 +168,7 @@ bm_pop_mark( BMContext *ctx )
 	Pair *entry = registryLookup( ctx->registry, "?" );
 	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
 }
-static CNInstance *
+CNInstance *
 lookup_mark_register( BMContext *ctx )
 {
 	Pair *entry = registryLookup( ctx->registry, "?" );
@@ -203,7 +203,7 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 //	bm_register
 //===========================================================================
 CNInstance *
-bm_register( BMContext *ctx, char *p, CNInstance *e )
+bm_register( BMContext *ctx, char *p )
 {
 	Registry *registry = ctx->registry;
 	Pair *entry;
@@ -227,8 +227,8 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 			/* assuming previous entry was registered
 			   either as .arg or not at all
 			*/
-			CNInstance *x = db_register( p, db );
-			x = db_instantiate( this, x, db );
+			CNInstance *x = db_register( p, db, 0 );
+			x = db_couple( this, x, db );
 			if (( entry )) {
 				entry->name = p;
 				entry->name = x;
@@ -238,14 +238,14 @@ bm_register( BMContext *ctx, char *p, CNInstance *e )
 	case '\'':; // registering single character identifier instance
 		char q[ MAXCHARSIZE + 1 ];
 		if ( charscan(p+1,q) )
-			return db_register( q, ctx->db );
+			return db_register( q, ctx->db, 1 );
 		break;
 	default: // registering normal identifier instance
 		if ( !is_separator(*p) ) {
 			entry = registryLookup( registry, p );
 			if (( entry )) return entry->value;
 		}
-		return db_register( p, ctx->db );
+		return db_register( p, ctx->db, 1 );
 	}
 	return NULL;
 }

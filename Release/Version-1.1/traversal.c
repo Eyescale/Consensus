@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "database.h"
 #include "context.h"
 #include "traversal.h"
 #include "traversal_private.h"
@@ -126,13 +127,14 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 static int
 traverse_CB( CNInstance *e, BMTraverseData *data )
 {
+	BMContext *ctx = data->ctx;
 	if ( !xp_verify( e, data ) )
 		return BM_CONTINUE;
 	else if ( data->user_CB )
-		return data->user_CB( e, data->ctx, data->user_data );
+		return data->user_CB( e, ctx, data->user_data );
 	else {
 		if ( !strncmp( data->expression, "?:", 2 ) )
-			bm_push_mark( data->ctx, e );
+			bm_push_mark( ctx, e );
 		return BM_DONE;
 	}
 }
@@ -295,7 +297,7 @@ xp_traverse( BMTraverseData *data )
 
 #ifdef DEBUG
 fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
-cn_out( stderr, x, db );
+db_output( stderr, "", x, db );
 fprintf( stderr, ", exponent=" );
 xpn_out( stderr, exponent );
 fprintf( stderr, "\n" );
@@ -311,15 +313,14 @@ fprintf( stderr, "\n" );
 		if (( exponent )) {
 			exp = (int) exponent->ptr;
 			if ( exp & 2 ) {
-				CNInstance *sub = x->sub[ exp & 1 ];
-				if (( sub )) {
+				x = ESUB( x, exp&1 );
+				if (( x )) {
 					addItem ( &stack, i );
 					addItem( &stack, exponent );
 					exponent = exponent->next;
-					i = newItem( sub );
+					i = newItem( x );
 					continue;
 				}
-				else x = NULL;
 			}
 		}
 		if ( x == NULL )
@@ -397,7 +398,7 @@ xp_verify( CNInstance *x, BMTraverseData *data )
 		p += 2;
 #ifdef DEBUG
 fprintf( stderr, "xp_verify: %s / candidate=", p );
-cn_out( stderr, x, db );
+db_output( stderr, "", x, db );
 fprintf( stderr, " ........{\n" );
 #endif
 	XPVerifyStack stack;
@@ -408,7 +409,6 @@ fprintf( stderr, " ........{\n" );
 	int	op = BM_INIT,
 		success = 0,
 		not = 0;
-
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -425,7 +425,7 @@ fprintf( stderr, " ........{\n" );
 				else x = NULL;
 			}
 			else {
-				x = x->sub[ exp & 1 ];
+				x = ESUB( x, exp&1 );
 				if (( x )) {
 					addItem( &stack.as_sub, i );
 					addItem( &stack.as_sub, exponent );
@@ -466,7 +466,7 @@ fprintf( stderr, " ........{\n" );
 				listItem **sub_exp = &data->sub_exp;
 				while (( x ) && (*sub_exp)) {
 					int exp = (int) popListItem( sub_exp );
-					x = x->sub[ exp & 1 ];
+					x = ESUB( x, exp&1 );
 				}
 				i = newItem( x );
 				if (( x )) {
@@ -682,6 +682,9 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			else if ( data->empty ) success = 0;
 #ifdef TRIM
 			else if ( wildcard_opt( p, data->btree ) ) success = 1;
+#else
+			else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
+				success = 1; // wildcard is as_sub[1]
 #endif
 			else success = ( bm_match( x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
@@ -720,25 +723,33 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 */
 {
 	listItem *xpn = NULL;
-	for ( listItem *i = exponent; i!=base; i=i->next ) {
+	for ( listItem *i=exponent; i!=base; i=i->next ) {
 		addItem( &xpn, i->ptr );
 	}
 	CNInstance *y = x;
 	while (( y ) && (xpn)) {
 		int exp = (int) popListItem( &xpn );
-		y = y->sub[ exp & 1 ];
+		y = ESUB( y, exp&1 );
 	}
 	if ( y == NULL ) { freeListItem( &xpn ); return -1; }
 	if ( p == NULL ) { return 1; }
-	switch ( *p ) {
-	case '*':
-		return ( y == data->star );
-	case '/':
-		return !(y->sub[0]) && !strcomp( p, db_identifier( y, data->ctx->db ), 2 );
-	default:
-		if (( data->pivot ) && ( p == data->pivot->name ))
-			return ( y == data->pivot->value );
-	}
-	return ( y == bm_lookup( data->privy, p, data->ctx ));
-}
 
+	if (( data->pivot ) && ( p == data->pivot->name ))
+		return ( y == data->pivot->value );
+	else if ( !strncmp( p, "%?", 2 ) )
+		return ( y == lookup_mark_register( data->ctx ) );
+	else if ( !is_separator(*p) ) {
+		Pair *entry = registryLookup( data->ctx->registry, p );
+		if (( entry )) return ( y == entry->value );
+	}
+
+	if (( y->sub[0] )) return 0;
+	CNDB *db = data->ctx->db;
+	char q[ MAXCHARSIZE + 1 ];
+	switch ( *p ) {
+	case '*': return ( y == data->star );
+	case '/': return !strcomp( p, db_identifier(y,db), 2 );
+	case '\'': return charscan( p+1, q ) && !strcomp( q, db_identifier(y,db), 1 );
+	default: return !strcomp( p, db_identifier(y,db), 1 );
+	}
+}

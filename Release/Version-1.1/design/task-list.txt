@@ -1,6 +1,17 @@
 TODO
 	. support external CNDB config file, as in ./B% file.story file.cndb
-		. support do { ... } and B% literals (: ... ) - specs to be added
+		. debug ( rule, eee )
+		. validate cnLoad
+			. read expression
+			. read (: _ )
+			. read { , , }
+		. transpose to readNarrative / bm_substantiate
+		. extract rule processing in Conversation
+
+	. do > "format": a, b | c, d: "format" <
+		do > "(( is, %_ ), %_ )": b, a | : "%_" <
+		do > "(( is, %_ ), %_ )": b, a | :<
+
 	. support :< file:xxx
 	. Testing
 		. input: single character entities
@@ -21,6 +32,14 @@ TODO
 	  see below "OSX Terminal bug illustrated"
 
 DONE
+	. yak.story: launch %( rule, %( ?, base ))
+	. support external CNDB config file, as in ./B% file.story file.cndb
+	  cf. cnLoad( char *path, CNDB *db )
+		. support do { ... } and B% literals (: ... ) - specs to be added
+		. implemented db_load - alternative to db_register (no manifestation)
+		. implemented db_couple - alternative to db_instantiate (no manifestation)
+		. implement load_schema
+		. optimized: if expression starts with { ... }
 	. added ../../Base/sequence.c implementing string demultiplication
 	. added "on ~." expression to support handling deadlocks
 		. also added "in ~." for symmetry

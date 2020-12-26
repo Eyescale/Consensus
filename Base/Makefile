@@ -11,7 +11,7 @@ INCLUDES = -I. -I./include
 OBJDIR = .ofiles
 SRCS =	pair.c list.c registry.c string_util.c btree.c
 
-#CFLAGS = -DPREVIOUS
+CFLAGS = -O2
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libcn.so
 

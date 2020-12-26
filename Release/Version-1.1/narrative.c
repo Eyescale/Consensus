@@ -38,7 +38,10 @@ readStory( char *path )
 */
 {
 	FILE *file = fopen( path, "r" );
-	if ( file == NULL ) return NULL;
+	if ( file == NULL ) {
+		fprintf( stderr, "B%%: %s: no such file or directory\n", path );
+		return NULL;
+	}
 
 	ReadStoryStack stack;
 	memset( &stack, 0, sizeof(stack));
@@ -288,12 +291,15 @@ readStory( char *path )
 						dirty = (int) popListItem( &stack.dirty );
 						dirty_go( &dirty, s );
 			}
+		on_( '/' )
+			if ( !informed && type!=DO ) {
+				do_( "/" )	StringAppend( s, event );
+			}
 		on_( '~' ) if ( !informed ) {	do_( "~" ) }
 		on_( '?' ) if ( !informed ) {	do_( "?" ) }
 		on_( '.' ) if ( !informed ) {	do_( "." ) }
 		on_( '*' ) if ( !informed ) {	do_( "*" )	StringAppend( s, event ); }
 		on_( '%' ) if ( !informed ) {	do_( "%" )	StringAppend( s, event ); }
-		on_( '/' ) if ( !informed ) {	do_( "/" )	StringAppend( s, event ); }
 		on_( '\'' ) if ( !informed ) {	do_( "char" )	StringAppend( s, event ); }
 		on_separator	; // err
 		on_other
@@ -384,6 +390,7 @@ readStory( char *path )
 			if ( type==DO && !level ) {
 				do_( ":\"" )	StringAppend( s, event );
 			}
+		on_( '/' ) 	do_( "/" )	StringAppend( s, event );
 		on_other	do_( "expr" )	REENTER
 		end
 		in_( ":~" ) bgn_
@@ -783,7 +790,7 @@ freeStory( CNStory *story )
 		freeNarrative( n );
 }
 int
-story_output( FILE *stream, CNStory *story, int level )
+story_output( FILE *stream, CNStory *story )
 {
 	for ( listItem *i=story; i!=NULL; i=i->next ) {
 		CNNarrative *n = i->ptr;

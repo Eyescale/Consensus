@@ -51,19 +51,22 @@ Consensus B% Version-1.1
 	cnUpdate	db_update
 	in_condition	db_is_empty			bm_feel
 	on_event	db_still			bm_feel
-	do_action	db_exit								bm_substantiate
+	do_action	db_exit								bm_instantiate
 											bm_release
 	do_input									bm_inputf
 	do_output									bm_outputf
   ________________________________________________________________________________________________
     expression.c
-	bm_substantiate	db_couple	bm_register					bm_void	
+	bm_instantiate			bm_register					bm_void	
 											bm_query
+											bm_couple
 	bm_void		db_is_empty	bm_lookup	bm_feel
 	bm_query					bm_traverse
+	bm_couple	db_instantiate
 	bm_release					bm_traverse
 	release_CB	db_deprecate
-	bm_inputf									bm_substantiate
+	bm_inputf									bm_input
+	bm_input	db_input							bm_instantiate
 	bm_outputf									bm_output
 	bm_output	db_output			bm_traverse
 	output_CB	db_output
@@ -97,13 +100,15 @@ Consensus B% Version-1.1
   database.c
 	newCNDB										main
 	freeCNDB									main
+	readCNDB									main
 	db_out								cnOperate
 	db_update							cnUpdate
 	db_exit								do_action
 	db_still							on_event
 	db_is_empty			xp_init		bm_void		in_condition
-	db_couple					bm_substantiate
+	db_instantiate	bm_register			bm_couple
 	db_deprecate					release_CB
+	db_input					bm_inputf
 	db_output					bm_output
 							output_CB
 	db_log				bm_feel
@@ -111,7 +116,6 @@ Consensus B% Version-1.1
 	db_next				bm_traverse
 	db_lookup	bm_lookup	xp_init
 	db_register	bm_register
-	db_instantiate	bm_register
   ________________________________________________________________________________________________
   operation.c
 	cnOperate									main
@@ -120,7 +124,7 @@ Consensus B% Version-1.1
 	activate_CB			traverse_CB
   ________________________________________________________________________________________________
   expression.c
-	bm_substantiate							do_action
+	bm_instantiate							do_action
 	bm_release							do_action
 	bm_outputf							do_output
 	bm_inputf							do_input
@@ -142,8 +146,8 @@ Consensus B% Version-1.1
 	bm_pop								cnOperate
 									operate_CB
 									activate_CB
-	bm_pop_mark						operate
-	bm_register					bm_substantiate	operate (.LOCAL)
+	bm_pop_mark							operate
+	bm_register					bm_instantiate	operate (.LOCAL)
 	bm_lookup			bm_traverse	bm_void
 					bm_match
 	bm_push_mark			bm_feel

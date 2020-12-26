@@ -9,13 +9,25 @@ void *
 newItem( void *ptr )
 {
         listItem *item;
-        if ( freeItemList == NULL )
-                item = calloc( 1, sizeof( listItem ) );
-        else
-        {
+        if ( freeItemList == NULL ) {
+#if 0
+		item = malloc( sizeof( listItem ) );
+        	item->next = NULL;
+#else
+#define PAGESIZE 255
+		item = malloc( PAGESIZE*sizeof( listItem ) );
+		for ( int i=PAGESIZE; (i--); ) {
+			item->next = freeItemList;
+			freeItemList = item++;
+		}
+		item = freeItemList;
+		freeItemList = item->next;
+#endif
+	}
+        else {
                 item = freeItemList;
                 freeItemList = item->next;
-                item->next = NULL;
+        	item->next = NULL;
         }
         item->ptr = ptr;
         return item;
@@ -25,7 +37,6 @@ freeItem( listItem *item )
 {
 	if ( item == NULL ) return;
         item->next = freeItemList;
-	item->ptr = NULL;
         freeItemList = item;
 }
 void
@@ -59,8 +70,8 @@ add_item( listItem **list, int value )
 void
 removeItem( listItem **list, void *ptr )
 {
-	listItem *last_i = NULL, *next_i;
-	for ( listItem *i = *list; i!=NULL; i=next_i )
+	listItem *last_i=NULL, *next_i;
+	for ( listItem *i=*list; i!=NULL; i=next_i )
 	{
 		next_i = i->next;
 		if ( i->ptr == ptr ) {

@@ -12,41 +12,43 @@ typedef struct {
 	CNInstance *nil;
 	Registry *index;
 } CNDB;
+typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
 
+//===========================================================================
+//	newCNDB / freeCNDB
+//===========================================================================
 CNDB *	newCNDB( void );
 void	freeCNDB( CNDB * );
 
 //===========================================================================
-//	engine
+//	operations
 //===========================================================================
-void	db_update( CNDB * );
-
-//===========================================================================
-//	operation
-//===========================================================================
-CNInstance * db_register( char *identifier, CNDB * );
+CNInstance * db_register( char *identifier, CNDB *, int notify );
+void db_deprecate( CNInstance *, CNDB * );
+CNInstance * db_couple( CNInstance *, CNInstance *, CNDB * );
 CNInstance * db_instantiate( CNInstance *, CNInstance *, CNDB * );
-listItem * db_couple( listItem *sub[2], CNDB * );
-void	db_deprecate( CNInstance *, CNDB * );
-void	db_exit( CNDB * );
-
-//===========================================================================
-//	utilities
-//===========================================================================
-int	db_is_empty( CNDB * );
-int	db_still( CNDB * );
+CNInstance * db_lookup( int privy, char *identifier, CNDB * );
+char * db_identifier( CNInstance *, CNDB * );
+int db_is_empty( CNDB * );
 CNInstance * db_first( CNDB *, listItem ** );
 CNInstance * db_next( CNDB *, CNInstance *, listItem ** );
+int db_traverse( int privy, CNDB *, DBTraverseCB, void * );
+void db_exit( CNDB * );
+
+//===========================================================================
+//	op (nil-based)
+//===========================================================================
 CNInstance * db_log( int first, int released, CNDB *, listItem ** );
-CNInstance * db_lookup( int privy, char *identifier, CNDB * );
-char *	db_identifier( CNInstance *, CNDB * );
-int	db_private( int privy, CNInstance *, CNDB * );
-int	db_out( CNDB * );
+void db_update( CNDB * );
+int db_private( int privy, CNInstance *, CNDB * );
+int db_still( CNDB * );
+int db_out( CNDB * );
 
-int	cn_out( FILE *, CNInstance *, CNDB * );
+//===========================================================================
+//	i/o
+//===========================================================================
+char *	db_input( FILE *, int authorized );
 int	db_output( FILE *, char *format, CNInstance *, CNDB * );
-void	dbg_out( char *pre, CNInstance *e, char *post, CNDB * );
-
 
 
 #endif	// DATABASE_H

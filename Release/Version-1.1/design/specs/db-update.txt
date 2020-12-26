@@ -1,0 +1,54 @@
+
+	Entity x can be
+		to-be-manifested - then we have ( nil, ( nil, x ) )
+		to-be-released   - then we have ( nil, ( x, nil ) )
+		manifested	 - then we have ( nil, x )
+		released	 - then we have ( x, nil )
+		newborn		 - then we have ( ( x, nil ), nil )
+
+	with possible combinations (marked with 'x' below)
+
+	                 |------------------|----------------|------------|----------|---------|
+			 | to be manifested | to be released | manifested | released | newborn |
+	-----------------|------------------|----------------|------------|----------|---------|
+	newborn          |       n/a        |       X        |     X      |     .    |    X    |
+	-----------------|------------------|----------------|------------|----------|---------|
+	released         |        X         |       .        |     n/a    |     X    |
+	-----------------|------------------|----------------|------------|----------|
+	manifested       |        .         |       X        |     X      |
+	-----------------|------------------|----------------|------------|
+	to be released   |       n/a        |       X        |
+	-----------------|------------------|----------------|
+	to be manifested |        X         |
+	-----------------|------------------|
+
+	so all in all we have the following possibilities
+
+		CN_NEWBORN				// newborn
+			CN_NEWBORN_TO_BE_RELEASED	// deadborn
+			CN_MANIFESTED_TO_BE_MANIFESTED	// reassigned: manifested
+		CN_RELEASED				// deprecated
+			CN_RELEASED_TO_BE_MANIFESTED	// rehabilitated
+		CN_MANIFESTED
+			CN_MANIFESTED_TO_BE_RELEASED
+		CN_TO_BE_RELEASED
+		CN_TO_BE_MANIFESTED			// reassigned: not manifested
+
+	where
+		CN_NEWBORN means that the entity was created anew, vs. rehabilitated
+		CN_TO_BE_MANIFESTED means that the entity is not currently manifested
+
+	Rationale
+	The challenge lies in reassignment, as:
+	1. we need to keep the entity manifested if it is during the current frame, while
+	   making it manifest again during the next frame (MANIFESTED_TO_BE_MANIFESTED)
+	   for which we use the combination (nil,x) and ((x,nil),nil) (born anew)
+	2. we must not make the entity manifested if it's not during the current frame,
+	   while making it manifest again during the next frame (TO_BE_MANIFESTED)
+
+	Likewise, when rehabilitating a released entity, this must still be testable as
+	released during the current frame, hence the RELEASED_TO_BE_MANIFESTED case.
+
+	db_op() and db_update() ensure that we have only the combinations allowed, the
+	implementation logics being made self-explanatory in the db_debug.c file.
+

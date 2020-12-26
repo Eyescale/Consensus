@@ -4,6 +4,7 @@
 #include "database.h"
 #include "narrative.h"
 
+void	cnLoad( char *path, CNDB * );
 int	cnOperate( CNStory *, CNDB * );
 void	cnUpdate( CNDB * );
 

@@ -1,8 +1,6 @@
 #ifndef TRAVERSAL_H
 #define TRAVERSAL_H
 
-#include "btree.h"
-#include "database.h"
 #include "context.h"
 
 //===========================================================================
