@@ -21,8 +21,8 @@ SRCS =	database.c \
 	traversal.c \
 	wildcard.c
 
-CFLAGS = -O2
-#CFLAGS = -O2 -DUNIFIED
+#CFLAGS = -O2
+CFLAGS = -O2 -DUNIFIED
 #CFLAGS = -DDEBUG -DTRIM
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so

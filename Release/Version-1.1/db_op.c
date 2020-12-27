@@ -119,7 +119,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 //	db_update
 //===========================================================================
 static void db_deregister( CNInstance *, CNDB * );
-#ifdef DEBUG
+
 #define TRASH( x ) \
 	if (( x->sub[0] )) addItem( &trash[0], x ); \
 	else addItem( &trash[1], x );
@@ -130,7 +130,7 @@ static void db_deregister( CNInstance *, CNDB * );
 		db_deregister( x, db ); \
 		db_remove( x, db ); \
 	}
-#endif
+
 void
 db_update( CNDB *db )
 /*
@@ -139,9 +139,7 @@ db_update( CNDB *db )
 {
 	CNInstance *nil = db->nil;
 	CNInstance *f, *g, *x;
-#ifdef DEBUG
 	listItem *trash[ 2 ] = { NULL, NULL };
-#endif
 #ifdef DEBUG
 fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 #endif
@@ -178,13 +176,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-#ifdef DEBUG
 			TRASH( x );
-#else
-			if ( !x->sub[0] )
-				db_deregister( x, db );
-			db_remove( x, db );
-#endif
 		}
 		else { // just newborn
 			db_remove( g, db );
@@ -192,9 +184,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			cn_new( nil, x );
 		}
 	}
-#ifdef DEBUG
-	EMPTY_TRASH // output in order
-#endif
+	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
@@ -224,18 +214,10 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 			continue;
 		else {
 			db_remove( f, db );
-#ifdef DEBUG
 			TRASH( x );
-#else
-			if ( !x->sub[0] )
-				db_deregister( x, db );
-			db_remove( x, db );
-#endif
 		}
 	}
-#ifdef DEBUG
-	EMPTY_TRASH // output in order
-#endif
+	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
