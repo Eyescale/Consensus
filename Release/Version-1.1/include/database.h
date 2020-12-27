@@ -29,7 +29,7 @@ CNInstance * db_couple( CNInstance *, CNInstance *, CNDB * );
 CNInstance * db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance * db_lookup( int privy, char *identifier, CNDB * );
 char * db_identifier( CNInstance *, CNDB * );
-int db_is_empty( CNDB * );
+int db_is_empty( int privy, CNDB * );
 CNInstance * db_first( CNDB *, listItem ** );
 CNInstance * db_next( CNDB *, CNInstance *, listItem ** );
 int db_traverse( int privy, CNDB *, DBTraverseCB, void * );

@@ -224,7 +224,7 @@ in_condition( char *expression, BMContext *ctx )
 {
 	// fprintf( stderr, "in condition: %s\n", expression );
 	if ( !strcmp( expression, "~." ) )
-		return db_is_empty( ctx->db );
+		return db_is_empty( 0, ctx->db );
 	else return bm_feel( expression, ctx, BM_CONDITION );
 }
 

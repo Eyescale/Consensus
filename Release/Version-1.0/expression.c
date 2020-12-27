@@ -317,11 +317,8 @@ db_substantiate( char *expression, CNDB *db )
 			scope--;
 			if ( !scope ) break;
 			switch ( ndx ) {
-			case 0:
-				instances = sub[ 0 ];
-				break;
-			case 1:
-				instances = db_couple( sub, db );
+			case 0: instances = sub[ 0 ]; break;
+			case 1: instances = db_couple( sub, db );
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
 				break;

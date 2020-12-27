@@ -52,7 +52,7 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 	data->expression = expression;
 	data->ctx = ctx;
 	CNDB *db = ctx->db;
-	data->empty = db_is_empty( db );
+	data->empty = db_is_empty( privy, db );
 	data->star = db_lookup( privy, "*", db );
 #ifdef TRIM
 	// used by wildcard_opt

@@ -6,7 +6,17 @@
 		released	 - then we have ( x, nil )
 		newborn		 - then we have ( ( x, nil ), nil )
 
-	with possible combinations (marked with 'x' below)
+	such that
+        	x can be both manifested AND to-be-released
+	        x can be both manifested AND newborn (reassigned)
+	        x can be both released AND to-be-manifested (reborn)
+	        x can be both newborn AND to-be-released
+
+		x cannot be both manifested AND released
+		x cannot be both released AND to-be-released
+		x cannot be both newborn AND released
+		x cannot be both newborn AND to-be-manifested
+		x cannot be both to-be-released AND to-be-manifested
 
 	                 |------------------|----------------|------------|----------|---------|
 			 | to be manifested | to be released | manifested | released | newborn |
@@ -22,7 +32,7 @@
 	to be manifested |        X         |
 	-----------------|------------------|
 
-	so all in all we have the following possibilities
+	This leaves x in one of the following 10 mutually exclusive configurations
 
 		CN_NEWBORN				// newborn
 			CN_NEWBORN_TO_BE_RELEASED	// deadborn
@@ -33,12 +43,13 @@
 			CN_MANIFESTED_TO_BE_RELEASED
 		CN_TO_BE_RELEASED
 		CN_TO_BE_MANIFESTED			// reassigned: not manifested
+		CN_DEFAULT				// none of the above
 
 	where
 		CN_NEWBORN means that the entity was created anew, vs. rehabilitated
 		CN_TO_BE_MANIFESTED means that the entity is not currently manifested
 
-	Rationale
+Rationale
 	The challenge lies in reassignment, as:
 	1. we need to keep the entity manifested if it is during the current frame, while
 	   making it manifest again during the next frame (MANIFESTED_TO_BE_MANIFESTED)
@@ -49,6 +60,7 @@
 	Likewise, when rehabilitating a released entity, this must still be testable as
 	released during the current frame, hence the RELEASED_TO_BE_MANIFESTED case.
 
+Implementation
 	db_op() and db_update() ensure that we have only the combinations allowed, the
 	implementation logics being made self-explanatory in the db_debug.c file.
 

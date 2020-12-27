@@ -22,6 +22,7 @@ newItem( void *ptr )
 		}
 		item = freeItemList;
 		freeItemList = item->next;
+        	item->next = NULL;
 #endif
 	}
         else {
@@ -36,6 +37,7 @@ void
 freeItem( listItem *item )
 {
 	if ( item == NULL ) return;
+//	item->ptr = NULL;
         item->next = freeItemList;
         freeItemList = item;
 }
@@ -81,7 +83,7 @@ removeItem( listItem **list, void *ptr )
 		else last_i = i;
 	}
 }
-void *
+listItem *
 lookupItem( listItem *list, void *ptr )
 {
 	for ( listItem *i = list; i!=NULL; i=i->next )

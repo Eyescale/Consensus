@@ -7,7 +7,6 @@
 #include "traversal.h"
 
 // #define DEBUG
-// #define TRIM
 
 //===========================================================================
 //	bm_couple
@@ -206,15 +205,12 @@ bm_instantiate( char *expression, BMContext *ctx )
 		return;
 	}
 	else fprintf( stderr, "bm_instantiate: %s {", expression );
-#else
-	if ( bm_void( expression, ctx ) ) return;
 #endif
 	struct { listItem *results, *ndx; } stack = { NULL, NULL };
 	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
 	CNInstance *e;
 	CNDB *db = ctx->db;
-	int empty = db_is_empty( db );
-	int done=0, level=0, ndx=0;
+	int done=0, level=0, ndx=0, empty=db_is_empty(0,db);
 	char *p = expression;
 	while ( *p && !done ) {
 		if ( p_filtered( p )  ) {
@@ -287,15 +283,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
 	}
-#ifdef DEBUG
-	if (( sub[ 0 ] )) {
-		fprintf( stderr, "bm_instantiate: } first=" );
-		db_output( stderr, "", sub[0]->ptr, db );
-		fprintf( stderr, "\n" );
-	}
-	else fprintf( stderr, "bm_instantiate: } no result\n" );
-#endif
-	freeListItem( &sub[ 0 ] );
 	if ( done == -1 ) {
 		freeListItem( &sub[ 1 ] );
 		listItem *results = NULL;
@@ -303,6 +290,16 @@ bm_instantiate( char *expression, BMContext *ctx )
 			freeListItem( &results );
 		freeListItem( &stack.ndx );
 	}
+#ifdef DEBUG
+	if (( sub[ 0 ] )) {
+		fprintf( stderr, "bm_instantiate: } first=" );
+		if ( done == -1 ) fprintf( stderr, "***INCOMPLETE***" );
+		else db_output( stderr, "", sub[0]->ptr, db );
+		fprintf( stderr, "\n" );
+	}
+	else fprintf( stderr, "bm_instantiate: } no result\n" );
+#endif
+	freeListItem( &sub[ 0 ] );
 }
 static int
 bm_void( char *expression, BMContext *ctx )
@@ -314,12 +311,9 @@ bm_void( char *expression, BMContext *ctx )
 	returns 0 if it is, 1 otherwise
 */
 {
-#ifndef TRIM
-	return 0;
-#endif
 	// fprintf( stderr, "bm_void: %s\n", expression );
 	CNDB *db = ctx->db;
-	int done=0, level=0, empty=db_is_empty( db );
+	int done=0, level=0, empty=db_is_empty(0,db);
 	char *p = expression;
 	while ( *p && !done ) {
 		if ( p_filtered( p ) ) {

@@ -24,12 +24,12 @@ freeCNDB( CNDB *db )
 {
 	/* delete all CNDB entities, proceeding top down
 	*/
-	listItem *nil = newItem( db->nil );
 	listItem *stack = NULL;
-	listItem *i = nil;
+	listItem *n = newItem( db->nil );
+	listItem *i = n;
 	while (( i )) {
 		CNInstance *e;
-		if (( stack ) || (nil))
+		if (( stack ) || (n))
 			e = i->ptr;
 		else {
 			Pair *pair = i->ptr;
@@ -48,10 +48,15 @@ freeCNDB( CNDB *db )
 			}
 			else if (( stack )) {
 				i = popListItem( &stack );
-				e = i->ptr;
+				if ((stack) || (n))
+					e = i->ptr;
+				else {
+					Pair *pair = i->ptr;
+					e = pair->value;
+				}
 			}
-			else if (( nil )) {
-				freeListItem( &nil );
+			else if (( n )) {
+				freeListItem( &n );
 				i = db->index->entries;
 				break;
 			}
@@ -343,9 +348,12 @@ db_deprecate( CNInstance *x, CNDB *db )
 
 			if (( i->next )) {
 				i = i->next;
-				if ( !db_deprecated( i->ptr, db ) )
+				if ( db_deprecated( i->ptr, db ) )
+					x = NULL;
+				else {
+					position = 0;
 					break;
-				else x = NULL;
+				}
 			}
 			else if (( stack )) {
 				position = (int) popListItem( &stack );

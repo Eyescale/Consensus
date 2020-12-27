@@ -44,16 +44,16 @@ freeCNDB( CNDB *db )
 
 	/* delete all CNDB entities, proceeding top down
 	*/
-	listItem *nil = newItem( db->nil );
 	listItem *stack = NULL;
-	listItem *i = nil;
+	listItem *n = newItem( db->nil );
+	listItem *i = n;
 #ifdef DEBUG
 	int debug_pass=1;
 	do {
 #endif
 	while (( i )) {
 		CNInstance *e;
-		if (( stack ) || (nil))
+		if (( stack ) || (n))
 			e = i->ptr;
 		else {
 			Pair *pair = i->ptr;
@@ -81,15 +81,15 @@ freeCNDB( CNDB *db )
 			}
 			else if (( stack )) {
 				i = popListItem( &stack );
-				if ((stack) || (nil))
+				if ((stack) || (n))
 					e = i->ptr;
 				else {
 					Pair *pair = i->ptr;
 					e = pair->value;
 				}
 			}
-			else if (( nil )) {
-				freeListItem( &nil );
+			else if (( n )) {
+				freeListItem( &n );
 				i = db->index->entries;
 				break;
 			}
@@ -97,7 +97,7 @@ freeCNDB( CNDB *db )
 		}
 	}
 #ifdef DEBUG
-	if ( debug_pass ) i = nil = newItem( db->nil );
+	if ( debug_pass ) i = n = newItem( db->nil );
 	} while ( debug_pass-- );
 #endif
 	/* then delete CNDB per se
@@ -222,7 +222,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 	for ( ; ; ) {
 		x = i->ptr;
 		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
-			if ( !db_private( 0, j->ptr, db ) )
+			if ( db_deprecatable( j->ptr, db ) )
 				break;
 		if (( j )) {
 			addItem( &stack, i );
@@ -240,7 +240,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 			}
 			if (( i->next )) {
 				i = i->next;
-				if ( db_private( 0, i->ptr, db ) )
+				if ( !db_deprecatable( i->ptr, db ) )
 					x = NULL;
 				else {
 					ndx = 0;
@@ -266,7 +266,7 @@ CNInstance *
 db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 /*
 	Assumption: called upon CNDB creation
-	Same as db_instantiate, except doesn't manifest
+	Same as db_instantiate without assignment nor manifestation
 */
 {
 	CNInstance *instance;
@@ -315,7 +315,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 				db_op( DB_REASSIGN_OP, instance, db );
 				reassignment = instance;
 			}
-			else if ( !db_private( 0, instance, db ) )
+			else if ( db_deprecatable( instance, db ) )
 				db_deprecate( instance, db );
 		}
 		if (( reassignment )) return reassignment;
@@ -374,11 +374,11 @@ db_identifier( CNInstance *e, CNDB *db )
 //	db_is_empty
 //===========================================================================
 int
-db_is_empty( CNDB *db )
+db_is_empty( int privy, CNDB *db )
 {
 	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
-		if ( !db_private( 0, entry->value, db ) )
+		if ( !db_private( privy, entry->value, db ) )
 			return 0;
 	}
 	return 1;
@@ -438,7 +438,7 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 int
 db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 /*
-	traverses whole CNDB applying debug condition to each entity
+	traverses whole CNDB applying user_CB to each entity
 */
 {
 	listItem *stack = NULL;
@@ -486,7 +486,6 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	}
 	return 0;
 }
-
 
 //===========================================================================
 //	db_exit

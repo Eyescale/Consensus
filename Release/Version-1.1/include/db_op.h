@@ -21,6 +21,7 @@ typedef enum {
 	DB_REASSIGN_OP
 } DBOperation;
 void db_op( DBOperation op, CNInstance *e, CNDB *db );
+int db_deprecatable( CNInstance *, CNDB * );
 
 
 #endif	// DB_OP_H

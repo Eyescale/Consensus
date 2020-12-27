@@ -7,10 +7,6 @@
 
 // #define DEBUG
 
-#ifdef DB_DEBUG_C
-#include "db_debug.c"
-#else ///////////////////////////////////////////////////////////////////////
-
 //===========================================================================
 //	db_op
 //===========================================================================
@@ -19,14 +15,17 @@ static void db_remove( CNInstance *, CNDB * );
 void
 db_op( DBOperation op, CNInstance *e, CNDB *db )
 /*
-	Assumption: op==DB_MANIFEST_OP means e is newly created
+	Assumptions
+	1. op==DB_MANIFEST_OP - e is newly created
+	2. op==DB_DEPRECATE_OP - e is not deprecated
+
 */
 {
 	CNInstance *nil = db->nil, *f, *g;
-
 	switch ( op ) {
 	case DB_EXIT_OP:
-		if ( !db_out( db ) ) cn_new( nil, nil );
+		if ( db_out(db) ) break;
+		cn_new( nil, nil );
 		break;
 
 	case DB_DEPRECATE_OP:
@@ -52,7 +51,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				// remove ( nil, e )
 				db_remove( g, db );
 			}
-			else ; // already released
+			// else already released
 		}
 		else {
 			/* neither released, nor newborn, nor to-be-released
@@ -67,7 +66,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			cn_new( nil, cn_new( e, nil ) );
 		}
 		break;
-
 	case DB_REASSIGN_OP:
 	case DB_REHABILITATE_OP:
 		f = cn_instance( e, nil, 1 );
@@ -111,8 +109,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 		}
 		break;
 
-	case DB_MANIFEST_OP:
-		// create (( e, nil ), nil ) (newborn)
+	case DB_MANIFEST_OP: // assumption: the entity was just created
 		cn_new( cn_new( e, nil ), nil );
 		break;
 	}
@@ -122,10 +119,8 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 //	db_update
 //===========================================================================
 static void db_deregister( CNInstance *, CNDB * );
-
-#define TRASH_PRIVATE( x ) \
-	db_remove( x, db );
-#define TRASH_PUBLIC( x ) \
+#ifdef DEBUG
+#define TRASH( x ) \
 	if (( x->sub[0] )) addItem( &trash[0], x ); \
 	else addItem( &trash[1], x );
 #define EMPTY_TRASH \
@@ -133,135 +128,133 @@ static void db_deregister( CNInstance *, CNDB * );
 		db_remove( x, db ); \
 	while (( x = popListItem( &trash[1] ) )) { \
 		db_deregister( x, db ); \
-		db_remove( x, db ); }
+		db_remove( x, db ); \
+	}
+#endif
 void
 db_update( CNDB *db )
 /*
-   cf db_op()
-	( nil, ( nil, x ))	x to be manifested
-	( nil, ( x, nil ))	x to be released
-	( nil, x )		x manifested (as of last frame)
-	( x, nil )		x deprecated (as of last frame)
-	(( x, nil ), nil )	x newborn
-   combinations
-	x can be both manifested AND to-be-released
-	x can be both manifested AND newborn (reassigned)
-	x can be both released AND to-be-manifested (reborn)
-	x can be both newborn AND to-be-released
-
-	x cannot be both manifested AND released
-	x cannot be both released AND to-be-released
-	x cannot be both newborn AND released
-	x cannot be both newborn AND to-be-manifested
-	x cannot be both to-be-released AND to-be-manifested
+   cf design/specs/db-update.txt
 */
 {
-	listItem *trash[2] = { NULL, NULL };
 	CNInstance *nil = db->nil;
-	CNInstance *e, *f, *g, *x;
+	CNInstance *f, *g, *x;
 #ifdef DEBUG
-fprintf( stderr, "db_update: 1. actualize last frame's manifestations\n" );
+	listItem *trash[ 2 ] = { NULL, NULL };
 #endif
-	// for each g: ( nil, x ) where ( nil, g ) does not exist and
-	//	x is neither nil nor ( ., nil ) nor ( nil, . )
+#ifdef DEBUG
+fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
+#endif
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
 		if (( g->as_sub[ 1 ] )) continue; // to be manifested
-		x = g->sub[ 1 ];
-		if ( x == nil ) continue; // out
-		if ( x->sub[ 0 ] == nil ) continue;
-		if ( x->sub[ 1 ] == nil ) continue;
+		x = g->sub[ 1 ]; // manifested candidate
+		if ( x==nil || x->sub[0]==nil || x->sub[1]==nil )
+			continue;
 		f = cn_instance( x, nil, 1 );
-		if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
-			g = f->as_sub[ 0 ]->ptr;
-			TRASH_PRIVATE( g );	// remove (( x, nil ), nil )
-			TRASH_PRIVATE( f );	// remove ( x, nil )
+		if (( f )) {
+			if (( f->as_sub[ 1 ] )) // to be released
+				continue;
+			if (( f->as_sub[ 0 ] )) { // reassigned
+				db_remove( f->as_sub[0]->ptr, db );
+				db_remove( f, db );
+			}
 		}
-		else	TRASH_PRIVATE( g );	// remove ( nil, x )
+		else db_remove( g, db );
 	}
-	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 #endif
-	// for each g: ( f, nil ) where f: ( x, nil )
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
-		g = i->ptr;
-		f = g->sub[ 0 ];
-		if ( f == nil ) continue; // out
-		if ( f->sub[ 1 ] != nil ) continue;
-		if (( next_i ) && ( next_i->ptr == f ))
+		f = i->ptr;
+		if ( !f->as_sub[ 0 ] ) continue;
+		x = f->sub[0]; // newborn candidate
+		g = f->as_sub[0]->ptr;
+		if ((next_i) && next_i->ptr==g )
 			next_i = next_i->next;
-		x = f->sub[ 0 ];
-		if (( f->as_sub[ 1 ] )) { // to be released
-			TRASH_PRIVATE( g );	// remove (( x, nil ), nil )
-			g = f->as_sub[ 1 ]->ptr;
-			TRASH_PRIVATE( g );	// remove ( nil, ( x, nil ))
-			TRASH_PRIVATE( f );	// remove ( x, nil )
-			TRASH_PUBLIC( x );
+		if (( f->as_sub[1] )) { // to-be-released
+			db_remove( f->as_sub[1]->ptr, db );
+			db_remove( g, db );
+			db_remove( f, db );
+#ifdef DEBUG
+			TRASH( x );
+#else
+			if ( !x->sub[0] )
+				db_deregister( x, db );
+			db_remove( x, db );
+#endif
 		}
-		else {
-			TRASH_PRIVATE( g );	// remove (( x, nil ), nil )
-			TRASH_PRIVATE( f );	// remove ( x, nil )
-			// create ( nil, x )
+		else { // just newborn
+			db_remove( g, db );
+			db_remove( f, db );
 			cn_new( nil, x );
 		}
 	}
-	EMPTY_TRASH
+#ifdef DEBUG
+	EMPTY_TRASH // output in order
+#endif
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
-	// for each f: ( nil, x ) where ( nil, f ) exists and possibly ( x, nil )
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if ( f->sub[ 1 ] == nil ) continue; // out
-		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
-			// actualize to be manifested entity
-			g = f->as_sub[ 1 ]->ptr;
-			if (( next_i ) && ( next_i->ptr == g ))
-				next_i = next_i->next;
-			TRASH_PRIVATE( g ); // remove ( nil, ( nil, x ) )
-			if (( g = cn_instance( f->sub[ 1 ], nil, 1 ) ))
-				TRASH_PRIVATE( g ); // remove ( x, nil )
+		if ( !f->as_sub[ 1 ] ) continue;
+		x = f->sub[1]; // to-be-manifested candidate
+		g = f->as_sub[1]->ptr;
+		if ((next_i) && next_i->ptr==g )
+			next_i = next_i->next;
+		if (( f = cn_instance( x, nil, 1 ) )) {
+			db_remove( g, db );
+			db_remove( f, db );
 		}
+		else db_remove( g, db );
 	}
-	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) does not exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) continue; // to be released
-		x = f->sub[ 0 ];
-		if ( x == nil ) continue; // out
-		TRASH_PRIVATE( f );	// remove ( x, nil )
-		TRASH_PUBLIC( x );	// remove x
+		x = f->sub[ 0 ]; // released candidate
+		if ( x==nil || x->sub[0]==nil || x->sub[1]==nil )
+			continue;
+		else {
+			db_remove( f, db );
+#ifdef DEBUG
+			TRASH( x );
+#else
+			if ( !x->sub[0] )
+				db_deregister( x, db );
+			db_remove( x, db );
+#endif
+		}
 	}
-	EMPTY_TRASH
+#ifdef DEBUG
+	EMPTY_TRASH // output in order
+#endif
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
-	// for each f: ( x, nil ) where ( nil, f ) exists
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if ( f->sub[ 0 ] == nil ) continue; // out
-		if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
-			// actualize to be released entity
-			g = f->as_sub[ 1 ]->ptr;
-			TRASH_PRIVATE( g ); // remove ( nil, ( x, nil ) )
+		if ( !f->as_sub[ 1 ] ) continue;
+		x = f->sub[0]; // to-be-released candidate
+		g = f->as_sub[1]->ptr;
+		if (( f = cn_instance( nil, x, 0 ) )) {
+			db_remove( g, db );
+			db_remove( f, db );
 		}
+		else db_remove( g, db );
 	}
-	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "--\n" );
 #endif
 }
-#endif ///////////////////////////////////////////////////////////////////////
 
 //===========================================================================
 //	db_remove	- private
@@ -430,6 +423,9 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 //===========================================================================
 int
 db_private( int privy, CNInstance *e, CNDB *db )
+/*
+	called by xp_traverse() and xp_verify()
+*/
 {
 	CNInstance *nil = db->nil;
 	if ( e->sub[0]==nil || e->sub[1]==nil )
@@ -443,6 +439,29 @@ db_private( int privy, CNInstance *e, CNDB *db )
 		return !privy; // deprecated
 	}
 	return 0;
+}
+
+//===========================================================================
+//	db_deprecatable
+//===========================================================================
+int
+db_deprecatable( CNInstance *e, CNDB *db )
+/*
+	called by db_deprecate()
+*/
+{
+	CNInstance *nil = db->nil;
+	if ( e->sub[0]==nil || e->sub[1]==nil )
+		return 0;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	if (( f )) {
+		if ( f->as_sub[ 0 ] ) // newborn or reassigned
+			return 1;
+		if ( f->as_sub[ 1 ] ) // to be released
+			return 1;
+		return 0; // deprecated
+	}
+	return 1;
 }
 
 //===========================================================================
