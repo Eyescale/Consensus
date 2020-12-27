@@ -18,12 +18,11 @@ SRCS =	database.c \
 	expression.c \
 	narrative.c \
 	operation.c \
-	traversal.c \
-	wildcard.c
+	traversal.c
 
-#CFLAGS = -O2
-CFLAGS = -O2 -DUNIFIED
-#CFLAGS = -DDEBUG -DTRIM
+CFLAGS = -O2
+#CFLAGS = -DDEBUG
+#CFLAGS = -O2 -DUNIFIED
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so
 

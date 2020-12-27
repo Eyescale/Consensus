@@ -5,10 +5,6 @@
 #include "database.h"
 #include "context.h"
 
-#ifdef TRIM
-#include "wildcard.h"
-#endif
-
 //===========================================================================
 //	Interface with bm_verify
 //===========================================================================
@@ -39,9 +35,6 @@ typedef struct {
 		listItem *base;
 		listItem *not;
 	} stack;
-#ifdef TRIM
-	BTreeNode *btree;
-#endif
 } BMTraverseData;
 
 

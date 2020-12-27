@@ -54,10 +54,6 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
 	CNDB *db = ctx->db;
 	data->empty = db_is_empty( privy, db );
 	data->star = db_lookup( privy, "*", db );
-#ifdef TRIM
-	// used by wildcard_opt
-	data->btree = btreefy( expression );
-#endif
 	return strncmp( expression, "?:", 2 ) ? expression : expression+2;
 }
 
@@ -66,9 +62,6 @@ xp_release( BMTraverseData *data )
 {
 	freePair( data->pivot );
 	freeListItem( &data->exponent );
-#ifdef TRIM
-	freeBTree( data->btree );
-#endif
 	return 0;
 }
 
@@ -680,12 +673,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		case '?':
 			if ( not ) { success = 0; not = 0; }
 			else if ( data->empty ) success = 0;
-#ifdef TRIM
-			else if ( wildcard_opt( p, data->btree ) ) success = 1;
-#else
 			else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
 				success = 1; // wildcard is as_sub[1]
-#endif
 			else success = ( bm_match( x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
