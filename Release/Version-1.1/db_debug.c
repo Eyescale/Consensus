@@ -196,18 +196,13 @@ db_update( CNDB *db )
    cf design/specs/db-update.txt
 */
 {
-	CNInstance *nil = db->nil;
-	CNInstance *e, *f, *g, *x;
-	listItem *trash[2] = { NULL, NULL };
-
-	Pair *pair;
 	listItem *log[ CN_DEFAULT ];
 	memset( log, 0, sizeof(log) );
 	db_cache_log( db, log );
 
 	/* update manifested
 	*/
-	db_log_update( log, CN_MANIFESTED_TO_BE_RELEASED, db );
+	db_log_update( log, CN_MANIFESTED, db );
 	db_log_update( log, CN_MANIFESTED_REASSIGNED, db );
 
 	/* update newborn
@@ -239,18 +234,18 @@ db_cache_log( CNDB *db, listItem **log )
 	CNInstance *e, *f, *g;
 	CNInstance *nil = db->nil;
 	for ( listItem *i=nil->as_sub[ 1 ]; i!=NULL; i=i->next ) {
-		CNInstance *f = i->ptr;
-		CNInstance *e = f->sub[ 0 ];
+		f = i->ptr;
+		e = f->sub[ 0 ];
 		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
 			continue;
-		CNInstance *g = cn_instance( nil, e, 0 );
+		g = cn_instance( nil, e, 0 );
 		pair = newPair( f, g );
 		addItem( &log[ cn_type(e,f,g) ], newPair( e, pair ));
 	}
 	f = NULL;
 	for ( listItem *i=nil->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-		CNInstance *g = i->ptr;
-		CNInstance *e = g->sub[ 1 ];
+		g = i->ptr;
+		e = g->sub[ 1 ];
 		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
 			continue;
 		if (( cn_instance( e, nil, 1 ) )) // already done

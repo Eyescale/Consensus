@@ -12,7 +12,6 @@ newItem( void *ptr )
         if ( freeItemList == NULL ) {
 #if 0
 		item = malloc( sizeof( listItem ) );
-        	item->next = NULL;
 #else
 #define PAGESIZE 255
 		item = malloc( PAGESIZE*sizeof( listItem ) );
@@ -22,14 +21,13 @@ newItem( void *ptr )
 		}
 		item = freeItemList;
 		freeItemList = item->next;
-        	item->next = NULL;
 #endif
 	}
         else {
                 item = freeItemList;
                 freeItemList = item->next;
-        	item->next = NULL;
         }
+        item->next = NULL;
         item->ptr = ptr;
         return item;
 }

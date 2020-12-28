@@ -152,7 +152,7 @@
 				do ((*,f), %? )
 			else do ~( OUTPUT )
 	else on ~( OUTPUT )
-		// destroys the whole frame structure, including rule
+		// destroys the whole record structure, including rule
 		// and schema instances - all in ONE Consensus cycle
 		in *record:~(.,EOF)
 			do ~( record )

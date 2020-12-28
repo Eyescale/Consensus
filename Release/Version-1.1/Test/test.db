@@ -1,7 +1,10 @@
 
 	({hello,hi}, {
 		( world, { titi, toto } )
-	} ))
+	} ))	#extraneous ')'
+#comment
 	(:asdlk\0%identifier'titi)
-	((ti
+	((ti	#incomplete
 	tata
+	((*,titi),toto)	#comment
+	((*,titi),tutu)

@@ -265,18 +265,28 @@ RETURN:
 CNInstance *
 db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 /*
-	Assumption: called upon CNDB creation
-	Same as db_instantiate without assignment nor manifestation
+	Assumption: called upon CNDB creation - cf. cnLoad()/bm_substantiate()
+	Same as db_instantiate except without change registration
 */
 {
 	CNInstance *instance;
 	if (( instance = cn_instance( e, f, 0 ) ))
 		return instance;
 	else if (( e->as_sub[ 0 ] )) {
-		Pair *entry = registryLookup( db->index, "*" );
-		if (( entry ) && ( e->sub[ 0 ] == entry->value )) {
+		Pair *star = registryLookup( db->index, "*" );
+		if (( star ) && ( e->sub[ 0 ] == star->value )) {
 			instance = e->as_sub[ 0 ]->ptr;
+			fprintf( stderr, "B%%::db_couple: Warning: reassigning " );
+			db_output( stderr, "", instance, db );
+			fprintf( stderr, " to " );
+
+			CNInstance *sub = instance->sub[ 1 ];
+			removeItem( &sub->as_sub[1], instance );
 			instance->sub[ 1 ] = f;
+			addItem( &f->as_sub[1], instance );
+
+			db_output( stderr, "", instance, db );
+			fprintf( stderr, "\n" );
 			return instance;
 		}
 	}

@@ -7,10 +7,16 @@
 
 // #define DEBUG
 
+static void db_remove( CNInstance *, CNDB * );
+static void db_deregister( CNInstance *, CNDB * );
+
+#if 1
+#include "db_debug.c"
+#else
+
 //===========================================================================
 //	db_op
 //===========================================================================
-static void db_remove( CNInstance *, CNDB * );
 
 void
 db_op( DBOperation op, CNInstance *e, CNDB *db )
@@ -118,8 +124,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 //===========================================================================
 //	db_update
 //===========================================================================
-static void db_deregister( CNInstance *, CNDB * );
-
 #define TRASH( x ) \
 	if (( x->sub[0] )) addItem( &trash[0], x ); \
 	else addItem( &trash[1], x );
@@ -237,6 +241,8 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 fprintf( stderr, "--\n" );
 #endif
 }
+
+#endif
 
 //===========================================================================
 //	db_remove	- private

@@ -32,7 +32,7 @@ db_input( FILE *stream, int authorized )
 		ons( " \t\n" )	do_( same )
 		on_( '(' )	do_( "expr" )	REENTER
 		on_( '\'' )	do_( "char" )	StringAppend( s, event );
-		on_separator	do_( same )	fprintf( stderr, "B%%::DBInput: Warning: "
+		on_separator	do_( same )	fprintf( stderr, "B%%::db_input: Warning: skipping "
 							"extraneous character: '%c'\n", event );
 		on_other	do_( "term" )	StringAppend( s, event );
 		end
@@ -41,6 +41,7 @@ db_input( FILE *stream, int authorized )
 		on_other	do_( same )
 		end
 	in_( "expr" ) bgn_
+		on_( '#' )	do_( "_#" );
 		ons( " \t" )	do_( same )
 		on_( '(' )
 			if ( !informed ) {
@@ -99,6 +100,10 @@ db_input( FILE *stream, int authorized )
 				do_( "term" )	StringAppend( s, event );
 			}
 		end
+	in_( "_#" ) bgn_
+		on_( '\n' )	do_( "expr" )
+		on_other	do_( same )
+		end
 	in_( "(" ) bgn_
 		on_( ':' )	do_( "(:" )	StringAppend( s, event );
 						special = 1;
@@ -139,7 +144,7 @@ db_input( FILE *stream, int authorized )
 					first = 1; informed=special=level=0;
 		}
 	in_( "char" ) bgn_
-		on_( '\\' )	do_( "char\\" )
+		on_( '\\' )	do_( "char\\" )	StringAppend( s, event );
 		on_printable	do_( "char_" )	StringAppend( s, event );
 		end
 		in_( "char\\" ) bgn_
@@ -171,14 +176,17 @@ db_input( FILE *stream, int authorized )
 		end
 
 	DBInputDefault
-		in_none_sofar	do_( "" )	fprintf( stderr, ">>>>>> B%%::DBInput: "
+		in_none_sofar	do_( "" )	fprintf( stderr, ">>>>>> B%%::db_input: Error: "
 							"unknown state \"%s\" <<<<<<\n", state );
 						StringReset( s, CNStringAll );
 		in_other	do_( "#" )	char *p = StringFinish( s, 0 );
-						fprintf( stderr, "B%%::DBInput: Warning: "
+						fprintf( stderr, "B%%::db_input: Warning: "
 							"expression incomplete: \"%s\"\n", p );
-						free( p );
-						StringReset( s, CNStringMode );
+						StringReset( s, CNStringAll );
+						freeListItem( &stack.first );
+						freeListItem( &stack.level );
+						first = 1; informed=special=level=0;
+						REENTER
 	DBInputEnd
 
 	freeListItem( &stack.first );

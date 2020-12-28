@@ -88,13 +88,13 @@ bm_substantiate( char *expression, CNDB *db )
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
 		case '(':
+			level++;
 			if ( p[1]==':' ) {
 				e = bm_expand( p, db );
 				sub[ ndx ] = newItem( e );
 				p = p_prune( PRUNE_TERM, p );
 				break;
 			}
-			level++;
 			add_item( &stack.ndx, ndx );
 			if ( ndx ) {
 				addItem( &stack.results, sub[ 0 ] );
@@ -122,10 +122,19 @@ bm_substantiate( char *expression, CNDB *db )
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
+		case '\'':;
+			char q[ MAXCHARSIZE + 1 ];
+			if ( charscan(p+1,q) )
+				e = db_register( q, db, 0 );
+			else // error
+				e = db_register( "", db, 0 );
+			sub[ ndx ] = newItem( e );
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
 		default:
 			e = db_register( p, db, 0 );
 			sub[ ndx ] = newItem( e );
-			if ( !is_separator(*p++) )
+			if ( !is_separator( *p++ ) )
 				p = p_prune( PRUNE_IDENTIFIER, p );
 		}
 	}
@@ -264,7 +273,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 			case 1: instances = bm_couple( db_instantiate, sub, db );
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
-				break;
 			}
 			ndx = (int) popListItem( &stack.ndx );
 			sub[ ndx ] = instances;
