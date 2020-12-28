@@ -232,7 +232,7 @@ db_update( CNDB *db )
 static void
 db_cache_log( CNDB *db, listItem **log )
 /*
-	cache log: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
+	cache log, as: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
 */
 {
 	Pair *pair;
@@ -261,9 +261,6 @@ db_cache_log( CNDB *db, listItem **log )
 }
 static void
 db_log_update( listItem **log, int type, CNDB *db )
-/*
-	cf. design/specs/db-update.txt
-*/
 {
 	Pair *pair;
 	CNInstance *e, *f, *g;

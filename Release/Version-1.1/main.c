@@ -7,27 +7,43 @@
 
 // #define DEBUG
 
-void usage( void )
-{ fprintf( stderr, "Usage: ./B%% [-p] file.story [file.db]\n" ); }
+void
+usage( void )
+{
+	fprintf( stderr, "B%%: Example Usage\n"
+		"\t./B%% file.story\n"
+		"\t./B%% -f file.db file.story\n"
+		"\t./B%% -p file.story\n"
+	);
+	exit(-1);
+}
 
 int
 main( int argc, char *argv[] )
 {
-	if ( argc==1 ) { usage(); exit( -1 ); }
+	if ( argc==1 ) usage();
 
-	CNStory *story = NULL;
 	if ( !strncmp( argv[1], "-p", 2 ) ) {
-		story = readStory( argv[ 2 ] );
+		CNStory *story = readStory( argv[ 2 ] );
 		story_output( stdout, story );
+		freeStory( story );
 	}
-	else {
+	else if ( !strncmp( argv[1], "-f", 2 ) ) {
+		if ( argc < 4 ) usage();
 		CNDB *db = newCNDB();
-		if ( argc==3 ) cnLoad( argv[ 2 ], db );
-		story = readStory( argv[ 1 ] );
+		cnLoad( argv[ 2 ], db );
+		CNStory *story = readStory( argv[ 3 ] );
 		while ( cnOperate( story, db ) )
 			cnUpdate( db );
 		freeCNDB( db );
+		freeStory( story );
 	}
-	freeStory( story );
+	else {
+		CNDB *db = newCNDB();
+		CNStory *story = readStory( argv[ 1 ] );
+		while ( cnOperate( story, db ) )
+			cnUpdate( db );
+		freeStory( story );
+	}
 }
 

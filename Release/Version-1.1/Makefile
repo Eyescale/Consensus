@@ -30,7 +30,7 @@ TARGET = libbmod.so
 
 all:$(TARGET) B%
 
-B%: $(OBJS)
+B%: $(OBJS) main.c
 	$(CC) -o B% $(INCLUDES) main.c -L. -lcn -lbmod
 
 $(TARGET): $(OBJS) 
