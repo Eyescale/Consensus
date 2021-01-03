@@ -11,7 +11,7 @@ typedef struct _listItem
 }
 listItem;
 
-void *newItem( void *ptr );
+listItem *newItem( void *ptr );
 void freeItem( listItem *item );
 void clipItem( listItem **, listItem *item );
 

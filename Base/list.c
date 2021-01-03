@@ -3,24 +3,26 @@
 
 #include "list.h"
 
+#define RECYCLE
+#define C 500
 static listItem *freeItemList = NULL;
 
-void *
+listItem *
 newItem( void *ptr )
 {
         listItem *item;
         if ( freeItemList == NULL ) {
-#if 0
-		item = malloc( sizeof( listItem ) );
-#else
-#define PAGESIZE 255
-		item = malloc( PAGESIZE*sizeof( listItem ) );
-		for ( int i=PAGESIZE; (i--); ) {
-			item->next = freeItemList;
-			freeItemList = item++;
+#ifdef RECYCLE
+		void **this = (void **) malloc(C*2*sizeof(void*));
+		this[ 1 ] = NULL;
+		for ( int i=C-1; (i--); ) {
+			this += 2;
+			this[ 1 ] = this-2;
 		}
-		item = freeItemList;
-		freeItemList = item->next;
+		item = (listItem *) this;
+		freeItemList = (listItem *) this[ 1 ];
+#else
+		item = malloc( sizeof( listItem ) );
 #endif
 	}
         else {
@@ -34,10 +36,18 @@ newItem( void *ptr )
 void
 freeItem( listItem *item )
 {
-	if ( item == NULL ) return;
-//	item->ptr = NULL;
+#ifdef RECYCLE
         item->next = freeItemList;
         freeItemList = item;
+#else
+	if ( item == NULL ) {
+		fprintf( stderr, "freeItem: NULL\n" );
+		return;
+	}
+	item->ptr = NULL;
+	item->next = NULL;
+	free( item );
+#endif
 }
 void
 clipItem( listItem **list, listItem *item )
@@ -187,8 +197,7 @@ void
 freeListItem( listItem **list )
 {
 	listItem *i, *next_i;
-	for ( i=*list; i!=NULL; i=next_i )
-	{
+	for ( i=*list; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		freeItem( i );
 	}

@@ -9,8 +9,8 @@ typedef struct {
 	Registry *registry;
 }
 BMContext;
-BMContext *  bm_push( CNNarrative *, CNInstance *, CNDB * );
-void	     bm_pop( BMContext * );
+BMContext *  newContext( CNNarrative *, CNInstance *, CNDB * );
+void	     freeContext( BMContext * );
 char *       bm_locate_mark( char *, listItem ** );
 listItem *   bm_push_mark( BMContext *, CNInstance * );	
 CNInstance * bm_pop_mark( BMContext * );
@@ -26,6 +26,7 @@ CNInstance * bm_lookup( int privy, char *, BMContext * );
 #define ESUB(e,ndx) e->sub[ndx]
 #endif
 void xpn_add( listItem **xp, int as_sub, int position );
+void xpn_set( listItem *xp, int as_sub, int position );
 void xpn_out( FILE *stream, listItem *xp );
 
 

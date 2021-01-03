@@ -5,7 +5,7 @@
 #include <strings.h>
 #include <ctype.h>
 
-#include "pair.h"
+#include "list.h"
 
 #define MAXCHARSIZE 1
 

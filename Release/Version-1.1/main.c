@@ -23,27 +23,27 @@ main( int argc, char *argv[] )
 {
 	if ( argc==1 ) usage();
 
+	CNDB *db = NULL;
+	CNStory *story = NULL;
 	if ( !strncmp( argv[1], "-p", 2 ) ) {
-		CNStory *story = readStory( argv[ 2 ] );
+		story = readStory( argv[ 2 ] );
 		story_output( stdout, story );
-		freeStory( story );
 	}
 	else if ( !strncmp( argv[1], "-f", 2 ) ) {
 		if ( argc < 4 ) usage();
-		CNDB *db = newCNDB();
+		db = newCNDB();
 		cnLoad( argv[ 2 ], db );
-		CNStory *story = readStory( argv[ 3 ] );
+		story = readStory( argv[ 3 ] );
 		while ( cnOperate( story, db ) )
 			cnUpdate( db );
-		freeCNDB( db );
-		freeStory( story );
 	}
 	else {
-		CNDB *db = newCNDB();
-		CNStory *story = readStory( argv[ 1 ] );
+		db = newCNDB();
+		story = readStory( argv[ 1 ] );
 		while ( cnOperate( story, db ) )
 			cnUpdate( db );
-		freeStory( story );
 	}
+	freeCNDB( db );
+	freeStory( story );
 }
 

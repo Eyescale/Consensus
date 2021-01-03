@@ -12,6 +12,7 @@ LIBS = -lcn
 
 OBJDIR = .ofiles
 SRCS =	database.c \
+	db_debug.c \
 	db_io.c \
 	db_op.c \
 	context.c \
@@ -21,7 +22,7 @@ SRCS =	database.c \
 	traversal.c
 
 CFLAGS = -O2
-#CFLAGS = -DDEBUG
+#CFLAGS = -DDEBUG -DNULL_TERMINATED
 #CFLAGS = -O2 -DUNIFIED
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 TARGET = libbmod.so
@@ -37,7 +38,7 @@ $(TARGET): $(OBJS)
 	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
 	cp ../../Base/libcn.so .
 
-$(OBJS): $(OBJDIR)/%.o: %.c
+$(OBJS): $(OBJDIR)/%.o: %.c db_debug.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:

@@ -89,32 +89,42 @@ registryRegister( Registry *registry, void *name, void *value )
 void
 registryDeregister( Registry *registry, void *name, ... )
 {
-	RegistryType type = registry->type;
+	Pair *r;
 	listItem *i, *next_i, *last_i=NULL;
-
-	for ( i=registry->entries; i!=NULL; last_i=i, i=next_i ) {
-		Pair *r = i->ptr;
-		next_i = i->next;
-		int comparison;
-		if (( name )) {
+	if (( name )) {
+		RegistryType type = registry->type;
+		for ( i=registry->entries; i!=NULL; i=next_i ) {
+			r = i->ptr;
+			next_i = i->next;
+			int comparison;
 			comparison = compare( type, r, name );
 			if ( comparison > 0 ) return;
+			else if ( !comparison ) {
+				goto CLIP;
+			}
+			else last_i = i;
 		}
-		else {
-			va_list ap;
-			va_start( ap, name );
-			comparison = !( r->value == va_arg( ap, void * ) );
-			va_end( ap );
-		}
-		if ( !comparison ) {
-                        if (( last_i )) last_i->next = next_i;
-                        else registry->entries = next_i;
-
-			freeItem( i );
-                        freePair( r );
-                        return;
-                }
         }
+	else {
+		va_list ap;
+		va_start( ap, name );
+		void *value = va_arg( ap, void * );
+		va_end( ap );
+		for ( i=registry->entries; i!=NULL; i=next_i ) {
+			r = i->ptr;
+			next_i = i->next;
+			if ( r->value == value ) {
+				goto CLIP;
+			}
+			else last_i = i;
+		}
+	}
+	return;
+CLIP:
+	if (( last_i )) last_i->next = next_i;
+	else registry->entries = next_i;
+	freeItem( i );
+	freePair( r );
 }
 Pair *
 registryLookup( Registry *registry, void *name, ... )

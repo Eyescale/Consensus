@@ -2,6 +2,7 @@
 #define REGISTRY_H
 
 #include "pair.h"
+#include "list.h"
 
 typedef struct { int type; listItem *entries; } Registry;
 typedef enum {

@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "string_util.h"
+#include "pair.h"
 
 // #define DEBUG
 
@@ -47,10 +48,10 @@ int
 isanumber( char *p )
 {
 	if (!((p) && *p )) return 0;
-	else
-		do if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
-		while ( *p );
-
+	do {
+		if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
+		else return 0;
+	} while ( *p );
 	return 1; 
 }
 #define HVAL(c) (c-((c<58)?48:(c<97)?55:87))
@@ -289,9 +290,7 @@ StringAppend( CNString *string, int event )
 #ifdef DEBUG_2
 	output( Debug, "StringAppend: '%c'", (char) event );
 #endif
-	union { void *ptr; int event; } icast;
-	icast.event = event;
-	addItem( (listItem**) &string->data, icast.ptr );
+	add_item( (listItem**) &string->data, event );
 	return 0;
 }
 
@@ -368,7 +367,7 @@ l2s( listItem **list, int trim )
 		}
 	}
 
-	// allocate string
+	// allocate & inform string
 	char *str = (char *) malloc( count + 1 );
 	char *ptr = str;
 	for ( i = *list; i!=NULL; i=i->next ) {

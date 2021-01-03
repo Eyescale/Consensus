@@ -23,17 +23,17 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 //	operations
 //===========================================================================
-CNInstance * db_register( char *identifier, CNDB *, int notify );
-void db_deprecate( CNInstance *, CNDB * );
-CNInstance * db_couple( CNInstance *, CNInstance *, CNDB * );
-CNInstance * db_instantiate( CNInstance *, CNInstance *, CNDB * );
-CNInstance * db_lookup( int privy, char *identifier, CNDB * );
-char * db_identifier( CNInstance *, CNDB * );
-int db_is_empty( int privy, CNDB * );
-CNInstance * db_first( CNDB *, listItem ** );
-CNInstance * db_next( CNDB *, CNInstance *, listItem ** );
-int db_traverse( int privy, CNDB *, DBTraverseCB, void * );
-void db_exit( CNDB * );
+CNInstance *	db_register( char *identifier, CNDB *, int notify );
+CNInstance *	db_couple( CNInstance *, CNInstance *, CNDB * );
+CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
+void		db_deprecate( CNInstance *, CNDB * );
+CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
+char *		db_identifier( CNInstance *, CNDB * );
+int		db_is_empty( int privy, CNDB * );
+CNInstance *	db_first( CNDB *, listItem ** );
+CNInstance *	db_next( CNDB *, CNInstance *, listItem ** );
+int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
+void		db_exit( CNDB * );
 
 //===========================================================================
 //	op (nil-based)

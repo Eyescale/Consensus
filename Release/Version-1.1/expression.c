@@ -211,7 +211,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	if ( bm_void( expression, ctx ) ) {
 		fprintf( stderr, "VOID: %s\n", expression );
-		return;
+		exit( -1 );
 	}
 	else fprintf( stderr, "bm_instantiate: %s {", expression );
 #endif
@@ -309,6 +309,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 #endif
 	freeListItem( &sub[ 0 ] );
 }
+
 static int
 bm_void( char *expression, BMContext *ctx )
 /*

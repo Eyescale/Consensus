@@ -6,7 +6,9 @@
 #include "db_op.h"
 
 // #define DEBUG
-// #define FORCE_NULL
+// #define NULL_TERMINATED
+#define TEST_INSTANTIATE
+#define TEST_DEPRECATE
 
 //===========================================================================
 //	newCNDB
@@ -14,7 +16,7 @@
 CNDB *
 newCNDB( void )
 {
-#ifdef FORCE_NULL
+#ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
 #else
 	Registry *index = newRegistry( IndexedByCharacter );
@@ -178,7 +180,7 @@ CNInstance *
 db_register( char *p, CNDB *db, int notify )
 {
 	if ( p == NULL ) return NULL;
-#ifdef FORCE_NULL
+#ifdef NULL_TERMINATED
 	p = strmake( p );
 #endif
 	CNInstance *e = NULL;
@@ -186,12 +188,12 @@ db_register( char *p, CNDB *db, int notify )
 	if (( entry )) {
 		e = entry->value;
 		if ( notify ) db_op( DB_REHABILITATE_OP, e, db );
-#ifdef FORCE_NULL
+#ifdef NULL_TERMINATED
 		free( p );
 #endif
 	}
 	else {
-#ifndef FORCE_NULL
+#ifndef NULL_TERMINATED
 		p = strmake( p );
 #endif
 #ifdef UNIFIED
@@ -206,15 +208,111 @@ db_register( char *p, CNDB *db, int notify )
 }
 
 //===========================================================================
+//	db_couple
+//===========================================================================
+CNInstance *
+db_couple( CNInstance *e, CNInstance *f, CNDB *db )
+/*
+	Assumption: called upon CNDB creation - cf. cnLoad()/bm_substantiate()
+	Same as db_instantiate except without change registration
+*/
+{
+	CNInstance *instance;
+	if (( instance = cn_instance( e, f, 0 ) ))
+		return instance;
+	else if (( e->as_sub[ 0 ] )) {
+		Pair *star = registryLookup( db->index, "*" );
+		if (( star ) && ( e->sub[ 0 ] == star->value )) {
+			instance = e->as_sub[ 0 ]->ptr;
+			fprintf( stderr, "B%%::db_couple: Warning: reassigning " );
+			db_output( stderr, "", instance, db );
+			fprintf( stderr, " to " );
+
+			CNInstance *sub = instance->sub[ 1 ];
+			removeItem( &sub->as_sub[1], instance );
+			instance->sub[ 1 ] = f;
+			addItem( &f->as_sub[1], instance );
+
+			db_output( stderr, "", instance, db );
+			fprintf( stderr, "\n" );
+			return instance;
+		}
+	}
+	return cn_new( e, f );
+}
+
+//===========================================================================
+//	db_instantiate
+//===========================================================================
+CNInstance *
+db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
+/*
+	Assumption: neither e nor f are released
+	Special case: assignment - i.e. e is ( *, variable )
+		in wich case we must deprecate current assignment
+	Note that until next frame, ((*,e), . ) will exist both as
+		the current (either to-be-released or reassigned) and
+		the new (either newborn, reassigned, or released-to-be-manifested)
+	assignments.
+*/
+{
+#ifdef DEBUG
+	fprintf( stderr, "db_instantiate: ( " );
+	db_output( stderr, "", e, db );
+	fprintf( stderr, ", " );
+	db_output( stderr, "", f, db );
+	fprintf( stderr, " )\n" );
+#endif
+#ifdef TEST_INSTANTIATE
+	test_instantiate( "db_instantiate( e, . )", e, db );
+	test_instantiate( "db_instantiate( ., f )", f, db );
+#endif
+	CNInstance *instance = NULL;
+	Pair *star = registryLookup( db->index, "*" );
+	if (( star ) && ( e->sub[ 0 ] == star->value )) {
+		/* Assignment case - as we have e:( *, . )
+		*/
+		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+			CNInstance *candidate = i->ptr;
+			if ( candidate->sub[ 1 ] == f ) {
+				instance = candidate;
+			}
+			else if ( db_deprecatable( candidate, db ) )
+				db_deprecate( candidate, db );
+		}
+		if (( instance )) {
+			db_op( DB_REASSIGN_OP, instance, db );
+			return instance;
+		}
+	}
+	else {
+		/* General case
+		*/
+		instance = cn_instance( e, f, 0 );
+		if (( instance )) {
+			db_op( DB_REHABILITATE_OP, instance, db );
+			return instance;
+		}
+	}
+	instance = cn_new( e, f );
+	db_op( DB_MANIFEST_OP, instance, db );
+	return instance;
+}
+
+//===========================================================================
 //	db_deprecate
 //===========================================================================
 void
 db_deprecate( CNInstance *x, CNDB *db )
 /*
-	deprecates x and all its ascendants, proceeding top-down
+	deprecate (ie. set "to-be-released") x and all its ascendants,
+	proceeding top-down
 */
 {
 	if ( x == NULL ) return;
+#ifdef TEST_DEPRECATE
+	test_deprecate( "db_deprecate()", x, db );
+#endif
 	listItem * stack = NULL,
 		 * i = newItem( x ),
 		 * j;
@@ -260,91 +358,6 @@ RETURN:
 }
 
 //===========================================================================
-//	db_couple
-//===========================================================================
-CNInstance *
-db_couple( CNInstance *e, CNInstance *f, CNDB *db )
-/*
-	Assumption: called upon CNDB creation - cf. cnLoad()/bm_substantiate()
-	Same as db_instantiate except without change registration
-*/
-{
-	CNInstance *instance;
-	if (( instance = cn_instance( e, f, 0 ) ))
-		return instance;
-	else if (( e->as_sub[ 0 ] )) {
-		Pair *star = registryLookup( db->index, "*" );
-		if (( star ) && ( e->sub[ 0 ] == star->value )) {
-			instance = e->as_sub[ 0 ]->ptr;
-			fprintf( stderr, "B%%::db_couple: Warning: reassigning " );
-			db_output( stderr, "", instance, db );
-			fprintf( stderr, " to " );
-
-			CNInstance *sub = instance->sub[ 1 ];
-			removeItem( &sub->as_sub[1], instance );
-			instance->sub[ 1 ] = f;
-			addItem( &f->as_sub[1], instance );
-
-			db_output( stderr, "", instance, db );
-			fprintf( stderr, "\n" );
-			return instance;
-		}
-	}
-	return cn_new( e, f );
-}
-
-//===========================================================================
-//	db_instantiate
-//===========================================================================
-CNInstance *
-db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
-/*
-	Assumption: neither e nor f are deprecated
-	Special case: assignment - i.e. e is ( *, variable )
-		in this case must release previous assignment
-		Note that until next frame, variable will hold
-		both the old and the new values (feature)
-*/
-{
-#ifdef DEBUG
-	fprintf( stderr, "db_instantiate: ( " );
-	db_output( stderr, "", e, db );
-	fprintf( stderr, ", " );
-	db_output( stderr, "", f, db );
-	fprintf( stderr, " )\n" );
-#endif
-	CNInstance *instance = NULL;
-	Pair *star = registryLookup( db->index, "*" );
-	if (( star ) && ( e->sub[ 0 ] == star->value )) {
-		/* Assignment case - as we have e:( *, . )
-		*/
-		CNInstance *reassignment = NULL;
-		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-			instance = i->ptr;
-			if ( instance->sub[ 1 ] == f ) {
-				db_op( DB_REASSIGN_OP, instance, db );
-				reassignment = instance;
-			}
-			else if ( db_deprecatable( instance, db ) )
-				db_deprecate( instance, db );
-		}
-		if (( reassignment )) return reassignment;
-	}
-	else {
-		/* General case
-		*/
-		instance = cn_instance( e, f, 0 );
-		if (( instance )) {
-			db_op( DB_REHABILITATE_OP, instance, db );
-			return instance;
-		}
-	}
-	instance = cn_new( e, f );
-	db_op( DB_MANIFEST_OP, instance, db );
-	return instance;
-}
-
-//===========================================================================
 //	db_lookup
 //===========================================================================
 CNInstance *
@@ -352,7 +365,7 @@ db_lookup( int privy, char *p, CNDB *db )
 {
 	if ( p == NULL )
 		return NULL;
-#ifdef FORCE_NULL
+#ifdef NULL_TERMINATED
 	p = strmake( p );
 	Pair *entry = registryLookup( db->index, p );
 	free( p );

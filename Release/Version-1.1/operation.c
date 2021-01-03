@@ -47,16 +47,22 @@ static BMTraverseCB operate_CB;
 static void operate( CNNarrative *, BMContext *, OperateData * );
 
 int
-cnOperate( listItem *narratives, CNDB *db )
+cnOperate( CNStory *story, CNDB *db )
 {
+	listItem *narratives = story;
 	if (( narratives == NULL ) || db_out(db) )
 		 return 0;
+#ifdef DEBUG
+	fprintf( stderr, "cnOperate bgn\n" );
+#endif
 
-	/* determine active (=base, here) narratives, if any
+	/* separate narratives into active (base) and tbd
 	*/
-	OperateData data = { NULL, NULL, NULL, NULL, 0 };
+	OperateData data;
+	memset( &data, 0, sizeof(data) );
+	CNNarrative *n;
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
-		CNNarrative *n = i->ptr;
+		n = i->ptr;
 		if (( n->proto )) addItem( &data.tbd, n );
 		else addItem( &data.active, n );
 	}
@@ -67,8 +73,7 @@ cnOperate( listItem *narratives, CNDB *db )
 
 	/* operate active narratives, possibly finding more as we go
 	*/
-	BMContext *ctx = bm_push( NULL, NULL, db );
-	CNNarrative *n;
+	BMContext *ctx = newContext( NULL, NULL, db );
 	while (( n = popListItem( &data.active ) )) {
 		char *proto = n->proto;
 		if (( proto )) {
@@ -77,9 +82,12 @@ cnOperate( listItem *narratives, CNDB *db )
 		}
 		else operate( n, ctx, &data );
 	}
-	bm_pop( ctx );
+	freeContext( ctx );
 
 	freeListItem( &data.tbd );
+#ifdef DEBUG
+	fprintf( stderr, "cnOperate end\n" );
+#endif
 	return 1;
 }
 static int
@@ -87,9 +95,9 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	OperateData *data = user_data;
 	CNNarrative *n = data->n;
-	ctx = bm_push( n, e, ctx->db );
+	ctx = newContext( n, e, ctx->db );
 	operate( n, ctx, data );
-	bm_pop( ctx );
+	freeContext( ctx );
 	return BM_CONTINUE;
 }
 
@@ -97,12 +105,15 @@ operate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //	operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-static BMTraverseCB activate_CB;
+static BMTraverseCB enable_CB;
 static void
 operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 {
+#ifdef DEBUG
+	fprintf( stderr, "operate bgn\n" );
+#endif
 	listItem *i = newItem( narrative->root ), *stack = NULL;
-	int passed = 1, pushed = 0;
+	int passed = 1, marked = 0;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		char *expression = occurrence->data->expression;
@@ -113,15 +124,15 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 			break;
 		ctrl(ELSE_IN) case IN:
 			passed = in_condition( expression, ctx );
-			pushed = ( passed && !strncmp( expression, "?:", 2 ));
+			marked = ( passed && !strncmp( expression, "?:", 2 ));
 			break;
 		ctrl(ELSE_ON) case ON:
 			passed = on_event( expression, ctx );
-			pushed = ( passed && !strncmp( expression, "?:", 2 ));
+			marked = ( passed && !strncmp( expression, "?:", 2 ));
 			break;
 		ctrl(ELSE_EN) case EN:
-			if (!(data->tbd)) break;
-			bm_traverse( expression, ctx, activate_CB, data );
+			if ( !data->tbd ) break;
+			bm_traverse( expression, ctx, enable_CB, data );
 			break;
 		ctrl(ELSE_DO) case DO:
 			do_action( expression, ctx );
@@ -138,13 +149,13 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		}
 		if (( j && passed )) {
 			addItem( &stack, i );
-			i = j; pushed = 0;
+			i = j; marked = 0;
 			continue;
 		}
 		for ( ; ; ) {
-			if (( pushed )) {
+			if (( marked )) {
 				bm_pop_mark( ctx );
-				pushed = 0;
+				marked = 0;
 			}
 			if (( i->next )) {
 				i = i->next;
@@ -158,7 +169,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 				case IN: case ELSE_IN:
 				case ON: case ELSE_ON:
 					expression = occurrence->data->expression;
-					pushed = !strncmp( expression, "?:", 2 );
+					marked = !strncmp( expression, "?:", 2 );
 					// no break
 				default:
 					break;
@@ -169,19 +180,22 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 	}
 RETURN:
 	freeItem( i );
+#ifdef DEBUG
+	fprintf( stderr, "operate end\n" );
+#endif
 }
 static int cmp_CB( CNInstance *, BMContext *, void * );
 static int
-activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 /*
 	compare entity matching narrative local EN declaration
 	with entities matching protos "tbd" - in base context
 */
 {
 	OperateData *data = user_data;
-	ctx = bm_push( NULL, NULL, ctx->db );
 	data->e = e;
 	listItem *last_i = NULL, *next_i;
+	ctx = newContext( NULL, NULL, ctx->db );
 	for ( listItem *i=data->tbd; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		CNNarrative *n = i->ptr;
@@ -193,7 +207,7 @@ activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 		}
 		else last_i = i;
 	}
-	bm_pop( ctx );
+	freeContext( ctx );
 	return (data->tbd) ? BM_CONTINUE : BM_DONE;
 }
 static int
@@ -213,7 +227,13 @@ cmp_CB( CNInstance *e, BMContext *ctx, void *user_data )
 void
 cnUpdate( CNDB *db )
 {
+#ifdef DEBUG
+	fprintf( stderr, "cndUpdate bgn\n" );
+#endif
 	db_update( db );
+#ifdef DEBUG
+	fprintf( stderr, "cnUpdate end\n" );
+#endif
 }
 
 //===========================================================================
@@ -222,10 +242,18 @@ cnUpdate( CNDB *db )
 static int
 in_condition( char *expression, BMContext *ctx )
 {
-	// fprintf( stderr, "in condition: %s\n", expression );
+	int retval;
+#ifdef DEBUG
+	fprintf( stderr, "in condition bgn: %s\n", expression );
+#endif
 	if ( !strcmp( expression, "~." ) )
-		return db_is_empty( 0, ctx->db );
-	else return bm_feel( expression, ctx, BM_CONDITION );
+		retval = db_is_empty( 0, ctx->db );
+	else
+		retval = bm_feel( expression, ctx, BM_CONDITION );
+#ifdef DEBUG
+	fprintf( stderr, "in_condition end\n" );
+#endif
+	return retval;
 }
 
 //===========================================================================
@@ -234,12 +262,20 @@ in_condition( char *expression, BMContext *ctx )
 static int
 on_event( char *expression, BMContext *ctx )
 {
-	// fprintf( stderr, "on_event: %s\n", expression );
+	int retval;
+#ifdef DEBUG
+	fprintf( stderr, "on_event bgn: %s\n", expression );
+#endif
 	if ( !strcmp( expression, "~." ) )
-		return db_still( ctx->db );
+		retval = db_still( ctx->db );
 	else if ( !strncmp( expression, "~(", 2 ) )
-		return bm_feel( expression+1, ctx, BM_RELEASED );
-	else return bm_feel( expression, ctx, BM_INSTANTIATED );
+		retval = bm_feel( expression+1, ctx, BM_RELEASED );
+	else
+		retval = bm_feel( expression, ctx, BM_INSTANTIATED );
+#ifdef DEBUG
+	fprintf( stderr, "on_event end\n" );
+#endif
+	return retval;
 }
 
 //===========================================================================
@@ -248,13 +284,18 @@ on_event( char *expression, BMContext *ctx )
 static int
 do_action( char *expression, BMContext *ctx )
 {
-	// fprintf( stderr, "do_action: do %s\n", expression );
+#ifdef DEBUG
+	fprintf( stderr, "do_action: do %s\n", expression );
+#endif
 	if ( !strcmp( expression, "exit" ) )
 		db_exit( ctx->db );
 	else if ( !strncmp( expression, "~(", 2 ) )
 		bm_release( expression+1, ctx );
 	else if ( strcmp( expression, "." ) )
 		bm_instantiate( expression, ctx );
+#ifdef DEBUG
+	fprintf( stderr, "do_action end\n" );
+#endif
 	return 1;
 }
 
@@ -269,6 +310,9 @@ do_input( char *expression, BMContext *ctx )
 	. reads input from stdin according to format
 */
 {
+#ifdef DEBUG
+	fprintf( stderr, "do_input bgn: %s\n", expression );
+#endif
 	/* extract args:{ expression(s) } and format
 	*/
 	listItem *args = NULL;
@@ -297,6 +341,9 @@ do_input( char *expression, BMContext *ctx )
 		*p = ':';
 		freePair( pair );
 	}
+#ifdef DEBUG
+	fprintf( stderr, "do_input end\n" );
+#endif
 	return retval;
 }
 
@@ -311,6 +358,9 @@ do_output( char *expression, BMContext *ctx )
 	then outputs expression(s) to stdout according to format
 */
 {
+#ifdef DEBUG
+	fprintf( stderr, "do_output bgn: %s\n", expression );
+#endif
 	expression++; // skipping the leading '>'
 
 	/* extracts format and args:{ expression(s) }
@@ -338,6 +388,9 @@ do_output( char *expression, BMContext *ctx )
 	/* cleanup
 	*/
 	freeListItem( &args );
+#ifdef DEBUG
+	fprintf( stderr, "do_output end\n" );
+#endif
 	return retval;
 }
 

@@ -1,8 +1,6 @@
 #ifndef DB_OP_H
 #define	DB_OP_H
 
-#include "macros.h"
-
 //===========================================================================
 //	core
 //===========================================================================
@@ -20,8 +18,16 @@ typedef enum {
 	DB_REHABILITATE_OP,
 	DB_REASSIGN_OP
 } DBOperation;
-void db_op( DBOperation op, CNInstance *e, CNDB *db );
+int db_op( DBOperation op, CNInstance *e, CNDB *db );
 int db_deprecatable( CNInstance *, CNDB * );
+
+void db_remove( CNInstance *, CNDB * );
+void db_deregister( CNInstance *, CNDB * );
+
+//===========================================================================
+//	debug
+//===========================================================================
+#include "db_debug.h"
 
 
 #endif	// DB_OP_H

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "macros.h"
+#include "pair.h"
 #include "string_util.h"
 #include "narrative.h"
 #include "narrative_private.h"
