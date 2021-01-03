@@ -2,7 +2,7 @@
 #		((identifier,%), (a,(b,...((%,id),...(z,'\0')))) )
 #		((base,%), ((%,identifier),'\0') )
 #	Assumed to be used in conjunction with schematize, as in
-#		./% -f Schemes/file schematize < input
+#		./%B -f Schemes/file schematize < input
 
 
 	((eee,%), {
