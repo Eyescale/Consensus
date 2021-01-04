@@ -38,7 +38,7 @@ $(TARGET): $(OBJS)
 	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
 	cp ../../Base/libcn.so .
 
-$(OBJS): $(OBJDIR)/%.o: %.c db_debug.c
+$(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:

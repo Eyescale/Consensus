@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "database.h"
 #include "db_op.h"
-#include "db_debug.h"
 
 // #define DEBUG
 
@@ -413,7 +412,7 @@ test_deprecate( char *src, CNInstance *e, CNDB *db )
 	case CN_RELEASED_TO_BE_MANIFESTED: // user conflict
 		fprintf( stderr, ">>>>>> B%%: Warning: %s: ", src );
 		db_output( stderr, "", e, db );
-		fprintf( stderr, " - type=%d", type );
+		fprintf( stderr, " - type=%d\n", type );
 		break;
 	case CN_MANIFESTED:
 	case CN_MANIFESTED_REASSIGNED:
