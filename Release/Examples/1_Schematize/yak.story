@@ -1,6 +1,6 @@
 /*
-	Usage: ./B% -f Scheme/file schematize < input
-	---------------------------------------------
+	Usage: ./B% -f Scheme/yak.example yak.story < input
+	---------------------------------------------------
 */
 	on init
 		// base rule definition must exist and have non-null schema
