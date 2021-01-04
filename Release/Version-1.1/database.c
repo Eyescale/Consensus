@@ -7,8 +7,8 @@
 
 // #define DEBUG
 // #define NULL_TERMINATED
-#define TEST_INSTANTIATE
-#define TEST_DEPRECATE
+// #define TEST_INSTANTIATE
+// #define TEST_DEPRECATE
 
 //===========================================================================
 //	newCNDB

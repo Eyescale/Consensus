@@ -23,7 +23,7 @@
 			in ( %?, READY )
 				on ( %?, READY )
 					in ((*,carry), . )
-						do ((*,input),*carry)
+						do ((*,input), *carry )
 						do ~( *, carry )
 					else do input:"%c"<
 				else on ((*,input), . )

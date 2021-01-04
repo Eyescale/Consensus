@@ -5,7 +5,13 @@
 #include "list.h"
 
 #define C 500
+#if 1
 static void **listItemCache = NULL;
+#else
+int cache_count = 0;
+void ** UniversalCache = NULL;
+#define listItemCache UniversalCache
+#endif
 
 listItem *
 newItem( void *ptr )

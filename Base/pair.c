@@ -5,7 +5,12 @@
 #include "pair.h"
 
 #define C 500
+#if 1
 static void **PairCache = NULL;
+#else
+extern void **UniversalCache;
+#define PairCache UniversalCache
+#endif
 
 Pair *
 newPair( void *name, void *value )
