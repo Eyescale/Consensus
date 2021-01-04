@@ -58,7 +58,7 @@ isanumber( char *p )
 int
 charscan( char *p, char *q )
 {
-	q[ MAXCHARSIZE ] = (char)0;
+	q[ MAXCHARSIZE ] = (char) 0;
 	switch ( *p ) {
 	case '\\':
 		switch ( p[1] ) {

@@ -150,12 +150,12 @@ bm_expand( char *expression, CNDB *db )
 {
 	char q[ MAXCHARSIZE + 1 ];
 	listItem *stack = NULL;
-	CNInstance *e=NULL, *mod=NULL, *bs=NULL, *f;
+	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
 	char *p = expression + 2;
 	for ( ; ; ) {
 		switch ( *p ) {
 		case ')':
-			e = db_register( "\0", db, 0 );
+			e = popListItem(&stack);
 			while (( f = popListItem(&stack) ))
 				e = db_couple( f, e, db );
 			goto RETURN;
@@ -175,18 +175,37 @@ bm_expand( char *expression, CNDB *db )
 			addItem( &stack, e );
 			if ( *p == '\'' ) p++;
 			break;
-		case '\\':
-			if ( strmatch( " 0", p[1] ) ) {
-				if ( bs == NULL ) bs = db_register( "\\", db, 0 );
-				switch ( p[1] ) {
-				case ' ': e = db_register( " ", db, 0 ); break;
-				case '0': e = db_register( "0", db, 0 ); break;
-				}
-				e = db_couple( bs, e, db );
-				addItem( &stack, e );
-				p+=2; break;
+		case ':':
+			if ( p[1]==')' )
+				e = db_register( "", db, 0 );
+			else {
+				charscan( p, q );
+				e = db_register( q, db, 0 );
 			}
-			// no break
+			addItem( &stack, e );
+			p++; break;
+		case '\\':
+			switch ( p[1] ) {
+			case '0':
+			case ' ':
+			case 'w':
+				if ( backslash == NULL ) {
+					backslash = db_register( "\\", db, 0 );
+				}
+				charscan( p+1, q );
+				e = db_register( q, db, 0 );
+				e = db_couple( backslash, e, db );
+				p+=2; break;
+			case ')':
+				charscan( p+1, q );
+				e = db_register( q, db, 0 );
+				p+=2; break;
+			default:
+				p += charscan( p, q );
+				e = db_register( q, db, 0 );
+			}
+			addItem( &stack, e );
+			break;
 		default:
 			p += charscan( p, q );
 			e = db_register( q, db, 0 );

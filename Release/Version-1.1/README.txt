@@ -15,7 +15,8 @@ Description
 
 	The first example will simply allow to apply a scheme:{ rule:{ schema } }
 	description onto an input stream, and output the result as the input events
-	encapsulated within the structure - aka. "segmentation".
+	encapsulated within the structure - process generally known as segmentation,
+	which we will refer to as schematization.
 
 	A later example will show how to convert such result from one structure
 	into another - be it internal data - thereby effectively performing
@@ -25,12 +26,13 @@ Contents
 	This release directory holds the latest source code for this version (under
 	development).
 
-	The /Base/Release/Examples/Yak directory holds the yak.story example which
-	was the prime objective of this release.
 	The ./design sub-directory holds both external and internal specifications,
 	as well as documentation for this release.
+	The ./design/yak.story file is a prototype, in B% pseudo-code, of the first
+        targeted implementation - the fully functional, final implementation of which
+	can be found under the Release/Examples/1_Schematize directory of this site.
 	The ./design/schema-fork-on-completion .jpg and .txt files describe the
-	entity behavior & relationship model (EBRM) underlying that example.
+	entity behavior & relationship model (EBRM) underlying that design.
 
 	More contents will be provided as work progresses. Watch out for updates
 	below in order to track the release status.

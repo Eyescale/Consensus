@@ -3,7 +3,7 @@
 		( world, { titi, toto } )
 	} ))	#extraneous ')'
 #comment
-	(:asdlk\0%identifier'titi)
+	(:asdl:k\0%identifier'titi:)
 	((ti	#incomplete
 	tata
 	((*,titi),toto)	#comment

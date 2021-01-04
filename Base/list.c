@@ -1,34 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "cache.h"
 #include "list.h"
 
-#define RECYCLE
 #define C 500
-static listItem *freeItemList = NULL;
+static void **listItemCache = NULL;
 
 listItem *
 newItem( void *ptr )
 {
-        listItem *item;
-        if ( freeItemList == NULL ) {
-#ifdef RECYCLE
-		void **this = (void **) malloc(C*2*sizeof(void*));
-		this[ 1 ] = NULL;
-		for ( int i=C-1; (i--); ) {
-			this += 2;
-			this[ 1 ] = this-2;
-		}
-		item = (listItem *) this;
-		freeItemList = (listItem *) this[ 1 ];
-#else
-		item = malloc( sizeof( listItem ) );
-#endif
-	}
-        else {
-                item = freeItemList;
-                freeItemList = item->next;
-        }
+        listItem *item = (listItem *) allocate( &listItemCache, C );
         item->next = NULL;
         item->ptr = ptr;
         return item;
@@ -36,18 +18,7 @@ newItem( void *ptr )
 void
 freeItem( listItem *item )
 {
-#ifdef RECYCLE
-        item->next = freeItemList;
-        freeItemList = item;
-#else
-	if ( item == NULL ) {
-		fprintf( stderr, "freeItem: NULL\n" );
-		return;
-	}
-	item->ptr = NULL;
-	item->next = NULL;
-	free( item );
-#endif
+	recycle((void**) item, &listItemCache );
 }
 void
 clipItem( listItem **list, listItem *item )

@@ -4,7 +4,7 @@
 */
 	on init
 		// base rule definition must exist and have non-null schema
-		in (( base, % ), ~'\0' )
+		in (( Rule, base ), ( Schema, ~'\0' ))
 			do ((*,record), (record,*))
 			do ( *, input )	// required to catch EOF first frame
 			do INPUT
@@ -17,7 +17,7 @@
 		on ( INPUT ) // start base rule instance - feeding base
 			do (((rule,base), (']',(record,*))), base )
 			// instantiate & subscribe to feeder schemas
-			do (((schema, %((base,%),?:~'\0')), (']',(record,*))), \
+			do (((schema, %((Rule,base),(Schema,?:~'\0'))), (']',(record,*))), \
 				((rule,base), (']',(record,*))))
 		else in ?: %( ?:((rule,.),.), base )
 			in ( %?, READY )
@@ -150,12 +150,12 @@
 		in (((schema,.),.), r ): ~%(?,EXIT)
 			do ~( this )
 		else in ?: (((schema,.),.), r )
-			in %?: this // avoid race condition
+			in %?: this // not a MUST, but avoids race condition
 				do ~( r ) // all feeder schemas failed
 
 	else in r: ~%( ?, (((schema,.),.),.)): ~((.,base),.)
 		in ?: (((schema,.),.), r )
-			in %?: this // avoid race condition
+			in %?: this // see above
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
@@ -165,7 +165,7 @@
 				else do .EXIT // all successor schemas failed
 		else in .READY
 			on ((*,record), . )
-				do ~( .READY )
+				do ~( .READY ) // expecting TAKE from rule schemas
 		else on ~.
 			in .CYCLIC
 				do .EXIT
@@ -205,8 +205,8 @@
 			do .( '[', *record ) // TAKE unconsumed
 		else in ?: %((?,.): *position ) // expected @ current, not terminating position
 			in %?: ( %, . )
-				in %?: ( %, %((?,%),~'\0'))
-					in %?: ( %, %((?,%),'\0')) // FORK on null-schema
+				in %?: ( %, %((Rule,?),(Schema,~'\0')))
+					in %?: ( %, %((Rule,?),(Schema,'\0'))) // FORK on null-schema
 						do .(((schema, %((.,?):*position)), ('[',*record)), r )
 					in ?:((rule,%((.,?):%?)), ('[',*record)) // rule already instantiated
 						do ( %?, this )
@@ -214,13 +214,13 @@
 					else in ?:%((.,?):%?)
 						do (((rule,%?), ('[',*record)), this )
 						// instantiate & subscribe to feeder schemas
-						do (((schema, %((%?,%),?:~'\0')), ('[',*record)), \
+						do (((schema, %((Rule,%?),(Schema,?:~'\0'))), ('[',*record)), \
 							((rule,%?), ('[',*record)))
-				else in %?: ( %, %((?,%),'\0'))
+				else in %?: ( %, %((Rule,?),(Schema,'\0')))
 					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
 				else
-					in ?: %((.,?):%?): %( ?, % )
+					in ?: %((.,?):%?): %( Rule, ? )
 						do >"Error: Yak: rule '%_': no schema\n": %?
 					else do >"Error: Yak: rule '%_' not found\n": %((.,?):%?)
 					do .EXIT
@@ -257,8 +257,8 @@
 		in *position: '\0'
 			do .( ']', *record ) // TAKE consumed
 		else in ?: %((?,.):*position):( %, . )
-			in %?: ( %, %((?,%),~'\0'))
-				in %?: ( %, %((?,%),'\0')) // FORK on null-schema
+			in %?: ( %, %((Rule,?),(Schema,~'\0')))
+				in %?: ( %, %((Rule,?),(Schema,'\0'))) // FORK on null-schema
 					do .(((schema, %((.,?):*position)), (']',*record)), r )
 				in ?:((rule,%((.,?):%?)), (']',*record)) // rule already instantiated
 					do ( %?, this )
@@ -266,12 +266,12 @@
 				else in ?:%((.,?):%?)
 					do (((rule,%?), (']',*record)), this )
 					// instantiate & subscribe to feeder schemas
-					do (((schema, %((%?,%),?:~'\0')), (']',*record)), \
+					do (((schema, %((Rule,%?),(Schema,?:~'\0'))), (']',*record)), \
 						((rule,%?), (']',*record)))
-			else in %?: ( %, %((?,%),'\0'))
+			else in %?: ( %, %((Rule,?),(Schema,'\0')))
 				do ((*,position), %((.,?):*position))
 			else
-				in ?: %((.,?):%?): %( ?, % )
+				in ?: %((.,?):%?): %( Rule, ? )
 					do >"Error: Yak: rule '%_': no schema\n": %?
 				else do >"Error: Yak: rule '%_' not found\n": %((.,?):%?)
 				do .EXIT
