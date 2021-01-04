@@ -42,7 +42,7 @@
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, COMPLETE ) // all feeder schemas complete
 		else on ~( ((rule,.),.), base ) // FAIL
-			in *record: ~((record,*),.) // ungetc
+			in *record: ~((record,*),.) // not first input
 				do ((*,carry), %((.,?):*record))
 				do ((*,record), %((?,.):*record))
 			do ~( INPUT )
