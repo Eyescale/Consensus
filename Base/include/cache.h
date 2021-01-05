@@ -14,14 +14,14 @@ allocate( void ***Cache, const int size )
         	this = cache;
 	else {
 //		fprintf( stderr, "REALLOCATING: %d\n", cache_count++ );
-		this = (void **) malloc(size*2*sizeof(void*));
+		this = malloc(size*2*sizeof(void*));
 		this[ 1 ] = NULL;
 		for ( int i=size-1; (i--); ) {
 			this += 2;
 			this[ 1 ] = this-2;
 		}
 	}
-	*Cache = (void **) this[ 1 ];
+ 	*Cache = this[ 1 ];
 	return this;
 #else
 	return malloc(2*sizeof(void*));

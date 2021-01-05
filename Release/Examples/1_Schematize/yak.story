@@ -153,9 +153,9 @@
 			in %?: this // not a MUST, but avoids race condition
 				do ~( r ) // all feeder schemas failed
 
-	else in r: ~%( ?, (((schema,.),.),.)): ~((.,base),.)
+	else in r: ~((.,base),.): ~%( ?, (((schema,.),.),.))
 		in ?: (((schema,.),.), r )
-			in %?: this // see above
+			in %?: this // not a MUST, but avoids race condition
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
@@ -184,16 +184,16 @@
 		do .EXIT // feeder rule failed
 
 	else in .COMPLETE /* chill - so long as
-		   r's subscriber schema, or this schema (to allow left-recursion)
+		   r's subscriber schema, or, to allow left-recursion, this schema,
 		   has a successor starting at this schema's finishing (flag,frame)
-		   AND (right-recursive case) no later completion event occurs with
+		   AND (right-recursion case) no later completion event occurs with
 		   a sibling schema starting at the same (flag,frame)
 		*/
 		on ~( %(r,?), ((.,%(this,?)),.) )
 			in ( %(r,?), ((.,%(this,?)),.) )
 			else in ((.,%(this,?)), r ): ~this
 			else do .EXIT // defunct
-		on (((.,'\0'),.), r ) // right-recursive case
+		on (((.,'\0'),.), r ) // right-recursion case
 			in ((.,%(this:((.,?),.))), r ): ~this
 				do .EXIT // defunct
 	else in .READY
@@ -220,9 +220,7 @@
 					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
 				else
-					in ?: %((.,?):%?): %( Rule, ? )
-						do >"Error: Yak: rule '%_': no schema\n": %?
-					else do >"Error: Yak: rule '%_' not found\n": %((.,?):%?)
+					do >"Error: Yak: rule '%_' not found or invalid\n": %((.,?):%?)
 					do .EXIT
 			else in %?: ( '\\', . )
 				in %?: ( ., w )
@@ -271,9 +269,7 @@
 			else in %?: ( %, %((Rule,?),(Schema,'\0')))
 				do ((*,position), %((.,?):*position))
 			else
-				in ?: %((.,?):%?): %( Rule, ? )
-					do >"Error: Yak: rule '%_': no schema\n": %?
-				else do >"Error: Yak: rule '%_' not found\n": %((.,?):%?)
+				do >"Error: Yak: rule '%_' not found or invalid\n": %((.,?):%?)
 				do .EXIT
 		else do .READY
 	else on .( /[\[\]]/, . )

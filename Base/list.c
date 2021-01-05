@@ -72,11 +72,8 @@ listItem *
 lookupItem( listItem *list, void *ptr )
 {
 	for ( listItem *i = list; i!=NULL; i=i->next )
-	{
-		if ( i->ptr == ptr ) {
+		if ( i->ptr == ptr )
 			return i;
-		}
-	}
 	return NULL;
 }
 void

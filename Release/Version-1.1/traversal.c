@@ -327,7 +327,7 @@ fprintf( stderr, "\n" );
 		if ( x == NULL )
 			; // failed x->sub
 		else if ( exponent == NULL ) {
-			if (( lookupIfThere( trail, x )))
+			if (( lookupIfThere( trail, x ) ))
 				; // ward off doublons
 			else {
 				addIfNotThere( &trail, x );
