@@ -144,13 +144,14 @@ bm_substantiate( char *expression, CNDB *db )
 static CNInstance *
 bm_expand( char *expression, CNDB *db )
 /*
-	Assumption: expression = "(:ab...z)"
-	converts into (a,(b,...(z,'\0')))
+	Assumption: expression = (:ab...yz) resp. (:ab...z:)
+	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
 */
 {
 	char q[ MAXCHARSIZE + 1 ];
 	listItem *stack = NULL;
 	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
+	union { int value; char name[2]; } icast;
 	char *p = expression + 2;
 	for ( ; ; ) {
 		switch ( *p ) {
@@ -177,28 +178,26 @@ bm_expand( char *expression, CNDB *db )
 			break;
 		case ':':
 			if ( p[1]==')' )
-				e = db_register( "", db, 0 );
+				e = db_register( "\0", db, 0 );
 			else {
-				charscan( p, q );
-				e = db_register( q, db, 0 );
+				icast.value = p[ 0 ];
+				e = db_register( icast.name, db, 0 );
 			}
 			addItem( &stack, e );
 			p++; break;
 		case '\\':
-			switch ( p[1] ) {
+			switch (( icast.value = p[1] )) {
 			case '0':
 			case ' ':
 			case 'w':
 				if ( backslash == NULL ) {
 					backslash = db_register( "\\", db, 0 );
 				}
-				charscan( p+1, q );
-				e = db_register( q, db, 0 );
+				e = db_register( icast.name, db, 0 );
 				e = db_couple( backslash, e, db );
 				p+=2; break;
 			case ')':
-				charscan( p+1, q );
-				e = db_register( q, db, 0 );
+				e = db_register( icast.name, db, 0 );
 				p+=2; break;
 			default:
 				p += charscan( p, q );
@@ -207,9 +206,10 @@ bm_expand( char *expression, CNDB *db )
 			addItem( &stack, e );
 			break;
 		default:
-			p += charscan( p, q );
-			e = db_register( q, db, 0 );
+			icast.value = p[0];
+			e = db_register( icast.name, db, 0 );
 			addItem( &stack, e );
+			p++;
 		}
 	}
 RETURN:
