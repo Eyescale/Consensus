@@ -159,7 +159,10 @@
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
-		in .COMPLETE
+		on ( %?, this )
+			in this: ~%(?,CYCLIC) // instantiate rule schemas
+				do (((schema, %((Rule,%(((.,?),.):%?)),(Schema,?:~'\0'))), %((.,?):%?)), %? )
+		else in .COMPLETE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)
 				else do .EXIT // all successor schemas failed
@@ -211,11 +214,7 @@
 					in ?:((rule,%((.,?):%?)), ('[',*record)) // rule already instantiated
 						do ( %?, this )
 						do .CYCLIC
-					else in ?:%((.,?):%?)
-						do (((rule,%?), ('[',*record)), this )
-						// instantiate & subscribe to feeder schemas
-						do (((schema, %((Rule,%?),(Schema,?:~'\0'))), ('[',*record)), \
-							((rule,%?), ('[',*record)))
+					else do (((rule,%((.,?):%?)), ('[',*record)), this )
 				else in %?: ( %, %((Rule,?),(Schema,'\0')))
 					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
@@ -261,11 +260,7 @@
 				in ?:((rule,%((.,?):%?)), (']',*record)) // rule already instantiated
 					do ( %?, this )
 					do .CYCLIC
-				else in ?:%((.,?):%?)
-					do (((rule,%?), (']',*record)), this )
-					// instantiate & subscribe to feeder schemas
-					do (((schema, %((Rule,%?),(Schema,?:~'\0'))), (']',*record)), \
-						((rule,%?), (']',*record)))
+				else do (((rule,%((.,?):%?)), (']',*record)), this )
 			else in %?: ( %, %((Rule,?),(Schema,'\0')))
 				do ((*,position), %((.,?):*position))
 			else
