@@ -42,6 +42,7 @@ CNInstance * db_log( int first, int released, CNDB *, listItem ** );
 void db_update( CNDB * );
 int db_private( int privy, CNInstance *, CNDB * );
 int db_still( CNDB * );
+int db_in( CNDB * );
 int db_out( CNDB * );
 
 //===========================================================================

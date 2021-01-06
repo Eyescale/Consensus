@@ -22,16 +22,8 @@ newCNDB( void )
 	Registry *index = newRegistry( IndexedByCharacter );
 #endif
 	CNInstance *nil = cn_new( NULL, NULL );
-	CNDB *db = (CNDB *) newPair( nil, index );
-	char *p = strdup( "init" );
-#ifdef UNIFIED
-	CNInstance *init = cn_new( NULL, (CNInstance*) p );
-#else
-	CNInstance *init = cn_new( NULL, NULL );
-#endif
-	registryRegister( db->index, p, init );
-	cn_new( nil, init );
-	return db;
+	nil->sub[ 0 ] = nil; // init condition
+	return (CNDB *) newPair( nil, index );
 }
 
 //===========================================================================

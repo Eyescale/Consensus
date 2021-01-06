@@ -4,7 +4,7 @@
 #include "cache.h"
 #include "list.h"
 
-#define C 500
+#define C 1500
 #if 1
 static void **listItemCache = NULL;
 #else

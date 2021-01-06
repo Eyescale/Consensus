@@ -25,8 +25,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil, *f, *g;
 	switch ( op ) {
 	case DB_EXIT_OP:
-		if ( db_out(db) ) return -1;
-		cn_new( nil, nil );
+		nil->sub[ 1 ] = nil;
 		break;
 
 	case DB_DEPRECATE_OP:
@@ -142,6 +141,9 @@ db_update( CNDB *db )
 	return;
 #endif
 	CNInstance *nil = db->nil;
+	if ( nil->sub[ 0 ] == nil ) // remove init condition
+		nil->sub[ 0 ] = NULL;
+
 	CNInstance *f, *g, *x;
 	listItem *trash[ 2 ] = { NULL, NULL };
 #ifdef DEBUG
@@ -152,7 +154,7 @@ fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 		g = i->ptr;
 		if (( g->as_sub[ 1 ] )) continue; // to be manifested
 		x = g->sub[ 1 ]; // manifested candidate
-		if ( x==nil || x->sub[0]==nil || x->sub[1]==nil )
+		if ( x->sub[0]==nil || x->sub[1]==nil )
 			continue;
 		f = cn_instance( x, nil, 1 );
 		if (( f )) {
@@ -214,7 +216,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) continue; // to be released
 		x = f->sub[ 0 ]; // released candidate
-		if ( x==nil || x->sub[0]==nil || x->sub[1]==nil )
+		if ( x->sub[0]==nil || x->sub[1]==nil )
 			continue;
 		else {
 			db_remove( f, db );
@@ -462,12 +464,22 @@ db_still( CNDB *db )
 }
 
 //===========================================================================
+//	db_in
+//===========================================================================
+int
+db_in( CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	return ( nil->sub[ 0 ] == nil );
+}
+
+//===========================================================================
 //	db_out
 //===========================================================================
 int
 db_out( CNDB *db )
 {
 	CNInstance *nil = db->nil;
-	return !!( cn_instance( nil, nil, 1 ) );
+	return ( nil->sub[ 1 ] == nil );
 }
 

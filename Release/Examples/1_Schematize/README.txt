@@ -41,7 +41,7 @@ Example 1. rule with NULL schema
 	1: on 'g'
 		rule: pass = base
 			>>> schema: %really' 'good \0	started at (CONSUMED,0): really FAIL => FAIL
-				^
+				    ^
 			schema: %really' 'good \0	(forked) started at (CONSUMED,0): PASS
 				          ^
 		rule: really

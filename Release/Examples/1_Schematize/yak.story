@@ -16,7 +16,6 @@
 		%(((schema,.),.),.)
 		on ( INPUT ) // start base rule instance - feeding base
 			do (((rule,base), (']',(record,*))), base )
-			// instantiate & subscribe to feeder schemas
 			do (((schema, %((Rule,base),(Schema,?:~'\0'))), (']',(record,*))), \
 				((rule,base), (']',(record,*))))
 		else in ?: %( ?:((rule,.),.), base )
@@ -122,7 +121,7 @@
 				do ((*,f), %? )
 			else do ~( OUTPUT )
 	else on ~( OUTPUT )
-		// destroys the whole frame structure, including rule
+		// destroys the whole record§ structure, including rule
 		// and schema instances - all in ONE Consensus cycle
 		in *record:~(.,EOF)
 			do ~( record )

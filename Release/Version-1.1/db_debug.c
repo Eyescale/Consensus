@@ -35,7 +35,7 @@ cn_type( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
 		f = cn_instance( e, nil, 1 );
 		g = cn_instance( nil, e, 0 );
 	}
-	int type;
+	CNType type;
 	if ((f)) {
 		if ((f->as_sub[0])) {
 			if ((f->as_sub[1])) {
@@ -100,8 +100,7 @@ db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil;
 	switch ( op ) {
 	case DB_EXIT_OP:
-		if ( db_out(db) ) return -1;
-		cn_new( nil, nil );
+		nil->sub[ 1 ] = nil;
 		break;
 
 	case DB_MANIFEST_OP: // assumption: the entity was just created
@@ -249,10 +248,13 @@ db_update_debug( CNDB *db )
 {
 	Pair *pair;
 	CNInstance *e, *f, *g;
-	CNInstance *nil = db->nil;
 #ifdef DEBUG
 	fprintf( stderr, "db_update: bgn\n" );
 #endif
+	CNInstance *nil = db->nil;
+	if ( nil->sub[ 0 ] == nil ) // remove init condition
+		nil->sub[ 0 ] = NULL;
+
 	/* cache log, as: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
 	*/
 	listItem *log[ CN_DEFAULT ];
@@ -339,7 +341,7 @@ db_cache_log( CNDB *db, listItem **log )
 	for ( listItem *i=nil->as_sub[ 1 ]; i!=NULL; i=i->next ) {
 		f = i->ptr;
 		e = f->sub[ 0 ];
-		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
+		if ( e->sub[0]==nil || e->sub[1]==nil )
 			continue;
 		g = cn_instance( nil, e, 0 );
 		pair = newPair( f, g );
@@ -349,7 +351,7 @@ db_cache_log( CNDB *db, listItem **log )
 	for ( listItem *i=nil->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 		g = i->ptr;
 		e = g->sub[ 1 ];
-		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
+		if ( e->sub[0]==nil || e->sub[1]==nil )
 			continue;
 		if (( cn_instance( e, nil, 1 ) )) // already done
 			continue;
@@ -365,7 +367,7 @@ db_cache_log( CNDB *db, listItem **log )
 CNType
 test_instantiate( char *src, CNInstance *e, CNDB *db )
 {
-	int type = cn_type( NULL, e, NULL, db );
+	CNType type = cn_type( NULL, e, NULL, db );
 	switch( type ) {
 	case CN_PRIVATE:
 	case CN_RELEASED:
@@ -392,12 +394,12 @@ test_instantiate( char *src, CNInstance *e, CNDB *db )
 }
 
 //===========================================================================
-//	test_deprecatable
+//	test_deprecate
 //===========================================================================
 CNType
 test_deprecate( char *src, CNInstance *e, CNDB *db )
 {
-	int type = cn_type( NULL, e, NULL, db );
+	CNType type = cn_type( NULL, e, NULL, db );
 	switch( type ) {
 	case CN_PRIVATE:
 	case CN_RELEASED:

@@ -4,7 +4,7 @@
 #include "cache.h"
 #include "pair.h"
 
-#define C 500
+#define C 1500
 #if 1
 static void **PairCache = NULL;
 #else

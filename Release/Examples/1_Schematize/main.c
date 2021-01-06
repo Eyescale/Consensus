@@ -43,7 +43,7 @@ main( int argc, char *argv[] )
 		while ( cnOperate( story, db ) )
 			cnUpdate( db );
 	}
-	freeCNDB( db );
 	freeStory( story );
+	freeCNDB( db );
 }
 
