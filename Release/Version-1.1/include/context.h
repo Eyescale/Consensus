@@ -12,9 +12,9 @@ BMContext;
 BMContext *  newContext( CNNarrative *, CNInstance *, CNDB * );
 void	     freeContext( BMContext * );
 char *       bm_locate_mark( char *, listItem ** );
-listItem *   bm_push_mark( BMContext *, CNInstance * );	
-CNInstance * bm_pop_mark( BMContext * );
-CNInstance * lookup_mark_register( BMContext * );
+listItem *   bm_push_mark( BMContext *, int, void * );	
+void *	     bm_pop_mark( BMContext *, int );
+void *	     lookup_mark_register( BMContext *, int );
 CNInstance * bm_register( BMContext *, char * );
 CNInstance * bm_lookup( int privy, char *, BMContext * );
 

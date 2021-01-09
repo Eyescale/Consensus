@@ -6,7 +6,6 @@
 //===========================================================================
 CNInstance *cn_new( CNInstance *, CNInstance * );
 void cn_free( CNInstance * );
-CNInstance *cn_instance( CNInstance *, CNInstance *, int pivot );
 
 //===========================================================================
 //	operations (nil-based)
@@ -25,9 +24,8 @@ void db_remove( CNInstance *, CNDB * );
 void db_deregister( CNInstance *, CNDB * );
 
 //===========================================================================
-//	debug
+//	CNType, cn_instance and other operations (type-based)
 //===========================================================================
-#include "db_debug.h"
+#include "db_type.h"
 
-
-#endif	// DB_OP_H
+#endif // DB_OP_H

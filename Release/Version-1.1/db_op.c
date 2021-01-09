@@ -190,7 +190,6 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			cn_new( nil, x );
 		}
 	}
-	EMPTY_TRASH
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
@@ -263,8 +262,8 @@ fprintf( stderr, "\n" );
 	/* 1. remove e from the as_sub lists of its subs
 	*/
 	CNInstance *sub;
-	if (( sub = e->sub[0] )) removeItem( &sub->as_sub[0], e );
-	if (( sub = e->sub[1] )) removeItem( &sub->as_sub[1], e );
+	if (( sub=e->sub[0] )) remove_as_sub( e, &sub->as_sub[0], 0 );
+	if (( sub=e->sub[1] )) remove_as_sub( e, &sub->as_sub[1], 1 );
 
 	/* 2. nullify e as sub of its as_sub's
 	   note: these will be free'd as well, as e was deprecated
@@ -284,14 +283,14 @@ fprintf( stderr, "\n" );
 	/* 1. remove e from the as_sub lists of its subs
 	*/
 	CNInstance *sub;
-	if (( sub = e->sub[0] )) {
-		removeItem( &sub->as_sub[0], e );
-		removeItem( &e->sub[1]->as_sub[1], e );
+	if (( sub=e->sub[0] )) {
+		remove_as_sub( e, &sub->as_sub[0], 0 );
+		if (( sub=e->sub[1] )) remove_as_sub( e, &sub->as_sub[1], 1 );
 	}
 	else if (( sub = e->sub[1] )) {
 		Pair *pair = (Pair *) sub;
-		if (( pair->name )) removeItem((listItem **) pair->name, e );
-		if (( pair->value )) removeItem((listItem **) pair->value, e );
+		if (( pair->name )) remove_as_sub( e, (listItem **) pair->name, 0 );
+		if (( pair->value )) remove_as_sub( e, (listItem **) pair->value, 1 );
 		freePair( pair );
 	}
 
@@ -418,17 +417,21 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	. if privy==1 - traversing db_log( released, ... )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
+	. if privy==2 - traversing %!
+		returns 1 only if newborn to-be-released
+		returns 0 otherwise
 */
 {
 	CNInstance *nil = db->nil;
 	if ( e->sub[0]==nil || e->sub[1]==nil )
 		return 1;
+	if ( privy == 2 ) return 0;
 	CNInstance *f = cn_instance( e, nil, 1 );
 	if (( f )) {
-		if ( f->as_sub[ 0 ] ) // newborn or reassigned
-			return !( cn_instance( nil, e, 0 ) );
 		if ( f->as_sub[ 1 ] ) // to be released
-			return 0;
+			return !!f->as_sub[ 0 ]; // newborn
+		if ( f->as_sub[ 0 ] ) // newborn or reassigned
+			return !cn_instance( nil, e, 0 );
 		return !privy; // released
 	}
 	return 0;

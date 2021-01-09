@@ -12,16 +12,16 @@ LIBS = -lcn
 
 OBJDIR = .ofiles
 SRCS =	database.c \
-	db_debug.c \
 	db_io.c \
 	db_op.c \
+	db_type.c \
 	context.c \
 	expression.c \
 	narrative.c \
 	operation.c \
 	traversal.c
 
-CFLAGS = -O2
+CFLAGS = -O2 -DOPT
 #CFLAGS = -DDEBUG -DNULL_TERMINATED
 #CFLAGS = -O2 -DUNIFIED
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)

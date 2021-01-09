@@ -6,16 +6,17 @@
 #include "narrative.h"
 #include "narrative_private.h"
 
+#define FIRST		1
+#define DIRTY		2
+#define FILTERED	4
+#define SUB_EXPR	8
+#define MARKED		16
+#define PIPED		32
+
 //===========================================================================
 //	readStory
 //===========================================================================
-typedef struct {
-	listItem *first;
-	listItem *sub_level;
-	listItem *dirty;
-	listItem *marked;
-	listItem *occurrence;
-} ReadStoryStack; 
+static int filterable( CNString * );
 
 CNStory *
 readStory( char *path )
@@ -44,7 +45,7 @@ readStory( char *path )
 		return NULL;
 	}
 
-	ReadStoryStack stack;
+	struct { listItem *level, *first, *occurrence; } stack; 
 	memset( &stack, 0, sizeof(stack));
 	CNOccurrence *occurrence, *sibling;
 
@@ -54,12 +55,16 @@ readStory( char *path )
 		indent,
 		type,
 		typelse = 0,
-		first = 1,
-		dirty = 0,
 		informed = 0,
-		level = 0,
-		sub_level = -1,
-		marked = 0;
+		sub_bgn = 0,
+		level = 0;
+
+	int	first = FIRST,	// level-dependent information, all
+		dirty = 0,	// transported together on stack.first
+		filtered = 0,
+		sub_expr = 0,
+		marked = 0,
+		piped = 0;
 
 	CNStory *story = NULL;
 	CNNarrative *narrative = newNarrative();
@@ -97,9 +102,6 @@ readStory( char *path )
 			ons( " \t" )	do_( same )
 			ons( "(\n" )	do_( "^:_" )	REENTER
 							freeListItem( &stack.first );
-							freeListItem( &stack.dirty );
-							freeListItem( &stack.sub_level );
-							freeListItem( &stack.marked );
 							if ( add_narrative( &story, narrative ) ) {
 								freeListItem( &stack.occurrence );
 								narrative = newNarrative();
@@ -135,10 +137,7 @@ readStory( char *path )
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "_expr" )	REENTER
 							StringAppend( s, '%' );
-							add_item( &stack.sub_level, sub_level );
-							add_item( &stack.marked, marked );
-							marked = 0; // which it already is
-							sub_level = level;
+							sub_bgn = 1;
 							tab += tab_base;
 							type = EN;
 			end
@@ -255,45 +254,89 @@ readStory( char *path )
 					addItem( &stack.occurrence, occurrence );
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "expr_" )	REENTER
+		on_( '\n' )
+			if ( stack.level ) {
+				do_( "expr^" )
+			}
+			else {	do_( "expr_" )	REENTER }
 		on_( '>' )
 			if ( type==DO && !StringInformed(s) ) {
 				do_( ">" )	StringAppend( s, event );
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_OUTPUT : OUTPUT;
 			}
+		on_( '{' )
+			if ( type==DO && (level||(stack.level)) && !informed && !filtered && !sub_expr ) {
+				do_( same )	StringAppend( s, event );
+						add_item( &stack.level, level );
+						if ( piped ) first |= PIPED;
+						add_item( &stack.first, first );
+						first = FIRST; level=piped=0;
+			}
+		on_( '}' )
+			if ( informed && !level && (stack.level) ) {
+				do_( "}" )	StringAppend( s, event );
+						level = (int) popListItem( &stack.level );
+						first = (int) popListItem( &stack.first );
+						piped = first & PIPED;
+						first &= FIRST;
+			}
+		on_( '|' )
+			if ( type==DO && (level||(stack.level)) && !piped && informed && !filtered && !sub_expr ) {
+				do_( same )	StringAppend( s, event );
+						add_item( &stack.level, level );
+						level = informed = 0;
+						add_item( &stack.first, first );
+						first = FIRST; piped = PIPED;
+			}
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++;
 						StringAppend( s, event );
+						first |= dirty | filtered | sub_expr | marked | piped;
 						add_item( &stack.first, first );
-						add_item( &stack.dirty, dirty );
-						first = 1; dirty = informed = 0;
+						dirty = piped = 0;
+						for ( ; sub_bgn; sub_bgn=0 ) {
+							sub_expr = SUB_EXPR;
+							marked = 0;
+						}
+						first = FIRST; informed = 0;
 			}
 		on_( ',' )
-			if ( first && informed && ( level > 0 )) {
+			if ( level && first && informed ) {
 				do_( same )	StringAppend( s, event );
 						first = informed = 0;
 			}
-		on_( ':' )
-			if ( informed ) {
-				do_( ":" )	StringAppend( s, event );
+			else if ( stack.level && first && informed && !piped ) {
+				do_( same )	StringAppend( s, event );
 						informed = 0;
 			}
+		on_( ':' )
+			if ( informed && filterable(s) ) {
+				do_( ":" )	StringAppend( s, event );
+						filtered = FILTERED; informed = 0;
+			}
 		on_( ')' )
-			if ( informed && ( level > 0 )) {
+			if ( informed && piped ) {
+				do_( same )	REENTER
+						level = (int) popListItem( &stack.level );
+						first = (int) popListItem( &stack.first );
+						piped = 0;
+			}
+			else if ( level && informed ) {
 				do_( same )	level--;
 						StringAppend( s, event );
-						if ( sub_level == level ) {
-							sub_level = (int) popListItem( &stack.sub_level );
-							marked = (int) popListItem( &stack.marked );
-						}
 						first = (int) popListItem( &stack.first );
-						dirty = (int) popListItem( &stack.dirty );
-						dirty_go( &dirty, s );
+						dirty = first & DIRTY;
+						if ( dirty ) dirty_go( &dirty, s );
+						filtered = first & FILTERED;
+						sub_expr = first & SUB_EXPR;
+						marked = first & MARKED;
+						piped = first & PIPED;
+						first &= FIRST;
 			}
 		on_( '/' )
-			if ( !informed && type!=DO ) {
+			if ( type!=DO && !informed ) {
 				do_( "/" )	StringAppend( s, event );
 			}
 		on_( '~' ) if ( !informed ) {	do_( "~" ) }
@@ -306,6 +349,14 @@ readStory( char *path )
 		on_other
 			if ( !informed ) {	do_( "term" )	StringAppend( s, event ); }
 		end
+	in_( "expr^" ) bgn_
+		on_( '#' )	do_( "_^#" )
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( "_^#" ) bgn_
+			on_( '\n' )	do_( "expr" )
+			on_other	do_( same )
+			end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' )	do_( ">:" )	StringAppend( s, event );
@@ -315,6 +366,7 @@ readStory( char *path )
 			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( "expr_" )	REENTER
 							informed = 1;
+			ons( "{}" )	; //err
 			on_other	do_( "expr" )	REENTER
 			end
 		in_( ">\"" ) bgn_
@@ -333,9 +385,14 @@ readStory( char *path )
 			on_( '\n' )	do_( "expr_" )	REENTER
 							informed = 1;
 			end
+	in_( "}" ) bgn_
+		ons( " \t" )	do_( same )
+		ons( ",)" )	do_( "expr" )	REENTER
+		end
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
+		ons( "{}" )	; //err
 		on_other	do_( "expr" )	REENTER
 						StringAppend( s, '~' );
 		end
@@ -343,13 +400,10 @@ readStory( char *path )
 		ons( " \t" )	do_( "%_" )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						informed = 1;
-		on_( '?' )	do_( "expr" )	StringAppend( s, '?' );
+		ons( "?!" )	do_( "expr" )	StringAppend( s, event );
 						informed = 1;
 		on_( '(' )	do_( "expr" )	REENTER
-						add_item( &stack.sub_level, sub_level );
-						add_item( &stack.marked, marked );
-						sub_level = level;
-						marked = 0;
+						sub_bgn=1;
 		end
 		in_( "%_" ) bgn_
 			ons( " \t" )	do_( same )
@@ -360,6 +414,7 @@ readStory( char *path )
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						informed = 1;
+		ons( "{}" )	; //err
 		on_other	do_( "expr" )	REENTER
 		end
 	in_( "?" ) bgn_
@@ -368,16 +423,16 @@ readStory( char *path )
 			if ( !StringInformed(s) && ( type==IN || type==ON )) {
 				do_( "expr" )	s_add( s, "?:" );
 			}
-			else if ( stack.sub_level && !marked ) {
+			else if ( sub_expr && !marked ) {
 				do_( "expr" )	REENTER
 						StringAppend( s, '?' );
-						marked = informed = 1;
+						marked = MARKED; informed = 1;
 			}
 		ons( ",)\n" )
-			if ( stack.sub_level && !marked ) {
+			if ( sub_expr && !marked ) {
 				do_( "expr" )	REENTER
 						StringAppend( s, '?' );
-						marked = informed = 1;
+						marked = MARKED; informed = 1;
 			}
 		end
 	in_( ":" ) bgn_
@@ -431,7 +486,7 @@ readStory( char *path )
 			else {	do_( "expr" )	REENTER }
 		on_separator	; // err
 		on_other
-			if ( type==PROTO && !(stack.sub_level) && strmatch( "(,", StringAt(s) ) ) {
+			if ( type==PROTO && !sub_expr && strmatch( "(,", StringAt(s) ) ) {
 				do_( "expr" )	REENTER
 						StringAppend( s, '.' );
 			}
@@ -502,12 +557,13 @@ readStory( char *path )
 		on_( '\n' )
 			if ( level || !informed ) ; // err
 			else if ( type==PROTO && proto_set( narrative, s )) {
-				do_( "base" )	informed = 0;
+				do_( "base" )	informed = filtered = 0;
 						tab_base = 0; last_tab = -1;
 			}
 			else {
 				do_( "base" )	occurrence_set( stack.occurrence->ptr, s );
-						typelse = tab = informed = 0;
+						informed = filtered = 0;
+						typelse = tab = 0;
 			}
 		end
 
@@ -557,9 +613,7 @@ readStory( char *path )
 
 	freeListItem( &stack.occurrence );
 	freeListItem( &stack.first );
-	freeListItem( &stack.dirty );
-	freeListItem( &stack.sub_level );
-	freeListItem( &stack.marked );
+	freeListItem( &stack.level );
 	if ( narrative == NULL ) {
 		while (( narrative = popListItem( &story ) ))
 			freeNarrative( narrative );
@@ -575,6 +629,35 @@ readStory( char *path )
 	}
 	freeString( s );
 	return story;
+}
+
+static int
+filterable( CNString *string )
+/*
+	Assumption: string is informed
+	For now we don't allow expressions involving { } to be filtered
+	as this would require bm_verify() to handle { }
+*/
+{
+	int level = 0;
+	// Reminder: we walk string backwards
+	for ( listItem *i=string->data; i!=NULL; i=i->next ) {
+		int event = (int) i->ptr;
+		switch ( event ) {
+		case ')': level++; break;
+		case '(':
+			if ( !level ) return 1;
+			level--; break;
+		case '|':
+		case ':':
+		case ',':
+			if ( !level ) return 1;
+			break;
+		case '}':
+			return 0;
+		}
+	}
+	return 1;
 }
 
 //===========================================================================
@@ -906,12 +989,14 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 	CNOccurrence *occurrence = narrative->root;
 
 	listItem *i = newItem( occurrence ), *stack = NULL;
+#define TAB( level ) \
+	for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		CNOccurrenceType type = occurrence->type;
 		char *expression = occurrence->data->expression;
 
-		for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
+		TAB( level );
 		switch ( type ) {
 		case ELSE:
 			fprintf( stream, "else\n" );
@@ -945,9 +1030,44 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 			fprintf( stream, "%s\n", expression );
 			break;
 		case DO:
+		case ELSE_DO:
+			fprintf( stream, "do " );
+			listItem *base=NULL; int count;
+			for ( char *p=expression; *p; p++ ) {
+				switch ( *p ) {
+				case '{':
+					add_item( &base, level );
+					level++; count=0;
+					fprintf( stream, "{\n" );
+					TAB( level );
+					break;
+				case '}':
+					level = (int) popListItem( &base );
+					fprintf( stream, "}" );
+					break;
+				case '(':
+					count++;
+					fprintf( stream, "%c", *p );
+					break;
+				case ')':
+					count--;
+					fprintf( stream, "%c", *p );
+					break;
+				case ',':
+					fprintf( stream, "%c", *p );
+					if ( base && !count ) {
+						fprintf( stream, "\n" );
+						TAB( level );
+					}
+					break;
+				default:
+					fprintf( stream, "%c", *p );
+				}
+			}
+			fprintf( stream, "\n" );
+			break;
 		case INPUT:
 		case OUTPUT:
-		case ELSE_DO:
 		case ELSE_INPUT:
 		case ELSE_OUTPUT:
 			fprintf( stream, "do %s\n", expression );
@@ -1031,7 +1151,7 @@ occurrence_set( CNOccurrence *occurrence, CNString *s )
 static void
 dirty_set( int *dirty, CNString *s )
 {
-	*dirty = 1;
+	*dirty = DIRTY;
 	s_add( s, "(this," );
 }
 static void

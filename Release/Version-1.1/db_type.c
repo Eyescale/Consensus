@@ -240,6 +240,17 @@ static void db_cache_log( CNDB *db, listItem **log );
 #define DBUpdateEnd \
 	}
 
+#define TRASH( x ) \
+	if (( x->sub[0] )) addItem( &trash[0], x ); \
+	else addItem( &trash[1], x );
+#define EMPTY_TRASH \
+	while (( e = popListItem( &trash[0] ) )) \
+		db_remove( e, db ); \
+	while (( e = popListItem( &trash[1] ) )) { \
+		db_deregister( e, db ); \
+		db_remove( e, db ); \
+	}
+
 void
 db_update_debug( CNDB *db )
 /*
@@ -248,8 +259,9 @@ db_update_debug( CNDB *db )
 {
 	Pair *pair;
 	CNInstance *e, *f, *g;
+	listItem *trash[ 2 ] = { NULL, NULL };	
 #ifdef DEBUG
-	fprintf( stderr, "db_update: bgn\n" );
+	fprintf( stderr, "db_update_debug: bgn\n" );
 #endif
 	CNInstance *nil = db->nil;
 	if ( nil->sub[ 0 ] == nil ) // remove init condition
@@ -260,6 +272,7 @@ db_update_debug( CNDB *db )
 	listItem *log[ CN_DEFAULT ];
 	memset( log, 0, sizeof(log) );
 	db_cache_log( db, log );
+
 #ifdef DEBUG
 fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 #endif
@@ -286,9 +299,13 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 		db_remove( f->as_sub[1]->ptr, db );
 		db_remove( f->as_sub[0]->ptr, db );
 		db_remove( f, db );
+#ifdef OPT
+		TRASH( e );
+#else
 		if ( e->sub[0]==NULL )
 			db_deregister( e, db );
 		db_remove( e, db );
+#endif
 	DBUpdateEnd
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
@@ -309,10 +326,17 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 	*/
 	DBUpdateBegin( CN_RELEASED );
 		db_remove( f, db );
+#ifdef OPT
+		TRASH( e );
+#else
 		if ( e->sub[0]==NULL )
 			db_deregister( e, db );
 		db_remove( e, db );
+#endif
 	DBUpdateEnd
+#ifdef OPT
+	EMPTY_TRASH
+#endif
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
@@ -326,7 +350,7 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 		db_remove( f->as_sub[1]->ptr, db );
 	DBUpdateEnd
 #ifdef DEBUG
-	fprintf( stderr, "db_update: end\n" );
+	fprintf( stderr, "db_update_debug: end\n" );
 #endif
 }
 static void
@@ -359,7 +383,6 @@ db_cache_log( CNDB *db, listItem **log )
 		addItem( &log[ cn_type(e,f,g,db) ], newPair( e, pair ));
 	}
 }
-
 
 //===========================================================================
 //	test_instantiate

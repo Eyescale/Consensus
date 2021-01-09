@@ -7,9 +7,9 @@
 //	expression traversal
 //===========================================================================
 typedef enum {
-        BM_CONDITION,
-        BM_INSTANTIATED,
-        BM_RELEASED
+        BM_CONDITION = 0,
+        BM_RELEASED,
+        BM_INSTANTIATED
 } BMLogType;
 int bm_feel( char *expression, BMContext *, BMLogType );
 
@@ -19,6 +19,18 @@ enum {
 };
 typedef int BMTraverseCB( CNInstance *, BMContext *, void * );
 int bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
+
+//===========================================================================
+//	target acquisition (internal)
+//===========================================================================
+#define QMARK		1
+#define IDENTIFIER	2
+#define CHARACTER	4
+#define	MOD		8
+#define	STAR		16
+#define EMARK		32
+
+int xp_acq( char *expression, int target );
 
 
 #endif	// TRAVERSAL_H

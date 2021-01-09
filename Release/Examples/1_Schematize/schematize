@@ -15,10 +15,10 @@
 	else in INPUT
 		%(((schema,.),.),.)
 		on ( INPUT ) // start base rule instance - feeding base
-			do (((rule,base), (']',(record,*))), base )
-			// instantiate & subscribe to feeder schemas
-			do (((schema, %((base,%),?:~'\0')), (']',(record,*))), \
-				((rule,base), (']',(record,*))))
+			do ( ((rule,base), (']',(record,*))) | {
+				(((schema, %((base,%),?:~'\0')), %((.,?):%!)), %! ),
+				( %!, base )
+			} )
 		else in ?: %( ?:((rule,.),.), base )
 			in ( %?, READY )
 				on ( %?, READY )
@@ -37,8 +37,8 @@
 				on ~(((schema,.),.),.)
 				else on ~((rule,.),.)
 				else do ~( INPUT )
-			else in (((schema,.),.),%?):~%(?,COMPLETE)
-				in (((schema,.),.),%?):~%(?,COMPLETE):~%(?,READY)
+			else in (((schema,.),.),%?): ~%(?,COMPLETE)
+				in (((schema,.),.),%?): ~%(?,COMPLETE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, COMPLETE ) // all feeder schemas complete
 		else on ~( ((rule,.),.), base ) // FAIL
@@ -158,10 +158,7 @@
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
-		on ( %?, this )
-			in this: ~%(?,CYLIC) // instantiate rule schemas
-				do (((schema, %((%(((.,?),.):%?), % ),?:~'\0')), %((.,?):%?)), %? )
-		else in .COMPLETE
+		in .COMPLETE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)
 				else do .EXIT // all successor schemas failed
@@ -213,7 +210,11 @@
 					in ?: ((rule,%((.,?):%?)), ('[',*record)) // rule already instantiated
 						do ( %?, this )
 						do .CYCLIC
-					else do (((rule,%((.,?):%?)), ('[',*record)), this )
+					else in ?: %((.,?):%?)
+						do ( ((rule,%?), ('[',*record)) | {
+							(((schema, %((%?,%),?:~'\0')), %((.,?):%!)), %! ),
+							( %!, this )
+						} )
 				else in %?: ( %, %((?,%),'\0'))
 					do ((*,position), %((.,?):*position))
 					do ((*,event), *event ) // REENTER
@@ -259,7 +260,11 @@
 				in ?: ((rule,%((.,?):%?)), (']',*record)) // rule already instantiated
 					do ( %?, this )
 					do .CYCLIC
-				else do (((rule,%((.,?):%?)), (']',*record)), this )
+				else in ?: %((.,?):%?)
+					do ( ((rule,%?), (']',*record)) | {
+						(((schema, %((%?,%),?:~'\0')), %((.,?):%!)), %! ),
+						( %!, this )
+					} )
 			else in %?: ( %, %((?,%),'\0'))
 				do ((*,position), %((.,?):*position))
 			else

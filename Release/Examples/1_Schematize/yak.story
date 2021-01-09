@@ -36,8 +36,8 @@
 				on ~(((schema,.),.),.)
 				else on ~((rule,.),.)
 				else do ~( INPUT )
-			else in (((schema,.),.),%?):~%(?,COMPLETE)
-				in (((schema,.),.),%?):~%(?,COMPLETE):~%(?,READY)
+			else in (((schema,.),.),%?): ~%(?,COMPLETE)
+				in (((schema,.),.),%?): ~%(?,COMPLETE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, COMPLETE ) // all feeder schemas complete
 		else on ~( ((rule,.),.), base ) // FAIL

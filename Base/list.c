@@ -1,22 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cache.h"
 #include "list.h"
+#include "cache.h"
 
-#define C 1500
-#if 1
-static void **listItemCache = NULL;
+#ifdef UCACHE
+#define listItemCache UCache
 #else
-int cache_count = 0;
-void ** UniversalCache = NULL;
-#define listItemCache UniversalCache
+static void **listItemCache = NULL;
 #endif
 
 listItem *
 newItem( void *ptr )
 {
-        listItem *item = (listItem *) allocate( &listItemCache, C );
+        listItem *item = (listItem *) allocate( &listItemCache );
         item->next = NULL;
         item->ptr = ptr;
         return item;
@@ -56,6 +53,9 @@ add_item( listItem **list, int value )
 }
 void
 removeItem( listItem **list, void *ptr )
+/*
+	Assumption: list has no doublon
+*/
 {
 	listItem *last_i=NULL, *next_i;
 	for ( listItem *i=*list; i!=NULL; i=next_i )
@@ -67,6 +67,12 @@ removeItem( listItem **list, void *ptr )
 		}
 		else last_i = i;
 	}
+#ifdef DEBUG
+	if (( lookupItem( *list, ptr ) )) {
+		fprintf( stderr, ">>>>> B%%: Error: removeItem(): doublon\n" );
+		exit( -1 );
+	}
+#endif
 }
 listItem *
 lookupItem( listItem *list, void *ptr )
@@ -114,12 +120,9 @@ addIfNotThere( listItem **list, void *ptr )
 listItem *
 lookupIfThere( listItem *list, void *ptr )
 {
-        listItem *last_i = NULL, *next_i;
-        for ( listItem *i=list; i!=NULL; i=next_i ) {
+        for ( listItem *i=list; i!=NULL; i=i->next ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
-		next_i = i->next;
                 if ( comparison < 0 ) {
-                        last_i = i;
                         continue;
                 }
                 else if ( comparison == 0 ) {

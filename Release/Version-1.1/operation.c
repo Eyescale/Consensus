@@ -55,7 +55,6 @@ cnOperate( CNStory *story, CNDB *db )
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate bgn\n" );
 #endif
-
 	/* separate narratives into active (base) and tbd
 	*/
 	OperateData data;
@@ -75,10 +74,9 @@ cnOperate( CNStory *story, CNDB *db )
 	*/
 	BMContext *ctx = newContext( NULL, NULL, db );
 	while (( n = popListItem( &data.active ) )) {
-		char *proto = n->proto;
-		if (( proto )) {
-			data.n = n;
-			bm_traverse( proto, ctx, operate_CB, &data );
+		data.n = n;
+		if (( n->proto )) {
+			bm_traverse( n->proto, ctx, operate_CB, &data );
 		}
 		else operate( n, ctx, &data );
 	}
@@ -154,7 +152,7 @@ operate( CNNarrative *narrative, BMContext *ctx, OperateData *data )
 		}
 		for ( ; ; ) {
 			if (( marked )) {
-				bm_pop_mark( ctx );
+				bm_pop_mark( ctx, '?' );
 				marked = 0;
 			}
 			if (( i->next )) {

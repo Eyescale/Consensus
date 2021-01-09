@@ -12,8 +12,8 @@
 //===========================================================================
 //	bm_feel
 //===========================================================================
-static char *xp_init( BMTraverseData *, char *, BMContext *, int );
-static int xp_release( BMTraverseData * );
+static char *xp_init( BMTraverseData *, char *, BMContext *, BMLogType );
+static void xp_release( BMTraverseData * );
 static int xp_verify( CNInstance *, BMTraverseData * );
 
 int
@@ -23,52 +23,29 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 		return bm_traverse( expression, ctx, NULL, NULL );
 
 	BMTraverseData data;
-	int privy = ( type == BM_RELEASED );
-	expression = xp_init( &data, expression, ctx, privy );
-	if ( expression == NULL ) return 0;
+	expression = xp_init( &data, expression, ctx, type );
+	if ( !expression ) return 0;
 
 	int success = 0;
 	CNDB *db = ctx->db;
 	listItem *s = NULL;
+	int privy = data.privy;
 	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
 		if ( xp_verify( e, &data ) ) {
 			if ( !strncmp(data.expression,"?:",2) )
-				bm_push_mark( data.ctx, e );
+				bm_push_mark( data.ctx, '?', e );
 			freeListItem( &s );
 			success = 1;
 			break;
 		}
 	}
-	xp_release( &data );
+	// xp_release( &data ); // nothing to release here
 	return success;
-}
-
-static char *
-xp_init( BMTraverseData *data, char *expression, BMContext *ctx, int privy )
-{
-	if (!((expression) && (*expression)) ) return NULL;
-	memset( data, 0, sizeof(BMTraverseData));
-	data->privy = privy;
-	data->expression = expression;
-	data->ctx = ctx;
-	CNDB *db = ctx->db;
-	data->empty = db_is_empty( privy, db );
-	data->star = db_lookup( privy, "*", db );
-	return strncmp( expression, "?:", 2 ) ? expression : expression+2;
-}
-
-static int
-xp_release( BMTraverseData *data )
-{
-	if (( data->pivot )) freePair( data->pivot );
-	freeListItem( &data->exponent );
-	return 0;
 }
 
 //===========================================================================
 //	bm_traverse
 //===========================================================================
-static char *bm_locate( char *expression, listItem **exponent );
 static int xp_traverse( BMTraverseData * );
 static int traverse_CB( CNInstance *e, BMTraverseData *data );
 
@@ -85,30 +62,17 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 #ifdef DEBUG
 	fprintf( stderr, "BM_TRAVERSE: %s\n", expression );
 #endif
+	int success;
 	BMTraverseData data;
-	expression = xp_init( &data, expression, ctx, 0 );
-	if (( expression )) {
-		char *p = bm_locate( expression, &data.exponent );
-		if (( p )) {
-			CNInstance *x = bm_lookup( 0, p, ctx );
-			if (( x )) data.pivot = newPair( p, x );
-			else return xp_release( &data );
-		}
-		data.user_CB = user_CB;
-		data.user_data = user_data;
-	}
-	else {
-#ifdef DEBUG
-		fprintf( stderr, "BM_TRAVERSE: failed\n" );
-#endif
-		return 0;
-	}
+	expression = xp_init( &data, expression, ctx, BM_CONDITION );
+	if ( !expression ) return 0;
 
-	int success = 0;
-	if (( data.pivot )) {
+	data.user_CB = user_CB;
+	data.user_data = user_data;
+	if (( data.pivot ))
 		success = xp_traverse( &data );
-	}
 	else {
+		success = 0;
 		CNDB *db = ctx->db;
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
@@ -120,8 +84,9 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 		}
 	}
 	xp_release( &data );
+
 #ifdef DEBUG
-	fprintf( stderr, "BM_TRAVERSE: end\n" );
+	fprintf( stderr, "BM_TRAVERSE: success=%d\n", success );
 #endif
 	return success;
 }
@@ -130,17 +95,66 @@ static int
 traverse_CB( CNInstance *e, BMTraverseData *data )
 {
 	BMContext *ctx = data->ctx;
-	if ( !xp_verify( e, data ) ) {
+	if ( !xp_verify( e, data ) )
 		return BM_CONTINUE;
-	}
-	else if ( data->user_CB ) {
+	else if ( data->user_CB )
 		return data->user_CB( e, ctx, data->user_data );
-	}
 	else {
 		if ( !strncmp( data->expression, "?:", 2 ) )
-			bm_push_mark( ctx, e );
+			bm_push_mark( ctx, '?', e );
 		return BM_DONE;
 	}
+}
+
+//===========================================================================
+//	xp_init, xp_release
+//===========================================================================
+static char *bm_locate( char *expression, listItem **exponent );
+
+static char *
+xp_init( BMTraverseData *data, char *expression, BMContext *ctx, BMLogType type )
+{
+	if ( !expression || !*expression ) return NULL;
+	memset( data, 0, sizeof(BMTraverseData));
+	data->expression = expression;
+	if ( !strncmp( expression, "?:", 2 ) )
+		expression += 2;
+	int privy;
+	char *p;
+	switch ( type ) {
+	case BM_CONDITION:
+		if (( p = bm_locate( expression, &data->exponent ) )) {
+			CNInstance *x = bm_lookup( 0, p, ctx );
+			if (( x )) data->pivot = newPair( p, x );
+			else {
+				freeListItem( &data->exponent );
+				return NULL;
+			}
+			privy = !strncmp( p, "%!", 2 ) ? 2 : 0;
+		}
+		else privy = 0;
+		break;
+	case BM_INSTANTIATED:
+		privy = 0;
+		break;
+	case BM_RELEASED:
+		privy = 1;
+		break;
+	}
+	data->privy = privy;
+	data->ctx = ctx;
+	CNDB *db = ctx->db;
+	data->empty = db_is_empty( privy, db );
+	data->star = db_lookup( privy, "*", db );
+	return expression;
+}
+
+static void
+xp_release( BMTraverseData *data )
+{
+	Pair *pivot = data->pivot;
+	if (( pivot )) freePair( pivot );
+	freeListItem( &data->exponent );
 }
 
 //===========================================================================
@@ -149,44 +163,40 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 static char *
 bm_locate( char *expression, listItem **exponent )
 /*
-	returns first term which is not a wildcard and is not negated,
-	with corresponding exponent (in reverse order).
+	returns first term (according to prioritization) which
+	is not a wildcard and is not negated, with corresponding
+	exponent (in reverse order).
 */
 {
-	struct {
-		listItem *not;
-		listItem *tuple;
-		listItem *level;
-		listItem *premark;
-	} stack;
+	int target = xp_acq( expression, QMARK );
+	if ( target == 0 ) return NULL;
+	else target =	( target & QMARK ) ? QMARK :
+			( target & IDENTIFIER ) ? IDENTIFIER :
+			( target & MOD ) ? MOD :
+			( target & CHARACTER ) ? CHARACTER :
+			( target & STAR ) ? STAR :
+			( target & EMARK ) ? EMARK : 0;
+
+	struct { listItem *flags, *level, *premark; } stack;
 	memset( &stack, 0, sizeof(stack) );
-
-	listItem *level = NULL,
-		*mark_exp = NULL,
-		*star_exp = NULL;
-
-	int	scope = 1,
-		identifier = 0,
+	listItem *level = NULL, *mark_exp = NULL;
+	int	scope = 0, done = 0,
 		tuple = 0, // default is singleton
 		not = 0;
-
-	char *star_p = NULL, *p = expression;
-	while ( *p && scope ) {
+	char *	p = expression;
+	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
 			not = !not;
 			p++; break;
 		case '*':
-			if ( !(star_exp) && !not ) {
-				// save star in case we cannot find identifier
+			if ( !not && target==STAR ) {
 				if ( p[1] && !strmatch( ":,)", p[1] ) ) {
-					xpn_add( &star_exp, AS_SUB, 0 );
-					xpn_add( &star_exp, AS_SUB, 0 );
-					xpn_add( &star_exp, SUB, 1 );
+					xpn_add( exponent, SUB, 1 );
+					xpn_add( exponent, AS_SUB, 0 );
+					xpn_add( exponent, AS_SUB, 0 );
 				}
-				for ( listItem *i=*exponent; i!=NULL; i=i->next )
-					addItem( &star_exp, i->ptr );
-				star_p = p;
+				done=2; break;
 			}
 			// apply dereferencing operator to whatever comes next
 			if ( p[1] && !strmatch( ":,)", p[1] ) ) {
@@ -196,59 +206,63 @@ bm_locate( char *expression, listItem **exponent )
 			}
 			p++; break;
 		case '%':
-			if ( !strncmp( p, "%?", 2 ) ) {
-				if ( not ) p+=2;
-				else scope = 0;
+			if ( p[1]=='?' ) {
+				if ( !not && target==QMARK ) { done=2; break; }
+				p+=2; break;
+			}
+			else if ( p[1]=='!' ) {
+				if ( !not && target==EMARK ) { done=2; break; }
+				p+=2; break;
 			}
 			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				if ( not ) p++;
-				else scope = 0;
+				if ( !not && target==MOD ) { done=2; break; }
+				p++; break;
 			}
 			else { bm_locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
 			scope++;
-			add_item( &stack.tuple, tuple );
-			tuple = !p_single( p );
+			add_item( &stack.flags, not|tuple );
+			tuple = ( p_single(p) ? 0 : 2 );
 			if (( mark_exp )) {
-				tuple |= 2;
+				tuple |= 4;
 				addItem( &stack.premark, *exponent );
 				do addItem( exponent, popListItem( &mark_exp ));
 				while (( mark_exp ));
 			}
-			if ( tuple & 1 ) {	// not singleton
+			if ( tuple & 2 ) { // not singleton
 				xpn_add( exponent, AS_SUB, 0 );
 			}
 			addItem( &stack.level, level );
 			level = *exponent;
-			add_item( &stack.not, not );
 			p++; break;
 		case ':':
 			while ( *exponent != level )
 				popListItem( exponent );
 			p++; break;
 		case ',':
-			if ( scope == 1 ) { scope=0; break; }
+			if ( !scope ) { done=1; break; }
 			while ( *exponent != level )
 				popListItem( exponent );
 			xpn_set( *exponent, AS_SUB, 1 );
 			p++; break;
 		case ')':
+			if ( !scope ) { done=1; break; }
 			scope--;
-			if ( !scope ) break;
-			not = (int) popListItem( &stack.not );
-			if ( tuple & 1 ) {	// not singleton
+			if ( tuple & 2 ) {	// not singleton
 				while ( *exponent != level )
 					popListItem( exponent );
 				popListItem( exponent );
 			}
 			level = popListItem( &stack.level );
-			if ( tuple & 2 ) {	// sub expression
+			if ( tuple & 4 ) {	// sub expression
 				listItem *tag = popListItem( &stack.premark );
 				while ( *exponent != tag )
 					popListItem( exponent );
 			}
-			tuple = (int) popListItem( &stack.tuple );
+			int flags = (int) popListItem( &stack.flags );
+			not = flags & 1;
+			tuple = flags & 6;
 			p++; break;
 		case '?':
 			p++; break;
@@ -258,26 +272,86 @@ bm_locate( char *expression, listItem **exponent )
 		case '/':
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
+		case '\'':
+			if ( !not && target==CHARACTER ) { done=2; break; }
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
 		default:
-			if ( not ) p = p_prune( PRUNE_IDENTIFIER, p );
-			else scope = 0;
+			if ( !not && target==IDENTIFIER ) { done=2; break; }
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
 		}
 	}
-	freeListItem( &stack.not );
-	freeListItem( &stack.tuple );
-	freeListItem( &stack.level );
-	freeListItem( &stack.premark );
-	if ( *p && *p!=',' && *p!=')' ) {
-		freeListItem( &star_exp );
-		return p;
+	if ( scope ) {
+		freeListItem( &stack.flags );
+		freeListItem( &stack.level );
+		freeListItem( &stack.premark );
 	}
-	else if (( star_exp )) {
-		freeListItem( exponent );
-		do addItem( exponent, popListItem( &star_exp ) );
-		while (( star_exp ));
-		return star_p;
+	return ( done==2 ? p : NULL );
+}
+
+//===========================================================================
+//	xp_acq
+//===========================================================================
+int
+xp_acq( char *expression, int target )
+{
+#define SET( candidate, mark ) \
+	{ candidate |= mark; if ( target & QMARK ) return candidate; }
+	char *	p = expression;
+	int	candidate = 0, not = 0,
+		level = 0, done = 0;
+	while ( *p && !done ) {
+		switch ( *p ) {
+		case '~':
+			not = !not;
+			p++; break;
+		case '*':
+			if ( !not ) candidate |= STAR;
+			p++; break;
+		case '%':
+			if ( p[1]=='?' ) {
+				if ( !not ) SET( candidate, QMARK )
+				p+=2; break;
+			}
+			else if ( p[1]=='!' ) {
+				if ( !not ) candidate |= EMARK;
+				p+=2; break;
+			}
+			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+				if ( !not ) candidate |= MOD;
+				p++; break;
+			}
+			else { p++; break; }
+			break;
+		case '(':
+			level++;
+			p++; break;
+		case ')':
+			if ( !level ) { done=1; break; }
+			level--;
+			p++; break;
+		case ',':
+			if ( !level ) { done=1; break; }
+			p++; break;
+		case ':':
+		case '?':
+			p++; break;
+		case '.':
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			break;
+		case '/':
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		case '\'':
+			if ( !not ) candidate |= CHARACTER;
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			break;
+		default:
+			if ( !not ) candidate |= IDENTIFIER;
+			p = p_prune( PRUNE_IDENTIFIER, p+1 );
+		}
 	}
-	return NULL;
+	return candidate;
 }
 
 //===========================================================================
@@ -293,9 +367,18 @@ xp_traverse( BMTraverseData *data )
 {
 	CNDB *db = data->ctx->db;
 	int privy = data->privy;
-	CNInstance *x = data->pivot->value;
+	Pair *pivot = data->pivot;
+	CNInstance *x;
+	listItem *i, *j;
+	if ( !strncmp( pivot->name, "%!", 2 ) ) {
+		i = pivot->value;
+		x = i->ptr;
+	}
+	else {
+		x = pivot->value;
+		i = newItem( x );
+	}
 	listItem *exponent = data->exponent;
-
 #ifdef DEBUG
 fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
 db_output( stderr, "", x, db );
@@ -303,12 +386,9 @@ fprintf( stderr, ", exponent=" );
 xpn_out( stderr, exponent );
 fprintf( stderr, "\n" );
 #endif
-	if ( x == NULL ) return 0;
-
 	int exp, success = 0;
 	listItem *trail = NULL;
-
-	listItem *stack = NULL, *i = newItem( x ), *j;
+	listItem *stack = NULL;
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -371,7 +451,8 @@ RETURN:
 		if ( exp & 2 ) freeItem( i );
 		i = popListItem( &stack );
 	}
-	freeItem( i );
+	if ( strncmp( pivot->name, "%!", 2 ) )
+		freeItem( i );
 	return success;
 }
 
@@ -532,19 +613,18 @@ fprintf( stderr, " ........{\n" );
 RETURN:
 	freeItem( i );
 #ifdef DEBUG
-	if ((data->stack.exponent) || (data->stack.couple) || (data->stack.not)) {
+	if ((data->stack.flags) || (data->stack.exponent)) {
 		fprintf( stderr, "xp_verify: memory leak on exponent\n" );
 		exit( -1 );
 	}
+	freeListItem( &data->stack.flags );
+	freeListItem( &data->stack.exponent );
 	if ((data->stack.scope) || (data->stack.base)) {
 		fprintf( stderr, "xp_verify: memory leak on scope\n" );
 		exit( -1 );
 	}
-	freeListItem( &data->stack.exponent );
-	freeListItem( &data->stack.couple );
 	freeListItem( &data->stack.scope );
 	freeListItem( &data->stack.base );
-	freeListItem( &data->stack.not );
 #endif
 #ifdef DEBUG
 fprintf( stderr, "xp_verify:.......} success=%d\n", success );
@@ -597,6 +677,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	listItem *base;
 	int	level, OOS,
 		success = data->success,
+		couple = data->couple,
 		not = 0;
 	switch ( op ) {
 	case BM_INIT:
@@ -625,7 +706,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			not = !not; p++;
 			break;
 		case '%':
-			if ( !strncmp( p, "%?", 2 ) ) {
+			if ( strmatch( "?!", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; not = 0; }
 				else if ( not ) { success = !success; not = 0; }
@@ -643,20 +724,16 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				xpn_add( &mark_exp, SUB, 1 );
 			else {
 				bm_locate_mark( p+1, &mark_exp );
-				if ( mark_exp == NULL ) p++;
+				if ( !mark_exp ) p++;
 			}
 			break;
 		case '(':
 			level++;
-			add_item( &data->stack.couple, data->couple );
-			if ( p_single( p ) ) data->couple = 0;
-			else {
-				data->couple = 1;
-				xpn_add( exponent, AS_SUB, 0 );
-			}
-			add_item( &data->stack.not, not );
-			not = 0; p++;
-			break;
+			add_item( &data->stack.flags, not|couple );
+			not = 0;
+			couple = ( p_single(p) ? 0 : 2 );
+			if ( couple ) xpn_add( exponent, AS_SUB, 0 );
+			p++; break;
 		case ':':
 			if ( op==BM_BGN && level==OOS ) { done = 1; break; }
 			if ( success ) { p++; }
@@ -671,11 +748,10 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		case ')':
 			if ( level == OOS ) { done = 1; break; }
 			level--;
-			if ( data->couple ) {
-				popListItem( exponent );
-			}
-			data->couple = (int) popListItem( &data->stack.couple );
-			not = (int) popListItem( &data->stack.not );
+			if ( couple ) popListItem( exponent );
+			int flags = (int) popListItem( &data->stack.flags );
+			not = flags & 1;
+			couple = flags & 2;
 			if ( not ) { success = !success; not = 0; }
 			p++;
 			if ( op==BM_END && level==OOS && (data->stack.scope))
@@ -700,6 +776,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	}
 	if (( data->mark_exp = mark_exp )) {
 		data->not = not;
+		data->couple = couple;
 		listItem *sub_exp = NULL;
 		for ( listItem *i=*exponent; i!=base; i=i->next )
 			addItem( &sub_exp, i->ptr );
@@ -734,17 +811,20 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 		y = ESUB( y, exp&1 );
 	}
 	if ( y == NULL ) { freeListItem( &xpn ); return -1; }
-	if ( p == NULL ) { return 1; }
-
-	if (( data->pivot ) && ( p == data->pivot->name ))
-		return ( y == data->pivot->value );
+	else if ( p == NULL ) { return 1; }
+	else if ( !strncmp( p, "%!", 2 ) ) {
+		listItem *v = lookup_mark_register( data->ctx, '!' );
+		return !!lookupItem( v, y );
+	}
+	Pair *pivot = data->pivot;
+	if (( pivot ) && ( p == pivot->name ))
+		return ( y == pivot->value );
 	else if ( !strncmp( p, "%?", 2 ) )
-		return ( y == lookup_mark_register( data->ctx ) );
+		return ( y == lookup_mark_register( data->ctx, '?' ) );
 	else if ( !is_separator(*p) ) {
 		Pair *entry = registryLookup( data->ctx->registry, p );
 		if (( entry )) return ( y == entry->value );
 	}
-
 	if (( y->sub[0] )) return 0;
 	CNDB *db = data->ctx->db;
 	char q[ MAXCHARSIZE + 1 ];

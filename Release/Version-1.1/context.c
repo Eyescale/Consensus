@@ -21,6 +21,7 @@ newContext( CNNarrative *n, CNInstance *e, CNDB *db )
 {
 	Registry *registry = newRegistry( IndexedByCharacter );
 	registryRegister( registry, "?", NULL ); // aka. %?
+	registryRegister( registry, "!", NULL ); // aka. %!
 	if (( e )) {
 		registryRegister( registry, "this", e );
 		if ((n) && (n->proto)) {
@@ -57,12 +58,11 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 {
 	struct { listItem *couple, *level; } stack = { NULL, NULL };
 	listItem *level = NULL;
-
-	int	scope = 1,
+	int	scope = 0,
+		done = 0,
 		couple = 0; // base is singleton
-
 	char *p = expression;
-	while ( *p && scope ) {
+	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
 		case '%':
@@ -82,10 +82,8 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 		case '(':
 			scope++;
 			add_item( &stack.couple, couple );
-			couple = !p_single( p );
-			if ( couple ) {
+			if (( couple = !p_single( p ) ))
 				xpn_add( exponent, SUB, 0 );
-			}
 			addItem( &stack.level, level );
 			level = *exponent;
 			p++; break;
@@ -94,15 +92,15 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 				popListItem( exponent );
 			p++; break;
 		case ',':
-			if ( scope == 1 ) { scope=0; break; }
+			if ( !scope ) { done=1; break; }
 			while ( *exponent != level ) {
 				popListItem( exponent );
 			}
 			xpn_set( *exponent, SUB, 1 );
 			p++; break;
 		case ')':
+			if ( !scope ) { done=1; break; }
 			scope--;
-			if ( !scope ) break;
 			if ( couple ) {
 				while ( *exponent != level ) {
 					popListItem( exponent );
@@ -114,7 +112,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 			p++; break;
 		case '?':
 			if (( arg_CB )) p++;
-			else scope = 0;
+			else done = 2;
 			break;
 		case '.':
 			p++;
@@ -125,8 +123,10 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 			p = p_prune( PRUNE_IDENTIFIER, p );
 		}
 	}
-	freeListItem( &stack.couple );
-	freeListItem( &stack.level );
+	if ( scope ) {
+		freeListItem( &stack.couple );
+		freeListItem( &stack.level );
+	}
 	return ((*p=='?') ? p : NULL );
 }
 
@@ -153,21 +153,24 @@ bm_locate_mark( char *expression, listItem **exponent )
 //	bm_push_mark / bm_pop_mark / lookup_mark_register
 //===========================================================================
 listItem *
-bm_push_mark( BMContext *ctx, CNInstance *e )
+bm_push_mark( BMContext *ctx, int mark, void *e )
 {
-	Pair *entry = registryLookup( ctx->registry, "?" );
+	typedef union { int value; char name[2]; } icast;
+	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
 	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
 }
-CNInstance *
-bm_pop_mark( BMContext *ctx )
+void *
+bm_pop_mark( BMContext *ctx, int mark )
 {
-	Pair *entry = registryLookup( ctx->registry, "?" );
+	typedef union { int value; char name[2]; } icast;
+	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
 	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
 }
-CNInstance *
-lookup_mark_register( BMContext *ctx )
+void *
+lookup_mark_register( BMContext *ctx, int mark )
 {
-	Pair *entry = registryLookup( ctx->registry, "?" );
+	typedef union { int value; char name[2]; } icast;
+	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
 	return (entry) && (entry->value) ? ((listItem*)entry->value)->ptr : NULL;
 }
 
@@ -181,7 +184,7 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 	char q[ MAXCHARSIZE + 1 ];
 	switch ( *p ) {
 	case '%': // looking up %? or %
-		return ( p[1] == '?' ) ? lookup_mark_register( ctx ) :
+		return strmatch( "?!", p[1] ) ? lookup_mark_register( ctx, p[1] ) :
 			db_lookup( privy, p, ctx->db );
 	case '\'': // looking up single character identifier instance
 		return ( charscan( p+1, q ) ) ?

@@ -29,11 +29,10 @@ typedef struct {
 	int couple;
 	int not;
 	struct {
+		listItem *flags;
 		listItem *exponent;
-		listItem *couple;
 		listItem *scope;
 		listItem *base;
-		listItem *not;
 	} stack;
 } BMTraverseData;
 

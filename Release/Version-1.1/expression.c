@@ -59,7 +59,8 @@ bm_substantiate( char *expression, CNDB *db )
 	Note that none of the created relationship instance will be manifested.
 */
 {
-	struct { listItem *results, *ndx, *level; } stack = { NULL, NULL, NULL };
+	struct { listItem *results, *ndx, *level; } stack;
+	memset( &stack, 0, sizeof(stack) );
 	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
 	CNInstance *e = NULL;
 	int level=0, ndx=0, done=0;
@@ -107,6 +108,7 @@ bm_substantiate( char *expression, CNDB *db )
 			else {
 				instances = popListItem( &stack.results );
 				addItem( &stack.results, catListItem( instances, sub[ 0 ] ));
+				sub[ 0 ] = NULL;
 			}
 			p++; break;
 		case ')':
@@ -229,17 +231,19 @@ bm_instantiate( char *expression, BMContext *ctx )
 {
 #ifdef DEBUG
 	if ( bm_void( expression, ctx ) ) {
-		fprintf( stderr, "VOID: %s\n", expression );
+		fprintf( stderr, ">>>>> B%%: bm_instantiate(): VOID: %s\n", expression );
 		exit( -1 );
 	}
-	else fprintf( stderr, "bm_instantiate: %s {", expression );
+	else fprintf( stderr, "bm_instantiate: %s {\n", expression );
 #endif
-	struct { listItem *results, *ndx; } stack = { NULL, NULL };
+	struct { listItem *results, *flags, *level; } stack;
+	memset( &stack, 0, sizeof(stack) );
 	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
 	CNInstance *e;
-	CNDB *db = ctx->db;
-	int done=0, level=0, ndx=0, empty=db_is_empty(0,db);
-	char *p = expression;
+	CNDB *	db = ctx->db;
+	int	done=0, level=0, ndx=0, piped=0,
+		empty = db_is_empty(0,db);
+	char *	p = expression;
 	while ( *p && !done ) {
 		if ( p_filtered( p )  ) {
 			sub[ ndx ] = bm_query( p, ctx );
@@ -251,12 +255,20 @@ bm_instantiate( char *expression, BMContext *ctx )
 		}
 		switch ( *p ) {
 		case '%':
-			if ( !strncmp( p, "%?", 2 ) ) {
-				if (( e = bm_lookup( 0, p, ctx ) )) {
+			if ( p[1]=='?' ) {
+				CNInstance *e = lookup_mark_register( ctx, '?' );
+				if (( e )) {
 					sub[ ndx ] = newItem( e );
-					p+=2; break;
 				}
 				else { done=-1; break; }
+				p+=2; break;
+			}
+			else if ( p[1]=='!' ) {
+				listItem *i = lookup_mark_register( ctx, '!' );
+				if ( !i ) { done=-1; break; }
+				for ( ; i!=NULL; i=i->next )
+					addItem( &sub[ ndx ], i->ptr );
+				p+=2; break;
 			}
 			// no break
 		case '*':
@@ -272,20 +284,69 @@ bm_instantiate( char *expression, BMContext *ctx )
 				break;
 			}
 			else { done=-1; break; }
-		case '(':
-			level++;
-			add_item( &stack.ndx, ndx );
+		case '{':
+			add_item( &stack.level, level );
+			level = 0;
+			add_item( &stack.flags, ndx );
 			if ( ndx ) {
 				addItem( &stack.results, sub[ 0 ] );
 				ndx=0; sub[ 0 ]=NULL;
 			}
+			addItem( &stack.results, NULL );
+			p++; break;
+		case '}':
+			/* assumption here: level==0
+			*/
+			if ( !(stack.level)) { done=1; break; }
+			level = (int) popListItem( &stack.level );
+			instances = popListItem( &stack.results );
+			instances = catListItem( instances, sub[ 0 ] );
+			ndx = (int) popListItem( &stack.flags );
+			sub[ ndx ] = instances;
+			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
+			p++; break;
+		case '|':
+			bm_push_mark( ctx, '!', sub[ ndx ] );
+			add_item( &stack.flags, ndx );
+			add_item( &stack.level, level );
+			addItem( &stack.results, sub[ 0 ] );
+			if ( ndx ) {
+				addItem( &stack.results, sub[ 1 ] );
+				ndx = 0; sub[ 1 ] = NULL;
+			}
+			sub[ 0 ] = NULL;
+			level = 0;
+			piped = 2;
+			p++; break;
+		case '(':
+			level++;
+			add_item( &stack.flags, ndx|piped );
+			if ( ndx ) {
+				addItem( &stack.results, sub[ 0 ] );
+				ndx = 0; sub[ 0 ]=NULL;
+			}
+			piped = 0;
 			p++; break;
 		case ',':
-			if ( !level ) { done=1; break; }
-			ndx = 1;
+			if ( !level && !stack.level ) { done=1; break; }
+			else if ( level ) ndx = 1;
+			else {
+				instances = popListItem( &stack.results );
+				addItem( &stack.results, catListItem( instances, sub[ 0 ] ));
+				sub[ 0 ] = NULL;
+			}
 			p++; break;
 		case ')':
-			if ( !level ) { done=1; break; }
+			if ( piped && !level ) {
+				bm_pop_mark( ctx, '!' );
+				freeListItem( &sub[ 0 ] );
+				level = (int) popListItem( &stack.level );
+				ndx = (int) popListItem( &stack.flags );
+				if ( ndx ) sub[ 1 ] = popListItem( &stack.results );
+				sub[ 0 ] = popListItem( &stack.results );
+				piped = 0;
+			}
+			if ( !level && !(stack.level)) { done=1; break; }
 			level--;
 			switch ( ndx ) {
 			case 0: instances = sub[ 0 ]; break;
@@ -293,7 +354,9 @@ bm_instantiate( char *expression, BMContext *ctx )
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
 			}
-			ndx = (int) popListItem( &stack.ndx );
+			int flags = (int) popListItem( &stack.flags );
+			ndx = flags & 1;
+			piped = flags & 2;
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
@@ -311,11 +374,12 @@ bm_instantiate( char *expression, BMContext *ctx )
 		}
 	}
 	if ( done == -1 ) {
+		freeListItem( &stack.flags );
+		freeListItem( &stack.level );
 		freeListItem( &sub[ 1 ] );
 		listItem *results = NULL;
 		while (( results = popListItem(&stack.results) ))
 			freeListItem( &results );
-		freeListItem( &stack.ndx );
 	}
 #ifdef DEBUG
 	if (( sub[ 0 ] )) {
@@ -351,18 +415,33 @@ bm_void( char *expression, BMContext *ctx )
 			continue;
 		}
 		switch ( *p ) {
+		case '{':
+		case '}':
+		case '|':
+			p++; break;
 		case '%':
-			if ( !strncmp( p, "%?", 2 ) ) {
-				if ( bm_lookup( 0, p, ctx ) == NULL )
-					return 1;
+			if ( p[1]=='!' ) {
 				p+=2; break;
+			}
+			else if ( p[1]=='?' ) {
+				if (( lookup_mark_register( ctx, p[1] ) ))
+					{ p+=2; break; }
+				else return 1;
 			}
 			// no break
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) )
 				{ p++; break; }
 			// no break
-		case '~':
+		case '~':;
+			int target = xp_acq( p, EMARK );
+			if ( target & EMARK ) {
+				if (( target - EMARK ))
+					fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at %s - "
+						"expression query mixing terms with %%!\n", p );
+				p = p_prune( PRUNE_TERM, p+1 );
+				break;
+			}
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;
 			p = p_prune( PRUNE_TERM, p+1 );

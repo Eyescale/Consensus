@@ -114,15 +114,10 @@ cn_new( CNInstance *source, CNInstance *target )
 	Pair *sub = newPair( source, target );
 	Pair *as_sub = newPair( NULL, NULL );
 	CNInstance *instance = (CNInstance *) newPair( sub, as_sub );
-#ifdef UNIFIED
 	if (( source )) {
-		addItem( &source->as_sub[0], instance );
-		if (( target )) addItem( &target->as_sub[1], instance );
+		add_as_sub( instance, &source->as_sub[0], 0 );
+		add_as_sub( instance, &target->as_sub[1], 1 );
 	}
-#else
-	if (( source )) addItem( &source->as_sub[0], instance );
-	if (( target )) addItem( &target->as_sub[1], instance );
-#endif
 	return instance;
 }
 
@@ -138,31 +133,6 @@ cn_free( CNInstance *e )
 	freeListItem( &e->as_sub[ 1 ] );
 	freePair((Pair *) e->as_sub );
 	freePair((Pair *) e );
-}
-
-//===========================================================================
-//	cn_instance
-//===========================================================================
-CNInstance *
-cn_instance( CNInstance *e, CNInstance *f, int pivot )
-{
-	switch ( pivot ) {
-	case 0:
-		for ( listItem *i=f->as_sub[ 1 ]; i!=NULL; i=i->next ) {
-			CNInstance *instance = i->ptr;
-			if ( instance->sub[0] == e )
-				return instance;
-		}
-		break;
-	default:
-		for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-			CNInstance *instance = i->ptr;
-			if ( instance->sub[1] == f )
-				return instance;
-		}
-		break;
-	}
-	return NULL;
 }
 
 //===========================================================================
@@ -221,9 +191,9 @@ db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 			fprintf( stderr, " to " );
 
 			CNInstance *sub = instance->sub[ 1 ];
-			removeItem( &sub->as_sub[1], instance );
+			remove_as_sub( instance, &sub->as_sub[1], 1 );
 			instance->sub[ 1 ] = f;
-			addItem( &f->as_sub[1], instance );
+			add_as_sub( instance, &f->as_sub[1], 1 );
 
 			db_output( stderr, "", instance, db );
 			fprintf( stderr, "\n" );

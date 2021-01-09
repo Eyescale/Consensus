@@ -1,21 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cache.h"
 #include "pair.h"
+#include "cache.h"
 
-#define C 1500
-#if 1
-static void **PairCache = NULL;
+#ifdef UCACHE
+#define PairCache UCache
 #else
-extern void **UniversalCache;
-#define PairCache UniversalCache
+static void **PairCache = NULL;
 #endif
 
 Pair *
 newPair( void *name, void *value )
 {
-        Pair *pair = (Pair *) allocate( &PairCache, C );
+        Pair *pair = (Pair *) allocate( &PairCache );
         pair->name = name;
         pair->value = value;
         return pair;
