@@ -16,10 +16,10 @@
 		%(((schema,.),.),.)
 		on ( INPUT ) // start base rule instance - feeding base
 			do (((rule,base), (']',(record,*))), base )
-			do (((schema, %((Rule,base),(Schema,?:~'\0'))), (']',(record,*))), \
-				((rule,base), (']',(record,*))))
 		else in ?: %( ?:((rule,.),.), base )
-			in ( %?, READY )
+			on ( %? ) // instantiate base schemas
+				do (((schema, %((Rule,base),(Schema,?:~'\0'))), %((.,?):%?)), %? )
+			else in ( %?, READY )
 				on ( %?, READY )
 					in ((*,carry), . )
 						do ((*,input), *carry )
@@ -158,9 +158,8 @@
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
-		on ( %?, this )
-			in this: ~%(?,CYCLIC) // instantiate rule schemas
-				do (((schema, %((Rule,%(((.,?),.):%?)),(Schema,?:~'\0'))), %((.,?):%?)), %? )
+		on ( %? ) // instantiate rule schemas
+			do (((schema, %((Rule,%(((.,?),.):%?)),(Schema,?:~'\0'))), %((.,?):%?)), %? )
 		else in .COMPLETE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)

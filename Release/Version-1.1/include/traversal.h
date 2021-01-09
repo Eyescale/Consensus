@@ -30,7 +30,7 @@ int bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
 #define	STAR		16
 #define EMARK		32
 
-int xp_acq( char *expression, int target );
+int xp_target( char *expression, int target );
 
 
 #endif	// TRAVERSAL_H

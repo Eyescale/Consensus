@@ -168,7 +168,7 @@ bm_locate( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = xp_acq( expression, QMARK );
+	int target = xp_target( expression, QMARK );
 	if ( target == 0 ) return NULL;
 	else target =	( target & QMARK ) ? QMARK :
 			( target & IDENTIFIER ) ? IDENTIFIER :
@@ -290,10 +290,10 @@ bm_locate( char *expression, listItem **exponent )
 }
 
 //===========================================================================
-//	xp_acq
+//	xp_target
 //===========================================================================
 int
-xp_acq( char *expression, int target )
+xp_target( char *expression, int target )
 {
 #define SET( candidate, mark ) \
 	{ candidate |= mark; if ( target & QMARK ) return candidate; }

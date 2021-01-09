@@ -434,7 +434,7 @@ bm_void( char *expression, BMContext *ctx )
 				{ p++; break; }
 			// no break
 		case '~':;
-			int target = xp_acq( p, EMARK );
+			int target = xp_target( p, EMARK );
 			if ( target & EMARK ) {
 				if (( target - EMARK ))
 					fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at %s - "
