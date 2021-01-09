@@ -418,7 +418,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
 	. if privy==2 - traversing %!
-		returns 1 only if newborn to-be-released
+		returns 1 if e:( ., nil ) or e:( nil, . )
 		returns 0 otherwise
 */
 {
