@@ -134,7 +134,7 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx, BMLogType type 
 		}
 		else privy = 0;
 		break;
-	case BM_INSTANTIATED:
+	case BM_MANIFESTED:
 		privy = 0;
 		break;
 	case BM_RELEASED:

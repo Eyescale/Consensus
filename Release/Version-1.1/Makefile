@@ -45,7 +45,7 @@ clean:
 	$(RM) $(OBJDIR)/*.o $(MAIN)
 	$(RM) *.so
 
-depend: $(SRCS)
+depend: $(SRCS) include/*.h
 	makedepend $(INCLUDES) $^
 
 # DO NOT DELETE THIS LINE -- make depend needs it

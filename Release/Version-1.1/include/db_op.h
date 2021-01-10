@@ -1,6 +1,8 @@
 #ifndef DB_OP_H
 #define	DB_OP_H
 
+#include "as_sub.h"
+
 //===========================================================================
 //	core
 //===========================================================================
@@ -23,9 +25,8 @@ int db_deprecatable( CNInstance *, CNDB * );
 void db_remove( CNInstance *, CNDB * );
 void db_deregister( CNInstance *, CNDB * );
 
-//===========================================================================
-//	CNType, cn_instance and other operations (type-based)
-//===========================================================================
-#include "db_type.h"
+#define cn_instance( e, f, p ) \
+	lookup_as_sub( e, f, p )
+
 
 #endif // DB_OP_H

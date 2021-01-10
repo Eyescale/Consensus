@@ -264,14 +264,14 @@ on_event( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
-	if ( !strcmp( expression, "init" ) )
-		retval = db_in( ctx->db );
-	else if ( !strncmp( expression, "~.", 2 ) )
+	if ( !strncmp( expression, "~.", 2 ) )
 		retval = db_still( ctx->db );
 	else if ( !strncmp( expression, "~(", 2 ) )
 		retval = bm_feel( expression+1, ctx, BM_RELEASED );
+	else if ( !strcmp( expression, "init" ) )
+		retval = db_in( ctx->db );
 	else 
-		retval = bm_feel( expression, ctx, BM_INSTANTIATED );
+		retval = bm_feel( expression, ctx, BM_MANIFESTED );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif

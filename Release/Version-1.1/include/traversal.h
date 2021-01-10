@@ -9,7 +9,7 @@
 typedef enum {
         BM_CONDITION = 0,
         BM_RELEASED,
-        BM_INSTANTIATED
+        BM_MANIFESTED
 } BMLogType;
 int bm_feel( char *expression, BMContext *, BMLogType );
 
