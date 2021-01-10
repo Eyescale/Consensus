@@ -13,11 +13,6 @@
 //===========================================================================
 int
 db_op( DBOperation op, CNInstance *e, CNDB *db )
-/*
-	Assumptions
-	1. op==DB_MANIFEST_OP - e is newly created
-
-*/
 {
 #ifdef DB_DEBUG
 	return db_op_debug( op, e, db );
@@ -26,6 +21,10 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 	switch ( op ) {
 	case DB_EXIT_OP:
 		nil->sub[ 1 ] = nil;
+		break;
+
+	case DB_MANIFEST_OP: // assumption: e was just created
+		cn_new( cn_new( e, nil ), nil );
 		break;
 
 	case DB_DEPRECATE_OP:
@@ -108,10 +107,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			}
 		}
 		break;
-
-	case DB_MANIFEST_OP: // assumption: the entity was just created
-		cn_new( cn_new( e, nil ), nil );
-		break;
 	}
 	return 0;
 }
@@ -152,15 +147,18 @@ fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		g = i->ptr;
-		if (( g->as_sub[ 1 ] )) continue; // to be manifested
 		x = g->sub[ 1 ]; // manifested candidate
 		if ( x->sub[0]==nil || x->sub[1]==nil )
 			continue;
 		f = cn_instance( x, nil, 1 );
-		if (( f )) {
+		if (( g->as_sub[ 1 ] )) { // to-be-manifested
+			if (( f )) // released to-be-manifested
+				db_remove( f, db );
+		}
+		else if (( f )) {
 			if (( f->as_sub[ 1 ] )) // manifested to-be-released
-				continue;
-			if (( f->as_sub[ 0 ] )) { // reassigned
+				db_remove( g, db );
+			else if (( f->as_sub[ 0 ] )) { // reassigned
 				db_remove( f->as_sub[0]->ptr, db );
 				db_remove( f, db );
 			}
@@ -196,16 +194,12 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 	for ( listItem *i=nil->as_sub[ 0 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if ( !f->as_sub[ 1 ] ) continue;
-		x = f->sub[1]; // to-be-manifested candidate
-		g = f->as_sub[1]->ptr;
-		if ((next_i) && next_i->ptr==g )
-			next_i = next_i->next;
-		if (( f = cn_instance( x, nil, 1 ) )) {
-			db_remove( f, db ); // released to-be-manifested
+		if (( f->as_sub[ 1 ] )) {
+			g = f->as_sub[1]->ptr;
+			if ((next_i) && next_i->ptr==g )
+				next_i = next_i->next;
 			db_remove( g, db );
 		}
-		else db_remove( g, db ); // just to-be-manifested
 	}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
@@ -213,11 +207,8 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
-		if (( f->as_sub[ 1 ] )) continue; // to be released
-		x = f->sub[ 0 ]; // released candidate
-		if ( x->sub[0]==nil || x->sub[1]==nil )
-			continue;
-		else {
+		if ( !f->as_sub[1] ) {
+			x = f->sub[0]; // released candidate
 			db_remove( f, db );
 			TRASH( x );
 		}
@@ -226,17 +217,11 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
-	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
-		next_i = i->next;
+	for ( listItem *i=nil->as_sub[ 1 ]; i!=NULL; i=i->next ) {
 		f = i->ptr;
-		if ( !f->as_sub[ 1 ] ) continue;
-		x = f->sub[0]; // to-be-released candidate
-		g = f->as_sub[1]->ptr;
-		if (( f = cn_instance( nil, x, 0 ) )) {
-			db_remove( f, db ); // manifested to-be-released
-			db_remove( g, db );
+		if (( f->as_sub[ 1 ] )) {
+			db_remove( f->as_sub[1]->ptr, db );
 		}
-		else db_remove( g, db ); // just to-be-released
 	}
 #ifdef DEBUG
 fprintf( stderr, "--\n" );

@@ -11,8 +11,8 @@ extern void **UCache;
 extern int UCount;
 
 #define RECYCLE
+#define C 1500
 #define UCACHE
-#define C 500
 
 inline void *
 allocate( void ***Cache )

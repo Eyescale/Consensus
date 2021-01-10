@@ -17,7 +17,7 @@
 		on ( INPUT ) // start base rule instance - feeding base
 			do (((rule,base), (']',(record,*))), base )
 		else in ?: %( ?:((rule,.),.), base )
-			on ( %? ) // instantiate base schemas
+			on %? // instantiate base schemas
 				do (((schema, %((Rule,base),(Schema,?:~'\0'))), %((.,?):%?)), %? )
 			else in ( %?, READY )
 				on ( %?, READY )
@@ -137,7 +137,7 @@
 : ((( schema, .start ), ( .flag, .frame )), .r:((rule,.),.))
 	.position .event
 
-	on ( this )
+	on this
 		in this: %((((schema,.),.),.), ?:(((.,'\0'),.),.))
 			// schema has predecessor AND is in null position
 			do .( flag, frame ) // TAKE
@@ -158,7 +158,7 @@
 				do ~( r ) // all subscribers failed
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
-		on ( %? ) // instantiate rule schemas
+		on %? // instantiate rule schemas
 			do (((schema, %((Rule,%(((.,?),.):%?)),(Schema,?:~'\0'))), %((.,?):%?)), %? )
 		else in .COMPLETE
 			on ~( .(((schema,.),.),.) ) // successor schema failed

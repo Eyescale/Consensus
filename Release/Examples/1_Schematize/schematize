@@ -137,7 +137,7 @@
 
 : ((( schema, .start ), ( .flag, .frame )), .r:((rule,.),.))
 	.position .event
-	on ( this )
+	on this
 		in this: %((((schema,.),.),.), ?:(((.,'\0'),.),.))
 			// schema has predecessor AND is in null position
 			do .( flag, frame ) // TAKE
