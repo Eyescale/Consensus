@@ -156,15 +156,11 @@ fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 			if (( f )) // released to-be-manifested
 				db_remove( f, db );
 		}
-		else if (( f )) {
-			if (( f->as_sub[ 1 ] )) // manifested to-be-released
-				db_remove( g, db );
-			else if (( f->as_sub[ 0 ] )) { // reassigned
-				db_remove( f->as_sub[0]->ptr, db );
-				db_remove( f, db );
-			}
+		else if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
+			db_remove( f->as_sub[0]->ptr, db );
+			db_remove( f, db );
 		}
-		else db_remove( g, db );
+		else db_remove( g, db ); // possibly to-be-released
 	}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
