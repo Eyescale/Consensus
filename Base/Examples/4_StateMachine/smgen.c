@@ -311,7 +311,7 @@ compare( listItem *state1, listItem *state2 )
 		state2 = state2->next;
 	}
 	while (( state1 ));
-	return (state2!=NULL);
+	return ( !!state2 );
 }
 
 //---------------------------------------------------------------------------
@@ -425,7 +425,7 @@ reduce( listItem **SM, Pair *entry, listItem **trigger, char *flag, listItem **a
 	/* Further reduction: right now states are indexed by active (reached)
 	   position(s). Now for each state, if we can find a previously defined
 	   state with all the same transitions, then we replace all references
-	   to the later with reference to the former.
+	   to the latter with reference to the former.
 	*/
 	listItem *match = NULL;
 	for ( listItem *i=*SM; i!=NULL; i=i->next ) {
@@ -709,7 +709,6 @@ smOutput( listItem *SM, int tab )
 					if ( !compare( init, e->name ) ) {
 						printf( "{ ~., %.4X }", id );
 						entry = e;
-						ndx = id;
 						break;
 					}
 				}
