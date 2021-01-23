@@ -56,13 +56,13 @@ char *expression[] = { // Attention: backslashes must be re-doubled here
 int
 main( int argc, char *argv[] )
 {
-	smVerify( expression, NUMS );
-	listItem *sm = smBuild( expression, NUMS );
 	printf( "Regular Expression(s)\n" );
 	for ( int i=0; i<NUMS; i++ ) {
 		printf( "\t%s\n", expression[ i ] );
 	}
+	smVerify( expression, NUMS );
 	printf( "State Machine\n" );
+	listItem *sm = smBuild( expression, NUMS );
 	smOutput( sm, 1 );
 	smFree( &sm );
 }
