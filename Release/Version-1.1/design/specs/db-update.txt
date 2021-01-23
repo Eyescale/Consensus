@@ -6,7 +6,7 @@
 		released	 - then we have ( x, nil )
 		newborn		 - then we have ( ( x, nil ), nil )
 
-	such that
+	so that
         	x can be both manifested AND to-be-released
 	        x can be both manifested AND newborn (reassigned)
 	        x can be both released AND to-be-manifested (reborn)

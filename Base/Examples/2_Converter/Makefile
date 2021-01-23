@@ -6,8 +6,8 @@ SHELL = /bin/sh
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../include -I../Yak/include
-LFLAGS = -L../.. -L../Yak
+INCLUDES = -I. -I./include -I../../include -I../1_Yak/include
+LFLAGS = -L../.. -L../1_Yak
 LIBS = -lcn -lyak
 
 OBJDIR = .ofiles
@@ -23,7 +23,7 @@ all:$(MAIN)
 $(MAIN): $(OBJS) 
 	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
 	cp ../../libcn.so .
-	cp ../Yak/libyak.so .
+	cp ../1_Yak/libyak.so .
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@

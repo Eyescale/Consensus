@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "list.h"
 #include "pair.h"
-
-#define DEBUG
 
 //===========================================================================
 //	segmentize
@@ -296,7 +295,7 @@ RETURN:
 //===========================================================================
 //	main	- DEBUG
 //===========================================================================
-#ifdef DEBUG
+#ifdef TEST
 char *expression = "{ hello, hi }, { }{ \n\\0, world, { dear\\ ,, poor\\ , }{ you }}.\n";
 // char *expression = "{ hello, hi }, { }{ \n\\0, world\n, { dear\\ ,, poor\\ , }{ you \n";
 int

@@ -3,6 +3,7 @@
 
 #include "string_util.h"
 #include "macros.h"
+#include "pair.h"
 #include "scheme.h"
 #include "ansi.h"
 

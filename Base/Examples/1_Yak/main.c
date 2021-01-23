@@ -4,6 +4,7 @@
 #include <limits.h>
 
 #include "list.h"
+#include "pair.h"
 #include "parser.h"
 
 static char *

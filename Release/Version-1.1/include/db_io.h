@@ -8,7 +8,7 @@
 //===========================================================================
 #ifdef DEBUG
 #define DBGMonitor \
-        fprintf( stderr, "DBInput: in \"%s\" on '%c'\n", state, event );
+	fprintf( stderr, "DBInput: in \"%s\" on '%c'\n", state, event );
 #else
 #define DBGMonitor
 #endif
@@ -20,17 +20,17 @@
 	do { \
 		event = input( stream ); \
 		do { \
-                        caught.transition = 0; \
-                        caught.state = 0; \
-                        caught.event = 1; \
-                        DBGMonitor; bgn_
+			caught.transition = 0; \
+			caught.state = 0; \
+			caught.event = 1; \
+			DBGMonitor; bgn_
 #define DBInputDefault \
-                        end \
-                        if ( caught.transition ) ; \
-                        else bgn_
+			end \
+			if ( caught.transition ) ; \
+			else bgn_
 #define DBInputEnd \
-                        end \
-                } while ( !caught.event ); \
+			end \
+		} while ( !caught.event ); \
 	} while ( strcmp( state, "" ) );
 
 

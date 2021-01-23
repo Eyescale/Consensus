@@ -19,6 +19,25 @@ is_separator( int event )
 		  ( event == 95 )) ? 0 : 1;			/* _ */
 }
 int
+is_letter( int event )
+{
+	return  ((( event > 96 ) && ( event < 123 )) ||		/* a-z */
+		 (( event > 64 ) && ( event < 91 )) ||		/* A-Z */
+		  ( event == 95 ));				/* _ */
+}
+int
+is_digit( int event )
+{
+	return  (( event > 47 ) && ( event < 58 ));		/* 0-9 */
+}
+int
+is_xdigit( int event )
+{
+	return  ((( event > 47 ) && ( event < 58 )) ||		/* 0-9 */
+		 (( event > 64 ) && ( event < 71 )) ||		/* A-F */
+		 (( event > 97 ) && ( event < 104 )));		/* a-f */
+}
+int
 is_printable( int event )
 {
 	return ((event > 31 ) && ( event < 127 ));
@@ -26,19 +45,13 @@ is_printable( int event )
 int
 is_space( int event )
 {
-	return strmatch( " \t", event );
+	return ( event==9 || event==32 );
 }
 int
 is_escapable( int event )
 {
 	// Note: includes neither 'x' nor '\"'
 	return strmatch( "0tn\'\\", event );
-}
-int
-is_xdigit( int event )
-{
-	// Note: not including lower case
-	return strmatch( "0123456789ABCDEF", event );
 }
 
 //===========================================================================
@@ -399,7 +412,6 @@ strmake( char *p )
 //===========================================================================
 //	strcomp
 //===========================================================================
-static int rxcmp( char *r, int event );
 static int equivocal( char *regex, char *p );
 static int rxnext( char *regex, char **r );
 int
@@ -429,20 +441,74 @@ strcomp( char *p, char *q, int cmptype )
 		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
 	case 2:; // p is a regex, q is null-terminated
 		char *r = p+1; // skip the leading '/'
+#define RXCMP(r,e) \
+		(( *r=='\0' || *r=='/' ) ? e : ( e ? rxcmp(r,e) : -1 ))
 		int comparison;
 		for ( ; *q; q++, rxnext(p,&r) ) {
-			if (( comparison = rxcmp( r, *q ) )) {
+			if (( comparison = RXCMP( r, *q ) )) {
 				if ( equivocal(p,r) ) return -1;
 				else return comparison;
 			}
 		}
-		if (( comparison = rxcmp( r, *q ) )) {
+		if (( comparison = RXCMP( r, *q ) )) {
 			if ( equivocal(p,r) ) return -1;
 			else return comparison;
 		}
 		return 0;
 	default:
 		return 1;
+	}
+}
+int
+rxcmp( char *r, int event )
+{
+	int delta, not;
+	char q[ MAXCHARSIZE + 1 ];
+	switch ( *r ) {
+	case '.':
+		return 0;
+	case '[':
+		if ( r[1]=='^' ) { not=1; r++; }
+		else not=0;
+		for ( r++; *r && *r!=']'; ) {
+			int range[ 2 ];
+			switch ( *r ) {
+			case '\\': 
+				delta = charscan(r,q);
+				if ( delta ) { range[0]=q[0]; r+=delta; }
+				else { range[0]=r[1]; r+=2; }
+				break;
+			default:
+				range[0] = *r++;
+		   	}
+			if ( *r == '-' ) {
+				r++;
+				switch ( *r ) {
+				case '\0': break;
+				case '\\': 
+					delta = charscan(r,q);
+					if ( delta ) { range[1]=q[0]; r+=delta; }
+					else { range[1]=r[1]; r+=2; }
+					break;
+				default:
+					range[1] = *r++;
+			   	}
+				if ( event>=range[0] && event<=range[1] )
+					return ( not ? -1 : 0 );
+			}
+			else if ( event==range[0] ) return ( not ? -1 : 0 );
+		}
+		return ( not ? 0 : -1 ); // no match
+	case '\\':
+		switch ( r[1] ) {
+		case 'd': return is_digit(event) ? 0 : -1;
+		case 'l': return is_letter(event) ? 0 : -1;
+		case 'h': return is_xdigit(event) ? 0 : -1;
+		}
+		return event - ( charscan(r,q) ?
+			*(const unsigned char*)q : *(const unsigned char*)(r+1) );
+	default:
+		return event - *(const unsigned char*)r;
 	}
 }
 static int
@@ -452,6 +518,13 @@ equivocal( char *regex, char *p )
 	case '.':
 	case '[':
 		return 1;
+	case '\\':
+		switch ( p[1] ) {
+		case 'd':
+		case 'h':
+		case 'l':
+			return 1;
+		}
 	}
 	char *r = regex+1; // skip the leading '/'
 	while ( r != p ) {
@@ -460,6 +533,12 @@ equivocal( char *regex, char *p )
 		case '[':
 			return 1;
 		case '\\':
+			switch ( r[1] ) {
+			case 'd':
+			case 'h':
+			case 'l':
+				return 1;
+			}
 			r += ( r[1]=='x' ? 4 : 2 );
 			break;
 		default:
@@ -494,56 +573,6 @@ rxnext( char *regex, char **p )
 	while ( bracket );
 	*p = r;
 	return 1;
-}
-static int
-rxcmp( char *r, int event )
-{
-	if ( *r=='\0' || *r=='/' )
-		return event;
-	else if ( !event )
-		return -1;
-
-	int delta;
-	char q[ MAXCHARSIZE + 1 ];
-	switch ( *r ) {
-	case '.':
-		return 0;
-	case '[':
-		for ( r++; *r && *r!=']'; ) {
-			int range[ 2 ];
-			switch ( *r ) {
-			case '\\': 
-				delta = charscan(r,q);
-				if ( delta ) { range[0]=q[0]; r+=delta; }
-				else { range[0]=r[1]; r+=2; }
-				break;
-			default:
-				range[0] = *r++;
-		   	}
-			if ( *r == '-' ) {
-				r++;
-				switch ( *r ) {
-				case '\0': break;
-				case '\\': 
-					delta = charscan(r,q);
-					if ( delta ) { range[1]=q[0]; r+=delta; }
-					else { range[1]=r[1]; r+=2; }
-					break;
-				default:
-					range[1] = *r++;
-			   	}
-				if ( event>=range[0] && event<=range[1] )
-					return 0;
-			}
-			else if ( event==range[0] ) return 0;
-		}
-		return -1; // no match
-	case '\\':
-		return event - ( charscan(r,q) ?
-			*(const unsigned char*)q : *(const unsigned char*)(r+1) );
-	default:
-		return event - *(const unsigned char*)r;
-	}
 }
 
 //===========================================================================

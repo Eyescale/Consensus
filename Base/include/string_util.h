@@ -55,6 +55,7 @@ char *	l2s( listItem **, int trim );
 
 char *	strmake( char * );
 int	strcomp( char *, char *, int );
+int	rxcmp( char *, int );
 char *	strscanid( char *, char ** );
 int 	strmatch( char *, int event );
 char *	strskip( char *fmt, char *str );
