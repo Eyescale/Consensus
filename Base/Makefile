@@ -22,13 +22,10 @@ TARGET = libcn.so
 
 .PHONY: depend clean
 
-all:$(TARGET) btreefy segmentize
+all:$(TARGET) btreefy
 
 btreefy: $(OBJS)
 	$(CC) -o btreefy -DTEST -I./include btree.c -L. -lcn
-
-segmentize: $(OBJS)
-	$(CC) -o segmentize -DTEST -I./include segmentize.c -L. -lcn
 
 $(TARGET): $(OBJS)
 	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
