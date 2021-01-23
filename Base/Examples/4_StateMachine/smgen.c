@@ -305,10 +305,6 @@ compare( listItem *state1, listItem *state2 )
 	if (state1==DONE) return (state2!=DONE);
 	if (state2==DONE) return (state1!=DONE);
 	do {
-		if ( state1->ptr == NULL ) {
-			state1 = state1->next;
-			continue;
-		}
 		if ( state2==NULL || state1->ptr!=state2->ptr )
 			return 1;
 		state1 = state1->next;
