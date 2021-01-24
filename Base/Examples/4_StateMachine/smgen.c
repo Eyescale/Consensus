@@ -196,7 +196,7 @@ smBuild( char *expr[], int nums )
 	listItem *SM = NULL;
 	Pair *init = newPair( NULL, NULL );
 
-	/* determine transition table for init state = [ NULL, NULL ]
+	/* determine transition table for init entry = [ NULL, NULL ]
 	*/
 	Pair *entry = init;
 	char *flag = FAIL;
@@ -319,8 +319,6 @@ compare( listItem *state1, listItem *state2 )
 //---------------------------------------------------------------------------
 static void mark( listItem *table[], char *trigger, char *position );
 static void lookup( listItem **SM, listItem **state, listItem **active_next );
-static void add( listItem **list, int range[2], listItem *state );
-
 static listItem *post_g( char *p );
 static char *beyond( char *s );
 
@@ -337,7 +335,7 @@ reduce( listItem **SM, Pair *entry, listItem **trigger, char *flag, listItem **a
 	memset( table, 0, sizeof(table) );
 
 	/* first inform transition table as an array indexed by input event
-	   so that table[event]=state:{p}
+	   so that for each event we have table[event]=state:{p}
 	*/
 	char *p, *s, *next_p;
 	listItem *ward = NULL;
@@ -393,31 +391,26 @@ reduce( listItem **SM, Pair *entry, listItem **trigger, char *flag, listItem **a
 	*/
 	listItem *list = NULL;
 	listItem *state = NULL;
-	int range[ 2 ] = { 0, 0 }, disjunct = 0;
+	int lower = 0, disjunct = 0;
 	for ( int i=0; i<256; i++ ) {
-		if ( state == NULL ) {
-			if (( state = table[i] )) {
-				lookup( SM, &state, active_next );
-				range[ 0 ] = i;
-			}
-			else disjunct = 1;
-		}
-		else if ( !compare( state, table[i] ) ) {
+		if ((state) && !compare( state, table[i] ) ) {
 			if ( state!=DONE ) freeListItem( &table[i] );
 		}
 		else {
-			range[ 1 ] = i-1;
-			add( &list, range, state );
+			if (( state )) {
+				Pair *pair = new_pair( lower, i-1 );
+				addItem( &list, newPair( pair, state ) );
+			}
 			if (( state = table[i] )) {
 				lookup( SM, &state, active_next );
-				range[ 0 ] = i;
+				lower = i;
 			}
 			else disjunct = 1;
 		}
 	}
 	if (( state )) {
-		range[ 1 ] = 255;
-		add( &list, range, state );
+		Pair *pair = new_pair( lower, 255 );
+		addItem( &list, newPair( pair, state ) );
 	}
 	if ( disjunct ) addItem( &list, newPair( NULL, flag ) );
 	reorderListItem( &list );
@@ -503,18 +496,6 @@ lookup( listItem **SM, listItem **state, listItem **active_next )
 	Pair *r = newPair( *state, NULL );
 	addItem( active_next, r );
 	addItem( SM, r );
-}
-static void
-add( listItem **list, int range[2], listItem *state )
-/*
-	turn range into pair, and add [ range, state ] to list
-*/
-{
-	union { int value; void *ptr; } icast[ 2 ];
-	icast[ 0 ].value = range[ 0 ];
-	icast[ 1 ].value = range[ 1 ];
-	Pair *pair = newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
-	addItem( list, newPair( pair, state ) );
 }
 
 //---------------------------------------------------------------------------
@@ -844,7 +825,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 #ifdef ANTIRANGE
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		/* entry->value holds the list of input ranges (in decreasing order)
-		   leading all to the entry->name state
+		   leading all to the same entry->name state
 		*/
 		Pair *entry = i->ptr;
 		listItem *list = entry->value;
@@ -854,7 +835,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 
 		/* our working hypothesis is that the user did not likely specify
 		   input \xFF. So we are going to output the inverted complementary
-		   set of all ranges - as one [^ ]
+		   set of all ranges leading to that state - as one [^ ]
 		*/
 		int state = (int) entry->name;
 		listItem *antirange = NULL;
@@ -864,26 +845,16 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 			int range[ 2 ];
 			range[ 1 ] = (int) r->value;
 			range[ 0 ] = (int) r->name;
-			if ( upper == 255 ) {
-				if ( range[0] ) upper = range[0]-1;
+			if ( range[0] ) {
+				if ( upper != 255 )
+					addItem( &antirange, new_pair( range[1]+1, upper ) );
+				upper = range[0]-1;
 			}
-			else {
-				union { int value; void *ptr; } icast[ 2 ];
-				icast[ 0 ].value = range[ 1 ] + 1;
-				icast[ 1 ].value = upper;
-				Pair *pair = newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
-				addItem( &antirange, pair );
-				if ( range[0] ) upper = range[0]-1;
-				else upper = 255;
-			}
+			else upper = 255;
 		}
-		if ( upper != 255 ) {
-			union { int value; void *ptr; } icast[ 2 ];
-			icast[ 0 ].value = 0;
-			icast[ 1 ].value = upper;
-			Pair *pair = newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
-			addItem( &antirange, pair );
-		}
+		if ( upper != 255 )
+			addItem( &antirange, new_pair( 0, upper ) );
+
 		TAB(tab+2);
 		printf( "[^" );
 		for ( listItem *j=antirange; j!=NULL; j=j->next ) {
