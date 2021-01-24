@@ -746,4 +746,3 @@ strxchange( char *expression, char *identifier, char *value )
 	freeString( result );
 	return retval;
 }
-

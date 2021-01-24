@@ -14,8 +14,9 @@
 #include "list.h"
 #include "pair.h"
 #include "registry.h"
-#include "smgen.h"
 #include "string_util.h"
+
+#include "smgen.h"
 
 static void
 	* DONE = "done",

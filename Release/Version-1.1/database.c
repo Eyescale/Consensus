@@ -114,10 +114,8 @@ cn_new( CNInstance *source, CNInstance *target )
 	Pair *sub = newPair( source, target );
 	Pair *as_sub = newPair( NULL, NULL );
 	CNInstance *instance = (CNInstance *) newPair( sub, as_sub );
-	if (( source )) {
-		add_as_sub( instance, &source->as_sub[0], 0 );
-		add_as_sub( instance, &target->as_sub[1], 1 );
-	}
+	if (( source )) add_as_sub( instance, &source->as_sub[0], 0 );
+	if (( target ))	add_as_sub( instance, &target->as_sub[1], 1 );
 	return instance;
 }
 
@@ -158,10 +156,9 @@ db_register( char *p, CNDB *db, int notify )
 #ifndef NULL_TERMINATED
 		p = strmake( p );
 #endif
-#ifdef UNIFIED
-		e = cn_new( NULL, (CNInstance*) p );
-#else
 		e = cn_new( NULL, NULL );
+#ifdef UNIFIED
+		e->sub[ 1 ] = (CNInstance *) p;
 #endif
 		registryRegister( db->index, p, e );
 		if ( notify ) db_op( DB_MANIFEST_OP, e, db );

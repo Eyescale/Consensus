@@ -19,6 +19,11 @@ newPair( void *name, void *value )
         return pair;
 }
 
+void
+freePair( Pair *pair )
+{
+	recycle((void**) pair, &PairCache );
+}
 
 Pair *
 new_pair( int name, int value )
@@ -28,10 +33,3 @@ new_pair( int name, int value )
 	icast[ 1 ].value = value;
 	return newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
 }
-
-void
-freePair( Pair *pair )
-{
-	recycle((void**) pair, &PairCache );
-}
-

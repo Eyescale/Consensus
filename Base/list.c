@@ -47,9 +47,9 @@ addItem( listItem **list, void *ptr )
 listItem *
 add_item( listItem **list, int value )
 {
-        union { int value; char *ptr; } icast;
-        icast.value = value;
-        return addItem( list, icast.ptr );
+	union { int value; void *ptr; } icast;
+	icast.value = value;
+	return addItem( list, icast.ptr );
 }
 void
 removeItem( listItem **list, void *ptr )
