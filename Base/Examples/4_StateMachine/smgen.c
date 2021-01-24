@@ -1,7 +1,7 @@
 /*
 	Converts regex into a simple state machine - aka. finite automaton
 	The key to this algorithm is to consider a state as a unique combination of
-	active positions, one of which having been reached, and each successor of which
+	active positions, all of them reached, and of which each successor
 	representing a trigger to the next state, so that eventually we have:
 
 	StateMachine:{[ state:{p}, table:{ transition:[ trigger, state ] } ]}
