@@ -807,21 +807,22 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 		if ( (int) r->value != 255 )
 			continue;
 
-		/* our working hypothesis is that the user did not likely specify
-		   input \xFF. So we are going to output the inverted complementary
-		   set of all ranges leading to that state - as one [^ ]
+		/* our hypothesis is that the user did not likely specify input \xFF
+		   So we are going to output the inverted complementary set of all ranges
+		   leading to that state - as one [^ ]
 		*/
 		int state = (int) entry->name;
 		listItem *antirange = NULL;
 		int upper = 255;
 		for ( listItem *j=list; j!=NULL; j=j->next ) {
 			SET_RANGE( j->ptr, range );
-			if ( range[0] ) {
-				if ( upper != 255 )
-					addItem( &antirange, new_pair( range[1]+1, upper ) );
-				upper = range[0]-1;
+			if ( upper == 255 ) {
+				if ( range[0] ) upper = range[0]-1;
 			}
-			else upper = 255;
+			else {
+				addItem( &antirange, new_pair( range[1]+1, upper ) );
+				upper = ( range[0] ? range[0]-1 : 255 );
+			}
 		}
 		if ( upper != 255 ) addItem( &antirange, new_pair( 0, upper ) );
 
