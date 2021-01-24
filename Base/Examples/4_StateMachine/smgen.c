@@ -746,7 +746,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 	*/
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		/* entry->value holds the list of input ranges (in decreasing order)
-		   leading all to the entry->name state
+		   leading all to the same entry->name state
 		*/
 		Pair *entry = i->ptr;
 		int state = (int) entry->name;
@@ -775,7 +775,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 	*/
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		/* entry->value holds the list of input ranges (in decreasing order)
-		   leading all to the entry->name state
+		   leading all to the same entry->name state
 		*/
 		Pair *entry = i->ptr;
 		listItem *list = entry->value;
