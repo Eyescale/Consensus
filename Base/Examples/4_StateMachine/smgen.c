@@ -501,7 +501,6 @@ lookup( listItem **SM, listItem **state, listItem **active_next )
 //---------------------------------------------------------------------------
 //	post_p, post_s, pre_s, post_g, beyond
 //---------------------------------------------------------------------------
-static char *post_r( char *p );
 static char *post_p( char *p )
 /*
 	if *p in )|?*+ returns p
@@ -526,33 +525,18 @@ static char *post_p( char *p )
 		case '(':
 			level++;
 			s++; break;
+		case '[':
+			for ( s++; *s!=']'; )
+				s += ( *s=='\\' ? ( s[1]=='x' ? 4 : 2 ) : 1 );
+			s++; break;
 		case '\\':
 			s += ( s[1]=='x' ? 4 : 2 );
 			break;
-		case '[':
-			s = post_r( s ); break;
 		default:
 			s++;
 		}
 	} while ( level );
 	return s;
-}
-static char *post_r( char *p )
-/*
-	assumption: *p='['
-*/
-{
-	for ( p++; ; ) {
-		switch ( *p ) {
-		case ']':
-			return p+1;
-		case '\\':
-			p += ( p[1]=='x' ? 4 : 2 );
-			break;
-		default:
-			p++;
-		}
-	}
 }
 static char *post_s( char *s )
 {
@@ -652,7 +636,7 @@ static char *beyond( char *s )
 //	smOutput
 //---------------------------------------------------------------------------
 static void beautify( listItem *SM, listItem *table, int ndx, int tab );
-static int state_id( listItem *SM, listItem *state );
+static int state_id( listItem *SM, listItem *state, Pair **entry );
 static void output_c( int c, int in_quote );
 static void output_r( int *range, int in_bracket );
 
@@ -684,15 +668,8 @@ smOutput( listItem *SM, int tab )
 			init = entry->name;
 			TAB( tab+1 );
 			if (( init )) {
-				int id = 1;
-				for ( listItem *i=SM->next; i!=NULL; i=i->next, id++ ) {
-					Pair *e = i->ptr;
-					if ( !compare( init, e->name ) ) {
-						printf( "{ ~., %.4X }", id );
-						entry = e;
-						break;
-					}
-				}
+				int id = state_id( SM, init, &entry );
+				printf( "{ ~., %.4X }", id );
 			}
 			else printf( "~." );
 		}
@@ -706,7 +683,7 @@ smOutput( listItem *SM, int tab )
 		if ( table->next == NULL ) {
 			Pair *transition = table->ptr;
 			listItem *state = transition->value;
-			printf( " ? %.4X\n", state_id( SM, state ) );
+			printf( " ? %.4X\n", state_id(SM,state,NULL) );
 			continue;
 		}
 		printf( " ? :event:\n" );
@@ -731,7 +708,7 @@ smOutput( listItem *SM, int tab )
 				printf( "\t" );
 			}
 			else output_r( range, 1 );
-			int id = ( state==DONE ? 0 : state_id(SM,state) );
+			int id = ( state==DONE ? 0 : state_id(SM,state,NULL));
 			OUTPUT_S( id, ndx );
 		}
 		if (( other )) { TAB(tab+2); printf( ".\t\t? %s\n", other ); }
@@ -741,13 +718,16 @@ smOutput( listItem *SM, int tab )
 #ifdef BEAUTIFY
 #define ANTIRANGE
 #endif
+#define SET_RANGE( pair, range ) \
+	range[0] = (int) ((Pair*)pair)->name; \
+	range[1] = (int) ((Pair*)pair)->value;
 static void
 beautify( listItem *SM, listItem *table, int ndx, int tab )
 {
 	/* index table by transition states
 	*/
 	Registry *registry = newRegistry( IndexedByNumber );
-	Pair *entry;
+	Pair *entry; int range[ 2 ];
 
 	char *other = NULL;
 	for ( listItem *i=table; i!=NULL; i=i->next ) {
@@ -758,7 +738,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 			other = (char *) state;
 			break;
 		}
-		int id = ( state==DONE ? 0 : state_id( SM, state ));
+		int id = ( state==DONE ? 0 : state_id(SM,state,NULL));
 		if (( entry = registryLookup( registry, &id ) ))
 			addItem((listItem**) &entry->value, r );
 		else 
@@ -776,10 +756,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 
 		listItem *stack = NULL;
 		for ( listItem *j=list; j!=NULL; j=j->next ) {
-			Pair *r = j->ptr;
-			int range[ 2 ];
-			range[ 0 ] = (int) r->name;
-			range[ 1 ] = (int) r->value;
+			SET_RANGE( j->ptr, range );
 			if ( range[0] != range[1] )
 				continue;
 			add_item( &stack, range[0] );
@@ -810,10 +787,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 #endif
 		int state = (int) entry->name;
 		for ( listItem *j=list; j!=NULL; j=j->next ) {
-			Pair *r = j->ptr;
-			int range[ 2 ];
-			range[ 0 ] = (int) r->name;
-			range[ 1 ] = (int) r->value;
+			SET_RANGE( j->ptr, range );
 			if ( range[0] == range[1] )
 				continue;
 			TAB(tab+2); output_r( range, 1 );
@@ -841,27 +815,21 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 		listItem *antirange = NULL;
 		int upper = 255;
 		for ( listItem *j=list; j!=NULL; j=j->next ) {
-			Pair *r = j->ptr;
-			int range[ 2 ];
-			range[ 1 ] = (int) r->value;
-			range[ 0 ] = (int) r->name;
+			SET_RANGE( j->ptr, range );
 			if ( range[0] ) {
-				if ( upper != 255 )
+				if ( upper != 255 ) {
 					addItem( &antirange, new_pair( range[1]+1, upper ) );
+				}
 				upper = range[0]-1;
 			}
 			else upper = 255;
 		}
-		if ( upper != 255 )
-			addItem( &antirange, new_pair( 0, upper ) );
+		if ( upper != 255 ) addItem( &antirange, new_pair( 0, upper ) );
 
 		TAB(tab+2);
 		printf( "[^" );
 		for ( listItem *j=antirange; j!=NULL; j=j->next ) {
-			Pair *r = j->ptr;
-			int range[ 2 ];
-			range[ 0 ] = (int) r->name;
-			range[ 1 ] = (int) r->value;
+			SET_RANGE( j->ptr, range );
 			if ( range[0] == range[1] )
 				output_c( range[0], 0 );
 			else output_r( range, 0 );
@@ -887,13 +855,15 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 	freeRegistry( registry, NULL );
 }
 static int
-state_id( listItem *SM, listItem *state )
+state_id( listItem *SM, listItem *state, Pair **entry )
 {
-	int n = 1;
-	for ( listItem *i=SM->next; i!=NULL; i=i->next, n++ ) {
-		Pair *entry = i->ptr;
-		if ( !compare( entry->name, state ) )
-			return n;
+	int id = 1;
+	for ( listItem *i=SM->next; i!=NULL; i=i->next, id++ ) {
+		Pair *r = i->ptr;
+		if ( !compare( r->name, state ) ) {
+			if (( entry )) *entry = r;
+			return id;
+		}
 	}
 	fprintf( stderr, "Error: smgen: state unknown\n" );
 	exit( -1 );
