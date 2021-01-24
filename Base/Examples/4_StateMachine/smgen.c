@@ -23,6 +23,9 @@ static void
 	* FAIL = "~";
 
 #define BEAUTIFY
+#ifdef BEAUTIFY
+#define ANTIRANGE
+#endif
 
 //---------------------------------------------------------------------------
 //	main	- TEST
@@ -641,6 +644,9 @@ static void output_c( int c, int in_quote );
 static void output_r( int *range, int in_bracket );
 
 #define TAB(n)	for ( int i=0; i<n; i++ ) printf( "\t" );
+#define SET_RANGE( pair, range ) \
+	range[0] = (int) ((Pair*)pair)->name; \
+	range[1] = (int) ((Pair*)pair)->value;
 #define OUTPUT_S( id, ndx ) { \
 	printf( "\t? " ); \
 	if ( id == 0 ) printf( "%s\n", DONE ); \
@@ -661,7 +667,7 @@ smOutput( listItem *SM, int tab )
 {
 	TAB(tab); printf( "do :state:\n" );
 	listItem *init;
-	int ndx = 0;
+	int ndx = 0, range[ 2 ];
 	for ( listItem *i=SM; i!=NULL; i=i->next, ndx++ ) {
 		Pair *entry = i->ptr;
 		if ( ndx == 0 ) {
@@ -675,9 +681,8 @@ smOutput( listItem *SM, int tab )
 		}
 		else if ( !compare( entry->name, init ) )
 			continue;
-		else {
-			TAB(tab+1); printf( "%.4X", ndx );
-		}
+		else { TAB(tab+1); printf( "%.4X", ndx ); }
+
 		listItem *table = entry->value;
 		// handle here special case where range is [\x00-\xFF]
 		if ( table->next == NULL ) {
@@ -687,9 +692,7 @@ smOutput( listItem *SM, int tab )
 			continue;
 		}
 		printf( " ? :event:\n" );
-#ifdef BEAUTIFY
-		beautify( SM, table, ndx, tab );
-#else
+#ifndef BEAUTIFY
 		char *other = NULL;
 		for ( listItem *j=table; j!=NULL; j=j->next ) {
 			Pair *transition = j->ptr;
@@ -700,9 +703,7 @@ smOutput( listItem *SM, int tab )
 				break;
 			}
 			TAB( tab+2 );
-			int range[ 2 ];
-			range[ 0 ] = (int) r->name;
-			range[ 1 ] = (int) r->value;
+			SET_RANGE( r, range );
 			if ( range[0] == range[1] ) {
 				output_c( range[0], 1 );
 				printf( "\t" );
@@ -712,15 +713,11 @@ smOutput( listItem *SM, int tab )
 			OUTPUT_S( id, ndx );
 		}
 		if (( other )) { TAB(tab+2); printf( ".\t\t? %s\n", other ); }
-#endif	// BEAUTIFY
+#else
+		beautify( SM, table, ndx, tab );
+#endif
 	}
 }
-#ifdef BEAUTIFY
-#define ANTIRANGE
-#endif
-#define SET_RANGE( pair, range ) \
-	range[0] = (int) ((Pair*)pair)->name; \
-	range[1] = (int) ((Pair*)pair)->value;
 static void
 beautify( listItem *SM, listItem *table, int ndx, int tab )
 {
