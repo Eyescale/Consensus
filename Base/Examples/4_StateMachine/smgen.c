@@ -737,10 +737,11 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 		}
 		int id = ( state==DONE ? 0 : state_id(SM,state,NULL));
 		if (( entry = registryLookup( registry, &id ) ))
-			addItem((listItem**) &entry->value, r );
+			addItem((listItem **) &entry->value, r );
 		else 
 			registryRegister( registry, &id, newItem(r) );
 	}
+
 	/* 1. output single events all together
 	*/
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
@@ -769,6 +770,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 			OUTPUT_S( state, ndx );
 		}
 	}
+
 	/* 2. output ranges not ending with \xFF
 	*/
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
@@ -791,6 +793,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 			OUTPUT_S( state, ndx );
 		}
 	}
+
 	/* 3. output ranges ending with \xFF
 	*/
 #ifdef ANTIRANGE
@@ -814,9 +817,8 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 		for ( listItem *j=list; j!=NULL; j=j->next ) {
 			SET_RANGE( j->ptr, range );
 			if ( range[0] ) {
-				if ( upper != 255 ) {
+				if ( upper != 255 )
 					addItem( &antirange, new_pair( range[1]+1, upper ) );
-				}
 				upper = range[0]-1;
 			}
 			else upper = 255;
@@ -839,6 +841,7 @@ beautify( listItem *SM, listItem *table, int ndx, int tab )
 		freeListItem( &antirange );
 	}
 #endif	// ANTIRANGE
+
 	/* 4. output else
 	*/
 	if (( other )) { TAB(tab+2); printf( ".\t? %s\n", other ); }
