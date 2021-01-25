@@ -69,24 +69,23 @@ isanumber( char *p )
 }
 #define HVAL(c) (c-((c<58)?48:(c<97)?55:87))
 int
-charscan( char *p, char *q )
+charscan( char *p, char_s *q )
 {
-	q[ MAXCHARSIZE ] = (char) 0;
 	switch ( *p ) {
 	case '\\':
 		switch ( p[1] ) {
-		case 'x':  q[ 0 ] = HVAL(p[2])<<4 | HVAL(p[3]); return 4;
-		case '0':  q[ 0 ] = '\0'; return 2;
-		case 't':  q[ 0 ] = '\t'; return 2;
-		case 'n':  q[ 0 ] = '\n'; return 2;
-		case '\\': q[ 0 ] = '\\'; return 2;
-		case '\'': q[ 0 ] = '\''; return 2;
-		case '\"': q[ 0 ] = '\"'; return 2;
+		case 'x':  q->value = HVAL(p[2])<<4 | HVAL(p[3]); return 4;
+		case '0':  q->value = '\0'; return 2;
+		case 't':  q->value = '\t'; return 2;
+		case 'n':  q->value = '\n'; return 2;
+		case '\\': q->value = '\\'; return 2;
+		case '\'': q->value = '\''; return 2;
+		case '\"': q->value = '\"'; return 2;
 		default: return 0;
 		}
 		break;
 	default:
-		q[ 0 ] = *p; return 1;
+		q->value = p[0]; return 1;
 	}
 }
 
@@ -463,7 +462,7 @@ int
 rxcmp( char *r, int event )
 {
 	int delta, not;
-	char q[ MAXCHARSIZE + 1 ];
+	char_s q;
 	switch ( *r ) {
 	case '.':
 		return 0;
@@ -474,8 +473,8 @@ rxcmp( char *r, int event )
 			int range[ 2 ];
 			switch ( *r ) {
 			case '\\': 
-				delta = charscan(r,q);
-				if ( delta ) { range[0]=q[0]; r+=delta; }
+				delta = charscan( r, &q );
+				if ( delta ) { range[0]=q.value; r+=delta; }
 				else { range[0]=r[1]; r+=2; }
 				break;
 			default:
@@ -486,8 +485,8 @@ rxcmp( char *r, int event )
 				switch ( *r ) {
 				case '\0': break;
 				case '\\': 
-					delta = charscan(r,q);
-					if ( delta ) { range[1]=q[0]; r+=delta; }
+					delta = charscan( r, &q );
+					if ( delta ) { range[1]=q.value; r+=delta; }
 					else { range[1]=r[1]; r+=2; }
 					break;
 				default:
@@ -505,8 +504,8 @@ rxcmp( char *r, int event )
 		case 'l': return is_letter(event) ? 0 : -1;
 		case 'h': return is_xdigit(event) ? 0 : -1;
 		}
-		return event - ( charscan(r,q) ?
-			*(const unsigned char*)q : *(const unsigned char*)(r+1) );
+		return event - ( charscan(r,&q) ?
+			*(const unsigned char*)q.s : *(const unsigned char*)(r+1) );
 	default:
 		return event - *(const unsigned char*)r;
 	}

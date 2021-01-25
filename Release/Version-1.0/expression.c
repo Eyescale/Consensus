@@ -18,7 +18,7 @@ db_verify( int privy, CNInstance *x, char *expression, CNDB *db )
 {
 #ifdef DEBUG
 fprintf( stderr, "db_verify: %s / candidate=", expression );
-cn_out( stderr, x, db );
+output( stderr, x, db );
 fprintf( stderr, " ........{\n" );
 #endif
 	VerifyData data;
@@ -528,10 +528,10 @@ db_output( char *expression, CNDB *db )
 	data.last = NULL;
 	db_traverse( expression, db, output_CB, &data );
 	if ( data.first )
-		cn_out( stdout, data.last, db );
+		output( stdout, data.last, db );
 	else {
 		printf( ", " );
-		cn_out( stdout, data.last, db );
+		output( stdout, data.last, db );
 		printf( " }" );
 	}
 }
@@ -545,7 +545,7 @@ output_CB( CNInstance *e, CNDB *db, void *user_data )
 			data->first = 0;
 		}
 		else printf( ", " );
-		cn_out( stdout, data->last, db );
+		output( stdout, data->last, db );
 	}
 	data->last = e;
 	return DB_CONTINUE;

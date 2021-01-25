@@ -4,7 +4,7 @@
 #include "string_util.h"
 #include "database.h"
 #include "db_op.h"
-#include "db_type.h"
+#include "db_debug.h"
 
 // #define DEBUG
 // #define DB_DEBUG
@@ -12,6 +12,8 @@
 //===========================================================================
 //	db_op
 //===========================================================================
+void db_remove( CNInstance *, CNDB * );
+
 int
 db_op( DBOperation op, CNInstance *e, CNDB *db )
 {
@@ -111,6 +113,44 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 	}
 	return 0;
 }
+void
+db_remove( CNInstance *e, CNDB *db )
+{
+#ifdef DEBUG
+fprintf( stderr, "db_remove:\t" );
+db_output( stderr, "", e, db );
+fprintf( stderr, "\n" );
+#endif
+	if (( e->sub[0] )) {
+		cn_release( e );
+		return;
+	}
+	cn_release( e );
+
+#ifdef DEBUG
+fprintf( stderr, "db_deregister:\t" );
+db_output( stderr, "", e, db );
+fprintf( stderr, "\n" );
+#endif
+	Registry *index = db->index;
+	listItem *next_i, *last_i=NULL;
+	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
+		Pair *entry = i->ptr;
+		next_i = i->next;
+		if ( entry->value == e ) {
+			if (( last_i )) last_i->next = next_i;
+			else index->entries = next_i;
+			free( entry->name );
+			freePair( entry );
+			freeItem( i );
+			break;
+		}
+		else last_i = i;
+	}
+#ifdef UNIFIED
+	e->sub[1] = NULL;
+#endif
+}
 
 //===========================================================================
 //	db_update
@@ -119,12 +159,9 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 	if (( x->sub[0] )) addItem( &trash[0], x ); \
 	else addItem( &trash[1], x );
 #define EMPTY_TRASH \
-	while (( x = popListItem( &trash[0] ) )) \
-		db_remove( x, db ); \
-	while (( x = popListItem( &trash[1] ) )) { \
-		db_deregister( x, db ); \
-		db_remove( x, db ); \
-	}
+	for ( int i=0; i<2; i++ ) \
+		while (( x = popListItem( &trash[i] ) )) \
+			db_remove( x, db );
 
 void
 db_update( CNDB *db )
@@ -222,137 +259,6 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 	}
 #ifdef DEBUG
 fprintf( stderr, "--\n" );
-#endif
-}
-
-//===========================================================================
-//	db_remove
-//===========================================================================
-void
-db_remove( CNInstance *e, CNDB *db )
-/*
-	Removes e from db
-	Assumption: db_deregister has been called, when needed, separately
-*/
-{
-#ifdef DEBUG
-fprintf( stderr, "db_remove:\t" );
-db_output( stderr, "", e, db );
-fprintf( stderr, "\n" );
-#endif
-#ifndef UNIFIED
-	/* 1. remove e from the as_sub lists of its subs
-	*/
-	CNInstance *sub;
-	if (( sub=e->sub[0] )) remove_as_sub( e, &sub->as_sub[0], 0 );
-	if (( sub=e->sub[1] )) remove_as_sub( e, &sub->as_sub[1], 1 );
-
-	/* 2. nullify e as sub of its as_sub's
-	   note: these will be free'd as well, as e was deprecated
-	*/
-	for ( listItem *j=e->as_sub[ 0 ]; j!=NULL; j=j->next ) {
-		CNInstance *instance = j->ptr;
-		instance->sub[ 0 ] = NULL;
-	}
-	for ( listItem *j=e->as_sub[ 1 ]; j!=NULL; j=j->next ) {
-		CNInstance *instance = j->ptr;
-		instance->sub[ 1 ] = NULL;
-	}
-	/* 3. free e
-	*/
-	cn_free( e );
-#else
-	/* 1. remove e from the as_sub lists of its subs
-	*/
-	CNInstance *sub;
-	if (( sub=e->sub[0] )) {
-		remove_as_sub( e, &sub->as_sub[0], 0 );
-		if (( sub=e->sub[1] )) remove_as_sub( e, &sub->as_sub[1], 1 );
-	}
-	else if (( sub = e->sub[1] )) {
-		Pair *pair = (Pair *) sub;
-		if (( pair->name )) remove_as_sub( e, (listItem **) pair->name, 0 );
-		if (( pair->value )) remove_as_sub( e, (listItem **) pair->value, 1 );
-		freePair( pair );
-	}
-
-	/* 2. nullify e as sub of its as_sub's
-	   note: these will be free'd as well, as e was deprecated
-	*/
-	for ( listItem *j=e->as_sub[ 0 ]; j!=NULL; j=j->next ) {
-		CNInstance *instance = j->ptr;
-		Pair *pair;
-		if (( instance->sub[0] )) {
-			sub = instance->sub[ 1 ];
-			pair = newPair( NULL, &sub->as_sub[1] );
-			instance->sub[0] = NULL;
-			instance->sub[1] = (CNInstance *) pair;
-		}
-		else if (( instance->sub[1] )) {
-			pair = (Pair *) instance->sub[ 1 ];
-			if ( pair->value == NULL ) {
-				freePair( pair );
-				instance->sub[1] = NULL;
-			}
-		}
-	}
-	for ( listItem *j=e->as_sub[ 1 ]; j!=NULL; j=j->next ) {
-		CNInstance *instance = j->ptr;
-		Pair *pair;
-		if (( instance->sub[0] )) {
-			sub = instance->sub[ 0 ];
-			pair = newPair( &sub->as_sub[0], NULL );
-			instance->sub[0] = NULL;
-			instance->sub[1] = (CNInstance *) pair;
-		}
-		else if (( instance->sub[1] )) {
-			pair = (Pair *) instance->sub[ 1 ];
-			if ( pair->name == NULL ) {
-				freePair( pair );
-				instance->sub[1] = NULL;
-			}
-		}
-	}
-	/* 3. free e
-	*/
-	cn_free( e );
-#endif
-}
-
-//===========================================================================
-//	db_deregister
-//===========================================================================
-void
-db_deregister( CNInstance *e, CNDB *db )
-/*
-	removes e from db index if it's there
-	Assumptions:
-	1. e->sub[0] == NULL already verified
-	2. db_remove will be called separately
-*/
-{
-#ifdef DEBUG
-fprintf( stderr, "db_deregister:\t" );
-db_output( stderr, "", e, db );
-fprintf( stderr, "\n" );
-#endif
-	Registry *index = db->index;
-	listItem *next_i, *last_i=NULL;
-	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
-		Pair *entry = i->ptr;
-		next_i = i->next;
-		if ( entry->value == e ) {
-			if (( last_i )) last_i->next = next_i;
-			else index->entries = next_i;
-			free( entry->name );
-			freePair( entry );
-			freeItem( i );
-			break;
-		}
-		else last_i = i;
-	}
-#ifdef UNIFIED
-	e->sub[1] = NULL;
 #endif
 }
 

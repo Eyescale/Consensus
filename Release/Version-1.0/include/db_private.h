@@ -19,12 +19,5 @@ enum {
 };
 static CNInstance *db_op( int op, CNInstance *e, int flags, CNDB *db );
 
-//===========================================================================
-//	core
-//===========================================================================
-static CNInstance *cn_new( CNInstance *, CNInstance * );
-static void cn_free( CNInstance * );
-static CNInstance *cn_instance( CNInstance *, CNInstance * );
-
 
 #endif	// DB_PRIVATE_H

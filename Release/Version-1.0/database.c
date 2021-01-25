@@ -97,6 +97,7 @@ db_update( CNDB *db )
 {
 	CNInstance *nil = db->nil;
 	CNInstance *e, *f, *g, *x;
+	listItem *trash[2] = { NULL, NULL };
 #ifdef DEBUG
 fprintf( stderr, "db_update: 1. actualize last frame's manifestations\n" );
 #endif
@@ -110,7 +111,7 @@ fprintf( stderr, "db_update: 1. actualize last frame's manifestations\n" );
 		if ( x == nil ) continue; // out
 		if ( x->sub[ 0 ] == nil ) continue;
 		if ( x->sub[ 1 ] == nil ) continue;
-		f = cn_instance( x, nil );
+		f = cn_instance( x, nil, 1 );
 		if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
 			// remove (( x, nil ), nil ) and ( x, nil )
 			g = f->as_sub[ 0 ]->ptr;
@@ -143,10 +144,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( g, db );
 			// remove ( x, nil ) and x
 			db_remove( f, db );
-			if ( x->sub[ 0 ] == NULL ) {
-				db_deregister( x, db );
-			}
-			db_remove( x, db );
+			addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x );
 		}
 		else {
 			// remove (( x, nil ), nil ) and ( x, nil )
@@ -172,14 +170,13 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 			// remove ( nil, ( nil, x ) )
 			db_remove( g, db );
 			// remove ( x, nil ) if x was released
-			g = cn_instance( f->sub[ 1 ], nil );
+			g = cn_instance( f->sub[ 1 ], nil, 1 );
 			if (( g )) db_remove( g, db );
 		}
 	}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
 #endif
-	listItem *trash[2] = { NULL, NULL };
 	// for each f: ( x, nil ) where ( nil, f ) does not exist
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
@@ -191,12 +188,9 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		db_remove( f, db );
 		addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x );
 	}
-	while (( x = popListItem( &trash[0] ) ))
-		db_remove( x, db );
-	while (( x = popListItem( &trash[1] ) )) {
-		db_deregister( x, db );
-		db_remove( x, db );
-	}
+	for ( int i=0; i<2; i++ )
+		while (( x = popListItem( &trash[i] ) ))
+			db_remove( x, db );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
@@ -395,10 +389,10 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil;
 	if ( e->sub[ 0 ] == nil ) return 1;
 	if ( e->sub[ 1 ] == nil ) return 1;
-	CNInstance *f = cn_instance( e, nil );
+	CNInstance *f = cn_instance( e, nil, 1 );
 	if (( f )) {
 		if ( f->as_sub[ 0 ] ) // new born
-			return !( cn_instance( nil, e ) );
+			return !( cn_instance( nil, e, 0 ) );
 		if ( f->as_sub[ 1 ] ) // to be released
 			return 0;
 		// deprecated
@@ -422,7 +416,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 {
 #ifdef DEBUG
 	fprintf( stderr, "db_instantiate: ( " );
-	cn_out( stderr, e, db );
+	output( stderr, e, db );
 	dbg_out( ", ", f, " )\n", db );
 #endif
 	CNInstance *instance = NULL;
@@ -446,7 +440,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	else {
 		/* General case
 		*/
-		instance = cn_instance( e, f );
+		instance = cn_instance( e, f, 0 );
 		if (( instance )) {
 			db_op( DB_REHABILITATE_OP, instance, 0, db );
 			return instance;
@@ -465,12 +459,14 @@ db_identifier( CNInstance *e, CNDB *db )
 	return NULL;
 }
 static void
-db_deregister( CNInstance *e, CNDB *db )
-/*
-	removes e from db index if it's there
-	Note: db_remove MUST be called, but is called separately
-*/
+db_remove( CNInstance *e, CNDB *db )
 {
+	if (( e->as_sub[0] )) {
+		cn_release( e );
+		return;
+	}
+	cn_release( e );
+
 	Registry *index = db->index;
 	listItem *next_i, *last_i=NULL;
 	for ( listItem *i=index->entries; i!=NULL; last_i=i, i=next_i ) {
@@ -488,40 +484,13 @@ db_deregister( CNInstance *e, CNDB *db )
 		}
 	}
 }
-static void
-db_remove( CNInstance *e, CNDB *db )
-/*
-	Removes e from db
-	Assumption: db_deregister is called, when needed, separately
-*/
-{
-#ifdef DEBUG
-dbg_out( "db_remove:\t", e, "\n", db );
-#endif
-	/* nullify e as sub of its as_sub's
-	   note: these will be free'd as well, as e was deprecated
-	*/
-	for ( int i=0; i<2; i++ ) {
-		for ( listItem *j=e->as_sub[i]; j!=NULL; j=j->next ) {
-			CNInstance *e = j->ptr;
-			e->sub[i] = NULL;
-		}
-	}
-	/* remove e from the as_sub lists of its subs
-	*/
-	for ( int i=0; i<2; i++ ) {
-		CNInstance *sub = e->sub[ i ];
-		if (( sub )) removeItem( &sub->as_sub[ i ], e );
-	}
-	cn_free( e );
-}
 static CNInstance *
 db_op( int op, CNInstance *e, int flag, CNDB *db )
 {
 	CNInstance *nil = db->nil, *f;
 	switch ( op ) {
 	case DB_DEPRECATE_OP:
-		f = cn_instance( e, nil );
+		f = cn_instance( e, nil, 1 );
 		if (( f )) {
 			// case newborn, possibly to-be-released or manifested (reassigned)
 			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
@@ -530,7 +499,7 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 					return g; // already to-be-released
 				}
 				// case manifested
-				if (( cn_instance( nil, e ) )) {
+				if (( cn_instance( nil, e, 0 ) )) {
 					// remove (( e, nil ), nil )
 					CNInstance *g = f->as_sub[ 0 ]->ptr;
 					db_remove( g, db );
@@ -544,7 +513,7 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 				return g; // already to-be-released
 			}
 			// case released, possibly to-be-manifested (reborn)
-			CNInstance *k = cn_instance( nil, e );
+			CNInstance *k = cn_instance( nil, e, 0 );
 			if (( k )) {
 				// cannot be released and manifested
 				CNInstance *g = k->as_sub[ 1 ]->ptr;
@@ -556,7 +525,7 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 		/* neither released, nor newborn, nor to-be-released
 		   possibly manifested or to-be-manifested
 		*/
-		f = cn_instance( nil, e );
+		f = cn_instance( nil, e, 0 );
 		if (( f ) && ( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 			CNInstance *g = f->as_sub[ 1 ]->ptr;
 			db_remove( g, db );
@@ -565,7 +534,7 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 		return cn_new( nil, cn_new( e, nil ) );
 
 	case DB_REHABILITATE_OP:
-		f = cn_instance( e, nil );
+		f = cn_instance( e, nil, 1 );
 		if (( f )) {
 			// case newborn, possibly to-be-released or manifested (reassigned)
 			if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
@@ -587,7 +556,7 @@ db_op( int op, CNInstance *e, int flag, CNDB *db )
 		}
 		// case reassignment, possibly manifested or to-be-manifested
 		if ( flag == DB_REASSIGN ) {
-			f = cn_instance( nil, e );
+			f = cn_instance( nil, e, 0 );
 			if (( f )) {
 				if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 					CNInstance *g = f->as_sub[ 1 ]->ptr;
@@ -626,7 +595,7 @@ db_deprecated( CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil;
 	if ( e->sub[ 0 ] == nil ) return 1;
 	if ( e->sub[ 1 ] == nil ) return 1;
-	CNInstance *f = cn_instance( e, nil );
+	CNInstance *f = cn_instance( e, nil, 1 );
 	if (( f )) {
 		if ( f->as_sub[ 0 ] )	// newborn or reassigned
 			return 0;
@@ -640,38 +609,8 @@ db_deprecated( CNInstance *e, CNDB *db )
 //===========================================================================
 //	CNDB core
 //===========================================================================
-static CNInstance *
-cn_new( CNInstance *source, CNInstance *target )
-{
-	Pair *sub = newPair( source, target );
-	Pair *as_sub = newPair( NULL, NULL );
-	CNInstance *e = (CNInstance *) newPair( sub, as_sub );
-	if (( source )) addItem( &source->as_sub[0], e );
-	if (( target )) addItem( &target->as_sub[1], e );
-	return e;
-}
-static void
-cn_free( CNInstance *e )
-{
-	if ( e == NULL ) return;
-	freePair((Pair *) e->sub );
-	freeListItem( &e->as_sub[ 0 ] );
-	freeListItem( &e->as_sub[ 1 ] );
-	freePair((Pair *) e->as_sub );
-	freePair((Pair *) e );
-}
-static CNInstance *
-cn_instance( CNInstance *e, CNInstance *f )
-{
-	for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-		CNInstance *instance = i->ptr;
-		if ( instance->sub[ 1 ] == f )
-			return instance;
-	}
-	return NULL;
-}
 int
-cn_out( FILE *stream, CNInstance *e, CNDB *db )
+output( FILE *stream, CNInstance *e, CNDB *db )
 {
 	if ( e == NULL ) return 0;
 	union { int value; void *ptr; } icast;
@@ -719,6 +658,6 @@ void
 dbg_out( char *pre, CNInstance *e, char *post, CNDB *db )
 {
 	if (( pre )) fprintf( stderr, "%s", pre );
-	if (( e )) cn_out( stderr, e, db );
+	if (( e )) output( stderr, e, db );
 	if (( post )) fprintf( stderr, "%s", post );
 }

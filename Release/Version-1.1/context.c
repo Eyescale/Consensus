@@ -155,22 +155,19 @@ bm_locate_mark( char *expression, listItem **exponent )
 listItem *
 bm_push_mark( BMContext *ctx, int mark, void *e )
 {
-	typedef union { int value; char name[2]; } icast;
-	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
+	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
 	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
 }
 void *
 bm_pop_mark( BMContext *ctx, int mark )
 {
-	typedef union { int value; char name[2]; } icast;
-	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
+	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
 	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
 }
 void *
 lookup_mark_register( BMContext *ctx, int mark )
 {
-	typedef union { int value; char name[2]; } icast;
-	Pair *entry = registryLookup( ctx->registry, ((icast) mark).name );
+	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
 	return (entry) && (entry->value) ? ((listItem*)entry->value)->ptr : NULL;
 }
 
@@ -181,14 +178,14 @@ CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
 	Pair *entry;
-	char q[ MAXCHARSIZE + 1 ];
+	char_s q;
 	switch ( *p ) {
 	case '%': // looking up %? or %
 		return strmatch( "?!", p[1] ) ? lookup_mark_register( ctx, p[1] ) :
 			db_lookup( privy, p, ctx->db );
 	case '\'': // looking up single character identifier instance
-		return ( charscan( p+1, q ) ) ?
-			db_lookup( privy, q, ctx->db ) : NULL;
+		return ( charscan( p+1, &q ) ) ?
+			db_lookup( privy, q.s, ctx->db ) : NULL;
 	default: // looking up normal identifier instance
 		if ( !is_separator(*p) ) {
 			entry = registryLookup( ctx->registry, p );
@@ -235,9 +232,9 @@ bm_register( BMContext *ctx, char *p )
 			else registryRegister( registry, p, x );
 		}
 	case '\'':; // registering single character identifier instance
-		char q[ MAXCHARSIZE + 1 ];
-		if ( charscan(p+1,q) )
-			return db_register( q, ctx->db, 1 );
+		char_s q;
+		if ( charscan( p+1, &q ) )
+			return db_register( q.s, ctx->db, 1 );
 		break;
 	default: // registering normal identifier instance
 		if ( !is_separator(*p) ) {

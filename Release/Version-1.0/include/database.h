@@ -1,13 +1,10 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#include "entity.h"
 #include "registry.h"
 
-typedef struct _Entity {
-	struct _Entity **sub;
-	listItem **as_sub;
-} CNInstance;
-
+typedef CNEntity CNInstance;
 typedef struct {
 	CNInstance *nil;
 	Registry *index;
@@ -41,7 +38,7 @@ void	db_deprecate( CNInstance *, CNDB * );
 //===========================================================================
 int	db_private( int privy, CNInstance *, CNDB * );
 
-int	cn_out( FILE *, CNInstance *, CNDB * );
+int	output( FILE *, CNInstance *, CNDB * );
 void	dbg_out( char *pre, CNInstance *e, char *post, CNDB * );
 
 

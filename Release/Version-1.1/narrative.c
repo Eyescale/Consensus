@@ -1101,8 +1101,10 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 static CNOccurrence *
 newOccurrence( CNOccurrenceType type )
 {
+	union { int value; void *ptr; } icast;
+	icast.value = type;
 	Pair *pair = newPair( NULL, NULL );
-	return (CNOccurrence *) newPair( *(void **)&type, pair );
+	return (CNOccurrence *) newPair( icast.ptr, pair );
 }
 static void
 freeOccurrence( CNOccurrence *occurrence )

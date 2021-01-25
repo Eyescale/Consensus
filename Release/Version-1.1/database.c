@@ -106,34 +106,6 @@ free_CB( Registry *registry, Pair *pair )
 }
 
 //===========================================================================
-//	cn_new
-//===========================================================================
-CNInstance *
-cn_new( CNInstance *source, CNInstance *target )
-{
-	Pair *sub = newPair( source, target );
-	Pair *as_sub = newPair( NULL, NULL );
-	CNInstance *instance = (CNInstance *) newPair( sub, as_sub );
-	if (( source )) add_as_sub( instance, &source->as_sub[0], 0 );
-	if (( target ))	add_as_sub( instance, &target->as_sub[1], 1 );
-	return instance;
-}
-
-//===========================================================================
-//	cn_free
-//===========================================================================
-void
-cn_free( CNInstance *e )
-{
-	if ( e == NULL ) return;
-	freePair((Pair *) e->sub );
-	freeListItem( &e->as_sub[ 0 ] );
-	freeListItem( &e->as_sub[ 1 ] );
-	freePair((Pair *) e->as_sub );
-	freePair((Pair *) e );
-}
-
-//===========================================================================
 //	db_register
 //===========================================================================
 CNInstance *
@@ -186,12 +158,7 @@ db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 			fprintf( stderr, "B%%::db_couple: Warning: reassigning " );
 			db_output( stderr, "", instance, db );
 			fprintf( stderr, " to " );
-
-			CNInstance *sub = instance->sub[ 1 ];
-			remove_as_sub( instance, &sub->as_sub[1], 1 );
-			instance->sub[ 1 ] = f;
-			add_as_sub( instance, &f->as_sub[1], 1 );
-
+			cn_rewire( instance, 1, f );
 			db_output( stderr, "", instance, db );
 			fprintf( stderr, "\n" );
 			return instance;

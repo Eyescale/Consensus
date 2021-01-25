@@ -827,11 +827,11 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 	}
 	if (( y->sub[0] )) return 0;
 	CNDB *db = data->ctx->db;
-	char q[ MAXCHARSIZE + 1 ];
+	char_s q;
 	switch ( *p ) {
 	case '*': return ( y == data->star );
 	case '/': return !strcomp( p, db_identifier(y,db), 2 );
-	case '\'': return charscan( p+1, q ) && !strcomp( q, db_identifier(y,db), 1 );
+	case '\'': return charscan( p+1, &q ) && !strcomp( q.s, db_identifier(y,db), 1 );
 	default: return !strcomp( p, db_identifier(y,db), 1 );
 	}
 }

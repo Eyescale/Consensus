@@ -7,7 +7,7 @@
 
 #include "list.h"
 
-#define MAXCHARSIZE 1
+typedef union { char s[2]; int value; } char_s;
 
 int	is_separator( int event );
 int	is_printable( int event );
@@ -15,7 +15,7 @@ int	is_space( int event );
 int	is_escapable( int event );
 int	is_xdigit( int event );
 int	isanumber( char *string );
-int	charscan( char *p, char *q );
+int	charscan( char *p, char_s *q );
 
 
 typedef enum {

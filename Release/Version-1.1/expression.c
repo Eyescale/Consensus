@@ -65,6 +65,7 @@ bm_substantiate( char *expression, CNDB *db )
 	CNInstance *e = NULL;
 	int level=0, ndx=0, done=0;
 	char *p = expression;
+	char_s q;
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '{':
@@ -124,10 +125,9 @@ bm_substantiate( char *expression, CNDB *db )
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
-		case '\'':;
-			char q[ MAXCHARSIZE + 1 ];
-			if ( charscan(p+1,q) )
-				e = db_register( q, db, 0 );
+		case '\'':
+			if ( charscan( p+1, &q ) )
+				e = db_register( q.s, db, 0 );
 			else // error
 				e = db_register( "", db, 0 );
 			sub[ ndx ] = newItem( e );
@@ -150,11 +150,10 @@ bm_expand( char *expression, CNDB *db )
 	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
 */
 {
-	char q[ MAXCHARSIZE + 1 ];
 	listItem *stack = NULL;
 	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
-	union { int value; char name[2]; } icast;
 	char *p = expression + 2;
+	char_s q;
 	for ( ; ; ) {
 		switch ( *p ) {
 		case ')':
@@ -182,34 +181,34 @@ bm_expand( char *expression, CNDB *db )
 			if ( p[1]==')' )
 				e = db_register( "\0", db, 0 );
 			else {
-				icast.value = p[ 0 ];
-				e = db_register( icast.name, db, 0 );
+				q.value = p[ 0 ];
+				e = db_register( q.s, db, 0 );
 			}
 			addItem( &stack, e );
 			p++; break;
 		case '\\':
-			switch (( icast.value = p[1] )) {
+			switch (( q.value = p[1] )) {
 			case '0':
 			case ' ':
 			case 'w':
 				if ( backslash == NULL ) {
 					backslash = db_register( "\\", db, 0 );
 				}
-				e = db_register( icast.name, db, 0 );
+				e = db_register( q.s, db, 0 );
 				e = db_couple( backslash, e, db );
 				p+=2; break;
 			case ')':
-				e = db_register( icast.name, db, 0 );
+				e = db_register( q.s, db, 0 );
 				p+=2; break;
 			default:
-				p += charscan( p, q );
-				e = db_register( q, db, 0 );
+				p += charscan( p, &q );
+				e = db_register( q.s, db, 0 );
 			}
 			addItem( &stack, e );
 			break;
 		default:
-			icast.value = p[0];
-			e = db_register( icast.name, db, 0 );
+			q.value = p[0];
+			e = db_register( q.s, db, 0 );
 			addItem( &stack, e );
 			p++;
 		}
@@ -516,7 +515,8 @@ bm_inputf( char *format, listItem *args, BMContext *ctx )
 	Assumption: format starts and finishes with \" or \0
 */
 {
-	int event;
+	int event, delta;
+	char_s q;
 	if ( *format ) {
 		format++; // skip opening double-quote
 		while ( *format ) {
@@ -541,12 +541,11 @@ bm_inputf( char *format, listItem *args, BMContext *ctx )
 				}
 				format++;
 				break;
-			default:;
-				char q[ MAXCHARSIZE + 1 ];
-				int delta = charscan( format, q );
+			default:
+				delta = charscan( format, &q );
 				if ( delta ) {
 					event = fgetc( stdin );
-					if ( event==EOF || event!=q[0] )
+					if ( event==EOF || event!=q.value )
 						goto RETURN;
 					format += delta;
 				}
@@ -632,6 +631,7 @@ bm_outputf( char *format, listItem *args, BMContext *ctx )
 	Assumption: format starts and finishes with \" or \0
 */
 {
+	int delta; char_s q;
 	if ( *format ) {
 		format++; // skip opening double-quote
 		while ( *format ) {
@@ -651,11 +651,10 @@ bm_outputf( char *format, listItem *args, BMContext *ctx )
 				}
 				format++;
 				break;
-			default:;
-				char q[ MAXCHARSIZE + 1 ];
-				int delta = charscan(format,q);
+			default:
+				delta = charscan( format, &q );
 				if ( delta ) {
-					printf( "%c", *(unsigned char *)q );
+					printf( "%c", q.value );
 					format += delta;
 				}
 				else format++;

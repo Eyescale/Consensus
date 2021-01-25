@@ -14,7 +14,7 @@ OBJDIR = .ofiles
 SRCS =	database.c \
 	db_io.c \
 	db_op.c \
-	db_type.c \
+	db_debug.c \
 	context.c \
 	expression.c \
 	narrative.c \

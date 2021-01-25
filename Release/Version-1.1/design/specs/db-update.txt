@@ -62,5 +62,5 @@ Rationale
 
 Implementation
 	db_op() and db_update() ensure that we have only the combinations allowed, the
-	implementation logics being made self-explanatory in the db_type.c file.
+	implementation logics being made self-explanatory in the db_debug.c file.
 

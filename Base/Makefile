@@ -12,6 +12,7 @@ OBJDIR = .ofiles
 SRCS =	cache.c \
 	pair.c \
 	list.c \
+	entity.c \
 	registry.c \
 	string_util.c \
 	btree.c

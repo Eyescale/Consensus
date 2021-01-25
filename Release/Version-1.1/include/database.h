@@ -1,13 +1,10 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#include "entity.h"
 #include "registry.h"
 
-typedef struct _Entity {
-	struct _Entity **sub;
-	listItem **as_sub;
-} CNInstance;
-
+typedef CNEntity CNInstance;
 typedef struct {
 	CNInstance *nil;
 	Registry *index;
