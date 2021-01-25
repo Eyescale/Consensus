@@ -23,7 +23,9 @@ Consensus B% Version-1.1
 
 	_expr	[ sibling ]	build	add	expr
 
-	expr	expr_
+	expr	expr^	expr
+			_^#	expr
+		expr_
 		~	expr
 		*	expr
 		%	expr

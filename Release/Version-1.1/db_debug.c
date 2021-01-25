@@ -225,7 +225,8 @@ dbgType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
 //	db_update_debug
 //===========================================================================
 static void db_cache_log( CNDB *db, listItem **log );
-
+#define TRASH(x) \
+	addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x )
 #define DBUpdateBegin( type ) \
 	while (( pair = popListItem(&log[type]) )) { \
 		e = pair->name; \
@@ -235,15 +236,6 @@ static void db_cache_log( CNDB *db, listItem **log );
 		freePair( pair );
 #define DBUpdateEnd \
 	}
-
-#define TRASH( x ) \
-	if (( x->sub[0] )) addItem( &trash[0], x ); \
-	else addItem( &trash[1], x );
-#define EMPTY_TRASH \
-	for ( int i=0; i<2; i++ ) \
-		while (( e = popListItem( &trash[i] ) )) \
-			db_remove( e, db );
-
 void
 db_update_debug( CNDB *db )
 /*
@@ -315,7 +307,9 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		db_remove( f, db );
 		TRASH( e );
 	DBUpdateEnd
-	EMPTY_TRASH
+	for ( int i=0; i<2; i++ )
+		while (( e = popListItem( &trash[i] ) ))
+			db_remove( e, db );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif

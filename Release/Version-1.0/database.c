@@ -73,6 +73,8 @@ freeCNDB( CNDB *db )
 //===========================================================================
 //	CNDB update
 //===========================================================================
+#define TRASH(x) addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x )
+
 void
 db_update( CNDB *db )
 /*
@@ -144,7 +146,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( g, db );
 			// remove ( x, nil ) and x
 			db_remove( f, db );
-			addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x );
+			TRASH( x );
 		}
 		else {
 			// remove (( x, nil ), nil ) and ( x, nil )
@@ -186,7 +188,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		if ( x == nil ) continue; // out
 		// remove ( x, nil ) and x
 		db_remove( f, db );
-		addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x );
+		TRASH( x );
 	}
 	for ( int i=0; i<2; i++ )
 		while (( x = popListItem( &trash[i] ) ))

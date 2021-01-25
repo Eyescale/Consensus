@@ -30,67 +30,6 @@ Consensus B% Version-1.1
 
 2. Component Interfaces
 
-    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
-  ==================================================================================================
-    main.c
-	main		newCNDB						cnOperate
-			freeCNDB					cnUpdate
-  ________________________________________________________________________________________________
-    operation.c
-	cnOperate	db_out		bm_push		bm_traverse	operate
-					bm_pop
-	operate_CB			bm_push		bm_traverse	operate
-					bm_pop
-	operate				bm_pop_mark 	bm_traverse	in_condition
-					bm_register (.LOCAL)		on_event
-									do_action
-									do_input
-									do_output
-	activate_CB			bm_push		bm_traverse
-					bm_pop
-	cnUpdate	db_update
-	in_condition	db_is_empty			bm_feel
-	on_event	db_still			bm_feel
-	do_action	db_exit								bm_instantiate
-											bm_release
-	do_input									bm_inputf
-	do_output									bm_outputf
-  ________________________________________________________________________________________________
-    expression.c
-	bm_instantiate			bm_register					bm_void	
-											bm_query
-											bm_couple
-	bm_void		db_is_empty	bm_lookup	bm_feel
-	bm_query					bm_traverse
-	bm_couple	db_instantiate
-	bm_release					bm_traverse
-	release_CB	db_deprecate
-	bm_inputf									bm_input
-	bm_input	db_input							bm_instantiate
-	bm_outputf									bm_output
-	bm_output	db_output			bm_traverse
-	output_CB	db_output
-  ________________________________________________________________________________________________
-    traversal.c
-	xp_init		db_is_empty
-			db_lookup
-	bm_feel		db_log		bm_push_mark
-	bm_traverse	db_first	bm_lookup
-			db_next
-	traverse_CB			bm_push_mark
-	bm_verify			bm_locate_mark
-					xpn_add
-	bm_match			bm_lookup
-  ________________________________________________________________________________________________
-    context.c
-	bm_lookup	db_lookup	lookup_mark_register
-	bm_register	db_instantiate
-			db_register
-  ==================================================================================================
-    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
-
-
-
 	called \ from	context.c	traversal.c	expression.c	operation.c	main.c
   ==================================================================================================
   narrative.c
@@ -100,24 +39,33 @@ Consensus B% Version-1.1
   database.c
 	newCNDB										main
 	freeCNDB									main
-	readCNDB									main
 	db_out								cnOperate
 	db_update							cnUpdate
 	db_exit								do_action
+	db_in								on_event
 	db_still							on_event
+	db_input					bm_input	cnLoad
 	db_is_empty			xp_init		bm_void		in_condition
-	db_instantiate	bm_register			bm_couple
+	db_instantiate					bm_instantiate
+	db_couple					bm_instantiate
+							bm_substantiate
+							bm_expand
 	db_deprecate					release_CB
 	db_input					bm_inputf
 	db_output					bm_output
 							output_CB
+	db_register	bm_register			bm_substantiate
+							bm_expand
+	db_lookup	bm_lookup	xp_init
+	db_identifier			bm_match
+	db_private			xp_traverse
+					xp_verify
 	db_log				bm_feel
 	db_first			bm_traverse
 	db_next				bm_traverse
-	db_lookup	bm_lookup	xp_init
-	db_register	bm_register
   ________________________________________________________________________________________________
   operation.c
+	cnLoad										main
 	cnOperate									main
 	cnUpdate									main
 	operate_CB			traverse_CB
@@ -156,5 +104,76 @@ Consensus B% Version-1.1
 	xpn_add				bm_verify
   ==================================================================================================
     	called \ from	context.c	traversal.c	expression.c	operation.c	main.c 
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
+  ==================================================================================================
+    main.c
+	main		newCNDB						cnOperate
+			freeCNDB					cnUpdate
+  ________________________________________________________________________________________________
+    operation.c
+	cnLoad		db_input							bm_substantiate
+	cnOperate	db_out		bm_push		bm_traverse	operate
+					bm_pop
+	operate_CB			bm_push		bm_traverse	operate
+					bm_pop
+	operate				bm_pop_mark 	bm_traverse	in_condition
+					bm_register (.LOCAL)		on_event
+									do_action
+									do_input
+									do_output
+	activate_CB			bm_push		bm_traverse
+					bm_pop
+	cnUpdate	db_update
+	do_action	db_exit								bm_instantiate
+											bm_release
+	do_input									bm_inputf
+	do_output									bm_outputf
+	in_condition	db_is_empty			bm_feel
+	on_event	db_still			bm_feel
+			db_in
+  ________________________________________________________________________________________________
+    expression.c
+	bm_substantiate	db_couple							bm_couple
+			db_register
+	bm_expand	db_couple
+			db_register
+	bm_instantiate	db_instantiate							bm_couple
+											bm_register
+											bm_void
+											bm_query
+	bm_void		db_is_empty	bm_lookup	bm_feel
+	bm_query					bm_traverse
+	bm_couple	db_instantiate
+	bm_release					bm_traverse
+	release_CB	db_deprecate
+	bm_inputf									bm_input
+	bm_input	db_input							bm_instantiate
+	bm_outputf									bm_output
+	bm_output	db_output			bm_traverse
+	output_CB	db_output
+  ________________________________________________________________________________________________
+    traversal.c
+	bm_feel		db_log		bm_push_mark	xp_init
+	bm_traverse	db_first	bm_lookup	xp_init
+			db_next				xp_traverse
+	xp_traverse	db_private			traverse_CB
+	xp_verify	db_private			bm_verify
+	traverse_CB			bm_push_mark
+	bm_verify			bm_locate_mark
+					xpn_add
+	bm_match	db_identifier
+	xp_init		db_is_empty
+			db_lookup
+  ________________________________________________________________________________________________
+    context.c
+	bm_lookup	db_lookup	lookup_mark_register
+	bm_register	db_instantiate
+			db_register
+  ==================================================================================================
+    	caller \ -ed	database.c	context.c	traversal.c	operation.c 	expression.c
+
 
 

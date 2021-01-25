@@ -155,14 +155,8 @@ fprintf( stderr, "\n" );
 //===========================================================================
 //	db_update
 //===========================================================================
-#define TRASH( x ) \
-	if (( x->sub[0] )) addItem( &trash[0], x ); \
-	else addItem( &trash[1], x );
-#define EMPTY_TRASH \
-	for ( int i=0; i<2; i++ ) \
-		while (( x = popListItem( &trash[i] ) )) \
-			db_remove( x, db );
-
+#define TRASH(x) \
+	addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x )
 void
 db_update( CNDB *db )
 /*
@@ -247,7 +241,9 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 			TRASH( x );
 		}
 	}
-	EMPTY_TRASH
+	for ( int i=0; i<2; i++ )
+		while (( x = popListItem( &trash[i] ) ))
+			db_remove( x, db );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
