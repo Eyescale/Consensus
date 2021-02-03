@@ -202,7 +202,7 @@ readStory( char *path )
 											informed = 1;
 											tab += tab_base;
 											type = ELSE;
-							on_( '%' )	do_( "_%" )	typelse = 1;
+							on_( '%' )	do_( "^%" )	typelse = 1;
 							on_( 'i' )	do_( "i" )	typelse = 1;
 							on_( 'o' )	do_( "o" )	typelse = 1;
 							on_( 'd' )	do_( "d" )	typelse = 1;

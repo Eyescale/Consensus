@@ -5,10 +5,17 @@
 #include "database.h"
 #include "db_op.h"
 
-// #define DEBUG
-// #define NULL_TERMINATED
+#define DB_DEBUG
+#ifdef DB_DEBUG
+#include "db_debug.h"
+#define	db_op		db_op_debug
+#define	db_update	db_update_debug
 // #define TEST_INSTANTIATE
 // #define TEST_DEPRECATE
+#endif
+
+// #define DEBUG
+// #define NULL_TERMINATED
 
 //===========================================================================
 //	newCNDB

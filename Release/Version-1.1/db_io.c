@@ -13,7 +13,7 @@
 char *
 db_input( FILE *stream, int authorized )
 /*
-	authorized is set upon cnLoad, allowing {,,} and (:_) in expressions
+	authorized is set upon cnLoad, allowing (:_) in expressions
 */
 {
 	if ( stream == NULL ) return NULL;

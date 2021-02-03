@@ -7,7 +7,6 @@
 #include "db_debug.h"
 
 // #define DEBUG
-// #define DB_DEBUG
 
 //===========================================================================
 //	db_op
@@ -17,9 +16,6 @@ void db_remove( CNInstance *, CNDB * );
 int
 db_op( DBOperation op, CNInstance *e, CNDB *db )
 {
-#ifdef DB_DEBUG
-	return db_op_debug( op, e, db );
-#endif
 	CNInstance *nil = db->nil, *f, *g;
 	switch ( op ) {
 	case DB_EXIT_OP:
@@ -163,10 +159,6 @@ db_update( CNDB *db )
    cf design/specs/db-update.txt
 */
 {
-#ifdef DB_DEBUG
-	db_update_debug( db );
-	return;
-#endif
 	CNInstance *nil = db->nil;
 	if ( nil->sub[ 0 ] == nil ) // remove init condition
 		nil->sub[ 0 ] = NULL;

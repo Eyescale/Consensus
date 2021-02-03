@@ -505,6 +505,7 @@ lookup( listItem **SM, listItem **state, listItem **active_next )
 //---------------------------------------------------------------------------
 //	post_p, post_s, pre_s, post_g, beyond
 //---------------------------------------------------------------------------
+static char *post_r( char *r );
 static char *post_p( char *p )
 /*
 	if *p in )|?*+ returns p
@@ -530,9 +531,8 @@ static char *post_p( char *p )
 			level++;
 			s++; break;
 		case '[':
-			for ( s++; *s!=']'; )
-				s += ( *s=='\\' ? ( s[1]=='x' ? 4 : 2 ) : 1 );
-			s++; break;
+			s = post_r( s );
+			break;
 		case '\\':
 			s += ( s[1]=='x' ? 4 : 2 );
 			break;
@@ -542,63 +542,60 @@ static char *post_p( char *p )
 	} while ( level );
 	return s;
 }
+static char *post_r( char *r )
+/*
+	assumption: *r=='['
+*/
+{
+	for ( r++; *r!=']'; )
+		r += ( *r=='\\' ? ( r[1]=='x' ? 4 : 2 ) : 1 );
+	return r+1;
+}
 static char *post_s( char *s )
 {
 	return ( strmatch( ")|?*+", *s ) ? s+1 : s );
 }
-static char *stepback( char *s, char *expr[], int nums );
-static char *pre_s( char *s, char *expr[], int nums )
+static char *
+pre_s( char *sptr, char *expr[], int nums )
 /*
 	assumption: *s=='*' or '+'
 */
 {
-	int level = 0;
-	for ( ; ; ) {
-		s = stepback( s, expr, nums );
-		switch ( *s ) {
-		case ')':
-			level++;
-			break;
-		case '|':
-		case '?':
-		case '*':
-		case '+':
-			break;
-		case '(':
-			level--;
-			if ( !level ) return s;
-			break;
-		case ']':
-			do s=stepback(s,expr,nums); while (*s!='[');
-			// no break
-		default:
-			if ( !level ) return s;
+	char *p, *s;
+	listItem *stack = NULL;
+	for ( int i=0; i<nums; i++ ) {
+		p = expr[ i ];
+		if ( !*p ) continue;
+		for ( int done=0; !done; ) {
+			switch ( *p ) {
+			case '(':
+				addItem( &stack, p );
+				p++; continue;
+			case ')':
+				s = p+1;
+				p = popListItem( &stack );
+				break;
+			case '[':
+				s = post_r( p );
+				break;
+			case '\\':
+				s = ( p[1]=='x' ? p+4 : p+2 );
+				break;
+			default:
+				s = p+1;
+			}
+			if ( s == sptr ) {
+				freeListItem( &stack );
+				return p;
+			}
+			else if ( *s ) {
+				p = ( strmatch( "|?*+", *s ) ? s+1 : s );
+				if ( !*p ) done = 1;
+			}
+			else done = 1;
 		}
 	}
-}
-static char *stepback( char *s, char *expr[], int nums )
-/*
-	assumption: expression(s) verified
-*/
-{
-	s--;
-	if ( s[-1]=='\\' ) {
-		for ( int i=0; i<nums; i++ )
-			if (expr[i]==s) return s;
-		return s-1;
-	}
-	if ( s[-3]=='\\' && s[-2]=='x' ) {
-		for ( int i=0; i<nums; i++ )
-		for ( int j=1; j<3; j++ )
-			if (expr[i]==s-j) return s;
-		if ( s[-4]=='\\' ) {
-			for ( int i=0; i<nums; i++ )
-				if (expr[i]==s-3) return s-3;
-			return s;
-		}
-		return s-3;
-	}
-	return s;
+	return NULL; // should not be
 }
 static listItem *post_g( char *p )
 /*
