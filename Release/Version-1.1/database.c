@@ -5,7 +5,7 @@
 #include "database.h"
 #include "db_op.h"
 
-#define DB_DEBUG
+// #define DB_DEBUG
 #ifdef DB_DEBUG
 #include "db_debug.h"
 #define	db_op		db_op_debug
