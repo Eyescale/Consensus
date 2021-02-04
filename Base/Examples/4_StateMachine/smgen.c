@@ -565,8 +565,7 @@ pre_s( char *sptr, char *expr[], int nums )
 	listItem *stack = NULL;
 	for ( int i=0; i<nums; i++ ) {
 		p = expr[ i ];
-		if ( !*p ) continue;
-		for ( int done=0; !done; ) {
+		while ( *p ) {
 			switch ( *p ) {
 			case '(':
 				addItem( &stack, p );
@@ -588,14 +587,10 @@ pre_s( char *sptr, char *expr[], int nums )
 				freeListItem( &stack );
 				return p;
 			}
-			else if ( *s ) {
-				p = ( strmatch( "|?*+", *s ) ? s+1 : s );
-				if ( !*p ) done = 1;
-			}
-			else done = 1;
+			p = ( strmatch( "|?*+", *s ) ? s+1 : s );
 		}
 	}
-	return NULL; // should not be
+	return NULL; // should not happen
 }
 static listItem *post_g( char *p )
 /*
