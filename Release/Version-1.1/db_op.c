@@ -79,7 +79,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				; // leave as-is
 			}
 			// case released, possibly to-be-manifested (rehabilitated)
-			else if (( g = cn_instance( nil, e, 0 ) ))
+			else if (( cn_instance( nil, e, 0 ) ))
 				; // already to-be-manifested
 			else {
 				// create ( nil, ( nil, e )) (to be manifested)

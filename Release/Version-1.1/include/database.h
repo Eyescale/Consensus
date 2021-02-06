@@ -20,7 +20,7 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 //	operations
 //===========================================================================
-CNInstance *	db_register( char *identifier, CNDB *, int notify );
+CNInstance *	db_register( char *identifier, CNDB *, int manifest );
 CNInstance *	db_couple( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );

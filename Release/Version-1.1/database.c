@@ -116,7 +116,11 @@ free_CB( Registry *registry, Pair *pair )
 //	db_register
 //===========================================================================
 CNInstance *
-db_register( char *p, CNDB *db, int notify )
+db_register( char *p, CNDB *db, int manifest )
+/*
+	register instance represented by p
+	manifest only if requested AND if instance is new or rehabilitated
+*/
 {
 	if ( p == NULL ) return NULL;
 #ifdef NULL_TERMINATED
@@ -126,7 +130,7 @@ db_register( char *p, CNDB *db, int notify )
 	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		e = entry->value;
-		if ( notify ) db_op( DB_REHABILITATE_OP, e, db );
+		if ( manifest ) db_op( DB_REHABILITATE_OP, e, db );
 #ifdef NULL_TERMINATED
 		free( p );
 #endif
@@ -140,7 +144,7 @@ db_register( char *p, CNDB *db, int notify )
 		e->sub[ 1 ] = (CNInstance *) p;
 #endif
 		registryRegister( db->index, p, e );
-		if ( notify ) db_op( DB_MANIFEST_OP, e, db );
+		if ( manifest ) db_op( DB_MANIFEST_OP, e, db );
 	}
 	return e;
 }

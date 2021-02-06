@@ -4,46 +4,16 @@
 #include "string_util.h"
 #include "context.h"
 
-
 //===========================================================================
-//	newContext / freeContext
+//	bm_locate_mark, bm_locate_param
 //===========================================================================
 typedef void BMLocateCB( char *, listItem *, void * );
 static char *bm_locate_param( char *, listItem **, BMLocateCB, void * );
-typedef struct {
-	CNInstance *e;
-	Registry *registry;
-} RegisterData;
-static BMLocateCB arg_register_CB;
 
-BMContext *
-newContext( CNNarrative *n, CNInstance *e, CNDB *db )
+char *
+bm_locate_mark( char *expression, listItem **exponent )
 {
-	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "?", NULL ); // aka. %?
-	registryRegister( registry, "!", NULL ); // aka. %!
-	if (( e )) {
-		registryRegister( registry, "this", e );
-		if ((n) && (n->proto)) {
-			listItem *exponent = NULL;
-			RegisterData data = { e, registry };
-			bm_locate_param( n->proto, &exponent, arg_register_CB, &data );
-		}
-	}
-	return (BMContext *) newPair( db, registry );
-}
-static void
-arg_register_CB( char *p, listItem *exponent, void *user_data )
-{
-	RegisterData *data = user_data;
-	listItem *xpn = NULL;
-	for ( listItem *i=exponent; i!=NULL; i=i->next )
-		addItem( &xpn, i->ptr );
-	int exp;
-	CNInstance *x = data->e;
-	while (( exp = (int) popListItem( &xpn ) ))
-		x = x->sub[ exp & 1 ];
-	registryRegister( data->registry, p, x );
+	return bm_locate_param( expression, exponent, NULL, NULL );
 }
 static char *
 bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
@@ -130,6 +100,44 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 	return ((*p=='?') ? p : NULL );
 }
 
+//===========================================================================
+//	newContext / freeContext
+//===========================================================================
+typedef struct {
+	CNInstance *e;
+	Registry *registry;
+} RegisterData;
+static BMLocateCB arg_register_CB;
+
+BMContext *
+newContext( CNNarrative *n, CNInstance *e, CNDB *db )
+{
+	Registry *registry = newRegistry( IndexedByCharacter );
+	registryRegister( registry, "?", NULL ); // aka. %?
+	registryRegister( registry, "!", NULL ); // aka. %!
+	if (( e )) {
+		registryRegister( registry, "this", e );
+		if ((n) && (n->proto)) {
+			listItem *exponent = NULL;
+			RegisterData data = { e, registry };
+			bm_locate_param( n->proto, &exponent, arg_register_CB, &data );
+		}
+	}
+	return (BMContext *) newPair( db, registry );
+}
+static void
+arg_register_CB( char *p, listItem *exponent, void *user_data )
+{
+	RegisterData *data = user_data;
+	listItem *xpn = NULL;
+	for ( listItem *i=exponent; i!=NULL; i=i->next )
+		addItem( &xpn, i->ptr );
+	int exp;
+	CNInstance *x = data->e;
+	while (( exp = (int) popListItem( &xpn ) ))
+		x = x->sub[ exp & 1 ];
+	registryRegister( data->registry, p, x );
+}
 void
 freeContext( BMContext *ctx )
 {
@@ -138,15 +146,6 @@ freeContext( BMContext *ctx )
 		freeRegistry( registry, NULL );
 	}
 	freePair((Pair *) ctx );
-}
-
-//===========================================================================
-//	bm_locate_mark
-//===========================================================================
-char *
-bm_locate_mark( char *expression, listItem **exponent )
-{
-	return bm_locate_param( expression, exponent, NULL, NULL );
 }
 
 //===========================================================================
@@ -202,14 +201,14 @@ CNInstance *
 bm_register( BMContext *ctx, char *p )
 {
 	Registry *registry = ctx->registry;
+	CNDB *db = ctx->db;
 	Pair *entry;
+	char_s q;
 	switch ( *p ) {
 	case '.': // registering .local(s)
 		entry = registryLookup( registry, "this" );
-		if ( entry == NULL ) return NULL; // base narrative
-
-		CNDB *db = ctx->db;
-		CNInstance *this = entry->value;
+		CNInstance *this = !entry ? // base narrative
+			db_register( "this", db, 1 ) : entry->value;
 		for ( ; ; p=p_prune( PRUNE_IDENTIFIER, p )) {
 			for ( ; *p!='.' || is_separator(p[1]); p++ )
 				if ( *p == '\0' ) return NULL;
@@ -220,28 +219,25 @@ bm_register( BMContext *ctx, char *p )
 				if ( e->sub[ 0 ] == this )
 					continue; // already registered
 			}
-			/* assuming previous entry was registered
-			   either as .arg or not at all
-			*/
 			CNInstance *x = db_register( p, db, 0 );
 			x = db_couple( this, x, db );
-			if (( entry )) {
+			if (( entry )) { // was .arg
 				entry->name = p;
-				entry->name = x;
+				entry->value = x;
 			}
 			else registryRegister( registry, p, x );
 		}
-	case '\'':; // registering single character identifier instance
-		char_s q;
+		break;
+	case '\'': // registering single character identifier instance
 		if ( charscan( p+1, &q ) )
-			return db_register( q.s, ctx->db, 1 );
+			return db_register( q.s, db, 1 );
 		break;
 	default: // registering normal identifier instance
 		if ( !is_separator(*p) ) {
 			entry = registryLookup( registry, p );
 			if (( entry )) return entry->value;
 		}
-		return db_register( p, ctx->db, 1 );
+		return db_register( p, db, 1 );
 	}
 	return NULL;
 }
