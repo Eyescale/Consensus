@@ -111,7 +111,7 @@ Consensus B% Version-1.1
 		%(( list, * ), . ) is the first actual record
 		%((( list, * ), . ) . ) is the second record
 		etc.
-		%((( list, * ), ? ) is the first actual element
+		%(( list, * ), ? ) is the first actual element
 		%((( list, * ), . ), ? ) is the second element
 		etc.
 		*list is the current record		// if not (list,*)
