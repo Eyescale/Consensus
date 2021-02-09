@@ -1,4 +1,5 @@
-:
+
+: // base narrative
 	.carry
 	on init
 		do ( Schema, (h,(e,(l,(l,(o,(',',(' ',(w,(o,(r,(l,(d,'\0')))))))))))) )
@@ -44,7 +45,7 @@
 		else
 			in ?: %((.,?): *f ): ~EOF
 				do >"%s": %?
-			in ?: ( *f, . )
+			in ?: ( *f, . ) // next frame
 				do ((*,f), %? )
 			else
 				in ( schema, . )
@@ -103,3 +104,4 @@
 		in ((*,position), '\0' )
 			do .( COMPLETE, ']' ) // event is consumed
 		else do .READY
+
