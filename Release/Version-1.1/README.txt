@@ -1,13 +1,32 @@
 Name
-	Consensus Programming Language (B%) version 1.1 - IN PROGRESS
+	Consensus Programming Language (B%) version 1.1
+
+Usage
+	./B% program.story
+	./B% -p program.story
+	./B% -f CNDB.int program.story
 
 Description
-	The objective of this version is to extend the language to support a full
+	The objective of this version was to extend the language to support a full
 	transducer example implementation - starting from the example provided, in
 	C code, under the /Base/Examples/Yak directory of this site.
 
-	A key target outcome is to allow the definition and usage of "functions",
-	or methods, as part of the language.
+	A key target outcome was to allow the definition and usage of "functions",
+	or methods, as part of the language; instead of which our investigations
+	led us naturally to refine the notion of "narrative instance", whereby a
+	narrative, when it is in execution, is associated with an ( entity, CNDB )
+	relationship instance - a story consisting of a collection of narratives.
+
+So why did I need to introduce narratives - other than the main(), aka. base*, one?
+Because - and here I must apologize to my friend's former colleague and scientist from the CERN: one entity/neuron may have several instantaneous connections.
+So either I introduced loops (this is where he was right, in his intuition, while I was only considering "loop in time") or narratives (associated with a specific entity structure/composition) for parallel execution.
+Note that I may still introduce "loops" later - e.g. to process query results - but with a different syntax, so as not to confuse them with loops in time. e.g.
+do per ?: expression
+     action, possibly referencing %? as query result
+Note that action is still considered atomic here, and all of them conceptually executing at the same time, but could also be a whole per-loop-result-specific narrative: on init .... etc.
+
+*note that the base narrative's "this" entity is necessarily nothing, which is all...
+
 
 	A transducer is an excellent case study in that respect, as it requires
 	several entities of the same type (rule and schema narrative instances)
