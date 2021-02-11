@@ -11,35 +11,45 @@ Description
 	transducer example implementation - starting from the example provided, in
 	C code, under the /Base/Examples/Yak directory of this site.
 
-	A key target outcome was to allow the definition and usage of "functions",
-	or methods, as part of the language; instead of which our investigations
-	led us naturally to refine the notion of "narrative instance", whereby a
-	narrative, when it is in execution, is associated with an ( entity, CNDB )
-	relationship instance - a story consisting of a collection of narratives.
+	A key target outcome was to allow the definition and usage of "functions" -
+	or methods - as part of the language. Our investigations led us instead and
+	naturally to refine the notion of "narrative instance", whereby a narrative,
+	when it is in execution, is associated with an ( entity, CNDB ) relationship
+	instance - a story now consisting of a collection of narratives.
 
-So why did I need to introduce narratives - other than the main(), aka. base*, one?
-Because - and here I must apologize to my friend's former colleague and scientist from the CERN: one entity/neuron may have several instantaneous connections.
-So either I introduced loops (this is where he was right, in his intuition, while I was only considering "loop in time") or narratives (associated with a specific entity structure/composition) for parallel execution.
-Note that I may still introduce "loops" later - e.g. to process query results - but with a different syntax, so as not to confuse them with loops in time. e.g.
-do per ?: expression
-     action, possibly referencing %? as query result
-Note that action is still considered atomic here, and all of them conceptually executing at the same time, but could also be a whole per-loop-result-specific narrative: on init .... etc.
+	An additional benefit of this approach is that it allows us to solve the
+	issue of how to formalize "loops" without contradicting the driving principle
+	of our research - which is to rely on the biological capabilities of neurons,
+	as far as we know them.
 
-*note that the base narrative's "this" entity is necessarily nothing, which is all...
+	While "loop in time" do not make sense, one entity/neuron may - and most
+	often does - have multiple instantaneous connections, the parallel execution
+	of which we want to be able to specify. The notion of "narrative instance"
+	enables us to do so without any further extension to the language.
+
+	Note that we may still want to introduce "loops" in later versions - e.g.
+	to process query results - but with a different syntax, so as not to confuse
+	them with loops in time, e.g.
+
+		do per ?: expression
+			action
+	where
+		action is considered atomic, all of them executing at the same time,
+		possibly consisting of a whole per-result-specific sub-narrative.
 
 
-	A transducer is an excellent case study in that respect, as it requires
-	several entities of the same type (rule and schema narrative instances)
-	running in parallel and keeping all possible input interpretations.
+	A transducer was an excellent case study in that respect, as it requires
+	multiple entities of the same type, namely rule and schema instances, to run
+	in parallel - keeping / exploring all possible input interpretations.
 
-	The first example will simply allow to apply a scheme:{ rule:{ schema } }
+	Our main release example simply allows to apply a scheme:{ rule:{ schema } }
 	description onto an input stream, and output the result as the input events
 	encapsulated within the structure - process generally known as segmentation,
-	which we will refer to as schematization.
+	which we refer to as schematization.
 
-	A later example will show how to convert such result from one structure
-	into another - be it internal data - thereby effectively performing
-	transduction.
+	The next release will focus on how to convert the schematization results from
+	one structure into another - be it internal data - thereby effectively
+	performing transduction.
 
 Contents
 	This release directory holds the latest source code for this version (under
