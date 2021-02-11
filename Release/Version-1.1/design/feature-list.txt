@@ -66,3 +66,93 @@ Input/Output interface
 	     into a standalone entity - aka. B% literal? could it be by piping output
 	     into input? // Out of scope
 
+Updates
+	2020/12/02
+		engineering complete - part I
+		. completed /Base/Release/Examples/1_Schematize with test cases
+		. updated design/specs/software-architecture.txt
+	2020/11/20
+		introduced on ~. meaning no event during last frame
+		. needed for detecting deadlock and exiting schema threads
+		introduced regex identifiers
+		. needed to allow in *event:/[ \t]/ or /[A-Za-z0-9_]/
+		. added ./Test/CN.rx
+		created ../../Base/sequence.c
+		. needed to allow do (( rule, id ), ( schema, { ... } ))
+		  and eventually do > format: { arg1, arg2, ... }
+	2020/11/13
+		feature complete: single character identifiers
+		. refactored bm_input and bm_output, e.g. input now
+		  support relationship instance identifiers [UNTESTED]
+		  as well as single character identifiers (in quotes)
+		. patched Version-1.0 and TuringMachine example to
+		  resp. recognize and use output format "%s"
+		. introduced input formats "%_", "%c" and "%%", and
+		  output formats "%_", "%s" and "%%"
+		. added ./Test/CN.output
+	2020/11/11
+		added design/specs/test_hval.c validating output for
+		single character identifier entities
+		. completed bm_output and bm_register support
+		. completed cn_out
+	2020/11/10
+		added ./Test/CN.yak - usage (main.c compiled with DEBUG):
+			./B% ./Test/CN.yak > toto
+			./B% toto > titi
+			diff toto titi
+		. diff should show no difference
+		. Note: surely there is a way to write all three lines above as one
+		  updated story_output and narrative_output
+	2020/11/09
+		feature complete: narrative instance registry
+		. narrative instance definition [UNTESTED]
+		. support .local declarations and do .( expression )
+	2020/11/06
+		feature change: using .arg instead of %arg in narrative instance name
+		. updated design/yak.story, operation.c, util.c and expression.c
+	2020/11/04
+		feature change: made + and - tab logics relative
+		feature complete: mark register
+		. supporting in/on ?:expression and %? in narrative registry
+		. added ./Test/CN.mark
+	2020/11/03
+		code refactoring
+		. implemented changes according to ./design/specs/code-analysis.txt
+		. added util.c and include/util.h
+	2020/11/02
+		code cleanup
+		. simplified VerifyData - interface to bm_verify / bm_match
+		. optimized bm_match() - using pivot from db_traverse() & db_feel()
+		. changed init and exit from operation flags to CNDB entities
+	2020/10/31
+		added ./design/specs/code-analysis.txt
+		added ./design/specs/read-narrative-states.txt
+	2020/10/30
+		added ./design/specs/db-traverse.txt
+		simplification
+		. implemented input preprocessor in narrative.c
+	2020/10/29
+		added ./design/specs/software-architecture.txt
+		code cleanup
+                . moved db_feel() out of database.c, into traversal.c
+                . now use prefix bm_ for language-specific functions
+	2020/10/28
+		added ./design/task-list.txt
+		feature complete: line continuation after \
+			. also applies to format string
+			. added ./Test/CN.backslash
+		feature complete: standalone % entity
+			. modified narrative.c expression.c
+			. added ./Test/CN.percent
+		added code base from ../Version-1.0
+			. including bugfix strmatch()
+			. supporting narrative statements ending with *
+			  added Test/CN.star
+	2020/10/27
+		added ./design/specs/execution-model.txt
+	2020/10/24
+		added ./design/feature-list.txt
+		added ./design/specs/single-character-entity.txt
+	2020/10/23
+		added ./design/specs/entity-list.txt
+
