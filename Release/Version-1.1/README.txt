@@ -4,7 +4,7 @@ Name
 Usage
 	./B% program.story
 	./B% -p program.story
-	./B% -f CNDB.int program.story
+	./B% -f CNDB.init program.story
 
 Description
 	The objective of this version was to extend the language to support a full
