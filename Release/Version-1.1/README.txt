@@ -41,7 +41,7 @@ Description
 		possibly consisting of a whole per-result-specific sub-narrative.
 
 Contents
-	Consensus B% Programming Guide Version-1.1 can be found under the newly
+	The Consensus B% Version-1.1 Programming Guide can be found under the newly
 	created Release/Documentation directory of this site.
 
 	The ./design sub-directory holds both external and internal specifications.
