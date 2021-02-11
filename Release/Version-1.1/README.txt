@@ -27,7 +27,7 @@ Description
 	is to rely on the biological capabilities of neurons, as far as we know them.
 
 	While "loops in time" do not make sense, one entity/neuron may - and does -
-	have multiple instantaneous connections, the parallel execution of which we
+	have multiple simultaneous connections, the parallel execution of which we
 	want to specify. The newly introduced notion of "narrative instance" enables
 	us to do so without further extending the language.
 
