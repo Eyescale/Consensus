@@ -20,11 +20,10 @@ Description
 	Rather than introducing functions, our investigation led us to refine the
 	notion of "narrative instance", whereby a narrative, when it is in execution,
 	is associated with an ( entity, CNDB ) relationship instance - a story now
-	consisting of a collection of narratives.
-
-	An additional benefit was that it solved the issue of how to formalize loops
-	while remaining consistent with the driving principle of our research - which
-	is to rely on the biological capabilities of neurons, as far as we know them.
+	consisting of a collection of narratives. It also, and by the same token,
+	enabled us to solve the issue of how to formalize loops while remaining
+	consistent with the driving principle of our research - which is to rely
+	solely on the biological capabilities of neurons, as far as we know them.
 
 	While "loops in time" do not make sense, one entity/neuron may - and does -
 	have multiple simultaneous connections, the parallel execution of which we
@@ -46,17 +45,18 @@ Contents
 
 	The ./design sub-directory holds both external and internal specifications.
 
-	The ./design/yak.story file is a prototype, in B% pseudo-code, of the first
+	. The ./design/yak.story file is a prototype, in B% pseudo-code, of the first
         targeted implementation - the fully functional, final implementation of which
 	can be found under the Release/Examples/1_Schematize directory of this site.
 
-	The ./design/schema-fork-on-completion .jpg and .txt files describe the
+	. The ./design/schema-fork-on-completion .jpg and .txt files describe the
 	entity behavior & relationship model (EBRM) underlying that design.
 
-	The released examples allow to apply a scheme:{ rule:{ schema } } description
-	onto an input stream, and output the result as the input events encapsulated
-	within the structure - process generally known as segmentation, but which we
-	refer to as schematization.
+	The release examples located under the Release/Examples/1_Schematize directory
+	allow the user to apply a scheme:{ rule:{ schema } } description onto an input
+	stream, and to output the result as the input events encapsulated within the
+	structure - a process generally known as segmentation, but which we refer to
+	as schematization.
 
 	The next release will focus on ways to convert the schematization results
 	from one structure to another - be it internal data - thereby effectively
