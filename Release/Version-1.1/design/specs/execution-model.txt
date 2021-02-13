@@ -32,10 +32,8 @@ Consensus B% Version-1.1
 	1. In the model above, we invoke db_traverse( expression=proto, ... ) assuming
 	   that db_traverse treats the .arg in the expression as '.', whereas during
 	   the narrative operation, these should be treated as registry variables.
-	2. Furthermore, as of v1.1, db_traverse() actually expects (db,registry) argument,
-	   as opposed to db only (see below)
-	3. base narrative "init" and "exit" were previously operation flags, whereas
-	   in v1.1 these are CNDB entities.
+	2. as of v1.1, db_traverse() actually expects (db,registry) argument, as opposed
+	   to db only (see below)
 
 
 2. Narrative Registry
@@ -45,7 +43,7 @@ Consensus B% Version-1.1
 	all pertaining to narrative instance operations.
 
 	To support, cnOperate must now manage a narrative-instance-specific registry
-	where the following narrative-instance specific pointers into the CNDB are held
+	holding the following narrative-instance specific pointers into the CNDB
 		%?
 		this	// e
 		.arg	// from e and narrative->proto
@@ -56,7 +54,7 @@ Consensus B% Version-1.1
 
 	Note here that the usage of these variables should arguably not rely on the
 	sequentiality of the implementation, but adhere to the principle that all operations
-	registered during one frame - or Consensus execution cycle - execute simultaneously. 
+	registered during one frame - B% execution cycle - execute simultaneously. 
 
 	For instance, the (working) code
 

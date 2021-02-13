@@ -16,7 +16,7 @@ Consensus B% Version-1.1
 		d	do	do_	_expr
 		e	el	els	else	_expr
 						else_	_expr
-							_%
+							^%
 							i
 							o
 							d

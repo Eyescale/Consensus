@@ -55,7 +55,7 @@ Rationale
 	   making it manifest again during the next frame (MANIFESTED_TO_BE_MANIFESTED)
 	   for which we use the combination (nil,x) and ((x,nil),nil) (born anew)
 	2. we must not make the entity manifested if it's not during the current frame,
-	   while making it manifest again during the next frame (TO_BE_MANIFESTED)
+	   while making it manifest during the next frame (TO_BE_MANIFESTED)
 
 	Likewise, when rehabilitating a released entity, this must still be testable as
 	released during the current frame, hence the RELEASED_TO_BE_MANIFESTED case.
