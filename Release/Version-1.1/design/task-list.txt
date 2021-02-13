@@ -1,37 +1,27 @@
 TODO
-	. support external CNDB config file, as in ./B% file.story file.cndb
-		. debug ( rule, eee )
-		. validate cnLoad
-			. read expression
-			. read (: _ )
-			. read { , , }
-		. transpose to readNarrative / bm_substantiate
-		. extract rule processing in Conversation
-
-	. do > "format": a, b | c, d: "format" <
-		do > "(( is, %_ ), %_ )": b, a | : "%_" <
-		do > "(( is, %_ ), %_ )": b, a | :<
-
-	. support :< file:xxx
-	. Testing
-		. input: single character entities
-		  NOTE: 'p' MUST be used when testing base single character entity p
-			when the local variable entity .p is declared
-	. regression testing framework
-	. update software-architecture document(s) to latest architecture
-		. document wildcard logics (actually somwehat documented in wildcard.c)
-		. document narrative instance registry: this vs. .local vs. .expression
-	. finalize README.txt
 	. NOTE somewhere:
-		on some_event
-			do exit
-			do input:<
-	  will still block on input - as actual input is performed right away, as opposed
-	  to after frame, as it should (later).
+	  1. on some_event
+		do exit
+		do input:<
+	     will still block on input - as actual input is performed right away,
+	     as opposed to after frame, as it should (later).
+	  2. input: single character entities
+	     'p' MUST be used when testing base single character entity p
+		 when the local variable entity .p is declared
+	. regression testing framework
 	. implement custom getc/ungetc/fgetc to work around OSX terminal bug (EOF)
 	  see below "OSX Terminal bug illustrated"
 
 DONE
+	. finalize README.txt
+	. update software-architecture document(s) to latest architecture
+	. support external CNDB config file, as in ./B% -f file.cndb file.story
+		. validate cnLoad
+			. read expression
+			. read (: _ )
+			. read { , , }
+		. transpose to readNarrative / bm_substantiate (later?)
+	. debug ( rule, eee )
 	. yak.story: launch %( rule, %( ?, base ))
 	. support external CNDB config file, as in ./B% file.story file.cndb
 	  cf. cnLoad( char *path, CNDB *db )
