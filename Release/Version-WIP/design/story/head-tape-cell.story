@@ -1,7 +1,7 @@
 :
 	on init
-		do : tape : !! Tape { : BLANK : 0 } @<
-		do : head : !! Head {
+		do : tape : !! Tape ( : BLANK : 0 ) @<
+		do : head : !! Head (
 			: HALT : H
 			( TUPLE, {
 				(A,(0,(1,(RIGHT,B))))
@@ -11,15 +11,15 @@
 				(C,(0,(1,(LEFT,C))))
 				(C,(1,(1,(LEFT,A))))
 				} )
-			} @<
+			) @<	// subscribing
 #		do (( init, * ), A )
 		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0 0:)
 	else on ( init )
 		do : record : %(( init, * ), . )
-		do !! Reporter {
+		do !! Reporter (
 			: head : *head @<
 			: tape : *tape @<
-			} // not subscribing
+			) ~<	// not subscribing
 	else on ~< .
 		do exit
 	else in ( init )
@@ -62,7 +62,7 @@ Reporter:
 
 Head:
 	on init
-		on : tape : ? < ..
+		on : tape : ? < ..	// assumed concurrent
 			do : tape : %? @<
 	else on : state : ? < ..
 		do : state : %?
@@ -78,7 +78,7 @@ Head:
 			do exit
 Tape:
 	on init
-		on : head : ? < ..
+		on : head : ? < ..	// assumed concurrent
 			do : head : %? @<
 		do : start : !! Cell @<
 		do init
@@ -88,21 +88,21 @@ Tape:
 	else on ~< head
 		do exit
 	else
-		on current < ?
+		on current < ?				// current set by cell
 			on : value : ? < %?		// assumed concurrent
 				do : value : %?
 			else do : value : *BLANK
 			do : current : %?		// manifest current
 		else on ( left_is_current ) < current
 			on ~( current ) < current
-			else do : first : !! Cell {
+			else do : first : !! Cell (
 				: right : *current @<
-				} @<
+				) @<
 		else on ( right_is_current ) < current
 			on ~( current ) < current
-			else do : last : !! Cell {
+			else do : last : !! Cell (
 				: left : *current @<
-				} @<
+				) @<
 		in init
 			on : symbol : ? < ..
 				do : write : %?

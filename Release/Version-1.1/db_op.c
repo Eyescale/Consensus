@@ -121,13 +121,17 @@ fprintf( stderr, "\n" );
 		cn_release( e );
 		return;
 	}
-	cn_release( e );
 
 #ifdef DEBUG
 fprintf( stderr, "db_deregister:\t" );
 db_output( stderr, "", e, db );
 fprintf( stderr, "\n" );
 #endif
+#ifdef UNIFIED
+	e->sub[1] = NULL;
+#endif
+	cn_release( e );
+
 	Registry *index = db->index;
 	listItem *next_i, *last_i=NULL;
 	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
@@ -143,9 +147,6 @@ fprintf( stderr, "\n" );
 		}
 		else last_i = i;
 	}
-#ifdef UNIFIED
-	e->sub[1] = NULL;
-#endif
 }
 
 //===========================================================================

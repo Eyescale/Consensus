@@ -186,7 +186,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 /*
 	Assumption: neither e nor f are released
 	Special case: assignment - i.e. e is ( *, variable )
-		in wich case we must deprecate current assignment
+		in which case we must deprecate current assignment
 	Note that until next frame, ((*,e), . ) will exist both as
 		the current (either to-be-released or reassigned) and
 		the new (either newborn, reassigned, or released-to-be-manifested)

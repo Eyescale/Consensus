@@ -32,7 +32,7 @@
 			do ~( init )
 	else
 		on : current : .
-			do : cell : (TAPE,.):~%(TAPE,?)	// left-most cell
+			do : cell : ((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : cell : ?
 			in %?: *start
 				do >"|"
