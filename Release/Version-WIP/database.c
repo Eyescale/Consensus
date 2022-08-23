@@ -5,15 +5,6 @@
 #include "database.h"
 #include "db_op.h"
 
-// #define DB_DEBUG
-#ifdef DB_DEBUG
-#include "db_debug.h"
-#define	db_op		db_op_debug
-#define	db_update	db_update_debug
-// #define TEST_INSTANTIATE
-// #define TEST_DEPRECATE
-#endif
-
 // #define DEBUG
 // #define NULL_TERMINATED
 
@@ -144,10 +135,6 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_output( stderr, "", f, db );
 	fprintf( stderr, " )\n" );
 #endif
-#ifdef TEST_INSTANTIATE
-	test_instantiate( "db_instantiate( e, . )", e, db );
-	test_instantiate( "db_instantiate( ., f )", f, db );
-#endif
 	CNInstance *instance = NULL;
 	Pair *star = registryLookup( db->index, "*" );
 	if (( star ) && ( e->sub[ 0 ] == star->value )) {
@@ -191,9 +178,6 @@ db_deprecate( CNInstance *x, CNDB *db )
 */
 {
 	if ( x == NULL ) return;
-#ifdef TEST_DEPRECATE
-	test_deprecate( "db_deprecate()", x, db );
-#endif
 	listItem * stack = NULL,
 		 * i = newItem( x ),
 		 * j;

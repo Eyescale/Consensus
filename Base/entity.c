@@ -48,15 +48,15 @@ cn_instance( CNEntity *e, CNEntity *f, const int pivot )
 //	cn_rewire
 //===========================================================================
 void
-cn_rewire( CNEntity *e, int ndx, CNEntity *sub )
+cn_rewire( CNEntity *e, int ndx, CNEntity *f )
 /*
 	Assumption: e->sub[ndx] is proper CNEntity *
 */
 {
 	CNEntity *previous = e->sub[ndx];
 	removeItem( &previous->as_sub[ndx], e );
-	addItem( &sub->as_sub[ ndx ], e );
-	e->sub[ ndx ] = sub;
+	addItem( &f->as_sub[ ndx ], e );
+	e->sub[ ndx ] = f;
 }
 
 //===========================================================================
@@ -65,7 +65,7 @@ cn_rewire( CNEntity *e, int ndx, CNEntity *sub )
 void
 cn_prune( CNEntity *e )
 /*
-	frees e and all relationship instances in %(( e, . ), ... ) form,
+	frees e and all %(( e, . ), ... ) relationship instances,
 	proceeding top-down
 */
 {
