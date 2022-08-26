@@ -20,7 +20,6 @@ newCNDB( void )
 	Registry *index = newRegistry( IndexedByCharacter );
 #endif
 	CNInstance *nil = cn_new( NULL, NULL );
-	nil->sub[ 0 ] = nil; // init condition
 	return (CNDB *) newPair( nil, index );
 }
 
@@ -44,7 +43,7 @@ static void
 free_CB( Registry *registry, Pair *pair )
 {
 	free( pair->name );
-	cn_prune((CNinstance *) pair->value );
+	cn_prune((CNInstance *) pair->value );
 }
 
 //===========================================================================
@@ -211,7 +210,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 				}
 			}
 			else if (( stack )) {
-				ndx = (int) popListItem( &stack );
+				ndx = pop_item( &stack );
 				i = popListItem( &stack );
 				if ( ndx ) x = i->ptr;
 			}
@@ -375,11 +374,3 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	return 0;
 }
 
-//===========================================================================
-//	db_exit
-//===========================================================================
-void
-db_exit( CNDB *db )
-{
-	db_op( DB_EXIT_OP, NULL, db );
-}

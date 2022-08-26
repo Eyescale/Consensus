@@ -242,9 +242,11 @@ int
 StringAt( CNString *string )
 {
 	if ( string->data == NULL ) return 0;
+	union { int value; void *ptr; } icast;
 	switch ( string->mode ) {
 	case CNStringBytes:
-		return (int)((listItem *)string->data)->ptr;
+		icast.ptr = ((listItem *) string->data )->ptr;
+		return icast.value;
 	case CNStringText:
 		return *(char *)string->data;
 	}
@@ -328,6 +330,7 @@ char *
 l2s( listItem **list, int trim )
 {
 	if ( *list == NULL ) return NULL;
+	union { int value; void *ptr; } icast;
 	listItem *i, *next_i;
 	int count = 0;
 
@@ -335,21 +338,26 @@ l2s( listItem **list, int trim )
 	if ( trim ) {
 		listItem *backup = NULL;
 		i = *list;
-		if ((char) i->ptr == '\n' ) {
+		icast.ptr = i->ptr;
+		if ((char) icast.value == '\n' ) {
 			backup = i;
 			*list = i->next;
 		}	
 		for ( i = *list; i!=NULL; i=next_i ) {
-			switch ((char) i->ptr) {
+			icast.ptr = i->ptr;
+			switch ( icast.value ) {
 			case ' ':
 			case '\t':
 				next_i = i->next;
-				if (( next_i ) && ((char) next_i->ptr == '\\' ))
-					next_i = NULL;
-				else {
-					freeItem( i );
-					*list = next_i;
+				if (( next_i )) {
+					icast.ptr = next_i->ptr;
+					if ( icast.value == '\\' ) {
+						next_i = NULL;
+						break;
+					}
 				}
+				freeItem( i );
+				*list = next_i;
 				break;
 			default:
 				next_i = NULL;
@@ -366,7 +374,8 @@ l2s( listItem **list, int trim )
 	// remove leading white space
 	if ( trim ) {
 		for ( i = *list; i!=NULL; i=next_i ) {
-			switch ((char) i->ptr) {
+			icast.ptr = i->ptr;
+			switch ( icast.value ) {
 			case ' ':
 			case '\t':
 				count--;
@@ -384,7 +393,8 @@ l2s( listItem **list, int trim )
 	char *str = (char *) malloc( count + 1 );
 	char *ptr = str;
 	for ( i = *list; i!=NULL; i=i->next ) {
-		*ptr++ = (char) i->ptr;
+		icast.ptr = i->ptr;
+		*ptr++ = (char) icast.value;
 	}
 	*ptr = 0;
 	freeListItem( list );

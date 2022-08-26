@@ -2,27 +2,18 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include "pair.h"
 #include "list.h"
-#include "cache.h"
-
-#ifdef UCACHE
-#define listItemCache UCache
-#else
-static void **listItemCache = NULL;
-#endif
 
 listItem *
 newItem( void *ptr )
 {
-        listItem *item = (listItem *) allocate( &listItemCache );
-        item->next = NULL;
-        item->ptr = ptr;
-        return item;
+        return (listItem *) newPair( ptr, NULL );
 }
 void
 freeItem( listItem *item )
 {
-	recycle((void**) item, &listItemCache );
+	freePair((Pair *) item );
 }
 void
 clipItem( listItem **list, listItem *item )
@@ -44,13 +35,6 @@ addItem( listItem **list, void *ptr )
 	i->next = *list;
 	*list = i;
 	return i;
-}
-listItem *
-add_item( listItem **list, int value )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = value;
-	return addItem( list, icast.ptr );
 }
 void
 removeItem( listItem **list, void *ptr )
@@ -196,4 +180,17 @@ reorderListItem( listItem **list )
 	*list = last_i;
 	return count;
 }
-
+listItem *
+add_item( listItem **list, int value )
+{
+	union { int value; void *ptr; } icast;
+	icast.value = value;
+	return addItem( list, icast.ptr );
+}
+int
+pop_item( listItem **list )
+{
+	union { int value; void *ptr; } icast;
+	icast.ptr = popListItem( list );
+	return icast.value;
+}

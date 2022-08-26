@@ -2,13 +2,62 @@
 #include <stdlib.h>
 
 #include "pair.h"
-#include "cache.h"
 
-#ifdef UCACHE
-#define PairCache UCache
-#else
+#define U_CACHE
+
+//===========================================================================
+//	allocation functions
+//===========================================================================
+#ifdef U_CACHE
+
+#define U_CACHE_SIZE 1500
+// static int UCount = 0;
+
+inline void *
+allocate( void ***Cache )
+{
+	void **this, **cache = *Cache;
+	if (( cache ))
+        	this = cache;
+	else {
+//		fprintf( stderr, "B%%: allocate: %d\n", UCount++ );
+		this = malloc( U_CACHE_SIZE * 2 * sizeof(void*) );
+		this[ 1 ] = NULL;
+		for ( int i=U_CACHE_SIZE-1; (i--); ) {
+			this += 2;
+			this[ 1 ] = this-2;
+		}
+	}
+ 	*Cache = this[ 1 ];
+	return this;
+}
+inline void
+recycle( void **item, void ***Cache )
+{
+	item[ 1 ] = *Cache;
+	*Cache = item;
+}
+
+#else	// U_CACHE
+
+inline void *
+allocate( void ***cache )
+{
+	return malloc(2*sizeof(void*));
+}
+inline void
+recycle( void **item, void ***Cache )
+{
+	if (( item )) free((void *) item );
+//	else fprintf( stderr, "***** Warning: recycle(): NULL\n" );
+}
+
+#endif	// U_CACHE
+
+//===========================================================================
+//	newPair / freePair
+//===========================================================================
 static void **PairCache = NULL;
-#endif
 
 Pair *
 newPair( void *name, void *value )
@@ -18,13 +67,11 @@ newPair( void *name, void *value )
         pair->value = value;
         return pair;
 }
-
 void
 freePair( Pair *pair )
 {
 	recycle((void**) pair, &PairCache );
 }
-
 Pair *
 new_pair( int name, int value )
 {
@@ -33,3 +80,4 @@ new_pair( int name, int value )
 	icast[ 1 ].value = value;
 	return newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
 }
+

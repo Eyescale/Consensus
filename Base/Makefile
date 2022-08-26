@@ -9,8 +9,7 @@ SHELL = /bin/sh
 INCLUDES = -I. -I./include
 
 OBJDIR = .ofiles
-SRCS =	cache.c \
-	pair.c \
+SRCS =	pair.c \
 	list.c \
 	entity.c \
 	registry.c \

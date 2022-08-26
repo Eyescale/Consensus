@@ -11,6 +11,7 @@ typedef struct _Entity {
 CNEntity *cn_new( CNEntity *, CNEntity * );
 CNEntity *cn_instance( CNEntity *, CNEntity *, const int pivot );
 void cn_rewire( CNEntity *, int ndx, CNEntity *sub );
+void cn_prune( CNEntity * );
 void cn_release( CNEntity * );
 void cn_free( CNEntity * );
 

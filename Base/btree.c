@@ -150,7 +150,7 @@ btreefy( char *sequence )
 			if ( !scope ) break;
 			reorderListItem( &node->sub[ 0 ] );
 			reorderListItem( &node->sub[ 1 ] );
-			position = (int) popListItem( &stack );
+			position = pop_item( &stack );
 			node = popListItem( &stack );
 			sub = node->sub[ position ]->ptr;
 			break;
@@ -222,7 +222,9 @@ bt_traverse( BTreeNode *node, BTreeTraverseCB callback, void *user_data )
 				break;
 			}
 			else if (( stack )) {
-				as_sub_position = (int) stack->ptr;
+				union { int value; void *ptr; } icast;
+				icast.ptr = stack->ptr;
+				as_sub_position = icast.value;
 				if ( as_sub_position == POSITION_LEFT ) {
 					icast.value = POSITION_RIGHT;
 					stack->ptr = icast.ptr;
@@ -238,7 +240,7 @@ bt_traverse( BTreeNode *node, BTreeTraverseCB callback, void *user_data )
 					else node = NULL;
 				}
 				else {
-					position = (int) popListItem( &stack );
+					position = pop_item( &stack );
 					i = popListItem( &stack );
 					node = i->ptr;
 				}
@@ -252,7 +254,7 @@ bt_traverse( BTreeNode *node, BTreeTraverseCB callback, void *user_data )
 RETURN:
 	freeListItem( &path );
 	while (( stack )) {
-		position = (int) popListItem( &stack );
+		position = pop_item( &stack );
 		i = popListItem( &stack );
 	}
 	freeItem( i );
@@ -297,7 +299,9 @@ freeBTree( BTreeNode *node )
 				break;
 			}
 			else if (( stack )) {
-				int as_sub_position = (int) stack->ptr;
+				union { int value; void *ptr; } icast;
+				icast.ptr = stack->ptr;
+				int as_sub_position = icast.value;
 				if ( as_sub_position == POSITION_LEFT ) {
 					icast.value = POSITION_RIGHT;
 					stack->ptr = icast.ptr;
@@ -312,7 +316,7 @@ freeBTree( BTreeNode *node )
 					else node = NULL;
 				}
 				else {
-					position = (int) popListItem( &stack );
+					position = pop_item( &stack );
 					i = popListItem( &stack );
 					node = i->ptr;
 				}

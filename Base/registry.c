@@ -187,13 +187,15 @@ registryDuplicate( Registry *registry )
 static int
 compare( RegistryType type, Pair *entry, void *name )
 {
+	union { int value; char *ptr; } icast;
 	switch ( type ) {
 	case IndexedByName:
 		return strcomp( entry->name, (char *) name, 0 );
 	case IndexedByCharacter:
 		return strcomp( entry->name, (char *) name, 1 );
 	case IndexedByNumber:
-		return ( (int) entry->name - *(int *) name );
+		icast.ptr = entry->name;
+		return ( icast.value - *(int *) name );
 	case IndexedByAddress:
 		return ( (uintptr_t) entry->name - (uintptr_t) name );
 	}
