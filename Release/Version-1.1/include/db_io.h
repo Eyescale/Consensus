@@ -16,21 +16,19 @@
 #define DBInputBegin( stream, input ) \
 	char *state = "base"; \
 	int event; \
-	struct { int event, state, transition; } caught; \
+	int caught; \
 	do { \
 		event = input( stream ); \
 		do { \
-			caught.transition = 0; \
-			caught.state = 0; \
-			caught.event = 1; \
+			caught = CNCaughtEvent; \
 			DBGMonitor; bgn_
 #define DBInputDefault \
 			end \
-			if ( caught.transition ) ; \
+			if ( caught & CNCaughtTrans ) ; \
 			else bgn_
 #define DBInputEnd \
 			end \
-		} while ( !caught.event ); \
+		} while ( !(caught & CNCaughtEvent) ); \
 	} while ( strcmp( state, "" ) );
 
 

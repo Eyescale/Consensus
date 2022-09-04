@@ -30,11 +30,11 @@
 				in %?: /[01]/
 					do : symbol : %?
 					in ( *record, . )
-						do ( SIGSHIFT )~
+						do SIGSHIFT~
 						do ~( ready )
 				else in %?: /[^ ]/
 					do : state : %?
-					do ( SIGSTART )~
+					do SIGSTART~
 				in ?: ( *record, . )
 					do : record : %?
 				else do ~( record )
@@ -124,11 +124,11 @@ Tape:
 						do : report : %?
 					else do : report : *BLANK
 					in %?: *start
-						do ( SIGSTART )~
+						do SIGSTART~
 					in %?: *current
-						do ( SIGCURRENT )~
+						do SIGCURRENT~
 					in %?: *last
-						do ( SIGLAST )~
+						do SIGLAST~
 						do ~( rollcall )
 			else on ~( rollcall )
 				do : symbol : *value	// manifest symbol
@@ -145,17 +145,20 @@ Cell:
 		in %?: %%		// reset current
 			do current
 			do : value : *symbol	// manifest value
-		else in ( current )~
-		in ( left_is_current )~
-		else in ( right_is_current )~
+		else in ?:( current )
+			do ~( %? )
+		in ?:( left_is_current )
+			do ~( %? )
+		else in ?:( right_is_current )
+			do ~( %? )
 	else on rollcall < ..			// initiate roll call
 		in : left : .
 		else
 			do : value : *symbol	// manifest value
-			do ( SIGCALL )~
+			do SIGCALL~
 	else on ~( SIGCALL ) < left		// output - roll call
 		do : value : *symbol		// manifest value
-		do ( SIGCALL )~
+		do SIGCALL~
 	else in current
 		on : write : ? < ..
 			do : symbol : %?
@@ -177,11 +180,13 @@ Cell:
 		on left_is_current < right
 			do current
 			do : value : *symbol		// manifest value
-			in ( right_is_current )~
+			in ?:( right_is_current )
+				do ~( %? )
 		else on right_is_current < left
 			do current
 			do : value : *symbol		// manifest value
-			in ( left_is_current )~
+			in ?:( left_is_current )
+				do ~( %? )
 		else in ( left_is_current ?: right_is_current )
 		else on current < left
 			do left_is_current

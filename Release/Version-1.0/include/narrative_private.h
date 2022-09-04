@@ -27,6 +27,18 @@ static void narrative_report( CNNarrativeError, int line, int column, int tabmar
 //===========================================================================
 //	Narrative CNParserBegin / CNParserEnd - macros
 //===========================================================================
+typedef struct {
+	FILE *	file;
+	char *	state;
+	int	caught,
+		line,
+		column,
+		mode[ 4 ],
+		buffer;
+	void *	user_data;
+}
+CNParserData;
+
 #ifdef DEBUG
 #define	DBGMonitor \
 	fprintf( stderr, "readNarrative:l%dc%d: in \"%s\" on '%c'\n", line, column, state, event );
@@ -34,27 +46,27 @@ static void narrative_report( CNNarrativeError, int line, int column, int tabmar
 #define	DBGMonitor
 #endif
 
-#define	CNParserBegin( file ) \
-	char *state = "base"; \
-	int event, line=1, column=0, errnum=0; \
-	struct { int event, state, transition; } caught; \
+#define	CNParserBegin( parser ) \
+	char *state = (parser)->state; \
+	int column = (parser)->column; \
+	int line = (parser)->line; \
+	int event, caught, errnum=0; \
 	do { \
-		event = fgetc( file ); column++; \
+		event = fgetc( (parser)->file ); \
+		if ( event != EOF ) column++; \
 		do { \
-			caught.transition = 0; \
-			caught.state = 0; \
-			caught.event = 1; \
-			DBGMonitor \
-			bgn_
+			caught = CNCaughtEvent; \
+			DBGMonitor; bgn_
 #define CNParserDefault \
 			end \
-			if ( caught.transition ) ; \
+			if ( caught & CNCaughtTrans ) ; \
 			else bgn_
 #define CNParserEnd \
 			end \
-		} while ( !caught.event ); \
+		} while ( !(caught & CNCaughtEvent) ); \
 		if ( event=='\n' ) { line++; column=0; } \
 	} while ( strcmp( state, "" ) );
+
 
 
 #endif	// NARRATIVE_PRIVATE_H

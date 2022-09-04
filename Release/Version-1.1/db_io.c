@@ -54,7 +54,7 @@ db_input( FILE *stream, int authorized )
 			if ( informed && level ) {
 				do_( "pop" )	REENTER
 						level--;
-						first = (int) popListItem( &stack.first );
+						first = pop_item( &stack.first );
 						StringAppend( s, event );
 			}
 		on_( '{' )
@@ -68,8 +68,8 @@ db_input( FILE *stream, int authorized )
 		on_( '}' )
 			if ( informed && !level && (stack.level) ) {
 				do_( "pop" )	REENTER
-						level = (int) popListItem( &stack.level );
-						first = (int) popListItem( &stack.first );
+						level = pop_item( &stack.level );
+						first = pop_item( &stack.first );
 						StringAppend( s, event );
 			}
 		on_( ',' )
@@ -247,7 +247,7 @@ db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
 		for ( ; ; ) {
 			if (( stack )) {
 				e = popListItem( &stack );
-				ndx = (int) popListItem( &stack );
+				ndx = pop_item( &stack );
 				if ( ndx==0 ) { ndx = 1; break; }
 				else fprintf( stream, ")" );
 			}

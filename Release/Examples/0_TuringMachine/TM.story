@@ -140,7 +140,7 @@ else in *phase: OUTPUT
 		else do >"%s": %((.,?):*BLANK)
 		do >" "
 		do ~( *, state )
-	else in ( RIGHT, *p )
+	else in *( RIGHT, *p )
 		do (( *, p ), *(RIGHT,*p))
 	else
 		do >:

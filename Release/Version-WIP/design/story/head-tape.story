@@ -30,11 +30,11 @@
 				in %?: /[01]/
 					do : symbol : %?
 					in ( *record, . )
-						do ( SIGSHIFT )~
+						do SIGSHIFT~
 						do ~( ready )
 				else in %?: /[^ ]/
 					do : state : %?
-					do ( SIGSTART )~
+					do SIGSTART~
 				in ?: ( *record, . )
 					do : record : %?
 				else do ~( record )
@@ -103,15 +103,15 @@ Tape:
 		else on : cell : ?
 			do : report : ( *%? ?: *BLANK )
 			in %?: *start
-				do ( SIGSTART )~
+				do SIGSTART~
 			in %?: *current
-				do ( SIGCURRENT )~
+				do SIGCURRENT~
 			in %?: (TAPE,.:~TAPE)
 				do : cell : %(%?:(.,?))
 			else in ?:( %?, TAPE )
 				do : cell : %?
 			else
-				do ( SIGLAST )~
+				do SIGLAST~
 				do ~( cell )
 		else on ~( cell )
 			do : symbol : **current	// manifest symbol

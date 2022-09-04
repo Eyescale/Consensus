@@ -71,7 +71,13 @@ readStory( char *path )
 	addItem( &stack.occurrence, narrative->root );
 	CNString *s = newString(); // sequence to be informed
 
-	CNParserBegin( file, input )
+	CNParserData parser;
+	memset( &parser, 0, sizeof(CNParserData) );
+	parser.state = "base";
+	parser.file = file;
+	parser.line = 1;
+
+	CNParserBegin( &parser )
 	in_( "base" ) bgn_
 		on_( '#' ) if ( column == 1 ) {	do_( "#" ) }
 		on_( '+' ) if ( column == 1 ) {	do_( "+" ) tab_base++; }
@@ -661,27 +667,33 @@ filterable( CNString *string )
 }
 
 //===========================================================================
-//	input
+//	parser_getc
 //===========================================================================
 static int preprocess( int event, int *mode, int *buffer, int *skipped );
 
-static int
-input( FILE *file, int *mode, int *buffer, int *c, int *l )
+int
+parser_getc( CNParserData *data )
 /*
 	filters out comments and \cr line continuation from input
 */
 {
 	int event, skipped[ 2 ] = { 0, 0 };
+	int buffer = data->buffer;
 	do {
-		if ( *buffer ) { event = *buffer; *buffer = 0; }
-		else event = fgetc( file );
-		event = preprocess( event, mode, buffer, skipped );
+		if ( buffer ) { event=buffer; buffer=0; }
+		else event = fgetc( data->file );
+		event = preprocess( event, data->mode, &buffer, skipped );
+	} while ( !event );
+	data->buffer = buffer;
+	if ( skipped[ 1 ] ) {
+		data->line += skipped[ 1 ];
+		data->column = skipped[ 0 ];
+	} else {
+		data->column += skipped[ 0 ];
 	}
-	while ( !event );
-	*c = ( skipped[ 1 ] ? skipped[ 0 ] : *c + skipped[ 0 ] );
-	*l += skipped[ 1 ];
 	return event;
 }
+
 enum {
 	COMMENT = 0,
 	BACKSLASH,

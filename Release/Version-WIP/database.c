@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "string_util.h"
 #include "database.h"
@@ -90,7 +91,7 @@ CNInstance *
 db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 /*
 	Assumption: called upon CNDB creation - cf. cnLoad()/bm_substantiate()
-	Same as db_instantiate except without change registration
+	Same as db_instantiate except without change manifestation
 */
 {
 	CNInstance *instance;
@@ -100,13 +101,14 @@ db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 		Pair *star = registryLookup( db->index, "*" );
 		if (( star ) && ( e->sub[ 0 ] == star->value )) {
 			instance = e->as_sub[ 0 ]->ptr;
-			fprintf( stderr, "B%%::db_couple: Warning: reassigning " );
-			db_output( stderr, "", instance, db );
-			fprintf( stderr, " to " );
+#if 0
 			cn_rewire( instance, 1, f );
-			db_output( stderr, "", instance, db );
-			fprintf( stderr, "\n" );
-			return instance;
+#else
+			db_outputf( stderr, "B%%::Warning: \":%_:%_\" -> \"%_\" "
+				"concurrent reassignment unauthorized\n", db,
+				e->sub[1], instance->sub[1], f );
+			return NULL;
+#endif
 		}
 	}
 	return cn_new( e, f );
@@ -137,6 +139,17 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	CNInstance *instance = NULL;
 	Pair *star = registryLookup( db->index, "*" );
 	if (( star ) && ( e->sub[ 0 ] == star->value )) {
+		/* Ward off concurrent reassignment case
+		*/
+		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+			CNInstance *candidate = i->ptr;
+			if ( db_to_be_manifested( candidate, db ) ) {
+				db_outputf( stderr, "B%%::Warning: \":%_:%_\" -> \"%_\" "
+					"concurrent reassignment unauthorized\n", db,
+					e->sub[1], candidate->sub[1], f );
+				return NULL;
+			}
+		}
 		/* Assignment case - as we have e:( *, . )
 		*/
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
@@ -164,6 +177,42 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	instance = cn_new( e, f );
 	db_op( DB_MANIFEST_OP, instance, db );
 	return instance;
+}
+
+//===========================================================================
+//	db_coupled
+//===========================================================================
+int
+db_coupled( int privy, CNInstance *x, CNDB *db )
+/*
+	Assumption: invoked by bm_assign_op(), with x:(*,.)
+*/
+{
+	for ( listItem *i=x->as_sub[0]; i!=NULL; i=i->next ) {
+		CNInstance *e = i->ptr;
+		if ( !db_private( privy, e, db ) )
+			return 1;
+	}
+	return 0;
+}
+
+//===========================================================================
+//	db_uncouple
+//===========================================================================
+void
+db_uncouple( CNInstance *x, CNDB *db )
+/*
+	Assumption: invoked by bm_assign_op(), with x:(*,.)
+	deprecate (x,.) and force manifest - aka. reassign - x
+*/
+{
+	for ( listItem *i=x->as_sub[0]; i!=NULL; i=i->next ) {
+		CNInstance *e = i->ptr;
+		if ( db_deprecatable(e,db) ) {
+			db_deprecate( e, db );
+		}
+	}
+	db_op( DB_REASSIGN_OP, x, db );
 }
 
 //===========================================================================
@@ -219,6 +268,15 @@ db_deprecate( CNInstance *x, CNDB *db )
 	}
 RETURN:
 	freeItem( i );
+}
+
+//===========================================================================
+//	db_signal
+//===========================================================================
+void
+db_signal( CNInstance *x, CNDB *db )
+{
+	db_op( DB_SIGNAL_OP, x, db );
 }
 
 //===========================================================================
@@ -374,3 +432,95 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 	return 0;
 }
 
+//===========================================================================
+//	db_output / db_outputf
+//===========================================================================
+int
+db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
+/*
+	format is either "s" or "", the only difference being that,
+	in the former case, we but a backslash at the start of
+	non-base entity expressions
+*/
+{
+	if ( e == NULL ) return 0;
+	if ( *format == 's' ) {
+		if (( e->sub[ 0 ] ))
+			fprintf( stream, "\\" );
+		else {
+			char *p = db_identifier( e, db );
+			if (( p )) fprintf( stream, "%s", p );
+			return 0;
+		}
+	}
+	listItem *stack = NULL;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( e->sub[ ndx ] )) {
+			fprintf( stream, ndx==0 ? "(" : "," );
+			add_item( &stack, ndx );
+			addItem( &stack, e );
+			e = e->sub[ ndx ];
+			ndx = 0;
+			continue;
+		}
+		char *p = db_identifier( e, db );
+		if (( p )) {
+			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
+				fprintf( stream, "%s", p );
+			else {
+				switch (*p) {
+				case '\0': fprintf( stream, "'\\0'" ); break;
+				case '\t': fprintf( stream, "'\\t'" ); break;
+				case '\n': fprintf( stream, "'\\n'" ); break;
+				case '\'': fprintf( stream, "'\\''" ); break;
+				case '\\': fprintf( stream, "'\\\\'" ); break;
+				default:
+					if ( is_printable(*p) ) fprintf( stream, "'%c'", *p );
+					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
+				}
+			}
+		}
+		for ( ; ; ) {
+			if (( stack )) {
+				e = popListItem( &stack );
+				ndx = pop_item( &stack );
+				if ( ndx==0 ) { ndx = 1; break; }
+				else fprintf( stream, ")" );
+			}
+			else goto RETURN;
+		}
+	}
+RETURN:
+	return 0;
+}
+
+int
+db_outputf( FILE *stream, char *fmt, ... )
+{
+	CNInstance *e;
+	va_list ap;
+	va_start( ap, fmt );
+	CNDB *db = va_arg( ap, CNDB * );
+	for ( char *p=fmt; *p; p++ )
+		switch (*p) {
+		case '%':
+			switch ( p[1] ) {
+			case '%':
+				fprintf( stream, "%%" );
+				break;
+			case '_':
+				e = va_arg( ap, CNInstance * );
+				db_output( stream, "", e, db );
+				break;
+			default:
+				fprintf( stderr, "%%%c", *p );
+			}
+			p++;
+			break;
+		default:
+			fprintf( stream, "%c", *p );
+		}
+	va_end( ap );
+	return 0;
+}

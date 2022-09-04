@@ -321,10 +321,11 @@ StringFinish( CNString *string, int trim )
 #ifdef DEBUG_2
 	output( Debug, "StringFinish: '%c'", (char) event );
 #endif
-	char *str = l2s((listItem **) &string->data, trim );
-	string->mode = CNStringText;
-	string->data = str;
-	return str;
+	if ( string->mode == CNStringBytes ) {
+		string->data = l2s((listItem **) &string->data, trim );
+		string->mode = CNStringText;
+	}
+	return string->data;
 }
 char *
 l2s( listItem **list, int trim )
@@ -756,3 +757,4 @@ strxchange( char *expression, char *identifier, char *value )
 	freeString( result );
 	return retval;
 }
+

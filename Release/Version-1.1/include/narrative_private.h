@@ -5,9 +5,6 @@
 
 // #define DEBUG
 
-static int input( FILE *file, int *mode, int *buffer, int *c, int *l );
-static int preprocess( int event, int *mode, int *buffer, int *skipped );
-
 typedef enum {
 	ErrUnknownState,
 	ErrUnexpectedEOF,
@@ -22,8 +19,20 @@ typedef enum {
 	ErrMarkNoSub,
 	ErrProtoRedundantArg
 } CNNarrativeError;
-
 static void err_report( CNNarrativeError, int line, int column );
+
+typedef struct {
+	FILE *	file;
+	char *	state;
+	int	caught,
+		line,
+		column,
+		mode[ 4 ],
+		buffer;
+	void *	user_data;
+}
+CNParserData;
+static int parser_getc( CNParserData * );
 
 static int add_narrative( listItem **story, CNNarrative *);
 
@@ -51,26 +60,24 @@ static void s_add( CNString *, char * );
 #define	DBGMonitor
 #endif
 
-#define	CNParserBegin( file, input ) \
-	char *state = "base"; \
-	int event, line=1, column=0, errnum=0; \
-	struct { int event, state, transition; } caught; \
-	int mode[4] = { 0, 0, 0, 0 }, buffer = 0; \
+#define	CNParserBegin( parser ) \
+	char *state = (parser)->state; \
+	int column = (parser)->column; \
+	int line = (parser)->line; \
+	int event, caught, errnum=0; \
 	do { \
-		event = input( file, mode, &buffer, &column, &line ); \
+		event = parser_getc( parser ); \
 		if ( event != EOF ) column++; \
 		do { \
-			caught.transition = 0; \
-			caught.state = 0; \
-			caught.event = 1; \
+			caught = CNCaughtEvent; \
 			DBGMonitor; bgn_
 #define CNParserDefault \
 			end \
-			if ( caught.transition ) ; \
+			if ( caught & CNCaughtTrans ) ; \
 			else bgn_
 #define CNParserEnd \
 			end \
-		} while ( !caught.event ); \
+		} while ( !(caught & CNCaughtEvent) ); \
 		if ( event=='\n' ) { line++; column=0; } \
 	} while ( strcmp( state, "" ) );
 
