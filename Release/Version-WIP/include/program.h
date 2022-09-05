@@ -13,7 +13,7 @@ typedef struct {
 } CNProgram;
 
 typedef struct {
-	CNNarrative *narrative;
+	Pair *entry; // into CNStory
 	BMContext *ctx;
 } CNCell;
 

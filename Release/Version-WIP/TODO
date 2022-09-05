@@ -31,7 +31,6 @@ File Format Interface
 	--[ ] means todo		
 
 TODO
-	. Reenable Narrative as a listItem *
 	. p_prune( P_TERNARY, p ) 
 		. latest proto crash Version-1.1 Yak example
 	. traversal: special call to PRUNE_TERM / PRUNE_FILTER when TERNARY
@@ -98,7 +97,7 @@ NTH
 
 DONE
 	. parser.c (NEW) complete
-		. filterable() : replaced with COMPOUND flag
+		. filterable() : replaced using COMPOUND flag
 		. implemented SIGNAL interface in file format: do signal~
 		. use one stack for all
 		. use flags instead of level (LEVEL) and stack.level (SET)

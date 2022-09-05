@@ -21,15 +21,6 @@ int	cnParserGetc( CNParserData * );
 //===========================================================================
 //	BM Parser
 //===========================================================================
-typedef struct {
-	CNStory *	story;
-	CNNarrative *	narrative;
-	CNOccurrence *	occurrence;
-	CNString *	string;
-	int		tab[4], type, flags;
-	listItem *	stack; 
-} BMStoryData;
-
 typedef enum {
 	ErrNone = 0,
 	ErrUnknownState,

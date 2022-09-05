@@ -93,7 +93,7 @@ if ( mode==CN_STORY ) {
 		end
 	in_( "def." ) bgn_
 		ons( " \t\n" )
-			if ( story_add( story, narrative ) ) {
+			if ( story_add( parser->user_data ) ) {
 				do_( "def_" )	REENTER
 						freeListItem( stack );
 						narrative = data->narrative = newNarrative();
@@ -106,7 +106,7 @@ if ( mode==CN_STORY ) {
 	in_( "def_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-			if ( proto_set( narrative, story, s ) ) {
+			if ( proto_set( parser->user_data ) ) {
 				do_( "base" )	TAB_BASE = 0;
 						TAB_LAST = -1; }
 		end
@@ -642,7 +642,7 @@ bm_parser_exit( CNParserData *parser, BMReadMode mode )
 		freeListItem( &data->stack );
 		freeListItem( &data->stack );
 		CNStory *story = data->story;
-		if ( !story_add( story, data->narrative ) ) {
+		if ( !story_add( parser->user_data ) ) {
 			if (( story )) {
 				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
 				freeStory( story );

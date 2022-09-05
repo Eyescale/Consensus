@@ -21,8 +21,10 @@ static int do_output( char *, BMContext * );
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
 int
-bm_operate( CNNarrative *narrative, BMContext *ctx, listItem **new, CNStory *story )
+bm_operate( Pair *entry, BMContext *ctx, listItem **new, CNStory *story )
 {
+	listItem *narratives = entry->value;
+	CNNarrative *narrative = narratives->ptr;
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 #ifdef DEBUG

@@ -45,6 +45,19 @@ typedef struct {
 typedef Registry CNStory;
 
 //===========================================================================
+//	Interface with bm_parse()
+//===========================================================================
+typedef struct {
+	CNStory *	story;
+	CNNarrative *	narrative;
+	Pair *		entry;
+	CNOccurrence *	occurrence;
+	CNString *	string;
+	int		tab[4], type, flags;
+	listItem *	stack; 
+} BMStoryData;
+
+//===========================================================================
 //	Public Interface
 //===========================================================================
 CNStory *	readStory( char *path );
@@ -54,14 +67,9 @@ void		freeNarrative( CNNarrative * );
 CNOccurrence *	newOccurrence( int );
 void		freeOccurrence( CNOccurrence * );
 
-int	story_add( CNStory *, CNNarrative * );
+int	proto_set( BMStoryData * );
+int	story_add( BMStoryData * );
 int	story_output( FILE *, CNStory * );
-int	proto_set( CNNarrative *, CNStory *, CNString * );
-
-inline CNNarrative *
-storyLookup( CNStory *story, char *n ) {
-	return ((CNNarrative *) registryLookup( story, n ));
-}
 
 
 #endif	// STORY_H

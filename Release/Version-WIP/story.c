@@ -4,24 +4,20 @@
 
 #include "database.h"
 #include "expression.h"
-#include "story.h"
 #include "parser.h"
+#include "story.h"
 
 //===========================================================================
-//	readStory
+//	readStory / bm_read / occurrence_set
 //===========================================================================
+static void occurrence_set( CNOccurrence *, CNString *, int type );
+
 CNStory *
 readStory( char *path )
 {
 	CNStory *story = bm_read( CN_STORY, path );
 	return story;
 }
-
-//===========================================================================
-//	bm_read
-//===========================================================================
-static void occurrence_set( CNOccurrence *, CNString *, int type );
-
 void *
 bm_read( BMReadMode mode, ... )
 /*
@@ -95,7 +91,6 @@ RETURN:
 	}
 	return bm_parser_exit( &parser, mode );
 }
-
 static void
 occurrence_set( CNOccurrence *occurrence, CNString *s, int type )
 {
@@ -108,21 +103,72 @@ occurrence_set( CNOccurrence *occurrence, CNString *s, int type )
 //	freeStory
 //===========================================================================
 static void free_CB( Registry *, Pair * );
-
 void
 freeStory( CNStory *story )
 {
 	if ( story == NULL ) return;
 	freeRegistry( story, free_CB );
 }
-
 static void
 free_CB( Registry *registry, Pair *entry )
 {
-	char *proto = entry->name;
-	if ( strcmp( proto, "" ) )
-		free( proto );
-	freeOccurrence( entry->value );
+	char *def = entry->name;
+	if ( strcmp( def, "" ) ) free( def );
+	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		if (( narrative->proto ))
+			free( narrative->proto );
+		freeOccurrence( narrative->root );
+	}
+	freeListItem((listItem **) &entry->value );
+}
+
+//===========================================================================
+//	proto_set / story_add
+//===========================================================================
+static void narrative_reorder( CNNarrative * );
+
+int
+proto_set( BMStoryData *data )
+{
+	CNString *s = data->string;
+	char *p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	if ( p == NULL ) {
+		if (( registryLookup( data->story, "" ) ))
+			return 0;
+	}
+	else if ( is_separator( *p ) )
+		data->narrative->proto = p;
+	else {
+		if (( registryLookup( data->story, p ) ))
+			return 0;
+		data->narrative->proto = p;
+	}
+	return 1;
+}
+int
+story_add( BMStoryData *data )
+{
+	if ( data->story == NULL ) return 0;
+	CNNarrative *narrative = data->narrative;
+	CNOccurrence *root = narrative->root;
+	if ( !root->sub ) return 0; // narrative empty
+	narrative_reorder( narrative );
+	char *p = narrative->proto;
+	Pair *entry = data->entry;
+	if ( p == NULL ) {
+		if (( entry )) reorderListItem((listItem **) &entry->value );
+		data->entry = registryRegister( data->story, "", newItem(narrative) );
+	}	
+	else if ( is_separator( *p ) )
+		addItem((listItem **) &entry->value, narrative );
+	else {
+		if (( entry )) reorderListItem((listItem **) &entry->value );
+		data->entry = registryRegister( data->story, p, newItem(narrative) );
+		narrative->proto = NULL;
+	}
+	return 1;
 }
 
 //===========================================================================
@@ -133,15 +179,48 @@ newNarrative( void )
 {
 	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) );
 }
+
 void
 freeNarrative( CNNarrative *narrative )
 {
 	if (( narrative )) {
 		char *proto = narrative->proto;
-		if ( (proto) && strcmp( proto, "" ) )
-			free( proto );
+		if (( proto )) free( proto );
 		freeOccurrence( narrative->root );
 		freePair((Pair *) narrative );
+	}
+}
+
+//===========================================================================
+//	narrative_reorder
+//===========================================================================
+static void
+narrative_reorder( CNNarrative *narrative )
+{
+	if ( narrative == NULL ) return;
+	CNOccurrence *occurrence = narrative->root;
+	listItem *i = newItem( occurrence ), *stack = NULL;
+	for ( ; ; ) {
+		occurrence = i->ptr;
+		listItem *j = occurrence->sub;
+		if (( j )) { addItem( &stack, i ); i = j; }
+		else {
+			for ( ; ; ) {
+				if (( i->next )) {
+					i = i->next;
+					break;
+				}
+				else if (( stack )) {
+					i = popListItem( &stack );
+					occurrence = i->ptr;
+					reorderListItem( &occurrence->sub );
+				}
+				else {
+					freeItem( i );
+					return;
+				}
+			}
+		}
 	}
 }
 
@@ -156,6 +235,7 @@ newOccurrence( int type )
 	Pair *data = newPair( icast.ptr, NULL );
 	return (CNOccurrence *) newPair( data, NULL );
 }
+
 void
 freeOccurrence( CNOccurrence *occurrence )
 {
@@ -190,62 +270,7 @@ freeOccurrence( CNOccurrence *occurrence )
 }
 
 //===========================================================================
-//	story_add
-//===========================================================================
-static void narrative_reorder( CNNarrative * );
-
-int
-story_add( CNStory *story, CNNarrative *narrative )
-/*
-	Assumption: narrative proto is new to story (cf. proto_set below)
-*/
-{
-	if ( story == NULL ) return 0;
-	CNOccurrence *root = narrative->root;
-	if ( !root->sub ) return 0; // narrative empty
-
-	narrative_reorder( narrative );
-	char *proto = narrative->proto;
-	if (( proto ))
-		registryRegister( story, proto, root );
-	else {
-		registryRegister( story, "", root );
-	}
-	freePair((Pair *) narrative );
-	return 1;
-}
-static void
-narrative_reorder( CNNarrative *narrative )
-{
-	if ( narrative == NULL ) return;
-	CNOccurrence *occurrence = narrative->root;
-	listItem *i = newItem( occurrence ), *stack = NULL;
-	for ( ; ; ) {
-		occurrence = i->ptr;
-		listItem *j = occurrence->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
-		else {
-			for ( ; ; ) {
-				if (( i->next )) {
-					i = i->next;
-					break;
-				}
-				else if (( stack )) {
-					i = popListItem( &stack );
-					occurrence = i->ptr;
-					reorderListItem( &occurrence->sub );
-				}
-				else {
-					freeItem( i );
-					return;
-				}
-			}
-		}
-	}
-}
-
-//===========================================================================
-//	story_output
+//	story_output / narrative_output
 //===========================================================================
 static int narrative_output( FILE *, CNNarrative *, int );
 
@@ -254,9 +279,12 @@ story_output( FILE *stream, CNStory *story )
 {
 	if ( story == NULL ) return 0;
 	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
-		CNNarrative *n = i->ptr;
-		narrative_output( stream, n, 0 );
-		fprintf( stream, "\n" );
+		Pair *entry = i->ptr;
+		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
+			CNNarrative *n = j->ptr;
+			narrative_output( stream, n, 0 );
+			fprintf( stream, "\n" );
+		}
 	}
 	return 1;
 }
@@ -268,8 +296,9 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 		fprintf( stderr, "Error: narrative_output: No narrative\n" );
 		return 0;
 	}
-	if ( strcmp( narrative->proto, "" )) {
-		fprintf( stream, ": %s\n", narrative->proto );
+	char *proto = narrative->proto;
+	if (( proto )) {
+		fprintf( stream, ": %s\n", proto );
 	}
 	else fprintf( stream, ":\n" );
 	CNOccurrence *occurrence = narrative->root;
@@ -310,49 +339,9 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 			fprintf( stream, "on %s\n", expression );
 			break;
 		case DO:
-		case ELSE_DO:
-			fprintf( stream, "do " );
-			listItem *base=NULL; int count;
-#if 1
-			for ( char *p=expression; *p; p++ )
-				fprintf( stream, "%c", *p );
-#else
-			for ( char *p=expression; *p; p++ ) {
-				switch ( *p ) {
-				case '{':
-					add_item( &base, level );
-					level++; count=0;
-					fprintf( stream, "{\n" );
-					TAB( level );
-					break;
-				case '}':
-					level = pop_item( &base );
-					fprintf( stream, "}" );
-					break;
-				case '(':
-					count++;
-					fprintf( stream, "%c", *p );
-					break;
-				case ')':
-					count--;
-					fprintf( stream, "%c", *p );
-					break;
-				case ',':
-					fprintf( stream, "%c", *p );
-					if ( base && !count ) {
-						fprintf( stream, "\n" );
-						TAB( level );
-					}
-					break;
-				default:
-					fprintf( stream, "%c", *p );
-				}
-			}
-#endif
-			fprintf( stream, "\n" );
-			break;
 		case INPUT:
 		case OUTPUT:
+		case ELSE_DO:
 		case ELSE_INPUT:
 		case ELSE_OUTPUT:
 			fprintf( stream, "do %s\n", expression );
@@ -378,20 +367,5 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 			}
 		}
 	}
-}
-
-//===========================================================================
-//	proto_set
-//===========================================================================
-int
-proto_set( CNNarrative *narrative, CNStory *story, CNString *s )
-{
-	char *p = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	if ( !p ) p = "";
-	if (( storyLookup( story, p ) ))
-		return 0; // narrative already registered
-	narrative->proto = p;
-	return 1;
 }
 

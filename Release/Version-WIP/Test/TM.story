@@ -160,3 +160,4 @@ else in *phase: OUTPUT
 on init
 	do >"hello\n"
 	do exit
+

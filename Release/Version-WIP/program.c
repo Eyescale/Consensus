@@ -7,19 +7,19 @@
 
 // #define DEBUG
 
-static CNCell *newCell( CNNarrative *, CNDB * );
-void freeCell( CNCell * );
-
 //===========================================================================
 //	newProgram / freeProgram
 //===========================================================================
+static CNCell *newCell( Pair *, CNDB * );
+void freeCell( CNCell * );
+
 CNProgram *
 newProgram( CNStory *story, char *inipath )
 {
 	if ( story == NULL ) return NULL;
 
-	CNNarrative *narrative = storyLookup( story, "" );
-	if ( narrative == NULL ) {
+	Pair *entry = registryLookup( story, "" );
+	if ( entry->value == NULL ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL;
 	}
@@ -30,7 +30,7 @@ newProgram( CNStory *story, char *inipath )
 			goto ERR;
 		}
 	}
-	CNCell *cell = newCell( narrative, db );
+	CNCell *cell = newCell( entry, db );
 	if (( cell )) {
 		Pair *threads = newPair( NULL, newItem(cell) );
 		return (CNProgram *) newPair( story, threads );
@@ -61,11 +61,11 @@ freeProgram( CNProgram *program )
 //	newCell / freeCell
 //===========================================================================
 CNCell *
-newCell( CNNarrative *narrative, CNDB *db )
+newCell( Pair *entry, CNDB *db )
 {
 	BMContext *ctx = newContext( db );
 	if (( ctx )) {
-		return (CNCell *) newPair( narrative, ctx );
+		return (CNCell *) newPair( entry, ctx );
 	}
 	else return NULL;
 	
@@ -95,7 +95,7 @@ cnOperate( CNProgram *program )
 	for ( listItem *i=*active; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		cell = i->ptr;
-		if ( bm_operate( cell->narrative, cell->ctx, new, story ) )
+		if ( bm_operate( cell->entry, cell->ctx, new, story ) )
 			last_i = i;
 		else {
 			addItem( &released, cell );
