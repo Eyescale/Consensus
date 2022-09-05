@@ -508,12 +508,10 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 				p++;
 			}
-#if 0
-			else if ( *p_prune( P_TERNARY, p+1 )=='?' ) {
+			else if ( p_ternary( p ) ) {
 				preternary = 1;
 				p++;
 			}
-#endif
 			else {
 				bm_locate_mark( p+1, &mark_exp );
 				if ( !mark_exp ) p++;
@@ -543,8 +541,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			p++; break;
 		case ':':
 			if ( op==BM_BGN && level==OOS ) { done = 1; break; }
-			p = ( success && !is_f( TERNARY ) ) ? p+1 :
-				p_prune( PRUNE_TERM, p+1 );
+			p = ( success && !is_f( TERNARY ) ) ?
+				p+1 : p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ',':
 			if ( level == OOS ) { done = 1; break; }

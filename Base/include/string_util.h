@@ -19,13 +19,15 @@ int	charscan( char *p, char_s *q );
 
 
 typedef enum {
-	PRUNE_TERM = 1,
+	P_TERNARY = 1,
+	PRUNE_TERM,
 	PRUNE_FILTER,
 	PRUNE_IDENTIFIER,
 	PRUNE_FORMAT
 } PruneType;
 char *	p_prune( PruneType type, char * );
 int	p_filtered( char * );
+int	p_ternary( char * );
 int	p_single( char * );
 
 

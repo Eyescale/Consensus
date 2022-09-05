@@ -6,7 +6,7 @@ File Format Interface
 			on ~.: expression	passes if no such event
 			do ~.: expression	nop
 	--[x]
-		>>>>	in : variable : value	// inc. special case where value = ~.
+		>>>>	in : variable : value	// inc. special case where value is ~.
 		>>>>	on : variable : value
 		>>>>	do : variable : value
 	--[x]
@@ -26,44 +26,58 @@ File Format Interface
 	--[ ]
   Where
 	>>>> means new release feature requirement
-	--[x] means done
+	--[x] means the above is done
 	--[.] means in progress
 	--[ ] means todo		
 
 TODO
-	. p_prune( P_TERNARY, p ) 
-		. latest proto crash Version-1.1 Yak example
-	. traversal: special call to PRUNE_TERM / PRUNE_FILTER when TERNARY
-	. ternary operator support: expression %( expr ? expr : expr )
-		. string_util.c
-			updated p_prune( type, p) so that
-			with (new) type==P_TERNARY,
-				when called on opening '(' in ( expr ? expr : expr ),
-				returns on appropriate '?' [level==1] if there is
-			with type==P_TERM or type==P_FILTER
-				when called past '(' in ( expr ? expr : expr ),
-				returns on appropriate '?' or ':' or ')'
-		. traversal.c
-			. updated bm_verify() to invoke p_prune( P_TERNARY, p ) and handle return
-		. parser.c
-
-	. support above extensions in operation.c
+	. Restore backward compatibility / sub-narrative definition
+	. parser.c - ternary operator support
+	  1. %( expr ? expr1 : expr2 )
+	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON
+	     upon '?' 
+		if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) )
+			set_f( TERNARY )
+	     Then
+		. When TERNARY is set
+			upon ",{}|" => err
+		        upon '('
+				f_push; f_clr( TERNARY )
+			upon ':'
+				if ( !is_f( FILTERED ) )
+					set_f( FILTERED )
+				otherwise => err
+			upon '?'
+				if ( is_f( FILTERED ) )
+					f_clr( FILTERED )
+				otherwise => err
+	     No longer requires %( ) here => must update traversal.c
+	. Feature complete
+		. term~			(signal) => DONE
+		. :var:value		(assignment) => DONE
+		. (expr?expr:expr) 	(ternary operator) => WIP
+		. do %(expr?expr:expr) 	(ternary operator) => WIP
+		. do ((expr,...):_:)	(ellipsis) => TODO
 	. Pass design/story/single-thread.story
-	. Examples-v1.0
-		. 0_TuringMachine
-	. Examples-v1.1
-		. 0_TuringMachine
-		. 1_Schematize
-	. Examples-v2.0
-		. 0_TuringMachine.head-tape-cell
-		. 0_TuringMachine.head-tape
-		. 0_TuringMachine.single
-		. 1_Yak	// To be rewritten
-		. 2_interactive	// To be designed
-	. README.txt => publish on github
-		. update bm-read-narrative-states.txt (in specs)
-		. need feature-list.txt
-		. NOTE: everything is Pair, starting from [ address, value ]
+	. update bm-read-narrative-states.txt (in specs)
+	. --------
+	. Publish as Version-1.2
+		. Reorganize Examples, e.g.
+			. Examples-v1.0
+				. 0_TuringMachine
+			. Examples-v1.1
+				. 0_TuringMachine
+				. 1_Schematize
+			. Examples-v1.2
+				. 0_TuringMachine.0
+				. 0_TuringMachine.1 // using new FFI
+				. 0_TuringMachine.single
+				. 1_Schematize.0
+				. 1_Schematize.1 // only Yak, using new FFI
+		. README.txt
+		. NOTE: everything is Pair, starting from [address,value]
+		. need feature-list.txt / Release Notes
+	. --------
 	. cnLoad()
 		. bm_substantiate? => db_couple: see below (when !!)
 		. manifest entities (no more db_couple??) // cf. bm_substantiate
@@ -81,8 +95,17 @@ TODO
 		. Attention: bm_context_mark, when %< is set...
 	. Where to put bm_hear, bm_sound, bm_take ????
 		=> could have connection.c ???
-	. Write example head-cell-reporter (no Tape)
-
+	. --------
+	. Publish as Version-2.0
+			. Examples-v2.0
+				. 0_TuringMachine.single
+				. 0_TuringMachine.head-tape
+				. 0_TuringMachine.head-tape-cell
+				. 0_TuringMaching.head-cell-reporter << to be written
+				. 1_Schematize	// using Scheme
+				. 1_Yak.0 // support Scheme files from schematize
+				. 1_Yak.1 // using new Cell design
+				. 2_interactive	// TBD
 NTH
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
 		. Pros: instantiate all or nothing
@@ -96,6 +119,18 @@ NTH
 	. multi-threading (pthreads)
 
 DONE
+	. traversal.c - ternary operator support
+		. updated bm_verify() to invoke p_ternary( p ) and
+		  handle return value
+	. string_util.c - ternary operator support
+		. p_prune( P_TERNARY, p ), p_ternary( p )
+		. updated p_prune( type, p) so that
+		  with (new) type==P_TERNARY,
+			when called on opening '(' in ( expr ? expr : expr ),
+				returns on appropriate '?' [level==1] if there is
+		   with type==P_TERM or type==P_FILTER
+				when called past '(' in ( expr ? expr : expr ),
+				returns on appropriate '?' or ':' or ')'
 	. parser.c (NEW) complete
 		. filterable() : replaced using COMPOUND flag
 		. implemented SIGNAL interface in file format: do signal~

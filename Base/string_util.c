@@ -100,6 +100,7 @@ static char *prune_regex( char * );
 char *
 p_prune( PruneType type, char *p )
 {
+	char *expression = p;
 	switch ( type ) {
 	case PRUNE_FORMAT:
 		return prune_format( p );
@@ -113,36 +114,69 @@ p_prune( PruneType type, char *p )
 			while ( !is_separator(*p) ) p++;
 			return p;
 		}
+	case P_TERNARY:
 	case PRUNE_TERM:
 	case PRUNE_FILTER:;
-		int level = 0;
+		int level = 0, informed = 0;
 		for ( ; ; ) {
 			switch ( *p ) {
 			case '\0': return p;
 			case '(':
 				level++;
+				informed = 0;
 				p++; break;
 			case ')':
 				if ( !level ) return p;
+				informed = 1;
 				level--;
 				p++; break;
 			case '\'':
 				p = prune_character( p );
+				informed = 1;
 				break;
 			case '"':
 				p = prune_format( p );
+				informed = 1;
 				break;
 			case '/':
 				p = prune_regex( p );
+				informed = 1;
 				break;
 			case ':':
 				if ( type==PRUNE_FILTER && !level )
 					return p;
+				informed = 0;
 				p++; break;
 			case ',':
-				if ( !level ) return p;
+				if ( type==P_TERNARY && level==1 )
+					return p;
+				else if ( !level ) return p;
+				informed = 0;
 				p++; break;
+			case '*':
+				if ( p[1]=='?' ) {
+					if ( type==P_TERNARY && level==1 )
+						return p;
+					p++;
+				}
+				informed = 1;
+				p++; break;
+			case '%':
+				if ( p[1]=='?' ) {
+					if ( type==P_TERNARY && level==1 )
+						return p;
+					p++;
+				}
+				informed = 1;
+				p++; break;
+			case '?':
+				if ( type==P_TERNARY && level==1 )
+					return ( informed ? p : p+1 );
+				else if ( !level && informed )
+					return p;
+				// no break
 			default:
+				informed = 1;
 				p++; break;
 			}
 		}
@@ -195,19 +229,28 @@ prune_regex( char *p )
 	return p;
 }
 int
+p_ternary( char *p )
+/*
+	Assumption: *p == '('
+*/
+{
+	p = p_prune( P_TERNARY, p );
+	return ( *p=='?' );
+}
+int
 p_single( char *p )
 /*
 	Assumption: *p == '('
 */
 {
 	p = p_prune( PRUNE_TERM, p+1 );
-	return ( *p != ',' );
+	return ( *p!=',' );
 }
 int
 p_filtered( char *p )
 {
 	p = p_prune( PRUNE_FILTER, p );
-	return ( *p == ':' );
+	return ( *p==':' );
 }
 
 //===========================================================================
