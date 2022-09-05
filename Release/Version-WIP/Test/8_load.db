@@ -1,0 +1,11 @@
+
+	({ hello
+#\n here acts as comma ','
+	hi}, {
+		( world, { titi, toto } )
+	} )
+#comment
+	(:asdl:k\0%identifier'titi:)
+	tata
+	((*,titi),toto) #comment
+	((*,titi),tutu) #reassigned

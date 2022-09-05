@@ -19,7 +19,7 @@ int	charscan( char *p, char_s *q );
 
 
 typedef enum {
-	PRUNE_TERM,
+	PRUNE_TERM = 1,
 	PRUNE_FILTER,
 	PRUNE_IDENTIFIER,
 	PRUNE_FORMAT

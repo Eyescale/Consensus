@@ -1,0 +1,6 @@
+
+	on init
+		do ((*,toto),tata)
+	else in ( ~(*,?), tata )
+		do >"found:%_\n": %?
+		do exit

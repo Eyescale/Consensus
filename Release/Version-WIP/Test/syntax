@@ -1,0 +1,20 @@
+
+	on init
+		do input: <
+		do :~ titi : ~( tutu, tata )
+		do ( { tata,toto }, titi )
+		do ~.:titi
+	else in : titi : ~.
+
+	else on ~.:((*,titi),toto)
+
+	else on ((*,input), . )
+		do >"read: %s\n": *input
+		do titi~
+		do tutu:tata
+	else in ( *, input )
+		do input: <
+		in alpha
+		else do toto~
+	else
+		do exit

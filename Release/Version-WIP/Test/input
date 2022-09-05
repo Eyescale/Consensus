@@ -1,0 +1,9 @@
+
+	on init
+		do input: <
+	else on ((*,input), . )
+		do >"read: %s\n": *input
+	else in ( *, input )
+		do input: <
+	else
+		do exit

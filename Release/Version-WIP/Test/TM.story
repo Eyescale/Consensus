@@ -72,7 +72,7 @@ else in *phase: INPUT
 else in *phase: DATA_PREP
 	on ((*,p), . )
 		do (( *, (TAPE,*p)), %((.,?):*p))
-		in ( *p, . )
+		in (*p,.)
 			do (( *, (RIGHT,*p)), %(*p,.))
 			do (( *, (LEFT,%(*p,.))), *p )
 	else in ( *p, . )
@@ -141,7 +141,7 @@ else in *phase: OUTPUT
 		else do >"%s": %((.,?):*BLANK)
 		do >" "
 		do ~( *, state )
-	else in ( RIGHT, *p )
+	else in *( RIGHT, *p )
 		do (( *, p ), *(RIGHT,*p))
 	else
 		do >:
@@ -156,3 +156,7 @@ else in *phase: OUTPUT
         not shown here: *state
 */
 
+: Toto
+on init
+	do >"hello\n"
+	do exit

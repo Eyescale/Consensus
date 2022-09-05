@@ -60,7 +60,6 @@ readNarrative( char *path )
 	CNNarrative *narrative = newNarrative();
 	addItem( &stack.occurrence, narrative->root );
 
-
 	CNParserData parser;
 	memset( &parser, 0, sizeof(CNParserData) );
 	parser.state = "base";

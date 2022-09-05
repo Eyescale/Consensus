@@ -1,0 +1,13 @@
+
+	on init
+		do (( *, s ), (( schema, toto ), titi ))
+		do (( *, r ), rule )
+		do ((( schema, toto ), titi ), rule )
+	else in ?: %( ?:((schema,.),%(*s:(.,?))), *r ): ~*s
+		do >"BUG: %_\n": %?
+		do >"BUG: %_\n": ~*s
+		do exit
+	else
+		do >"BINGO\n"
+		do exit
+
