@@ -1,0 +1,211 @@
+Definition
+	We call Cell a [ narrative, CNDB ] Relationship Instance
+	It has	. a parent
+		. connections: proxies to other cells this cell
+		  subscribes to, such that
+			proxy->sub:[ NULL, other-cell ]
+			proxy->as_sub:[ {}, {} ] // CNDB specific
+	So we have
+		Cell: [ [narrative,CNDB], [parent,connections:{}] ]
+
+Implementation
+	. cnRun
+		. maintains a list of active cells
+		. invokes cnOperate( cell, &new, story )
+		. may release cells
+		. DO_LATER: may suspend / reactivate cells
+Interface
+	. !! Narrative ( ... ) @<
+	  !! Narrative ( ... ) ~<
+		. creates a new cell, with
+			parent = this cell
+		  	no other connection (as yet)
+		. adds (or not) this cell to this cell's connections.
+		  Note that MUST be added if assigned
+		. adds this cell to &new
+	. Subscribe
+		do @< *variable
+		do @< cell	// where cell is proxy, e.g. %<
+		do @< ..
+		do : variable : !! Narrative ( ... )
+		do !! Narrative ( ... )
+	  Unsubscribe
+		do ~< *variable
+		do ~< cell	// where cell is proxy, e.g. %<
+		do ~< ..
+		do ~< %%	// DO_LATER: suspend
+		do : variable : !! Narrative ( ... ) ~<
+		do !! Narrative ( ... ) ~<
+	  Notes
+		. Unsubscribe must remove proxy => release variable
+		. We say here that cell has connection to parent and self
+		  => must be careful to distinguish
+			on expression < ..	// parent only
+			on expression < .	// all connections other than parent and self
+			on expression < %%	// use case ?
+		  TBD: does cell have connection (proxy) to self ?
+	. cell exit
+		. must remove all subscribers' proxies to cell
+
+===========================================================================
+
+Synopsis
+	We use %% to represent "this" [ narrative, CNDB ] entity
+	We use .. to represent the parent [ narrative, CNDB ] entity
+	The "new" operator !! instantiates other [ narrative, CNDB ]
+	entities according to the following syntax
+		do : variable : !! Class ( init ) @<
+		do : variable : !! Class ( init ) ~<
+	Where Class is a predefined Narrative
+
+Implementation
+1. Data Structure
+	An entity = program has
+	. its own id		(informed at creation by parent)
+	. its parent's id	(informed at creation by parent)
+	. its own connections	@<
+	. its [ sub, as_sub ] coordinates within parent's CNDB
+	. its own [ narrative, CNDB ] (where narrative informs
+	  the entity's CNDB using id, parent-id, connections)
+   Issue
+	1. We want to keep the memory requirements for each
+	   entity limited to [ sub:[], as_sub:[{},{}] ]
+	2. To be accessed by narrative, the entity's id, parent's id
+	   and connections must be accessible as entities within the
+	   entity's CNDB
+   Solution
+	. Since the entity returned from !! Class is necessarily a
+	  base entity (it does not have a source nor dest) we can
+	  use either entity.sub[0] or entity.sub[1] to point to
+	  the entity's [ narrative, CNDB ]
+	. At creation time, we create the base entities named "%%"
+	  and ".." to point respectively to the entity's address
+	  within parent's program and its own parent's "%%" entity
+	. For any other connection, we create the relationship
+	  instance ( %%, connection ) where connection points to the
+	  target's %% entity => the list of all other connections
+	  is stored in %%.as_sub[0]
+
+   So we have
+	this:[
+		sub:[
+			[ narrative, CNDB:[ nil, index ] ],
+				// Where index[%%]=this, index[..]=parent
+			NULL
+		],
+		as_sub:[
+			{ (this,connection1), (this,connection2), ... },
+			{ ... }
+		]
+	]
+   Where
+	parent:[
+		sub:[
+			[ narrative, CNDB:[ nil, index ] ],
+				// Where index[%%]=parent, index[..]=...
+			NULL
+		],
+		as_sub:[
+			{ ..., (parent,this), ... },
+			{ ... }
+		]
+	]
+
+
+2. Execution Model
+int
+main( int argc, char *argv[] )
+{
+	...
+	CNStory *story = readStory( path[ 0 ] );
+	if ( printout )
+		story_output( stdout, story );
+	else {
+		cnRun( story, path[ 1 ] );
+	}
+	freeStory( story );
+}
+
+int
+cnRun( CNStory *story, char *inipath )
+{
+	CNNarrative *n = (CNNarrative *) registryLookup( story, "" );
+	if ( n == NULL ) {
+		fprintf( stderr, "B%%: Error: story has no main\n" );
+		return 0;
+	}
+	CNDB *db = newCNDB();
+	if (( inipath )) cnLoad( inipath, db );
+	CNInstance *cell = cnInstantiate( n, db, NULL ); /*
+		cell is a CNInstance*, such that
+			cell->sub[0] = [ narrative:[proto,data], db ]
+			cell->sub[1] = NULL
+		   and	db->index[ ".." ] (here) is not set
+			db->index[ "%%" ] = cell */
+	listItem *active = NULL;
+	if (( cell )) addItem( &active, cell );
+	listItem *new = NULL, *released = NULL;
+	while (( active )) {
+		// operate active cells
+		listItem *last_i = NULL, *next_i;
+		for ( listItem *i=active; i!=NULL; i=next_i ) {
+			next_i = i->next;
+			cell = i->ptr;
+			if ( cnOperate( cell, &new, story ) ) /*
+				new holds the cells which have been instantiated
+				in the course of this cell's narrative frame
+				=> they are, or are not, referenced as part of
+				this cell's connections (that is: in its CNDB)
+				*/
+				last_i = i;
+			else { /*
+				No more update for this (deactivated) cell
+				in which case we have db_out(db), i.e.
+					db->nil.sub[ 1 ] = db->nil;
+				which was set the last frame
+				Note that its last updates are accessible
+				to other cells
+				*/
+				addItem( &released, cell );
+				clipListItem( &active, i, last_i, next_i );
+			}
+		}
+		// release deactivated cells
+		while (( cell = popListItem(&released) ))
+			cnRelease( cell ); // release narrative instance
+		// update active cells
+		for ( listItem *i=active; i!=NULL; i=i->next ) {
+			cell = i->ptr;
+			cnUpdate( cell ); // update cell->db
+		}
+		// activate new cells
+		while (( cell = popListItem(&new) ))
+			addListItem( &active, cell );
+	}
+	return 1;
+}
+
+---------------------------------------------------------------------------
+Issues:
+	1. The current implementation will delete this entity on parent's
+	   exit - unless check entity.sub[0]==NULL - due to the relationship
+	   instance with parent's %% base entity
+	2. Can we prevent ( %%, . ) relationship instances other than
+	   those above from being created by narrative ?
+	   => %% should only be usable for comparison, e.g.
+		on : reset : ? < ..
+			in %?: %%
+	   Note that we do want to allow ( ., %% ) to be created by
+	   narrative, e.g. here ((*,reset),this) created by parent
+
+Note
+	. this approach would allow to introduced typed entities (e.g.
+	  integer, float, etc.) as Narrative is a Class=type, and CNDB
+	  a value=state
+	. we can keep using sub:[ NULL, name ] to optimize lookup
+
+===========================================================================
+#define ESUB(e,ndx) \
+	( e->sub[!ndx] ? e->sub[ndx] : NULL )
+===========================================================================
+

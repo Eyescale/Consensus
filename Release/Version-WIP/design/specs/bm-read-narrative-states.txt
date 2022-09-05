@@ -1,0 +1,60 @@
+
+Consensus B% Version-1.1
+
+	narrative.c: readNarrative - state transitions
+
+	base	#	base
+		+	base
+		-	base
+		^_	^_\ 	^_
+			^_:	base
+		i	in	in_	_expr
+		o	on	on_	_expr
+		d	do	do_	_expr
+		e	el	els	else	_expr
+						else_	_expr
+							^%
+							i
+							o
+							d
+
+	_expr	[ sibling ]	build	add	expr
+
+	expr	expr^	expr
+			_^#	expr
+		expr_
+		~	expr
+		*	expr
+		%	expr
+			%_	expr
+		>	expr
+			:
+			>:	expr_
+				expr
+			>\"	>\"\\ 	>\"
+				>_	expr_
+					:
+		:	expr
+			:~	expr
+				:
+			:\"	:\"\\ 	:\"
+				:_	expr_
+		?	expr
+		/ 	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
+		char	char_	expr
+			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
+		term	expr
+
+	expr_	base
+
+CNParserDefault
+
+	EOF	err	""
+		""
+	err	""
