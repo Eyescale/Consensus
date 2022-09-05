@@ -100,7 +100,6 @@ static char *prune_regex( char * );
 char *
 p_prune( PruneType type, char *p )
 {
-	char *expression = p;
 	switch ( type ) {
 	case PRUNE_FORMAT:
 		return prune_format( p );
@@ -162,13 +161,9 @@ p_prune( PruneType type, char *p )
 				informed = 1;
 				p++; break;
 			case '%':
-				if ( p[1]=='?' ) {
-					if ( type==P_TERNARY && level==1 )
-						return p;
-					p++;
-				}
+				p += ( p[1]=='?' ) ? 2 : 1;
 				informed = 1;
-				p++; break;
+				break;
 			case '?':
 				if ( type==P_TERNARY && level==1 )
 					return ( informed ? p : p+1 );
