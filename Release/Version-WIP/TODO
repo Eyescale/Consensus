@@ -1,35 +1,4 @@
-
-File Format Interface
-		>>>>	do term~
-	--[x]
-			in ~.: expression	passes if expression fails
-			on ~.: expression	passes if no such event
-			do ~.: expression	nop
-	--[x]
-		>>>>	in : variable : value	// inc. special case where value is ~.
-		>>>>	on : variable : value
-		>>>>	do : variable : value
-	--[x]
-			in ( expr ? expr : expr )
-		>>>>	in ( expr ?: expr )
-			in ( expr ? expr :)
-
-			on ( expr ? expr : expr )
-			on ( expr ?: expr )
-			on ( expr ? expr :)
-	--[.]
-		>>>>	do : expr : %( expr ?: expr )
-			do : expr : %( expr ? expr :)
-			do : expr : %( expr ? expr : expr )
-	--[ ]
-			do (( expr, ... ): sequence :)	// ellipsis
-	--[ ]
-  Where
-	>>>> means new release feature requirement
-	--[x] means the above is done
-	--[.] means in progress
-	--[ ] means todo		
-
+See Also: design/new-features-and-additions.txt
 TODO
 	. Restore backward compatibility / sub-narrative definition
 	. Extract bm_parser_report / bm_parser_init / bm_parser_exit
@@ -126,7 +95,7 @@ NTH
 
 DONE
 	. Restored sub-narratives, EN, LOCALE, and do .expression commands as per
-	  Version-1.1, where
+	  Version-1.1 - cf Specs
 		. sub-narrative proto format is
 			.identifier:( expression1 )
 			:( expression1 )	// pre-compiled as .this:( expression1 )
@@ -135,7 +104,7 @@ DONE
 		. EN / ELSE_EN are statements in the form
 			%( expression2 )
 			else %( expression2 )
-		  these statements enable execution of all narratives verifying
+		  these statements enable execution of all sub-narratives verifying
 		  proto:statement - i.e. ( expression1 ):%( expression2 )
 		. do .expression commands are translated at readStory() time into
 			do ( identifier, expression )
