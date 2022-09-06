@@ -125,6 +125,23 @@ NTH
 	. multi-threading (pthreads)
 
 DONE
+	. Restored sub-narratives, EN, LOCALE, and do .expression commands as per
+	  Version-1.1, where
+		. sub-narrative proto format is
+			.identifier:( expression1 )
+			:( expression1 )	// pre-compiled as .this:( expression1 )
+		. LOCALE are declarations
+			.var1 .var2 .... .varN
+		. EN / ELSE_EN are statements in the form
+			%( expression2 )
+			else %( expression2 )
+		  these statements enable execution of all narratives verifying
+		  proto:statement - i.e. ( expression1 ):%( expression2 )
+		. do .expression commands are translated at readStory() time into
+			do ( identifier, expression )
+		  where identifier is the one specified in the current narrative proto
+		  Note that do .expression commands from the main narrative translate
+		  as do expression (the '.' is ignored)
 	. traversal.c - ternary operator support
 		. updated bm_verify() to invoke p_ternary( p ) and
 		  handle return value

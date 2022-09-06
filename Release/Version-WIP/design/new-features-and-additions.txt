@@ -1,0 +1,33 @@
+
+Version-1.2 specific File Format Interface
+
+	--[x] signals
+		>>>>	do term~
+	--[x] not
+			in ~.: expression	passes if expression fails
+			on ~.: expression	passes if no such event
+			do ~.: expression	nop
+	--[x] assignment
+		>>>>	in : variable : value	// inc. special case where value is ~.
+		>>>>	on : variable : value
+		>>>>	do : variable : value
+	--[.] ternary operator
+			in ( expr ? expr : expr )
+		>>>>	in ( expr ?: expr )
+			in ( expr ? expr :)
+
+			on ( expr ? expr : expr )
+			on ( expr ?: expr )
+			on ( expr ? expr :)
+	--[] assignment / ternary operator
+		>>>>	do : expr : %( expr ?: expr )
+			do : expr : %( expr ? expr :)
+			do : expr : %( expr ? expr : expr )
+	--[ ] list / ellipsis
+			do (( expr, ... ): sequence :)	// ellipsis
+  Where
+	>>>> means new release feature requirement
+	--[x] means done
+	--[.] means in progress
+	--[ ] means todo		
+
