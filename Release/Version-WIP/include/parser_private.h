@@ -15,6 +15,7 @@
 #define LEVEL		64
 #define SET		128
 #define ASSIGN		256
+#define THIS		512
 
 #define s_empty \
 	!StringInformed(s)
@@ -26,6 +27,11 @@
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 #define	s_clean( a ) \
 	StringReset( s, a );
+#define s_push( p ) \
+	StringAppend( s, '(' ); \
+	for (char *q=p; *q!=':'; q++ ) StringAppend(s,*q); \
+	StringAppend( s, ',' );
+
 
 // #define DEBUG
 

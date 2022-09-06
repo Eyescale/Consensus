@@ -158,9 +158,15 @@ else in *phase: OUTPUT
 
 : Toto
 on init
-	%(hello,(?,world))
+	%(hello,(.,world))
+	do .this
+else
 	do >"hello\n"
 	do exit
-:( hello, .local:( titi, toto ))
+// :( hello, .local:( titi, world ))
+.rule: ((( schema, .start ), ( .flag, .frame )), .r:((rule,.),.))
+// : ( .flag, .frame )
+	.position .event
+	do .( hello, .(.(toto,.titi)) )
 	on (this)
 		do ~(this)
