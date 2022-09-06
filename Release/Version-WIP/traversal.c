@@ -508,11 +508,12 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 				p++;
 			}
-			else if ( p_ternary( p ) ) {
+			else if ( p_ternary( p+1 ) ) {
 				preternary = 1;
 				p++;
 			}
 			else {
+				preternary = 2;
 				bm_locate_mark( p+1, &mark_exp );
 				if ( !mark_exp ) p++;
 			}
@@ -530,10 +531,9 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			level++;
 			f_push( &data->stack.flags );
 			f_reset( 0 );
-			if ( preternary ) {
+			if ( preternary ? preternary==1 : p_ternary( p ))
 				f_set( TERNARY );
-				preternary = 0;
-			}
+			preternary = 0;
 			if ( !p_single(p) ) {
 				f_set( COUPLE );
 				xpn_add( exponent, AS_SUB, 0 );

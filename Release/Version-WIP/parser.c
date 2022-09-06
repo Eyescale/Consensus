@@ -49,26 +49,29 @@ if ( mode==CN_STORY ) {
 			on_( EOF )	do_( "" )
 			on_( '\t' )	do_( same )	TAB_CURRENT++;
 			on_( '\n' )	do_( same )	TAB_CURRENT = 0;
-			ons( ":#+-" )
-				if ( column == 1 ) {
-				bgn_
-					on_( ':' )	do_( "def" )
-					on_( '#' )	do_( "#" )
-					on_( '+' )	do_( "+" ) TAB_SHIFT++;
-					on_( '-' )	do_( "-" ) TAB_SHIFT--;
-					end
-				}
+			on_( '.' ) 	do_( "^." )	s_take
+							TAB_BASE = column;
+			on_( '#' ) if ( !TAB_CURRENT ) {
+					do_( "#" ) }
+			on_( '+' ) if ( !TAB_CURRENT ) {
+					do_( "+" )	TAB_SHIFT++; }
+			on_( '-' ) if ( !TAB_CURRENT ) {
+					do_( "-" )	TAB_SHIFT--; }
+			on_( ':' ) if ( !TAB_CURRENT ) {
+					do_( "def" )	TAB_SHIFT = 0; }
+			on_( '%' )	do_( "cmd" )	REENTER
+							TAB_BASE = column;
 			on_separator	; // err
 			on_other	do_( "cmd" )	s_take
 							TAB_BASE = column;
 			end
-} else { 	bgn_
+} else {	bgn_
 			on_( EOF )	do_( "" )
-			ons( "\t\n" )	do_( same )
 			ons( "#" )	do_( "#" )
+			ons( "\t\n" )	do_( same )
 			on_other	do_( "expr" )	REENTER
 			end
-}
+} // mode==CN_STORY
 	in_( "#" ) bgn_
 		on_( '\n' )	do_( "base" )
 		on_other	do_( same )
@@ -81,38 +84,72 @@ if ( mode==CN_STORY ) {
 		on_( '-' )	do_( same )	TAB_SHIFT--;
 		on_other	do_( "base" )	REENTER
 		end
+	in_( "^." ) bgn_
+		on_separator	; // err
+		on_other	do_( "^.$" )	s_take
+		end
+		in_ ( "^.$" ) bgn_
+			ons( " \t" )	do_( "^.$_" ) 	s_add( " " )
+			on_( '\n' )	do_( "^.$_" )	REENTER
+			on_( ':' )
+				if (( type!=LOCAL ) && !TAB_SHIFT && !TAB_BASE ) {
+					do_( "proto" )	s_take
+							type = PROTO; }
+			on_separator	; // err
+			on_other	do_( same )	s_take
+			end
+			in_( "^.$_" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '.' )	do_( "^." )	s_take
+								type = LOCAL;
+				on_( '\n' )	do_( "_expr" )	REENTER
+								TAB_CURRENT += TAB_SHIFT;
+								f_set( INFORMED )
+								type = LOCAL;
+				end
 
 	//----------------------------------------------------------------------
 	// bm_parse:	Narrative Definition Begin
 	//----------------------------------------------------------------------
 	in_( "def" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "def." )	REENTER
+		on_( '\n' )	do_( "def$_" )	REENTER
+		on_( '(' )	do_( "proto" )	REENTER
+						s_add( ".this:" )
+						type = PROTO;
 		on_separator	; // err
-		on_other	do_( "def." )	s_take
+		on_other	do_( "def$" )	s_take
 		end
-	in_( "def." ) bgn_
+	in_( "proto" ) bgn_
+		on_( '(' ) if ( story_add( parser->user_data, 0 ) ) {
+				do_( "expr" )	REENTER
+						freeListItem( stack );
+						narrative = data->narrative = newNarrative();
+						addItem( stack, narrative->root ); }
+		end
+	in_( "def$" ) bgn_
 		ons( " \t\n" )
-			if ( story_add( parser->user_data ) ) {
-				do_( "def_" )	REENTER
+			if ( story_add( parser->user_data, 0 ) ) {
+				do_( "def$_" )	REENTER
 						freeListItem( stack );
 						narrative = data->narrative = newNarrative();
 						addItem( stack, narrative->root ); }
 			else if ( !narrative->proto ) {
-				do_( "def_" )	REENTER }
+				do_( "def$_" )	REENTER }
 		on_separator	; // err
 		on_other	do_( same )	s_take
 		end
-	in_( "def_" ) bgn_
+	in_( "def$_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
 			if ( proto_set( parser->user_data ) ) {
 				do_( "base" )	TAB_BASE = 0;
-						TAB_LAST = -1; }
+						TAB_LAST = -1;
+						type = 0; }
 		end
 
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative in / on / do / else Command Begin
+	// bm_parse:	Narrative in / on / do / en / else Command Begin
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
 		ons( " \t" ) if ( !s_cmp( "in" ) ) {
@@ -127,26 +164,33 @@ if ( mode==CN_STORY ) {
 			if ( !s_cmp( "else" ) && !(type&ELSE) ) {
 				do_( "else" )	REENTER
 						type = ELSE; }
+		on_( '%' )	do_( "_expr" )	REENTER
+						TAB_CURRENT += TAB_SHIFT;
+						type |= EN;
 		on_separator	; // err
 		on_other	do_( same )	s_take
 		end
-	in_( "cmd_" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	; // err
-		on_other	do_( "base_" )	REENTER
-						TAB_CURRENT += TAB_SHIFT;
-						s_clean( CNStringAll )
-		end
 	in_( "else" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "base_" )	REENTER
+		on_( '\n' )	do_( "_expr" )	REENTER
 						TAB_CURRENT += TAB_SHIFT;
 						f_set( INFORMED )
 						s_clean( CNStringAll )
 		on_other	do_( "cmd" )	REENTER
 						s_clean( CNStringAll )
 		end
-	in_( "base_" ) REENTER
+	in_( "cmd_" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' )	; // err
+		on_other	do_( "_expr" )	REENTER
+						TAB_CURRENT += TAB_SHIFT;
+						s_clean( CNStringAll )
+		end
+
+	//----------------------------------------------------------------------
+	// bm_parse:	Narrative Building
+	//----------------------------------------------------------------------
+	in_( "_expr" ) REENTER
 		if ( TAB_LAST == -1 ) {
 			// very first occurrence
 			if ( type & ELSE ) ; // err
@@ -217,7 +261,7 @@ A:CND_else_( B )
 				do_( "expr" )	s_take
 						f_set( ASSIGN ) }
 			else if ( are_f(ASSIGN|INFORMED) && !is_f(LEVEL) ) {
-				if ( !is_f( FILTERED ) ) {
+				if ( !is_f(FILTERED) ) {
 				do_( "expr" )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) } }
@@ -229,7 +273,10 @@ B:CND_endif
 		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
 				; // err
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
-				do_( "expr_" )	type &= ~COMPOUND; }
+				if ( type != PROTO ) {
+					do_( "expr_" )	type &= ~COMPOUND; }
+				else {	do_( "def$" )	REENTER
+							f_reset( FIRST ); } }
 			else if ( is_f(SET) ) { // allow \nl inside { }
 				do_( "_^" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
@@ -237,12 +284,12 @@ B:CND_endif
 		on_( ',' ) if ( !is_f(INFORMED) )
 				; // err
 			else if ( are_f(FIRST|LEVEL) ) {
-				do_( same )	s_take
+				do_( "," )	s_take
 						f_clr( FIRST|INFORMED ) }
 			else if ( is_f( SET ) ) {
-				do_( same )	s_take
+				do_( "," )	s_take
 						f_clr( INFORMED ) }
-		on_( ')' ) if ( are_f( INFORMED|LEVEL ) ) {
+		on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
 				do_( same )	s_take
 						f_pop( stack )
 						f_set( INFORMED ) }
@@ -318,10 +365,12 @@ CND_ifn( mode==CN_STORY, C )
 		end
 	in_( "%" ) bgn_
 		ons( " \t" )	do_( "%_" )
-		ons( ":,)\n" )	do_( "expr" )	REENTER
-						f_set( INFORMED )
-		ons( "?!" )	do_( "expr" )	s_take
-						f_set( INFORMED )
+		ons( ":,)\n" ) if (!( type==EN && s_empty )) {
+				do_( "expr" )	REENTER
+						f_set( INFORMED ) }
+		ons( "?!" ) if (!( type==EN && s_empty )) {
+				do_( "expr" )	s_take
+						f_set( INFORMED ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "expr" )	s_take
 						f_push( stack )
@@ -330,8 +379,7 @@ CND_ifn( mode==CN_STORY, C )
 		end
 		in_( "%_" ) bgn_
 			ons( " \t" )	do_( same )
-			ons( ":,)\n" )	do_( "expr" )	REENTER
-							f_set( INFORMED )
+			on_other	do_( "%" )	REENTER
 			end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
@@ -408,6 +456,14 @@ CND_ifn( mode==CN_STORY, C )
 			on_xdigit	do_( "/[" )	s_take
 			end
 C:CND_endif
+	in_( "," ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '.' ) if ( type==PROTO ) {
+				do_( "term" )	s_take
+						f_set( INFORMED ) }
+			else {	do_( "expr" )	REENTER }
+		on_other	do_( "expr" )	REENTER
+		end
 	in_( "_^" ) bgn_	// \nl allowed inside { }
 		ons( " \t\n" )	do_( same )
 		on_( '#' )	do_( "_^#" )
@@ -426,8 +482,13 @@ C:CND_endif
 			end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )
-			if ( type & DO ) {
+		on_( '.' ) if ( type==PROTO ) {
+				do_( "term" )	s_take
+						f_set( INFORMED ) }
+			else {	do_( "expr" )	REENTER
+						f_push( stack )
+						f_set( FIRST|LEVEL ) }
+		on_( ':' ) if ( type & DO ) {
 				do_( "(:" )	s_take }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
@@ -513,7 +574,7 @@ if ( mode==CN_STORY ) {				type = 0; }
 			on_other	errnum = ErrSyntaxError;
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
-		in_( "base_" )		errnum = ErrIndentation; column=TAB_BASE;
+		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
 		in_( "sibling" )	errnum = ErrIndentation; column=TAB_BASE;
 		in_( ":_" ) 		errnum = ErrInputScheme;
 		in_( ":_<" ) 		errnum = ErrInputScheme;
@@ -642,7 +703,7 @@ bm_parser_exit( CNParserData *parser, BMReadMode mode )
 		freeListItem( &data->stack );
 		freeListItem( &data->stack );
 		CNStory *story = data->story;
-		if ( !story_add( parser->user_data ) ) {
+		if ( !story_add( parser->user_data, 1 ) ) {
 			if (( story )) {
 				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
 				freeStory( story );

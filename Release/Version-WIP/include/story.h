@@ -7,20 +7,25 @@
 //===========================================================================
 //	Occurrence, Narrative, Story types
 //===========================================================================
-#define ROOT		 0
-#define	IN		 1
-#define ON		 2
-#define DO		 4
-#define INPUT		 8
-#define OUTPUT		16
-#define ELSE	       256
-#define ELSE_IN	       257
-#define ELSE_ON	       258
-#define ELSE_DO	       260
-#define ELSE_INPUT     264
-#define ELSE_OUTPUT    272
+#define ROOT		0
+#define	IN		1
+#define ON		2
+#define DO		4
+#define EN		8
+#define INPUT		16
+#define OUTPUT		32
 
-#define COMPOUND 1024
+#define ELSE		256
+#define ELSE_IN		(ELSE|IN)
+#define ELSE_ON		(ELSE|ON)
+#define ELSE_DO		(ELSE|DO)
+#define ELSE_EN		(ELSE|EN)
+#define ELSE_INPUT	(ELSE|INPUT)
+#define ELSE_OUTPUT	(ELSE|OUTPUT)
+
+#define LOCAL		512
+#define PROTO		1024
+#define COMPOUND	2048
 
 typedef enum {
 	CN_INI = 1,
@@ -68,7 +73,7 @@ CNOccurrence *	newOccurrence( int );
 void		freeOccurrence( CNOccurrence * );
 
 int	proto_set( BMStoryData * );
-int	story_add( BMStoryData * );
+int	story_add( BMStoryData *, int finish );
 int	story_output( FILE *, CNStory * );
 
 

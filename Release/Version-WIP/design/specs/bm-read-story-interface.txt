@@ -31,7 +31,7 @@ CONTENTS
 			   2.2. returns 1
 
 	Note that step 1. can be omitted once, as the very first narrative is being
-	defined, in which case story_add()'s passed narrative proto is NULL
+	defined, in which case the proto of the narrative passed to story_add() is NULL
 
 DETAILS
 	We want Story:Registry{[ name, Narrative:{[ proto, root ]} ]}

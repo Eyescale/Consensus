@@ -136,19 +136,22 @@ proto_set( BMStoryData *data )
 	StringReset( s, CNStringMode );
 	if ( p == NULL ) {
 		if (( registryLookup( data->story, "" ) ))
-			return 0;
+			return 0; // main already exists
 	}
-	else if ( is_separator( *p ) )
+	else if ( is_separator( *p ) ) {
+		if ( !registryLookup( data->story, "" ) )
+			return 0; // no main
 		data->narrative->proto = p;
+	}
 	else {
 		if (( registryLookup( data->story, p ) ))
-			return 0;
+			return 0; // double-def
 		data->narrative->proto = p;
 	}
 	return 1;
 }
 int
-story_add( BMStoryData *data )
+story_add( BMStoryData *data, int finish )
 {
 	if ( data->story == NULL ) return 0;
 	CNNarrative *narrative = data->narrative;
@@ -161,8 +164,10 @@ story_add( BMStoryData *data )
 		if (( entry )) reorderListItem((listItem **) &entry->value );
 		data->entry = registryRegister( data->story, "", newItem(narrative) );
 	}	
-	else if ( is_separator( *p ) )
+	else if ( is_separator( *p ) ) {
 		addItem((listItem **) &entry->value, narrative );
+		if ( finish ) reorderListItem((listItem **) &entry->value );
+	}
 	else {
 		if (( entry )) reorderListItem((listItem **) &entry->value );
 		data->entry = registryRegister( data->story, p, newItem(narrative) );
@@ -280,6 +285,7 @@ story_output( FILE *stream, CNStory *story )
 	if ( story == NULL ) return 0;
 	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
+		fprintf( stream, ": %s\n", (char *) entry->name );
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );
@@ -298,9 +304,10 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 	}
 	char *proto = narrative->proto;
 	if (( proto )) {
-		fprintf( stream, ": %s\n", proto );
+		if ( !is_separator( *proto ) )
+			fprintf( stream, ": " );
+		fprintf( stream, "%s\n", proto );
 	}
-	else fprintf( stream, ":\n" );
 	CNOccurrence *occurrence = narrative->root;
 
 	listItem *i = newItem( occurrence ), *stack = NULL;
@@ -312,41 +319,21 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 		char *expression = occurrence->data->expression;
 
 		TAB( level );
-		switch ( type ) {
-		case ELSE:
+		if ( type==ROOT ) ;
+		else if ( type==ELSE )
 			fprintf( stream, "else\n" );
-			break;
-		case ELSE_IN:
-		case ELSE_ON:
-		case ELSE_DO:
-		case ELSE_INPUT:
-		case ELSE_OUTPUT:
-			fprintf( stream, "else " );
-			break;
-		default:
-			break;
+		else {
+			if ( type&ELSE )
+				fprintf( stream, "else " );
+			if ( type&IN )
+				fprintf( stream, "in " );
+			else if ( type&ON )
+				fprintf( stream, "on " );
+			else if ( type&(DO|INPUT|OUTPUT) )
+				fprintf( stream, "do " );
+			fprintf( stream, "%s\n", expression );
 		}
-		switch ( type ) {
-		case ROOT:
-		case ELSE:
-			break;
-		case IN:
-		case ELSE_IN:
-			fprintf( stream, "in %s\n", expression );
-			break;
-		case ON:
-		case ELSE_ON:
-			fprintf( stream, "on %s\n", expression );
-			break;
-		case DO:
-		case INPUT:
-		case OUTPUT:
-		case ELSE_DO:
-		case ELSE_INPUT:
-		case ELSE_OUTPUT:
-			fprintf( stream, "do %s\n", expression );
-			break;
-		}
+
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i = j; level++; }
 		else {

@@ -19,7 +19,7 @@ newProgram( CNStory *story, char *inipath )
 	if ( story == NULL ) return NULL;
 
 	Pair *entry = registryLookup( story, "" );
-	if ( entry->value == NULL ) {
+	if ( !entry || entry->value == NULL ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL;
 	}

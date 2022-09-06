@@ -158,6 +158,9 @@ else in *phase: OUTPUT
 
 : Toto
 on init
+	%(hello,(?,world))
 	do >"hello\n"
 	do exit
-
+:( hello, .local:( titi, toto ))
+	on (this)
+		do ~(this)

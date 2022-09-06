@@ -32,6 +32,8 @@ File Format Interface
 
 TODO
 	. Restore backward compatibility / sub-narrative definition
+	. Extract bm_parser_report / bm_parser_init / bm_parser_exit
+	  from parser.c => into story.c (could even create error.c)
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON
@@ -51,7 +53,11 @@ TODO
 				if ( is_f( FILTERED ) )
 					f_clr( FILTERED )
 				otherwise => err
-	     No longer requires %( ) here => must update traversal.c
+	. traversal.c - ternary operator support
+		. update bm_verify for both () and %() - done
+		. handle N-ary cases e.g.
+			( expr ? expr ? expr : expr : expr )
+			( expr ?: expr ?: expr ? expr :)
 	. Feature complete
 		. term~			(signal) => DONE
 		. :var:value		(assignment) => DONE
