@@ -1,7 +1,7 @@
 
 DEFINITIONS
 
-	1. Sub-narrative are defined using either one of the following statements, at
+	1. Sub-narrative are declared using either one of the following statements, at
 	   the very start of a line:
 
 		.identifier:( expression )
@@ -20,7 +20,7 @@ DEFINITIONS
 
 	   Example: where
 
-	   :( expression )	- is the sub-narrative definition
+	   :( expression )	- is the sub-narrative declaration
 
 			do .identifier	// (1)
 
@@ -38,7 +38,7 @@ DEFINITIONS
 
 	   Example: where
 
-	   :( expression )	- is the sub-narrative definition
+	   :( expression )	- is the sub-narrative declaration
 
 		.position .event
 
@@ -56,7 +56,7 @@ DEFINITIONS
 
 		( expression1 ):%( expression2 )
 
-	  where expression1 pertains to an entire sub-narrative's definition
+	  where expression1 pertains to an entire sub-narrative's declaration
 	  - a.k.a. prototype in C - and expression2 to the EN statement
 
 IMPLEMENTATION
