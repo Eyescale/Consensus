@@ -1,22 +1,6 @@
 #ifndef PARSER_PRIVATE_H
 #define PARSER_PRIVATE_H
 
-#define TAB_CURRENT	tab[0]
-#define TAB_LAST	tab[1]
-#define TAB_SHIFT	tab[2]
-#define TAB_BASE	tab[3]
-
-#define FIRST		1
-#define FILTERED	2
-#define SUB_EXPR	4
-#define MARKED		8
-#define NEGATED		16
-#define INFORMED	32
-#define LEVEL		64
-#define SET		128
-#define ASSIGN		256
-#define THIS		512
-
 #define s_empty \
 	!StringInformed(s)
 #define s_take \
@@ -27,11 +11,13 @@
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 #define	s_clean( a ) \
 	StringReset( s, a );
-#define s_push( p ) \
+#define s_push( proto ) \
 	StringAppend( s, '(' ); \
-	for (char *q=p; *q!=':'; q++ ) StringAppend(s,*q); \
+	for (char *p=proto,*q=(((p)&&*p=='.')?p+1:"this:");*q!=':';q++) \
+		StringAppend(s,*q); \
 	StringAppend( s, ',' );
-
+#define s_pop \
+	StringAppend( s, ')' );
 
 // #define DEBUG
 

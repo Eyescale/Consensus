@@ -29,9 +29,12 @@ DEFINITIONS
 		(1) becomes: do (this,identifier )
 		(2) becomes: in (this,(expression1,expression2))
 		
-	   Note that Version 1.2 forbids do .expression commands from the base
-	   narrative, whereas in Version 1.1 the '.' was simply ignored in such
-	   cases.
+	   Note that Version 1.1 ignores the '.' in such commands, when issued
+	   from the base narrative.
+
+	   Version-1.2 translates them as above, which leaves the possibility
+	   for the narrator to create and handle an actual "this" entity - at
+	   the base level.
 
 	3. LOCALE declarations allow the interpretation of the declared LOCALE
 	   as (identifier,locale) at run=time.
@@ -107,7 +110,7 @@ IMPLEMENTATION
 	association/grouping of CNDB base entities - a.k.a. neuronal configuration,
 	or path.
 
-	In Version 1.2 we shall restrict EN statements to only the base narrative.
+	Version 1.2 restricts EN statements to only the base narrative.
 
 	The proper way to handle sub-narrative / EN associations would be to forbid such
 	associations from being recursive, on a per instance and frame-by-frame basis.

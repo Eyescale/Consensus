@@ -6,18 +6,21 @@
 #include "expression.h"
 #include "parser.h"
 #include "story.h"
+#include "story_private.h"
 
 //===========================================================================
-//	readStory / bm_read / occurrence_set
+//	readStory / bm_read
 //===========================================================================
-static void occurrence_set( CNOccurrence *, CNString *, int type );
-
 CNStory *
 readStory( char *path )
 {
 	CNStory *story = bm_read( CN_STORY, path );
 	return story;
 }
+
+static int bm_read_init( BMStoryData *, BMReadMode );
+static void * bm_read_exit( BMParserData *, BMReadMode );
+static void occurrence_set( CNOccurrence *, CNString *, int type );
 void *
 bm_read( BMReadMode mode, ... )
 /*
@@ -52,8 +55,9 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	BMStoryData data;
-	CNParserData parser;
-	bm_parser_init( &parser, &data, file, mode );
+	bm_read_init( &data, mode );
+	BMParserData parser;
+	bm_parser_init( &parser, "base", file, &data );
 	do {
 		int event = cnParserGetc( &parser );
 		if ( event!=EOF && event!='\n' ) {
@@ -83,14 +87,69 @@ bm_read( BMReadMode mode, ... )
 		}
 	} while ( strcmp( parser.state, "" ) );
 RETURN:
-	if ( parser.errnum ) {
-		bm_parser_report( parser.errnum, &parser, mode );
-	}
 	if ( mode != CN_INSTANCE ) {
 		fclose( file );
 	}
-	return bm_parser_exit( &parser, mode );
+	return bm_read_exit( &parser, mode );
 }
+
+static int
+bm_read_init( BMStoryData *data, BMReadMode mode )
+{
+	memset( data, 0, sizeof(BMStoryData) );
+	data->string = newString();
+	switch ( mode ) {
+	case CN_STORY:
+		data->TAB_LAST = -1;
+		data->flags = FIRST;
+		data->narrative = newNarrative();
+		data->occurrence = data->narrative->root;
+		data->story = newRegistry( IndexedByName );
+		addItem( &data->stack, data->occurrence );
+		break;
+	case CN_INI:
+	case CN_INSTANCE:
+		data->type = DO;
+		data->flags = FIRST;
+		break;
+	}
+	return 1;
+}
+
+static void *
+bm_read_exit( BMParserData *parser, BMReadMode mode )
+{
+	BMStoryData *data = parser->user_data;
+	switch ( mode ) {
+	case CN_STORY:
+		freeString( data->string );
+		freeListItem( &data->stack );
+		CNStory *story = data->story;
+		if ( parser->errnum ) {
+			freeStory( data->story );
+			story = NULL;
+		}
+		if ( !story_add( data, 1 ) ) {
+			if (( story )) {
+				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
+				freeStory( story );
+				story = NULL;
+			}
+			freeNarrative( data->narrative );
+		}
+		return story;
+	case CN_INI:
+		freeString( data->string );
+		return ( parser->errnum ? parser->stream : NULL );
+	case CN_INSTANCE: ;
+		CNString *s = data->string;
+		char *expression = StringFinish( s, 0 );
+		StringReset( s, CNStringMode );
+		freeString( s );
+		return expression;
+	}
+}
+
 static void
 occurrence_set( CNOccurrence *occurrence, CNString *s, int type )
 {
@@ -173,6 +232,7 @@ story_add( BMStoryData *data, int finish )
 		data->entry = registryRegister( data->story, p, newItem(narrative) );
 		narrative->proto = NULL;
 	}
+	if ( !finish ) data->narrative = newNarrative();
 	return 1;
 }
 

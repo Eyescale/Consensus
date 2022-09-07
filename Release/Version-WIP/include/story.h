@@ -23,9 +23,8 @@
 #define ELSE_INPUT	(ELSE|INPUT)
 #define ELSE_OUTPUT	(ELSE|OUTPUT)
 
-#define LOCAL		512
-#define PROTO		1024
-#define COMPOUND	2048
+#define LOCALE		512
+#define COMPOUND	1024
 
 typedef enum {
 	CN_INI = 1,
@@ -50,31 +49,11 @@ typedef struct {
 typedef Registry CNStory;
 
 //===========================================================================
-//	Interface with bm_parse()
-//===========================================================================
-typedef struct {
-	CNStory *	story;
-	CNNarrative *	narrative;
-	Pair *		entry;
-	CNOccurrence *	occurrence;
-	CNString *	string;
-	int		tab[4], type, flags;
-	listItem *	stack; 
-} BMStoryData;
-
-//===========================================================================
 //	Public Interface
 //===========================================================================
 CNStory *	readStory( char *path );
 void		freeStory( CNStory * );
-CNNarrative *	newNarrative( void );
-void		freeNarrative( CNNarrative * );
-CNOccurrence *	newOccurrence( int );
-void		freeOccurrence( CNOccurrence * );
-
-int	proto_set( BMStoryData * );
-int	story_add( BMStoryData *, int finish );
-int	story_output( FILE *, CNStory * );
+int		story_output( FILE *, CNStory * );
 
 
 #endif	// STORY_H

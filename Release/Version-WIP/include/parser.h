@@ -12,9 +12,9 @@ typedef struct {
 		errnum;
 	void *	user_data;
 }
-CNParserData;
+BMParserData;
 
-int	cnParserGetc( CNParserData * );
+int	cnParserGetc( BMParserData * );
 
 // #define DEBUG
 
@@ -39,10 +39,9 @@ typedef enum {
 	ErrUnknownCommand,
 } BMParserError;
 
-int	bm_parser_init( CNParserData *, BMStoryData *, FILE *, BMReadMode );
-char *	bm_parse( int event, CNParserData *, BMReadMode );
-void	bm_parser_report( BMParserError, CNParserData *, BMReadMode );
-void *	bm_parser_exit( CNParserData *, BMReadMode );
+int	bm_parser_init( BMParserData *, char *, FILE *, void * );
+char *	bm_parse( int event, BMParserData *, BMReadMode );
+void	bm_parser_report( BMParserError, BMParserData *, BMReadMode );
 
 
 #endif	// PARSER_H
