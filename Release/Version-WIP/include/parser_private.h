@@ -13,6 +13,19 @@
 	StringReset( s, a );
 
 // #define DEBUG
+#ifdef DEBUG
+#define	DBGMonitor \
+	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on ", line, column, state ); \
+	switch ( event ) { \
+	case EOF: fprintf( stderr, "EOF" ); break; \
+	case '\n': fprintf( stderr, "'\\n'" ); break; \
+	case '\t': fprintf( stderr, "'\\t'" ); break; \
+	default: fprintf( stderr, "'%c'", event ); \
+	} \
+	fprintf( stderr, "\n" );
+#else
+#define	DBGMonitor
+#endif
 
 //===========================================================================
 //	CNParser utilities - macros
@@ -30,25 +43,11 @@
 // CND_reset
 //		in_( ) bgn_
 //			etc.
-#define CND_reset \
-	cond=1, passed=1;
-
-#ifdef DEBUG
-#define	DBGMonitor \
-	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on ", line, column, state ); \
-	switch ( event ) { \
-	case EOF: fprintf( stderr, "EOF" ); break; \
-	case '\n': fprintf( stderr, "'\\n'" ); break; \
-	case '\t': fprintf( stderr, "'\\t'" ); break; \
-	default: fprintf( stderr, "'%c'", event ); \
-	} \
-	fprintf( stderr, "\n" );
-#else
-#define	DBGMonitor
-#endif
-
 // Note CND_ifn does not allow CND_else_ (being a straight on_goto )
 // only CND_if_ does
+
+#define CND_reset \
+	cond=1, passed=1;
 
 #define CNParserBegin( parser ) \
 	char *state	= parser->state; \

@@ -233,18 +233,17 @@ if ( _CB( ProtoSet, mode, data ) ) {
 						TAB_CURRENT += TAB_SHIFT;
 						s_clean( CNStringAll )
 		end
-	in_( "_expr" ) bgn_
-		on_any
+	in_( "_expr" )
 if ( _CB( OccurrenceAdd, mode, data ) ) {
 				do_( "expr" )	REENTER
 						TAB_LAST = TAB_CURRENT;
 }
-		end
 EXPR_BGN:CND_endif
+CND_reset
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
-	in_( "expr" ) CND_reset bgn_
+	in_( "expr" ) bgn_
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER
@@ -252,6 +251,10 @@ CND_if_( mode==BM_STORY, A )
 			else {	do_( same ) }
 		ons( "*%" ) if ( !is_f(INFORMED) ) {
 				do_( same )	s_take
+						f_set( INFORMED ) }
+		on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
+				do_( same )	s_take
+						f_pop( stack, COMPOUND )
 						f_set( INFORMED ) }
 A:CND_else_( B )
 		ons( " \t" )	do_( same )
@@ -280,6 +283,10 @@ A:CND_else_( B )
 				do_( ":" )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
+		on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
+				do_( "pop" )	s_take
+						f_pop( stack, COMPOUND )
+						f_set( INFORMED ) }
 B:CND_endif
 		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
 				; // err
@@ -298,10 +305,6 @@ B:CND_endif
 			else if ( is_f( SET ) ) {
 				do_( same )	s_take
 						f_clr( INFORMED ) }
-		on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
-				do_( "pop" )	s_take
-						f_pop( stack, COMPOUND )
-						f_set( INFORMED ) }
 		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
 				!is_f(ASSIGN|FILTERED|SUB_EXPR) ) {
 				do_( "|" )	s_take
@@ -480,12 +483,12 @@ _CB( ExpressionPush, mode, data );
 		in_( "/[\\x_" ) bgn_
 			on_xdigit	do_( "/[" )	s_take
 			end
-C:CND_endif
 	in_( "pop" ) REENTER
 		if ( is_f(DOT) ) {
 _CB( ExpressionPop, mode, data );
-			do_( "expr" )	f_clr( DOT ) }
+			do_( "expr" ) f_clr( DOT ) }
 		else {	do_( "expr" ) }
+C:CND_endif
 	in_( "_^" ) bgn_	// \nl allowed inside { }
 		ons( " \t\n" )	do_( same )
 		on_( '#' )	do_( "_^#" )
@@ -636,7 +639,9 @@ else if ( mode==BM_INSTANCE )	do_( "" )
 //===========================================================================
 //	bm_parser_report
 //===========================================================================
-#define	out( err_msg )	fprintf( stderr, err_msg ); break;
+//===========================================================================
+//	bm_parser_report
+//===========================================================================
 void
 bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
 {
@@ -646,46 +651,46 @@ bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
 if ( mode==BM_INSTANCE )
 	switch ( errnum ) {
 	case ErrUnknownState:
-		out( ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state )
+		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
 	case ErrUnexpectedEOF:
-		out( "Error: bm_read: in expression '%s' unexpected EOF\n", s )
+		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected EOF\n", s  ); break;
 	case ErrUnexpectedCR:
-		out( "Error: bm_read: in expression '%s' unexpected \\cr\n", s )
+		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected \\cr\n", s  ); break;
 	default:
-		out( "Error: bm_read: in expression '%s' syntax error\n", s )
+		fprintf( stderr, "Error: bm_read: in expression '%s' syntax error\n", s  ); break;
 	}
 else {
-	char *	src = (mode==CN_INI) ? "bm_load": "bm_read"; break;
-	int 	l = parser->line, c = parser->column; break;
+	char *	src = (mode==CN_INI) ? "bm_load": "bm_read";
+	int 	l = parser->line, c = parser->column;
 	switch ( errnum ) {
 	case ErrUnknownState:
-		out( ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state )
+		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state  ); break;
 	case ErrUnexpectedEOF:
-		out( "Error: %s: l%d: unexpected EOF\n", src, l )
+		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
 	case ErrSpace:
-		out( "Error: %s: l%dc%d: unexpected ' '\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
 	case ErrUnexpectedCR:
-		out( "Error: %s: l%dc%d: statement incomplete\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: statement incomplete\n", src, l, c  ); break;
 	case ErrIndentation:
-		out( "Error: %s: l%dc%d: indentation error\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: indentation error\n", src, l, c  ); break;
 	case ErrExpressionSyntaxError:
-		out( "Error: %s: l%dc%d: syntax error in expression\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: syntax error in expression\n", src, l, c  ); break;
 	case ErrInputScheme:
-		out( "Error: %s: l%dc%d: unsupported input scheme\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: unsupported input scheme\n", src, l, c  ); break;
 	case ErrOutputScheme:
-		out( "Error: %s: l%dc%d: unsupported output scheme\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: unsupported output scheme\n", src, l, c  ); break;
 	case ErrMarkMultiple:
-		out( "Error: %s: l%dc%d: '?' already informed\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: '?' already informed\n", src, l, c  ); break;
 	case ErrMarkNegated:
-		out( "Error: %s: l%dc%d: '?' negated\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: '?' negated\n", src, l, c  ); break;
 	case ErrNarrativeEmpty:
-		out( "Error: %s: l%dc%d: empty narrative\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: empty narrative\n", src, l, c  ); break;
 	case ErrNarrativeDouble:
-		out( "Error: %s: l%dc%d: narrative already defined\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: narrative already defined\n", src, l, c  ); break;
 	case ErrUnknownCommand:
-		out( "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, s )
+		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, s  ); break;
 	default:
-		out( "Error: %s: l%dc%d: syntax error\n", src, l, c )
+		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); break;
 	} }
 }
 
