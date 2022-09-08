@@ -4,7 +4,6 @@
 
 #include "expression.h"
 #include "parser.h"
-#include "parser_story.h"
 
 //===========================================================================
 //	readStory
@@ -196,7 +195,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 {
 	BMStoryData *data = user_data;
 	switch ( op ) {
-	case isNarrativeBase: ;
+	case isBaseNarrative: ;
 		CNNarrative *narrative = data->narrative;
 		return !((narrative->proto) && is_separator(*narrative->proto));
 	case NarrativeTake: ;

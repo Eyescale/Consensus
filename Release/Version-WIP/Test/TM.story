@@ -165,7 +165,7 @@ else
 	do exit
 
 // :( hello, .local:( titi, world ))
-.rule: ((( schema, .start ), ( ., .frame )), .r:((rule,.),.))
+.rule : ((( schema, .start ), ( ., .frame )), .r:((rule,.),.))
 // : ( .flag, .frame )
 	.position .event
 	do .( hello, .(.(toto,.titi)) )	// comment

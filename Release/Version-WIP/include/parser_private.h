@@ -13,6 +13,10 @@
 	StringReset( s, a );
 
 // #define DEBUG
+
+//===========================================================================
+//	CNParser utilities - macros
+//===========================================================================
 #ifdef DEBUG
 #define	DBGMonitor \
 	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on ", line, column, state ); \
@@ -27,57 +31,30 @@
 #define	DBGMonitor
 #endif
 
-//===========================================================================
-//	CNParser utilities - macros
-//===========================================================================
-// CND_reset is used in conjunction with CND_if_ and CND_ifn statements,
-// to be applied e.g. as follow within a block:
-// 		in_( ) CND_reset bgn_
-// CND_if_( a, A )
-//			on_( ) ...
-// A:CND_else_( B )
-//			on_( ) ...
-// B:CND_endif
-//			on_( ) ...
-//			end
-// CND_reset
-//		in_( ) bgn_
-//			etc.
-// Note CND_ifn does not allow CND_else_ (being a straight on_goto )
-// only CND_if_ does
-
-#define CND_reset \
-	cond=1, passed=1;
-
 #define CNParserBegin( parser ) \
 	char *state	= parser->state; \
 	int column	= parser->column, \
 	    line	= parser->line, \
 	    errnum	= 0; \
-	int caught, cond, passed; \
+	int caught; \
 	do { \
-		caught = CNCaughtEvent; \
+		caught = CNCaughtTest; \
 		DBGMonitor; bgn_
 #define CND_ifn( a, jmp ) \
-		} else if (!(a)) { passed=0; goto jmp;
+		} else if (!(a)) { caught&=~CNCaughtTest; goto jmp;
 #define CND_if_( a, jmp ) \
-		} else if (a) { cond=0; goto jmp;
+		} else if (a) { caught&=~CNCaughtTest; goto jmp;
 #define CND_else_( jmp ) ; \
-		} else passed=0; if ( cond==1 ) { goto jmp;
+		} if ( caught&CNCaughtTest ) { goto jmp;
 #define CND_endif	; \
-		} else passed=0; if ( passed ) {
+		} caught|=CNCaughtTest; if ( caught&CNCaughtEvent ) {
 #define CNParserDefault \
 		end \
 		if ( caught & CNCaughtTrans ) ; \
 		else bgn_
 #define CNParserEnd \
 		end \
-	} while ( !errnum && !(caught&CNCaughtEvent) ); \
+	} while ( !errnum && (caught&CNCaughtAgain) ); \
 	parser->errnum = errnum;
-
-#define case_(a)	switch (a) { case 0:
-#define _(a)		break; case a:
-#define _default	break; default:
-#define	_end_case	break; }
 
 #endif	// PARSER_PRIVATE_H

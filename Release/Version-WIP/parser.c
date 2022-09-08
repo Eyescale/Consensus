@@ -3,7 +3,6 @@
 
 #include "flags.h"
 #include "parser.h"
-#include "parser_story.h"
 #include "parser_private.h"
 
 //===========================================================================
@@ -57,7 +56,7 @@ if ( mode==BM_STORY ) {
 			on_( ':' ) if ( !TAB_CURRENT ) {
 					do_( "def" )	TAB_SHIFT = 0; }
 			on_( '%' )
-	if ( _CB( isNarrativeBase, mode, data ) ) {
+	if ( _CB( isBaseNarrative, mode, data ) ) {
 					do_( "cmd" )	REENTER
 							TAB_BASE = column;
 	}
@@ -90,14 +89,15 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 		on_other	do_( "^.$" )	s_take
 		end
 		in_ ( "^.$" ) bgn_
-			ons( " \t" )	do_( "^.$_" ) 	s_add( " " )
+			ons( " \t" )	do_( "^.$_" )
 			ons( "\n:" )	do_( "^.$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end
 		in_( "^.$_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '.' )	do_( "^." )	s_take
+			on_( '.' )	do_( "^." )	s_add( " " )
+							s_take
 							*type = LOCALE;
 			on_( '\n' )	do_( "_expr" )	REENTER
 							*type = LOCALE;
@@ -115,10 +115,10 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 		ons( " \t" )	do_( same )
 		on_( '(' )
 if ( _CB( NarrativeTake, mode, data ) ) {
-				do_( "_:" )	REENTER
+				do_( "sub" )	REENTER
 }
 		end
-		in_( "_:" ) bgn_
+		in_( "sub" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
 					do_( "def$_" )	REENTER
@@ -126,47 +126,47 @@ if ( _CB( NarrativeTake, mode, data ) ) {
 			on_( '(' ) if ( !is_f(INFORMED) ) {
 					do_( same )	s_take
 							f_push( stack )
-							f_clr( INFORMED|SET )
+							f_clr( INFORMED )
 							f_set( FIRST|LEVEL ) }
 			on_( ',' ) if ( are_f(INFORMED|FIRST|LEVEL) ) {
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
-			on_( '.' ) if ( !is_f(INFORMED) ) {
-					do_( "_:." )	s_take }
+			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+					do_( "sub." )	s_take }
 			on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
-					do_( "_:" )	s_take
-							f_pop( stack, COMPOUND )
+					do_( same )	s_take
+							f_pop( stack, 0 )
 							f_set( INFORMED ) }
 			on_separator	; // err
 			on_other
-				if ( is_f(LEVEL) ) {
-					do_( "_:$" )	s_take }
+				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+					do_( "sub$" )	s_take }
 			end
-		in_( "_:." ) bgn_
-			ons( " \t,)" )	do_( "_:" )	REENTER
+		in_( "sub." ) bgn_
+			ons( " \t,)" )	do_( "sub" )	REENTER
 							f_set( INFORMED )
 			on_separator	; // err
-			on_other	do_( "_:.$" )	s_take
+			on_other	do_( "sub.$" )	s_take
 			end
-		in_( "_:.$" ) bgn_
-			ons( " \t:," )	do_( "_:.$_" )	REENTER
+		in_( "sub.$" ) bgn_
+			ons( " \t:," )	do_( "sub.$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end
-			in_( "_:.$_" ) bgn_
+			in_( "sub.$_" ) bgn_
 				ons( " \t" )	do_( same )
-				on_( ':' )	do_( "_:.$:" )	s_take
-				ons( ",)" )	do_( "_:" )	REENTER
+				on_( ':' )	do_( "sub.$:" )	s_take
+				ons( ",)" )	do_( "sub" )	REENTER
 								f_set( INFORMED )
 				end
-			in_( "_:.$:" ) bgn_
+			in_( "sub.$:" ) bgn_
 				ons( " \t" )	do_( same )
-				on_( '(' )	do_( "_:" )	REENTER
+				on_( '(' )	do_( "sub" )	REENTER
 				on_separator	; // err
-				on_other	do_( "_:" )	REENTER
+				on_other	do_( "sub" )	REENTER
 				end
-		in_( "_:$" ) bgn_
-			on_separator	do_( "_:" )	REENTER
+		in_( "sub$" ) bgn_
+			on_separator	do_( "sub" )	REENTER
 			on_other	do_( same )	s_take
 							f_set( INFORMED )
 			end
@@ -235,11 +235,12 @@ if ( _CB( ProtoSet, mode, data ) ) {
 		end
 	in_( "_expr" )
 if ( _CB( OccurrenceAdd, mode, data ) ) {
-				do_( "expr" )	REENTER
-						TAB_LAST = TAB_CURRENT;
+	bgn_
+		on_any	do_( "expr" )	REENTER
+					TAB_LAST = TAB_CURRENT;
+		end
 }
 EXPR_BGN:CND_endif
-CND_reset
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
@@ -325,7 +326,6 @@ B:CND_endif
 		on_other if ( !is_f(INFORMED) ) {
 				do_( "term" )	s_take }
 		end
-CND_reset
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression sub-states
 	//----------------------------------------------------------------------
@@ -483,11 +483,13 @@ _CB( ExpressionPush, mode, data );
 		in_( "/[\\x_" ) bgn_
 			on_xdigit	do_( "/[" )	s_take
 			end
-	in_( "pop" ) REENTER
-		if ( is_f(DOT) ) {
+	in_( "pop" ) bgn_
+		on_any 	if ( is_f(DOT) ) {
 _CB( ExpressionPop, mode, data );
-			do_( "expr" ) f_clr( DOT ) }
-		else {	do_( "expr" ) }
+				do_( "expr" )	REENTER
+						f_clr( DOT ) }
+			else {	do_( "expr" )	REENTER }
+		end
 C:CND_endif
 	in_( "_^" ) bgn_	// \nl allowed inside { }
 		ons( " \t\n" )	do_( same )
@@ -562,7 +564,7 @@ C:CND_endif
 			on_( '\'' )	do_( "expr" )	s_take
 							f_set( INFORMED )
 			end
-	in_( "term" ) CND_reset	bgn_
+	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
 		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SET|ASSIGN|DOT) ) {
 				do_( "expr" )	s_take
@@ -585,6 +587,8 @@ _CB( ExpressionPop, mode, data );
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 _CB( ExpressionTake, mode, data );
+	bgn_
+		on_any
 if ( mode==BM_STORY ) {		do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
 						*type = 0;
@@ -593,6 +597,7 @@ else if ( mode==BM_INI ) {	do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
 }
 else if ( mode==BM_INSTANCE )	do_( "" )
+		end
 
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
@@ -697,6 +702,14 @@ else {
 //===========================================================================
 //	cn_parser_init / cn_parser_getc
 //===========================================================================
+static int preprocess( int event, int *mode, int *buffer, int *skipped );
+enum {
+	COMMENT = 0,
+	BACKSLASH,
+	STRING,
+	QUOTE
+};
+
 int
 cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data )
 {
@@ -708,7 +721,6 @@ cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data
 	return 1;
 }
 
-static int preprocess( int event, int *mode, int *buffer, int *skipped );
 int
 cn_parser_getc( CNParserData *data )
 /*
@@ -732,12 +744,6 @@ cn_parser_getc( CNParserData *data )
 	return event;
 }
 
-enum {
-	COMMENT = 0,
-	BACKSLASH,
-	STRING,
-	QUOTE
-};
 static int
 preprocess( int event, int *mode, int *buffer, int *skipped )
 {
