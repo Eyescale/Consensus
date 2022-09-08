@@ -50,11 +50,12 @@
 		} caught|=CNCaughtTest; if ( caught&CNCaughtEvent ) {
 #define CNParserDefault \
 		end \
-		if ( caught & CNCaughtTrans ) ; \
+		if ( caught&CNCaughtTrans ) ; \
 		else bgn_
 #define CNParserEnd \
 		end \
 	} while ( !errnum && (caught&CNCaughtAgain) ); \
 	parser->errnum = errnum;
+
 
 #endif	// PARSER_PRIVATE_H

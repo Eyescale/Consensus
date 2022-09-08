@@ -1,7 +1,7 @@
 #ifndef DB_IO_H
 #define DB_IO_H
 
-#include "macros.h"
+#include "macros_private.h"
 
 //===========================================================================
 //      DBInputBegin / DBInputEnd - macros
@@ -34,3 +34,4 @@
 
 
 #endif	// DB_IO_H
+

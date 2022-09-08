@@ -257,3 +257,4 @@ db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
 RETURN:
 	return 0;
 }
+

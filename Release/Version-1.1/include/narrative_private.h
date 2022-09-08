@@ -1,7 +1,7 @@
 #ifndef NARRATIVE_PRIVATE_H
 #define NARRATIVE_PRIVATE_H
 
-#include "macros.h"
+#include "macros_private.h"
 
 // #define DEBUG
 
@@ -83,3 +83,4 @@ static void s_add( CNString *, char * );
 
 
 #endif	// NARRATIVE_PRIVATE_H
+

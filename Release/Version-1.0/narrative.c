@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "macros.h"
+#include "macros_private.h"
 #include "pair.h"
 #include "string_util.h"
 #include "narrative.h"

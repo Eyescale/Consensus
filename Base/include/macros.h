@@ -52,6 +52,6 @@
 #define end				}
 
 #define END				end \
-			} while (!( caught & CNCaughtAgain ));
+			} while (!( caught&CNCaughtAgain ));
 
 #endif	// MACROS_H
