@@ -76,6 +76,7 @@ if ( mode==BM_STORY ) {
 		on_( '\n' )	do_( "base" )
 		on_other	do_( same )
 		end
+CND_ifn( mode==BM_STORY, EXPR_BGN )
 	in_( "+" ) bgn_
 		on_( '+' )	do_( same )	TAB_SHIFT++;
 		on_other	do_( "base" )	REENTER
@@ -232,11 +233,14 @@ if ( _CB( ProtoSet, mode, data ) ) {
 						TAB_CURRENT += TAB_SHIFT;
 						s_clean( CNStringAll )
 		end
-	in_( "_expr" )
+	in_( "_expr" ) bgn_
+		on_any
 if ( _CB( OccurrenceAdd, mode, data ) ) {
 				do_( "expr" )	REENTER
 						TAB_LAST = TAB_CURRENT;
 }
+		end
+EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
@@ -632,58 +636,57 @@ else if ( mode==BM_INSTANCE )	do_( "" )
 //===========================================================================
 //	bm_parser_report
 //===========================================================================
+#define	out( err_msg )	fprintf( stderr, err_msg ); break;
 void
 bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
 {
 	BMStoryData *data = parser->user_data;
 	char *s = StringFinish( data->string, 0 );
 
-	if ( mode==BM_INSTANCE )
-	case_( errnum )
-	_( ErrUnknownState )
-		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state );
-	_( ErrUnexpectedEOF )
-		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected EOF\n", s );
-	_( ErrUnexpectedCR )
-		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected \\cr\n", s );
-	_default
-		fprintf( stderr, "Error: bm_read: in expression '%s' syntax error\n", s );
-	_end_case
-
-	else {
-	char *	src = (mode==CN_INI) ? "bm_load" : "bm_read";
-	int 	l = parser->line, c = parser->column;
-	case_( errnum )
-	_( ErrUnknownState )
-		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state );
-	_( ErrUnexpectedEOF )
-		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l );
-	_( ErrSpace )
-		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c );
-	_( ErrUnexpectedCR )
-		fprintf( stderr, "Error: %s: l%dc%d: statement incomplete\n", src, l, c );
-	_( ErrIndentation )
-		fprintf( stderr, "Error: %s: l%dc%d: indentation error\n", src, l, c );
-	_( ErrExpressionSyntaxError )
-		fprintf( stderr, "Error: %s: l%dc%d: syntax error in expression\n", src, l, c );
-	_( ErrInputScheme )
-		fprintf( stderr, "Error: %s: l%dc%d: unsupported input scheme\n", src, l, c );
-	_( ErrOutputScheme )
-		fprintf( stderr, "Error: %s: l%dc%d: unsupported output scheme\n", src, l, c );
-	_( ErrMarkMultiple )
-		fprintf( stderr, "Error: %s: l%dc%d: '?' already informed\n", src, l, c );
-	_( ErrMarkNegated )
-		fprintf( stderr, "Error: %s: l%dc%d: '?' negated\n", src, l, c );
-	_( ErrNarrativeEmpty )
-		fprintf( stderr, "Error: %s: l%dc%d: empty narrative\n", src, l, c );
-	_( ErrNarrativeDouble )
-		fprintf( stderr, "Error: %s: l%dc%d: narrative already defined\n", src, l, c );
-	_( ErrUnknownCommand )
-		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, s );
-	_default
-		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c );
-	_end_case
+if ( mode==BM_INSTANCE )
+	switch ( errnum ) {
+	case ErrUnknownState:
+		out( ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state )
+	case ErrUnexpectedEOF:
+		out( "Error: bm_read: in expression '%s' unexpected EOF\n", s )
+	case ErrUnexpectedCR:
+		out( "Error: bm_read: in expression '%s' unexpected \\cr\n", s )
+	default:
+		out( "Error: bm_read: in expression '%s' syntax error\n", s )
 	}
+else {
+	char *	src = (mode==CN_INI) ? "bm_load": "bm_read"; break;
+	int 	l = parser->line, c = parser->column; break;
+	switch ( errnum ) {
+	case ErrUnknownState:
+		out( ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state )
+	case ErrUnexpectedEOF:
+		out( "Error: %s: l%d: unexpected EOF\n", src, l )
+	case ErrSpace:
+		out( "Error: %s: l%dc%d: unexpected ' '\n", src, l, c )
+	case ErrUnexpectedCR:
+		out( "Error: %s: l%dc%d: statement incomplete\n", src, l, c )
+	case ErrIndentation:
+		out( "Error: %s: l%dc%d: indentation error\n", src, l, c )
+	case ErrExpressionSyntaxError:
+		out( "Error: %s: l%dc%d: syntax error in expression\n", src, l, c )
+	case ErrInputScheme:
+		out( "Error: %s: l%dc%d: unsupported input scheme\n", src, l, c )
+	case ErrOutputScheme:
+		out( "Error: %s: l%dc%d: unsupported output scheme\n", src, l, c )
+	case ErrMarkMultiple:
+		out( "Error: %s: l%dc%d: '?' already informed\n", src, l, c )
+	case ErrMarkNegated:
+		out( "Error: %s: l%dc%d: '?' negated\n", src, l, c )
+	case ErrNarrativeEmpty:
+		out( "Error: %s: l%dc%d: empty narrative\n", src, l, c )
+	case ErrNarrativeDouble:
+		out( "Error: %s: l%dc%d: narrative already defined\n", src, l, c )
+	case ErrUnknownCommand:
+		out( "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, s )
+	default:
+		out( "Error: %s: l%dc%d: syntax error\n", src, l, c )
+	} }
 }
 
 //===========================================================================
