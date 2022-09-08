@@ -2,8 +2,10 @@
 #define PARSER_H
 
 #include "macros.h"
-#include "story.h"
 
+//===========================================================================
+//	Parser - Story Interface
+//===========================================================================
 typedef struct {
 	FILE *	stream;
 	char *	state;
@@ -11,16 +13,21 @@ typedef struct {
 		mode[ 4 ], buffer,
 		errnum;
 	void *	user_data;
-}
-BMParserData;
-
-int	cnParserGetc( BMParserData * );
-
-// #define DEBUG
-
-//===========================================================================
-//	BM Parser
-//===========================================================================
+} CNParserData;
+typedef enum {
+	BM_INI = 1,
+	BM_STORY,
+	BM_INSTANCE
+} BMParseMode;
+typedef enum {
+	isNarrativeBase = 1,
+	NarrativeTake,
+	ProtoSet,
+	OccurrenceAdd,
+	ExpressionPush,
+	ExpressionPop,
+	ExpressionTake
+} BMParseOp;
 typedef enum {
 	ErrNone = 0,
 	ErrUnknownState,
@@ -39,9 +46,12 @@ typedef enum {
 	ErrUnknownCommand,
 } BMParserError;
 
-int	bm_parser_init( BMParserData *, char *, FILE *, void * );
-char *	bm_parse( int event, BMParserData *, BMReadMode );
-void	bm_parser_report( BMParserError, BMParserData *, BMReadMode );
+int	cn_parser_init( CNParserData *, char *state, FILE *, void * );
+int	cn_parser_getc( CNParserData * );
+
+typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
+char *	bm_parse( int event, CNParserData *, BMParseMode, BMParseCB );
+void	bm_parser_report( BMParserError, CNParserData *, BMParseMode );
 
 
 #endif	// PARSER_H

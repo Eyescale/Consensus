@@ -53,7 +53,7 @@ typedef Registry CNStory;
 //===========================================================================
 CNStory *	readStory( char *path );
 void		freeStory( CNStory * );
-int		story_output( FILE *, CNStory * );
+int		cnStoryOutput( FILE *, CNStory * );
 
 
 #endif	// STORY_H

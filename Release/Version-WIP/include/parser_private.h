@@ -11,13 +11,6 @@
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 #define	s_clean( a ) \
 	StringReset( s, a );
-#define s_push( proto ) \
-	StringAppend( s, '(' ); \
-	for (char *p=proto,*q=(((p)&&*p=='.')?p+1:"this:");*q!=':';q++) \
-		StringAppend(s,*q); \
-	StringAppend( s, ',' );
-#define s_pop \
-	StringAppend( s, ')' );
 
 // #define DEBUG
 

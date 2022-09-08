@@ -7,5 +7,5 @@
 #comment
 	(:asdl:k\0%identifier'titi:)
 	tata
-	((*,titi),toto) #comment
+	((*,titi),toto)	//comment
 	((*,titi),tutu) #reassigned

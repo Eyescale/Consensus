@@ -168,6 +168,6 @@ else
 .rule: ((( schema, .start ), ( ., .frame )), .r:((rule,.),.))
 // : ( .flag, .frame )
 	.position .event
-	do .( hello, .(.(toto,.titi)) )
+	do .( hello, .(.(toto,.titi)) )	// comment
 	on (this)
 		do ~(this)

@@ -11,12 +11,12 @@
 	flags &= ~(b);
 #define f_xor( b ) \
 	flags ^= (b);
-#define f_reset( b ) \
-	flags = (b);
+#define f_reset( b, save ) \
+	flags = ((b)|(flags&(save)));
 #define	f_push( stack ) \
 	add_item( stack, flags );
-#define	f_pop( stack ) \
-	flags = pop_item( stack );
+#define	f_pop( stack, save ) \
+	flags = (pop_item( stack )|(flags&(save)));
 
 
 #endif	// FLAGS_H

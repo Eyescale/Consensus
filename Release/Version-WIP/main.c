@@ -44,7 +44,7 @@ main( int argc, char *argv[] )
 
 	CNStory *story = readStory( path[0] );
 	if ( printout )
-		story_output( stdout, story );
+		cnStoryOutput( stdout, story );
 	else {
 		CNProgram *program = newProgram( story, path[1] );
 		while ( cnOperate(program) )

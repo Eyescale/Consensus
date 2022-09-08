@@ -530,7 +530,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		case '(':
 			level++;
 			f_push( &data->stack.flags );
-			f_reset( 0 );
+			f_reset( 0, 0 );
 			if ( preternary ? preternary==1 : p_ternary( p ))
 				f_set( TERNARY );
 			preternary = 0;
@@ -554,7 +554,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			if ( level == OOS ) { done = 1; break; }
 			level--;
 			if is_f( COUPLE ) popListItem( exponent );
-			f_pop( &data->stack.flags );
+			f_pop( &data->stack.flags, 0 );
 			if is_f( NOT ) { success = !success; f_clr( NOT ); }
 			p++;
 			if ( op==BM_END && level==OOS && (data->stack.scope))
