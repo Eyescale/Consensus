@@ -8,9 +8,197 @@
 
 // #define DEBUG
 
-//===========================================================================
+/*===========================================================================
+|
+|			CNString Interface
+|
++==========================================================================*/
+//---------------------------------------------------------------------------
+//	newString, freeString, ...
+//---------------------------------------------------------------------------
+CNString *
+newString( void )
+{
+	union { int value; char *ptr; } icast;
+	icast.value = CNStringBytes;
+	return (CNString *) newPair( NULL, icast.ptr );
+}
+
+void
+freeString( CNString *string )
+{
+	StringReset( string, CNStringAll );
+	freePair( (Pair *) string );
+}
+
+int
+StringStart( CNString *string, int event )
+{
+#ifdef DEBUG_2
+	output( Debug, "StringStart: '%c'", (char) event );
+#endif
+	StringReset( string, CNStringAll );
+	if ( event ) StringAppend( string, event );
+	return 0;
+}
+
+int
+StringAppend( CNString *string, int event )
+/*
+	Assumption: string->mode == CNStringBytes
+*/
+{
+#ifdef DEBUG_2
+	output( Debug, "StringAppend: '%c'", (char) event );
+#endif
+	add_item( (listItem**) &string->data, event );
+	return 0;
+}
+
+char *
+StringFinish( CNString *string, int trim )
+/*
+	Assumption: string->mode == CNStringBytes
+*/
+{
+#ifdef DEBUG_2
+	output( Debug, "StringFinish: '%c'", (char) event );
+#endif
+#if 0	// DO NOT CHECK string->mode - crashes ./Examples/1_Yak
+	if ( string->mode == CNStringBytes )
+#endif
+	{
+		string->data = l2s((listItem **) &string->data, trim );
+		string->mode = CNStringText;
+	}
+	return string->data;
+}
+char *
+l2s( listItem **list, int trim )
+{
+	if ( *list == NULL ) return NULL;
+	union { int value; void *ptr; } icast;
+	listItem *i, *next_i;
+	int count = 0;
+
+	// remove trailing white space
+	if ( trim ) {
+		listItem *backup = NULL;
+		i = *list;
+		icast.ptr = i->ptr;
+		if ((char) icast.value == '\n' ) {
+			backup = i;
+			*list = i->next;
+		}	
+		for ( i = *list; i!=NULL; i=next_i ) {
+			icast.ptr = i->ptr;
+			switch ( icast.value ) {
+			case ' ':
+			case '\t':
+				next_i = i->next;
+				if (( next_i )) {
+					icast.ptr = next_i->ptr;
+					if ( icast.value == '\\' ) {
+						next_i = NULL;
+						break;
+					}
+				}
+				freeItem( i );
+				*list = next_i;
+				break;
+			default:
+				next_i = NULL;
+			}
+		}
+		if ( backup ) {
+			backup->next = *list;
+			*list = backup;
+		}
+	}
+
+	count = reorderListItem( list );
+
+	// remove leading white space
+	if ( trim ) {
+		for ( i = *list; i!=NULL; i=next_i ) {
+			icast.ptr = i->ptr;
+			switch ( icast.value ) {
+			case ' ':
+			case '\t':
+				count--;
+				next_i = i->next;
+				freeItem( i );
+				*list = next_i;
+				break;
+			default:
+				next_i = NULL;
+			}
+		}
+	}
+
+	// allocate & inform string
+	char *str = (char *) malloc( count + 1 );
+	char *ptr = str;
+	for ( i = *list; i!=NULL; i=i->next ) {
+		icast.ptr = i->ptr;
+		*ptr++ = (char) icast.value;
+	}
+	*ptr = 0;
+	freeListItem( list );
+	return str;
+}
+
+void
+StringReset( CNString *string, int target )
+{
+	switch ( target ) {
+	case CNStringMode:
+		string->data = NULL;
+		string->mode = CNStringBytes;
+		break;
+	case CNStringAll:
+		switch ( string->mode ) {
+		case CNStringBytes:
+			freeListItem( (listItem **) &string->data );
+			break;
+		case CNStringText:
+			free( string->data );
+			string->data = NULL;
+			string->mode = CNStringBytes;
+			break;
+		}
+	}
+}
+
+int
+StringInformed( CNString *string )
+{
+	return ( string->data != NULL );
+}
+int
+
+StringAt( CNString *string )
+{
+	if (( string->data ))
+		switch ( string->mode ) {
+		case CNStringBytes: ;
+			union { int value; void *ptr; } icast;
+			icast.ptr = ((listItem *) string->data )->ptr;
+			return icast.value;
+		case CNStringText:
+			return *(char *)string->data;
+		}
+	return 0;
+}
+
+/*===========================================================================
+|
+|  			C string utilities
+|
++==========================================================================*/
+//---------------------------------------------------------------------------
 //	is_separator, is_printable, is_space, is_escapable, is_xdigit
-//===========================================================================
+//---------------------------------------------------------------------------
 int
 is_separator( int event )
 {
@@ -55,9 +243,9 @@ is_escapable( int event )
 	return strmatch( "0tn\'\\", event );
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	isanumber, charscan
-//===========================================================================
+//---------------------------------------------------------------------------
 int
 isanumber( char *p )
 {
@@ -90,9 +278,9 @@ charscan( char *p, char_s *q )
 	}
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	p_prune, p_single, p_filtered
-//===========================================================================
+//---------------------------------------------------------------------------
 static char *prune_character( char * );
 static char *prune_format( char * );
 static char *prune_regex( char * );
@@ -248,219 +436,27 @@ p_filtered( char *p )
 	return ( *p==':' );
 }
 
-//===========================================================================
-//	newString, freeString
-//===========================================================================
-CNString *
-newString( void )
-{
-	union { int value; char *ptr; } icast;
-	icast.value = CNStringBytes;
-	return (CNString *) newPair( NULL, icast.ptr );
-}
-void
-freeString( CNString *string )
-{
-	switch ( string->mode ) {
-	case CNStringBytes:
-		freeListItem( (listItem **) &string->data );
-		break;
-	case CNStringText:
-		free( string->data );
-		break;
-	}
-	freePair( (Pair *) string );
-}
-int
-StringInformed( CNString *string )
-{
-	return ( string->data != NULL );
-}
-int
-StringAt( CNString *string )
-{
-	if ( string->data == NULL ) return 0;
-	union { int value; void *ptr; } icast;
-	switch ( string->mode ) {
-	case CNStringBytes:
-		icast.ptr = ((listItem *) string->data )->ptr;
-		return icast.value;
-	case CNStringText:
-		return *(char *)string->data;
-	}
-}
-//===========================================================================
-//	StringReset
-//===========================================================================
-void
-StringReset( CNString *string, int target )
-{
-	switch ( target ) {
-	case CNStringAll:
-		StringStart( string, 0 );
-		break;
-	case CNStringMode:
-		string->data = NULL;
-		string->mode = CNStringBytes;
-		break;
-	}
-}
-
-//===========================================================================
-//	StringStart
-//===========================================================================
-int
-StringStart( CNString *string, int event )
-{
-#ifdef DEBUG_2
-	output( Debug, "StringStart: '%c'", (char) event );
-#endif
-	switch ( string->mode ) {
-	case CNStringBytes:
-		freeListItem( (listItem **) &string->data );
-		break;
-	case CNStringText:
-		free( string->data );
-		string->data = NULL;
-		string->mode = CNStringBytes;
-		break;
-	}
-	if ( event ) {
-		StringAppend( string, event );
-	}
-	return 0;
-}
-
-//===========================================================================
-//	StringAppend
-//===========================================================================
-int
-StringAppend( CNString *string, int event )
-/*
-	Assumption: string->mode == CNStringBytes
-*/
-{
-#ifdef DEBUG_2
-	output( Debug, "StringAppend: '%c'", (char) event );
-#endif
-	add_item( (listItem**) &string->data, event );
-	return 0;
-}
-
-//===========================================================================
-//	StringFinish
-//===========================================================================
-char *
-StringFinish( CNString *string, int trim )
-/*
-	Assumption: string->mode == CNStringBytes
-*/
-{
-#ifdef DEBUG_2
-	output( Debug, "StringFinish: '%c'", (char) event );
-#endif
-	if ( string->mode == CNStringBytes ) {
-		string->data = l2s((listItem **) &string->data, trim );
-		string->mode = CNStringText;
-	}
-	return string->data;
-}
-char *
-l2s( listItem **list, int trim )
-{
-	if ( *list == NULL ) return NULL;
-	union { int value; void *ptr; } icast;
-	listItem *i, *next_i;
-	int count = 0;
-
-	// remove trailing white space
-	if ( trim ) {
-		listItem *backup = NULL;
-		i = *list;
-		icast.ptr = i->ptr;
-		if ((char) icast.value == '\n' ) {
-			backup = i;
-			*list = i->next;
-		}	
-		for ( i = *list; i!=NULL; i=next_i ) {
-			icast.ptr = i->ptr;
-			switch ( icast.value ) {
-			case ' ':
-			case '\t':
-				next_i = i->next;
-				if (( next_i )) {
-					icast.ptr = next_i->ptr;
-					if ( icast.value == '\\' ) {
-						next_i = NULL;
-						break;
-					}
-				}
-				freeItem( i );
-				*list = next_i;
-				break;
-			default:
-				next_i = NULL;
-			}
-		}
-		if ( backup ) {
-			backup->next = *list;
-			*list = backup;
-		}
-	}
-
-	count = reorderListItem( list );
-
-	// remove leading white space
-	if ( trim ) {
-		for ( i = *list; i!=NULL; i=next_i ) {
-			icast.ptr = i->ptr;
-			switch ( icast.value ) {
-			case ' ':
-			case '\t':
-				count--;
-				next_i = i->next;
-				freeItem( i );
-				*list = next_i;
-				break;
-			default:
-				next_i = NULL;
-			}
-		}
-	}
-
-	// allocate & inform string
-	char *str = (char *) malloc( count + 1 );
-	char *ptr = str;
-	for ( i = *list; i!=NULL; i=i->next ) {
-		icast.ptr = i->ptr;
-		*ptr++ = (char) icast.value;
-	}
-	*ptr = 0;
-	freeListItem( list );
-	return str;
-}
-
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strmake
-//===========================================================================
+//---------------------------------------------------------------------------
 char *
 strmake( char *p )
 {
 	CNString *s = newString();
 	if ( is_separator(*p) )
 		StringAppend( s, *p );
-	else do StringAppend( s, *p++ );
-		while ( !is_separator(*p) );
-
+	else do {
+		StringAppend( s, *p++ );
+	} while ( !is_separator(*p) );
 	p = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
 	return p;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strcomp
-//===========================================================================
+//---------------------------------------------------------------------------
 static int equivocal( char *regex, char *p );
 static int rxnext( char *regex, char **r );
 int
@@ -624,9 +620,9 @@ rxnext( char *regex, char **p )
 	return 1;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strscanid
-//===========================================================================
+//---------------------------------------------------------------------------
 char *
 strscanid( char *str, char **identifier )
 {
@@ -648,9 +644,9 @@ strscanid( char *str, char **identifier )
 	return str + n;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strmatch
-//===========================================================================
+//---------------------------------------------------------------------------
 int
 strmatch( char *s, int event )
 {
@@ -661,9 +657,9 @@ strmatch( char *s, int event )
 	return event ? 0 : 1;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strskip
-//===========================================================================
+//---------------------------------------------------------------------------
 char *
 strskip( char *fmt, char *str )
 {
@@ -726,9 +722,9 @@ strskip( char *fmt, char *str )
 	return str;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	strxchange
-//===========================================================================
+//---------------------------------------------------------------------------
 char *
 strxchange( char *expression, char *identifier, char *value )
 {

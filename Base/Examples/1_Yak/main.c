@@ -60,6 +60,7 @@ main( int argc, char *argv[] )
 	char *path = clarg( argc, argv, &token, &space );
 	int p_opt = ( token ? P_TOK : 0 ) | ( space ? P_SPACE : 0 );
 	Scheme *scheme = readScheme( path );
+
 	outputScheme( scheme, token );
 	Parser *parser = newParser( scheme, p_opt );
 	if ( parser == NULL ) {

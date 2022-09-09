@@ -7,7 +7,7 @@
 #include "scheme.h"
 #include "ansi.h"
 
-// #define SCH_DEBUG
+#define SCH_DEBUG
 
 /*===========================================================================
 

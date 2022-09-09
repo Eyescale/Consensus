@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "flags.h"
+#include "macros.h"
 #include "parser.h"
 #include "parser_private.h"
 

@@ -5,8 +5,15 @@
 	!StringInformed(s)
 #define s_take \
 	StringAppend( s, event );
+
+#if 0	// this should work, but Base/Example/1_Yak forbids...
 #define s_cmp( str ) \
 	strcmp( str, StringFinish(s,0) )
+#else
+#define s_cmp( str ) \
+	strcmp( str, (s->mode==CNStringBytes?StringFinish(s,0):s->data) )
+#endif
+
 #define s_add( str ) \
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 #define	s_clean( a ) \

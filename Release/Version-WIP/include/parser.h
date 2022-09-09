@@ -1,7 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "macros.h"
 #include "database.h"
 #include "story.h"
 
