@@ -79,7 +79,7 @@ IMPLEMENTATION
 			while (( en = popListItem(&newly) )) {
 				CNNarrative *narrative = en->name;
 				CNInstance *instance = en->value;
-				operate( narrative, instance, narratives, &enabled, ctx, ... );
+				operate( narrative, instance, ctx, narratives, &enabled, ... );
 				freePair( en );
 			}
 		} while ((enabled));

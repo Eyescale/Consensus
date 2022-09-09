@@ -1,7 +1,7 @@
 #ifndef STREAM_H
 #define STREAM_H
 
-#include "macros.h"
+#include "macros_private.h"
 
 /*---------------------------------------------------------------------------
 	String Streaming Interface - non-recursive

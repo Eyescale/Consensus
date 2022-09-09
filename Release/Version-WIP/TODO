@@ -82,6 +82,7 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
+	. multiple separating commas inside { } => preprocess to one and one only
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
 		. Pros: instantiate all or nothing
 		. Cons: performances

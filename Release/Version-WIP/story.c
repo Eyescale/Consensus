@@ -133,10 +133,12 @@ static void * bm_read_exit( int, BMStoryData *, BMReadMode );
 void *
 bm_read( BMReadMode mode, ... )
 /*
-   Usage:
-	bm_read( CN_INSTANCE, (FILE*) stream );
-	bm_read( CN_INI, (CNDB*) db, (char*) inipath );
-	bm_read( CN_STORY, (char*) path );
+   Usage examples:
+	1. CNStory *story = bm_read( CN_STORY, (char*) path );
+	2. CNInstance *instance = bm_read( CN_INSTANCE, (FILE*) stream );
+	3. union { int value; void *ptr; } icast;
+	   icast.ptr = bm_read( CN_INI, (CNDB*) db, (char*) inipath );
+	   int errnum = icast.value;
 */
 {
 	char *path;

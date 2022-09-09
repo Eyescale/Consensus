@@ -99,9 +99,9 @@ Tape:
 			do ~( init )
 	else
 		on : current : .
-			do : cell : ((TAPE,.):~%(TAPE,?)) // left-most cell
+			do : cell : (((TAPE,.):~%(TAPE,?))) // left-most cell
 		else on : cell : ?
-			do : report : ( *%? ?: *BLANK )
+			do : report : %( *%? ?: *BLANK )
 			in %?: *start
 				do SIGSTART~
 			in %?: *current

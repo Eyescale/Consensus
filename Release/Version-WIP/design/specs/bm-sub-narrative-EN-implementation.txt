@@ -1,0 +1,146 @@
+
+PURPOSE
+	The purpose of this document is to finalize the Version-1.2
+	sub-narrative launch and execution mechanism. It does not discuss
+	launching a new Cell, which is beyond the scope of Version-1.2
+
+	The key to understand this document is to realize that sub-narratives
+	are NOT persistent. They are created, executed and memory-free'd
+	during each Program cycle, according to the operation of EN/ELSE_EN
+	narrative occurrences. Same as
+
+		per ?: proto : expression
+			in / on / do ... (where %? would represent instance)
+
+	if we were to implement it.
+
+ANALYSIS
+
+    We have
+	cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
+    where
+	. ctx->this->sub[ 1 ] = db
+	. ctx->this->sub[ 0 ] = list of active subscriptions to other cells
+		= { cn_instance( this, that ) / this and that are cells }
+		= beyond the scope of Version-1.2
+	. entry is the cell-specific [ name, narratives:{} ] entry into the
+		Story:Registry( [ name, narratives:{} ] )
+	  which is passed to bm_operate( cell, ..., story )
+    Note
+	cell->ctx is initialized upon cell's activation by Program
+	- cf. cnUpdate( CNProgram * ), cnOperate( CNProgram * )
+
+    So. How are sub-narratives launched?
+
+	cnOperate( Program * ) invokes
+		> bm_operate( cell, .. ) on each active cell (only one in Version-1.2)
+
+	Then bm_operate( cell, ... ) invokes
+		> operate( narrative, instance, ctx, narratives, &enabled, ... )
+		initially with
+			narrative = base-narrative of the cell's entry
+			instance = NULL
+
+	Then, for each EN/ELSE_EN occurrence encountered in the course of its operation,
+	operate()
+		> queries, for each narrative with non-null proto in narratives,
+			"proto:expression" in the current context
+
+		> adds, for each query resulting instance,
+			a new [ instance, narrative ] pair into &enabled
+			=> IF NOT ALREADY THERE
+
+	Note	Version-1.1 operates each newfound [ instance, narrative ] pair
+		in the query callback, with the following pros-and-cons
+		Pros
+			1. No pre-bufferization => better memory usage [?]
+		Cons
+			1. requires operate() one-time reentry and severely
+			   impairs code readability
+			2. still must ward off repetition, which in Version-1.1
+			   relies on "no more than one sub-narrative execution
+			   per frame" - which is not the idea
+			   => we do need post- (vs. pre-) bufferization
+			   => same difference in memory usage
+			   => Pros no más
+
+		Therefore: this time we use pre-bufferization.
+
+	So. After the current pass - starting with the [ base-narrative, NULL ]
+	derived from the passed cell's entry - is completed, bm_operate() invokes
+	operate() on each of the [ narrative, instance ] pair operate() just
+	enabled-registered - thereby completing a new pass - and bis repitita..
+
+	Note	Version-1.2 restricts EN/ELSE_EN occurrence to base narrative,
+		so we shall only have two passes. However we still must ward off
+		repetition - which, depending on the implementation, may eventually
+		cause us to lift this restriction.
+
+	The question is where to set ctx prior to each [ narrative, instance ]
+	operation. This must be done from the current sub-narrative's execution
+	context, as the EN/ELSE_EN expression itself is context-sensitive, which
+	imposes the same limitation on the setting of the [ narrative, instance ]
+	registry variables specified in the narrative proto.
+
+		=> Not only must &enabled hold the list of [ narrative, instance ]
+		pairs to be operated, but also, for each pair, their contexts.
+		So now we want
+			enabled:[ [ narrative, instance ], ctx ]
+			where ctx:[ this, registry ]
+		=> We only need
+			enabled:[ [ narrative, instance ], registry ]
+
+	Q: How would we ward off [ narrative, instance ] repetition ?
+	A: First, at operate() level. Then, at bm_operate() level.
+		We want a Registry( IndexedByAddress )
+			indexed by narrative (could be either way)
+			for which each entry->value is a Registry( IndexedByAddress )
+				indexed by instance (resp. the other way)
+
+	Actually if we assume sub-narrative concurrent execution then each narrative
+	should return that of his Registry - as opposed to filling it a global enabled -
+	for which the second-level entry->value is the newly created
+	[ narrative, instance ] variable registry.
+
+	So that complicates our bm_operate execution loop quite a bit, assuming
+
+	Registry *enabled = operate( narrative, instance, ctx, narratives, &new, story );
+	-------------------------------------------------------------------^
+	Same problem / multithreading => enabled must return a Pair:[ enabled:Registry, new:{} ]
+
+	So now we have
+	Pair *request = operate( narrative, instance, ctx, narratives, story );
+	Each of request->enable and request->new must be integrated right away into a
+	bm_compound level container/Registry which later on will check duplicates.
+
+CONCLUSION
+	1. operate() scope changed: does not take &new, &enabled arguments,
+	   but instead returns Pair *request:[ enable, new ]
+	2. upon EN/ELSE_EN occurrences, operate allocates variable registry
+	   according to narrative[].proto:expression, which it registers into
+	   the double Registry request.enable - if no entry is found.
+		=> The context registry creation and usage is the part I must
+		   retrieve from Version-1.1 - see the differences with
+		   ../Version-1.1/context.c
+	3. bm_operate() algorithm changed
+	3.1. integrates operate() request.enable return value into own
+	     cross-narratives double Registry
+	3.2. attaches operate() request.new return value to passed **new
+
+	Can start with #3 (within #ifdef)
+Errata
+	bm_operate() should return its own list of Cells to be managed, as
+	opposed to filling &new - integration to be done by CNProgram.
+	Issue:
+		Currently bm_operate()'s return value is used, as per:
+			while ( cnOperate( program ) )
+				cnUpdate( program );
+		Whereas we should have:
+			do { cnOperate( program ); }
+			while ( cnUpdate( program ); }
+		resp.
+			while ( cnUpdate( program ) )
+				cnOperate( program );
+
+	The latter form interestingly suggesting that we are born with events pending.
+

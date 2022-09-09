@@ -32,7 +32,7 @@
 			do ~( init )
 	else
 		on : current : .
-			do : cell : ((TAPE,.):~%(TAPE,?)) // left-most cell
+			do : cell : (((TAPE,.):~%(TAPE,?))) // left-most cell
 		else on : cell : ?
 			in %?: *start
 				do >"|"
@@ -48,7 +48,7 @@
 				do ~( cell )
 				do >:
 		else on ~( cell )
-			do : symbol : %( **current ?: *BLANK )
+			do : symbol : ( **current ?: *BLANK )
 		else on : symbol : ?
 			in *state : *HALT
 				do exit
@@ -62,9 +62,9 @@
 		else on : write : ?
 			do : *current : %?
 			on : shift : RIGHT
-				do : current : %( %(*current:(TAPE,?:~TAPE)) ?: (*current,TAPE) )
+				do : current : ( %(*current:(TAPE,?:~TAPE)) ?: (*current,TAPE) )
 			else on : shift : LEFT
-				do : current : %( %(*current:(?:~TAPE,TAPE)) ?: (TAPE,*current) )
+				do : current : ( %(*current:(?:~TAPE,TAPE)) ?: (TAPE,*current) )
 		else
 			do >"Error: no init\n"
 			do exit

@@ -11,7 +11,7 @@ void	smFree( listItem **sm );
 //===========================================================================
 //      SMBegin / SMEnd - macros
 //===========================================================================
-#include "macros.h"
+#include "macros_private.h"
 
 #ifdef DEBUG
 #define DBGMonitor \
