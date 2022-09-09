@@ -1,7 +1,7 @@
 #ifndef SEQUENCE_H
 #define SEQUENCE_H
 
-#include "macros.h"
+#include "macros_private.h"
 #include "list.h"
 #include "stream.h"
 

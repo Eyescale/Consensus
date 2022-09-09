@@ -3,7 +3,7 @@
 
 #include "list.h"
 #include "pair.h"
-#include "macros.h"
+#include "macros_private.h"
 
 /*---------------------------------------------------------------------------
 	System
