@@ -82,7 +82,9 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
-	. REGRESSION: Fix ../../Base/Examples/{ 1_Yak, 2_Converter }
+	. anti-regression: fix ../../Base/Examples/1_Yak so that we can implement
+	  StringFinish as it should - e.g. see s_cmp() in include/parser_private.h
+	  Right now if we check the string mode in this example then Yak crashes..
 	. multiple separating commas inside { } => preprocess to one and one only
 	. compile into .a instead of .so
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
