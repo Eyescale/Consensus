@@ -52,7 +52,7 @@
 					caught |= CNCaughtState;
 #define in_any			} else { \
 					caught |= CNCaughtState;
-#define in_none_sofar		} else if (!(caught & CNCaughtState)) { \
+#define in_none_sofar		} else if (!( caught&CNCaughtState )) { \
 					caught |= CNCaughtState;
 #define on_( e )		} else if ( event==(e) ) { \
 					caught |= CNCaughtEvent;
