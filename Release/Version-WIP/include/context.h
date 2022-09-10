@@ -11,6 +11,8 @@ typedef struct {
 
 BMContext *	newContext( CNDB * );
 void		freeContext( BMContext * );
+Registry *	newVariableRegistry( void );
+void		freeVariableRegistry( Registry * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int * );
 listItem *	bm_push_mark( BMContext *, int, void * );	
 void *		bm_pop_mark( BMContext *, int );

@@ -1,17 +1,31 @@
 #ifndef PARSER_PRIVATE_H
 #define PARSER_PRIVATE_H
 
+// bm_parse flags values
+
+#define FIRST		1
+#define FILTERED	2
+#define SUB_EXPR	4
+#define MARKED		8
+#define NEGATED		16
+#define INFORMED	32
+#define LEVEL		64
+#define SET		128
+#define ASSIGN		256
+#define DOT		512
+#define COMPOUND	1024
+
+// #define DEBUG
+
+//===========================================================================
+//	bm_parse State Machine utilities - macros
+//===========================================================================
 #define	CNCaughtEvent	1
 #define	CNCaughtState	2
 #define	CNCaughtTrans	4
 #define	CNCaughtTest	8
 #define	CNCaughtReenter	16
 
-// #define DEBUG
-
-//===========================================================================
-//	CNParser utilities - macros
-//===========================================================================
 #ifdef DEBUG
 #define	DBGMonitor \
 	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on ", line, column, state ); \
@@ -89,7 +103,7 @@
 			parser->errnum = errnum;
 
 //===========================================================================
-//	CNParser sting utilities - macros
+//	bm_parse string utilities - macros
 //===========================================================================
 
 #define s_empty \

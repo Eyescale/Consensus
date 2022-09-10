@@ -4,15 +4,15 @@ PURPOSE
 	sub-narrative launch and execution mechanism. It does not discuss
 	launching a new Cell, which is beyond the scope of Version-1.2
 
-	The key to understand this document is to realize that sub-narratives
-	are NOT persistent. They are created, executed and memory-free'd
-	during each Program cycle, according to the operation of EN/ELSE_EN
+	The key to understanding this feature is that sub-narratives are
+	NOT persistent. They are created, executed and memory-free'd during
+	each Program cycle, according to the operation of EN/ELSE_EN
 	narrative occurrences. Same as
 
 		per ?: proto : expression
 			in / on / do ... (where %? would represent instance)
 
-	if we were to implement it.
+	were we to implement it.
 
 ANALYSIS
 
@@ -24,11 +24,11 @@ ANALYSIS
 		= { cn_instance( this, that ) / this and that are cells }
 		= beyond the scope of Version-1.2
 	. entry is the cell-specific [ name, narratives:{} ] entry into the
-		Story:Registry( [ name, narratives:{} ] )
+		story:Registry( [ name, narratives:{} ] )
 	  which is passed to bm_operate( cell, ..., story )
     Note
-	cell->ctx is initialized upon cell's activation by Program
-	- cf. cnUpdate( CNProgram * ), cnOperate( CNProgram * )
+	cell->ctx is initialized upon cell's activation by Program -
+		cf. cnUpdate( CNProgram * ), cnOperate( CNProgram * )
 
     So. How are sub-narratives launched?
 
@@ -37,7 +37,7 @@ ANALYSIS
 
 	Then bm_operate( cell, ... ) invokes
 		> operate( narrative, instance, ctx, narratives, &enabled, ... )
-		initially with
+		  with
 			narrative = base-narrative of the cell's entry
 			instance = NULL
 
@@ -46,7 +46,7 @@ ANALYSIS
 		> queries, for each narrative with non-null proto in narratives,
 			"proto:expression" in the current context
 
-		> adds, for each query resulting instance,
+		> adds, for each query matching instance,
 			a new [ instance, narrative ] pair into &enabled
 			=> IF NOT ALREADY THERE
 
@@ -97,10 +97,10 @@ ANALYSIS
 			for which each entry->value is a Registry( IndexedByAddress )
 				indexed by instance (resp. the other way)
 
-	Actually if we assume sub-narrative concurrent execution then each narrative
-	should return that of his Registry - as opposed to filling it a global enabled -
-	for which the second-level entry->value is the newly created
-	[ narrative, instance ] variable registry.
+	Actually if we assume sub-narrative concurrent execution then each sub-narrative
+	should return this whole Registry - as opposed to accessing global enabled -
+	where the second-level entry->value would be the newly created [ narrative, instance ]
+	variable registry:
 
 	So that complicates our bm_operate execution loop quite a bit, assuming
 

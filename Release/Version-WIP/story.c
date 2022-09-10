@@ -170,6 +170,7 @@ bm_read( BMReadMode mode, ... )
 
 	CNParserData parser;
 	cn_parser_init( &parser, "base", file, &data );
+	bm_parser_init( &parser, parse_mode );
 	do {
 		int event = cn_parser_getc( &parser );
 		if ( event!=EOF && event!='\n' ) {
@@ -184,7 +185,7 @@ bm_read( BMReadMode mode, ... )
 			parser.line++;
 		}
 	} while ( strcmp( parser.state, "" ) );
-	if (!( parse_mode == BM_INSTANCE ))
+	if (!( mode == CN_INSTANCE ))
 		fclose( file );
 	return bm_read_exit( parser.errnum, &data, mode );
 }
@@ -321,8 +322,6 @@ bm_read_init( BMStoryData *data, BMReadMode mode, CNDB *db )
 	switch ( mode ) {
 	case CN_STORY:
 		parse_mode = BM_STORY;
-		data->TAB_LAST = -1;
-		data->flags = FIRST;
 		data->narrative = newNarrative();
 		data->occurrence = data->narrative->root;
 		data->story = newRegistry( IndexedByName );
@@ -332,12 +331,10 @@ bm_read_init( BMStoryData *data, BMReadMode mode, CNDB *db )
 		parse_mode = BM_INI;
 		data->db = db;
 		data->type = DO;
-		data->flags = FIRST;
 		break;
 	case CN_INSTANCE:
 		parse_mode = BM_INSTANCE;
 		data->type = DO;
-		data->flags = FIRST;
 		break;
 	}
 	return parse_mode;

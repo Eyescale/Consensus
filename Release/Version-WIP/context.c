@@ -14,18 +14,10 @@ newContext( CNDB *db )
 {
 	CNInstance *this = cn_new( NULL, NULL );
 	this->sub[ 1 ] = (CNInstance *) db;
-	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "%", NULL ); // aka. %%
-	registryRegister( registry, "?", NULL ); // aka. %?
-	registryRegister( registry, "<", NULL ); // aka. %<
-	registryRegister( registry, "!", NULL ); // aka. %!
-	return (BMContext *) newPair( this, registry );
+	return (BMContext *) newPair( this, NULL );
 }
 void
 freeContext( BMContext *ctx )
-/*
-	Assumption: registry variables values are all popped
-*/
 {
 	CNInstance *this = ctx->this;
 	// free input connections %( this, . )
@@ -48,8 +40,31 @@ freeContext( BMContext *ctx )
 	cn_prune( this );
 	freeCNDB( db );
 	// free registry & ctx
-	freeRegistry( ctx->registry, NULL );
+	freeVariableRegistry( ctx->registry );
 	freePair((Pair *) ctx );
+}
+
+//===========================================================================
+//	newContext / freeContext
+//===========================================================================
+Registry *
+newVariableRegistry( void )
+{
+	Registry *registry = newRegistry( IndexedByCharacter );
+	registryRegister( registry, "%", NULL ); // aka. %%
+	registryRegister( registry, "?", NULL ); // aka. %?
+	registryRegister( registry, "<", NULL ); // aka. %<
+	registryRegister( registry, "!", NULL ); // aka. %!
+	return (Registry *) registry;
+}
+void
+freeVariableRegistry( Registry *registry )
+/*
+	Assumption: registry variables values are all popped
+*/
+{
+	if ( registry == NULL ) return;
+	freeRegistry( registry, NULL );
 }
 
 //===========================================================================

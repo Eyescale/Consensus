@@ -21,6 +21,14 @@
 	~		negation
 	< >		input/output
 */
+int
+bm_parser_init( CNParserData *parser, BMParseMode mode )
+{
+	BMStoryData *data = parser->user_data;
+	data->TAB_LAST = -1;
+	data->flags = FIRST;
+	return 1;
+}
 char *
 bm_parse( int event, CNParserData *parser, BMParseMode mode, BMParseCB _CB )
 {
@@ -865,27 +873,8 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				output = event;
 			}
 			break;
-		case '/':
-			switch ( mode[ QUOTE ] ) {
-			case 0:
-				if ( !mode[ STRING ] )
-					mode[ COMMENT ] = 1;
-				else
-					output = event;
-				break;
-			case 1: // quote just turned on
-				mode[ QUOTE ] = -1;
-				output = event;
-				break;
-			default:
-				mode[ QUOTE ] = 0;
-				if ( !mode[ STRING ] )
-					mode[ COMMENT ] = 1;
-				else
-					output = event;
-			}
-			break;
 		case '"':
+			output = event;
 			switch ( mode[ QUOTE ] ) {
 			case 0:
 				mode[ STRING ] = !mode[ STRING ];
@@ -901,13 +890,14 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				mode[ STRING ] = !mode[ STRING ];
 				break;
 			}
-			output = event;
 			break;
 		case '\'':
+			output = event;
 			switch ( mode[ QUOTE ] ) {
 			case 0:
-				if ( !mode[ STRING ] )
-					mode[ QUOTE ] = 1;
+				if ( mode[ STRING ] )
+					break;
+				mode[ QUOTE ] = 1;
 				break;
 			case 1: // allowing ''
 				mode[ QUOTE ] = 0;
@@ -917,33 +907,47 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				break;
 			default:
 				mode[ QUOTE] = 0;
-				if ( !mode[ STRING ] )
-					mode[ QUOTE ] = 1;
 			}
-			output = event;
 			break;
-		default:
-			if ( event == '\n' )
-				mode[ QUOTE ] = 0;
-			else
-				switch ( mode[ QUOTE ] ) {
-				case 0: break;
-				case 1:
-					mode[ QUOTE ] = -1;
-					break;
-				case -4:
-					if ( event == 'x' )
-						mode[ QUOTE ] = -3;
-					else 
-						mode[ QUOTE ] = -1;
-					break;
-				case -3:
-				case -2:
-				case -1:
-					mode[ QUOTE ]++;
+		case '/':
+			switch ( mode[ QUOTE ] ) {
+			case 0:
+				if ( !mode[ STRING ] ) {
+					mode[ COMMENT ] = 1;
 					break;
 				}
+				output = event;
+				break;
+			case 1: // quote just turned on
+				mode[ QUOTE ] = -1;
+				output = event;
+				break;
+			default: // mode[ STRING ] excluded
+				mode[ QUOTE ] = 0;
+				output = event;
+			}
+			break;
+		default:
 			output = event;
+			if ( event == '\n' ) {
+				mode[ QUOTE ] = 0;
+				break;
+			}
+			switch ( mode[ QUOTE ] ) {
+			case 0: break;
+			case 1:
+				mode[ QUOTE ] = -1;
+				break;
+			case -4:
+				if (!( event == 'x' )) {
+					mode[ QUOTE ] = -1;
+					break;
+				}
+				// no break
+			default:
+				mode[ QUOTE ]++;
+				break;
+			}
 		}
 	}
 	return output;

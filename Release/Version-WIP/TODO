@@ -2,6 +2,8 @@ See Also: design/new-features-and-additions.txt
 TODO
 	. Restore backward compatibility w/ Version-1.1:
 		. sub-narratives implementation [in progress]
+		. implement warden in bm_operation + Test
+		  optimize: integrate / reduce(warden) ?
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON
@@ -81,9 +83,12 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
+	. Parser optimization: if ( data->shave ) goto _EXPR_BGN ??
+		and set data->shave in _expr / clear in expr_
 	. remove workaround for ../../Base/Examples/1_Yak so that we can implement
 	  StringFinish as it should - see s_cmp() in include/parser_private.h -
 	  in string_util.c: Right now if we check the string mode then Yak crashes
+		=> reimplement schemeFrame() in scheme.c
 	. multiple separating commas inside { } => preprocess to one and one only
 	. compile into .a instead of .so
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?

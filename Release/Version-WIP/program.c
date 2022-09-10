@@ -64,11 +64,8 @@ CNCell *
 newCell( Pair *entry, CNDB *db )
 {
 	BMContext *ctx = newContext( db );
-	if (( ctx )) {
-		return (CNCell *) newPair( entry, ctx );
-	}
-	else return NULL;
-	
+	if ( !ctx ) return NULL;
+	return (CNCell *) newPair( entry, ctx );
 }
 void
 freeCell( CNCell *cell )
@@ -95,7 +92,7 @@ cnOperate( CNProgram *program )
 	for ( listItem *i=*active; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		cell = i->ptr;
-		if ( bm_operate( cell->entry, cell->ctx, new, story ) )
+		if ( bm_operate( cell, new, story ) )
 			last_i = i;
 		else {
 			addItem( &released, cell );

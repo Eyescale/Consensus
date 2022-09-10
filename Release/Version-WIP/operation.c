@@ -16,20 +16,19 @@ static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 
 //===========================================================================
-//	bm_operate / bm_update
+//	operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
-int
-bm_operate( Pair *entry, BMContext *ctx, listItem **new, CNStory *story )
+static Pair *
+operate(
+	CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
+	listItem *narratives, CNStory *story )
 {
-	listItem *narratives = entry->value;
-	CNNarrative *narrative = narratives->ptr;
-	CNDB *db = BMContextDB( ctx );
-	if ( db_out(db) ) return 0;
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
+	Pair *request = newPair( NULL, NULL );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1, marked = 0;
 	for ( ; ; ) {
@@ -85,9 +84,97 @@ RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
-	return 1;
+	return request;
 }
 
+//===========================================================================
+//	bm_operate
+//===========================================================================
+static void integrate( Registry *subs, Registry *index );
+
+int
+bm_operate( CNCell *cell, listItem **new, CNStory *story )
+{
+	BMContext *ctx = cell->ctx;
+	CNDB *db = BMContextDB( ctx );
+	if ( db_out(db) ) return 0;
+
+	listItem *	narratives = cell->entry->value;
+	CNNarrative *	base = narratives->ptr; // base narrative
+	Registry *	base_registry = newVariableRegistry();
+
+	Registry *index[ 2 ], *swap;
+	index[ 0 ] = newRegistry( IndexedByAddress );
+	index[ 1 ] = newRegistry( IndexedByAddress );
+	Pair *entry = registryRegister( index[ 1 ], base, newRegistry(IndexedByAddress) );
+	registryRegister((Registry *) entry->value, NULL, base_registry );
+	do {
+		swap = index[ 0 ];
+		index[ 0 ] = index[ 1 ];
+		index[ 1 ] = swap;
+		Pair *entry[ 2 ];
+		while (( entry[ 0 ] = popListItem( &index[ 0 ]->entries ) )) {
+			CNNarrative *narrative = entry[ 0 ]->name;
+			Registry *instances = entry[ 0 ]->value;
+			while (( entry[ 1 ] = popListItem( &instances->entries ) )) {
+				CNInstance *instance = entry[ 1 ]->name;
+				Registry *registry = entry[ 1 ]->value;
+				/* operate [ [ narrative, instance ], registry ]
+				*/
+				ctx->registry = registry;
+				Pair *request = operate( narrative, instance, ctx, narratives, story );
+				freeVariableRegistry( registry );
+				if (( request->name )) {
+					Registry *subs = request->name;
+					integrate( subs, index[ 1 ] );
+					freeRegistry( subs, NULL );
+				}
+				freePair( request );
+				freePair( entry[ 1 ] );
+			}
+			freePair( entry[ 0 ] );
+		}
+	} while (( index[ 1 ]->entries ));
+	freeRegistry( index[ 0 ], NULL );
+	freeRegistry( index[ 1 ], NULL );
+	ctx->registry = NULL;
+	return 1;
+}
+static void
+integrate( Registry *subs, Registry *index )
+/*
+	integrate subs:%{[ narrative, %{[ instance, registry ]}} into
+	index of the same type - minus [ narrative, instance ] doublons
+	Note: brute force implementation
+*/
+{
+	Pair *entry[ 2 ], *ref;
+	while (( entry[ 0 ] = popListItem( &subs->entries ) )) {
+		CNNarrative *narrative = entry[ 0 ]->name;
+		ref = registryLookup( index, narrative );
+		if ( !ref )
+			registryRegister( index, narrative, entry[ 0 ]->value );
+		else {
+			Registry *ref_instances = ref->value;
+			Registry *instances = entry[ 0 ]->value;
+			while (( entry[ 1 ] = popListItem( &instances->entries ) )) {
+				CNInstance *instance = entry[ 1 ]->name;
+				Registry *registry = entry[ 1 ]->value;
+				if ( !registryLookup( ref_instances, instance ) )
+					registryRegister( ref_instances, instance, registry );
+				else {
+					freeVariableRegistry( registry );
+				}
+				freePair( entry[ 1 ] );
+			}
+		}
+		freePair( entry[ 0 ] );
+	}
+}
+
+//===========================================================================
+//	bm_update
+//===========================================================================
 void
 bm_update( BMContext *ctx, int new )
 {

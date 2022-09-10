@@ -3,7 +3,7 @@
 
 #include "program.h"
 
-int	bm_operate( Pair *, BMContext *, listItem **new, CNStory * );
+int	bm_operate( CNCell *, listItem **new, CNStory * );
 void	bm_update( BMContext *, int new );
 
 
