@@ -16,7 +16,7 @@ typedef struct {
 typedef struct {
 // shared between parser and story
 	CNString *	string;
-	int		tab[4], type, flags;
+	int		tab[4], type;
 	listItem *	stack; 
 // story only
 	CNDB *		db;
@@ -24,6 +24,8 @@ typedef struct {
 	CNNarrative *	narrative;
 	Pair *		entry;
 	CNOccurrence *	occurrence;
+// parser only
+	int		flags, opt;
 } BMStoryData;
 
 // tab data informed by bm_parse

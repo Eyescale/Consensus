@@ -7,13 +7,14 @@ typedef struct {
 	CNInstance *this;
 	Registry *registry;
 } BMContext;
+
 #define BMContextDB(ctx) ((CNDB *) ctx->this->sub[1])
 
 BMContext *	newContext( CNDB * );
 void		freeContext( BMContext * );
-Registry *	newVariableRegistry( void );
-void		freeVariableRegistry( Registry * );
-int		bm_context_mark( BMContext *, char *, CNInstance *, int * );
+void 		bm_context_set( BMContext *, char *, CNInstance * );
+void		bm_context_clear( BMContext * );
+int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 listItem *	bm_push_mark( BMContext *, int, void * );	
 void *		bm_pop_mark( BMContext *, int );
 void *		lookup_mark_register( BMContext *, int );

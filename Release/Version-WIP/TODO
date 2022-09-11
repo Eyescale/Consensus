@@ -2,8 +2,7 @@ See Also: design/new-features-and-additions.txt
 TODO
 	. Restore backward compatibility w/ Version-1.1:
 		. sub-narratives implementation [in progress]
-		. implement warden in bm_operation + Test
-		  optimize: integrate / reduce(warden) ?
+		. restore push/popVariableRegistry()
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON

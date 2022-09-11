@@ -41,10 +41,10 @@ freeCNDB( CNDB *db )
 	freePair((Pair *) db );
 }
 static void
-free_CB( Registry *registry, Pair *pair )
+free_CB( Registry *registry, Pair *entry )
 {
-	free( pair->name );
-	cn_prune((CNInstance *) pair->value );
+	free( entry->name );
+	cn_prune((CNInstance *) entry->value );
 }
 
 //===========================================================================

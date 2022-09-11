@@ -6,6 +6,7 @@
 #include "program.h"
 #include "expression.h"
 #include "traversal.h"
+#include "operation.h"
 
 // #define DEBUG
 
@@ -20,7 +21,7 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
-static Pair *
+static BMCall *
 operate(
 	CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	listItem *narratives, CNStory *story )
@@ -28,7 +29,8 @@ operate(
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
-	Pair *request = newPair( NULL, NULL );
+	bm_context_set( ctx, narrative->proto, instance );
+	BMCall *call = (BMCall *) newPair( NULL, NULL );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1, marked = 0;
 	for ( ; ; ) {
@@ -81,95 +83,104 @@ operate(
 	}
 RETURN:
 	freeItem( i );
+	bm_context_clear( ctx );
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
-	return request;
+	return call;
 }
 
 //===========================================================================
 //	bm_operate
 //===========================================================================
-static void integrate( Registry *subs, Registry *index );
+static void enlist( Registry *subs, Registry *index, Registry *warden );
+static void relieve( Registry *, Pair *entry );
 
 int
 bm_operate( CNCell *cell, listItem **new, CNStory *story )
 {
+#ifdef DEBUG
+	fprintf( stderr, "bm_operate: bgn\n" );
+#endif
 	BMContext *ctx = cell->ctx;
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
-	listItem *	narratives = cell->entry->value;
-	CNNarrative *	base = narratives->ptr; // base narrative
-	Registry *	base_registry = newVariableRegistry();
-
-	Registry *index[ 2 ], *swap;
+	Registry *warden, *index[ 2 ], *swap;
+	warden = newRegistry( IndexedByAddress );
 	index[ 0 ] = newRegistry( IndexedByAddress );
 	index[ 1 ] = newRegistry( IndexedByAddress );
-	Pair *entry = registryRegister( index[ 1 ], base, newRegistry(IndexedByAddress) );
-	registryRegister((Registry *) entry->value, NULL, base_registry );
+
+	BMCall *call;
+	listItem *narratives = cell->entry->value;
+	CNNarrative *base = narratives->ptr; // base narrative
+	registryRegister( index[ 1 ], base, newItem( NULL ) );
 	do {
 		swap = index[ 0 ];
 		index[ 0 ] = index[ 1 ];
 		index[ 1 ] = swap;
-		Pair *entry[ 2 ];
-		while (( entry[ 0 ] = popListItem( &index[ 0 ]->entries ) )) {
-			CNNarrative *narrative = entry[ 0 ]->name;
-			Registry *instances = entry[ 0 ]->value;
-			while (( entry[ 1 ] = popListItem( &instances->entries ) )) {
-				CNInstance *instance = entry[ 1 ]->name;
-				Registry *registry = entry[ 1 ]->value;
-				/* operate [ [ narrative, instance ], registry ]
-				*/
-				ctx->registry = registry;
-				Pair *request = operate( narrative, instance, ctx, narratives, story );
-				freeVariableRegistry( registry );
-				if (( request->name )) {
-					Registry *subs = request->name;
-					integrate( subs, index[ 1 ] );
+		listItem **active = &index[ 0 ]->entries; // narratives to be operated
+		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
+			CNNarrative *narrative = entry->name;
+			for ( listItem *i=entry->value, *next_i; i!=NULL; i=next_i ) {
+				CNInstance *instance = i->ptr;
+				next_i=i->next; freeItem( i );
+				call = operate( narrative, instance, ctx, narratives, story );
+				if (( call->subs )) {
+					Registry *subs = call->subs;
+					enlist( index[ 1 ], subs, warden );
 					freeRegistry( subs, NULL );
 				}
-				freePair( request );
-				freePair( entry[ 1 ] );
+				freePair((Pair *) call );
 			}
-			freePair( entry[ 0 ] );
 		}
 	} while (( index[ 1 ]->entries ));
+	freeRegistry( warden, relieve );
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
-	ctx->registry = NULL;
+#ifdef DEBUG
+	fprintf( stderr, "bm_operate: end\n" );
+#endif
 	return 1;
 }
 static void
-integrate( Registry *subs, Registry *index )
+enlist( Registry *index, Registry *subs, Registry *warden )
 /*
-	integrate subs:%{[ narrative, %{[ instance, registry ]}} into
-	index of the same type - minus [ narrative, instance ] doublons
-	Note: brute force implementation
+	enlist subs:%{[ narrative, instance:%{} ]} into index of same type
 */
 {
-	Pair *entry[ 2 ], *ref;
-	while (( entry[ 0 ] = popListItem( &subs->entries ) )) {
-		CNNarrative *narrative = entry[ 0 ]->name;
-		ref = registryLookup( index, narrative );
-		if ( !ref )
-			registryRegister( index, narrative, entry[ 0 ]->value );
+#define s_place( s, index, narrative ) \
+	if (!( s )) { \
+		Pair *entry = registryRegister( index, narrative, NULL ); \
+		s = (listItem **) &entry->value; }
+
+	listItem **narratives = (listItem **) &subs->entries;
+	for ( Pair *sub;( sub = popListItem(narratives) ); freePair(sub) ) {
+		CNNarrative *narrative = sub->name;
+		listItem **selection = NULL;
+ 		Pair *found = registryLookup( warden, narrative );
+		if (!( found )) {
+			registryRegister( warden, narrative, sub->value );
+			s_place( selection, index, narrative );
+			for ( listItem *i=sub->value; i!=NULL; i=i->next )
+				addItem( selection, i->ptr );
+		}
 		else {
-			Registry *ref_instances = ref->value;
-			Registry *instances = entry[ 0 ]->value;
-			while (( entry[ 1 ] = popListItem( &instances->entries ) )) {
-				CNInstance *instance = entry[ 1 ]->name;
-				Registry *registry = entry[ 1 ]->value;
-				if ( !registryLookup( ref_instances, instance ) )
-					registryRegister( ref_instances, instance, registry );
-				else {
-					freeVariableRegistry( registry );
+			listItem **enlisted = (listItem **) &found->value;
+			listItem **candidates = (listItem **) &sub->value;
+			for ( CNInstance *instance;( instance = popListItem(candidates) ); ) {
+				if (( addIfNotThere( enlisted, instance ) )) {
+					s_place( selection, index, narrative );
+					addItem( selection, instance );
 				}
-				freePair( entry[ 1 ] );
 			}
 		}
-		freePair( entry[ 0 ] );
 	}
+}
+static void
+relieve( Registry *warden, Pair *entry )
+{
+	freeListItem((listItem **) &entry->value );
 }
 
 //===========================================================================

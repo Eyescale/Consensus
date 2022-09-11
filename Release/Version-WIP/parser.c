@@ -47,6 +47,7 @@ bm_parse( int event, CNParserData *parser, BMParseMode mode, BMParseCB _CB )
 	// bm_parse:	Parser Begin
 	//----------------------------------------------------------------------
 	CNParserBegin( parser )
+CND_if_( data->opt, EXPR_BGN )
 	in_( "base" )
 if ( mode==BM_STORY ) {
 		bgn_
@@ -246,6 +247,7 @@ if ( _CB( OccurrenceAdd, mode, data ) ) {
 	bgn_
 		on_any	do_( "expr" )	REENTER
 					TAB_LAST = TAB_CURRENT;
+					data->opt = 1;
 		end
 }
 EXPR_BGN:CND_endif
@@ -599,12 +601,12 @@ _CB( ExpressionTake, mode, data );
 		on_any
 if ( mode==BM_STORY ) {		do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
-						*type = 0;
-}
+						data->opt = 0;
+						*type = 0; }
 else if ( mode==BM_INI ) {	do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
-}
-else if ( mode==BM_INSTANCE )	do_( "" )
+						data->opt = 0; }
+else 				do_( "" )
 		end
 
 	//----------------------------------------------------------------------
