@@ -82,10 +82,10 @@ bm_substantiate( char *expression, CNDB *db )
 			/* assumption here: level==0
 			*/
 			if ( !(stack.level)) { done=1; break; }
-			level = (int) popListItem( &stack.level );
+			level = pop_item( &stack.level );
 			instances = popListItem( &stack.results );
 			instances = catListItem( instances, sub[ 0 ] );
-			ndx = (int) popListItem( &stack.ndx );
+			ndx = pop_item( &stack.ndx );
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
@@ -121,7 +121,7 @@ bm_substantiate( char *expression, CNDB *db )
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
 			}
-			ndx = (int) popListItem( &stack.ndx );
+			ndx = pop_item( &stack.ndx );
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
@@ -297,10 +297,10 @@ bm_instantiate( char *expression, BMContext *ctx )
 			/* assumption here: level==0
 			*/
 			if ( !(stack.level)) { done=1; break; }
-			level = (int) popListItem( &stack.level );
+			level = pop_item( &stack.level );
 			instances = popListItem( &stack.results );
 			instances = catListItem( instances, sub[ 0 ] );
-			ndx = (int) popListItem( &stack.flags );
+			ndx = pop_item( &stack.flags );
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
@@ -339,8 +339,8 @@ bm_instantiate( char *expression, BMContext *ctx )
 			if ( piped && !level ) {
 				bm_pop_mark( ctx, '!' );
 				freeListItem( &sub[ 0 ] );
-				level = (int) popListItem( &stack.level );
-				ndx = (int) popListItem( &stack.flags );
+				level = pop_item( &stack.level );
+				ndx = pop_item( &stack.flags );
 				if ( ndx ) sub[ 1 ] = popListItem( &stack.results );
 				sub[ 0 ] = popListItem( &stack.results );
 				piped = 0;
@@ -353,7 +353,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
 			}
-			int flags = (int) popListItem( &stack.flags );
+			int flags = pop_item( &stack.flags );
 			ndx = flags & 1;
 			piped = flags & 2;
 			sub[ ndx ] = instances;

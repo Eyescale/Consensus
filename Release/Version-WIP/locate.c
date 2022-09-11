@@ -201,15 +201,13 @@ xp_target( char *expression, int target )
 //===========================================================================
 //	bm_locate_mark, bm_locate_param
 //===========================================================================
-typedef void BMLocateCB( char *, listItem *, void * );
-static char *bm_locate_param( char *, listItem **, BMLocateCB, void * );
-
 char *
 bm_locate_mark( char *expression, listItem **exponent )
 {
 	return bm_locate_param( expression, exponent, NULL, NULL );
 }
-static char *
+
+char *
 bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
 /*
 	if arg_CB is set

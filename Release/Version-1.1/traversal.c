@@ -260,7 +260,7 @@ bm_locate( char *expression, listItem **exponent )
 				while ( *exponent != tag )
 					popListItem( exponent );
 			}
-			int flags = (int) popListItem( &stack.flags );
+			int flags = pop_item( &stack.flags );
 			not = flags & 1;
 			tuple = flags & 6;
 			p++; break;
@@ -538,7 +538,7 @@ fprintf( stderr, " ........{\n" );
 			if (( data->mark_exp )) {
 				listItem **sub_exp = &data->sub_exp;
 				while (( x ) && (*sub_exp)) {
-					int exp = (int) popListItem( sub_exp );
+					int exp = pop_item( sub_exp );
 					x = ESUB( x, exp&1 );
 				}
 				// backup context
@@ -647,7 +647,7 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *not )
 	stack->as_sub = popListItem( &stack->sub );
 	*i = popListItem( &stack->i );
 	*mark_exp = popListItem( &stack->mark_exp );
-	*not = (int) popListItem( &stack->not );
+	*not = pop_item( &stack->not );
 	return (char *) popListItem( &stack->p );
 }
 
@@ -692,7 +692,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		break;
 	case BM_END:;
 		base = popListItem( &data->stack.base );
-		level = (int) popListItem( &data->stack.scope );
+		level = pop_item( &data->stack.scope );
 		OOS = ((data->stack.scope) ? (int)data->stack.scope->ptr : 0 );
 		break;
 	}
@@ -749,7 +749,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			if ( level == OOS ) { done = 1; break; }
 			level--;
 			if ( couple ) popListItem( exponent );
-			int flags = (int) popListItem( &data->stack.flags );
+			int flags = pop_item( &data->stack.flags );
 			not = flags & 1;
 			couple = flags & 2;
 			if ( not ) { success = !success; not = 0; }
@@ -807,7 +807,7 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 	}
 	CNInstance *y = x;
 	while (( y ) && (xpn)) {
-		int exp = (int) popListItem( &xpn );
+		int exp = pop_item( &xpn );
 		y = ESUB( y, exp&1 );
 	}
 	if ( y == NULL ) { freeListItem( &xpn ); return -1; }

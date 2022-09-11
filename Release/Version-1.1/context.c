@@ -78,7 +78,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 				popListItem( exponent );
 			}
 			level = popListItem( &stack.level );
-			couple = (int) popListItem( &stack.couple );
+			couple = pop_item( &stack.couple );
 			p++; break;
 		case '?':
 			if (( arg_CB )) p++;
@@ -134,7 +134,7 @@ arg_register_CB( char *p, listItem *exponent, void *user_data )
 		addItem( &xpn, i->ptr );
 	int exp;
 	CNInstance *x = data->e;
-	while (( exp = (int) popListItem( &xpn ) ))
+	while (( exp = pop_item( &xpn ) ))
 		x = x->sub[ exp & 1 ];
 	registryRegister( data->registry, p, x );
 }
@@ -179,7 +179,7 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 	Pair *entry;
 	char_s q;
 	switch ( *p ) {
-	case '%': // looking up %? or %
+	case '%': // looking up %? or %!
 		return strmatch( "?!", p[1] ) ? lookup_mark_register( ctx, p[1] ) :
 			db_lookup( privy, p, ctx->db );
 	case '\'': // looking up single character identifier instance

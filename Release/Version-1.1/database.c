@@ -283,7 +283,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 				}
 			}
 			else if (( stack )) {
-				ndx = (int) popListItem( &stack );
+				ndx = pop_item( &stack );
 				i = popListItem( &stack );
 				if ( ndx ) x = i->ptr;
 			}

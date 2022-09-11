@@ -1,10 +1,16 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Restore backward compatibility w/ Version-1.1:
-		. sub-narratives implementation [in progress]
-		. DONE: bm_operation.c: implemented registries / warden
+	. Restore backward compatibility w/ Version-1.1: sub-narrative execution
+		. DONE: bm_operation.c: implemented operation registries & warden
 		. DONE: parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
-		. operate() : restore EN/ELSE_EN support
+		. DONE: context.c:
+			. bm_context_set() / bm_context_clear() implementation
+			. restore bm_lookup & bm_register functionality including
+			  ALL ctx->registry variables
+		. operate()
+			. DONE: restore LOCALE support
+			. DONE: restore EN/ELSE_EN support
+		. DONE: pass ./B% -f Test/yak.ini Test/yak
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON
@@ -84,13 +90,15 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
-	. Parser optimization: if ( data->shave ) goto _EXPR_BGN ??
-		and set data->shave in _expr / clear in expr_
+	. per proto:expression <<< where proto is the same as narrative proto, or '?'
+		. PER/ELSE_PER
+		. DO_PER
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. remove workaround for ../../Base/Examples/1_Yak so that we can implement
-	  StringFinish as it should - see s_cmp() in include/parser_private.h -
-	  in string_util.c: Right now if we check the string mode then Yak crashes
+	  StringFinish as it should - see s_cmp() in include/parser_private.h - in
+	  string_util.c: Right now if we check the string mode then Yak crashes
 		=> reimplement schemeFrame() in scheme.c
-	. multiple separating commas inside { } => preprocess to one and one only
 	. compile into .a instead of .so
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
 		. Pros: instantiate all or nothing
@@ -99,15 +107,17 @@ NTH
 		  1. propose special execution mode (like Debug)
 		  2. special do - e.g. do$ - where bm_void() is enabled
 	. parser.c
+		. multiple separating commas inside { } => reduce to one and one only
 		. integrate caught in CNParserData => all flags
 		. more & better error messages
-	. Extract bm_parser_report from parser.c
-		=> into story.c ? (could even create error.c)
+		. extract bm_parser_report from parser.c => error.c ?
 	. multi-threading (pthreads)
 
 DONE
-	. Restored sub-narratives, EN, LOCALE, and do .expression commands as per
-	  Version-1.1 in parser.c - cf Specs (now remain to implement)
+	. Parser optimization: if ( data->opt ) goto _EXPR_BGN
+		and set data->shave in _expr / clear in expr_
+	. Restore sub-narratives, EN, LOCALE, and do .expression commands
+	  as per Version-1.1 in parser.c - cf Specs (now remain to implement)
 		. sub-narrative proto format is
 			.identifier:( expression1 )
 			:( expression1 )	// pre-compiled as .this:( expression1 )

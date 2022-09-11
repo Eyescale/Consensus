@@ -7,6 +7,8 @@
 //===========================================================================
 //	Occurrence, Narrative, Story types
 //===========================================================================
+// Occurrence types
+
 #define ROOT		0
 #define	IN		1
 #define ON		2
@@ -14,6 +16,7 @@
 #define EN		8
 #define INPUT		16
 #define OUTPUT		32
+#define LOCALE		64
 
 #define ELSE		256
 #define ELSE_IN		(ELSE|IN)
@@ -22,9 +25,6 @@
 #define ELSE_EN		(ELSE|EN)
 #define ELSE_INPUT	(ELSE|INPUT)
 #define ELSE_OUTPUT	(ELSE|OUTPUT)
-
-#define LOCALE		512
-#define COMPOUND	1024
 
 typedef enum {
 	CN_INI = 1,

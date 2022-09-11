@@ -15,11 +15,12 @@ void		freeContext( BMContext * );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 void		bm_context_clear( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
+int		bm_context_register( BMContext *, char * );
 listItem *	bm_push_mark( BMContext *, int, void * );	
 void *		bm_pop_mark( BMContext *, int );
 void *		lookup_mark_register( BMContext *, int );
-CNInstance *	bm_register( BMContext *, char * );
 CNInstance *	bm_lookup( int privy, char *, BMContext * );
+CNInstance *	bm_register( BMContext *, char * );
 
 
 #endif	// CONTEXT_H

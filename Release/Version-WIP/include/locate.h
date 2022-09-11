@@ -3,8 +3,11 @@
 
 #include "list.h"
 
+typedef void BMLocateCB( char *, listItem *, void * );
+
 char *	bm_locate_pivot( char *, listItem ** );
 char *	bm_locate_mark( char *, listItem ** );
+char *	bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );
 
 #define AS_SUB  0
 #define SUB     2

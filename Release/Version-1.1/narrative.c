@@ -282,8 +282,8 @@ readStory( char *path )
 		on_( '}' )
 			if ( informed && !level && (stack.level) ) {
 				do_( "}" )	StringAppend( s, event );
-						level = (int) popListItem( &stack.level );
-						first = (int) popListItem( &stack.first );
+						level = pop_item( &stack.level );
+						first = pop_item( &stack.first );
 						piped = first & PIPED;
 						first &= FIRST;
 			}
@@ -325,14 +325,14 @@ readStory( char *path )
 		on_( ')' )
 			if ( informed && piped ) {
 				do_( same )	REENTER
-						level = (int) popListItem( &stack.level );
-						first = (int) popListItem( &stack.first );
+						level = pop_item( &stack.level );
+						first = pop_item( &stack.first );
 						piped = 0;
 			}
 			else if ( level && informed ) {
 				do_( same )	level--;
 						StringAppend( s, event );
-						first = (int) popListItem( &stack.first );
+						first = pop_item( &stack.first );
 						dirty = first & DIRTY;
 						if ( dirty ) dirty_go( &dirty, s );
 						filtered = first & FILTERED;
@@ -1054,7 +1054,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 					TAB( level );
 					break;
 				case '}':
-					level = (int) popListItem( &base );
+					level = pop_item( &base );
 					fprintf( stream, "}" );
 					break;
 				case '(':

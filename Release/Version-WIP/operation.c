@@ -13,6 +13,7 @@
 static int in_condition( char *, BMContext *, int *marked );
 static int on_event( char *, BMContext *, int *marked );
 static int do_action( char *, BMContext * );
+static int enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 
@@ -23,6 +24,7 @@ static int do_output( char *, BMContext * );
 
 static BMCall *
 operate(
+	BMCall *call,
 	CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	listItem *narratives, CNStory *story )
 {
@@ -30,7 +32,7 @@ operate(
 	fprintf( stderr, "operate bgn\n" );
 #endif
 	bm_context_set( ctx, narrative->proto, instance );
-	BMCall *call = (BMCall *) newPair( NULL, NULL );
+	Registry *subs = newRegistry( IndexedByAddress );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1, marked = 0;
 	for ( ; ; ) {
@@ -50,11 +52,17 @@ operate(
 		ctrl(ELSE_DO) case DO:
 			do_action( expression, ctx );
 			break;
+		ctrl(ELSE_EN) case EN:
+			enable( subs, narratives, expression, ctx );
+			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			do_input( expression, ctx );
 			break;
 		ctrl(ELSE_OUTPUT) case OUTPUT:
 			do_output( expression, ctx );
+			break;
+		case LOCALE:
+			bm_register( ctx, expression );
 			break;
 		}
 		if (( j && passed )) {
@@ -84,6 +92,10 @@ operate(
 RETURN:
 	freeItem( i );
 	bm_context_clear( ctx );
+	if ( !subs->entries ) {
+		freeRegistry( subs, NULL );
+	}
+	else call->subs = subs;
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
@@ -94,7 +106,7 @@ RETURN:
 //	bm_operate
 //===========================================================================
 static void enlist( Registry *subs, Registry *index, Registry *warden );
-static void relieve( Registry *, Pair *entry );
+static void relieve_CB( Registry *, Pair *entry );
 
 int
 bm_operate( CNCell *cell, listItem **new, CNStory *story )
@@ -111,7 +123,6 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 	index[ 0 ] = newRegistry( IndexedByAddress );
 	index[ 1 ] = newRegistry( IndexedByAddress );
 
-	BMCall *call;
 	listItem *narratives = cell->entry->value;
 	CNNarrative *base = narratives->ptr; // base narrative
 	registryRegister( index[ 1 ], base, newItem( NULL ) );
@@ -125,17 +136,17 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 			for ( listItem *i=entry->value, *next_i; i!=NULL; i=next_i ) {
 				CNInstance *instance = i->ptr;
 				next_i=i->next; freeItem( i );
-				call = operate( narrative, instance, ctx, narratives, story );
+				BMCall *call = (BMCall *) newPair( NULL, NULL );
+				operate( call, narrative, instance, ctx, narratives, story );
 				if (( call->subs )) {
-					Registry *subs = call->subs;
-					enlist( index[ 1 ], subs, warden );
-					freeRegistry( subs, NULL );
+					enlist( index[ 1 ], call->subs, warden );
+					freeRegistry( call->subs, NULL );
 				}
 				freePair((Pair *) call );
 			}
 		}
 	} while (( index[ 1 ]->entries ));
-	freeRegistry( warden, relieve );
+	freeRegistry( warden, relieve_CB );
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
 #ifdef DEBUG
@@ -146,7 +157,10 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 static void
 enlist( Registry *index, Registry *subs, Registry *warden )
 /*
-	enlist subs:%{[ narrative, instance:%{} ]} into index of same type
+	enlist subs:%{[ narrative, instance:%{} ]} into index of same type,
+	under warden supervision: we rely on registryRegister() to return
+	the found entry if there is one, and on addIfNotThere() to return
+	NULL is there is none.
 */
 {
 #define s_place( s, index, narrative ) \
@@ -178,7 +192,7 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 	}
 }
 static void
-relieve( Registry *warden, Pair *entry )
+relieve_CB( Registry *warden, Pair *entry )
 {
 	freeListItem((listItem **) &entry->value );
 }
@@ -322,6 +336,54 @@ RETURN:
 	fprintf( stderr, "do_action end\n" );
 #endif
 	return 1;
+}
+
+//===========================================================================
+//	enable
+//===========================================================================
+static BMTraverseCB enable_CB;
+typedef struct {
+	CNNarrative *narrative;
+	Registry *subs;
+	Pair *entry;
+} EnableData;
+
+static int
+enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
+{
+	EnableData data;
+	data.subs = subs;
+	CNString *s = newString();
+	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		// build query string "proto:expression"
+		for ( char *p=narrative->proto; *p; p++ )
+			StringAppend( s, *p );
+		StringAppend( s, ':' );
+		for ( char *p=expression; *p; p++ )
+			StringAppend( s, *p );
+		char *q = StringFinish( s, 0 );
+		// launch query
+		data.narrative = narrative;
+		data.entry = NULL;
+		bm_traverse( q, ctx, enable_CB, &data );
+		// reset
+		StringReset( s, CNStringAll );
+	}
+	freeString( s );
+	return 1;
+}
+static int
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	EnableData *data = user_data;
+	Pair *entry;
+	if (!( entry = data->entry )) {
+		entry = registryRegister( data->subs, data->narrative, NULL );
+		data->entry = entry;
+	}
+	addIfNotThere((listItem **) &entry->value, e );
+	return BM_CONTINUE;
 }
 
 //===========================================================================

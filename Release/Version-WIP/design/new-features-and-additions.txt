@@ -19,14 +19,14 @@ Version-1.2 specific File Format Interface
 			on ( expr ? expr : expr )
 			on ( expr ?: expr )
 			on ( expr ? expr :)
-	--[] assignment / ternary operator
+	--[ ] assignment / ternary operator
 		>>>>	do : expr : %( expr ?: expr )
 			do : expr : %( expr ? expr :)
 			do : expr : %( expr ? expr : expr )
 	--[ ] list / ellipsis
 			do (( expr, ... ): sequence :)	// ellipsis
   Where
-	>>>> means new release feature requirement
+	>>>> means Version-1.2 release feature requirement
 	--[x] means done
 	--[.] means in progress
 	--[ ] means todo		
