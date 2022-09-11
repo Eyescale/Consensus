@@ -41,8 +41,7 @@ typedef enum {
 	BM_INSTANCE
 } BMParseMode;
 typedef enum {
-	isBaseNarrative = 1,
-	NarrativeTake,
+	NarrativeTake = 1,
 	ProtoSet,
 	OccurrenceAdd,
 	ExpressionPush,

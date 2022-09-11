@@ -2,7 +2,9 @@ See Also: design/new-features-and-additions.txt
 TODO
 	. Restore backward compatibility w/ Version-1.1:
 		. sub-narratives implementation [in progress]
-		. restore push/popVariableRegistry()
+		. DONE: bm_operation.c: implemented registries / warden
+		. DONE: parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
+		. operate() : restore EN/ELSE_EN support
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON

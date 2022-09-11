@@ -198,11 +198,8 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 {
 	BMStoryData *data = user_data;
 	switch ( op ) {
-	case isBaseNarrative: ;
-		CNNarrative *narrative = data->narrative;
-		return !((narrative->proto) && is_separator(*narrative->proto));
 	case NarrativeTake: ;
-		narrative = data->narrative;
+		CNNarrative *narrative = data->narrative;
 		if ( !narrative->root->sub ) return 0; // narrative empty
 		narrative_reorder( narrative );
 		char *proto = narrative->proto;

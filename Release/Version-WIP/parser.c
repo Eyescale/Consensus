@@ -64,11 +64,8 @@ if ( mode==BM_STORY ) {
 					do_( "-" )	TAB_SHIFT--; }
 			on_( ':' ) if ( !TAB_CURRENT ) {
 					do_( "def" )	TAB_SHIFT = 0; }
-			on_( '%' )
-	if ( _CB( isBaseNarrative, mode, data ) ) {
-					do_( "cmd" )	REENTER
+			on_( '%' )	do_( "cmd" )	REENTER
 							TAB_BASE = column;
-	}
 			on_separator	; // err
 			on_other	do_( "cmd" )	s_take
 							TAB_BASE = column;
