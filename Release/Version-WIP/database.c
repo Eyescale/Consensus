@@ -104,7 +104,7 @@ db_couple( CNInstance *e, CNInstance *f, CNDB *db )
 #if 0
 			cn_rewire( instance, 1, f );
 #else
-			db_outputf( stderr, "B%%::Warning: \":%_:%_\" -> \"%_\" "
+			db_outputf( stderr, "B%%::Warning: ((*,(%_),%_) -> %_ "
 				"concurrent reassignment unauthorized\n", db,
 				e->sub[1], instance->sub[1], f );
 			return NULL;
@@ -144,10 +144,12 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
 			if ( db_to_be_manifested( candidate, db ) ) {
-				db_outputf( stderr, "B%%::Warning: \":%_:%_\" -> \"%_\" "
+				db_outputf( stderr, "B%%::Warning: ((*,(%_),%_) -> %_ "
 					"concurrent reassignment unauthorized\n", db,
 					e->sub[1], candidate->sub[1], f );
-				return NULL;
+				if ( candidate->sub[ 1 ] == f )
+					return candidate;
+				else return NULL;
 			}
 		}
 		/* Assignment case - as we have e:( *, . )

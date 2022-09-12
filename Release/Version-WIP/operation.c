@@ -62,7 +62,7 @@ operate(
 			do_output( expression, ctx );
 			break;
 		case LOCALE:
-			bm_register( ctx, expression );
+			bm_context_register( ctx, expression );
 			break;
 		}
 		if (( j && passed )) {

@@ -1,16 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Restore backward compatibility w/ Version-1.1: sub-narrative execution
-		. DONE: bm_operation.c: implemented operation registries & warden
-		. DONE: parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
-		. DONE: context.c:
-			. bm_context_set() / bm_context_clear() implementation
-			. restore bm_lookup & bm_register functionality including
-			  ALL ctx->registry variables
-		. operate()
-			. DONE: restore LOCALE support
-			. DONE: restore EN/ELSE_EN support
-		. DONE: pass ./B% -f Test/yak.ini Test/yak
 	. parser.c - ternary operator support
 	  1. %( expr ? expr1 : expr2 )
 	  2. ( expr ? expr1 : expr2 ) when type==IN or type==ON
@@ -36,11 +25,13 @@ TODO
 			( expr ? expr ? expr : expr : expr )
 			( expr ?: expr ?: expr ? expr :)
 	. Feature complete
-		. term~			(signal) => DONE
-		. :var:value		(assignment) => DONE
-		. (expr?expr:expr) 	(ternary operator) => WIP
-		. do %(expr?expr:expr) 	(ternary operator) => WIP
-		. do ((expr,...):_:)	(ellipsis) => TODO
+		. DONE: term~				(signal)
+		. DONE: : var : value			(assignment)
+		. WIP:	(expr?expr:expr) 		(ternary operator)
+		. WIP:	do ( ..., %(expr?expr:expr) )	<= do I need %( )?
+			AND
+			do : var : %(expr?expr:expr)	(ternary operator assignment)
+		. TODO: do ((expr,...):_:)		(ellipsis)
 	. Pass design/story/single-thread.story
 	. update bm-read-narrative-states.txt (in specs)
 	. --------
@@ -90,9 +81,12 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
-	. per proto:expression <<< where proto is the same as narrative proto, or '?'
+	. per proto:expression <<< where proto is either like narrative proto, or '?'
 		. PER/ELSE_PER
-		. DO_PER
+		. also DO_PER, e.g.
+			do per ?:expression
+				: var : %?
+			=> only ONE occurrence->data->expression?
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. remove workaround for ../../Base/Examples/1_Yak so that we can implement
@@ -114,8 +108,20 @@ NTH
 	. multi-threading (pthreads)
 
 DONE
+	. Restored Version-WIP backward compatibility w/ Version-1.1
+	  sub-narrative execution
+		. DONE: bm_operation.c: implemented operation registries & warden
+		. DONE: parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
+		. DONE: context.c:
+			. bm_context_set() / bm_context_clear() implementation
+			. restore bm_lookup & bm_register functionality including
+			  ALL ctx->registry variables
+		. operate()
+			. DONE: restore LOCALE support
+			. DONE: restore EN/ELSE_EN support
+		. DONE: pass ./B% -f Test/yak.ini Test/yak
 	. Parser optimization: if ( data->opt ) goto _EXPR_BGN
-		and set data->shave in _expr / clear in expr_
+		and: set data->opt in _expr; clear it in expr_
 	. Restore sub-narratives, EN, LOCALE, and do .expression commands
 	  as per Version-1.1 in parser.c - cf Specs (now remain to implement)
 		. sub-narrative proto format is
