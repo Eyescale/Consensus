@@ -1,42 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. parser.c - ternary operator support
-	  1. %( expr ? expr1 : expr2 )
-	  2. ( expr ? expr1 : expr2 )
-	     when type==IN or type==ON or ( type==DO && is_f(SUB_EXPR) )
-	     on '?' 
-		if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) )
-			f_clr( INFORMED )
-			f_set( SUB_EXPR|MARKED|TERNARY )
-	     Then
-		. When TERNARY is set
-			upon "{}|" => err: already handled due to DO/SUB_EXPR
-			upon "," => err
-			upon '?' => err
-			upon ':' DOES NOT REQUIRE INFORMED
-				if ( !is_f( FILTERED ) )
-					set_f( FILTERED )
-				otherwise => err
-		        upon '('
-				f_push( stack ); f_clr( TERNARY )
-			upon ')' DOES NOT REQUIRE INFORMED
-				if ( is_f( TERNARY ) && !is_f( FILTERED ) )
-					=> err
-
-	  Notes
-		. when type==DO we do NOT authorize e.g.
-			do : toto : ( expr ? expr : expr )
-		  as this would require db_instantiate / db_substantiate
-		  to pre-check each sub-expression for ternary operator.
-		  Therefore when type==DO we enforce is_f( SUB_EXPR ) e.g.
-			do : toto : %( expr ? expr : expr )
-		. we support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
-		. we support ( expr ? expr :) <=> AND: evaluates as second expr or none
-		. we do NOT support ( expr ?:)
-		. we do NOT support N-ary operations e.g.
-			( expr ? expr ? expr : expr : expr )
-		  => use ( expr ? ( expr ? expr : expr ) : expr ) instead
-
 	. traversal.c - ternary operator support
 		. update bm_verify for both () and %() - done
 		. handle N-ary cases e.g.
@@ -126,6 +89,45 @@ NTH
 	. multi-threading (pthreads)
 
 DONE
+	. parser.c - ternary operator support
+	  1. %( expr ? expr1 : expr2 )
+	  2. ( expr ? expr1 : expr2 )
+	     when type==IN or type==ON or ( type==DO && is_f(SUB_EXPR) )
+	     on '?' 
+		if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) )
+			f_clr( INFORMED )
+			f_set( SUB_EXPR|TERNARY )
+	     Then
+		. When TERNARY is set
+			upon "{}|" => err: already handled due to DO/SUB_EXPR
+			upon "," => err
+			upon '?' => err
+			upon ':'
+				if ( !is_f( FILTERED ) )
+					set_f( FILTERED )
+				otherwise => etc.
+		        upon '('
+				f_push( stack ); f_clr( TERNARY )
+			upon ')'
+				if ( is_f( TERNARY ) && !is_f( FILTERED ) )
+					=> err
+	  Notes
+		. when type==DO we do NOT authorize e.g.
+			do : toto : ( expr ? expr : expr )
+		  as this would require db_instantiate / db_substantiate
+		  to pre-check each sub-expression for ternary operator.
+		  Therefore when type==DO we enforce is_f( SUB_EXPR ) e.g.
+			do : toto : %( expr ? expr : expr )
+		. we support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
+		. we support ( expr ? expr :) <=> AND: evaluates as second expr or none
+		. we do NOT support ( expr ?:)
+		. we DO support N-ary operations e.g.
+			( expr ? expr ? expr : expr : expr )
+		  with the additional bonus of allowing to trunk the expression after
+		  the last filter symbol (:), e.g.
+			( expr ? expr ? expr ? expr : expr )
+			( expr ?: expr ?: expr ?: expr )	// all OR
+			( expr ? expr ? expr ? expr :)		// all AND
 	. Restored Version-WIP backward compatibility w/ Version-1.1
 	  sub-narrative execution
 		. DONE: bm_operation.c: implemented operation registries & warden

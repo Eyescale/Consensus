@@ -698,20 +698,20 @@ bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
 {
 	BMStoryData *data = parser->user_data;
 	char *s = StringFinish( data->string, 0 );
+	char *	src = (mode==BM_INI)?(mode==BM_INSTANCE)?"bm_input":"bm_load":"bm_read";
 
 if ( mode==BM_INSTANCE )
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
 	case ErrUnexpectedEOF:
-		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected EOF\n", s  ); break;
+		fprintf( stderr, "Error: %s: in expression '%s' unexpected EOF\n", src, s  ); break;
 	case ErrUnexpectedCR:
-		fprintf( stderr, "Error: bm_read: in expression '%s' unexpected \\cr\n", s  ); break;
+		fprintf( stderr, "Error: %s: in expression '%s' unexpected \\cr\n", src, s  ); break;
 	default:
-		fprintf( stderr, "Error: bm_read: in expression '%s' syntax error\n", s  ); break;
+		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, s  ); break;
 	}
 else {
-	char *	src = (mode==CN_INI) ? "bm_load": "bm_read";
 	int 	l = parser->line, c = parser->column;
 	switch ( errnum ) {
 	case ErrUnknownState:
