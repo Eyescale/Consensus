@@ -1,13 +1,21 @@
 
 	on init
+		do >"Usage: ./B%% -p Test/syntax\n"
+		do exit
+		in ( toto ? tata ? titi : roro : titi )
+		in ( toto ? tata ? titi ? tutu :)
 		do input: <
 		do :~ titi : ~( tutu, tata )
 		do ( { tata,toto }, titi )
-		do ~.:titi
-	else in : titi : ~.
-
+		do ~.:titi	// nop
+	else in ( titi ?: tata )
 	else on ~.:((*,titi),toto)
-
+		do >"~.: gotcha\n"
+	else in : titi : ~.
+		do >"in :titi:~.\n"
+	else in ?:%( titi ?: tata )
+		do : toto : %( tutu ? toto : titi )
+		do %( titi ? toto :)
 	else on ((*,input), . )
 		do >"read: %s\n": *input
 		do titi~

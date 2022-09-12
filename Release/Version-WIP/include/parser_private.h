@@ -14,8 +14,7 @@
 #define ASSIGN		256
 #define DOT		512
 #define COMPOUND	1024
-
-// #define DEBUG
+#define TERNARY		2048
 
 //===========================================================================
 //	bm_parse State Machine utilities - macros
@@ -25,6 +24,8 @@
 #define	CNCaughtTrans	4
 #define	CNCaughtTest	8
 #define	CNCaughtReenter	16
+
+// #define DEBUG
 
 #ifdef DEBUG
 #define	DBGMonitor \

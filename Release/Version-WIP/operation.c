@@ -400,6 +400,9 @@ do_input( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "do_input bgn: %s\n", expression );
 #endif
+	CNDB *db = BMContextDB( ctx );
+	if ( db_out(db) ) return 0;
+
 	/* extract args:{ expression(s) } and format
 	*/
 	listItem *args = NULL;
