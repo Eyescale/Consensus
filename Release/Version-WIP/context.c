@@ -138,6 +138,44 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *found, int *marke
 }
 
 //===========================================================================
+//	bm_push_mark / bm_pop_mark
+//===========================================================================
+listItem *
+bm_push_mark( BMContext *ctx, int mark, void *e )
+{
+	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
+	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
+}
+void *
+bm_pop_mark( BMContext *ctx, int mark )
+{
+	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
+	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
+}
+
+//===========================================================================
+//	bm_context_lookup
+//===========================================================================
+void *
+bm_context_lookup( BMContext *ctx, char *p )
+{
+	Pair *entry = registryLookup( ctx->registry, p );
+	if (( entry ))
+		switch ( *p ) {
+		case '?':
+		case '!':
+			if ((entry->value)) {
+				listItem *stack = entry->value;
+				return stack->ptr;
+			}
+			break;
+		default:
+			return entry->value;
+		}
+	return NULL;
+}
+
+//===========================================================================
 //	bm_context_register
 //===========================================================================
 int
@@ -178,28 +216,6 @@ ERR: ;
 }
 
 //===========================================================================
-//	bm_push_mark / bm_pop_mark / lookup_mark_register
-//===========================================================================
-listItem *
-bm_push_mark( BMContext *ctx, int mark, void *e )
-{
-	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
-	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
-}
-void *
-bm_pop_mark( BMContext *ctx, int mark )
-{
-	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
-	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
-}
-void *
-lookup_mark_register( BMContext *ctx, int mark )
-{
-	Pair *entry = registryLookup( ctx->registry, ((char_s) mark).s );
-	return (entry) && (entry->value) ? ((listItem*)entry->value)->ptr : NULL;
-}
-
-//===========================================================================
 //	bm_lookup
 //===========================================================================
 CNInstance *
@@ -207,8 +223,10 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 {
 	if ( *p == '%' ) {
 		// looking up %%, %?, %! or just plain old %
-		if ( strmatch( "%?<!", p[1] ) ) {
-			return lookup_mark_register( ctx, p[1] );
+		switch ( p[1] ) {
+		case '%': return bm_context_lookup( ctx, "%" );
+		case '?': return bm_context_lookup( ctx, "?" );
+		case '!': return bm_context_lookup( ctx, "!" );
 		}
 		return db_lookup( privy, p, BMContextDB(ctx) );
 	}
@@ -222,8 +240,8 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 	}
 	else if ( !is_separator(*p) ) {
 		// looking up normal identifier instance
-		Pair *entry = registryLookup( ctx->registry, p );
-		if (( entry )) return entry->value;
+		CNInstance *instance = bm_context_lookup( ctx, p );
+		if (( instance )) return instance;
 	}
 	return db_lookup( privy, p, BMContextDB(ctx) );
 }

@@ -279,11 +279,11 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_push( stack )
 						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED|LEVEL) && ( *type&(IN|ON) || is_f(SUB_EXPR) ) ) {
+			else if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
-						f_set( TERNARY|SUB_EXPR ) }
-			else if ( !is_f(INFORMED|MARKED|NEGATED) && ( *type&(IN|ON) || is_f(SUB_EXPR) ) ) {
+						f_set( MARKED|TERNARY|SUB_EXPR ) }
+			else if ( !is_f(INFORMED|MARKED|NEGATED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( same )	s_take
 						f_set( MARKED|INFORMED ) }
 		on_( ':' ) if ( s_empty ) {
@@ -377,6 +377,7 @@ _CB( ExpressionPush, mode, data );
 _CB( ExpressionPop, mode, data );
 				do_( "expr" )	REENTER
 						f_pop( stack, COMPOUND )
+						f_set( INFORMED )
 						f_clr( DOT ) }
 			else if ( are_f(TERNARY|FIRST) ) {
 				do_( "expr" )	REENTER

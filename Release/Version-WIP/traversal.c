@@ -621,14 +621,14 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 	if ( y == NULL ) { freeListItem( &xpn ); return -1; }
 	else if ( p == NULL ) { return 1; }
 	else if ( !strncmp( p, "%!", 2 ) ) {
-		listItem *v = lookup_mark_register( data->ctx, '!' );
+		listItem *v = bm_context_lookup( data->ctx, "!" );
 		return !!lookupItem( v, y );
 	}
 	Pair *pivot = data->pivot;
 	if (( pivot ) && ( p == pivot->name ))
 		return ( y == pivot->value );
 	else if ( !strncmp( p, "%?", 2 ) )
-		return ( y == lookup_mark_register( data->ctx, '?' ) );
+		return ( y == bm_context_lookup( data->ctx, "?" ) );
 	else if ( !is_separator(*p) ) {
 		Pair *entry = registryLookup( data->ctx->registry, p );
 		if (( entry )) return ( y == entry->value );

@@ -18,7 +18,11 @@ int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_register( BMContext *, char * );
 listItem *	bm_push_mark( BMContext *, int, void * );	
 void *		bm_pop_mark( BMContext *, int );
+#ifdef PREVIOUS
 void *		lookup_mark_register( BMContext *, int );
+#else
+void *		bm_context_lookup( BMContext *, char * );
+#endif
 CNInstance *	bm_lookup( int privy, char *, BMContext * );
 CNInstance *	bm_register( BMContext *, char * );
 

@@ -256,7 +256,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 		switch ( *p ) {
 		case '%':
 			if ( p[1]=='?' ) {
-				CNInstance *e = lookup_mark_register( ctx, '?' );
+				CNInstance *e = bm_context_lookup( ctx, "?" );
 				if (( e )) {
 					sub[ ndx ] = newItem( e );
 				}
@@ -264,7 +264,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 				p+=2; break;
 			}
 			else if ( p[1]=='!' ) {
-				listItem *i = lookup_mark_register( ctx, '!' );
+				listItem *i = bm_context_lookup( ctx, "!" );
 				if ( !i ) { done=-1; break; }
 				for ( ; i!=NULL; i=i->next )
 					addItem( &sub[ ndx ], i->ptr );
@@ -428,7 +428,7 @@ bm_void( char *expression, BMContext *ctx )
 				p+=2; break;
 			}
 			else if ( p[1]=='?' ) {
-				if (( lookup_mark_register( ctx, p[1] ) ))
+				if (( bm_context_lookup( ctx, "?" ) ))
 					{ p+=2; break; }
 				else return 1;
 			}
