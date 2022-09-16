@@ -26,11 +26,7 @@ typedef struct {
 	listItem *mark_exp;
 	listItem *sub_exp;
 	int success;
-#if 1
 	int flags;
-#else
-	int couple, not;
-#endif
 	struct {
 		listItem *flags;
 		listItem *exponent;
@@ -38,6 +34,11 @@ typedef struct {
 		listItem *base;
 	} stack;
 } BMTraverseData;
+
+#define NOT		1
+#define COUPLE		2
+#define INFORMED	4
+#define TERNARY		8
 
 
 #endif	// TRAVERSAL_PRIVATE_H

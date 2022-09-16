@@ -1,0 +1,8 @@
+
+	on init
+		do : titi : tata
+	else on : titi : ( toto ?: tata ?: tutu )
+		do >"BINGO: %_\n": %?
+	else
+		do >"bye\n"
+		do exit

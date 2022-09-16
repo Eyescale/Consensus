@@ -137,10 +137,10 @@ Errata
 				cnUpdate( program );
 		Whereas we should have:
 			do { cnOperate( program ); }
-			while ( cnUpdate( program ); }
+			while ( cnUpdate( program );
 		resp.
 			while ( cnUpdate( program ) )
 				cnOperate( program );
 
-	The latter form interestingly suggesting that we are born with events pending.
+	The latter form interestingly suggests that we are born with pending events.
 

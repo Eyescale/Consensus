@@ -72,7 +72,7 @@ if ( mode==BM_STORY ) {
 			end
 } else {	bgn_
 			on_( EOF )	do_( "" )
-			ons( "#" )	do_( "#" )
+			on_( '#' )	do_( "#" )
 			ons( " \t\n" )	do_( same )
 			on_other	do_( "expr" )	REENTER
 			end
@@ -113,7 +113,6 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 					do_( ".id:" )	s_take
 							TAB_SHIFT = 0; }
 			end
-
 	//----------------------------------------------------------------------
 	// bm_parse:	Narrative Declaration
 	//----------------------------------------------------------------------
@@ -200,7 +199,6 @@ if ( _CB( ProtoSet, mode, data ) ) {
 						TAB_LAST = -1;
 }
 		end
-
 	//----------------------------------------------------------------------
 	// bm_parse:	Narrative in / on / do / en / else Command
 	//----------------------------------------------------------------------
@@ -241,11 +239,11 @@ if ( _CB( ProtoSet, mode, data ) ) {
 		end
 	in_( "_expr" )
 if ( _CB( OccurrenceAdd, mode, data ) ) {
-	bgn_
-		on_any	do_( "expr" )	REENTER
-					TAB_LAST = TAB_CURRENT;
-					data->opt = 1;
-		end
+		bgn_
+			on_any	do_( "expr" )	REENTER
+						TAB_LAST = TAB_CURRENT;
+						data->opt = 1;
+			end
 }
 EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
@@ -631,7 +629,6 @@ _CB( ExpressionPop, mode, data );
 						f_set( INFORMED ) }
 		on_other	do_( same )	s_take
 		end
-
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
@@ -648,7 +645,6 @@ else if ( mode==BM_INI ) {	do_( "base" )	f_reset( FIRST, COMPOUND );
 						data->opt = 0; }
 else 				do_( "" )
 		end
-
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------
@@ -678,12 +674,10 @@ else 				do_( "" )
 			on_( ' ' )	errnum = ErrSpace;
 			on_other	errnum = ErrSyntaxError;
 			end
-
 	//----------------------------------------------------------------------
 	// bm_parse:	Parser End
 	//----------------------------------------------------------------------
 	CNParserEnd
-
 	if ( errnum ) {
 		bm_parser_report( errnum, parser, mode );
 	}

@@ -243,10 +243,6 @@ RETURN:
 //===========================================================================
 //	xp_verify
 //===========================================================================
-#define NOT	1
-#define COUPLE	2
-#define TERNARY	4
-
 static int bm_verify( int op, CNInstance *, char **, BMTraverseData * );
 typedef struct {
 	listItem *mark_exp;
@@ -384,11 +380,17 @@ fprintf( stderr, " ........{\n" );
 					char *start_p = pop_stack( &stack, &i, &mark_exp, &not );
 					if ( not ) success = 1;
 					if ( x == NULL ) {
-						if ( success ) {
-							p = p_prune( PRUNE_FILTER, start_p+1 );
-							if ( *p == ':' ) p++;
+						p = ( success ) ?
+							p_prune( PRUNE_FILTER, start_p+1 ) :
+							p_prune( PRUNE_TERM, start_p+1 );
+						switch ( *p ) {
+						case ':':
+							data->flags &= ~INFORMED;
+							p++; break;
+						case '?':
+							data->flags |= INFORMED;
+							break;
 						}
-						else p = p_prune( PRUNE_TERM, start_p+1 );
 					}
 					exponent = NULL;
 					op = BM_END;
@@ -402,13 +404,15 @@ RETURN:
 	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
-		fprintf( stderr, "xp_verify: memory leak on exponent\n" );
+		fprintf( stderr, ">>>>> xp_verify: memory leak on exponent\n" );
+		if (data->stack.flags) fprintf( stderr, "FLAGS\n" );
+		if (data->stack.exponent) fprintf( stderr, "EXPONENT\n" );
 		exit( -1 );
 	}
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
 	if ((data->stack.scope) || (data->stack.base)) {
-		fprintf( stderr, "xp_verify: memory leak on scope\n" );
+		fprintf( stderr, ">>>>> xp_verify: memory leak on scope\n" );
 		exit( -1 );
 	}
 	freeListItem( &data->stack.scope );
@@ -465,7 +469,6 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	listItem *base;
 	int	level, OOS,
 		success = data->success,
-		preternary = 0,
 		flags = data->flags;
 	f_clr( NOT );
 	switch ( op ) {
@@ -500,7 +503,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				success = bm_match( x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; f_clr( NOT ); }
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
-				p+=2;
+				p+=2; f_set( INFORMED )
 			}
 			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
@@ -508,14 +511,10 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 				p++;
 			}
-			else if ( p_ternary( p+1 ) ) {
-				preternary = 1;
-				p++;
-			}
 			else {
-				preternary = 2;
 				bm_locate_mark( p+1, &mark_exp );
 				if ( !mark_exp ) p++;
+				f_clr( INFORMED )
 			}
 			break;
 		case '*':
@@ -525,15 +524,15 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 				p++;
 			}
-			else {	xpn_add( &mark_exp, SUB, 1 ); }
+			else {
+				xpn_add( &mark_exp, SUB, 1 );
+				f_clr( INFORMED )
+			}
 			break;
 		case '(':
 			level++;
 			f_push( &data->stack.flags );
 			f_reset( 0, 0 );
-			if ( preternary ? preternary==1 : p_ternary( p ))
-				f_set( TERNARY );
-			preternary = 0;
 			if ( !p_single(p) ) {
 				f_set( COUPLE );
 				xpn_add( exponent, AS_SUB, 0 );
@@ -541,30 +540,42 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			p++; break;
 		case ':':
 			if ( op==BM_BGN && level==OOS ) { done = 1; break; }
-			p = ( success && !is_f( TERNARY ) ) ?
-				p+1 : p_prune( PRUNE_TERM, p+1 );
+			if is_f( TERNARY )
+				p = p_prune( PRUNE_TERNARY, p );
+			else if ( success ) {
+				p++; f_clr( INFORMED ) }
+			else {
+				p = p_prune( PRUNE_TERM, p+1 );
+				f_set( INFORMED ) }
 			break;
 		case ',':
 			if ( level == OOS ) { done = 1; break; }
 			xpn_set( *exponent, AS_SUB, 1 );
 			if ( success ) { p++; }
 			else p = p_prune( PRUNE_TERM, p+1 );
+			f_clr( INFORMED )
 			break;
 		case ')':
 			if ( level == OOS ) { done = 1; break; }
 			level--;
 			if is_f( COUPLE ) popListItem( exponent );
 			f_pop( &data->stack.flags, 0 );
+			f_set( INFORMED )
 			if is_f( NOT ) { success = !success; f_clr( NOT ); }
 			p++;
 			if ( op==BM_END && level==OOS && (data->stack.scope))
 				{ done = 1; break; }
 			break;
 		case '?':
-			if is_f( TERNARY ) {
-				if is_f( NOT ) { success = !success; f_clr( NOT ); }
-				if ( !success ) p = p_prune( PRUNE_FILTER, p+1 );
-				p++; break;
+			if is_f( TERNARY|INFORMED ) {
+				if ( success ) p++;
+				else {
+					p = p_prune( PRUNE_TERNARY, p );
+					if ( *p==':' ) p++; // must be
+				}
+				f_clr( INFORMED )
+				f_set( TERNARY )
+				break;
 			}
 			// no break
 		case '.':
@@ -574,12 +585,14 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				success = 1; // wildcard is as_sub[1]
 			else success = ( bm_match( x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
+			f_set( INFORMED )
 			break;
 		default:
 			success = bm_match( x, p, *exponent, base, data );
 			if ( success < 0 ) { success = 0; f_clr( NOT ); }
 			else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 			p = p_prune( PRUNE_IDENTIFIER, p );
+			f_set( INFORMED )
 			break;
 		}
 	}
@@ -595,8 +608,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	*position = p;
 
 #ifdef DEBUG
-	if (( mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at %s\n", p );
-	else fprintf( stderr, "bm_verify: returning %d, at %s\n", success, p );
+	if (( mark_exp )) fprintf( stderr, "bm_verify: starting SUB, at '%s'\n", p );
+	else fprintf( stderr, "bm_verify: returning %d, at '%s'\n", success, p );
 #endif
 	data->success = success;
 	return success;

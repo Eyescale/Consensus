@@ -1,20 +1,18 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. traversal.c - ternary operator support
-		. update bm_verify for both () and %() - done
-		. handle N-ary cases e.g.
-			( expr ? expr ? expr : expr : expr )
-			( expr ?: expr ?: expr ? expr :)
 	. Feature complete
-		. DONE: term~				(signal)
-		. DONE: : var : value			(assignment)
-		. WIP:	(expr?expr:expr) 		(ternary operator)
-		. WIP:	do ( ..., %(expr?expr:expr) )	<= do I need %( )?
-			AND
-			do : var : %(expr?expr:expr)	(ternary operator assignment)
-		. TODO: do ((expr,...):_:)		(ellipsis)
-	. Pass design/story/single-thread.story
+		. [DONE] term~				(signal)
+		. [DONE] : var : value			(assignment)
+		. [DONE] : var : ~.			(un-assignment)
+		. [DONE] in/on ~.: expression		(negative occurrence)
+		. [DONE] ( expr ? expr : expr ) 	(ternary-operated expression)
+		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
+	. TEST ternary operator
 	. update bm-read-narrative-states.txt (in specs)
+	. Pass design/story/single-thread.story
+	. deprecate bm_substantiate() / db_couple()
+	. bm_input()
+		. on EOF should do :input:~. instead of ~(*,input)
 	. --------
 	. Publish as Version-1.2
 		. Reorganize Examples, e.g.
@@ -33,12 +31,6 @@ TODO
 		. NOTE: everything is Pair, starting from [address,value]
 		. need feature-list.txt / Release Notes
 	. --------
-	. cnLoad()
-		. bm_substantiate? => db_couple: see below (when !!)
-		. manifest entities (no more db_couple??) // cf. bm_substantiate
-		. then must merge expand() (literals) and bm_instantiate
-	. bm_input()
-		. on EOF should do :input:~. instead of ~(*,input)
 	. on_event_ext
 		. need to separate expression from source
 			on expression < source
@@ -62,19 +54,11 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
-	. per proto:expression <<< where proto is either like narrative proto, or '?'
-		. PER/ELSE_PER
-		. also DO_PER, e.g.
-			do per ?:expression
-				: var : %?
-			=> only ONE occurrence->data->expression?
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
-	. remove workaround for ../../Base/Examples/1_Yak so that we can implement
-	  StringFinish as it should - see s_cmp() in include/parser_private.h - in
-	  string_util.c: Right now if we check the string mode then Yak crashes
-		=> reimplement schemeFrame() in scheme.c
-	. compile into .a instead of .so
+	. ../../Base/Examples/1_Yak
+	  remove workaround in string_util.c so that we can implement StringFinish as
+	  it should - see s_cmp() in include/parser_private.h. Right now if we check
+	  the string mode in StringFinish then Yak crashes
+		=> reimplement schemeFrame() in ../../Base/Examples/1_Yak/scheme.c
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
 		. Pros: instantiate all or nothing
 		. Cons: performances
@@ -86,64 +70,46 @@ NTH
 		. integrate caught in CNParserData => all flags
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?
+	. compile into .a instead of .so
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
+	. per proto:expression <<< where proto can be '?' or narrative-type proto
+		. PER/ELSE_PER
+		. also DO_PER, e.g.
+			do per ?:expression
+				: var : %?
+		  => only ONE occurrence->data->expression?
 	. multi-threading (pthreads)
 
 DONE
-	. parser.c - ternary operator support
-	  1. %( expr ? expr1 : expr2 )
-	  2. ( expr ? expr1 : expr2 )
-	     when type==IN or type==ON or ( type==DO && is_f(SUB_EXPR) )
-	     on '?' 
-		if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) )
-			f_clr( INFORMED )
-			f_set( SUB_EXPR|TERNARY )
-	     Then
-		. When TERNARY is set
-			upon "{}|" => err: already handled due to DO/SUB_EXPR
-			upon "," => err
-			upon '?' => err
-			upon ':'
-				if ( !is_f( FILTERED ) )
-					set_f( FILTERED )
-				otherwise => etc.
-		        upon '('
-				f_push( stack ); f_clr( TERNARY )
-			upon ')'
-				if ( is_f( TERNARY ) && !is_f( FILTERED ) )
-					=> err
-	  Notes
-		. when type==DO we do NOT authorize e.g.
-			do : toto : ( expr ? expr : expr )
-		  as this would require db_instantiate / db_substantiate
-		  to pre-check each sub-expression for ternary operator.
-		  Therefore when type==DO we enforce is_f( SUB_EXPR ) e.g.
-			do : toto : %( expr ? expr : expr )
-		. we support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
-		. we support ( expr ? expr :) <=> AND: evaluates as second expr or none
-		. we do NOT support ( expr ?:)
-		. we DO support N-ary operations e.g.
+	. ternary-operated expressions - see bm-TERNARY-implementation.txt
+		. parser.c	- bm_parse()
+		. traversal.c	- xp_verify(), bm_verify()
+		. string_util.c - p_prune( PRUNE_TERNARY, p )
+		. locate.c	- bm_locate_pivot(), xp_target(), bm_locate_param()
+	. traversal.c - ternary operator support
+		. update bm_verify for both () and %() - done
+		. handle N-ary cases e.g.
 			( expr ? expr ? expr : expr : expr )
-		  with the additional bonus of allowing to trunk the expression after
-		  the last filter symbol (:), e.g.
-			( expr ? expr ? expr ? expr : expr )
-			( expr ?: expr ?: expr ?: expr )	// all OR
-			( expr ? expr ? expr ? expr :)		// all AND
+			( expr ?: expr ?: expr ? expr :)
+	. parser.c - ternary operator support
+	 	. see bm-TERNARY-implementation.txt
 	. Restored Version-WIP backward compatibility w/ Version-1.1
 	  sub-narrative execution
-		. DONE: bm_operation.c: implemented operation registries & warden
-		. DONE: parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
-		. DONE: context.c:
+		. [DONE] bm_operation.c: implemented operation registries & warden
+		. [DONE] parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
+		. [DONE] context.c:
 			. bm_context_set() / bm_context_clear() implementation
 			. restore bm_lookup & bm_register functionality including
 			  ALL ctx->registry variables
 		. operate()
-			. DONE: restore LOCALE support
-			. DONE: restore EN/ELSE_EN support
-		. DONE: pass ./B% -f Test/yak.ini Test/yak
-	. Parser optimization: if ( data->opt ) goto _EXPR_BGN
+			. [DONE] restore LOCALE support
+			. [DONE] restore EN/ELSE_EN support
+		. [DONE] pass ./B% -f Test/yak.ini Test/yak
+	. Parser optimization: if ( data->opt ) goto EXPR_BGN
 		and: set data->opt in _expr; clear it in expr_
-	. Restore sub-narratives, EN, LOCALE, and do .expression commands
-	  as per Version-1.1 in parser.c - cf Specs (now remain to implement)
+	. Restore sub-narratives, EN, LOCALE, and do .expression commands as per
+	  Version-1.1 in parser.c - cf ./design/specs/bm-sub-narrative-EN-association.txt
 		. sub-narrative proto format is
 			.identifier:( expression1 )
 			:( expression1 )	// pre-compiled as .this:( expression1 )
@@ -153,12 +119,12 @@ DONE
 			%( expression2 )
 			else %( expression2 )
 		  these statements enable execution of all sub-narratives verifying
-		  proto:statement - i.e. ( expression1 ):%( expression2 )
+		  "proto:statement" - i.e. ( expression1 ):%( expression2 )
 		. do .expression commands are translated at readStory() time into
 			do ( identifier, expression )
 		  where identifier is the one specified in the current narrative proto
 		  Note that do .expression commands from the main narrative translate
-		  as do expression (the '.' is ignored)
+		  as do (this,expression) instantiating the base entity named "this"
 	. traversal.c - ternary operator support
 		. updated bm_verify() to invoke p_ternary( p ) and
 		  handle return value

@@ -1,5 +1,5 @@
 
-Version-1.2 specific File Format Interface
+Version-1.2 File Format Interface additions
 
 	--[x] signals
 		>>>>	do term~
@@ -9,8 +9,8 @@ Version-1.2 specific File Format Interface
 			do ~.: expression	nop
 	--[x] assignment
 		>>>>	in : variable : value	// inc. special case where value is ~.
-		>>>>	on : variable : value
-		>>>>	do : variable : value
+		>>>>	on : variable : value	// inc. special case where value is ~.
+		>>>>	do : variable : value	// inc. special case where value is ~.
 	--[.] ternary operator
 			in ( expr ? expr : expr )
 		>>>>	in ( expr ?: expr )
@@ -19,15 +19,26 @@ Version-1.2 specific File Format Interface
 			on ( expr ? expr : expr )
 			on ( expr ?: expr )
 			on ( expr ? expr :)
-	--[ ] assignment / ternary operator
+	--[.] assignment / ternary operator
 		>>>>	do : expr : %( expr ?: expr )
 			do : expr : %( expr ? expr :)
 			do : expr : %( expr ? expr : expr )
 	--[ ] list / ellipsis
-			do (( expr, ... ): sequence :)	// ellipsis
+			do (( expr, ... ):sequence:)	// ellipsis
   Where
 	>>>> means Version-1.2 release feature requirement
 	--[x] means done
 	--[.] means in progress
 	--[ ] means todo		
+
+
+Version-1.2 Extensions
+
+	The question mark can be used anywhere within in/on expressions,
+	not only as ?:expression - e.g.
+
+		on ~((*,variable), ? )
+			do >"%_": %?
+
+	outputs variable's previous value - unless it too has been released
 

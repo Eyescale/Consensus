@@ -5,10 +5,10 @@ DEFINITIONS
 	   the very start of a line:
 
 		.identifier:( expression )
-		
+	   OR	
 		:( expression )	// Version 1.1 compatibility
 
-	   Where Version 1.2 will translate at load time the latter form into
+	   Where Version 1.2 will translate at readStory() time the latter form into
 
 		.this:( expression )
 
@@ -29,12 +29,11 @@ DEFINITIONS
 		(1) becomes: do (this,identifier )
 		(2) becomes: in (this,(expression1,expression2))
 		
-	   Note that Version 1.1 ignores the '.' in such commands, when issued
-	   from the base narrative.
+	   Note that Version 1.1 ignores dotted expressions when issed from the
+	   base narrative.
 
-	   Version-1.2 translates them as above, which leaves the possibility
-	   for the narrator to create and handle an actual "this" entity - at
-	   the base level.
+	   Version-1.2 translates them as above, giving the narrator the possibility
+	   to create and handle a base entity named "this".
 
 	3. LOCALE declarations allow the interpretation of the declared LOCALE
 	   as (identifier,locale) at run=time.
@@ -45,14 +44,14 @@ DEFINITIONS
 
 		.position .event
 
-	   position and event subsequent references are interpreted at run-time
+	   Subsequent references to position and event are interpreted at run-time
 	   as (this,position), (this,event) - these instances being created, if
-	   they do not exist, upon first encountering the declaration.
+	   they do not exist, upon encountering the declaration.
 
-	4. EN / ELSE_EN statements are in the form
+	4. EN / ELSE_EN occurrences are statements in the form
 
 		%( expression )
-
+	   OR
 		else %( expression )
 
 	   These enable the execution of all sub-narratives verifying
@@ -119,4 +118,7 @@ IMPLEMENTATION
 
 	This we may do in Version 2.0.
 
+UPDATE 2022-09-16:
+	Version-1.2 no longer restricts EN statements to only the base narrative,
+	thanks to the "warden" implementaiton.
 

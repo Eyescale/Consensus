@@ -11,7 +11,7 @@ CONTENTS
 
 		1. bm_parse() calls proto_set( narrative, story, identifier ), which
 
-		   1.1. verifies that the passed identitifier is not already registered
+		   1.1. verifies that the passed identifier is not already registered
 		        into the passed story ; and if not, then
 
 		   1.2. assigns the passed identifier [or NULL if identifier is NULL]
@@ -40,8 +40,8 @@ DETAILS
 
 		1. proto: NULL
 		2. proto: identifier
-		3. proto: .identifier:expression - or ( expression ) in Version-1.1,
-		   which will default to proto: .this:( expression )
+		3. proto: .identifier:expression - or :( expression ) in Version-1.1,
+		   which in Version-1.2 will default to proto: .this:( expression )
 
 	  1. Very first narrative:
 	     verify that story empty; then

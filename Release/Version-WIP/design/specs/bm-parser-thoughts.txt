@@ -54,7 +54,7 @@ ISSUE
 
 DECISION
 	The above-mentioned macros combined with the parse_CB mechanism allow us to
-	keep the code centralized without performance penalty, as wellas to keep Story
+	keep the code centralized without performance penalty, and to keep CNStory
 	operations managed by story.c
 
 

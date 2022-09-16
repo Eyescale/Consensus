@@ -1,0 +1,122 @@
+
+File Format Interface
+	. Version-1.2 supports ternary-operated expressions in the form
+
+		%( expr ? expr1 : expr2 )
+		( expr ? expr1 : expr2 )
+    CAVEATS
+	1. restrictions
+	. Only the first type is authorized in DO-type occurrences, e.g.
+		do : toto : %( expr ? expr : expr )
+	  as otherwise this would unnecessarily complicate bm_substantiate(),
+	  bm_instantiate() and bm_void() implementation.
+	. we do NOT authorize other mark (?) to be used as part of the terms of a
+	  ternary-operated expression - unless these are sub-expressions %(...)
+	. we do NOT support ( expr ?:)
+
+	2. additional benefits
+	. we DO consider the ternary-operated expression marked and allow %? to
+	  be informed by IN/ON-type ( expr ? expr1 : expr2 ) occurrences - not %(...)
+	. we DO support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
+	. we DO support ( expr ? expr :) <=> AND: evaluates as second expr or none
+	. we DO support N-ary operations e.g.
+		( expr ? expr ? expr : expr : expr )
+	. we DO allow truncating after the last filter symbol (:) e.g.
+		( expr ? expr ? expr ? expr : expr )
+		( expr ?: expr ?: expr ?: expr )	// all OR
+		( expr ? expr ? expr ? expr :)		// all AND
+
+    IMPLEMENTATION - cf parser.c
+	     when type&(IN|ON) or ( type&DO || is_f(SUB_EXPR) )
+	     on '?' 
+		if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) )
+			f_clr( INFORMED )
+			f_set( SUB_EXPR|TERNARY )
+	     Then
+		. When TERNARY is set
+			ons "{}|" => err: already handled due to SUB_EXPR
+			on ',' => err
+			on '?' => err
+			on ':'
+				if ( !is_f( FILTERED ) )
+					set_f( FILTERED )
+				otherwise => see code
+		        on '('
+				f_push( stack ); f_clr( TERNARY )
+			on ')'
+				if ( is_f( TERNARY ) && !is_f( FILTERED ) )
+					=> err
+
+Operation
+	. Internally the ternary operation is supported via the new p_prune
+	  interface - cf string_util.c
+
+			char *position = p_prune( PRUNE_TERNARY, p )
+	  	Where
+	  		*p == either '(' or '?' or ':'
+
+		In the first case (*p=='(') returns on
+			. the inner '?' operator if the enclosed is ternary
+			. the separating ',' or closing ')' otherwise
+		In the second case (*p=='?') from inside a ternary expression
+			returns on the corresponding ':'
+		In the third case (*p==':') from inside a ternary expression
+			returns on the closing ')'
+
+	Generally speaking, prune_ternary() can be said to proceed from inside
+	a [potential ternary] expression, whereas p_prune proceeds from outside
+	the expression it is passed. In both cases, the syntax is assumed to
+	have been checked beforehand.
+
+	. p_prune( PRUNE_FILTER, p ) and p_prune( PRUNE_TERM, p ) have been
+	  modified in consequence, so that in addition to previous ':' or ')'
+	  possibilities they may now return on a '?' (when it is ternary).
+
+	. p_filtered( p ) in the same string_util.c file still does
+
+		return ( *p_prune( PRUNE_FILTER, p ) == ':' );
+
+	These changes and extensions affect the following files and functions:
+
+		1. traversal.c		bm_verify()
+		2. operation.c		do_input()
+					do_output()
+		3. expression.c		bm_substantiate()
+					bm_instantiate()
+					bm_void()
+					bm_assign_op()
+		4. locate.c		bm_locate_param()
+
+	1. traversal.c : bm_verify() - see code changes
+	2. operation.c : both do_input() and do_output() do invoke
+	   p_prune( PRUNE_FILTER, p ) to parse their arguments. However the passed
+	   expressions are not in parentheses, and therefore no change is required.
+	3. expression.c : bm_substantiate() does invoke p_prune( PRUNE_TERM, p ).
+	   However the passed DO-type expression has no allowance for SUB_EXPR,
+	   and therefore no change is required. Likewise the expression passed to
+	   bm_instantiate() and bm_void() only authorizes ternary operation as
+	   SUB_EXPR, which are passed directly to resp. bm_query() and bm_feel(),
+	   ie. to bm_verify() - see above - so no change required here either.
+	   Finally bm_assign_op() does invoke p_prune( PRUNE_FILTER, p ) to parse
+	   its arguments, but the passed expression is again not in parentheses,
+	   and therefore no change is required.
+	4. locate.c : here not only bm_locate_param(), but also bm_locate_pivot()
+	   and xp_target() must be modified to skip ternary-operated expressions,
+	   as per the following change in their parsing algorithm:
+		
+		case '(': ;
+			char *q = p_prune( PRUNE_TERNARY, p );
+			if ( *q=='?' ) {
+				p = p_prune( PRUNE_TERNARY, q ); // ':'
+				p = p_prune( PRUNE_TERNARY, q ); // ')'
+				p++; break;
+			}
+			...
+
+	   Note that ternary-operated expressions potentially require bm_traverse()
+	   to traverse the whole CNDB - optimization could be regained in the future
+	   by internally breaking the expression down to its boolean components, as
+	   illustrated in ../../Base/Example/3_Segmentize
+
+
+

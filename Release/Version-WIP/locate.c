@@ -30,7 +30,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	int	scope = 0, done = 0,
 		tuple = 0, // default is singleton
 		not = 0;
-	char *	p = expression;
+	char *	p = expression, *q;
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
@@ -68,9 +68,16 @@ bm_locate_pivot( char *expression, listItem **exponent )
 			else { bm_locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
+			// skip ternary-operated expressions
+			q = p_prune( PRUNE_TERNARY, p );
+			if ( *q=='?' ) {
+				p = p_prune( PRUNE_TERNARY, q ); // ':'
+				p = p_prune( PRUNE_TERNARY, q ); // ')'
+				p++; break;
+			}
 			scope++;
 			add_item( &stack.flags, not|tuple );
-			tuple = ( p_single(p) ? 0 : 2 );
+			tuple = ( *q==',' ) ? 2 : 0;
 			if (( mark_exp )) {
 				tuple |= 4;
 				addItem( &stack.premark, *exponent );
@@ -141,7 +148,7 @@ xp_target( char *expression, int target )
 {
 #define SET( candidate, mark ) \
 	{ candidate |= mark; if ( target & QMARK ) return candidate; }
-	char *	p = expression;
+	char *	p = expression, *q;
 	int	candidate = 0, not = 0,
 		level = 0, done = 0;
 	while ( *p && !done ) {
@@ -168,6 +175,13 @@ xp_target( char *expression, int target )
 			else { p++; break; }
 			break;
 		case '(':
+			// skip ternary-operated expressions
+			q = p_prune( PRUNE_TERNARY, p );
+			if ( *q=='?' ) {
+				p = p_prune( PRUNE_TERNARY, q ); // ':'
+				p = p_prune( PRUNE_TERNARY, q ); // ')'
+				p++; break;
+			}
 			level++;
 			p++; break;
 		case ')':
@@ -223,7 +237,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 	int	scope = 0,
 		done = 0,
 		couple = 0; // base is singleton
-	char *p = expression;
+	char *p = expression, *q;
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
@@ -242,10 +256,24 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 			}
 			p++; break;
 		case '(':
+			// skip ternary-operated expressions
+			q = p_prune( PRUNE_TERNARY, p );
+			if ( *q=='?' ) {
+				if ( !arg_CB ) {
+					p = q;
+					done=2; break;
+				}
+				p = p_prune( PRUNE_TERNARY, q ); // ':'
+				p = p_prune( PRUNE_TERNARY, q ); // ')'
+				p++; break;
+			}
 			scope++;
 			add_item( &stack.couple, couple );
-			if (( couple = !p_single( p ) ))
+			if ( *q==',' ) {
+				couple = 1;
 				xpn_add( exponent, SUB, 0 );
+			}
+			else couple = 0;
 			addItem( &stack.level, level );
 			level = *exponent;
 			p++; break;
