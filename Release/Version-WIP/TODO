@@ -1,16 +1,13 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. readStory() should post-process expression upon ExpressionTake, for
-		DOT - should simplify parser (e.g. no more ExpressionPush/Pop)
-		literals
-		Ellipsis
+		. DOT => will simplify parser (e.g. no more ExpressionPush/Pop)
+		. literals
+		. Ellipsis
 	. Cleanup
-		. remove is_separator() calls in expression.c
+		. traversal.c: undo bm_verify ternarization
 		. review xp_target / bm_locate_pivot, esp. with deternarize
-		. Note: p_prune( PRUNE_IDENTIFIER, p ) does PRUNE_CHARACTER
-		  and PRUNE_REGEX if the case arises. PRUNE_FORMAT was not
-		  deemed necessary so far, but it could. Then string_util.c
-		  could be simplified by introducing prune_identifier(p)
+		. review is_separator() calls in expression.c
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)

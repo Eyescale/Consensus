@@ -5,7 +5,6 @@
 
 #include "string_util.h"
 #include "pair.h"
-#include "flags.h"
 
 // #define DEBUG
 
@@ -283,9 +282,11 @@ charscan( char *p, char_s *q )
 //	p_prune, p_ternary, p_single, p_filtered
 //---------------------------------------------------------------------------
 static char *prune_ternary( char * );
-static char *prune_character( char * );
 static char *prune_format( char * );
+static char *prune_character( char * );
 static char *prune_regex( char * );
+static char *prune_identifier( char * );
+static char *prune_level( char *, int );
 
 char *
 p_prune( PruneType type, char *p )
@@ -296,64 +297,44 @@ p_prune( PruneType type, char *p )
 	case PRUNE_FORMAT:
 		return prune_format( p );
 	case PRUNE_IDENTIFIER:
-		switch ( *p ) {
-		case '\'':
-			return prune_character( p );
-		case '/':
-			return prune_regex( p );
-		default:
-			while ( !is_separator(*p) ) p++;
-			return p;
-		}
+		return prune_identifier( p );
 	case PRUNE_TERM:
 	case PRUNE_FILTER:;
-		int level = 0, informed = 0;
-		for ( ; ; ) {
+		int informed = 0;
+		while ( *p ) {
 			switch ( *p ) {
-			case '\0': return p;
-			case '?':
-				if ( informed && !level )
-					return p;
-				informed = 1;
-				p++; break;
 			case '(':
 				p = prune_ternary( p );
 				switch ( *p ) {
 				case '?':
 					p = prune_ternary( p ); // ':'
 					p = prune_ternary( p );	// ')'
-					// no break
+					break;
 				case ',':
+					p = prune_level( p, 1 ); // we are inside
+					break;
 				case ')':
-					level++; // we are inside
+					break;
 				}
-				break;
-			case ')':
-				if ( !level ) return p;
-				level--;
 				informed = 1;
 				p++; break;
+			case ',':
+			case ')':
+				return p;
 			case ':':
-				if ( type==PRUNE_FILTER && !level )
+				if ( type==PRUNE_FILTER )
 					return p;
 				informed = 0;
 				p++; break;
-			case ',':
-				if ( !level ) return p;
-				informed = 0;
+			case '?':
+				if ( informed ) return p;
+				informed = 1;
 				p++; break;
-			case '\'':
-				p = prune_character( p );
-				informed = 1;
-				break;
 			case '"':
-				p = prune_format( p );
-				informed = 1;
-				break;
+			case '\'':
 			case '/':
-				p = prune_regex( p );
-				informed = 1;
-				break;
+				p = prune_identifier( p );
+				informed = 1; break;
 			case '*':
 			case '%':
 				if ( p[1]=='?' ) p++;
@@ -364,23 +345,22 @@ p_prune( PruneType type, char *p )
 				informed = 1;
 			}
 		}
-		break;
+		return p;
 	}
 }
-#define LEVEL		1
-#define TERNARY		2
-#define INFORMED	4
 static char *
 prune_ternary( char *p )
 /*
 	Assumption: *p == either '(' or '?' or ':'
-	In the first case, returns on
+
+	in case *p=='(' returns on
 		the inner '?' operator if the enclosed is ternary
 		the separating ',' or closing ')' otherwise
-	In the second case, finds and returns the corresponding ':'
+	in case *p=='?' finds and returns the corresponding ':'
 		assuming working from inside a ternary expression
-	In the third case, find and return the closing ')'
+	in case *p==':' finds and returns the closing ')'
 		assuming working from inside a ternary expression
+
 	Generally speaking, prune_ternary() can be said to proceed from inside
 	a [potential ternary] expression, whereas p_prune proceeds from outside
 	the expression it is passed. In both cases, the syntax is assumed to
@@ -389,76 +369,51 @@ prune_ternary( char *p )
 {
 	listItem *stack = NULL;
 	int	start = *p++,
-		flags = (start=='?'||start==':') ? TERNARY : 0;
-	for ( ; ; ) {
+		ternary = 0, informed = 0;
+	if ( start=='?' || start==':' )
+		ternary = 1;
+	while ( *p ) {
 		switch ( *p ) {
-		case '\0': return p;
 		case '(':
-			f_push( &stack )
-			f_clr( TERNARY|INFORMED )
-			f_set( LEVEL )
+			p = prune_level( p, 0 );
+			informed = 1;
 			p++; break;
 		case ',':
-			if ( start=='(' && !is_f(LEVEL) )
-				goto RETURN;
-			f_clr( INFORMED )
-			p++; break;
+		case ')':
+			goto RETURN;
 		case '?':
-			if is_f( INFORMED ) {
-				if ( start=='(' && !is_f(LEVEL) )
-					goto RETURN;
-				f_push( &stack )
-				f_clr( INFORMED )
-				f_set( TERNARY )
+			if ( informed ) {
+				if ( start=='(' ) goto RETURN;
+				ternary++;
+				informed = 0;
 			}
-			else {	f_set( INFORMED ) }
+			else informed = 1;
 			p++; break;
 		case ':':
-			if is_f( TERNARY ) {
-				if ( start=='?' && !is_f(LEVEL) )
+			if ( ternary ) {
+				ternary--;
+				if ( start=='?' && !ternary )
 					goto RETURN;
-				f_pop( &stack, 0 );
 			}
-			f_clr( INFORMED )
+			informed = 0;
 			p++; break;
-		case ')':
-			if ( !is_f(LEVEL) )
-				goto RETURN;
-			f_pop( &stack, 0 )
-			f_set( INFORMED )
-			p++; break;
-		case '\'':
-			p = prune_character( p );
-			f_set( INFORMED )
-			break;
 		case '"':
-			p = prune_format( p );
-			f_set( INFORMED )
-			break;
+		case '\'':
 		case '/':
-			p = prune_regex( p );
-			f_set( INFORMED )
-			break;
+			p = prune_identifier( p );
+			informed = 1; break;
 		case '*':
 		case '%':
 			if ( p[1]=='?' ) p++;
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) );
-			f_set( INFORMED )
+			informed = 1;
 		}
 	}
 RETURN:
 	freeListItem( &stack );
 	return p;
-}
-static char *
-prune_character( char *p )
-/*
-	Assumption: *p == '\''
-*/
-{
-	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
 }
 static char *
 prune_format( char *p )
@@ -479,6 +434,14 @@ prune_format( char *p )
 		}
 }
 static char *
+prune_character( char *p )
+/*
+	Assumption: *p == '\''
+*/
+{
+	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
+}
+static char *
 prune_regex( char *p )
 /*
 	Assumption: *p == '/'
@@ -486,10 +449,8 @@ prune_regex( char *p )
 {
 	p++; // skip opening '/'
 	int bracket = 0;
-	for ( ; ; )
+	while ( *p ) {
 		switch ( *p ) {
-		case '\0':
-			return p;
 		case '/':
 			if ( !bracket )
 				return p+1;
@@ -506,6 +467,53 @@ prune_regex( char *p )
 		default:
 			p++; break;
 		}
+	}
+	return p;
+}
+static char *
+prune_identifier( char *p )
+{
+	switch ( *p ) {
+	case '"':
+		p = prune_format( p );
+		break;
+	case '\'':
+		p = prune_character( p );
+		break;
+	case '/':
+		p = prune_regex( p );
+		break;
+	default:
+		while ( !is_separator(*p) ) p++;
+	}
+	return p;
+}
+static char *
+prune_level( char *p, int level )
+{
+	while ( *p ) {
+		switch ( *p ) {
+		case '(':
+			level++;
+			p++; break;
+		case ')':
+			level--;
+			if ( !level ) return p;
+			p++; break;
+		case '"':
+			p = prune_format( p );
+			break;
+		case '\'':
+			p = prune_character( p );
+			break;
+		case '/':
+			p = prune_regex( p );
+			break;
+		default:
+			do p++; while ( !is_separator(*p) );
+		}
+	}
+	return p;
 }
 int
 p_ternary( char *p )
