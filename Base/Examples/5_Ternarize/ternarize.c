@@ -19,7 +19,7 @@ void output_ternarized( listItem *sequence );
 // char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
 // char *expression = "( hi ? hello : You ? world : caramba )";
 // char *expression = "( hi ? hello ? You :)";
-char *expression = "( hello, world ):( hi ? hello ? You : caramba ):( alpha, ( beta ? (gamma?epsilon:kappa) : delta ) )";
+char *expression = "( hello, world ):%( hi ? hello ? You : caramba ):( alpha, ( beta ? (gamma?epsilon:kappa) : delta ) )";
 // char *expression = "( hi ? hello ? You :: caramba )";
 // char *expression = "( hi ? hello ?: world : caramba )";
 
@@ -167,8 +167,11 @@ ternarize( char *expression )
 			f_clr( INFORMED )
 			p++; break;
 		case '%':
-			if ( p[1]=='(' ) f_set( SUB_EXPR )
-			// no break
+			if ( p[1]=='(' ) {
+				f_set( SUB_EXPR )
+				p++; break;
+			}
+			// no break;
 		case '*':
 			if ( p[1]=='?' ) p++;
 			// no break
@@ -345,6 +348,9 @@ output_segment( Pair *segment, int *tab )
 	putchar( '\n' );
 
 	switch ( *bgn ) {
+	case '%':
+		if (!( bgn[1]=='(' ))
+			break;
 	case '(':
 		tab[ BASE ]++;
 		tab[ OFFSET ] = -1;
