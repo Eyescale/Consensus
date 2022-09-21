@@ -173,7 +173,7 @@ ternarize( char *expression )
 			if ( p[1]=='?' ) p++;
 			// no break
 		default:
-			p = p_prune( PRUNE_IDENTIFIER, p );
+			do p++; while ( !is_separator(*p) );
 			f_set( INFORMED )
 		}
 	}
