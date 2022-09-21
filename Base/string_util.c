@@ -352,7 +352,6 @@ static char *
 prune_ternary( char *p )
 /*
 	Assumption: *p == either '(' or '?' or ':'
-
 	in case *p=='(' returns on
 		the inner '?' operator if the enclosed is ternary
 		the separating ',' or closing ')' otherwise
@@ -360,7 +359,6 @@ prune_ternary( char *p )
 		assuming working from inside a ternary expression
 	in case *p==':' finds and returns the closing ')'
 		assuming working from inside a ternary expression
-
 	Generally speaking, prune_ternary() can be said to proceed from inside
 	a [potential ternary] expression, whereas p_prune proceeds from outside
 	the expression it is passed. In both cases, the syntax is assumed to
@@ -484,7 +482,11 @@ prune_identifier( char *p )
 		p = prune_regex( p );
 		break;
 	default:
+#if 1
 		while ( !is_separator(*p) ) p++;
+#else		// I wish:
+		do p++; while ( !is_separator(*p) );
+#endif
 	}
 	return p;
 }
