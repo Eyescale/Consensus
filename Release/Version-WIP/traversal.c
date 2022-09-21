@@ -313,7 +313,7 @@ fprintf( stderr, " ........{\n" );
 					CNInstance *y = x->sub[ 0 ];
 					if ((y) && (y->sub[0]) && (y->sub[0]==data->star))
 						x = y->sub[ 1 ];
-					else { x=NULL; data->success=0; break; }
+					else { data->success = 0; x = NULL; break; }
 				}
 				// no break
 			default:
@@ -325,9 +325,10 @@ fprintf( stderr, " ........{\n" );
 					int exp = pop_item( sub_exp );
 					x = ESUB( x, exp&1 );
 				}
+				not = data->flags & NOT;
 				// backup context
 				addItem( &stack.mark_exp, mark_exp );
-				add_item( &stack.not, ( data->flags & NOT ));
+				add_item( &stack.not, not );
 				addItem( &stack.sub, stack.as_sub );
 				addItem( &stack.i, i );
 				addItem( &stack.p, p );
@@ -380,17 +381,8 @@ fprintf( stderr, " ........{\n" );
 					char *start_p = pop_stack( &stack, &i, &mark_exp, &not );
 					if ( not ) success = 1;
 					if ( x == NULL ) {
-						p = ( success ) ?
-							p_prune( PRUNE_FILTER, start_p+1 ) :
-							p_prune( PRUNE_TERM, start_p+1 );
-						switch ( *p ) {
-						case ':':
-							data->flags &= ~INFORMED;
-							p++; break;
-						case '?':
-							data->flags |= INFORMED;
-							break;
-						}
+						p = p_prune( success?PRUNE_FILTER:PRUNE_TERM, start_p+1 );
+						if ( *p==':' ) p++;
 					}
 					exponent = NULL;
 					op = BM_END;
@@ -503,7 +495,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				success = bm_match( x, p, *exponent, base, data );
 				if ( success < 0 ) { success = 0; f_clr( NOT ); }
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
-				p+=2; f_set( INFORMED )
+				p+=2;
 			}
 			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
@@ -514,7 +506,6 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			else {
 				bm_locate_mark( p+1, &mark_exp );
 				if ( !mark_exp ) p++;
-				f_clr( INFORMED )
 			}
 			break;
 		case '*':
@@ -524,10 +515,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 				p++;
 			}
-			else {
-				xpn_add( &mark_exp, SUB, 1 );
-				f_clr( INFORMED )
-			}
+			else { xpn_add( &mark_exp, SUB, 1 ); }
 			break;
 		case '(':
 			level++;
@@ -539,45 +527,26 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			}
 			p++; break;
 		case ':':
-			if ( op==BM_BGN && level==OOS ) { done = 1; break; }
-			if is_f( TERNARY )
-				p = p_prune( PRUNE_TERNARY, p );
-			else if ( success ) {
-				p++; f_clr( INFORMED ) }
-			else {
-				p = p_prune( PRUNE_TERM, p+1 );
-				f_set( INFORMED ) }
+			if ( op==BM_BGN && level==OOS )
+				{ done = 1; break; }
+			p = success ? p+1 : p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ',':
-			if ( level == OOS ) { done = 1; break; }
+			if ( level==OOS ) { done = 1; break; }
 			xpn_set( *exponent, AS_SUB, 1 );
-			if ( success ) { p++; }
-			else p = p_prune( PRUNE_TERM, p+1 );
-			f_clr( INFORMED )
+			p = success ? p+1 : p_prune( PRUNE_TERM, p+1 );
 			break;
 		case ')':
-			if ( level == OOS ) { done = 1; break; }
+			if ( level==OOS ) { done = 1; break; }
 			level--;
 			if is_f( COUPLE ) popListItem( exponent );
 			f_pop( &data->stack.flags, 0 );
-			f_set( INFORMED )
 			if is_f( NOT ) { success = !success; f_clr( NOT ); }
 			p++;
 			if ( op==BM_END && level==OOS && (data->stack.scope))
 				{ done = 1; break; }
 			break;
 		case '?':
-			if is_f( TERNARY|INFORMED ) {
-				if ( success ) p++;
-				else {
-					p = p_prune( PRUNE_TERNARY, p );
-					if ( *p==':' ) p++; // must be
-				}
-				f_clr( INFORMED )
-				f_set( TERNARY )
-				break;
-			}
-			// no break
 		case '.':
 			if is_f( NOT ) { success = 0; f_clr( NOT ); }
 			else if ( data->empty ) success = 0;
@@ -585,14 +554,12 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 				success = 1; // wildcard is as_sub[1]
 			else success = ( bm_match( x, NULL, *exponent, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
-			f_set( INFORMED )
 			break;
 		default:
 			success = bm_match( x, p, *exponent, base, data );
 			if ( success < 0 ) { success = 0; f_clr( NOT ); }
 			else if is_f( NOT ) { success = !success; f_clr( NOT ); }
 			p = p_prune( PRUNE_IDENTIFIER, p );
-			f_set( INFORMED )
 			break;
 		}
 	}
@@ -623,36 +590,40 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 */
 {
 	listItem *xpn = NULL;
-	for ( listItem *i=exponent; i!=base; i=i->next ) {
+	for ( listItem *i=exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
-	}
 	CNInstance *y = x;
 	while (( y ) && (xpn)) {
 		int exp = pop_item( &xpn );
-		y = ESUB( y, exp&1 );
-	}
-	if ( y == NULL ) { freeListItem( &xpn ); return -1; }
-	else if ( p == NULL ) { return 1; }
+		y = ESUB( y, exp&1 ); }
+	if ( y == NULL ) {
+		freeListItem( &xpn );
+		return -1; }
+	else if ( p == NULL ) // wildcard
+		return 1;
+
+	else if (( data->pivot ) && p==data->pivot->name )
+		return ( y == data->pivot->value );
+	else if ( *p=='*' )
+		return ( y == data->star );
 	else if ( !strncmp( p, "%!", 2 ) ) {
 		listItem *v = bm_context_lookup( data->ctx, "!" );
-		return !!lookupItem( v, y );
-	}
-	Pair *pivot = data->pivot;
-	if (( pivot ) && ( p == pivot->name ))
-		return ( y == pivot->value );
+		return !!lookupItem( v, y ); }
 	else if ( !strncmp( p, "%?", 2 ) )
 		return ( y == bm_context_lookup( data->ctx, "?" ) );
 	else if ( !is_separator(*p) ) {
-		Pair *entry = registryLookup( data->ctx->registry, p );
-		if (( entry )) return ( y == entry->value );
+		CNInstance *found = bm_context_lookup( data->ctx, p );
+		if (( found )) return ( y == found ); }
+
+	// not found in data->ctx
+	if ( !y->sub[0] ) {
+		char *identifier = db_identifier( y, data->db );
+		char_s q;
+		switch ( *p ) {
+		case '/': return !strcomp( p, identifier, 2 );
+		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
+		default: return !strcomp( p, identifier, 1 );
+		}
 	}
-	if (( y->sub[0] )) return 0;
-	CNDB *db = data->db;
-	char_s q;
-	switch ( *p ) {
-	case '*': return ( y == data->star );
-	case '/': return !strcomp( p, db_identifier(y,db), 2 );
-	case '\'': return charscan( p+1, &q ) && !strcomp( q.s, db_identifier(y,db), 1 );
-	default: return !strcomp( p, db_identifier(y,db), 1 );
-	}
+	return 0; // not a base entity
 }

@@ -11,11 +11,11 @@ LFLAGS = -L../..
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	segmentize.c
+SRCS =	ternarize.c
 
 CFLAGS =
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = segmentize
+MAIN = ternarize
 
 .PHONY: depend clean
 

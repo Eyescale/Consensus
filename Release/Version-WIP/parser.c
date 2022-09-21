@@ -277,24 +277,24 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_push( stack )
 						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED|LEVEL) && !is_f(MARKED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(MARKED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
-						f_set( MARKED|TERNARY|SUB_EXPR ) }
+						f_set( MARKED|TERNARY ) }
 			else if ( !is_f(INFORMED|MARKED|NEGATED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( same )	s_take
 						f_set( MARKED|INFORMED ) }
 		on_( ':' ) if ( s_empty ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
-			else if ( are_f(ASSIGN|INFORMED) && !is_f(LEVEL) ) {
+			else if ( are_f(ASSIGN|INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( !is_f(FILTERED) ) { // could be lifted
 					do_( same )	s_take
 							f_clr( INFORMED )
 							f_set( FILTERED ) } }
 			else if ( are_f(TERNARY|INFORMED) ) {
 				if ( !is_f(FILTERED) ) {
-					do_( same )	s_take
+					do_( "(_?_:" )	s_take
 							f_clr( INFORMED )
 							f_set( FILTERED ) }
 				else if ( !is_f(FIRST) ) {
@@ -304,14 +304,19 @@ A:CND_else_( B )
 				do_( ":" )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
-		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : are_f(INFORMED|LEVEL) ) {
-				do_( "pop" )	s_take
-						f_pop( stack, COMPOUND )
-						f_set( INFORMED ) }
+		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : is_f(INFORMED) ) {
+				if ( is_f(LEVEL) ) {
+					do_( "pop" )	s_take
+							f_pop( stack, COMPOUND|MARKED )
+							f_set( INFORMED ) }
+				else if ( is_f(SUB_EXPR) ) {
+					do_( "pop" )	s_take
+							f_pop( stack, COMPOUND )
+							f_set( INFORMED ) } }
 B:CND_endif
 		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
 				; // err
-			else if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
+			else if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
 				do_( "expr_" )	REENTER
 						f_clr( COMPOUND ) }
 			else if ( is_f(SET) ) { // allow \nl inside { }
@@ -320,7 +325,7 @@ B:CND_endif
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
 				; // err
-			else if ( are_f(FIRST|LEVEL|INFORMED) ) {
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
 				do_( same )	s_take
 						f_clr( FIRST|INFORMED ) }
 			else if ( is_f( SET ) ) {
@@ -336,7 +341,7 @@ B:CND_endif
 						f_push( stack )
 						f_clr( LEVEL )
 						f_set( SET ) }
-		on_( '}' ) if ( are_f(INFORMED|SET) && !is_f(LEVEL) ) {
+		on_( '}' ) if ( are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( "}" )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED|COMPOUND ) }
@@ -370,16 +375,16 @@ _CB( ExpressionPush, mode, data );
 	in_( "pop" ) bgn_
 		on_any	if ( is_f(TERNARY) && !is_f(FIRST) ) {
 				do_( same )	REENTER
-						f_pop( stack, COMPOUND ) }
+						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND ) }
 			else if ( are_f(TERNARY|FIRST|DOT) ) {
 _CB( ExpressionPop, mode, data );
 				do_( "expr" )	REENTER
-						f_pop( stack, COMPOUND )
+						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND )
 						f_set( INFORMED )
 						f_clr( DOT ) }
 			else if ( are_f(TERNARY|FIRST) ) {
 				do_( "expr" )	REENTER
-						f_pop( stack, COMPOUND )
+						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND )
 						f_set( INFORMED ) }
 			else if ( is_f(DOT) ) {
 _CB( ExpressionPop, mode, data );
@@ -397,8 +402,7 @@ _CB( ExpressionPop, mode, data );
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "expr" )	s_take
 						f_push( stack )
-						f_clr( MARKED|NEGATED|SET|FILTERED|ASSIGN|TERNARY )
-						f_set( FIRST|LEVEL|SUB_EXPR )
+						f_reset( FIRST|SUB_EXPR, COMPOUND|DOT )
 		ons( "?!" )
 			if (!( *type&EN && s_empty )) {
 				do_( "expr" )	s_take
@@ -415,7 +419,7 @@ _CB( ExpressionPop, mode, data );
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
-		on_( '.' ) if ( s_empty || ( is_f(ASSIGN) && !is_f(LEVEL) ) ) {
+		on_( '.' ) if ( s_empty || ( is_f(ASSIGN|FILTERED) && !is_f(LEVEL|SUB_EXPR) ) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
 		on_( '(' ) if ( s_empty ) {
@@ -461,9 +465,9 @@ C:CND_endif
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( ":~" )
 		on_( '/' ) 	do_( "/" )	s_take
-		on_( '<' ) if ( !is_f(LEVEL|SET|ASSIGN) ) {
+		on_( '<' ) if ( !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( ":_<" )	s_take }
-		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SET|ASSIGN) ) {
+		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( ":\"" )	s_take }
 		on_( ')' ) if ( are_f(TERNARY|FILTERED) ) {
 				do_( "expr" )	REENTER
@@ -534,7 +538,7 @@ C:CND_endif
 		on_( '}' )	do_( "expr" )	REENTER
 		on_( ',' )	; // err
 		on_other // allow newline to act as comma
-			if ( is_f(INFORMED) && !is_f(LEVEL) ) {
+			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( "expr" )	REENTER
 						s_add( "," )
 						f_clr( INFORMED ) }
@@ -586,6 +590,12 @@ C:CND_endif
 			on_( ')' )	; // err
 			on_other	do_( "expr" )	REENTER
 			end
+	in_( "(_?_:" ) bgn_ // Assumption: TERNARY|FILTERED are set, not INFORMED
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other	do_( "expr" )	REENTER
+		end
 	in_( "|" ) bgn_
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
@@ -614,7 +624,7 @@ C:CND_endif
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SET|ASSIGN|DOT) ) {
+		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|DOT) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
 D:CND_endif
@@ -666,12 +676,12 @@ else 				do_( "" )
 		in_( ":_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;
 		in_( ">_" )		errnum = ErrOutputScheme;
-		in_( "?" )		errnum = ( is_f(NEGATED) ? ErrMarkNegated :
-						   is_f(MARKED) ? ErrMarkMultiple :
-						   ErrSyntaxError);
 		in_other bgn_
 			on_( '\n' )	errnum = ErrUnexpectedCR;
 			on_( ' ' )	errnum = ErrSpace;
+			on_( '?' )	errnum = ( is_f(NEGATED) ? ErrMarkNegated :
+						   is_f(MARKED) ? ErrMarkMultiple :
+						   ErrSyntaxError );
 			on_other	errnum = ErrSyntaxError;
 			end
 	//----------------------------------------------------------------------

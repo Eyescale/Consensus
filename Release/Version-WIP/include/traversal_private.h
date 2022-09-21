@@ -35,10 +35,10 @@ typedef struct {
 	} stack;
 } BMTraverseData;
 
-#define NOT		1
-#define COUPLE		2
-#define INFORMED	4
-#define TERNARY		8
+#define	NOT		1
+#define	COUPLE		2
+#define	INFORMED	4
+#define	TERNARY		8
 
 
 #endif	// TRAVERSAL_PRIVATE_H

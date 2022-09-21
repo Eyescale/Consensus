@@ -9,6 +9,7 @@
 		do ( { tata,toto }, titi )
 		do ~.:titi	// nop
 	else in ( titi ?: tata )
+	else in ( expr1 ? expr2 ? expr3 :: expr4 )
 	else on ~.:((*,titi),toto)
 		do >"~.: gotcha\n"
 	else in : titi : ~.

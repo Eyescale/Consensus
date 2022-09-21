@@ -1,8 +1,14 @@
 
 	on init
-		do : titi : tata
+		do toto
+//		do tata
+		do : titi : tutu
 	else on : titi : ( toto ?: tata ?: tutu )
-		do >"BINGO: %_\n": %?
+		do >"PASSED 1: %_\n": %?
+//	else in ( *titi ?: toto )
+	else in ( toto ? *titi : tata )
+		do >"PASSED 2: %_\n": %?
+		do exit
 	else
 		do >"bye\n"
 		do exit

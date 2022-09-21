@@ -439,12 +439,9 @@ bm_void( char *expression, BMContext *ctx )
 			// no break
 		case '~':;
 			int target = xp_target( p, EMARK );
-			if ( target & EMARK ) {
-				if (( target - EMARK ))
-					fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at %s - "
-						"expression query mixing terms with %%!\n", p );
-				p = p_prune( PRUNE_TERM, p+1 );
-				break;
+			if ( target&EMARK && target!=EMARK ) {
+				fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at %s - "
+					"dubious combination of query terms with %%!\n", p );
 			}
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
 				return 1;

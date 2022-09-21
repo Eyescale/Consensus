@@ -1,18 +1,32 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. readStory() should post-process expression upon ExpressionTake, for
+		DOT - should simplify parser (e.g. no more ExpressionPush/Pop)
+		literals
+		Ellipsis
+	. Cleanup
+		. remove is_separator() calls in expression.c
+		. review xp_target / bm_locate_pivot, esp. with deternarize
+		. Note: p_prune( PRUNE_IDENTIFIER, p ) does PRUNE_CHARACTER
+		  and PRUNE_REGEX if the case arises. PRUNE_FORMAT was not
+		  deemed necessary so far, but it could. Then string_util.c
+		  could be simplified by introducing prune_identifier(p)
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
 		. [DONE] : var : ~.			(un-assignment)
 		. [DONE] in/on ~.: expression		(negative occurrence)
-		. [DONE] ( expr ? expr : expr ) 	(ternary-operated expression)
+		. [WIP] ( expr ? expr : expr ) 	(ternary-operated expression)
 		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
-	. TEST ternary operator
-	. update bm-read-narrative-states.txt (in specs)
+	. update ./design/specs/bm-read-narrative-states.txt
 	. Pass design/story/single-thread.story
 	. deprecate bm_substantiate() / db_couple()
+		=> Design decision: bm_update() before init flag?
+		=> Design decision / execution model: bm_operate()
+		   should return new list of Cells vs. exit flag?
 	. bm_input()
 		. on EOF should do :input:~. instead of ~(*,input)
+		  => must modify version-1.0 and version-1.1
 	. --------
 	. Publish as Version-1.2
 		. Reorganize Examples, e.g.
@@ -80,8 +94,12 @@ NTH
 				: var : %?
 		  => only ONE occurrence->data->expression?
 	. multi-threading (pthreads)
+	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
+	. move btreefy from ../../Base to ../../Base/Examples/
 
 DONE
+	. Added ../../Base/Examples/5_Ternarize
+	. Cleaned up ../../Base/Examples/3_Segmentize
 	. ternary-operated expressions - see bm-TERNARY-implementation.txt
 		. parser.c	- bm_parse()
 		. traversal.c	- xp_verify(), bm_verify()

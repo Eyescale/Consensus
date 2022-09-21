@@ -128,7 +128,8 @@ CONCLUSION
 	3.2. attaches operate() request.new return value to passed **new
 
 	Can start with #3 (within #ifdef)
-Errata
+
+ERRATUM
 	bm_operate() should return its own list of Cells to be managed, as
 	opposed to filling &new - integration to be done by CNProgram.
 	Issue:

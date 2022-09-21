@@ -4,15 +4,58 @@
 #include "list.h"
 #include "pair.h"
 
+listItem * segmentize( char *expression );
+void free_segmentized( listItem *sequence );
+void expand( listItem *sequence, listItem **stack );
+listItem * firsti( listItem *i, listItem **stack );
+listItem * nexti( listItem *i, listItem **stack );
+int cycle_through( listItem **stack );
+
+//===========================================================================
+//	main
+//===========================================================================
+char *expression = "{ hello, hi }, { }{ \n\\0, world, { dear\\ ,, poor\\ , }{ you }}.\n";
+// char *expression = "{ hello, hi }, { }{ \n\\0, world\n, { dear\\ ,, poor\\ , }{ you \n";
+
+int
+main( int argc, char *argv[] )
+{
+	listItem *sequence = segmentize( expression );
+
+	printf( "expression:\n\t" );
+	for ( char *p=expression; *p; p++ )
+		if ( *p=='\n' ) printf( "\\n" ); else putchar( *p );
+	printf( "\nresults:\n" );
+	listItem *stack[ 4 ] = { NULL, NULL, NULL, NULL };
+	do {
+#ifdef EXECUTIVE_SUMMARY
+		expand( sequence, stack );
+#else
+		printf( "\t" );
+		for ( listItem *i=firsti(sequence,stack); i!=NULL; i=nexti(i,stack) ) {
+			Pair *item=i->ptr, *segment=item->name;
+			if (( segment ))
+				for ( char *p=segment->name; p!=segment->value; p++ )
+					printf( "%c", *p );
+			else break;
+		}
+#endif
+	} while ( cycle_through( stack ) );
+
+	free_segmentized( sequence );
+}
+
 //===========================================================================
 //	segmentize
 //===========================================================================
 static void tie_up( listItem **, listItem **, listItem ** );
 
-#define BASE_EXCEPTED \
-	if (!(stack[ 1 ])) { p++; break; }
+#define SEQUENCE	0
+#define ALTERNATIVE	1
+#define BRANCH		1
+#define PATH		2
 
-#define CLIP_SEQUENCE \
+#define CLIP( sequence, segment, p ) \
 	if ( segment->name == p ) { \
 		p++; segment->name = p; \
 	} else { \
@@ -24,11 +67,13 @@ static void tie_up( listItem **, listItem **, listItem ** );
 listItem *
 segmentize( char *expression )
 /*
-	build sequence:{
-		| [ segment, NULL ]
-		| alternative:[ :sequence, next:alternative ]
+	build Sequence:{
+		| [ segment:Segment, NULL ]
+		| Alternative:[ :Sequence, next:Alternative ]
 		| [ NULL, NULL ]
 		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; }
 */
 {
 	listItem *sequence = NULL, *alternative = NULL;
@@ -38,14 +83,14 @@ segmentize( char *expression )
 	while ( *p ) {
 		switch ( *p ) {
 		case '{':
-			CLIP_SEQUENCE
-			addItem( &stack[ 0 ], sequence );
-			addItem( &stack[ 1 ], alternative );
+			CLIP( sequence, segment, p );
+			addItem( &stack[ SEQUENCE ], sequence );
+			addItem( &stack[ ALTERNATIVE ], alternative );
 			sequence = alternative = NULL;
 			break;
 		case ',':
-			BASE_EXCEPTED
-			CLIP_SEQUENCE
+			if ( stack[ ALTERNATIVE ]==NULL ) { p++; break; }
+			CLIP( sequence, segment, p );
 			if (( sequence )) {
 				reorderListItem( &sequence );
 				alternative = addItem( &alternative, sequence );
@@ -60,13 +105,13 @@ segmentize( char *expression )
 			}
 			break;
 		case '}':
-			BASE_EXCEPTED
-			CLIP_SEQUENCE
+			if ( stack[ ALTERNATIVE ]==NULL ) { p++; break; }
+			CLIP( sequence, segment, p );
 			tie_up( &alternative, &sequence, stack );
 			break;
 		case ' ':
-			BASE_EXCEPTED
-			CLIP_SEQUENCE
+			if ( stack[ ALTERNATIVE ]==NULL ) { p++; break; }
+			CLIP( sequence, segment, p );
 			break;
 		case '\\':
 			switch ( p[1] ) {
@@ -81,7 +126,7 @@ segmentize( char *expression )
 			case '}':
 			case '\\':
 			case ' ':
-				CLIP_SEQUENCE
+				CLIP( sequence, segment, p );
 				break;
 			default:
 				p++;
@@ -93,7 +138,7 @@ segmentize( char *expression )
 	}
 	segment->value = p;
 	addItem( &sequence, newPair( segment, NULL ) );
-	while (( stack[ 1 ] )) {
+	while (( stack[ ALTERNATIVE ] )) {
 		tie_up( &alternative, &sequence, stack );
 	}
 	reorderListItem( &sequence );
@@ -109,35 +154,89 @@ tie_up( listItem **alternative, listItem **sequence, listItem **stack )
 		}
 		if (( (*alternative)->next )) {
 			reorderListItem( alternative );
-			*sequence = popListItem( &stack[ 0 ] );
+			*sequence = popListItem( &stack[ SEQUENCE ] );
 			*sequence = addItem( sequence, *alternative );
 		}
 		else {
-			listItem *s = popListItem( &stack[ 0 ] );
+			listItem *s = popListItem( &stack[ SEQUENCE ] );
 			*sequence = catListItem( *sequence, s );
 		}
 	}
 	else {
-		listItem *s = popListItem( &stack[ 0 ] );
+		listItem *s = popListItem( &stack[ SEQUENCE ] );
 		*sequence = catListItem( *sequence, s );
 	}
-	*alternative = popListItem( &stack[ 1 ] );
+	*alternative = popListItem( &stack[ ALTERNATIVE ] );
+}
+
+//===========================================================================
+//	free_segmentized
+//===========================================================================
+void
+free_segmentized( listItem *sequence )
+/*
+	free Sequence:{
+		| [ segment:Segment, NULL ]
+		| Alternative:[ :Sequence, next:Alternative ]
+		| [ NULL, NULL ]
+		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; }
+*/
+{
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	while (( i )) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			// item is a list of alternative sequences
+			listItem *j = (listItem *) item;
+			addItem( &stack, newPair( j, i->next ) );
+			i = j->ptr;
+			continue;
+		}
+		if (( item->name )) freePair( item->name ); // segment
+		freePair( item );
+		if (( i->next ))
+			i = i->next;
+		else if (( stack )) {
+			do {
+				item = stack->ptr;
+				listItem *alternative = item->name;
+				freeListItem((listItem **) &alternative->ptr );
+				if (( alternative->next )) {
+					item->name = alternative->next;
+					freeItem( alternative );
+					alternative = item->name;
+					i = alternative->ptr;
+					break;
+				}
+				else {
+					i = item->value;
+					freeItem( alternative );
+					freePair( item );
+					popListItem( &stack );
+				}
+			} while ( !i && (stack) );
+		}
+		else break;
+	}
+	freeListItem( &sequence );
 }
 
 //===========================================================================
 //	expand, firsti, nexti
 //===========================================================================
-#define PATH		0
-#define BRANCH		1
-#define SEQUENCE	2
 void
 expand( listItem *sequence, listItem **stack )
 /*
-	traverse sequence:{
-		| [ segment, NULL ]
-		| alternative:[ :sequence, next:alternative ]
+	traverse Sequence:{
+		| [ segment:Segment, NULL ]
+		| Alternative:[ :Sequence, next:Alternative ]
 		| [ NULL, NULL ]
 		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; }
 */
 {
 	listItem *i=sequence, *j=stack[ PATH ];
@@ -151,7 +250,7 @@ expand( listItem *sequence, listItem **stack )
 				j = j->next;
 			}
 			else {
-				addItem( &stack[ BRANCH ], newPair( item, item ));
+				addItem( &stack[ BRANCH ], newPair( NULL, item ));
 				i = ((listItem *) item )->ptr;
 			}
 			continue;
@@ -184,7 +283,7 @@ firsti( listItem *i, listItem **stack )
 				stack[ 3 ] = stack[ 3 ]->next;
 			}
 			else {
-				addItem( &stack[ BRANCH ], newPair( item, item ));
+				addItem( &stack[ BRANCH ], newPair( NULL, item ));
 				i = ((listItem *) item )->ptr;
 			}
 			continue;
@@ -240,90 +339,4 @@ cycle_through( listItem **stack )
 	stack[ 3 ] = stack[ PATH ];
 	return 1;
 }
-
-//===========================================================================
-//	free_sequence
-//===========================================================================
-void
-free_sequence( listItem *sequence )
-/*
-	free sequence:{
-		| [ segment, NULL ]
-		| alternative:[ :sequence, :alternative ]
-		| [ NULL, NULL ]
-		}
-*/
-{
-	listItem *stack = NULL;
-	listItem *i = sequence;
-	for ( ; ; ) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item is a list of alternative sequences
-			Pair *index = newPair( item, item );
-			addItem( &stack, index );
-			i = ((listItem *) item )->ptr;
-			continue;
-		}
-		freePair( item->name );	// segment
-		if (( i->next )) {
-			i = i->next;
-		}
-		else if (( stack )) {
-			for ( ; ; ) {
-				Pair *index = stack->ptr;
-				listItem *alternative = index->value;
-				freeListItem((listItem **) &alternative->ptr );
-				if (( alternative->next )) {
-					index->value = alternative->next;
-					i = alternative->next->ptr;
-					break;
-				}
-				else {
-					freePair( index );
-					popListItem( &stack );
-					if (!(stack)) goto RETURN;
-				}
-			}
-		}
-		else goto RETURN;
-	}
-RETURN:
-	freeListItem( &sequence );
-}
-
-//===========================================================================
-//	main	- DEBUG
-//===========================================================================
-#ifdef TEST
-char *expression = "{ hello, hi }, { }{ \n\\0, world, { dear\\ ,, poor\\ , }{ you }}.\n";
-// char *expression = "{ hello, hi }, { }{ \n\\0, world\n, { dear\\ ,, poor\\ , }{ you \n";
-int
-main( int argc, char *argv[] )
-{
-	printf( "expression:\n\t" );
-	for ( char *p=expression; *p; p++ )
-		if ( *p=='\n' ) printf( "\\n" ); else putchar( *p );
-	printf( "\nresults:\n" );
-
-	listItem *sequence = segmentize( expression );
-	listItem *stack[ 4 ] = { NULL, NULL, NULL, NULL };
-	do {
-#if 1
-		printf( "\t" );
-		for ( listItem *i=firsti(sequence,stack); i!=NULL; i=nexti(i,stack) ) {
-			Pair *item=i->ptr, *segment=item->name;
-			if (( segment ))
-				for ( char *p=segment->name; p!=segment->value; p++ )
-					printf( "%c", *p );
-			else break;
-		}
-#else
-		expand( sequence, stack );
-#endif
-	}
-	while ( cycle_through( stack ) );
-	free_sequence( sequence );
-}
-#endif
 

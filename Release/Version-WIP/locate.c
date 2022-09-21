@@ -68,16 +68,9 @@ bm_locate_pivot( char *expression, listItem **exponent )
 			else { bm_locate_mark( p+1, &mark_exp ); p++; }
 			break;
 		case '(':
-			// skip ternary-operated expressions
-			q = p_prune( PRUNE_TERNARY, p );
-			if ( *q=='?' ) {
-				p = p_prune( PRUNE_TERNARY, q ); // ':'
-				p = p_prune( PRUNE_TERNARY, q ); // ')'
-				p++; break;
-			}
 			scope++;
 			add_item( &stack.flags, not|tuple );
-			tuple = ( *q==',' ) ? 2 : 0;
+			tuple = p_single(p) ? 0 : 2;
 			if (( mark_exp )) {
 				tuple |= 4;
 				addItem( &stack.premark, *exponent );
@@ -146,8 +139,6 @@ bm_locate_pivot( char *expression, listItem **exponent )
 int
 xp_target( char *expression, int target )
 {
-#define SET( candidate, mark ) \
-	{ candidate |= mark; if ( target & QMARK ) return candidate; }
 	char *	p = expression, *q;
 	int	candidate = 0, not = 0,
 		level = 0, done = 0;
@@ -161,7 +152,13 @@ xp_target( char *expression, int target )
 			p++; break;
 		case '%':
 			if ( p[1]=='?' ) {
-				if ( !not ) SET( candidate, QMARK )
+				if ( !not ) {
+					if ( target&QMARK ) {
+						candidate |= QMARK;
+						return candidate;
+					}
+					else candidate |= QMARK;
+				}
 				p+=2; break;
 			}
 			else if ( p[1]=='!' ) {
@@ -178,9 +175,9 @@ xp_target( char *expression, int target )
 			// skip ternary-operated expressions
 			q = p_prune( PRUNE_TERNARY, p );
 			if ( *q=='?' ) {
-				p = p_prune( PRUNE_TERNARY, q ); // ':'
-				p = p_prune( PRUNE_TERNARY, q ); // ')'
-				p++; break;
+				q = p_prune( PRUNE_TERNARY, q ); // ':'
+				q = p_prune( PRUNE_TERNARY, q ); // ')'
+				p = q+1; break;
 			}
 			level++;
 			p++; break;
@@ -256,16 +253,15 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 			}
 			p++; break;
 		case '(':
-			// skip ternary-operated expressions
 			q = p_prune( PRUNE_TERNARY, p );
 			if ( *q=='?' ) {
 				if ( !arg_CB ) {
 					p = q;
 					done=2; break;
 				}
-				p = p_prune( PRUNE_TERNARY, q ); // ':'
-				p = p_prune( PRUNE_TERNARY, q ); // ')'
-				p++; break;
+				q = p_prune( PRUNE_TERNARY, q ); // ':'
+				q = p_prune( PRUNE_TERNARY, q ); // ')'
+				p = q+1; break;
 			}
 			scope++;
 			add_item( &stack.couple, couple );
