@@ -6,6 +6,8 @@
 #include "flags.h"
 #include "string_util.h"
 
+#define PREVIOUS
+
 listItem *ternarize( char *expression );
 void free_ternarized( listItem *sequence );
 void output_ternarized( listItem *sequence );
@@ -19,7 +21,7 @@ void output_ternarized( listItem *sequence );
 // char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
 // char *expression = "( hi ? hello : You ? world : caramba )";
 // char *expression = "( hi ? hello ? You :)";
-char *expression = "( hi ? hello ? You : caramba ):( alpha, ( beta ? gamma : delta ) )";
+char *expression = "( hello, world ):( hi ? hello ? You : caramba ):( alpha, ( beta ? (gamma?epsilon:kappa) : delta ) )";
 // char *expression = "( hi ? hello ? You :: caramba )";
 // char *expression = "( hi ? hello ?: world : caramba )";
 
@@ -86,14 +88,19 @@ ternarize( char *expression )
 		case '\t':
 			p++; break;
 		case '(':
-			// finish current Sequence - without reordering,
-			// which will take place on ')'
-			if is_f( SUB_EXPR ) p--;
-			FINISH( segment, sequence, p, 0 );
-			if is_f( SUB_EXPR ) { p++; f_clr( SUB_EXPR ) }
-			// start a new Sequence
-			addItem( &stack.sequence, sequence );
-			sequence = NULL;
+#ifndef PREVIOUS
+			if ( p_ternary( p ) )
+#endif
+			{
+				// finish current Sequence - without reordering,
+				// which will take place on ')'
+				if is_f( SUB_EXPR ) p--;
+				FINISH( segment, sequence, p, 0 );
+				if is_f( SUB_EXPR ) p++;
+				// start a new Sequence
+				addItem( &stack.sequence, sequence );
+				sequence = NULL;
+			}
 			f_push( &stack.flags )
 			f_reset( FIRST|LEVEL, 0 )
 			p++; break;
@@ -140,17 +147,14 @@ ternarize( char *expression )
 			p++; break;
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
+#ifdef PREVIOUS
 			FINISH( segment, sequence, p, 1 );
 			if is_f( TERNARY ) {
-				// ternary==[ guard, [ passed, NULL ] ] is on stack.sequence
-#if 0
-				Pair *ternary;
-				do {
-					ternary = popListItem( &stack.sequence );
-					f_pop( &stack.flags, 0 );
-				} while (!is_f( FIRST ));
-				((Pair *) ternary->value )->value = sequence;
 #else
+			if is_f( TERNARY ) {
+				FINISH( segment, sequence, p, 1 );
+#endif
+				// ternary==[ guard, [ passed, NULL ] ] is on stack.sequence
 				Pair *ternary = popListItem( &stack.sequence );
 				f_pop( &stack.flags, 0 );
 				((Pair *) ternary->value )->value = sequence;
@@ -158,15 +162,16 @@ ternarize( char *expression )
 					ternary = popListItem( &stack.sequence );
 					f_pop( &stack.flags, 0 );
 				}
-#endif
 				sequence = popListItem( &stack.sequence );
 				addItem( &sequence, ternary );
 			}
+#ifdef PREVIOUS
 			else {
 				listItem *sub = sequence;
 				sequence = popListItem( &stack.sequence );
 				addItem( &sequence, newPair( NULL, sub ) );
 			}
+#endif
 			f_pop( &stack.flags, 0 );
 			f_set( INFORMED );
 			p++; break;
@@ -338,8 +343,10 @@ output_segment( Pair *segment, int *tab )
 		tab[ OFFSET ]++;
 		break;
 	case ')':
+#ifdef PREVIOUS
 		tab[ BASE ]--;
-		tab[ OFFSET ] = 0;
+#endif
+//		tab[ OFFSET ] = 0;
 		break;
 	}
 	int tabs = tab[ BASE ];
@@ -355,8 +362,12 @@ output_segment( Pair *segment, int *tab )
 
 	switch ( *bgn ) {
 	case '(':
+#ifdef PREVIOUS
 		tab[ BASE ]++;
 		tab[ OFFSET ] = -1;
+#else
+//		tab[ OFFSET ] = 0;
+#endif
 		break;
 	case ':':
 		tab[ OFFSET ]--;
