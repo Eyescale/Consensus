@@ -17,7 +17,11 @@ void output_ternarized( listItem *sequence );
 // char *expression = "( hi:bambina ? hello : world )";
 // char *expression = "( hi:bambina ?: carai )";
 // char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
-char *expression = "( hi ? hello ? You : world : caramba )";
+// char *expression = "( hi ? hello : You ? world : caramba )";
+// char *expression = "( hi ? hello ? You :)";
+char *expression = "( hi ? hello ? You : caramba ):( alpha, ( beta ? gamma : delta ) )";
+// char *expression = "( hi ? hello ? You :: caramba )";
+// char *expression = "( hi ? hello ?: world : caramba )";
 
 int
 main( int argc, char *argv[] )
@@ -139,12 +143,22 @@ ternarize( char *expression )
 			FINISH( segment, sequence, p, 1 );
 			if is_f( TERNARY ) {
 				// ternary==[ guard, [ passed, NULL ] ] is on stack.sequence
+#if 0
 				Pair *ternary;
 				do {
 					ternary = popListItem( &stack.sequence );
 					f_pop( &stack.flags, 0 );
 				} while (!is_f( FIRST ));
 				((Pair *) ternary->value )->value = sequence;
+#else
+				Pair *ternary = popListItem( &stack.sequence );
+				f_pop( &stack.flags, 0 );
+				((Pair *) ternary->value )->value = sequence;
+				while (!is_f( FIRST )) {
+					ternary = popListItem( &stack.sequence );
+					f_pop( &stack.flags, 0 );
+				}
+#endif
 				sequence = popListItem( &stack.sequence );
 				addItem( &sequence, ternary );
 			}
@@ -263,6 +277,8 @@ free_ternarized( listItem *sequence )
 //===========================================================================
 //	output_ternarized
 //===========================================================================
+static void output_segment( Pair *segment, int *tab );
+
 void
 output_ternarized( listItem *sequence )
 /*
@@ -280,6 +296,7 @@ output_ternarized( listItem *sequence )
 {
 	listItem *stack = NULL;
 	listItem *i = sequence;
+	int tab[ 2 ] = { 1, 0 };
 	while (( i )) {
 		Pair *item = i->ptr;
 		if (( item->name )) {
@@ -299,12 +316,7 @@ output_ternarized( listItem *sequence )
 			i = item->value; // traverse sub
 			continue;
 		}
-		// output segment
-		Pair *segment = item->name;
-		printf( "\t" );
-		for ( char *p=segment->name; p!=segment->value; p++ )
-			putchar( *p );
-		printf( "\n" );
+		output_segment( item->name, tab );
 		// moving on
 		if (( i->next )) {
 			i = i->next;
@@ -313,5 +325,41 @@ output_ternarized( listItem *sequence )
 			i = popListItem( &stack );
 		}
 		else break;
+	}
+}
+static void
+output_segment( Pair *segment, int *tab )
+{
+#define BASE	0
+#define OFFSET	1
+	char *bgn = segment->name;
+	switch ( *bgn ) {
+	case '?':
+		tab[ OFFSET ]++;
+		break;
+	case ')':
+		tab[ BASE ]--;
+		tab[ OFFSET ] = 0;
+		break;
+	}
+	int tabs = tab[ BASE ];
+	if ( tab[ OFFSET ] > 0 )
+		tabs += tab[ OFFSET ];
+	for ( int i=0; i < tabs; i++ )
+		putchar( '\t' );
+
+	char *end = segment->value;
+	for ( char *p=bgn; p!=end; p++ )
+		putchar( *p );
+	putchar( '\n' );
+
+	switch ( *bgn ) {
+	case '(':
+		tab[ BASE ]++;
+		tab[ OFFSET ] = -1;
+		break;
+	case ':':
+		tab[ OFFSET ]--;
+		break;
 	}
 }
