@@ -8,13 +8,14 @@ Synopsis
 		%( expr ? expr1 : expr2 )
 
 	1. Restrictions
-	. Only the second type is authorized as term of a ternary-operated
-	  expression, since then the overall expression is already marked.
+	. Only the second type is authorized as term of an already ternary-
+	  operated expression, as the overall expression is already marked.
 	. Only the second type is authorized in DO-type occurrences, e.g.
 		do : toto : %( expr ? expr : expr )
 	  as otherwise bm_substantiate(), bm_instantiate() and bm_void()
 	  would have to deternarize prior to proceeding (can be done).
 	. we do NOT support ( expr ?:)
+	. we do NOT support ( expr ? expr :? _ ) in N-ary cases (see below)
 
 	2. Extensions
 	. we do inform %? in return from IN/ON-type ( expr ? expr1 : expr2 )

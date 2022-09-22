@@ -8,6 +8,7 @@ TODO
 		. traversal.c: undo bm_verify ternarization
 		. review xp_target / bm_locate_pivot, esp. with deternarize
 		. review is_separator() calls in expression.c
+		. string_util.c: p_prune( ) can do better / PRUNE_IDENTIFIER
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)

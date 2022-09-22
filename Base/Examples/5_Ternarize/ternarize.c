@@ -55,14 +55,6 @@ main( int argc, char *argv[] )
 #define	TERNARY		16
 #define	FILTERED	32
 
-#define FINISH( segment, sequence, p, reorder ) \
-	if ( segment->name != p ) { \
-		segment->value = p; \
-		addItem( &sequence, newPair( segment, NULL ) ); \
-		segment = newPair( p, NULL ); \
-	} \
-	if ( reorder ) reorderListItem( &sequence );
-
 listItem *
 ternarize( char *expression )
 /*
@@ -88,10 +80,14 @@ ternarize( char *expression )
 			p++; break;
 		case '(':
 			// finish current Sequence - without reordering,
-			// which will take place on ')'
+			// which will take place on '?' or ')'
 			if is_f( SUB_EXPR ) p--;
-			FINISH( segment, sequence, p, 0 );
-			if is_f( SUB_EXPR ) p++;
+			if ( segment->name != p ) {
+				segment->value = p;
+				addItem( &sequence, newPair( segment, NULL ) );
+				segment = newPair( p, NULL );
+			}
+			if is_f( SUB_EXPR ) { p++; f_clr( SUB_EXPR ) }
 			// start a new Sequence
 			addItem( &stack.sequence, sequence );
 			sequence = NULL;
@@ -101,8 +97,14 @@ ternarize( char *expression )
 		case '?':
 			if is_f( INFORMED ) {
 				if (!is_f( LEVEL )) { done=1; break; }
-				FINISH( segment, sequence, p, 1 );
-				// My whole current Sequence is guard
+				// finish current Sequence - reordered
+				if ( segment->name != p ) { // should not be, here
+					segment->value = p;
+					addItem( &sequence, newPair( segment, NULL ) );
+					segment = newPair( p, NULL );
+				}
+				reorderListItem( &sequence );
+				// whole Sequence is guard
 				Pair *ternary = newPair( sequence, newPair( NULL, NULL ) );
 				if is_f( TERNARY ) {
 					// sup==[ guard, [.,.] ] is on stack.sequence
@@ -113,6 +115,7 @@ ternarize( char *expression )
                                                 ((Pair *) sup->value )->name = newItem( ternary );
 				}
 				else { f_set( TERNARY ) }
+				// start new sequence
 				addItem( &stack.sequence, ternary );
 				sequence = NULL;
 				f_push( &stack.flags )
@@ -122,26 +125,37 @@ ternarize( char *expression )
 			p++; break;
 		case ':':
 			if is_f( TERNARY ) {
-				FINISH( segment, sequence, p, 1 );
+				// finish current sequence, reordered
+				if ( segment->name != p ) {
+					segment->value = p;
+					addItem( &sequence, newPair( segment, NULL ) );
+					segment = newPair( p, NULL );
+				}
+				reorderListItem( &sequence );
 				// ternary==[ guard, [.,.] ] is on stack.sequence
 				if is_f( FILTERED ) {
 					Pair *ternary = popListItem( &stack.sequence );
 					((Pair *) ternary->value )->value = sequence;
-					sequence = NULL;
 					f_pop( &stack.flags, 0 )
 				}
 				else {
 					Pair *ternary = stack.sequence->ptr;
 					((Pair *) ternary->value )->name = sequence;
-					sequence = NULL;
 					f_set( FILTERED )
 				}
+				sequence = NULL;
 			}
 			f_clr( INFORMED )
 			p++; break;
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
-			FINISH( segment, sequence, p, 1 );
+			// finish current sequence, reordered
+			if ( segment->name != p ) {
+				segment->value = p;
+				addItem( &sequence, newPair( segment, NULL ) );
+				segment = newPair( p, NULL );
+			}
+			reorderListItem( &sequence );
 			if is_f( TERNARY ) {
 				// ternary==[ guard, [ passed, NULL ] ] is on stack.sequence
 				Pair *ternary = popListItem( &stack.sequence );
@@ -180,9 +194,13 @@ ternarize( char *expression )
 			f_set( INFORMED )
 		}
 	}
-	// finish current Sequence
-	FINISH( segment, sequence, p, 1 );
-	freePair( segment );
+	// finish current sequence, reordered
+	if ( segment->name != p ) {
+		segment->value = p;
+		addItem( &sequence, newPair( segment, NULL ) );
+	}
+	else freePair( segment );
+	reorderListItem( &sequence );
 
 	if ((stack.sequence)||(stack.flags)) {
 		fprintf( stderr, ">>>>> B%%: Error: ternarize: Memory Leak\n" );
