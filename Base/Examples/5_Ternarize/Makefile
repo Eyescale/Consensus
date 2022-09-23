@@ -11,7 +11,9 @@ LFLAGS = -L../..
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	ternarize.c
+SRCS =	main.c \
+	ternarize.c \
+	deternarize.c
 
 CFLAGS =
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)

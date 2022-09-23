@@ -5,56 +5,11 @@
 #include "pair.h"
 #include "flags.h"
 #include "string_util.h"
-
-listItem *ternarize( char *expression );
-void free_ternarized( listItem *sequence );
-void output_ternarized( listItem *sequence );
-
-//===========================================================================
-//	main
-//===========================================================================
-// char *expression = "( hello, world )";
-// char *expression = "( hi:bambina ? hello : world )";
-// char *expression = "( hi:bambina ?: carai )";
-// char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
-// char *expression = "( hi ? hello : You ? world : caramba )";
-// char *expression = "( hi ? hello ? You :)";
-char *expression = "( hello, world ):%( hi ? hello ? You : caramba ):( alpha, ( beta ? (gamma?epsilon:kappa) : delta ) )";
-// char *expression = "( hi ? hello ? You :: caramba )";
-// char *expression = "( hi ? hello ?: world : caramba )";
-
-int
-main( int argc, char *argv[] )
-{
-	listItem *sequence = ternarize( expression );
-
-	printf( "expression:\n\t" );
-        for ( char *p=expression; *p; p++ )
-		switch ( *p ) {
-		case '\n':
-			printf( "\\n" );
-			break;
-		default:
-                	putchar( *p );
-		}
-
-        printf( "\nresults:\n" );
-	output_ternarized( sequence );
-	printf( "\n" );
-
-	free_ternarized( sequence );
-}
+#include "ternarize.h"
 
 //===========================================================================
 //	ternarize
 //===========================================================================
-#define	FIRST		1
-#define	LEVEL		2
-#define	SUB_EXPR	4
-#define	INFORMED	8
-#define	TERNARY		16
-#define	FILTERED	32
-
 listItem *
 ternarize( char *expression )
 /*
@@ -221,7 +176,7 @@ free_ternarized( listItem *sequence )
 		| [ segment:Segment, NULL ]
 		| [ NULL, sub:Sequence ]
 		| [ guard:Sequence, [ passed:Sequence, alternate:Sequence ] ]
-		| NULL	// alternate
+		| [ NULL, NULL ] // ~.
 		}
 	where
 		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
@@ -233,7 +188,7 @@ free_ternarized( listItem *sequence )
 		Pair *item = i->ptr;
 		if (( item->name )) {
 			if (( item->value )) {
-				/* item==[ guard:Sequence, p:[ passed:Sequence, alternative:Sequence ] ]
+				/* item==[ guard:Sequence, p:[ passed:Sequence, alternate:Sequence ] ]
 				   We want the following on the stack
 				   if (( p->value ))
 					[ p->value, i->next ]
@@ -267,7 +222,7 @@ free_ternarized( listItem *sequence )
 			i = item->name; // traverse sub
 			continue;
 		}
-		freePair( item->name );	// segment
+		if (( item->name )) freePair( item->name ); // segment
 		freePair( item );
 		if (( i->next ))
 			i = i->next;
@@ -290,6 +245,8 @@ free_ternarized( listItem *sequence )
 //===========================================================================
 //	output_ternarized
 //===========================================================================
+#define TAB_BASE	0
+#define TAB_OFFSET	1
 static void output_segment( Pair *segment, int *tab );
 
 void
@@ -310,11 +267,11 @@ output_ternarized( listItem *sequence )
 	listItem *stack = NULL;
 	listItem *i = sequence;
 	int tab[ 2 ] = { 1, 0 };
-	while (( i )) {
+	for ( ; ; ) {
 		Pair *item = i->ptr;
 		if (( item->name )) {
 			if (( item->value )) {
-				// item==[ guard:Sequence, p:[ passed:Sequence, alternative:Sequence ] ]
+				// item==[ guard:Sequence, p:[ passed:Sequence, alternate:Sequence ] ]
 				Pair *p = item->value;
 				if (( i->next )) addItem( &stack, i->next );
 				if (( p->value )) addItem( &stack, p->value );
@@ -340,41 +297,50 @@ output_ternarized( listItem *sequence )
 		else break;
 	}
 }
+static int tab_bgn( int *tab, Pair *segment );
+static void tab_end( int *tab, Pair *segment );
 static void
 output_segment( Pair *segment, int *tab )
 {
-#define BASE	0
-#define OFFSET	1
+	if ( segment == NULL ) return;
+	int tabs = tab_bgn( tab, segment );
+	while ( tabs-- ) putchar( '\t' );
+	char *end = segment->value;
+	for ( char *p=segment->name; p!=end; p++ )
+		putchar( *p );
+	tab_end( tab, segment );
+	putchar( '\n' );
+}
+static int
+tab_bgn( int *tab, Pair *segment )
+{
 	char *bgn = segment->name;
 	switch ( *bgn ) {
 	case '?':
-		tab[ OFFSET ]++;
+		tab[ TAB_OFFSET ]++;
 		break;
 	case ')':
-		tab[ BASE ]--;
+		tab[ TAB_BASE ]--;
 		break;
 	}
-	int tabs = tab[ BASE ];
-	if ( tab[ OFFSET ] > 0 )
-		tabs += tab[ OFFSET ];
-	for ( int i=0; i < tabs; i++ )
-		putchar( '\t' );
-
-	char *end = segment->value;
-	for ( char *p=bgn; p!=end; p++ )
-		putchar( *p );
-	putchar( '\n' );
-
+	return tab[ TAB_OFFSET ] > 0 ?
+		tab[ TAB_BASE ] + tab[ TAB_OFFSET ] :
+		tab[ TAB_BASE ];
+}
+static void
+tab_end( int *tab, Pair *segment )
+{
+	char *bgn = segment->name;
 	switch ( *bgn ) {
 	case '%':
-		if (!( bgn[1]=='(' ))
+		if ( bgn[1]!='(' )
 			break;
 	case '(':
-		tab[ BASE ]++;
-		tab[ OFFSET ] = -1;
+		tab[ TAB_BASE ]++;
+		tab[ TAB_OFFSET ] = -1;
 		break;
 	case ':':
-		tab[ OFFSET ]--;
+		tab[ TAB_OFFSET ]--;
 		break;
 	}
 }
