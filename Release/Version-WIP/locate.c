@@ -238,6 +238,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
+			if ( !arg_CB ) { p++; break; }
 		case '%':
 			p = p_prune( PRUNE_FILTER, p+1 );
 			break;

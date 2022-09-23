@@ -8,12 +8,10 @@
 #include "ternarize.h"
 
 static int
-ternary_pass( char *guard, void *user_data )
+ternary_check( char *guard, void *user_data )
 {
-	printf( "\tternary_pass: %s ", guard );
-	int success =
-		!strncmp( guard, "(pass", 5 ) ||
-		!strncmp( guard, "(?:pass", 7 );
+	printf( "\tternary_check: %s ", guard );
+	int success = !strcmp( guard, "pass" );
 	printf( success ? ".\n" : "-> ~\n" );
 	return success;
 }
@@ -22,6 +20,8 @@ ternary_pass( char *guard, void *user_data )
 //	main
 //===========================================================================
 // char *expression = "( hello, world )";
+// char *expression = "%( bambina ? hello : world )";
+// char *expression = "( bambina ? world :)";
 // char *expression = "( hi:bambina ? hello : world )";
 // char *expression = "( hi:bambina ?: carai )";
 // char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
@@ -47,12 +47,13 @@ main( int argc, char *argv[] )
 		listItem *sequence = ternarize( expression );
 		output_ternarized( sequence );
 		free_ternarized( sequence );
-#if 0
-	printf( "\ndeternarized:\n" );
-		char *p = deternarize( expression, ternary_pass, NULL );
-	printf( "\nresult:\n" );
-		if (( p )) { printf( "\t%s\n", p ); free( p ); }
-		else printf( "\tas is" );
-#endif
+	printf( "deternarized:\n" );
+		char *p = deternarize( expression, ternary_check, NULL );
+		if ( p ) {
+			printf( "result:\n" );
+			printf( "\t%s\n", p );
+			free( p );
+		}
+		else printf( "\tas is\n" );
 }
 
