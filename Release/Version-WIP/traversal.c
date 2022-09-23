@@ -446,6 +446,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	invoked by xp_verify on each [sub-]expression, i.e.
 	on each expression term starting with '*' or '%'
 	Note that *variable is same as %((*,variable),?)
+	Assumption: expression is not ternarized
 */
 {
 #ifdef DEBUG

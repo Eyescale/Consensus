@@ -1,14 +1,30 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. integrate deternarize() into Version-WIP
+		. operation.c: expression must be deternarized prior to
+		  calling bm_feel() and bm_traverse() in
+			. in_condition()
+			. on_event()
+			. do_action()	=> allow (_?_:_) as well as %(_?_:_)
+			. enable()
+			. do_input()
+			. do_output()
+		. [ DONE ] no need for ternary support anywhere else, esp. in
+			. expression.c
+			. locate.c
+			. traversal.c
+		. finalize ./design/specs/bm-TERNARY-implementation.txt
+		  Note: bm_read does invoke bm_substantiate() when type==CN_INI
+		  but nothing to do there, so long as ternary operations are
+		  not supported in INI files...
+	. expression.c
+		. correct is_separator() / PRUNE_IDENTIFIER usage
+		  => only in bm_substantiate() and bm_expand()
+		  => to be deprecated / changed anyway
 	. readStory() should post-process expression upon ExpressionTake, for
 		. DOT => will simplify parser (e.g. no more ExpressionPush/Pop)
 		. literals
 		. Ellipsis
-	. Cleanup
-		. traversal.c: undo bm_verify ternarization
-		. review xp_target / bm_locate_pivot, esp. with deternarize
-		. review is_separator() calls in expression.c
-		. string_util.c: p_prune( ) can do better / PRUNE_IDENTIFIER
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
@@ -77,6 +93,7 @@ NTH
 		. Alternative:
 		  1. propose special execution mode (like Debug)
 		  2. special do - e.g. do$ - where bm_void() is enabled
+	. locate.c: review xp_target / bm_locate_pivot
 	. parser.c
 		. multiple separating commas inside { } => reduce to one and one only
 		. integrate caught in CNParserData => all flags
@@ -96,8 +113,16 @@ NTH
 	. move btreefy from ../../Base to ../../Base/Examples/
 
 DONE
+	. traversal.c: removed ternary support in bm_verify() - expression
+	  is assumed to be deternarized
+	. bm_locate_mark() no longer invokes p_prune(PRUNE_TERM,p) on '~'
+	  but returns mark exponent even if expression is negated - as
+	  it may be negated twice, esp. after deternarize()
 	. Added ../../Base/Examples/5_Ternarize
+		. ternarize.c
+		. deterarize.c
 	. Cleaned up ../../Base/Examples/3_Segmentize
+		. esp. free_segmentized() was wrong
 	. ternary-operated expressions - see bm-TERNARY-implementation.txt
 		. parser.c	- bm_parse()
 		. traversal.c	- xp_verify(), bm_verify()
@@ -112,23 +137,23 @@ DONE
 	 	. see bm-TERNARY-implementation.txt
 	. Restored Version-WIP backward compatibility w/ Version-1.1
 	  sub-narrative execution
-		. [DONE] bm_operation.c: implemented operation registries & warden
-		. [DONE] parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
-		. [DONE] context.c:
+		. bm_operation.c: implemented operation registries & warden
+		. parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
+		. context.c:
 			. bm_context_set() / bm_context_clear() implementation
 			. restore bm_lookup & bm_register functionality including
 			  ALL ctx->registry variables
 		. operate()
-			. [DONE] restore LOCALE support
-			. [DONE] restore EN/ELSE_EN support
-		. [DONE] pass ./B% -f Test/yak.ini Test/yak
+			. restore LOCALE support
+			. restore EN/ELSE_EN support
+		. pass ./B% -f Test/yak.ini Test/yak
 	. Parser optimization: if ( data->opt ) goto EXPR_BGN
 		and: set data->opt in _expr; clear it in expr_
 	. Restore sub-narratives, EN, LOCALE, and do .expression commands as per
 	  Version-1.1 in parser.c - cf ./design/specs/bm-sub-narrative-EN-association.txt
 		. sub-narrative proto format is
 			.identifier:( expression1 )
-			:( expression1 )	// pre-compiled as .this:( expression1 )
+			:( expression1 ) // pre-processed as .this:( expression1 )
 		. LOCALE are declarations
 			.var1 .var2 .... .varN
 		. EN / ELSE_EN are statements in the form
@@ -145,16 +170,16 @@ DONE
 		. updated bm_verify() to invoke p_ternary( p ) and
 		  handle return value
 	. string_util.c - ternary operator support
-		. p_prune( P_TERNARY, p ), p_ternary( p )
+		. p_prune( PRUNE_TERNARY, p ), p_ternary( p )
 		. updated p_prune( type, p) so that
-		  with (new) type==P_TERNARY,
+		  with (new) type==PRUNE_TERNARY,
 			when called on opening '(' in ( expr ? expr : expr ),
 				returns on appropriate '?' [level==1] if there is
-		   with type==P_TERM or type==P_FILTER
+		   with type==PRUNE_TERM or type==PRUNE_FILTER
 				when called past '(' in ( expr ? expr : expr ),
 				returns on appropriate '?' or ':' or ')'
 	. parser.c (NEW) complete
-		. filterable() : replaced using COMPOUND flag
+		. deprecated filterable() : replaced using COMPOUND flag
 		. implemented SIGNAL interface in file format: do signal~
 		. use one stack for all
 		. use flags instead of level (LEVEL) and stack.level (SET)
@@ -168,7 +193,7 @@ DONE
 		. complete rewrite / CNParser
 		. changed CNOccurrence from [type,data:[expression,sub]] to [data:[type,expression],sub]
 		. Allow base mark in condition/event expressions
-		. Do not allow negated base mark - except on ~( ... ? ... )
+		. Do not allow negated base mark - except "on ~( ... ? ... )"
 		. Story = Registry vs. listItem
 		. Deprecated sub-narrative File Format Interface
 	. db_op.c
@@ -196,7 +221,7 @@ DONE
 		=> create pop_item() in list.c
 	. database.c
 		. implemented db_signal() db_coupled() db_uncouple()
-		. rewrote freeCNDB() using cn_prune()
+		. simplified freeCNDB() using cn_prune()
 		. db_couple() : no longer allow concurrent reassignments
 		. implemented db_outputf( FILE *, format, ... ) using db_output()
 		  used in e.g. db_instantiate() - and elsewhere...

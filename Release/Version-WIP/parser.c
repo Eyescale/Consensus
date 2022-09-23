@@ -751,16 +751,8 @@ else {
 }
 
 //===========================================================================
-//	cn_parser_init / cn_parser_getc
+//	cn_parser_init
 //===========================================================================
-static int preprocess( int event, int *mode, int *buffer, int *skipped );
-enum {
-	COMMENT = 0,
-	BACKSLASH,
-	STRING,
-	QUOTE
-};
-
 int
 cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data )
 {
@@ -771,6 +763,11 @@ cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data
 	parser->line = 1;
 	return 1;
 }
+
+//===========================================================================
+//	cn_parser_getc
+//===========================================================================
+static int preprocess( int event, int *mode, int *buffer, int *skipped );
 
 int
 cn_parser_getc( CNParserData *data )
@@ -794,7 +791,10 @@ cn_parser_getc( CNParserData *data )
 	}
 	return event;
 }
-
+#define COMMENT		0
+#define BACKSLASH	1
+#define STRING		2
+#define QUOTE		3
 static int
 preprocess( int event, int *mode, int *buffer, int *skipped )
 {

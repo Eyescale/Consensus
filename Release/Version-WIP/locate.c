@@ -30,7 +30,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	int	scope = 0, done = 0,
 		tuple = 0, // default is singleton
 		not = 0;
-	char *	p = expression, *q;
+	char *	p = expression;
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
@@ -139,7 +139,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 int
 xp_target( char *expression, int target )
 {
-	char *	p = expression, *q;
+	char *	p = expression;
 	int	candidate = 0, not = 0,
 		level = 0, done = 0;
 	while ( *p && !done ) {
@@ -172,13 +172,6 @@ xp_target( char *expression, int target )
 			else { p++; break; }
 			break;
 		case '(':
-			// skip ternary-operated expressions
-			q = p_prune( PRUNE_TERNARY, p );
-			if ( *q=='?' ) {
-				q = p_prune( PRUNE_TERNARY, q ); // ':'
-				q = p_prune( PRUNE_TERNARY, q ); // ')'
-				p = q+1; break;
-			}
 			level++;
 			p++; break;
 		case ')':
@@ -234,7 +227,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 	int	scope = 0,
 		done = 0,
 		couple = 0; // base is singleton
-	char *p = expression, *q;
+	char *p = expression;
 	while ( *p && !done ) {
 		switch ( *p ) {
 		case '~':
@@ -254,23 +247,10 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void 
 			}
 			p++; break;
 		case '(':
-			q = p_prune( PRUNE_TERNARY, p );
-			if ( *q=='?' ) {
-				if ( !arg_CB ) {
-					p = q;
-					done=2; break;
-				}
-				q = p_prune( PRUNE_TERNARY, q ); // ':'
-				q = p_prune( PRUNE_TERNARY, q ); // ')'
-				p = q+1; break;
-			}
 			scope++;
 			add_item( &stack.couple, couple );
-			if ( *q==',' ) {
-				couple = 1;
+			if (( couple = !p_single(p) ))
 				xpn_add( exponent, SUB, 0 );
-			}
-			else couple = 0;
 			addItem( &stack.level, level );
 			level = *exponent;
 			p++; break;

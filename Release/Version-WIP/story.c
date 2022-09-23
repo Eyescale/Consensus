@@ -284,7 +284,10 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		StringAppend( data->string, '(' );
 		for ( char *p = data->narrative->proto,
 			*q = (((p) && *p=='.') ? p+1 : "this:");
-			*q!=':'; q++ ) { StringAppend( data->string, *q ); }
+			*q!=':'; q++ )
+		{
+			StringAppend( data->string, *q );
+		}
 		StringAppend( data->string, ',' );
 		break;
 	case ExpressionPop:

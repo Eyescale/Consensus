@@ -440,7 +440,7 @@ bm_void( char *expression, BMContext *ctx )
 		case '~':;
 			int target = xp_target( p, EMARK );
 			if ( target&EMARK && target!=EMARK ) {
-				fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at %s - "
+				fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
 					"dubious combination of query terms with %%!\n", p );
 			}
 			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
