@@ -11,7 +11,7 @@ static int
 ternary_check( char *guard, void *user_data )
 {
 	printf( "\tternary_check: %s ", guard );
-	int success = !strcmp( guard, "pass" );
+	int success = !strncmp( guard, "pass", 4 );
 	printf( success ? ".\n" : "-> ~\n" );
 	return success;
 }
@@ -27,7 +27,7 @@ ternary_check( char *guard, void *user_data )
 // char *expression = "chiquita:( hi:bambina ? caramba :):bambam, tortilla";
 // char *expression = "( hi ? hello : You ? world : caramba )";
 // char *expression = "( hi ? hello ? You :)";
-char *expression = "( hello, world ):%( hi ? hello ? You : caramba ):( alpha, ( beta ? (gamma?epsilon:kappa) : delta ) )";
+char *expression = "( hello, world ):%( hi ? hello ? You : caramba ):( alpha, ( pass ? (gamma?epsilon:kappa) : delta ) )";
 // char *expression = "( hi ? hello ? You :: caramba )";
 // char *expression = "( hi ? hello ?: world : caramba )";
 

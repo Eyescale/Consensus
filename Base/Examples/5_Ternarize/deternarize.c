@@ -10,11 +10,7 @@
 //===========================================================================
 //	deternarize
 //===========================================================================
-static void s_append( CNString *, char *bgn, char *end );
 static void s_scang( CNString *, listItem * );
-static void s_add_not_any( CNString * );
-#define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
 
 char *
 deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
@@ -30,8 +26,8 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 {
 	if ( !pass_CB ) return NULL;
 	struct { listItem *sequence, *flags; } stack = { NULL, NULL };
+	char *p = expression, *deternarized = NULL;
 	int flags = 0, ternary = 0;
-	char *p = expression;
 	listItem *sequence = NULL;
 	Pair *segment = newPair( p, NULL );
 	for ( int done=0; *p && !done; ) {
@@ -47,7 +43,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 			if ( p_ternary( p ) ) {
 				ternary = 1;
 				// finish current Sequence - without reordering,
-				// which will take place on ')' or '?'
+				// which will take place on return
 				if is_f( SUB_EXPR ) p--;
 				if ( segment->name != p ) {
 					segment->value = p;
@@ -58,7 +54,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 				// close current Sequence with %( or ( as separate segment
 				segment->value = p+1;
 				addItem( &sequence, newPair( segment, NULL ) );
-				// start a new Sequence, with current pushed on stack
+				// push current Sequence on stack.sequence and start new
 				addItem( &stack.sequence, sequence );
 				sequence = NULL;
 				segment = newPair ( p+1, NULL );
@@ -132,7 +128,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
 			if is_f( TERNARY ) {
-				// specical cases: segment is ~. or completed option
+				// special cases: segment is ~. or completed option
 				if ( segment==NULL || (segment->value) ) {
 					// add as-is to on-going expression
 					sequence = popListItem( &stack.sequence );
@@ -173,8 +169,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 	}
 	if ( !ternary ) {
 		freePair( segment );
-		free_ternarized( sequence );
-		return NULL;
+		goto RETURN;
 	}
 	// finish current sequence, reordered
 	if ( segment->name != p ) {
@@ -185,23 +180,11 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 
 	// convert sequence to char *string
 	CNString *s = newString();
-	for ( listItem *i=sequence; i!=NULL; i=i->next ) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item==[ NULL, sub:Sequence ]
-			s_scang( s, item->value );
-		}
-		else if (( item->name )) {
-			// item==[ segment:Segment, NULL ]
-			Pair *segment = item->name;
-			s_append( s, segment->name, segment->value );
-		}
-		else s_add_not_any( s );
-	}
-	char *deternarized = StringFinish( s, 0 );
+	s_scang( s, sequence );
+	deternarized = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
-
+RETURN:
 	// release sequence and return string
 	free_ternarized( sequence );
 	if ((stack.sequence)||(stack.flags)) {
@@ -212,6 +195,53 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		exit( -1 );
 	}
 	return deternarized;
+}
+
+//===========================================================================
+//	s_scang, s_append, s_add_not_any
+//===========================================================================
+static void s_append( CNString *, char *bgn, char *end );
+static void s_add_not_any( CNString * );
+#define s_add( str ) \
+	for ( char *p=str; *p; StringAppend(s,*p++) );
+
+static void
+s_scang( CNString *s, listItem *sequence )
+/*
+	scan ternary-operator guard
+		Sequence:{
+			| [ NULL, sub:Sequence ]
+			| [ segment:Segment, NULL ]
+			| [ NULL, NULL ] // ~.
+			}
+		where
+			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+	into CNString
+*/
+{
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	for ( ; ; ) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			// item==[ NULL, sub:Sequence ]
+			if (( i->next )) addItem( &stack, i->next );
+			i = item->value; // parse sub-sequence
+			continue;
+		}
+		else if (( item->name )) {
+			// item==[ segment:Segment, NULL ]
+			Pair *segment = item->name;
+			s_append( s, segment->name, segment->value );
+		}
+		else s_add_not_any( s );
+		// moving on
+		if (( i->next ))
+			i = i->next;
+		else if (( stack ))
+			i = popListItem( &stack );
+		else break;
+	}
 }
 static void
 s_append( CNString *s, char *bgn, char *end )
@@ -257,46 +287,4 @@ s_add_not_any( CNString *s )
 		i->ptr = icast.ptr;
 	}
 	else s_add( "~." )
-}
-
-//===========================================================================
-//	s_scang
-//===========================================================================
-static void
-s_scang( CNString *s, listItem *sequence )
-/*
-	scan ternary-operator guard
-		Sequence:{
-			| [ NULL, sub:Sequence ]
-			| [ segment:Segment, NULL ]
-			| [ NULL, NULL ] // ~.
-			}
-		where
-			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-	into CNString
-*/
-{
-	listItem *stack = NULL;
-	listItem *i = sequence;
-	for ( ; ; ) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item==[ NULL, sub:Sequence ]
-			if (( i->next )) addItem( &stack, i->next );
-			i = item->value; // parse sub-sequence
-			continue;
-		}
-		else if (( item->name )) {
-			// item==[ segment:Segment, NULL ]
-			Pair *segment = item->name;
-			s_append( s, segment->name, segment->value );
-		}
-		else s_add_not_any( s );
-		// moving on
-		if (( i->next ))
-			i = i->next;
-		else if (( stack ))
-			i = popListItem( &stack );
-		else break;
-	}
 }
