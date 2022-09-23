@@ -267,6 +267,10 @@ s_scang( CNString *s, listItem *sequence )
 }
 static void
 s_start( CNString *s, char *bgn, char *end )
+/*
+	if ( replace beginning of segment with (?:
+	otherwise replace it with (
+*/
 {
 	if ( bgn[ 0 ]=='%' && bgn[ 1 ]=='(' ) {
 		s_add( "(" )
