@@ -352,12 +352,12 @@ static char *
 prune_ternary( char *p )
 /*
 	Assumption: *p == either '(' or '?' or ':'
-	in case *p=='(' returns on
+	if *p=='(' returns on
 		the inner '?' operator if the enclosed is ternary
 		the separating ',' or closing ')' otherwise
-	in case *p=='?' finds and returns the corresponding ':'
+	if *p=='?' finds and returns the corresponding ':'
 		assuming working from inside a ternary expression
-	in case *p==':' finds and returns the closing ')'
+	if *p==':' finds and returns the closing ')'
 		assuming working from inside a ternary expression
 	Generally speaking, prune_ternary() can be said to proceed from inside
 	a [potential ternary] expression, whereas p_prune proceeds from outside
@@ -365,9 +365,10 @@ prune_ternary( char *p )
 	have been checked beforehand.
 */
 {
-	listItem *stack = NULL;
+	char *	candidate = NULL;
 	int	start = *p++,
-		ternary = 0, informed = 0;
+		informed = 0,
+		ternary = 0;
 	if ( start=='?' || start==':' )
 		ternary = 1;
 	while ( *p ) {
@@ -390,8 +391,10 @@ prune_ternary( char *p )
 		case ':':
 			if ( ternary ) {
 				ternary--;
-				if ( start=='?' && !ternary )
-					goto RETURN;
+				if ( start=='?' ) {
+					if ( !ternary ) goto RETURN;
+					else candidate = p;
+				}
 			}
 			informed = 0;
 			p++; break;
@@ -410,8 +413,7 @@ prune_ternary( char *p )
 		}
 	}
 RETURN:
-	freeListItem( &stack );
-	return p;
+	return ( candidate==NULL ) ? p : candidate;
 }
 static char *
 prune_format( char *p )
@@ -482,11 +484,7 @@ prune_identifier( char *p )
 		p = prune_regex( p );
 		break;
 	default:
-#if 1
 		while ( !is_separator(*p) ) p++;
-#else		// I wish:
-		do p++; while ( !is_separator(*p) );
-#endif
 	}
 	return p;
 }

@@ -247,7 +247,7 @@ free_ternarized( listItem *sequence )
 //===========================================================================
 #define TAB_BASE	0
 #define TAB_OFFSET	1
-static void output_segment( Pair *segment, int *tab );
+static void output_s( int *tab, char *bgn, char *end );
 
 void
 output_ternarized( listItem *sequence )
@@ -261,7 +261,7 @@ output_ternarized( listItem *sequence )
 	where
 		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
 
-	SEE ALSO free_ternarized for comments in the code
+	SEE ALSO free_ternarized for more comments in the code
 */
 {
 	listItem *stack = NULL;
@@ -286,7 +286,11 @@ output_ternarized( listItem *sequence )
 			i = item->value; // traverse sub
 			continue;
 		}
-		output_segment( item->name, tab );
+		if (( item->name )) {
+			// item==[ segment:Segment, NULL ]
+			Pair *segment = item->name;
+			output_s( tab, segment->name, segment->value );
+		}
 		// moving on
 		if (( i->next )) {
 			i = i->next;
@@ -297,24 +301,21 @@ output_ternarized( listItem *sequence )
 		else break;
 	}
 }
-static int tab_bgn( int *tab, Pair *segment );
-static void tab_end( int *tab, Pair *segment );
+static int tab_bgn( int *tab, char *bgn );
+static void tab_end( int *tab, char *bgn, char *end );
 static void
-output_segment( Pair *segment, int *tab )
+output_s( int *tab, char *bgn, char *end )
 {
-	if ( segment == NULL ) return;
-	int tabs = tab_bgn( tab, segment );
+	int tabs = tab_bgn( tab, bgn );
 	while ( tabs-- ) putchar( '\t' );
-	char *end = segment->value;
-	for ( char *p=segment->name; p!=end; p++ )
+	for ( char *p=bgn; p!=end; p++ )
 		putchar( *p );
-	tab_end( tab, segment );
+	tab_end( tab, bgn, end );
 	putchar( '\n' );
 }
 static int
-tab_bgn( int *tab, Pair *segment )
+tab_bgn( int *tab, char *bgn )
 {
-	char *bgn = segment->name;
 	switch ( *bgn ) {
 	case '?':
 		tab[ TAB_OFFSET ]++;
@@ -328,9 +329,8 @@ tab_bgn( int *tab, Pair *segment )
 		tab[ TAB_BASE ];
 }
 static void
-tab_end( int *tab, Pair *segment )
+tab_end( int *tab, char *bgn, char *end )
 {
-	char *bgn = segment->name;
 	switch ( *bgn ) {
 	case '%':
 		if ( bgn[1]!='(' )
