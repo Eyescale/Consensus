@@ -10,7 +10,7 @@
 //===========================================================================
 //	deternarize
 //===========================================================================
-static void s_scang( CNString *, listItem * );
+static void s_scan( CNString *, listItem * );
 
 char *
 deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
@@ -65,18 +65,13 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		case '?':
 			if is_f( INFORMED ) {
 				if (!is_f( LEVEL )) { done=1; break; }
-				/* sequence==guard==either
-					{[%(,_[, ..., [_,?[}
-				    or	{[(,_[,  ..., [_,?[} 
-				    or	{[_,_[,  ..., [_,?[}  N-ary case
-				*/
-				// finish sequence, reordered
+				// finish sequence==guard, reordered
 				segment->value = p;
 				addItem( &sequence, newPair( segment, NULL ) );
 				reorderListItem( &sequence );
 				// convert & evaluate guard
 				CNString *s = newString();
-				s_scang( s, sequence );
+				s_scan( s, sequence );
 				char *guard = StringFinish( s, 0 );
 				if ( pass_CB( guard, user_data ) ) {
 					if ( p[1]==':' ) {
@@ -93,20 +88,17 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 					}
 				}
 				else {
+					// release guard sequence
+					free_ternarized( sequence );
+					sequence = NULL;
 					// proceed to alternative
 					p = p_prune( PRUNE_TERNARY, p ); // ":"
 					if ( p[1]==':' || p[1]==')' ) {
 						// ~. is our current candidate
 						segment = NULL;
-						// release guard sequence
-						free_ternarized( sequence );
-						sequence = NULL;
 						p = p_prune( PRUNE_TERNARY, p ); // proceed to ")"
 					}
 					else {
-						// release guard sequence
-						free_ternarized( sequence );
-						sequence = NULL;
 						p++; // resume past ":"
 						segment = newPair( p, NULL );
 					}
@@ -129,17 +121,23 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 			if (!is_f( LEVEL )) { done=1; break; }
 			if is_f( TERNARY ) {
 				// special cases: segment is ~. or completed option
-				if ( segment==NULL || (segment->value) ) {
+				if ( !segment ) {
+					// add as-is to on-going expression
+					sequence = popListItem( &stack.sequence );
+					addItem( &sequence, newPair( NULL, NULL ) );
+				}
+				else if ( !sequence ) {
+					if ( !segment->value ) segment->value = p;
 					// add as-is to on-going expression
 					sequence = popListItem( &stack.sequence );
 					addItem( &sequence, newPair( segment, NULL ) );
 				}
 				else {
 					// finish current sequence, reordered
-					segment->value = p;
+					if ( !segment->value ) segment->value = p;
 					addItem( &sequence, newPair( segment, NULL ) );
 					reorderListItem( &sequence );
-					// resume on-going expression
+					// add as sub-Sequence to on-going expression
 					listItem *sub = sequence;
 					sequence = popListItem( &stack.sequence );
 					addItem( &sequence, newPair( NULL, sub ) );
@@ -180,7 +178,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 
 	// convert sequence to char *string
 	CNString *s = newString();
-	s_scang( s, sequence );
+	s_scan( s, sequence );
 	deternarized = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
@@ -198,7 +196,7 @@ RETURN:
 }
 
 //===========================================================================
-//	s_scang, s_append, s_add_not_any
+//	s_scan, s_append, s_add_not_any
 //===========================================================================
 static void s_append( CNString *, char *bgn, char *end );
 static void s_add_not_any( CNString * );
@@ -206,7 +204,7 @@ static void s_add_not_any( CNString * );
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 
 static void
-s_scang( CNString *s, listItem *sequence )
+s_scan( CNString *s, listItem *sequence )
 /*
 	scan ternary-operator guard
 		Sequence:{

@@ -392,8 +392,8 @@ prune_ternary( char *p )
 			if ( ternary ) {
 				ternary--;
 				if ( start=='?' ) {
+					candidate = p;
 					if ( !ternary ) goto RETURN;
-					else candidate = p;
 				}
 			}
 			informed = 0;
@@ -413,7 +413,8 @@ prune_ternary( char *p )
 		}
 	}
 RETURN:
-	return ( candidate==NULL ) ? p : candidate;
+	if (( candidate )) return candidate;
+	else return p;
 }
 static char *
 prune_format( char *p )
