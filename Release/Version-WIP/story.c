@@ -127,7 +127,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 //	bm_read	- internal
 //===========================================================================
 static int read_CB( BMParseOp, BMParseMode, void * );
-static int bm_read_init( BMStoryData *, BMReadMode, CNDB * );
+static int bm_read_init( BMStoryData *, BMReadMode, BMContext * );
 static void * bm_read_exit( int, BMStoryData *, BMReadMode );
 
 void *
@@ -137,13 +137,13 @@ bm_read( BMReadMode mode, ... )
 	1. CNStory *story = bm_read( CN_STORY, (char*) path );
 	2. CNInstance *instance = bm_read( CN_INSTANCE, (FILE*) stream );
 	3. union { int value; void *ptr; } icast;
-	   icast.ptr = bm_read( CN_INI, (CNDB*) db, (char*) inipath );
+	   icast.ptr = bm_read( CN_INI, (BMContext*) ctx, (char*) inipath );
 	   int errnum = icast.value;
 */
 {
 	char *path;
 	FILE *file;
-	CNDB *db;
+	BMContext *ctx;
 	va_list ap;
 	va_start( ap, mode );
 	switch ( mode ) {
@@ -151,7 +151,7 @@ bm_read( BMReadMode mode, ... )
 		file = va_arg( ap, FILE * );
 		break;
 	case CN_INI:
-		db = va_arg( ap, CNDB * );
+		ctx = va_arg( ap, BMContext * );
 		// no break;
 	case CN_STORY:
 		path = va_arg( ap, char * );
@@ -166,7 +166,7 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	BMStoryData data;
-	int parse_mode = bm_read_init( &data, mode, db );
+	int parse_mode = bm_read_init( &data, mode, ctx );
 
 	CNParserData parser;
 	cn_parser_init( &parser, "base", file, &data );
@@ -305,7 +305,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			break;
 		case BM_INI: ;
 			char *expression = StringFinish( data->string, 0 );
-			bm_substantiate( expression, data->db );
+			bm_instantiate( expression, data->ctx );
 			StringReset( data->string, CNStringAll );
 		}
 		break;
@@ -314,7 +314,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 }
 
 static int
-bm_read_init( BMStoryData *data, BMReadMode mode, CNDB *db )
+bm_read_init( BMStoryData *data, BMReadMode mode, BMContext *ctx )
 {
 	int parse_mode = 0;
 	memset( data, 0, sizeof(BMStoryData) );
@@ -329,7 +329,7 @@ bm_read_init( BMStoryData *data, BMReadMode mode, CNDB *db )
 		break;
 	case CN_INI:
 		parse_mode = BM_INI;
-		data->db = db;
+		data->ctx = ctx;
 		data->type = DO;
 		break;
 	case CN_INSTANCE:

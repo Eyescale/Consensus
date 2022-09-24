@@ -9,22 +9,14 @@ TODO
 			. enable()
 			. do_input()
 			. do_output()
-		. [ DONE ] no need for ternary support anywhere else, esp. in
+		. [ DONE ] no need for ternary support anywhere else, e.g. in
 			. expression.c
 			. locate.c
 			. traversal.c
 		. finalize ./design/specs/bm-TERNARY-implementation.txt
-		  Note: bm_read does invoke bm_substantiate() when type==CN_INI
-		  but nothing to do there, so long as ternary operations are
-		  not supported in INI files...
-	. expression.c
-		. correct is_separator() / PRUNE_IDENTIFIER usage
-		  => only in bm_substantiate() and bm_expand()
-		  => to be deprecated / changed anyway
-	. readStory() should post-process expression upon ExpressionTake, for
-		. DOT => will simplify parser (e.g. no more ExpressionPush/Pop)
-		. literals
-		. Ellipsis
+		  Note: bm_read invokes bm_substantiate() when in mode CN_INI,
+		  but nothing to do there, so long as we do not support ternary
+		  operations in INI files...
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
@@ -34,10 +26,6 @@ TODO
 		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
 	. update ./design/specs/bm-read-narrative-states.txt
 	. Pass design/story/single-thread.story
-	. deprecate bm_substantiate() / db_couple()
-		=> Design decision: bm_update() before init flag?
-		=> Design decision / execution model: bm_operate()
-		   should return new list of Cells vs. exit flag?
 	. bm_input()
 		. on EOF should do :input:~. instead of ~(*,input)
 		  => must modify version-1.0 and version-1.1
@@ -82,24 +70,36 @@ TODO
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
 NTH
+	. compile into .a instead of .so
 	. ../../Base/Examples/1_Yak
 	  remove workaround in string_util.c so that we can implement StringFinish as
 	  it should - see s_cmp() in include/parser_private.h. Right now if we check
 	  the string mode in StringFinish then Yak crashes
 		=> reimplement schemeFrame() in ../../Base/Examples/1_Yak/scheme.c
+	. native support for DOT'd expressions
+		. would simplify story.c / parser.c for one thing
+		  requires access to narrative identifier instance - currently
+		  stored as '%' in context (?)
+		. could also postprocess expression in story.c
+	. locate.c: review xp_target / bm_locate_pivot
+	. allow more to be done in INI files (e.g. assignment) ?
+		. Now the whole bm_instantiate() syntax is accessible
+		. and will need it later in new Cell constructor
+	. parser.c
+		. multiple separating commas inside { } => reduce to one and one only
+		. integrate caught in CNParserData => all flags
+		. more & better error messages
+		. extract bm_parser_report from parser.c => error.c ?
 	. expression.c: bm_instantiate() - should it check bm_void() or not ?
 		. Pros: instantiate all or nothing
 		. Cons: performances
 		. Alternative:
 		  1. propose special execution mode (like Debug)
 		  2. special do - e.g. do$ - where bm_void() is enabled
-	. locate.c: review xp_target / bm_locate_pivot
-	. parser.c
-		. multiple separating commas inside { } => reduce to one and one only
-		. integrate caught in CNParserData => all flags
-		. more & better error messages
-		. extract bm_parser_report from parser.c => error.c ?
-	. compile into .a instead of .so
+	  Current status
+		. bm_instantiate() does not invoke bm_void()
+		  => bm_instantiate() may do half a job (user responsibility)
+		  => MUST BE DOCUMENTED
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. per proto:expression <<< where proto can be '?' or narrative-type proto
@@ -112,9 +112,19 @@ NTH
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 	. move btreefy from ../../Base to ../../Base/Examples/
 
+TO BE DOCUMENTED
+	. instantiation may do half a job (see above)
+	. literal %% internally convert as (%,%) - error in current documentation
+
 DONE
-	. traversal.c: removed ternary support in bm_verify() - expression
-	  is assumed to be deternarized
+	. deprecated bm_substantiate() / db_couple()
+		. To be tested: instantiation events during 'on init'
+	. database.c: deprecated db_couple() - along with bm_substantiate()
+	. expression.c: deprecated bm_substantiate()
+		. Now bm_read() calls bm_instantiate(), which integrates
+		  support for bm_literal() - could be used anywhere
+	. traversal.c: removed ternary support in bm_verify()
+		. expression is assumed to be deternarized
 	. bm_locate_mark() no longer invokes p_prune(PRUNE_TERM,p) on '~'
 	  but returns mark exponent even if expression is negated - as
 	  it may be negated twice, esp. after deternarize()

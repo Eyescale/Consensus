@@ -5,8 +5,8 @@
 #include "database.h"
 #include "traversal.h"
 
-char *	bm_substantiate( char *expression, CNDB * );
 void	bm_instantiate( char *expression, BMContext * );
+int	bm_void( char *expression, BMContext * );
 listItem * bm_query( char *expression, BMContext * );
 void	bm_release( char *expression, BMContext * );
 int	bm_assign_op( int op, char *expression, BMContext *, int * );

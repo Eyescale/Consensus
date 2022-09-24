@@ -142,7 +142,10 @@ ternarize( char *expression )
 			}
 			// no break;
 		case '*':
-			if ( p[1]=='?' ) p++;
+			if ( p[1]=='?' ) {
+				f_set( INFORMED )
+				p+=2; break;
+			}
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) );

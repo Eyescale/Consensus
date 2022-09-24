@@ -4,230 +4,20 @@
 #include "database.h"
 #include "expression.h"
 #include "locate.h"
+#include "string_util.h"
 #include "traversal.h"
 #include "story.h"
 
 // #define DEBUG
 
 //===========================================================================
-//	bm_couple
-//===========================================================================
-typedef CNInstance *BMCoupleFunc( CNInstance *, CNInstance *, CNDB * );
-
-static listItem *
-bm_couple( BMCoupleFunc couple, listItem *sub[2], CNDB *db )
-/*
-	Instantiates and/or returns all ( sub[0], sub[1] )
-*/
-{
-	listItem *results = NULL, *s = NULL;
-	if ( sub[0]->ptr == NULL ) {
-		if ( sub[1]->ptr == NULL ) {
-			listItem *t = NULL;
-			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
-			for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
-				addIfNotThere( &results, couple(e,f,db) );
-		}
-		else {
-			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
-			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-				addIfNotThere( &results, couple(e,j->ptr,db) );
-		}
-	}
-	else if ( sub[1]->ptr == NULL ) {
-		listItem *t = NULL;
-		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
-		for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
-			addIfNotThere( &results, couple(i->ptr,f,db) );
-	}
-	else {
-		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
-		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-			addIfNotThere( &results, couple(i->ptr,j->ptr,db) );
-	}
-	return results;
-}
-
-//===========================================================================
-//	bm_substantiate
-//===========================================================================
-static CNInstance *bm_expand( char *, CNDB * );
-
-char *
-bm_substantiate( char *expression, CNDB *db )
-/*
-	Substantiates expression by instantiating all relationships involved.
-	Note that none of the created relationship instance will be manifested.
-*/
-{
-	struct { listItem *results, *ndx, *level; } stack;
-	memset( &stack, 0, sizeof(stack) );
-	listItem *sub[ 2 ] = { NULL, NULL }, *instances;
-	CNInstance *e = NULL;
-	int level=0, ndx=0, done=0;
-	char *p = expression;
-	char_s q;
-	while ( *p && !done ) {
-		switch ( *p ) {
-		case '{':
-			add_item( &stack.level, level );
-			level = 0;
-			add_item( &stack.ndx, ndx );
-			if ( ndx ) {
-				addItem( &stack.results, sub[ 0 ] );
-				ndx=0; sub[ 0 ]=NULL;
-			}
-			addItem( &stack.results, NULL );
-			p++; break;
-		case '}':
-			/* assumption here: level==0
-			*/
-			if ( !(stack.level)) { done=1; break; }
-			level = pop_item( &stack.level );
-			instances = popListItem( &stack.results );
-			instances = catListItem( instances, sub[ 0 ] );
-			ndx = pop_item( &stack.ndx );
-			sub[ ndx ] = instances;
-			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
-			p++; break;
-		case '(':
-			level++;
-			if ( p[1]==':' ) {
-				e = bm_expand( p, db );
-				sub[ ndx ] = newItem( e );
-				p = p_prune( PRUNE_TERM, p );
-				break;
-			}
-			add_item( &stack.ndx, ndx );
-			if ( ndx ) {
-				addItem( &stack.results, sub[ 0 ] );
-				ndx=0; sub[ 0 ]=NULL;
-			}
-			p++; break;
-		case ',':
-			if ( !level && !(stack.level)) { done=1; break; }
-			else if ( level ) ndx = 1;
-			else {
-				instances = popListItem( &stack.results );
-				addItem( &stack.results, catListItem( instances, sub[ 0 ] ));
-				sub[ 0 ] = NULL;
-			}
-			p++; break;
-		case ')':
-			if ( !level && !(stack.level)) { done=1; break; }
-			level--;
-			switch ( ndx ) {
-			case 0: instances = sub[ 0 ]; break;
-			case 1: instances = bm_couple( db_couple, sub, db );
-				freeListItem( &sub[ 0 ] );
-				freeListItem( &sub[ 1 ] );
-			}
-			ndx = pop_item( &stack.ndx );
-			sub[ ndx ] = instances;
-			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
-			p++; break;
-		case '\'':
-			if ( charscan( p+1, &q ) )
-				e = db_register( q.s, db, 0 );
-			else // error
-				e = db_register( "", db, 0 );
-			sub[ ndx ] = newItem( e );
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		default:
-			e = db_register( p, db, 0 );
-			sub[ ndx ] = newItem( e );
-			if ( !is_separator( *p++ ) )
-				p = p_prune( PRUNE_IDENTIFIER, p );
-		}
-	}
-	freeListItem( &sub[ 0 ] );
-	return p;
-}
-static CNInstance *
-bm_expand( char *expression, CNDB *db )
-/*
-	Assumption: expression = (:ab...yz) resp. (:ab...z:)
-	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
-*/
-{
-	listItem *stack = NULL;
-	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
-	char *p = expression + 2;
-	char_s q;
-	for ( ; ; ) {
-		switch ( *p ) {
-		case ')':
-			e = popListItem(&stack);
-			while (( f = popListItem(&stack) ))
-				e = db_couple( f, e, db );
-			goto RETURN;
-		case '%':
-			p++;
-			if ( mod == NULL ) mod = db_register( "%", db, 0 );
-			switch ( *p ) {
-			case '%':
-				e = db_couple( mod, mod, db );
-				p++; break;
-			default:
-				e = db_register( p, db, 0 );
-				e = db_couple( mod, e, db );
-				if ( !is_separator(*p++) )
-					p = p_prune( PRUNE_IDENTIFIER, p );
-			}
-			addItem( &stack, e );
-			if ( *p == '\'' ) p++;
-			break;
-		case ':':
-			if ( p[1]==')' )
-				e = db_register( "\0", db, 0 );
-			else {
-				q.value = p[ 0 ];
-				e = db_register( q.s, db, 0 );
-			}
-			addItem( &stack, e );
-			p++; break;
-		case '\\':
-			switch (( q.value = p[1] )) {
-			case '0':
-			case ' ':
-			case 'w':
-				if ( backslash == NULL ) {
-					backslash = db_register( "\\", db, 0 );
-				}
-				e = db_register( q.s, db, 0 );
-				e = db_couple( backslash, e, db );
-				p+=2; break;
-			case ')':
-				e = db_register( q.s, db, 0 );
-				p+=2; break;
-			default:
-				p += charscan( p, &q );
-				e = db_register( q.s, db, 0 );
-			}
-			addItem( &stack, e );
-			break;
-		default:
-			q.value = p[0];
-			e = db_register( q.s, db, 0 );
-			addItem( &stack, e );
-			p++;
-		}
-	}
-RETURN:
-	return e;
-}
-
-//===========================================================================
 //	bm_instantiate
 //===========================================================================
-static int bm_void( char *, BMContext * );
+static listItem *bm_couple( listItem *sub[2], CNDB * );
+static CNInstance *bm_literal( char *, CNDB * );
 
 void
 bm_instantiate( char *expression, BMContext *ctx )
-/*
-	same as bm_substantiate, except manifests new relationship instances.
-*/
 {
 #ifdef DEBUG
 	if ( bm_void( expression, ctx ) ) {
@@ -320,6 +110,12 @@ bm_instantiate( char *expression, BMContext *ctx )
 			p++; break;
 		case '(':
 			level++;
+			if ( p[1]==':' ) {
+				e = bm_literal( p, db );
+				sub[ ndx ] = newItem( e );
+				p = p_prune( PRUNE_TERM, p );
+				break;
+			}
 			add_item( &stack.flags, ndx|piped );
 			if ( ndx ) {
 				addItem( &stack.results, sub[ 0 ] );
@@ -350,7 +146,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 			level--;
 			switch ( ndx ) {
 			case 0: instances = sub[ 0 ]; break;
-			case 1: instances = bm_couple( db_instantiate, sub, db );
+			case 1: instances = bm_couple( sub, db );
 				freeListItem( &sub[ 0 ] );
 				freeListItem( &sub[ 1 ] );
 			}
@@ -397,14 +193,126 @@ bm_instantiate( char *expression, BMContext *ctx )
 	freeListItem( &sub[ 0 ] );
 }
 
-static int
+static listItem *
+bm_couple( listItem *sub[2], CNDB *db )
+/*
+	Instantiates and/or returns all ( sub[0], sub[1] )
+*/
+{
+	listItem *results = NULL, *s = NULL;
+	if ( sub[0]->ptr == NULL ) {
+		if ( sub[1]->ptr == NULL ) {
+			listItem *t = NULL;
+			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
+			for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
+				addIfNotThere( &results, db_instantiate(e,f,db) );
+		}
+		else {
+			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
+			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
+				addIfNotThere( &results, db_instantiate(e,j->ptr,db) );
+		}
+	}
+	else if ( sub[1]->ptr == NULL ) {
+		listItem *t = NULL;
+		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
+		for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
+			addIfNotThere( &results, db_instantiate(i->ptr,f,db) );
+	}
+	else {
+		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
+		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
+			addIfNotThere( &results, db_instantiate(i->ptr,j->ptr,db) );
+	}
+	return results;
+}
+
+static CNInstance *
+bm_literal( char *expression, CNDB *db )
+/*
+	Assumption: expression = (:ab...yz) resp. (:ab...z:)
+	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
+*/
+{
+	listItem *stack = NULL;
+	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
+	char *p = expression + 2;
+	char_s q;
+	for ( ; ; ) {
+		switch ( *p ) {
+		case ')':
+			e = popListItem(&stack);
+			while (( f = popListItem(&stack) ))
+				e = db_instantiate( f, e, db );
+			goto RETURN;
+		case '%':
+			if ( mod == NULL ) mod = db_register( "%", db, 0 );
+			switch ( p[1] ) {
+			case '%':
+				e = db_instantiate( mod, mod, db );
+				p+=2; break;
+			default:
+				p++;
+				e = db_register( p, db, 0 );
+				e = db_instantiate( mod, e, db );
+				if ( !is_separator(*p) ) {
+					p = p_prune( PRUNE_IDENTIFIER, p+1 );
+					if ( *p=='\'' ) p++;
+				}
+			}
+			addItem( &stack, e );
+			break;
+		case ':':
+			if ( p[1]==')' )
+				e = db_register( "\0", db, 0 );
+			else {
+				q.value = p[ 0 ];
+				e = db_register( q.s, db, 0 );
+			}
+			addItem( &stack, e );
+			p++; break;
+		case '\\':
+			switch (( q.value = p[1] )) {
+			case '0':
+			case ' ':
+			case 'w':
+				if ( backslash == NULL ) {
+					backslash = db_register( "\\", db, 0 );
+				}
+				e = db_register( q.s, db, 0 );
+				e = db_instantiate( backslash, e, db );
+				p+=2; break;
+			case ')':
+				e = db_register( q.s, db, 0 );
+				p+=2; break;
+			default:
+				p += charscan( p, &q );
+				e = db_register( q.s, db, 0 );
+			}
+			addItem( &stack, e );
+			break;
+		default:
+			q.value = p[0];
+			e = db_register( q.s, db, 0 );
+			addItem( &stack, e );
+			p++;
+		}
+	}
+RETURN:
+	return e;
+}
+
+//===========================================================================
+//	bm_void
+//===========================================================================
+int
 bm_void( char *expression, BMContext *ctx )
 /*
 	tests if expression is instantiable, ie. that
 	. all inner queries have results
 	. all the associations it contains can be made 
 	  e.g. in case the CNDB is empty, '.' fails
-	returns 0 if it is, 1 otherwise
+	returns 0 if it is instantiable, 1 otherwise
 */
 {
 	// fprintf( stderr, "bm_void: %s\n", expression );
@@ -413,10 +321,11 @@ bm_void( char *expression, BMContext *ctx )
 	char *p = expression;
 	while ( *p && !done ) {
 		if ( p_filtered( p ) ) {
-			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
-				return 1;
-			p = p_prune( PRUNE_TERM, p );
-			continue;
+			if ( !empty && bm_feel( p, ctx, BM_CONDITION ) ) {
+				p = p_prune( PRUNE_TERM, p );
+				continue;
+			}
+			else return 1;
 		}
 		switch ( *p ) {
 		case '{':
@@ -427,10 +336,10 @@ bm_void( char *expression, BMContext *ctx )
 			if ( p[1]=='!' ) {
 				p+=2; break;
 			}
-			else if ( p[1]=='?' ) {
-				if (( bm_context_lookup( ctx, "?" ) ))
-					{ p+=2; break; }
-				else return 1;
+			if ( p[1]=='?' ) {
+				if ( !bm_context_lookup( ctx, "?" ) )
+					return 1;
+				p+=2; break;
 			}
 			// no break
 		case '*':
@@ -443,10 +352,11 @@ bm_void( char *expression, BMContext *ctx )
 				fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
 					"dubious combination of query terms with %%!\n", p );
 			}
-			if ( empty || !bm_feel( p, ctx, BM_CONDITION ) )
-				return 1;
-			p = p_prune( PRUNE_TERM, p+1 );
-			break;
+			if ( !empty && bm_feel( p, ctx, BM_CONDITION ) ) {
+				p = p_prune( PRUNE_TERM, p );
+				break;
+			}
+			else return 1;
 		case '(':
 			level++;
 			p++; break;

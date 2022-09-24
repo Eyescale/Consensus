@@ -24,13 +24,13 @@ static int do_output( char *, BMContext * );
 
 static BMCall *
 operate(
-	BMCall *call,
 	CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	listItem *narratives, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
+	BMCall *call = (BMCall *) newPair( NULL, NULL );
 	bm_context_set( ctx, narrative->proto, instance );
 	Registry *subs = newRegistry( IndexedByAddress );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
@@ -133,11 +133,9 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 		listItem **active = &index[ 0 ]->entries; // narratives to be operated
 		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
 			CNNarrative *narrative = entry->name;
-			for ( listItem *i=entry->value, *next_i; i!=NULL; i=next_i ) {
-				CNInstance *instance = i->ptr;
-				next_i=i->next; freeItem( i );
-				BMCall *call = (BMCall *) newPair( NULL, NULL );
-				operate( call, narrative, instance, ctx, narratives, story );
+			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
+				CNInstance *instance = popListItem( instances );
+				BMCall *call = operate( narrative, instance, ctx, narratives, story );
 				if (( call->subs )) {
 					enlist( index[ 1 ], call->subs, warden );
 					freeRegistry( call->subs, NULL );
@@ -153,6 +151,11 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 	fprintf( stderr, "bm_operate: end\n" );
 #endif
 	return 1;
+}
+static void
+relieve_CB( Registry *warden, Pair *entry )
+{
+	freeListItem((listItem **) &entry->value );
 }
 static void
 enlist( Registry *index, Registry *subs, Registry *warden )
@@ -190,11 +193,6 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 			}
 		}
 	}
-}
-static void
-relieve_CB( Registry *warden, Pair *entry )
-{
-	freeListItem((listItem **) &entry->value );
 }
 
 //===========================================================================

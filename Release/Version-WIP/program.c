@@ -24,18 +24,19 @@ newProgram( CNStory *story, char *inipath )
 		return NULL;
 	}
 	CNDB *db = newCNDB();
+	CNCell *cell = newCell( entry, db );
+	if ( !cell ) {
+		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
+		goto ERR;
+	}
 	if (( inipath )) {
-		if (( bm_read( CN_INI, db, inipath ) )) {
+		if ( !!bm_read( CN_INI, cell->ctx, inipath ) ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			goto ERR;
 		}
 	}
-	CNCell *cell = newCell( entry, db );
-	if (( cell )) {
-		Pair *threads = newPair( NULL, newItem(cell) );
-		return (CNProgram *) newPair( story, threads );
-	}
-	else fprintf( stderr, "B%%: Error: unable to allocate thread\n" );
+	Pair *threads = newPair( NULL, newItem(cell) );
+	return (CNProgram *) newPair( story, threads );
 ERR:
 	freeCNDB( db );
 	return NULL;
@@ -63,6 +64,7 @@ freeProgram( CNProgram *program )
 CNCell *
 newCell( Pair *entry, CNDB *db )
 {
+	if ( !db ) return NULL;
 	BMContext *ctx = newContext( db );
 	if ( !ctx ) return NULL;
 	return (CNCell *) newPair( entry, ctx );
@@ -72,6 +74,29 @@ freeCell( CNCell *cell )
 {
 	freeContext( cell->ctx );
 	freePair((Pair *) cell );
+}
+
+//===========================================================================
+//	cnUpdate
+//===========================================================================
+void
+cnUpdate( CNProgram *program )
+{
+	if ( program == NULL ) return;
+
+	CNCell *cell;
+	listItem **active = &program->threads->active;
+	listItem **new = &program->threads->new;
+	// update active cells
+	for ( listItem *i=*active; i!=NULL; i=i->next ) {
+		cell = i->ptr;
+		bm_update( cell->ctx, 0 );
+	}
+	// activate new cells
+	while (( cell = popListItem(new) )) {
+		bm_update( cell->ctx, 1 );
+		addItem( active, cell );
+	}
 }
 
 //===========================================================================
@@ -104,28 +129,5 @@ cnOperate( CNProgram *program )
 		freeCell( cell );
 
 	return ((*active)||(*new));
-}
-
-//===========================================================================
-//	cnUpdate
-//===========================================================================
-void
-cnUpdate( CNProgram *program )
-{
-	if ( program == NULL ) return;
-
-	CNCell *cell;
-	listItem **active = &program->threads->active;
-	listItem **new = &program->threads->new;
-	// update active cells
-	for ( listItem *i=*active; i!=NULL; i=i->next ) {
-		cell = i->ptr;
-		bm_update( cell->ctx, 0 );
-	}
-	// activate new cells
-	while (( cell = popListItem(new) )) {
-		bm_update( cell->ctx, 1 );
-		addItem( active, cell );
-	}
 }
 

@@ -1,7 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "database.h"
+#include "context.h"
+#include "string_util.h"
 #include "story.h"
 
 typedef struct {
@@ -19,7 +20,7 @@ typedef struct {
 	int		tab[4], type;
 	listItem *	stack; 
 // story only
-	CNDB *		db;
+	BMContext *	ctx;
 	CNStory *	story;
 	CNNarrative *	narrative;
 	Pair *		entry;

@@ -2,7 +2,6 @@
 #define	STORY_H
 
 #include "registry.h"
-#include "string_util.h"
 
 //===========================================================================
 //	Occurrence, Narrative, Story types

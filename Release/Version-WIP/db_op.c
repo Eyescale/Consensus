@@ -328,7 +328,7 @@ db_to_be_manifested( CNInstance *e, CNDB *db )
 int
 db_deprecatable( CNInstance *e, CNDB *db )
 /*
-	called by db_deprecate() and db_couple() (reassign)
+	called by db_deprecate() and db_instantiate() (reassign)
 	returns 0 if e is either released or to-be-released,
 		which we assume applies to all its ascendants
 	returns 1 otherwise.

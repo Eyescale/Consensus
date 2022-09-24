@@ -85,36 +85,6 @@ db_register( char *p, CNDB *db, int manifest )
 }
 
 //===========================================================================
-//	db_couple
-//===========================================================================
-CNInstance *
-db_couple( CNInstance *e, CNInstance *f, CNDB *db )
-/*
-	Assumption: called upon CNDB creation - cf. cnLoad()/bm_substantiate()
-	Same as db_instantiate except without change manifestation
-*/
-{
-	CNInstance *instance;
-	if (( instance = cn_instance( e, f, 0 ) ))
-		return instance;
-	else if (( e->as_sub[ 0 ] )) {
-		Pair *star = registryLookup( db->index, "*" );
-		if (( star ) && ( e->sub[ 0 ] == star->value )) {
-			instance = e->as_sub[ 0 ]->ptr;
-#if 0
-			cn_rewire( instance, 1, f );
-#else
-			db_outputf( stderr, "B%%::Warning: ((*,(%_),%_) -> %_ "
-				"concurrent reassignment unauthorized\n", db,
-				e->sub[1], instance->sub[1], f );
-			return NULL;
-#endif
-		}
-	}
-	return cn_new( e, f );
-}
-
-//===========================================================================
 //	db_instantiate
 //===========================================================================
 CNInstance *
