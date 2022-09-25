@@ -2,8 +2,8 @@
 #define PARSER_H
 
 #include "context.h"
+#include "narrative.h"
 #include "string_util.h"
-#include "story.h"
 
 typedef struct {
 	FILE *	stream;

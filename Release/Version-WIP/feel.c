@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "feel_private.h"
 #include "string_util.h"
-#include "context.h"
 #include "flags.h"
+#include "context.h"
 #include "locate.h"
-#include "traversal.h"
-#include "traversal_private.h"
+#include "feel.h"
 
 // #define DEBUG
 
@@ -17,9 +17,52 @@
 #endif
 
 //===========================================================================
-//	bm_traverse
+//	bm_feel
 //===========================================================================
 static int xp_init( BMTraverseData *, char *, BMContext * );
+static int xp_verify( CNInstance *, BMTraverseData * );
+
+CNInstance *
+bm_feel( char *expression, BMContext *ctx, BMLogType type )
+{
+	if ( type == BM_CONDITION )
+		return bm_traverse( expression, ctx, NULL, NULL );
+
+	BMTraverseData data;
+	if ( !xp_init( &data, expression, ctx ) )
+		return NULL;
+
+	CNDB *db = data.db;
+	int privy = (type==BM_RELEASED) ? 1 : 0;
+	data.privy = privy;
+	data.empty = db_is_empty( privy, db );
+	data.star = db_lookup( privy, "*", db );
+
+	CNInstance *success = NULL;
+	listItem *s = NULL;
+	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
+		if ( xp_verify( e, &data ) ) {
+			freeListItem( &s );
+			success = e;
+			break;
+		}
+	}
+	return success;
+}
+static int
+xp_init( BMTraverseData *data, char *expression, BMContext *ctx )
+{
+	if ( !expression || !*expression ) return 0;
+	memset( data, 0, sizeof(BMTraverseData));
+	data->expression = expression;
+	data->ctx = ctx;
+	data->db = BMContextDB(ctx);
+	return 1;
+}
+
+//===========================================================================
+//	bm_traverse
+//===========================================================================
 static CNInstance *xp_traverse( BMTraverseData * );
 static int traverse_CB( CNInstance *e, BMTraverseData *data );
 
@@ -86,17 +129,6 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 	return success;
 }
 static int
-xp_init( BMTraverseData *data, char *expression, BMContext *ctx )
-{
-	if ( !expression || !*expression ) return 0;
-	memset( data, 0, sizeof(BMTraverseData));
-	data->expression = expression;
-	data->ctx = ctx;
-	data->db = BMContextDB(ctx);
-	return 1;
-}
-static int xp_verify( CNInstance *, BMTraverseData * );
-static int
 traverse_CB( CNInstance *e, BMTraverseData *data )
 {
 	if ( xp_verify( e, data ) ) {
@@ -104,37 +136,6 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 		return data->user_CB( e, data->ctx, data->user_data );
 	}
 	return BM_CONTINUE;
-}
-
-//===========================================================================
-//	bm_feel
-//===========================================================================
-CNInstance *
-bm_feel( char *expression, BMContext *ctx, BMLogType type )
-{
-	if ( type == BM_CONDITION )
-		return bm_traverse( expression, ctx, NULL, NULL );
-
-	BMTraverseData data;
-	if ( !xp_init( &data, expression, ctx ) )
-		return NULL;
-
-	CNDB *db = data.db;
-	int privy = (type==BM_RELEASED) ? 1 : 0;
-	data.privy = privy;
-	data.empty = db_is_empty( privy, db );
-	data.star = db_lookup( privy, "*", db );
-
-	CNInstance *success = NULL;
-	listItem *s = NULL;
-	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( xp_verify( e, &data ) ) {
-			freeListItem( &s );
-			success = e;
-			break;
-		}
-	}
-	return success;
 }
 
 //===========================================================================

@@ -13,14 +13,15 @@ LIBS = -lcn
 OBJDIR = .ofiles
 SRCS =	database.c \
 	db_op.c \
+	parser.c \
+	narrative.c \
+	program.c \
+	operation.c \
 	context.c \
 	expression.c \
-	story.c \
-	parser.c \
+	instantiate.c \
 	locate.c \
-	operation.c \
-	program.c \
-	traversal.c
+	feel.c
 
 CFLAGS = -O2
 #CFLAGS = -DDEBUG -DNULL_TERMINATED

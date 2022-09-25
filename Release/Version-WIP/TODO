@@ -82,6 +82,14 @@ NTH
 		  stored as '%' in context (?)
 		. could also postprocess expression in story.c
 	. locate.c: review xp_target / bm_locate_pivot
+	. homogenize code for C-traversal in
+		. expression.c		bm_instantiate()
+					bm_void()
+					bm_deternarize_op()
+		. locate.c		bm_locate_pivot()
+					xp_target()
+					bm_locate_param()
+		. traversal.c		bm_verify()
 	. allow more to be done in INI files (e.g. assignment) ?
 		. Now the whole bm_instantiate() syntax is accessible
 		. and will need it later in new Cell constructor
@@ -117,6 +125,9 @@ TO BE DOCUMENTED
 	. literal %% internally convert as (%,%) - error in current documentation
 
 DONE
+	. extracted bm_instantiate() and bm_void() from expression.c
+	  into [NEW] instantiate.c
+	. renamed traversal.c into feel.c
 	. deprecated bm_substantiate() / db_couple()
 		. To be tested: instantiation events during 'on init'
 	. database.c: deprecated db_couple() - along with bm_substantiate()

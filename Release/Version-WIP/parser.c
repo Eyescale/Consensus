@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "parser_private.h"
 #include "flags.h"
 #include "parser.h"
-#include "parser_private.h"
 
 //===========================================================================
 //	bm_parse

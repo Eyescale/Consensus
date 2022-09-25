@@ -2,8 +2,6 @@
 #define EXPRESSION_H
 
 #include "context.h"
-#include "database.h"
-#include "traversal.h"
 
 void	bm_instantiate( char *expression, BMContext * );
 int	bm_void( char *expression, BMContext * );

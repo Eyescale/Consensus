@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "context.h"
 #include "locate.h"
-#include "story.h"
 
 //===========================================================================
 //	newContext / freeContext

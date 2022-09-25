@@ -2,18 +2,17 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "locate.h"
 #include "program.h"
-#include "expression.h"
-#include "traversal.h"
 #include "operation.h"
+#include "expression.h"
+#include "feel.h"
 
 // #define DEBUG
 
 static int in_condition( char *, BMContext *, int *marked );
 static int on_event( char *, BMContext *, int *marked );
 static int do_action( char *, BMContext * );
-static int enable( Registry *, listItem *, char *, BMContext * );
+static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 
@@ -53,7 +52,7 @@ operate(
 			do_action( expression, ctx );
 			break;
 		ctrl(ELSE_EN) case EN:
-			enable( subs, narratives, expression, ctx );
+			do_enable( subs, narratives, expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			do_input( expression, ctx );
@@ -337,7 +336,7 @@ RETURN:
 }
 
 //===========================================================================
-//	enable
+//	do_enable
 //===========================================================================
 static BMTraverseCB enable_CB;
 typedef struct {
@@ -347,7 +346,7 @@ typedef struct {
 } EnableData;
 
 static int
-enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
+do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
 {
 	EnableData data;
 	data.subs = subs;

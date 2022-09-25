@@ -1,5 +1,5 @@
-#ifndef STORY_H
-#define	STORY_H
+#ifndef NARRATIVE_H
+#define	NARRATIVE_H
 
 #include "registry.h"
 
@@ -55,4 +55,4 @@ void		freeStory( CNStory * );
 int		cnStoryOutput( FILE *, CNStory * );
 
 
-#endif	// STORY_H
+#endif	// NARRATIVE_H

@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "expression.h"
 #include "parser.h"
+#include "expression.h"
 
 //===========================================================================
 //	readStory

@@ -1,8 +1,8 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
-#include "story.h"
 #include "context.h"
+#include "narrative.h"
 
 typedef struct {
 	CNStory *story;

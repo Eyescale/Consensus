@@ -1,5 +1,5 @@
-#ifndef TRAVERSAL_H
-#define TRAVERSAL_H
+#ifndef FEEL_H
+#define FEEL_H
 
 #include "context.h"
 
@@ -21,4 +21,4 @@ typedef int BMTraverseCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
 
 
-#endif	// TRAVERSAL_H
+#endif	// FEEL_H

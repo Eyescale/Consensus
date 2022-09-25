@@ -1,8 +1,9 @@
-#ifndef TRAVERSAL_PRIVATE_H
-#define TRAVERSAL_PRIVATE_H
+#ifndef FEEL_PRIVATE_H
+#define FEEL_PRIVATE_H
 
 #include "database.h"
 #include "context.h"
+#include "feel.h"
 
 //===========================================================================
 //	Interface with bm_verify
@@ -41,4 +42,4 @@ typedef struct {
 #define	TERNARY		8
 
 
-#endif	// TRAVERSAL_PRIVATE_H
+#endif	// FEEL_PRIVATE_H
