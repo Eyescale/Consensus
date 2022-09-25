@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "parser_private.h"
-#include "flags.h"
+#include "traverse.h"
 #include "parser.h"
 
 //===========================================================================
@@ -226,16 +226,16 @@ if ( _CB( ProtoSet, mode, data ) ) {
 		on_( '\n' )	do_( "_expr" )	REENTER
 						TAB_CURRENT += TAB_SHIFT;
 						f_set( INFORMED )
-						s_clean( CNStringAll )
+						s_reset( CNStringAll )
 		on_other	do_( "cmd" )	REENTER
-						s_clean( CNStringAll )
+						s_reset( CNStringAll )
 		end
 	in_( "cmd_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	; // err
 		on_other	do_( "_expr" )	REENTER
 						TAB_CURRENT += TAB_SHIFT;
-						s_clean( CNStringAll )
+						s_reset( CNStringAll )
 		end
 	in_( "_expr" )
 if ( _CB( OccurrenceAdd, mode, data ) ) {
@@ -277,10 +277,10 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_push( stack )
 						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(MARKED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
-						f_set( MARKED|TERNARY ) }
+						f_set( TERNARY ) }
 			else if ( !is_f(INFORMED|MARKED|NEGATED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( same )	s_take
 						f_set( MARKED|INFORMED ) }

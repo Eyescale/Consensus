@@ -3,23 +3,15 @@ Synopsis
 	Version-1.2 supports ternary-operated expressions in either one of
 	the following forms:
 
-		( expr ? expr1 : expr2 )
-
-		%( expr ? expr1 : expr2 )
+		( expr ? expr1 : expr2 ) / %( expr ? expr1 : expr2 )
 
 	1. Restrictions
-	. Only the second type is authorized as term of an already ternary-
-	  operated expression, as the overall expression is already marked.
-	. Only the second type is authorized in DO-type occurrences, e.g.
-		do : toto : %( expr ? expr : expr )
-	  as otherwise bm_substantiate(), bm_instantiate() and bm_void()
-	  would have to deternarize prior to proceeding (can be done).
 	. we do NOT support ( expr ?:)
-	. we do NOT support ( expr ? expr :? _ ) in N-ary cases (see below)
+	. we do NOT support the sequence ':?' in N-ary cases - see below
+	. ternary-operated expressions are not allowed as external input -
+	  including from INI file
 
 	2. Extensions
-	. we do inform %? in return from IN/ON-type ( expr ? expr1 : expr2 )
-	  occurrences - not in return from any-type %( expr ? expr1 : expr2 )
 	. we do support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
 	. we do support ( expr ? expr :) <=> AND: evaluates as second expr or none
 	. we do support N-ary operated expressions e.g.
@@ -34,15 +26,13 @@ Code Analysis
     A. File Format Interface - in Consensus/Release/Version-1.2/parser.c
 
 	To set TERNARY
-		on '?' if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) &&
-			!is_f(MARKED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) ) {
+		on '?' if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
 				f_clr( INFORMED|FILTERED )
-				f_set( MARKED|TERNARY ) }
+				f_set( TERNARY ) }
 
 	Then if TERNARY is set
 		ons "{}|"	=> err: already handled due to SUB_EXPR
 		on ','		=> err
-		on '?'		=> err: already handled due to MARKED
 	        on '('		=> f_push( stack ); f_clr( TERNARY )
 		on ':' if ( !is_f( FILTERED ) )
 				=> set_f( FILTERED )
@@ -95,28 +85,13 @@ Code Analysis
 					bm_locate_param()
 		4. traversal.c		bm_verify()
 
-	1. operation.c
-	   Both do_input() and do_output() do invoke p_prune( PRUNE_FILTER, p )
-	   to parse their arguments. However the passed expression is not in
-	   parentheses, and therefore no change is required.
-	2. expression.c
-	   bm_substantiate() does invoke p_prune( PRUNE_TERM, p ), but no change
-	   is required as the passed DO-type expression only allows ternary-op'd
-	   expressions in SUB_EXPR. bm_instantiate() and bm_void() likewise only
-	   authorize ternary-op'd expressions in SUB_EXPR - these are then
-	   passed over directly to resp. bm_query() and bm_feel(), that is: to
-	   bm_traverse(). bm_assign_op() does invoke p_prune( PRUNE_FILTER, p )
-	   to parse its arguments, but the passed expression is again not in
-	   parentheses, and therefore no change is required here either.
-	3. locate.c
-	   bm_locate_pivot() will be invoked after all ternary expressions have
-	   been reduced (see below), so no change needed there. However xp_target()
-	   and bm_locate_param() must either skip or return (cf. bm_locate_mark())
-	   on ternary-op'd expressions. See changes in code.
-	4. traversal.c
-		. bm_verify(): must handle '?' as expression term separator
-		. bm_traverse() must reduce ternary-operated expressions before
-		  it can proceed: see Design section below
+	However none of these functions need to be modified as expressions are
+	systematically "de-ternarized" prior to being operated on - see
+	operate() in operation.c, and the deternarization code in
+
+		../../Base/Examples/5_Ternarize/deternarize.c
+
+	whose design principles are explained below.
 
 Design
     Overview

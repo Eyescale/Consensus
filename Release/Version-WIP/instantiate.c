@@ -62,7 +62,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 			}
 			// no break
 		case '*':
-			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
+			if ( !p[1] || strmatch( ":,)}", p[1] ) ) {
 				e = bm_register( ctx, p );
 				sub[ ndx ] = newItem( e );
 				p++; break;
@@ -156,13 +156,10 @@ bm_instantiate( char *expression, BMContext *ctx )
 			sub[ ndx ] = instances;
 			if ( ndx ) sub[ 0 ] = popListItem( &stack.results );
 			p++; break;
-		case '?':
 		case '.':
-			if ( !empty ) {
-				sub[ ndx ] = newItem( NULL );
-				p++; break;
-			}
-			else { done=-1; break; }
+			if ( empty ) { done=-1; break; }
+			sub[ ndx ] = newItem( NULL );
+			p++; break;
 		default:
 			e = bm_register( ctx, p );
 			sub[ ndx ] = newItem( e );

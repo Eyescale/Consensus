@@ -3,7 +3,7 @@
 
 #include "feel_private.h"
 #include "string_util.h"
-#include "flags.h"
+#include "traverse.h"
 #include "context.h"
 #include "locate.h"
 #include "feel.h"
@@ -326,7 +326,7 @@ fprintf( stderr, " ........{\n" );
 					int exp = pop_item( sub_exp );
 					x = ESUB( x, exp&1 );
 				}
-				not = data->flags & NOT;
+				not = data->flags & NEGATED;
 				// backup context
 				addItem( &stack.mark_exp, mark_exp );
 				add_item( &stack.not, not );
@@ -464,7 +464,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 	int	level, OOS,
 		success = data->success,
 		flags = data->flags;
-	f_clr( NOT );
+	f_clr( NEGATED );
 	switch ( op ) {
 	case BM_INIT:
 		base = NULL;
@@ -489,20 +489,20 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		// fprintf( stderr, "scanning: '%s'\n", p );
 		switch ( *p ) {
 		case '~':
-			if is_f( NOT ) { f_clr( NOT ); }
-			else { f_set( NOT ); }
+			if is_f( NEGATED ) { f_clr( NEGATED ); }
+			else { f_set( NEGATED ); }
 			p++; break;
 		case '%':
 			if ( strmatch( "?!", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NOT ); }
-				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
+				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
+				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p+=2;
 			}
 			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NOT ); }
-				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
+				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
+				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p++;
 			}
 			else {
@@ -513,8 +513,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
 				success = bm_match( x, p, *exponent, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NOT ); }
-				else if is_f( NOT ) { success = !success; f_clr( NOT ); }
+				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
+				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p++;
 			}
 			else { xpn_add( &mark_exp, SUB, 1 ); }
@@ -543,14 +543,15 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			level--;
 			if is_f( COUPLE ) popListItem( exponent );
 			f_pop( &data->stack.flags, 0 );
-			if is_f( NOT ) { success = !success; f_clr( NOT ); }
+			if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 			p++;
 			if ( op==BM_END && level==OOS && (data->stack.scope))
 				{ done = 1; break; }
 			break;
 		case '?':
+			if ( p[1]==':' ) { p+=2; break; }
 		case '.':
-			if is_f( NOT ) { success = 0; f_clr( NOT ); }
+			if is_f( NEGATED ) { success = 0; f_clr( NEGATED ); }
 			else if ( data->empty ) success = 0;
 			else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
 				success = 1; // wildcard is as_sub[1]
@@ -559,8 +560,8 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 			break;
 		default:
 			success = bm_match( x, p, *exponent, base, data );
-			if ( success < 0 ) { success = 0; f_clr( NOT ); }
-			else if is_f( NOT ) { success = !success; f_clr( NOT ); }
+			if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
+			else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
 		}

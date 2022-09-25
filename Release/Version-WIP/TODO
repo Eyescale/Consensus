@@ -1,31 +1,20 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. integrate deternarize() into Version-WIP
-		. operation.c: expression must be deternarized prior to
-		  calling bm_feel() and bm_traverse() in
-			. in_condition()
-			. on_event()
-			. do_action()	=> allow (_?_:_) as well as %(_?_:_)
-			. enable()
-			. do_input()
-			. do_output()
-		. [ DONE ] no need for ternary support anywhere else, e.g. in
-			. expression.c
-			. locate.c
-			. traversal.c
-		. finalize ./design/specs/bm-TERNARY-implementation.txt
-		  Note: bm_read invokes bm_substantiate() when in mode CN_INI,
-		  but nothing to do there, so long as we do not support ternary
-		  operations in INI files...
+	. consistent usage of flags across all C-traversals
+		=> use only ONE set of flags
+		=> use p_prune( PRUNE_LITERAL, p ) everywhere
+		=> have ONE template applied consistently across the board
+		=> git add ./design/specs/C_TRAVERSE-*.txt
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
 		. [DONE] : var : ~.			(un-assignment)
 		. [DONE] in/on ~.: expression		(negative occurrence)
-		. [WIP] ( expr ? expr : expr ) 	(ternary-operated expression)
+		. [DONE] ( expr ? expr : expr ) 	(ternary-operated expression)
 		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
-	. update ./design/specs/bm-read-narrative-states.txt
+	. Create ternary-operated expressions proper test case(s)
 	. Pass design/story/single-thread.story
+	. update ./design/specs/bm-read-narrative-states.txt
 	. bm_input()
 		. on EOF should do :input:~. instead of ~(*,input)
 		  => must modify version-1.0 and version-1.1
@@ -69,7 +58,12 @@ TODO
 				. 1_Yak.0 // support Scheme files from schematize
 				. 1_Yak.1 // using new Cell design
 				. 2_interactive	// TBD
-NTH
+
+TO DOCUMENT
+	. literal %% internally convert as (%,%) - error in current documentation
+	. instantiation may do half a job (see above)
+
+NICE TO HAVE
 	. compile into .a instead of .so
 	. ../../Base/Examples/1_Yak
 	  remove workaround in string_util.c so that we can implement StringFinish as
@@ -120,37 +114,43 @@ NTH
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 	. move btreefy from ../../Base to ../../Base/Examples/
 
-TO BE DOCUMENTED
-	. instantiation may do half a job (see above)
-	. literal %% internally convert as (%,%) - error in current documentation
 
 DONE
-	. extracted bm_instantiate() and bm_void() from expression.c
-	  into [NEW] instantiate.c
-	. renamed traversal.c into feel.c
-	. deprecated bm_substantiate() / db_couple()
-		. To be tested: instantiation events during 'on init'
-	. database.c: deprecated db_couple() - along with bm_substantiate()
-	. expression.c: deprecated bm_substantiate()
-		. Now bm_read() calls bm_instantiate(), which integrates
-		  support for bm_literal() - could be used anywhere
-	. traversal.c: removed ternary support in bm_verify()
-		. expression is assumed to be deternarized
-	. bm_locate_mark() no longer invokes p_prune(PRUNE_TERM,p) on '~'
-	  but returns mark exponent even if expression is negated - as
-	  it may be negated twice, esp. after deternarize()
-	. Added ../../Base/Examples/5_Ternarize
+	. deternarize integration:
+		. ternary-operated expressions supported in all cases except
+		  input from external sources (including INI files)
+		. bm_parse(): no longer flags deternarized expressions as MARKED
+		. deternarize() handle the whole B% syntax (e.g. characters, etc.)
+		. ./design/specs/bm-TERNARY-implementation.txt finalized
+		  Note: ternary operations are only supported in mode==CN_STORY
+	. Code restructuring
+		. parser.c re-enabled ternary in DO-type - not only SUB_EXPR
+		. traversal.c renamed as feel.c
+		. bm_instantiate() and bm_void() extracted from expression.c
+		  	=> [ NEW ] instantiate.c
+			=> [ NEW ] p_prune( PRUNE_LITERAL, p )
+		. deternarize.c [ NEW ]
+		. database.c: deprecated db_couple() - along with bm_substantiate()
+		. expression.c: deprecated bm_substantiate()
+			. Now bm_read() calls bm_instantiate(), which integrates
+			  support for bm_literal() - could be used anywhere
+			. untested: instantiation events during 'on init'
+		. traversal.c: ternary support in xp_verify() & bm_verify() undone
+			. expression is assumed to be deternarized
+	. bm_locate_mark() now returns mark exponent even if expression is negated
+	  	as it may be negated twice, esp. after deternarize()
+	. Added ../../Base/Examples/5_Ternarize [ NEW ]
 		. ternarize.c
-		. deterarize.c
-	. Cleaned up ../../Base/Examples/3_Segmentize
-		. esp. free_segmentized() was wrong
+		. deternarize.c
+		. Cleaned up ../../Base/Examples/3_Segmentize
+			. free_segmentized() corrected
 	. ternary-operated expressions - see bm-TERNARY-implementation.txt
 		. parser.c	- bm_parse()
-		. traversal.c	- xp_verify(), bm_verify()
 		. string_util.c - p_prune( PRUNE_TERNARY, p )
 		. locate.c	- bm_locate_pivot(), xp_target(), bm_locate_param()
-	. traversal.c - ternary operator support
-		. update bm_verify for both () and %() - done
+	. [ UNDONE ] traversal.c - ternary operator support
+		. updated bm_verify() to invoke p_ternary( p ) etc.
+		. updated xp_verify() to handle INFORMED ?
 		. handle N-ary cases e.g.
 			( expr ? expr ? expr : expr : expr )
 			( expr ?: expr ?: expr ? expr :)
@@ -187,9 +187,6 @@ DONE
 		  where identifier is the one specified in the current narrative proto
 		  Note that do .expression commands from the main narrative translate
 		  as do (this,expression) instantiating the base entity named "this"
-	. traversal.c - ternary operator support
-		. updated bm_verify() to invoke p_ternary( p ) and
-		  handle return value
 	. string_util.c - ternary operator support
 		. p_prune( PRUNE_TERNARY, p ), p_ternary( p )
 		. updated p_prune( type, p) so that
@@ -199,7 +196,7 @@ DONE
 		   with type==PRUNE_TERM or type==PRUNE_FILTER
 				when called past '(' in ( expr ? expr : expr ),
 				returns on appropriate '?' or ':' or ')'
-	. parser.c (NEW) complete
+	. parser.c 	-> rewritten
 		. deprecated filterable() : replaced using COMPOUND flag
 		. implemented SIGNAL interface in file format: do signal~
 		. use one stack for all
@@ -208,8 +205,8 @@ DONE
 		. allow \cr to act as ',' in { }
 		. db_io.c eliminated - db_output() back to database.c
 		. bm_read(), in story.c, supercedes previous cnLoad() and db_input()
-	. narrative.c	-> story.c
-		. rewrite readStory separating cmd and expr
+	. narrative.c
+		. readStory rewritten separating cmd and expr
 		. transport typelse as part of type
 		. complete rewrite / CNParser
 		. changed CNOccurrence from [type,data:[expression,sub]] to [data:[type,expression],sub]
@@ -223,7 +220,7 @@ DONE
 	. operation.c
 		. invoke bm_context_mark(), in locate.c
 		. do_input => unhacked
-	. locate.c (NEW)
+	. locate.c [ NEW ]
 		. was part of context.c and traversal.c before
 		. added bm_context_mark()
 	. traversal.c / new BMContext definition
@@ -231,10 +228,10 @@ DONE
 		. returns CNInstance *found
 		. no more bm_push_mark()
 		. bm_locate becomes bm_locate_pivot, now in locate.c
-	. context.c (MODIFIED)
+	. context.c
 		. BMContext:[ db, registry ] becomes [ this, registry ]
 		. extracted locate functions -> locate.c
-	. program.c / program.h (NEW)
+	. program.c / program.h [ NEW ]
 		. db_init() done after new cells made active, and updated
 		  once for TO_BE_MANIFESTED to become MANIFESTED
 	. Base/{list.c,registry.c,string_util.c}

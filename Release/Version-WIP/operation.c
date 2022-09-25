@@ -37,33 +37,41 @@ operate(
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		char *expression = occurrence->data->expression;
+		char *deternarized = NULL;
 		listItem *j = occurrence->sub;
 		switch ( occurrence->data->type ) {
 		ctrl(ELSE) case ROOT:
 			passed = 1;
 			break;
 		ctrl(ELSE_IN) case IN:
+			deternarized = bm_deternarize( &expression, ctx );
 			passed = in_condition( expression, ctx, &marked );
 			break;
 		ctrl(ELSE_ON) case ON:
+			deternarized = bm_deternarize( &expression, ctx );
 			passed = on_event( expression, ctx, &marked );
 			break;
 		ctrl(ELSE_DO) case DO:
+			deternarized = bm_deternarize( &expression, ctx );
 			do_action( expression, ctx );
 			break;
 		ctrl(ELSE_EN) case EN:
+			deternarized = bm_deternarize( &expression, ctx );
 			do_enable( subs, narratives, expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
+			deternarized = bm_deternarize( &expression, ctx );
 			do_input( expression, ctx );
 			break;
 		ctrl(ELSE_OUTPUT) case OUTPUT:
+			deternarized = bm_deternarize( &expression, ctx );
 			do_output( expression, ctx );
 			break;
 		case LOCALE:
 			bm_context_register( ctx, expression );
 			break;
 		}
+		if (( deternarized )) free( expression );
 		if (( j && passed )) {
 			addItem( &stack, i );
 			add_item( &stack, marked );
@@ -222,12 +230,12 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
-	switch ( expression[0] ) {
+	switch ( *expression ) {
 	case ':':
 		success = bm_assign_op( IN, expression, ctx, marked );
 		goto RETURN;
 	case '~':
-		switch ( expression[1] ) {
+		switch ( expression[ 1 ] ) {
 		case '.':
 			success = db_is_empty( 0, BMContextDB(ctx) );
 			goto RETURN;
@@ -237,7 +245,6 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 DEFAULT:
 	found = bm_feel( expression, ctx, BM_CONDITION );
 	success = bm_context_mark( ctx, expression, found, marked );
-
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
@@ -262,7 +269,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
-	switch ( expression[0] ) {
+	switch ( *expression ) {
 	case ':':
 		success = bm_assign_op( ON, expression, ctx, marked );
 		goto RETURN;
@@ -287,7 +294,6 @@ on_event( char *expression, BMContext *ctx, int *marked )
 DEFAULT:
 	found = bm_feel( expression, ctx, BM_MANIFESTED );
 	success = bm_context_mark( ctx, expression, found, marked );
-
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
@@ -304,7 +310,7 @@ do_action( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "do_action: do %s\n", expression );
 #endif
-	switch ( expression[0] ) {
+	switch ( *expression ) {
 	case '.':
 		goto RETURN;
 	case ':':
@@ -327,7 +333,6 @@ do_action( char *expression, BMContext *ctx )
 	}
 DEFAULT:
 	bm_instantiate( expression, ctx );
-
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "do_action end\n" );

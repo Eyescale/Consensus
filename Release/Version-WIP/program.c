@@ -126,7 +126,6 @@ cnOperate( CNProgram *program )
 	// release deactivated cells
 	while (( cell = popListItem(&released) ))
 		freeCell( cell );
-
 	return ((*active)||(*new));
 }
 

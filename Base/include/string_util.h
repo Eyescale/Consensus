@@ -22,8 +22,9 @@ typedef enum {
 	PRUNE_TERNARY = 1,
 	PRUNE_TERM,
 	PRUNE_FILTER,
-	PRUNE_IDENTIFIER,
-	PRUNE_FORMAT
+	PRUNE_LITERAL,
+	PRUNE_FORMAT,
+	PRUNE_IDENTIFIER
 } PruneType;
 char *	p_prune( PruneType type, char * );
 int	p_filtered( char * );

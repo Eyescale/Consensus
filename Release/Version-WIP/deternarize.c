@@ -1,18 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "list.h"
-#include "pair.h"
-#include "flags.h"
 #include "string_util.h"
-#include "ternarize.h"
+#include "expression.h"
+#include "traverse.h"
+#include "feel.h"
+
+typedef int (*BMTernaryCB)( char *, void * );
+static char *deternarize( char *expression, BMTernaryCB, void *user_data );
+
+//===========================================================================
+//	bm_deternarize
+//===========================================================================
+static int pass_CB( char *guard, void *user_data );
+
+char *
+bm_deternarize( char **expression, BMContext *ctx )
+{
+	char *backup = *expression;
+	char *deternarized = deternarize( backup, pass_CB, ctx );
+	if (( deternarized )) {
+		*expression = deternarized;
+		return backup;
+	}
+	else return NULL;
+}
+static int
+pass_CB( char *guard, void *user_data )
+{
+	BMContext *ctx = user_data;
+	return !!bm_feel( guard, ctx, BM_CONDITION );
+}
 
 //===========================================================================
 //	deternarize
 //===========================================================================
+static void free_deternarized( listItem *sequence );
 static void s_scan( CNString *, listItem * );
 
-char *
+static char *
 deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 /*
 	build Sequence:{
@@ -24,24 +50,30 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
 */
 {
-	if ( !pass_CB ) return NULL;
 	struct { listItem *sequence, *flags; } stack = { NULL, NULL };
 	char *p = expression, *deternarized = NULL;
-	int flags = 0, ternary = 0;
+	int flags = 0, ternary = 0, done = 0;
 	listItem *sequence = NULL;
 	Pair *segment = newPair( p, NULL );
-	for ( int done=0; *p && !done; ) {
+	while ( *p && !done ) {
 		switch ( *p ) {
-		case ' ':
-		case '\t':
+		case '~':
+		case '{':
+		case '}':
+		case '|':
 			p++; break;
 		case '(':
+			if ( p[1]==':' ) {
+				p = p_prune( PRUNE_LITERAL, p );
+				f_set( INFORMED )
+				break;
+			}
 			/* Note: only pre-ternary-operated sequences are pushed
 			   on stack.sequence
 			*/
 			if ( p_ternary( p ) ) {
 				ternary = 1;
-				// close current Sequence after '(' - without reordering,
+				// finish current Sequence after '(' - without reordering,
 				// which will take place on return
 				segment->value = p+1;
 				addItem( &sequence, newPair( segment, NULL ) );
@@ -72,7 +104,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 					}
 					else {
 						// release guard sequence
-						free_ternarized( sequence );
+						free_deternarized( sequence );
 						sequence = NULL;
 						p++; // resume past "?"
 						segment = newPair( p, NULL );
@@ -80,7 +112,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 				}
 				else {
 					// release guard sequence
-					free_ternarized( sequence );
+					free_deternarized( sequence );
 					sequence = NULL;
 					// proceed to alternative
 					p = p_prune( PRUNE_TERNARY, p ); // ":"
@@ -108,6 +140,10 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 			}
 			else {	p++; f_clr( INFORMED ) }
 			break;
+		case ',':
+			if (!is_f( LEVEL )) { done=1; break; }
+			f_clr( INFORMED )
+			p++; break;
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
 			if is_f( TERNARY ) {
@@ -138,17 +174,26 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 			f_pop( &stack.flags, 0 );
 			f_set( INFORMED )
 			p++; break;
-		case ',':
-			if (!is_f( LEVEL )) { done=1; break; }
-			f_clr( INFORMED )
-			p++; break;
+		case '\'':
+		case '/':
+		case '"':
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			f_set( INFORMED )
+			break;
 		case '%':
-			if ( p[1]=='(' ) {
+			if ( !p[1] || strmatch( "(,:)}", p[1] ) ) {
 				p++; break;
 			}
-			// no break
+			else if ( strmatch( "?!", p[1] ) ) {
+				f_set ( INFORMED )
+				p+=2; break;
+			}
+			break;
 		case '*':
-			if ( p[1]=='?' ) {
+			if ( !p[1] || strmatch( "(,:)}", p[1] ) ) {
+				p++; break;
+			}
+			else if ( p[1]=='?' ) {
 				f_set( INFORMED );
 				p+=2; break;
 			}
@@ -175,9 +220,10 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 	deternarized = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
-RETURN:
+
 	// release sequence and return string
-	free_ternarized( sequence );
+	free_deternarized( sequence );
+RETURN:
 	if ((stack.sequence)||(stack.flags)) {
 		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak\n" );
 		freeListItem( &stack.sequence );
@@ -189,7 +235,59 @@ RETURN:
 }
 
 //===========================================================================
-//	s_scan, s_append, s_add_not_any
+//	free_deternarized
+//===========================================================================
+static void
+free_deternarized( listItem *sequence )
+/*
+	free Sequence:{
+		| [ segment:Segment, NULL ]
+		| [ NULL, sub:Sequence ]
+		| [ NULL, NULL ] // ~.
+		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+*/
+{
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	while (( i )) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			/* item==[ NULL, sub:Sequence ]
+			   We want the following on the stack:
+			  	[ item->value, i->next ]
+			   as we start traversing item->value==sub
+			*/
+			item->name = item->value;
+			item->value = i->next;
+			addItem( &stack, item );
+			i = item->name; // traverse sub
+			continue;
+		}
+		else if (( item->name ))
+			freePair( item->name ); // segment
+		freePair( item );
+		if (( i->next ))
+			i = i->next;
+		else if (( stack )) {
+			do {
+				item = popListItem( &stack );
+				// free previous Sequence
+				freeListItem((listItem**) &item->name );
+				// start new one
+				i = item->value;
+				freePair( item );
+			}
+			while ( !i && (stack) );
+		}
+		else break;
+	}
+	freeListItem( &sequence );
+}
+
+//===========================================================================
+//	s_scan, s_append
 //===========================================================================
 static void s_append( CNString *, char *bgn, char *end );
 #define s_add( str ) \

@@ -1,21 +1,6 @@
 #ifndef PARSER_PRIVATE_H
 #define PARSER_PRIVATE_H
 
-// bm_parse flags values
-
-#define FIRST		1
-#define FILTERED	2
-#define SUB_EXPR	4
-#define MARKED		8
-#define NEGATED		16
-#define INFORMED	32
-#define LEVEL		64
-#define SET		128
-#define ASSIGN		256
-#define DOT		512
-#define COMPOUND	1024
-#define TERNARY		2048
-
 //===========================================================================
 //	bm_parse State Machine utilities - macros
 //===========================================================================
@@ -111,7 +96,7 @@
 	!StringInformed(s)
 #define s_add( str ) \
 	for ( char *p=str; *p; StringAppend(s,*p++) );
-#define	s_clean( a ) \
+#define	s_reset( a ) \
 	StringReset( s, a );
 #define s_take \
 	StringAppend( s, event );

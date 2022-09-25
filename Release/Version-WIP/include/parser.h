@@ -6,20 +6,11 @@
 #include "string_util.h"
 
 typedef struct {
-	FILE *	stream;
-	char *	state;
-	int	line, column,
-		mode[ 4 ], buffer,
-		errnum;
-	void *	user_data;
-} CNParserData;
-
-typedef struct {
-// shared between parser and story
+// shared between parser and bm_read()
 	CNString *	string;
 	int		tab[4], type;
 	listItem *	stack; 
-// story only
+// bm_read() only
 	BMContext *	ctx;
 	CNStory *	story;
 	CNNarrative *	narrative;
@@ -28,6 +19,15 @@ typedef struct {
 // parser only
 	int		flags, opt;
 } BMStoryData;
+
+typedef struct {
+	FILE *	stream;
+	char *	state;
+	int	line, column,
+		mode[ 4 ], buffer,
+		errnum;
+	void *	user_data;
+} CNParserData;
 
 // tab data informed by bm_parse
 
