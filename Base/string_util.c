@@ -23,14 +23,12 @@ newString( void )
 	icast.value = CNStringBytes;
 	return (CNString *) newPair( NULL, icast.ptr );
 }
-
 void
 freeString( CNString *string )
 {
 	StringReset( string, CNStringAll );
 	freePair( (Pair *) string );
 }
-
 int
 StringStart( CNString *string, int event )
 {
@@ -41,7 +39,6 @@ StringStart( CNString *string, int event )
 	if ( event ) StringAppend( string, event );
 	return 0;
 }
-
 int
 StringAppend( CNString *string, int event )
 /*
@@ -54,7 +51,6 @@ StringAppend( CNString *string, int event )
 	add_item( (listItem**) &string->data, event );
 	return 0;
 }
-
 char *
 StringFinish( CNString *string, int trim )
 /*
@@ -147,7 +143,6 @@ l2s( listItem **list, int trim )
 	freeListItem( list );
 	return str;
 }
-
 void
 StringReset( CNString *string, int target )
 {
@@ -169,14 +164,12 @@ StringReset( CNString *string, int target )
 		}
 	}
 }
-
 int
 StringInformed( CNString *string )
 {
 	return ( string->data != NULL );
 }
 int
-
 StringAt( CNString *string )
 {
 	if (( string->data ))
@@ -188,6 +181,22 @@ StringAt( CNString *string )
 		case CNStringText:
 			return *(char *)string->data;
 		}
+	return 0;
+}
+int
+StringCompare( CNString *string, char *cmp )
+{
+	if ( string->mode==CNStringText )
+		return strcmp((char *) string->data, cmp );
+
+	union { int value; void *ptr; } icast;
+	listItem *i = string->data;
+	int j;
+	for ( j=strlen(cmp), cmp+=j-1; j-- && (i); i=i->next ) {
+		icast.ptr = i->ptr;
+		int comparison = icast.value - *cmp--;
+		if ( comparison ) return comparison;
+	}
 	return 0;
 }
 

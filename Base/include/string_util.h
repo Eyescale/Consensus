@@ -48,13 +48,14 @@ typedef struct {
 CNString *newString( void );
 void	freeString( CNString * );
 
-int	StringInformed( CNString *s );
-int	StringAt( CNString *s );
-void	StringReset( CNString *string, int );
 int	StringStart( CNString *string, int event );
 int	StringAppend( CNString *string, int event );
+void	StringReset( CNString *string, int );
 char *	StringFinish( CNString *string, int trim );
 char *	l2s( listItem **, int trim );
+int	StringInformed( CNString *s );
+int	StringAt( CNString *s );
+int	StringCompare( CNString *, char * );
 
 char *	strmake( char * );
 int	strcomp( char *, char *, int );
