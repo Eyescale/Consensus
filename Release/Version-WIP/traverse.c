@@ -12,9 +12,8 @@
 	if (( user_CB = table[ CB ] )) { \
 		traverse_data->p = p; traverse_data->flags = 0; \
 		int retval = user_CB( traverse_data, p, flags ); \
-		done = traverse_data->done; \
+		p = traverse_data->p; done = traverse_data->done; \
 		if (!( retval==BM_DONE )) { \
-			p = traverse_data->p; \
 			f_set( traverse_data->flags ) } \
 		else { op; } }
 char *
