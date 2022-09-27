@@ -71,7 +71,7 @@ Usage & Implementation
 					traverse_data->p
 					traverse_data->done
 			      and	traverse_data->user_data
-			       as	(MydDataType *) data
+			       as	(MyDataType *) data
 			...
 			return BM_DONE or BM_CONTINUE;
 		case_( identifier_CB )
