@@ -1,12 +1,13 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. consistent usage of flags across all C-traversals
-		. document - ./design/specs/C_TRAVERSE-*.txt
-			. Events: '{', etc.
-			. Usage: where C-traversal happens
-			. Template - and flags
-		. use only ONE set of flags consistently
-			. use p_prune( PRUNE_LITERAL, p ) everywhere
+	. Implement consistent usage of flags across all C-traversals
+                . [DONE] instantiate.c	bm_instantiate()
+					bm_void()
+                . WIP: feel.c		bm_verify()
+                . TODO: locate.c	bm_locate_pivot()
+					xp_target()
+					bm_locate_param()
+                . deternarize.c  	deternarize()
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
@@ -118,6 +119,13 @@ NICE TO HAVE
 
 
 DONE
+	. Design consistent usage of flags across all C-traversals
+		. See ./design/specs/bm-TRAVERSE-design.txt
+			. Events: '{', etc.
+			. Usage: where C-traversal happens
+			. Template - and flags
+		. use only ONE set of flags consistently
+			. use p_prune( PRUNE_LITERAL, p ) everywhere
 	. deternarize integration:
 		. ternary-operated expressions supported in all cases except
 		  input from external sources (including INI files)
