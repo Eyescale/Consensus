@@ -37,7 +37,7 @@ Usage & Implementation
 		
 		BMTraverseData traverse_data;
 		memset( &traverse_data, 0, sizeof(traverse_data) );
-		traverse_data.user_data = data;
+		traverse_data.user_data = &data;
 
 		BMTraverseCB *table[ BMTraverseCBNum ];
 		memset( table, 0, sizeof(table) );
@@ -88,7 +88,7 @@ Usage & Implementation
 		on return value BM_DONE
 			BMtraverse continues without informing anything
 		on traverse_data->done other than zero
-			BMtraverse will break out of its parsing loop
+			BMtraverse breaks out of its parsing loop
 
 	char *
 	bm_traverse( char *expression, BMTraverseData *traverse_data )
@@ -108,8 +108,10 @@ Usage & Implementation
 					traverse_data->p = p; traverse_data->flags = flags;
 					int retval = user_CB( traverse_data, p, flags );
 					p = traverse_data->p; done = traverse_data->done;
-					if ( retval==BM_DONE ) break;
-					else f_set( traverse_data->flags )
+					if (!( retval==BM_DONE )) {
+						p = traverse_data->p;
+						f_set( traverse_data->flags ) }
+					else break;
 				}
 				if is_f(NEGATED) f_clr( NEGATED )
 				else f_set( NEGATED )
