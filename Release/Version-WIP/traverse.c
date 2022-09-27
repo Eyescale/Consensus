@@ -8,25 +8,21 @@
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
 #define BMTraverseError -1
-#define bar( CB, op ) \
-	if (( user_CB = table[ CB ] )) { \
-		traverse_data->p = p; traverse_data->flags = 0; \
-		int retval = user_CB( traverse_data, p, flags ); \
-		p = traverse_data->p; done = traverse_data->done; \
-		if (!( retval==BM_DONE )) { \
-			f_set( traverse_data->flags ) } \
-		else { op; } }
+#define bar( CB, out ) \
+	if ((table[CB]) && table[CB]( traverse_data, p, flags )==BM_DONE ) { \
+		p = traverse_data->p; \
+		flags = traverse_data->flags; \
+		out; }
 char *
 bm_traverse( char *expression, BMTraverseData *traverse_data )
 {
-	union { int value; void *ptr; } icast;
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
-	BMTraverseCB *user_CB;
+	union { int value; void *ptr; } icast;
 	listItem *stack = NULL;
 	char *	p = expression;
-	int 	flags = FIRST, done = 0;
+	int 	flags = FIRST;
 	bar( BMBgnCB, return p )
-	while ( *p && !done ) {
+	while ( *p && !traverse_data->done ) {
 		bar( BMPreemptCB, continue )
 		switch ( *p ) {
 		case '~':
@@ -40,7 +36,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			f_reset( SET|FIRST, 0 )
 			p++; break;
 		case '}':
-			if ( !is_f(SET) ) { done=1; break; }
+			if ( !is_f(SET) )
+				{ traverse_data->done = 1; break; }
 			icast.ptr = stack->ptr;
 			traverse_data->f_next = icast.value;
 			bar( BMEndSetCB, break )
@@ -81,7 +78,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			else {
 				bar( BMSyntaxErrorCB, break )
 				fprintf( stderr, ">>>>> B%%: Error: C_traverse: unexpected '%%'_continuation\n" );
-				done=BMTraverseError; break;
+				traverse_data->done = BMTraverseError;
+				break;
 			}
 			break;
 		case '(':
@@ -95,13 +93,15 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			f_reset( LEVEL|FIRST, SET )
 			p++; break;
 		case ',':
-			if ( !is_f(SET|LEVEL|SUB_EXPR) ) { done=1; break; }
+			if ( !is_f(SET|LEVEL|SUB_EXPR) )
+				{ traverse_data->done = 1; break; }
 			bar( BMDecoupleCB, break )
 			if is_f( LEVEL|SUB_EXPR ) f_clr( FIRST )
 			f_clr( INFORMED )
 			p++; break;
 		case ':':
-			if ( !is_f(SET|LEVEL|SUB_EXPR) ) { done=1; break; }
+			if ( !is_f(SET|LEVEL|SUB_EXPR) )
+				{ traverse_data->done = 1; break; }
 			bar( BMFilterCB, break )
 			f_clr( INFORMED )
 			f_set( FIRST )
@@ -113,7 +113,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 				bar( BMEndPipeCB, break )
 				f_pop( &stack, 0 )
 			}
-			if ( !is_f(SET|LEVEL|SUB_EXPR) ) { done=1; break; }
+			if ( !is_f(SET|LEVEL|SUB_EXPR) )
+				{ traverse_data->done = 1; break; }
 			icast.ptr = stack->ptr;
 			traverse_data->f_next = icast.value;
 			bar( BMCloseCB, break )
@@ -123,7 +124,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 		case '?':
 			if is_f( INFORMED ) {
 				bar( BMTernaryOperatorCB, break )
-				if ( !is_f(SET|LEVEL|SUB_EXPR) ) { done=1; break; }
+				if ( !is_f(SET|LEVEL|SUB_EXPR) )
+					{ traverse_data->done = 1; break; }
 				f_clr( INFORMED )
 				f_set( TERNARY|FIRST )
 				p++; break;
@@ -162,7 +164,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			if ( is_separator(*p) ) {
 				bar( BMSyntaxErrorCB, break )
 				fprintf( stderr, ">>>>> B%%: Error: C_traverse: expected identifier\n" );
-				done=BMTraverseError; break;
+				traverse_data->done = BMTraverseError;
+				break;
 			}
 			bar( BMIdentifierCB, break )
 			p = p_prune( PRUNE_IDENTIFIER, p );

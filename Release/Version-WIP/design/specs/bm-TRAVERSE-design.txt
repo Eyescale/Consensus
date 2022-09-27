@@ -96,20 +96,18 @@ Usage & Implementation
 		BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
 		BMTraverseCB *user_CB;
 		char *	p = expression;
-		int	flags = FIRST, done = 0;
+		int	flags = FIRST;
 		...	// BMBgnCB
-		while ( *p && !done ) {
+		while ( *p && !traverse_data->done ) {
 			...	// BMPreemptCB
 			switch ( *p ) {
 			...
 			case '~':
-				if (( user_CB = table[ BMNegatedCB ] )) {
-					traverse_data->p = p; traverse_data->flags = flags;
-					int retval = user_CB( traverse_data, p, flags );
-					p = traverse_data->p; done = traverse_data->done;
-					if (!( retval==BM_DONE ))
-						f_set( traverse_data->flags )
-					else break;
+				if (( user_CB = table[ BMNegatedCB ] ) &&
+				    ( user_CB( traverse_data, p, flags )==BM_DONE ) ) {
+					p = traverse_data->p;
+					flags = traverse_data->flags;
+					break;
 				}
 				if is_f(NEGATED) f_clr( NEGATED )
 				else f_set( NEGATED )

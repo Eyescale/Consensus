@@ -463,7 +463,7 @@ bm_verify( int op, CNInstance *x, char **position, BMScanData *data )
 	int	level, OOS,
 		success = data->success,
 		flags = data->flags;
-	f_clr( NEGATED );
+	f_clr( NEGATED )
 	switch ( op ) {
 	case BM_INIT:
 		base = NULL;
@@ -549,6 +549,7 @@ bm_verify( int op, CNInstance *x, char **position, BMScanData *data )
 			break;
 		case '?':
 			if ( p[1]==':' ) { p+=2; break; }
+			// no break
 		case '.':
 			if is_f( NEGATED ) { success = 0; f_clr( NEGATED ); }
 			else if ( data->empty ) success = 0;

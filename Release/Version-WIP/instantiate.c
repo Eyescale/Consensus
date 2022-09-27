@@ -88,7 +88,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 			traverse_data->done = -1;
 		else {
 			traverse_data->p = p_prune( PRUNE_TERM, p );
-			traverse_data->flags = INFORMED; }
+			traverse_data->flags = f_set( INFORMED ); }
 		_done;
 	case_( bgn_set_CB )
 		if (!is_f(FIRST)) {
@@ -314,7 +314,7 @@ bm_literal( char *expression, BMContext *ctx )
 //===========================================================================
 static BMTraverseCB feel;
 static BMTraverseCB
-	feel_CB, verify_CB, touch_CB, sound_CB;
+	toto, check_CB, touch_CB, sound_CB;
 typedef struct {
 	BMContext *ctx;
 	int empty;
@@ -344,10 +344,10 @@ bm_void( char *expression, BMContext *ctx )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMPreemptCB ]		= feel_CB;
-	table[ BMNegatedCB ]		= verify_CB;
-	table[ BMDereferenceCB ]	= verify_CB;
-	table[ BMSubExpressionCB ]	= verify_CB;
+	table[ BMPreemptCB ]		= toto;
+	table[ BMNegatedCB ]		= check_CB;
+	table[ BMDereferenceCB ]	= check_CB;
+	table[ BMSubExpressionCB ]	= check_CB;
 	table[ BMMarkRegisterCB ]	= touch_CB;
 	table[ BMWildCardCB ]		= sound_CB;
 
@@ -355,11 +355,11 @@ bm_void( char *expression, BMContext *ctx )
 	return ( traverse_data.done == 2 );
 
 	BMTraverseCBBegin
-	case_( feel_CB )
+	case_( toto )
 		if ( p_filtered( p ) )
 			return feel( traverse_data, p, flags );
 		_continue;
-	case_( verify_CB )
+	case_( check_CB )
 		int target = xp_target( p, EMARK );
 		if ( target&EMARK && target!=EMARK ) {
 			fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
@@ -384,6 +384,6 @@ feel( BMTraverseData *traverse_data, char *p, int flags )
 		traverse_data->done = 2;
 	else {
 		traverse_data->p = p_prune( PRUNE_TERM, p );
-		traverse_data->flags = INFORMED; }
+		traverse_data->flags = f_set( INFORMED ); }
 	return BM_DONE;
 }
