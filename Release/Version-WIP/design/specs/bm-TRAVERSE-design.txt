@@ -108,9 +108,8 @@ Usage & Implementation
 					traverse_data->p = p; traverse_data->flags = flags;
 					int retval = user_CB( traverse_data, p, flags );
 					p = traverse_data->p; done = traverse_data->done;
-					if (!( retval==BM_DONE )) {
-						p = traverse_data->p;
-						f_set( traverse_data->flags ) }
+					if (!( retval==BM_DONE ))
+						f_set( traverse_data->flags )
 					else break;
 				}
 				if is_f(NEGATED) f_clr( NEGATED )
