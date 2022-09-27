@@ -7,7 +7,7 @@ References
 		traverse.c
 		./include/traverse.h
 	use cases
-		expression.c	bm_instantiate()
+		instantiate.c	bm_instantiate()
 				bm_void()
 		deternarize.c	deternarize()
 		locate.c	bm_locate_pivot()
