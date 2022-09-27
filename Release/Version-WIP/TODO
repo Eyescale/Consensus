@@ -1,10 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. consistent usage of flags across all C-traversals
-		=> use only ONE set of flags
-		=> use p_prune( PRUNE_LITERAL, p ) everywhere
-		=> have ONE template applied consistently across the board
-		=> git add ./design/specs/C_TRAVERSE-*.txt
+		. document - ./design/specs/C_TRAVERSE-*.txt
+			. Events: '{', etc.
+			. Usage: where C-traversal happens
+			. Template - and flags
+		. use only ONE set of flags consistently
+			. use p_prune( PRUNE_LITERAL, p ) everywhere
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
@@ -12,7 +14,7 @@ TODO
 		. [DONE] in/on ~.: expression		(negative occurrence)
 		. [DONE] ( expr ? expr : expr ) 	(ternary-operated expression)
 		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
-	. Create ternary-operated expressions proper test case(s)
+	. ./Test/ create ternary-operated expressions proper test case(s)
 	. Pass design/story/single-thread.story
 	. update ./design/specs/bm-read-narrative-states.txt
 	. bm_input()

@@ -6,13 +6,13 @@
 #include "traverse.h"
 #include "feel.h"
 
-typedef int (*BMTernaryCB)( char *, void * );
+typedef int BMTernaryCB( char *, void * );
 static char *deternarize( char *expression, BMTernaryCB, void *user_data );
 
 //===========================================================================
 //	bm_deternarize
 //===========================================================================
-static int pass_CB( char *guard, void *user_data );
+static BMTernaryCB pass_CB;
 
 char *
 bm_deternarize( char **expression, BMContext *ctx )

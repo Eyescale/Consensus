@@ -688,9 +688,7 @@ else 				do_( "" )
 	// bm_parse:	Parser End
 	//----------------------------------------------------------------------
 	CNParserEnd
-	if ( errnum ) {
-		bm_parser_report( errnum, parser, mode );
-	}
+	if ( errnum ) bm_parser_report( errnum, parser, mode );
 	data->flags = flags;
 	return state;
 }

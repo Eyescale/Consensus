@@ -13,12 +13,8 @@ typedef enum {
 } BMLogType;
 CNInstance *bm_feel( char *expression, BMContext *, BMLogType );
 
-enum {
-	BM_CONTINUE,
-	BM_DONE
-};
-typedef int BMTraverseCB( CNInstance *, BMContext *, void * );
-CNInstance *bm_traverse( char *expression, BMContext *, BMTraverseCB, void * );
+typedef int BMScanCB( CNInstance *, BMContext *, void * );
+CNInstance *bm_scan( char *expression, BMContext *, BMScanCB, void * );
 
 
 #endif	// FEEL_H

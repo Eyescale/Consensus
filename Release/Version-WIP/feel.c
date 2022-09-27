@@ -4,7 +4,6 @@
 #include "feel_private.h"
 #include "string_util.h"
 #include "traverse.h"
-#include "context.h"
 #include "locate.h"
 #include "feel.h"
 
@@ -19,16 +18,16 @@
 //===========================================================================
 //	bm_feel
 //===========================================================================
-static int xp_init( BMTraverseData *, char *, BMContext * );
-static int xp_verify( CNInstance *, BMTraverseData * );
+static int xp_init( BMScanData *, char *, BMContext * );
+static int xp_verify( CNInstance *, BMScanData * );
 
 CNInstance *
 bm_feel( char *expression, BMContext *ctx, BMLogType type )
 {
 	if ( type == BM_CONDITION )
-		return bm_traverse( expression, ctx, NULL, NULL );
+		return bm_scan( expression, ctx, NULL, NULL );
 
-	BMTraverseData data;
+	BMScanData data;
 	if ( !xp_init( &data, expression, ctx ) )
 		return NULL;
 
@@ -50,10 +49,10 @@ bm_feel( char *expression, BMContext *ctx, BMLogType type )
 	return success;
 }
 static int
-xp_init( BMTraverseData *data, char *expression, BMContext *ctx )
+xp_init( BMScanData *data, char *expression, BMContext *ctx )
 {
 	if ( !expression || !*expression ) return 0;
-	memset( data, 0, sizeof(BMTraverseData));
+	memset( data, 0, sizeof(BMScanData));
 	data->expression = expression;
 	data->ctx = ctx;
 	data->db = BMContextDB(ctx);
@@ -61,13 +60,13 @@ xp_init( BMTraverseData *data, char *expression, BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_traverse
+//	bm_scan
 //===========================================================================
-static CNInstance *xp_traverse( BMTraverseData * );
-static int traverse_CB( CNInstance *e, BMTraverseData *data );
+static CNInstance *xp_traverse( BMScanData * );
+static int scan_CB( CNInstance *e, BMScanData *data );
 
 CNInstance *
-bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_data )
+bm_scan( char *expression, BMContext *ctx, BMScanCB user_CB, void *user_data )
 /*
 	find the first term other than '.' or '?' in expression which is not
 	negated. if found then test each entity in term.exponent against
@@ -78,9 +77,9 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "BM_TRAVERSE: %s\n", expression );
+	fprintf( stderr, "BM_SCAN: %s\n", expression );
 #endif
-	BMTraverseData data;
+	BMScanData data;
 	if ( !xp_init( &data, expression, ctx ) )
 		return NULL;
 
@@ -116,7 +115,7 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 	else {
 		listItem *s = NULL;
 		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
-			if ( traverse_CB( e, &data ) == BM_DONE ) {
+			if ( scan_CB( e, &data ) == BM_DONE ) {
 				freeListItem( &s );
 				success = e;
 				break;
@@ -124,12 +123,12 @@ bm_traverse( char *expression, BMContext *ctx, BMTraverseCB user_CB, void *user_
 		}
 	}
 #ifdef DEBUG
-	fprintf( stderr, "BM_TRAVERSE: success=%d\n", !!success );
+	fprintf( stderr, "BM_SCAN: success=%d\n", !!success );
 #endif
 	return success;
 }
 static int
-traverse_CB( CNInstance *e, BMTraverseData *data )
+scan_CB( CNInstance *e, BMScanData *data )
 {
 	if ( xp_verify( e, data ) ) {
 		if ( !data->user_CB ) return BM_DONE;
@@ -142,9 +141,9 @@ traverse_CB( CNInstance *e, BMTraverseData *data )
 //	xp_traverse
 //===========================================================================
 static CNInstance *
-xp_traverse( BMTraverseData *data )
+xp_traverse( BMScanData *data )
 /*
-	Traverses data->pivot's exponent invoking traverse_CB on every match
+	Traverses data->pivot's exponent invoking scan_CB on every match
 	returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumption: x is not deprecated - therefore neither are its subs
 */
@@ -196,7 +195,7 @@ fprintf( stderr, "\n" );
 				; // ward off doublons
 			else {
 				addIfNotThere( &trail, x );
-				if ( traverse_CB( x, data ) == BM_DONE ) {
+				if ( scan_CB( x, data ) == BM_DONE ) {
 					success = x;
 					goto RETURN;
 				}
@@ -244,7 +243,7 @@ RETURN:
 //===========================================================================
 //	xp_verify
 //===========================================================================
-static int bm_verify( int op, CNInstance *, char **, BMTraverseData * );
+static int bm_verify( int op, CNInstance *, char **, BMScanData * );
 typedef struct {
 	listItem *mark_exp;
 	listItem *not;
@@ -256,7 +255,7 @@ typedef struct {
 static char *pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
 
 static int
-xp_verify( CNInstance *x, BMTraverseData *data )
+xp_verify( CNInstance *x, BMScanData *data )
 {
 	CNDB *db = data->db;
 	int privy = data->privy;
@@ -439,10 +438,10 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *not )
 //===========================================================================
 //	bm_verify
 //===========================================================================
-static int bm_match( CNInstance *, char *, listItem *, listItem *, BMTraverseData * );
+static int bm_match( CNInstance *, char *, listItem *, listItem *, BMScanData * );
 
 static int
-bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
+bm_verify( int op, CNInstance *x, char **position, BMScanData *data )
 /*
 	invoked by xp_verify on each [sub-]expression, i.e.
 	on each expression term starting with '*' or '%'
@@ -586,7 +585,7 @@ bm_verify( int op, CNInstance *x, char **position, BMTraverseData *data )
 }
 
 static int
-bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverseData *data )
+bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMScanData *data )
 /*
 	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
 	is either NULL or the exponent of p as expression term
@@ -605,13 +604,14 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMTraverse
 	else if ( p == NULL ) // wildcard
 		return 1;
 
+	// name-based testing: note that %! MUST come first
+	if ( !strncmp( p, "%!", 2 ) ) {
+		listItem *v = bm_context_lookup( data->ctx, "!" );
+		return !!lookupItem( v, y ); }
 	else if (( data->pivot ) && p==data->pivot->name )
 		return ( y == data->pivot->value );
 	else if ( *p=='*' )
 		return ( y == data->star );
-	else if ( !strncmp( p, "%!", 2 ) ) {
-		listItem *v = bm_context_lookup( data->ctx, "!" );
-		return !!lookupItem( v, y ); }
 	else if ( !strncmp( p, "%?", 2 ) )
 		return ( y == bm_context_lookup( data->ctx, "?" ) );
 	else if ( !is_separator(*p) ) {

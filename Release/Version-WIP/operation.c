@@ -5,6 +5,7 @@
 #include "program.h"
 #include "operation.h"
 #include "expression.h"
+#include "traverse.h"
 #include "feel.h"
 
 // #define DEBUG
@@ -343,7 +344,7 @@ RETURN:
 //===========================================================================
 //	do_enable
 //===========================================================================
-static BMTraverseCB enable_CB;
+static BMScanCB enable_CB;
 typedef struct {
 	CNNarrative *narrative;
 	Registry *subs;
@@ -368,7 +369,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 		// launch query
 		data.narrative = narrative;
 		data.entry = NULL;
-		bm_traverse( q, ctx, enable_CB, &data );
+		bm_scan( q, ctx, enable_CB, &data );
 		// reset
 		StringReset( s, CNStringAll );
 	}

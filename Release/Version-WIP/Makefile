@@ -19,6 +19,7 @@ SRCS =	database.c \
 	operation.c \
 	context.c \
 	expression.c \
+	traverse.c \
 	deternarize.c \
 	instantiate.c \
 	locate.c \

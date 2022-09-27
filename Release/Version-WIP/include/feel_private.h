@@ -22,7 +22,7 @@ typedef struct {
 	CNInstance *star;
 	Pair *pivot;
 	listItem *exponent;
-	BMTraverseCB *user_CB;
+	BMScanCB *user_CB;
 	void *user_data;
 	listItem *mark_exp;
 	listItem *sub_exp;
@@ -34,7 +34,7 @@ typedef struct {
 		listItem *scope;
 		listItem *base;
 	} stack;
-} BMTraverseData;
+} BMScanData;
 
 
 #endif	// FEEL_PRIVATE_H

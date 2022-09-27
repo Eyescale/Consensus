@@ -5,6 +5,7 @@
 #include "database.h"
 #include "narrative.h"
 #include "expression.h"
+#include "traverse.h"
 #include "feel.h"
 
 // #define DEBUG
@@ -12,13 +13,13 @@
 //===========================================================================
 //	bm_query
 //===========================================================================
-static BMTraverseCB query_CB;
+static BMScanCB query_CB;
 
 listItem *
 bm_query( char *expression, BMContext *ctx )
 {
 	listItem *results = NULL;
-	bm_traverse( expression, ctx, query_CB, &results );
+	bm_scan( expression, ctx, query_CB, &results );
 	return results;
 }
 static int
@@ -31,12 +32,12 @@ query_CB( CNInstance *e, BMContext *ctx, void *results )
 //===========================================================================
 //	bm_release
 //===========================================================================
-static BMTraverseCB release_CB;
+static BMScanCB release_CB;
 
 void
 bm_release( char *expression, BMContext *ctx )
 {
-	bm_traverse( expression, ctx, release_CB, NULL );
+	bm_scan( expression, ctx, release_CB, NULL );
 }
 static int
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
@@ -224,7 +225,7 @@ bm_input( char *format, char *expression, BMContext *ctx )
 //	bm_outputf
 //===========================================================================
 static void bm_output( char *format, char *expression, BMContext *);
-static BMTraverseCB output_CB;
+static BMScanCB output_CB;
 typedef struct {
 	char *format;
 	int first;
@@ -282,11 +283,11 @@ static void
 bm_output( char *format, char *expression, BMContext *ctx )
 /*
 	outputs expression's results
-	note that we rely on bm_traverse to eliminate doublons
+	note that we rely on bm_scan to eliminate doublons
 */
 {
 	OutputData data = { format, 1, NULL };
-	bm_traverse( expression, ctx, output_CB, &data );
+	bm_scan( expression, ctx, output_CB, &data );
 	CNDB *db = BMContextDB( ctx );
 	if ( data.first )
 		db_output( stdout, format, data.last, db );
