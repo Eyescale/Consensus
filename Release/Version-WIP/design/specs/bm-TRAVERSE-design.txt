@@ -103,8 +103,7 @@ Usage & Implementation
 			switch ( *p ) {
 			...
 			case '~':
-				BMTraverseCB user_CB = table[ BMNegatedCB ];
-				if (( user_CB )) {
+				if (( user_CB = table[ BMNegatedCB ] )) {
 					traverse_data->p = p; traverse_data->flags = flags;
 					int retval = user_CB( traverse_data, p, flags );
 					p = traverse_data->p; done = traverse_data->done;
