@@ -12,9 +12,9 @@ typedef enum {
 typedef enum {
 	BM_DONE = 0,
 	BM_CONTINUE
-} BMCB_;
+} BMCB_take;
 
-typedef BMCB_ BMQueryCB( CNInstance *, BMContext *, void * );
+typedef BMCB_take BMQueryCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_query( BMQueryType, char *expression, BMContext *, BMQueryCB, void * );
 
 #endif	// QUERY_H

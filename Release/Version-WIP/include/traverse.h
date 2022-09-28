@@ -56,10 +56,10 @@ typedef struct {
 	char *p;
 } BMTraverseData;
 
-typedef BMCB_ BMTraverseCB( BMTraverseData *, char *p, int flags );
+typedef BMCB_take BMTraverseCB( BMTraverseData *, char *p, int flags );
 char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 
-#define BMTraverseCBBegin( func ) \
+#define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
 #define BMTraverseCBEnd	\
 	}

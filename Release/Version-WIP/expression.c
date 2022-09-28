@@ -28,7 +28,7 @@ bm_release( char *expression, BMContext *ctx )
 {
 	bm_query( BM_CONDITION, expression, ctx, release_CB, NULL );
 }
-static BMCB_
+static BMCB_take
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	CNDB *db = BMContextDB( ctx );
@@ -292,7 +292,7 @@ bm_output( char *format, char *expression, BMContext *ctx )
 		printf( " }" );
 	}
 }
-static BMCB_
+static BMCB_take
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	OutputData *data = user_data;

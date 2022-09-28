@@ -375,7 +375,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 	freeString( s );
 	return 1;
 }
-static BMCB_
+static BMCB_take
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	EnableData *data = user_data;
