@@ -14,14 +14,11 @@
 		flags = traverse_data->flags; \
 		out; }
 char *
-bm_traverse( char *expression, BMTraverseData *traverse_data )
+bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
 {
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
 	union { int value; void *ptr; } icast;
-	listItem *stack = NULL;
 	char *	p = expression;
-	int 	flags = FIRST;
-	bar_( BMBgnCB, return p )
 	while ( *p && !traverse_data->done ) {
 		bar_( BMPreemptCB, continue )
 		switch ( *p ) {
@@ -32,22 +29,22 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			p++; break;
 		case '{':
 			bar_( BMBgnSetCB, break )
-			f_push( &stack )
+			f_push( stack )
 			f_reset( SET|FIRST, 0 )
 			p++; break;
 		case '}':
 			if ( !is_f(SET) )
 				{ traverse_data->done = 1; break; }
-			icast.ptr = stack->ptr;
+			icast.ptr = (*stack)->ptr;
 			traverse_data->f_next = icast.value;
 			bar_( BMEndSetCB, break )
-			f_pop( &stack, 0 )
+			f_pop( stack, 0 )
 			f_clr( NEGATED )
 			f_set( INFORMED )
 			p++; break;
 		case '|':
 			bar_( BMBgnPipeCB, break )
-			f_push( &stack )
+			f_push( stack )
 			f_reset( PIPED, SET )
 			p++; break;
 		case '*':
@@ -70,7 +67,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			else if ( p[1]=='(' ) {
 				if ( !p_single(p) ) f_set( COUPLE )
 				bar_( BMSubExpressionCB, break )
-				f_push( &stack )
+				f_push( stack )
 				f_reset( SUB_EXPR|FIRST, 0 )
 				p+=2; break;
 			}
@@ -97,7 +94,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			}
 			if ( !p_single(p) ) f_set( COUPLE )
 			bar_( BMOpenCB, break )
-			f_push( &stack )
+			f_push( stack )
 			f_reset( LEVEL|FIRST, 0 )
 			p++; break;
 		case ',':
@@ -116,17 +113,17 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			p++; break;
 		case ')':
 			if ( is_f(PIPED) && !is_f(LEVEL|SUB_EXPR) ) {
-				icast.ptr = stack->ptr;
+				icast.ptr = (*stack)->ptr;
 				traverse_data->f_next = icast.value;
 				bar_( BMEndPipeCB, break )
-				f_pop( &stack, 0 )
+				f_pop( stack, 0 )
 			}
 			if ( !is_f(LEVEL|SUB_EXPR) )
 				{ traverse_data->done = 1; break; }
-			icast.ptr = stack->ptr;
+			icast.ptr = (*stack)->ptr;
 			traverse_data->f_next = icast.value;
 			bar_( BMCloseCB, break )
-			f_pop( &stack, 0 );
+			f_pop( stack, 0 );
 			f_clr( NEGATED )
 			f_set( INFORMED )
 			p++; break;
@@ -145,7 +142,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 		case '.':
 			if ( p[1]=='(' ) {
 				bar_( BMDotExpressionCB, break )
-				f_push( &stack )
+				f_push( stack )
 				f_reset( DOT|LEVEL|FIRST, 0 )
 				p+=2; break;
 			}
@@ -195,7 +192,5 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			f_set( INFORMED )
 		}
 	}
-	freeListItem( &stack );
-	bar_( BMEndCB, {} )
 	return p;
 }

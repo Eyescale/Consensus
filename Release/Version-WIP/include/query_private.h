@@ -17,7 +17,6 @@ typedef enum {
 typedef struct {
 	BMContext *ctx;
 	int privy;
-	int empty;
 	CNInstance *star;
 	Pair *pivot;
 	listItem *exponent;

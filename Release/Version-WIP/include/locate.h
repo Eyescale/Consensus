@@ -27,7 +27,7 @@ void xpn_out( FILE *stream, listItem *xp );
 #define	STAR		16
 #define EMARK		32
 
-int xp_target( char *expression, int target );
+int bm_scour( char *expression, int target );
 
 
 #endif	// LOCATE_H

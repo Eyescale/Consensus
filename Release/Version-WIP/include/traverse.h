@@ -20,8 +20,7 @@
 #define PIPED		(1<<13)
 
 typedef enum {
-	BMBgnCB = 0,
-	BMPreemptCB,
+	BMPreemptCB = 0,
 	BMNegatedCB,		// ~
 	BMBgnSetCB,		// {
 	BMEndSetCB,		// }
@@ -47,7 +46,6 @@ typedef enum {
 	BMIdentifierCB,		// identifier
 	BMSignalCB,		// identifier~
 	BMSyntaxErrorCB,
-	BMEndCB,
 	BMCBNum
 } BMCBName;
 typedef struct {
@@ -59,7 +57,7 @@ typedef struct {
 } BMTraverseData;
 
 typedef BMCB_ BMTraverseCB( BMTraverseData *, char *p, int flags );
-char *bm_traverse( char *expression, BMTraverseData * );
+char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 
 #define BMTraverseCBBegin( func ) \
 	static void func( void ) {

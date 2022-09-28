@@ -15,7 +15,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = xp_target( expression, QMARK );
+	int target = bm_scour( expression, QMARK );
 	if ( target == 0 ) return NULL;
 	else target =	( target & QMARK ) ? QMARK :
 			( target & IDENTIFIER ) ? IDENTIFIER :
@@ -137,7 +137,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 }
 
 int
-xp_target( char *expression, int target )
+bm_scour( char *expression, int target )
 {
 	char *	p = expression;
 	int	candidate = 0, not = 0,

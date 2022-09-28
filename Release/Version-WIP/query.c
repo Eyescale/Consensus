@@ -58,7 +58,6 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 			}
 			data.exponent = exponent;
 			data.privy = !strncmp( p, "%!", 2 ) ? 2 : 0;
-			data.empty = db_is_empty( data.privy, db );
 			data.star = db_lookup( data.privy, "*", db );
 			data.pivot = newPair( p, e );
 			success = xp_traverse( expression, &data );
@@ -79,7 +78,6 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 		data.privy = 1;
 		// no break
 	case BM_INSTANTIATED:
-		data.empty = db_is_empty( data.privy, db );
 		data.star = db_lookup( data.privy, "*", db );
 		s = NULL;
 		for ( e = db_log( 1, data.privy, db, &s ); e!=NULL;
@@ -105,7 +103,7 @@ static int
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
 	return xp_verify( e, expression, data ) ?
-		( data->user_CB==NULL ) ? BM_DONE :
+		( !data->user_CB ) ? BM_DONE :
 			data->user_CB( e, data->ctx, data->user_data ) :
 		BM_CONTINUE;
 }
@@ -307,7 +305,7 @@ fprintf( stderr, " ........{\n" );
 				addItem( &stack.i, i );
 				addItem( &stack.p, p );
 				// setup new sub context
-				flags = FIRST;
+				f_clr( NEGATED )
 				mark_exp = data->mark_exp;
 				stack.as_sub = NULL;
 				i = newItem( x );
@@ -330,7 +328,7 @@ fprintf( stderr, " ........{\n" );
 			if ( success ) {
 				// move on past sub-expression
 				pop_stack( &stack, &i, &mark_exp, &flags );
-				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ); }
+				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ) }
 				exponent = NULL;
 				op = BM_END;
 				continue;
@@ -408,7 +406,7 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 //===========================================================================
 //	verify
 //===========================================================================
-static int match( CNInstance *, char *, listItem *, listItem *, BMQueryData * );
+static int match( CNInstance *, char *, listItem *, BMQueryData * );
 
 static int
 verify( int op, CNInstance *x, char **position, BMQueryData *data )
@@ -431,19 +429,18 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	char * 	p = *position;
 	int	success = data->success,
 		flags = data->flags;
-	listItem **exponent = &data->stack.exponent;
-	listItem **current = &data->stack.flags;
-	listItem *base, *OOS;
+
+	/* we cannot use exponent to track scope, as no exponent is
+	   pushed in case of single expressions - e.g. %((.,?):%?)
+	*/
+	listItem **exponent = &data->stack.exponent, *base;
+	listItem **current = &data->stack.flags, *OOS;
 	if ( op==BM_END ) {
 		base = popListItem( &data->stack.base );
 		popListItem( &data->stack.scope ); // done with this one
 		OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL );
 	}
 	else {
-		/* we cannot use exponent to track scope, as
-		   no exponent is pushed in case of single
-		   expressions - e.g. %((.,?):%?)
-		*/
 		base = *exponent;
 		OOS = *current;
 	}
@@ -458,13 +455,13 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 			p++; break;
 		case '%':
 			if ( strmatch( "?!", p[1] ) ) {
-				success = match( x, p, *exponent, base, data );
+				success = match( x, p, base, data );
 				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
 				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p+=2;
 			}
 			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = match( x, p, *exponent, base, data );
+				success = match( x, p, base, data );
 				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
 				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p++;
@@ -476,7 +473,7 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 			break;
 		case '*':
 			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = match( x, p, *exponent, base, data );
+				success = match( x, p, base, data );
 				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
 				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 				p++;
@@ -515,14 +512,13 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 			// no break
 		case '.':
 			if is_f( NEGATED ) { success = 0; f_clr( NEGATED ); }
-			else if ( data->empty ) success = 0;
 			else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
 				success = 1; // wildcard is as_sub[1]
-			else success = ( match( x, NULL, *exponent, base, data ) > 0 );
+			else success = ( match( x, NULL, base, data ) > 0 );
 			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
 			break;
 		default:
-			success = match( x, p, *exponent, base, data );
+			success = match( x, p, base, data );
 			if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
 			else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
 			p = p_prune( PRUNE_IDENTIFIER, p );
@@ -549,14 +545,14 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 }
 
 static int
-match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMQueryData *data )
+match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 /*
 	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
 	is either NULL or the exponent of p as expression term
 */
 {
 	listItem *xpn = NULL;
-	for ( listItem *i=exponent; i!=base; i=i->next )
+	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
 	CNInstance *y = x;
 	while (( y ) && (xpn)) {

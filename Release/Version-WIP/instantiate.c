@@ -73,11 +73,33 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMWildCardCB ]		= wildcard_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
-	table[ BMEndCB ]		= end_CB;
 
-	bm_traverse( expression, &traverse_data );
+	listItem *stack = NULL;
+	bm_traverse( expression, &traverse_data, &stack, FIRST );
+	freeListItem( &stack );
+	if ( traverse_data.done == 2 ) {
+		freeListItem( &data.sub[ 1 ] );
+		listItem *instances;
+		listItem **results = &data.results;
+		while (( instances = popListItem(results) ))
+			freeListItem( &instances );
+	}
+#ifdef DEBUG
+	if (( data.sub[ 0 ] )) {
+		fprintf( stderr, "bm_instantiate: } " );
+		if ( traverse_data.done == 2 )
+			fprintf( stderr, "***INCOMPLETE***" );
+		else {
+			CNDB *db = BMContextDB( ctx );
+			CNInstance *e = data.sub[ 0 ]->ptr;
+			db_outputf( stderr, "first=%_", db, e ); }
+		fprintf( stderr, "\n" ); }
+	else fprintf( stderr, "bm_instantiate: } no result\n" );
+#endif
+	freeListItem( &data.sub[ 0 ] );
 }
-BMTraverseCBBegin( instantiate_CB )
+
+BMTraverseCBBegin( bm_instantiate_traversal )
 CB_( filter_CB )
 	if ( p_filtered( p ) )
 		return collect_CB( traverse_data, p, flags );
@@ -175,27 +197,6 @@ CB_( signal_CB )
 	CNInstance *e = data->sub[ current ]->ptr;
 	db_signal( e, BMContextDB(data->ctx) );
 	return BM_CONTINUE;
-CB_( end_CB )
-	if ( traverse_data->done == 2 ) {
-		freeListItem( &data->sub[ 1 ] );
-		listItem *instances;
-		listItem **results = &data->results;
-		while (( instances = popListItem(results) ))
-			freeListItem( &instances ); }
-#ifdef DEBUG
-	if (( data->sub[ 0 ] )) {
-		fprintf( stderr, "bm_instantiate: } " );
-		if ( traverse_data->done == -1 )
-			fprintf( stderr, "***INCOMPLETE***" );
-		else {
-			CNDB *db = BMContextDB( data->ctx );
-			CNInstance *e = data->sub[ 0 ]->ptr;
-			db_outputf( stderr, "first=%_", db, e ); }
-		fprintf( stderr, "\n" ); }
-	else fprintf( stderr, "bm_instantiate: } no result\n" );
-#endif
-	freeListItem( &data->sub[ 0 ] );
-	return BM_CONTINUE;
 BMTraverseCBEnd
 
 //===========================================================================
@@ -240,17 +241,20 @@ bm_void( char *expression, BMContext *ctx )
 	table[ BMMarkRegisterCB ]	= touch_CB;
 	table[ BMWildCardCB ]		= sound_CB;
 
-	bm_traverse( expression, &traverse_data );
+	listItem *stack = NULL;
+	bm_traverse( expression, &traverse_data, &stack, FIRST );
+	freeListItem( &stack );
 	return ( traverse_data.done==2 );
 }
+
 static BMTraverseCB feel;
-BMTraverseCBBegin( void_CB )
+BMTraverseCBBegin( bm_void_traversal )
 CB_( feel_CB )
 	if ( p_filtered( p ) )
 		return feel( traverse_data, p, flags );
 	return BM_CONTINUE;
 CB_( check_CB )
-	int target = xp_target( p, EMARK );
+	int target = bm_scour( p, EMARK );
 	if ( target&EMARK && target!=EMARK ) {
 			fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
 			"dubious combination of query terms with %%!\n", p );
@@ -265,6 +269,7 @@ CB_( sound_CB )
 		{ traverse_data->done=2; return BM_DONE; }
 	return BM_CONTINUE;
 BMTraverseCBEnd
+
 static BMCB_
 feel( BMTraverseData *traverse_data, char *p, int flags )
 {
