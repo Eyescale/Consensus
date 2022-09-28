@@ -15,10 +15,8 @@ typedef enum {
 } BMVerifyOp;
 
 typedef struct {
-	char *expression;
 	BMContext *ctx;
 	int privy;
-	CNDB *db;
 	int empty;
 	CNInstance *star;
 	Pair *pivot;
@@ -31,8 +29,8 @@ typedef struct {
 	int flags;
 	struct {
 		listItem *flags;
-		listItem *exponent;
 		listItem *scope;
+		listItem *exponent;
 		listItem *base;
 	} stack;
 } BMQueryData;

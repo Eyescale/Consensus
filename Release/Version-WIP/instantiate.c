@@ -84,7 +84,7 @@ CB_( filter_CB )
 	return BM_CONTINUE;
 CB_( collect_CB )
 	if (!( data->sub[ current ] = bm_scan( p, data->ctx ) ))
-		traverse_data->done=2;
+		traverse_data->done = 2;
 	else {
 		traverse_data->p = p_prune( PRUNE_TERM, p );
 		traverse_data->flags = f_set( INFORMED ); }
