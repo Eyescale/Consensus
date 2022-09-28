@@ -184,7 +184,10 @@ StringAt( CNString *string )
 	return 0;
 }
 int
-StringCompare( CNString *string, char *cmp )
+StringDiffer( CNString *string, char *cmp )
+/*
+	kind of strcmp() except starts from end
+*/
 {
 	if ( string->mode==CNStringText )
 		return strcmp((char *) string->data, cmp );

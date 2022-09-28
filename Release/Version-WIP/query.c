@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "feel_private.h"
+#include "query_private.h"
 #include "string_util.h"
 #include "traverse.h"
 #include "locate.h"
-#include "feel.h"
 
 // #define DEBUG
 
@@ -16,57 +15,15 @@
 #endif
 
 //===========================================================================
-//	bm_feel
+//	bm_query
 //===========================================================================
-static int xp_init( BMScanData *, char *, BMContext * );
-static int xp_verify( CNInstance *, BMScanData * );
+static int xp_verify( CNInstance *, BMQueryData * );
+static CNInstance *xp_traverse( BMQueryData * );
+static int query_CB( CNInstance *e, BMQueryData *data );
 
 CNInstance *
-bm_feel( char *expression, BMContext *ctx, BMLogType type )
-{
-	if ( type == BM_CONDITION )
-		return bm_scan( expression, ctx, NULL, NULL );
-
-	BMScanData data;
-	if ( !xp_init( &data, expression, ctx ) )
-		return NULL;
-
-	CNDB *db = data.db;
-	int privy = (type==BM_RELEASED) ? 1 : 0;
-	data.privy = privy;
-	data.empty = db_is_empty( privy, db );
-	data.star = db_lookup( privy, "*", db );
-
-	CNInstance *success = NULL;
-	listItem *s = NULL;
-	for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) ) {
-		if ( xp_verify( e, &data ) ) {
-			freeListItem( &s );
-			success = e;
-			break;
-		}
-	}
-	return success;
-}
-static int
-xp_init( BMScanData *data, char *expression, BMContext *ctx )
-{
-	if ( !expression || !*expression ) return 0;
-	memset( data, 0, sizeof(BMScanData));
-	data->expression = expression;
-	data->ctx = ctx;
-	data->db = BMContextDB(ctx);
-	return 1;
-}
-
-//===========================================================================
-//	bm_scan
-//===========================================================================
-static CNInstance *xp_traverse( BMScanData * );
-static int scan_CB( CNInstance *e, BMScanData *data );
-
-CNInstance *
-bm_scan( char *expression, BMContext *ctx, BMScanCB user_CB, void *user_data )
+bm_query( BMQueryType type, char *expression, BMContext *ctx,
+	  BMQueryCB user_CB, void *user_data )
 /*
 	find the first term other than '.' or '?' in expression which is not
 	negated. if found then test each entity in term.exponent against
@@ -76,79 +33,97 @@ bm_scan( char *expression, BMContext *ctx, BMScanCB user_CB, void *user_data )
 	first entity for which user callback returns BM_DONE.
 */
 {
+	if ( !expression || !(*expression)) return NULL;
 #ifdef DEBUG
-	fprintf( stderr, "BM_SCAN: %s\n", expression );
+	fprintf( stderr, "BM_QUERY: %s\n", expression );
 #endif
-	BMScanData data;
-	if ( !xp_init( &data, expression, ctx ) )
-		return NULL;
 
-	CNDB *db = data.db;
+	BMQueryData data;
+	memset( &data, 0, sizeof(BMQueryData));
+	data.expression = expression;
+	data.ctx = ctx;
+	CNDB *db = BMContextDB( ctx );
 	data.user_CB = user_CB;
 	data.user_data = user_data;
-	listItem *exponent = NULL;
-	int privy = 0;
-	char *p = bm_locate_pivot( expression, &exponent );
-	if (( p )) {
-		CNInstance *x = bm_lookup( 0, p, ctx );
-		if (( x )) {
-			data.pivot = newPair( p, x );
-			data.exponent = exponent;
-		}
-		else {
-			freeListItem( &exponent );
-			return NULL;
-		}
-		privy = !strncmp( p, "%!", 2 ) ? 2 : 0;
-	}
-	else freeListItem( &exponent ); // better safe than sorry
-	data.privy = privy;
-	data.empty = db_is_empty( privy, db );
-	data.star = db_lookup( privy, "*", db );
 
-	CNInstance *success = NULL;
-	if (( data.pivot )) {
-		success = xp_traverse( &data );
-		freePair( data.pivot );
-		freeListItem( &data.exponent );
-	}
-	else {
+	CNInstance *success = NULL, *e;
+	switch ( type ) {
+	case BM_CONDITION: ;
+		listItem *exponent = NULL;
+		char *p = bm_locate_pivot( expression, &exponent );
+		if (( p )) {
+			e = bm_lookup( 0, p, ctx );
+			if ( !e ) {
+				freeListItem( &exponent );
+				break;
+			}
+			data.exponent = exponent;
+			data.privy = !strncmp( p, "%!", 2 ) ? 2 : 0;
+			data.empty = db_is_empty( data.privy, db );
+			data.star = db_lookup( data.privy, "*", db );
+			data.pivot = newPair( p, e );
+			success = xp_traverse( &data );
+			freePair( data.pivot );
+			freeListItem( &exponent );
+			break;
+		}
+		else if (( exponent )) {
+			fprintf( stderr, ">>>>> B%%: Error: bm_query: memory leak on exponent\n" );
+			exit( -1 );
+		}
 		listItem *s = NULL;
-		for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
-			if ( scan_CB( e, &data ) == BM_DONE ) {
+		for ( e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) ) {
+			if ( query_CB( e, &data ) == BM_DONE ) {
 				freeListItem( &s );
 				success = e;
 				break;
 			}
 		}
+		break;
+	case BM_RELEASED:
+		data.privy = 1;
+		// no break
+	case BM_INSTANTIATED:
+		data.empty = db_is_empty( data.privy, db );
+		data.star = db_lookup( data.privy, "*", db );
+		s = NULL;
+		for ( e = db_log( 1, data.privy, db, &s ); e!=NULL;
+		      e = db_log( 0, data.privy, db, &s ) ) {
+			if ( xp_verify( e, &data ) ) {
+				freeListItem( &s );
+				success = e;
+				break;
+			}
+		}
+		break;
 	}
+
 #ifdef DEBUG
-	fprintf( stderr, "BM_SCAN: success=%d\n", !!success );
+	fprintf( stderr, "BM_QUERY: success=%d\n", !!success );
 #endif
 	return success;
 }
 static int
-scan_CB( CNInstance *e, BMScanData *data )
+query_CB( CNInstance *e, BMQueryData *data )
 {
-	if ( xp_verify( e, data ) ) {
-		if ( !data->user_CB ) return BM_DONE;
-		return data->user_CB( e, data->ctx, data->user_data );
-	}
-	return BM_CONTINUE;
+	return xp_verify( e, data ) ?
+		( data->user_CB==NULL ) ? BM_DONE :
+			data->user_CB( e, data->ctx, data->user_data ) :
+		BM_CONTINUE;
 }
 
 //===========================================================================
 //	xp_traverse
 //===========================================================================
 static CNInstance *
-xp_traverse( BMScanData *data )
+xp_traverse( BMQueryData *data )
 /*
-	Traverses data->pivot's exponent invoking scan_CB on every match
+	Traverses data->pivot's exponent invoking query_CB on every match
 	returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumption: x is not deprecated - therefore neither are its subs
 */
 {
-	CNDB *db = data->db;
+	CNDB *db = BMContextDB( data->ctx );
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
 	CNInstance *x;
@@ -195,7 +170,7 @@ fprintf( stderr, "\n" );
 				; // ward off doublons
 			else {
 				addIfNotThere( &trail, x );
-				if ( scan_CB( x, data ) == BM_DONE ) {
+				if ( query_CB( x, data ) == BM_DONE ) {
 					success = x;
 					goto RETURN;
 				}
@@ -243,7 +218,7 @@ RETURN:
 //===========================================================================
 //	xp_verify
 //===========================================================================
-static int bm_verify( int op, CNInstance *, char **, BMScanData * );
+static int bm_verify( int op, CNInstance *, char **, BMQueryData * );
 typedef struct {
 	listItem *mark_exp;
 	listItem *not;
@@ -255,9 +230,9 @@ typedef struct {
 static char *pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
 
 static int
-xp_verify( CNInstance *x, BMScanData *data )
+xp_verify( CNInstance *x, BMQueryData *data )
 {
-	CNDB *db = data->db;
+	CNDB *db = BMContextDB( data->ctx );
 	int privy = data->privy;
 	char *p = data->expression;
 	if ( !strncmp( p, "?:", 2 ) )
@@ -396,22 +371,16 @@ RETURN:
 	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
-		fprintf( stderr, ">>>>> xp_verify: memory leak on exponent\n" );
-		if (data->stack.flags) fprintf( stderr, "FLAGS\n" );
-		if (data->stack.exponent) fprintf( stderr, "EXPONENT\n" );
+		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent\n" );
 		exit( -1 );
 	}
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
 	if ((data->stack.scope) || (data->stack.base)) {
-		fprintf( stderr, ">>>>> xp_verify: memory leak on scope\n" );
+		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
 		exit( -1 );
 	}
-	freeListItem( &data->stack.scope );
-	freeListItem( &data->stack.base );
-#endif
-#ifdef DEBUG
-fprintf( stderr, "xp_verify:.......} success=%d\n", success );
+	fprintf( stderr, "xp_verify:.......} success=%d\n", success );
 #endif
 	return success;
 }
@@ -438,10 +407,10 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *not )
 //===========================================================================
 //	bm_verify
 //===========================================================================
-static int bm_match( CNInstance *, char *, listItem *, listItem *, BMScanData * );
+static int bm_match( CNInstance *, char *, listItem *, listItem *, BMQueryData * );
 
 static int
-bm_verify( int op, CNInstance *x, char **position, BMScanData *data )
+bm_verify( int op, CNInstance *x, char **position, BMQueryData *data )
 /*
 	invoked by xp_verify on each [sub-]expression, i.e.
 	on each expression term starting with '*' or '%'
@@ -586,7 +555,7 @@ bm_verify( int op, CNInstance *x, char **position, BMScanData *data )
 }
 
 static int
-bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMScanData *data )
+bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMQueryData *data )
 /*
 	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
 	is either NULL or the exponent of p as expression term
@@ -621,7 +590,7 @@ bm_match( CNInstance *x, char *p, listItem *exponent, listItem *base, BMScanData
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {
-		char *identifier = db_identifier( y, data->db );
+		char *identifier = db_identifier( y, BMContextDB(data->ctx) );
 		char_s q;
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );

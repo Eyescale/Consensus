@@ -203,7 +203,7 @@ xp_target( char *expression, int target )
 }
 
 //===========================================================================
-//	bm_locate_mark, bm_locate_param
+//	bm_locate_mark
 //===========================================================================
 char *
 bm_locate_mark( char *expression, listItem **exponent )
@@ -211,6 +211,9 @@ bm_locate_mark( char *expression, listItem **exponent )
 	return bm_locate_param( expression, exponent, NULL, NULL );
 }
 
+//===========================================================================
+//	bm_locate_param
+//===========================================================================
 char *
 bm_locate_param( char *expression, listItem **exponent, BMLocateCB arg_CB, void *user_data )
 /*

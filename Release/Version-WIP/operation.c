@@ -6,7 +6,6 @@
 #include "operation.h"
 #include "expression.h"
 #include "traverse.h"
-#include "feel.h"
 
 // #define DEBUG
 
@@ -244,7 +243,7 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 		break;
 	}
 DEFAULT:
-	found = bm_feel( expression, ctx, BM_CONDITION );
+	found = bm_feel( BM_CONDITION, expression, ctx );
 	success = bm_context_mark( ctx, expression, found, marked );
 RETURN:
 #ifdef DEBUG
@@ -278,7 +277,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		switch ( expression[1] ) {
 		case '(':
 			expression++;
-			found = bm_feel( expression, ctx, BM_RELEASED );
+			found = bm_feel( BM_RELEASED, expression, ctx );
 			success = bm_context_mark( ctx, expression, found, marked );
 			goto RETURN;
 		case '.':
@@ -293,7 +292,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		}
 	}
 DEFAULT:
-	found = bm_feel( expression, ctx, BM_MANIFESTED );
+	found = bm_feel( BM_INSTANTIATED, expression, ctx );
 	success = bm_context_mark( ctx, expression, found, marked );
 RETURN:
 #ifdef DEBUG
@@ -344,7 +343,7 @@ RETURN:
 //===========================================================================
 //	do_enable
 //===========================================================================
-static BMScanCB enable_CB;
+static BMQueryCB enable_CB;
 typedef struct {
 	CNNarrative *narrative;
 	Registry *subs;
@@ -369,14 +368,14 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 		// launch query
 		data.narrative = narrative;
 		data.entry = NULL;
-		bm_scan( q, ctx, enable_CB, &data );
+		bm_query( BM_CONDITION, q, ctx, enable_CB, &data );
 		// reset
 		StringReset( s, CNStringAll );
 	}
 	freeString( s );
 	return 1;
 }
-static int
+static BMCB_
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	EnableData *data = user_data;

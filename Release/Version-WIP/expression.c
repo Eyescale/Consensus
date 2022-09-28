@@ -5,41 +5,30 @@
 #include "database.h"
 #include "narrative.h"
 #include "expression.h"
-#include "traverse.h"
-#include "feel.h"
 
 // #define DEBUG
 
 //===========================================================================
-//	bm_query
+//	bm_feel
 //===========================================================================
-static BMScanCB query_CB;
+CNInstance *
+bm_feel( BMQueryType type, char *expression, BMContext *ctx )
+{
+	return bm_query( type, expression, ctx, NULL, NULL );
 
-listItem *
-bm_query( char *expression, BMContext *ctx )
-{
-	listItem *results = NULL;
-	bm_scan( expression, ctx, query_CB, &results );
-	return results;
-}
-static int
-query_CB( CNInstance *e, BMContext *ctx, void *results )
-{
-	addIfNotThere((listItem **) results, e );
-	return BM_CONTINUE;
 }
 
 //===========================================================================
 //	bm_release
 //===========================================================================
-static BMScanCB release_CB;
+static BMQueryCB release_CB;
 
 void
 bm_release( char *expression, BMContext *ctx )
 {
-	bm_scan( expression, ctx, release_CB, NULL );
+	bm_query( BM_CONDITION, expression, ctx, release_CB, NULL );
 }
-static int
+static BMCB_
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	CNDB *db = BMContextDB( ctx );
@@ -75,13 +64,16 @@ bm_assign_op( int op, char *expression, BMContext *ctx, int *marked )
 		p = StringFinish( s, 0 );
 		// perform operation
 		switch ( op ) {
-		case IN: e = bm_feel( p, ctx, BM_CONDITION );
+		case IN:
+			e = bm_feel( BM_CONDITION, p, ctx );
 			success = bm_context_mark( ctx, p, e, marked );
 			break;
-		case ON: e = bm_feel( p, ctx, BM_MANIFESTED );
+		case ON:
+			e = bm_feel( BM_INSTANTIATED, p, ctx );
 			success = bm_context_mark( ctx, p, e, marked );
 			break;
-		case DO: bm_instantiate( p, ctx );
+		case DO:
+			bm_instantiate( p, ctx );
 			break;
 		}
 	}
@@ -94,15 +86,18 @@ bm_assign_op( int op, char *expression, BMContext *ctx, int *marked )
 		p = StringFinish( s, 0 );
 		// perform operation
 		switch ( op ) {
-		case IN: e = bm_feel( p, ctx, BM_CONDITION );
+		case IN:
+			e = bm_feel( BM_CONDITION, p, ctx );
 			if (( e ) && !db_coupled( 0, e, BMContextDB(ctx) ))
 				success = bm_context_mark( ctx, p, e, marked );
 			break;
-		case ON: e = bm_feel( p, ctx, BM_MANIFESTED );
+		case ON:
+			e = bm_feel( BM_INSTANTIATED, p, ctx );
 			if (( e ) && !db_coupled( 0, e, BMContextDB(ctx) ))
 				success = bm_context_mark( ctx, p, e, marked );
 			break;
-		case DO: e = bm_feel( p, ctx, BM_CONDITION );
+		case DO:
+			e = bm_feel( BM_CONDITION, p, ctx );
 			if (( e )) db_uncouple( e, BMContextDB(ctx) );
 			else bm_instantiate( p, ctx );
 			break;
@@ -225,7 +220,7 @@ bm_input( char *format, char *expression, BMContext *ctx )
 //	bm_outputf
 //===========================================================================
 static void bm_output( char *format, char *expression, BMContext *);
-static BMScanCB output_CB;
+static BMQueryCB output_CB;
 typedef struct {
 	char *format;
 	int first;
@@ -283,11 +278,11 @@ static void
 bm_output( char *format, char *expression, BMContext *ctx )
 /*
 	outputs expression's results
-	note that we rely on bm_scan to eliminate doublons
+	note that we rely on bm_query to eliminate doublons
 */
 {
 	OutputData data = { format, 1, NULL };
-	bm_scan( expression, ctx, output_CB, &data );
+	bm_query( BM_CONDITION, expression, ctx, output_CB, &data );
 	CNDB *db = BMContextDB( ctx );
 	if ( data.first )
 		db_output( stdout, format, data.last, db );
@@ -297,7 +292,7 @@ bm_output( char *format, char *expression, BMContext *ctx )
 		printf( " }" );
 	}
 }
-static int
+static BMCB_
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	OutputData *data = user_data;

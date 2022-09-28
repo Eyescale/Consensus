@@ -1,5 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. swap names bm_scan <-> bm_query
 	. Implement consistent usage of flags across all C-traversals
                 . [DONE] instantiate.c	bm_instantiate()
 					bm_void()

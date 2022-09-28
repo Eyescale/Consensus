@@ -14,16 +14,16 @@ OBJDIR = .ofiles
 SRCS =	database.c \
 	db_op.c \
 	parser.c \
-	narrative.c \
 	program.c \
-	operation.c \
+	narrative.c \
 	context.c \
+	operation.c \
 	expression.c \
-	traverse.c \
 	deternarize.c \
 	instantiate.c \
+	traverse.c \
 	locate.c \
-	feel.c
+	query.c
 
 CFLAGS = -O2
 #CFLAGS = -DDEBUG -DNULL_TERMINATED

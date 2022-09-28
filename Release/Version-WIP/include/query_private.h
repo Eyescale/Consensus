@@ -1,18 +1,19 @@
-#ifndef FEEL_PRIVATE_H
-#define FEEL_PRIVATE_H
+#ifndef QUERY_PRIVATE_H
+#define QUERY_PRIVATE_H
 
 #include "database.h"
 #include "context.h"
-#include "feel.h"
+#include "query.h"
 
 //===========================================================================
 //	Interface with bm_verify
 //===========================================================================
-enum {
+typedef enum {
 	BM_INIT,
 	BM_BGN,
 	BM_END
-};
+} BMVerifyOp;
+
 typedef struct {
 	char *expression;
 	BMContext *ctx;
@@ -22,7 +23,7 @@ typedef struct {
 	CNInstance *star;
 	Pair *pivot;
 	listItem *exponent;
-	BMScanCB *user_CB;
+	BMQueryCB *user_CB;
 	void *user_data;
 	listItem *mark_exp;
 	listItem *sub_exp;
@@ -34,7 +35,7 @@ typedef struct {
 		listItem *scope;
 		listItem *base;
 	} stack;
-} BMScanData;
+} BMQueryData;
 
 
-#endif	// FEEL_PRIVATE_H
+#endif	// QUERY_PRIVATE_H

@@ -2,6 +2,7 @@
 #define TRAVERSE_H
 
 #include "flags.h"
+#include "query.h"
 
 #define FIRST		1
 #define FILTERED	(1<<1)
@@ -18,10 +19,6 @@
 #define COUPLE		(1<<12)
 #define PIPED		(1<<13)
 
-typedef enum {
-	BM_CONTINUE,
-	BM_DONE
-} BMCBTake;
 typedef enum {
 	BMBgnCB = 0,
 	BMPreemptCB,
@@ -61,11 +58,13 @@ typedef struct {
 	char *p;
 } BMTraverseData;
 
-typedef int BMTraverseCB( BMTraverseData *, char *p, int flags );
+typedef BMCB_ BMTraverseCB( BMTraverseData *, char *p, int flags );
 char *bm_traverse( char *expression, BMTraverseData * );
 
-#define BMTraverseCBBegin
-#define BMTraverseCBEnd
+#define BMTraverseCBBegin( func ) \
+	static void func( void ) {
+#define BMTraverseCBEnd	\
+	}
 
 
 #endif	// TRAVERSE_H

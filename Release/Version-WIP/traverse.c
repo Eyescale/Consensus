@@ -52,6 +52,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 		case '*':
 			if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
 				bar( BMStarCharacterCB, break )
+				f_clr( NEGATED )
 				f_set( INFORMED )
 				p++; break;
 			}
@@ -61,10 +62,12 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 		case '%':
 			if ( strmatch( "?!", p[1] ) ) {
 				bar( BMMarkRegisterCB, break )
+				f_clr( NEGATED )
 				f_set( INFORMED )
 				p+=2; break;
 			}
 			else if ( p[1]=='(' ) {
+				if ( !p_single(p) ) f_set( COUPLE )
 				bar( BMSubExpressionCB, break )
 				f_push( &stack )
 				f_reset( SUB_EXPR|FIRST, SET )
@@ -72,6 +75,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			}
 			else if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
 				bar( BMModCharacterCB, break )
+				f_clr( NEGATED )
 				f_set( INFORMED )
 				p++; break;
 			}
@@ -88,6 +92,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 				p = p_prune( PRUNE_LITERAL, p );
 				f_set( INFORMED ); break;
 			}
+			if ( !p_single(p) ) f_set( COUPLE )
 			bar( BMOpenCB, break )
 			f_push( &stack )
 			f_reset( LEVEL|FIRST, SET )
@@ -119,7 +124,8 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			traverse_data->f_next = icast.value;
 			bar( BMCloseCB, break )
 			f_pop( &stack, 0 );
-			f_set( INFORMED );
+			f_clr( NEGATED )
+			f_set( INFORMED )
 			p++; break;
 		case '?':
 			if is_f( INFORMED ) {
@@ -143,7 +149,9 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 			else if ( !is_separator(p[1]) ) {
 				bar( BMDotIdentifierCB, break )
 				p = p_prune( PRUNE_IDENTIFIER, p+1 );
-				f_set( INFORMED ); break;
+				f_clr( NEGATED )
+				f_set( INFORMED )
+				break;
 			}
 			bar( BMWildCardCB, break )
 			f_set( INFORMED );
@@ -173,6 +181,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data )
 				bar( BMSignalCB, break )
 				p++;
 			}
+			f_clr( NEGATED )
 			f_set( INFORMED )
 		}
 	}

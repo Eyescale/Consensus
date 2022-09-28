@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "expression.h"
 #include "traverse.h"
-#include "feel.h"
 
 typedef int BMTernaryCB( char *, void * );
 static char *deternarize( char *expression, BMTernaryCB, void *user_data );
@@ -29,7 +28,7 @@ static int
 pass_CB( char *guard, void *user_data )
 {
 	BMContext *ctx = user_data;
-	return !!bm_feel( guard, ctx, BM_CONDITION );
+	return !!bm_feel( BM_CONDITION, guard, ctx );
 }
 
 //===========================================================================
