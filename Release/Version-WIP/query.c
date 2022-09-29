@@ -273,8 +273,10 @@ fprintf( stderr, " ........{\n" );
 			}
 		}
 		if (( x )) {
+			data->sub_exp = NULL;
 			data->mark_exp = NULL;
 			data->success = success;
+			data->flags = flags;
 			switch ( op ) {
 			case BM_BGN:
 				/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star
@@ -288,7 +290,6 @@ fprintf( stderr, " ........{\n" );
 				}
 				// no break
 			default:
-				data->flags = flags;
 				verify( op, x, &p, data );
 			}
 			if (( data->mark_exp )) {
@@ -407,6 +408,9 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 //	verify
 //===========================================================================
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
+static BMTraverseCB
+	match_CB, dereference_CB, sub_expression_CB, open_CB, filter_CB,
+	decouple_CB, close_CB, wildcard_CB;
 
 static int
 verify( int op, CNInstance *x, char **position, BMQueryData *data )
@@ -426,124 +430,121 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	}
 	fprintf( stderr, "'%s'\n", *position );
 #endif
-	char * 	p = *position;
-	int	success = data->success,
-		flags = data->flags;
-
 	/* we cannot use exponent to track scope, as no exponent is
-	   pushed in case of single expressions - e.g. %((.,?):%?)
+	   pushed in case of "single" expressions - e.g. %((.,?):%?)
 	*/
-	listItem **exponent = &data->stack.exponent, *base;
-	listItem **current = &data->stack.flags, *OOS;
+	listItem *base, *OOS;
 	if ( op==BM_END ) {
 		base = popListItem( &data->stack.base );
 		popListItem( &data->stack.scope ); // done with this one
 		OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL );
 	}
 	else {
-		base = *exponent;
-		OOS = *current;
+		base = data->stack.exponent;
+		OOS = data->stack.flags;
 	}
-	listItem *mark_exp = NULL;
-	int done = 0;
-	while ( *p && !(mark_exp) && !done ) {
-		// fprintf( stderr, "scanning: '%s'\n", p );
-		switch ( *p ) {
-		case '~':
-			if is_f( NEGATED ) { f_clr( NEGATED ); }
-			else { f_set( NEGATED ); }
-			p++; break;
-		case '%':
-			if ( strmatch( "?!", p[1] ) ) {
-				success = match( x, p, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
-				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
-				p+=2;
-			}
-			else if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = match( x, p, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
-				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
-				p++;
-			}
-			else {
-				bm_locate_mark( p+1, &mark_exp );
-				if ( !mark_exp ) p++;
-			}
-			break;
-		case '*':
-			if ( !p[1] || strmatch( ":,)", p[1] ) ) {
-				success = match( x, p, base, data );
-				if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
-				else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
-				p++;
-			}
-			else { xpn_add( &mark_exp, SUB, 1 ); }
-			break;
-		case '(':
-			f_push( current )
-			f_reset( 0, 0 );
-			if ( !p_single(p) ) {
-				f_set( COUPLE );
-				xpn_add( exponent, AS_SUB, 0 );
-			}
-			p++; break;
-		case ':':
-			if ( op==BM_BGN && *current==OOS )
-				{ done = 1; break; }
-			p = success ? p+1 : p_prune( PRUNE_TERM, p+1 );
-			break;
-		case ',':
-			if ( *current==OOS ) { done = 1; break; }
-			xpn_set( *exponent, AS_SUB, 1 );
-			p = success ? p+1 : p_prune( PRUNE_TERM, p+1 );
-			break;
-		case ')':
-			if ( *current==OOS ) { done = 1; break; }
-			if is_f( COUPLE ) popListItem( exponent );
-			f_pop( current, 0 );
-			if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
-			p++;
-			if ( op==BM_END && *current==OOS && (data->stack.scope))
-				{ done = 1; break; }
-			break;
-		case '?':
-			if ( p[1]==':' ) { p+=2; break; }
-			// no break
-		case '.':
-			if is_f( NEGATED ) { success = 0; f_clr( NEGATED ); }
-			else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
-				success = 1; // wildcard is as_sub[1]
-			else success = ( match( x, NULL, base, data ) > 0 );
-			if ( *p++ == '.' ) p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		default:
-			success = match( x, p, base, data );
-			if ( success < 0 ) { success = 0; f_clr( NEGATED ); }
-			else if is_f( NEGATED ) { success = !success; f_clr( NEGATED ); }
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			break;
-		}
-	}
-	if (( data->mark_exp = mark_exp )) {
-		data->flags = flags;
-		listItem *sub_exp = NULL;
-		for ( listItem *i=*exponent; i!=base; i=i->next )
-			addItem( &sub_exp, i->ptr );
-		data->sub_exp = sub_exp;
-		addItem( &data->stack.base, base );
-		addItem( &data->stack.scope, *current );
-	}
-	*position = p;
+	data->op = op;
+	data->instance = x;
+	data->base = base;
+	data->OOS = OOS;
 
+	BMTraverseData traverse_data;
+	memset( &traverse_data, 0, sizeof(traverse_data) );
+	traverse_data.user_data = data;
+
+	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMMarkRegisterCB ]	= match_CB;
+	table[ BMStarCharacterCB ]	= match_CB;
+	table[ BMModCharacterCB ]	= match_CB;
+	table[ BMCharacterCB ]		= match_CB;
+	table[ BMRegexCB ]		= match_CB;
+	table[ BMIdentifierCB ]		= match_CB;
+	table[ BMDereferenceCB ]	= dereference_CB;
+	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMOpenCB ]		= open_CB;
+	table[ BMFilterCB ]		= filter_CB;
+	table[ BMDecoupleCB ]		= decouple_CB;
+	table[ BMCloseCB ]		= close_CB;
+	table[ BMDotIdentifierCB ]	= wildcard_CB;
+	table[ BMWildCardCB ]		= wildcard_CB;
+
+	*position = bm_traverse( *position, &traverse_data, &data->stack.flags, data->flags );
+	if (( data->mark_exp )) {
+		data->flags = traverse_data.flags;
+		listItem **sub_exp = &data->sub_exp;
+		for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
+			addItem( sub_exp, i->ptr );
+		addItem( &data->stack.base, base );
+		addItem( &data->stack.scope, data->stack.flags );
+	}
 #ifdef DEBUG
-	if (( mark_exp )) fprintf( stderr, "verify: starting SUB, at '%s'\n", p );
-	else fprintf( stderr, "verify: returning %d, at '%s'\n", success, p );
+	if (( data->mark_exp )) fprintf( stderr, "verify: starting SUB, at '%s'\n", *position );
+	else fprintf( stderr, "verify: returning %d, at '%s'\n", data->success, *position );
 #endif
-	data->success = success;
-	return success;
+	return data->success;
 }
 
+BMTraverseCBSwitch( verify_traversal )
+case_( match_CB )
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0; break;
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
+	_continue
+case_( dereference_CB )
+	xpn_add( &data->mark_exp, SUB, 1 );
+	_done( p )
+case_( sub_expression_CB )
+	bm_locate_mark( p+1, &data->mark_exp );
+	if (( data->mark_exp )) _done( p )
+	else _break( p+1 ) // hand over to open_CB
+case_( open_CB )
+	f_push( &data->stack.flags )
+	f_reset( LEVEL|FIRST, 0 )
+	if ( !p_single(p) ) {
+		f_set( COUPLE )
+		xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	}
+	_break( p+1 )
+case_( filter_CB )
+	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+		_done( p )
+	else if ( !data->success )
+		_break( p_prune( PRUNE_TERM, p+1 ) )
+	else _continue
+case_( decouple_CB )
+	if ( data->stack.flags==data->OOS )
+		_done( p )
+	else if ( !data->success )
+		_break( p_prune( PRUNE_TERM, p+1 ) )
+	else {
+		xpn_set( data->stack.exponent, AS_SUB, 1 );
+		_continue }
+case_( close_CB )
+	if ( data->stack.flags==data->OOS )
+		_done( p )
+	if is_f( COUPLE ) popListItem( &data->stack.exponent );
+	f_pop( &data->stack.flags, 0 )
+	f_set( INFORMED )
+	if is_f( NEGATED ) { data->success = !data->success; f_clr( NEGATED ) }
+	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
+		_done( p+1 )
+	else _break( p+1 )
+case_( wildcard_CB )
+	if ( !strncmp( p, "?:", 2 ) ) _break( p+2 )
+	else if is_f( NEGATED ) data->success = 0;
+	else if ( !data->stack.exponent || (int)data->stack.exponent->ptr==1 )
+		data->success = 1; // wildcard is any or as_sub[1]
+	else switch ( match( data->instance, NULL, data->base, data ) ) {
+		case -1: // no break
+		case  0: data->success = 0; break;
+		case  1: data->success = 1; break; }
+	_continue
+BMTraverseCBEnd
+
+//===========================================================================
+//	match
+//===========================================================================
 static int
 match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 /*

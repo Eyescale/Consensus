@@ -4,11 +4,11 @@ TODO
 	. Implement consistent usage of flags across all C-traversals
                 . [DONE] instantiate.c	bm_instantiate()
 					bm_void()
-                . WIP: feel.c		bm_verify()
+                . [DONE] query.c	verify()
+                . WIP: deternarize.c  	deternarize()
                 . TODO: locate.c	bm_locate_pivot()
 					xp_target()
 					bm_locate_param()
-                . deternarize.c  	deternarize()
 	. Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)

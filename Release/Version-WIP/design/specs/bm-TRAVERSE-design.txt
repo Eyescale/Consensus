@@ -41,6 +41,7 @@ Usage & Implementation
 
 		BMTraverseCB *table[ BMTraverseCBNum ];
 		memset( table, 0, sizeof(table) );
+		listItem *stack = NULL;
 
 		/* inform only those table entries for which
 		   we want user-specific event processing
@@ -53,8 +54,8 @@ Usage & Implementation
 
 		/* invoke bm_traverse() and traverse expressions
 		*/
-		listItem *stack = NULL;
 		bm_traverse( expression, &traverse_data, &stack, FIRST );
+
 		freeListItem* &stack );
 		return my_take;
 	}

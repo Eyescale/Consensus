@@ -10,15 +10,15 @@
 #define BMTraverseError -1
 #define bar_( CB, out ) \
 	if ((table[CB]) && table[CB]( traverse_data, p, flags )==BM_DONE ) { \
-		p = traverse_data->p; \
 		flags = traverse_data->flags; \
+		p = traverse_data->p; \
 		out; }
 char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
 {
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
 	union { int value; void *ptr; } icast;
-	char *	p = expression;
+	char *p = expression;
 	while ( *p && !traverse_data->done ) {
 		bar_( BMPreemptCB, continue )
 		switch ( *p ) {
@@ -35,8 +35,10 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 		case '}':
 			if ( !is_f(SET) )
 				{ traverse_data->done = 1; break; }
-			icast.ptr = (*stack)->ptr;
-			traverse_data->f_next = icast.value;
+			if ((*stack)) {
+				icast.ptr = (*stack)->ptr;
+				traverse_data->f_next = icast.value;
+			}
 			bar_( BMEndSetCB, break )
 			f_pop( stack, 0 )
 			f_clr( NEGATED )
@@ -92,36 +94,40 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 				f_set( INFORMED )
 				break;
 			}
-			if ( !p_single(p) ) f_set( COUPLE )
 			bar_( BMOpenCB, break )
 			f_push( stack )
 			f_reset( LEVEL|FIRST, 0 )
+#if 0
+			if ( !p_single(p) ) f_set( COUPLE )
+#endif
+			p++; break;
+		case ':':
+			bar_( BMFilterCB, break )
+			f_clr( INFORMED )
+			f_set( FILTERED )
 			p++; break;
 		case ',':
 			if ( !is_f(SET|LEVEL|SUB_EXPR) )
 				{ traverse_data->done = 1; break; }
 			bar_( BMDecoupleCB, break )
 			if is_f( LEVEL|SUB_EXPR ) f_clr( FIRST )
-			f_clr( NEGATED|FILTERED|INFORMED )
-			p++; break;
-		case ':':
-			if ( !is_f(SET|LEVEL|SUB_EXPR) )
-				{ traverse_data->done = 1; break; }
-			bar_( BMFilterCB, break )
-			f_clr( NEGATED|INFORMED )
-			f_set( FIRST|FILTERED )
+			f_clr( FILTERED|INFORMED )
 			p++; break;
 		case ')':
 			if ( is_f(PIPED) && !is_f(LEVEL|SUB_EXPR) ) {
-				icast.ptr = (*stack)->ptr;
-				traverse_data->f_next = icast.value;
+				if ((*stack)) {
+					icast.ptr = (*stack)->ptr;
+					traverse_data->f_next = icast.value;
+				}
 				bar_( BMEndPipeCB, break )
 				f_pop( stack, 0 )
 			}
 			if ( !is_f(LEVEL|SUB_EXPR) )
 				{ traverse_data->done = 1; break; }
-			icast.ptr = (*stack)->ptr;
-			traverse_data->f_next = icast.value;
+			if ((*stack)) {
+				icast.ptr = (*stack)->ptr;
+				traverse_data->f_next = icast.value;
+			}
 			bar_( BMCloseCB, break )
 			f_pop( stack, 0 );
 			f_clr( NEGATED )
@@ -137,6 +143,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 				p++; break;
 			}
 			bar_( BMWildCardCB, break )
+			f_clr( NEGATED )
 			f_set( INFORMED )
 			p++; break;
 		case '.':
@@ -148,7 +155,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			}
 			else if ( !is_separator(p[1]) ) {
 				bar_( BMDotIdentifierCB, break )
-				p = p_prune( PRUNE_IDENTIFIER, p+1 );
+				p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				f_clr( NEGATED )
 				f_set( INFORMED )
 				break;
@@ -192,5 +199,5 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			f_set( INFORMED )
 		}
 	}
-	return p;
+	return (( traverse_data->p = p ));
 }

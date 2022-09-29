@@ -49,8 +49,8 @@ typedef enum {
 	BMCBNum
 } BMCBName;
 typedef struct {
-	void *table[ BMCBNum ];
 	void *user_data;
+	void *table[ BMCBNum ];
 	int flags, f_next;
 	int done;
 	char *p;

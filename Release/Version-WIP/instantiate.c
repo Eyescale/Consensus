@@ -52,6 +52,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
+	listItem *stack = NULL;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMPreemptCB ]		= preempt_CB;
@@ -74,9 +75,8 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
 
-	listItem *stack = NULL;
 	bm_traverse( expression, &traverse_data, &stack, FIRST );
-	freeListItem( &stack );
+
 	if ( traverse_data.done == 2 ) {
 		freeListItem( &data.sub[ 1 ] );
 		listItem *instances;
@@ -84,6 +84,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 		while (( instances = popListItem(results) ))
 			freeListItem( &instances );
 	}
+	freeListItem( &stack );
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate: } " );
@@ -233,6 +234,7 @@ bm_void( char *expression, BMContext *ctx )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
+	listItem *stack = NULL;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMPreemptCB ]		= feel_CB;
@@ -242,8 +244,8 @@ bm_void( char *expression, BMContext *ctx )
 	table[ BMMarkRegisterCB ]	= touch_CB;
 	table[ BMWildCardCB ]		= sound_CB;
 
-	listItem *stack = NULL;
 	bm_traverse( expression, &traverse_data, &stack, FIRST );
+
 	freeListItem( &stack );
 	return ( traverse_data.done==2 );
 }
