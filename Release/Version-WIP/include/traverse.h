@@ -21,7 +21,7 @@
 
 typedef enum {
 	BMPreemptCB = 0,
-	BMNegatedCB,		// ~
+	BMNotCB,		// ~
 	BMBgnSetCB,		// {
 	BMEndSetCB,		// }
 	BMBgnPipeCB,		// |
@@ -67,9 +67,7 @@ char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 		return BM_DONE; }
 #define _done( q ) { \
 		traverse_data->done = 1; \
-		traverse_data->flags = flags; \
-		traverse_data->p = q; \
-		return BM_DONE; }
+		_break( q ) }
 #define	_continue \
 		return BM_CONTINUE;
 #define BMTraverseCBEnd	\

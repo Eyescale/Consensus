@@ -26,7 +26,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 		case '<':
 			p++; break;
 		case '~':
-			bar_( BMNegatedCB, break )
+			bar_( BMNotCB, break )
 			if is_f( NEGATED ) f_clr( NEGATED )	
 			else f_set( NEGATED )
 			p++; break;

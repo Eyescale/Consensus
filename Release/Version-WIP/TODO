@@ -1,20 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Implement consistent usage of flags across all C-traversals
-                . [DONE] instantiate.c	bm_instantiate()
-					bm_void()
-                . [DONE] query.c	verify()
-                . WIP: deternarize.c  	deternarize()
-                . TODO: locate.c	bm_locate_pivot()
-					xp_target()
-					bm_locate_param()
-	. Feature complete
+	. Version-1.2 Feature complete
 		. [DONE] term~				(signal)
 		. [DONE] : var : value			(assignment)
 		. [DONE] : var : ~.			(un-assignment)
 		. [DONE] in/on ~.: expression		(negative occurrence)
 		. [DONE] ( expr ? expr : expr ) 	(ternary-operated expression)
-		. TODO: do ((expr,...):sequence:)	(list/ellipsis)
+		. WIP: do ((expr,...):sequence:)	(list/ellipsis)
 	. Pass design/story/single-thread.story
 	. create ternary-operated expressions proper test case(s)
 	. update ./design/specs/bm-read-narrative-states.txt
@@ -110,6 +102,14 @@ NICE TO HAVE
 
 
 DONE
+	. Implemented consistent usage of flags across all C-traversals
+                . instantiate.c		bm_instantiate()
+					bm_void()
+                . query.c		verify()
+                . deternarize.c		deternarize()
+                . locate.c		bm_locate_pivot()
+					bm_scour()
+					bm_locate_param()
 	. Design consistent usage of flags across all C-traversals
 		. See ./design/specs/bm-TRAVERSE-design.txt
 			. Events: '{', etc.
