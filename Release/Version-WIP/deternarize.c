@@ -82,27 +82,27 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	table[ BMCloseCB ]		= close_CB;
 	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
 	
-	if ( !data.ternary ) {
+	if ( !data.ternary )
 		freePair( data.segment );
-		goto RETURN;
+	else {
+		// finish current sequence, reordered
+		if ( data.segment->name != traverse_data.p ) {
+			data.segment->value = traverse_data.p;
+			addItem( &data.sequence, newPair( data.segment, NULL ) );
+		} else freePair( data.segment );
+		reorderListItem( &data.sequence );
+
+		// convert sequence to char *string
+		CNString *s = newString();
+		s_scan( s, data.sequence );
+		deternarized = StringFinish( s, 0 );
+		StringReset( s, CNStringMode );
+		freeString( s );
+
+		// release sequence
+		free_deternarized( data.sequence );
 	}
-	// finish current sequence, reordered
-	if ( data.segment->name != traverse_data.p ) {
-		data.segment->value = traverse_data.p;
-		addItem( &data.sequence, newPair( data.segment, NULL ) );
-	} else freePair( data.segment );
-	reorderListItem( &data.sequence );
-
-	// convert sequence to char *string
-	CNString *s = newString();
-	s_scan( s, data.sequence );
-	deternarized = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-
-	// release sequence and return string
-	free_deternarized( data.sequence );
-RETURN:
+	// return deternarized
 	if ((data.stack.sequence)||(data.stack.flags)) {
 		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak\n" );
 		freeListItem( &data.stack.sequence );
@@ -111,10 +111,11 @@ RETURN:
 		exit( -1 ); }
 	return deternarized;
 }
+
+BMTraverseCBSwitch( deternarize_traversal )
 /*
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
-BMTraverseCBSwitch( deternarize_traversal )
 case_( sub_expression_CB )
 	_break( p+1 )	// hand over to open_CB
 case_( open_CB )
