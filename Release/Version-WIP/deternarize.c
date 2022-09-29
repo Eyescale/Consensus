@@ -6,11 +6,11 @@
 #include "traverse.h"
 
 typedef int BMTernaryCB( char *, void * );
-static char *deternarize( char *expression, BMTernaryCB, void *user_data );
 
 //===========================================================================
 //	bm_deternarize
 //===========================================================================
+static char *deternarize( char *expression, BMTernaryCB, void *user_data );
 static BMTernaryCB pass_CB;
 
 char *
@@ -36,9 +36,22 @@ pass_CB( char *guard, void *user_data )
 //===========================================================================
 static void free_deternarized( listItem *sequence );
 static void s_scan( CNString *, listItem * );
+static BMTraverseCB
+	sub_expression_CB, open_CB, ternary_operator_CB, filter_CB, close_CB;
+typedef struct {
+	BMTernaryCB *user_CB;
+	void *user_data;
+	int ternary;
+	struct { listItem *sequence, *flags; } stack;
+	listItem *sequence;
+	Pair *segment;
+} DeternarizeData;
+#define case_( func ) \
+	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
+		DeternarizeData *data = traverse_data->user_data;
 
 static char *
-deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
+deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 /*
 	build Sequence:{
 		| [ segment:Segment, NULL ]
@@ -49,189 +62,150 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
 */
 {
-	struct { listItem *sequence, *flags; } stack = { NULL, NULL };
-	char *p = expression, *deternarized = NULL;
-	int flags = 0, ternary = 0, done = 0;
-	listItem *sequence = NULL;
-	Pair *segment = newPair( p, NULL );
-	while ( *p && !done ) {
-		switch ( *p ) {
-		case '~':
-		case '{':
-		case '}':
-		case '|':
-			p++; break;
-		case '(':
-			if ( p[1]==':' ) {
-				p = p_prune( PRUNE_LITERAL, p );
-				f_set( INFORMED )
-				break;
-			}
-			/* Note: only pre-ternary-operated sequences are pushed
-			   on stack.sequence
-			*/
-			if ( p_ternary( p ) ) {
-				ternary = 1;
-				// finish current Sequence after '(' - without reordering,
-				// which will take place on return
-				segment->value = p+1;
-				addItem( &sequence, newPair( segment, NULL ) );
-				// push current Sequence on stack.sequence and start new
-				addItem( &stack.sequence, sequence );
-				sequence = NULL;
-				segment = newPair ( p+1, NULL );
-			}
-			f_push( &stack.flags )
-			f_reset( FIRST|LEVEL, 0 )
-			p++; break;
-		case '?':
-			if is_f( INFORMED ) {
-				if (!is_f( LEVEL )) { done=1; break; }
-				// finish sequence==guard, reordered
-				segment->value = p;
-				addItem( &sequence, newPair( segment, NULL ) );
-				reorderListItem( &sequence );
-				// convert & evaluate guard
-				CNString *s = newString();
-				s_scan( s, sequence );
-				char *guard = StringFinish( s, 0 );
-				if ( pass_CB( guard, user_data ) ) {
-					if ( p[1]==':' ) {
-						// sequence==guard is our current candidate
-						// segment is informed
-						p = p_prune( PRUNE_TERNARY, p+1 ); // proceed to ")"
-					}
-					else {
-						// release guard sequence
-						free_deternarized( sequence );
-						sequence = NULL;
-						p++; // resume past "?"
-						segment = newPair( p, NULL );
-					}
-				}
-				else {
-					// release guard sequence
-					free_deternarized( sequence );
-					sequence = NULL;
-					// proceed to alternative
-					p = p_prune( PRUNE_TERNARY, p ); // ":"
-					if ( p[1]==':' || p[1]==')' ) {
-						// ~. is our current candidate
-						segment = NULL;
-						p = p_prune( PRUNE_TERNARY, p ); // proceed to ")"
-					}
-					else {
-						p++; // resume past ":"
-						segment = newPair( p, NULL );
-					}
-				}
-				freeString( s );
-				f_set( TERNARY )
-			}
-			else { p++; f_set( INFORMED ) }
-			break;
-		case ':':
-			if is_f( TERNARY ) {
-				// option completed
-				segment->value = p;
-				// proceed to ")"
-				p = p_prune( PRUNE_TERNARY, p );
-			}
-			else {	p++; f_clr( INFORMED ) }
-			break;
-		case ',':
-			if (!is_f( LEVEL )) { done=1; break; }
-			f_clr( INFORMED )
-			p++; break;
-		case ')':
-			if (!is_f( LEVEL )) { done=1; break; }
-			if is_f( TERNARY ) {
-				// special cases: segment is ~. or completed option
-				if ( !segment ) {
-					// add as-is to on-going expression
-					sequence = popListItem( &stack.sequence );
-					addItem( &sequence, newPair( NULL, NULL ) );
-				}
-				else if ( !sequence ) {
-					if ( !segment->value ) segment->value = p;
-					// add as-is to on-going expression
-					sequence = popListItem( &stack.sequence );
-					addItem( &sequence, newPair( segment, NULL ) );
-				}
-				else {
-					// finish current sequence, reordered
-					if ( !segment->value ) segment->value = p;
-					addItem( &sequence, newPair( segment, NULL ) );
-					reorderListItem( &sequence );
-					// add as sub-Sequence to on-going expression
-					listItem *sub = sequence;
-					sequence = popListItem( &stack.sequence );
-					addItem( &sequence, newPair( NULL, sub ) );
-				}
-				segment = newPair( p, NULL );
-			}
-			f_pop( &stack.flags, 0 );
-			f_set( INFORMED )
-			p++; break;
-		case '\'':
-		case '/':
-		case '"':
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			f_set( INFORMED )
-			break;
-		case '%':
-			if ( !p[1] || strmatch( "(,:)}", p[1] ) ) {
-				p++; break;
-			}
-			else if ( strmatch( "?!", p[1] ) ) {
-				f_set ( INFORMED )
-				p+=2; break;
-			}
-			break;
-		case '*':
-			if ( !p[1] || strmatch( "(,:)}", p[1] ) ) {
-				p++; break;
-			}
-			else if ( p[1]=='?' ) {
-				f_set( INFORMED );
-				p+=2; break;
-			}
-			// no break
-		default:
-			do p++; while ( !is_separator(*p) );
-			f_set( INFORMED )
-		}
-	}
-	if ( !ternary ) {
-		freePair( segment );
+	char *deternarized = NULL;
+
+	DeternarizeData data;
+	memset( &data, 0, sizeof(data) );
+	data.segment = newPair( expression, NULL );
+	data.user_CB = user_CB;
+	data.user_data = user_data;
+
+	BMTraverseData traverse_data;
+	memset( &traverse_data, 0, sizeof(traverse_data) );
+	traverse_data.user_data = &data;
+
+	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMOpenCB ]		= open_CB;
+	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
+	table[ BMFilterCB ]		= filter_CB;
+	table[ BMCloseCB ]		= close_CB;
+	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
+	
+	if ( !data.ternary ) {
+		freePair( data.segment );
 		goto RETURN;
 	}
 	// finish current sequence, reordered
-	if ( segment->name != p ) {
-		segment->value = p;
-		addItem( &sequence, newPair( segment, NULL ) );
-	} else freePair( segment );
-	reorderListItem( &sequence );
+	if ( data.segment->name != traverse_data.p ) {
+		data.segment->value = traverse_data.p;
+		addItem( &data.sequence, newPair( data.segment, NULL ) );
+	} else freePair( data.segment );
+	reorderListItem( &data.sequence );
 
 	// convert sequence to char *string
 	CNString *s = newString();
-	s_scan( s, sequence );
+	s_scan( s, data.sequence );
 	deternarized = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
 
 	// release sequence and return string
-	free_deternarized( sequence );
+	free_deternarized( data.sequence );
 RETURN:
-	if ((stack.sequence)||(stack.flags)) {
+	if ((data.stack.sequence)||(data.stack.flags)) {
 		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak\n" );
-		freeListItem( &stack.sequence );
-		freeListItem( &stack.flags );
+		freeListItem( &data.stack.sequence );
+		freeListItem( &data.stack.flags );
 		free( deternarized );
-		exit( -1 );
-	}
+		exit( -1 ); }
 	return deternarized;
 }
+/*
+   Note: only pre-ternary-operated sequences are pushed on stack.sequence
+*/
+BMTraverseCBSwitch( deternarize_traversal )
+case_( sub_expression_CB )
+	_break( p+1 )	// hand over to open_CB
+case_( open_CB )
+	if ( p_ternary( p ) ) {
+		data->ternary = 1;
+		Pair *segment = data->segment;
+		// finish current Sequence after '(' - without reordering,
+		// which will take place on return
+		segment->value = p+1;
+		addItem( &data->sequence, newPair( segment, NULL ) );
+		// push current Sequence on stack.sequence and start new
+		addItem( &data->stack.sequence, data->sequence );
+		data->sequence = NULL;
+		data->segment = newPair( p+1, NULL ); }
+	_continue
+case_( ternary_operator_CB )
+	Pair *segment = data->segment;
+	// finish sequence==guard, reordered
+	segment->value = p;
+	addItem( &data->sequence, newPair( segment, NULL ) );
+	reorderListItem( &data->sequence );
+	// convert & evaluate guard
+	CNString *s = newString();
+	s_scan( s, data->sequence );
+	char *guard = StringFinish( s, 0 );
+	int failed = !data->user_CB( guard, data->user_data );
+	freeString( s );
+	if ( failed ) {
+		// release guard sequence
+		free_deternarized( data->sequence );
+		data->sequence = NULL;
+		// proceed to alternative
+		p = p_prune( PRUNE_TERNARY, p ); // ":"
+		if ( p[1]==':' || p[1]==')' ) {
+			// ~. is our current candidate
+			data->segment = NULL;
+			// proceed to ")"
+			p = p_prune( PRUNE_TERNARY, p );
+			_break( p ) }
+		else {
+			data->segment = newPair( p, NULL );
+			f_clr( INFORMED|NEGATED )
+			// resume past ':'
+			_break( p+1 ) } }
+	else if ( p[1]==':' ) {
+		// sequence==guard is our current candidate
+		// data->segment is informed
+		// proceed to ")"
+		p = p_prune( PRUNE_TERNARY, p+1 );
+		_break( p ) }
+	else {
+		// release guard sequence
+		free_deternarized( data->sequence );
+		data->sequence = NULL;
+		data->segment = newPair( p, NULL );
+		// resume past '?'
+		_continue }
+case_( filter_CB )
+	if is_f( TERNARY ) {
+		// option completed
+		data->segment->value = p;
+		// proceed to ")"
+		p = p_prune( PRUNE_TERNARY, p );
+		_break( p ) }
+	else _continue
+case_( close_CB )
+	if is_f( TERNARY ) {
+		Pair *segment = data->segment;
+		// special cases: segment is ~. or completed option
+		if ( !segment ) {
+			// add as-is to on-going expression
+			data->sequence = popListItem( &data->stack.sequence );
+			addItem( &data->sequence, newPair( NULL, NULL ) ); }
+		else if ( !data->sequence ) {
+			if ( !segment->value ) segment->value = p;
+			// add as-is to on-going expression
+			data->sequence = popListItem( &data->stack.sequence );
+			addItem( &data->sequence, newPair( segment, NULL ) ); }
+		else {
+			// finish current sequence, reordered
+			if ( !segment->value ) segment->value = p;
+			addItem( &data->sequence, newPair( segment, NULL ) );
+			reorderListItem( &data->sequence );
+			// add as sub-Sequence to on-going expression
+			listItem *sub = data->sequence;
+			data->sequence = popListItem( &data->stack.sequence );
+			addItem( &data->sequence, newPair( NULL, sub ) );
+		}
+		data->segment = newPair( p, NULL ); }
+	_continue
+BMTraverseCBEnd
 
 //===========================================================================
 //	free_deternarized

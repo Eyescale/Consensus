@@ -74,7 +74,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMWildCardCB ]		= wildcard_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
-
 	bm_traverse( expression, &traverse_data, &stack, FIRST );
 
 	if ( traverse_data.done == 2 ) {
@@ -84,7 +83,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 		while (( instances = popListItem(results) ))
 			freeListItem( &instances );
 	}
-	freeListItem( &stack );
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate: } " );
@@ -97,6 +95,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 		fprintf( stderr, "\n" ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
+	freeListItem( &stack );
 	freeListItem( &data.sub[ 0 ] );
 }
 
@@ -243,7 +242,6 @@ bm_void( char *expression, BMContext *ctx )
 	table[ BMSubExpressionCB ]	= check_CB;
 	table[ BMMarkRegisterCB ]	= touch_CB;
 	table[ BMWildCardCB ]		= sound_CB;
-
 	bm_traverse( expression, &traverse_data, &stack, FIRST );
 
 	freeListItem( &stack );

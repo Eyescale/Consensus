@@ -22,6 +22,9 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 	while ( *p && !traverse_data->done ) {
 		bar_( BMPreemptCB, continue )
 		switch ( *p ) {
+		case '>':
+		case '<':
+			p++; break;
 		case '~':
 			bar_( BMNegatedCB, break )
 			if is_f( NEGATED ) f_clr( NEGATED )	
@@ -135,9 +138,9 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			p++; break;
 		case '?':
 			if is_f( INFORMED ) {
-				bar_( BMTernaryOperatorCB, break )
 				if ( !is_f(SET|LEVEL|SUB_EXPR) )
 					{ traverse_data->done = 1; break; }
+				bar_( BMTernaryOperatorCB, break )
 				f_clr( NEGATED|FILTERED|INFORMED )
 				f_set( TERNARY )
 				p++; break;

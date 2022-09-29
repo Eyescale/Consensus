@@ -467,8 +467,9 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	table[ BMCloseCB ]		= close_CB;
 	table[ BMDotIdentifierCB ]	= wildcard_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
+	bm_traverse( *position, &traverse_data, &data->stack.flags, data->flags );
 
-	*position = bm_traverse( *position, &traverse_data, &data->stack.flags, data->flags );
+	*position = traverse_data.p;
 	if (( data->mark_exp )) {
 		data->flags = traverse_data.flags;
 		listItem **sub_exp = &data->sub_exp;
