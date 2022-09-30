@@ -134,11 +134,11 @@ void *
 bm_read( BMReadMode mode, ... )
 /*
    Usage examples:
-	1. CNStory *story = bm_read( CN_STORY, (char*) path );
-	2. CNInstance *instance = bm_read( CN_INSTANCE, (FILE*) stream );
 	3. union { int value; void *ptr; } icast;
-	   icast.ptr = bm_read( CN_INI, (BMContext*) ctx, (char*) inipath );
+	   icast.ptr = bm_read( CN_LOAD, (BMContext*) ctx, (char*) inipath );
 	   int errnum = icast.value;
+	2. CNInstance *instance = bm_read( CN_INPUT, (FILE*) stream );
+	1. CNStory *story = bm_read( CN_STORY, (char*) path );
 */
 {
 	char *path;
@@ -147,10 +147,10 @@ bm_read( BMReadMode mode, ... )
 	va_list ap;
 	va_start( ap, mode );
 	switch ( mode ) {
-	case CN_INSTANCE:
+	case CN_INPUT:
 		file = va_arg( ap, FILE * );
 		break;
-	case CN_INI:
+	case CN_LOAD:
 		ctx = va_arg( ap, BMContext * );
 		// no break;
 	case CN_STORY:
@@ -185,7 +185,7 @@ bm_read( BMReadMode mode, ... )
 			parser.line++;
 		}
 	} while ( strcmp( parser.state, "" ) );
-	if (!( mode == CN_INSTANCE ))
+	if (!( mode == CN_INPUT ))
 		fclose( file );
 	return bm_read_exit( parser.errnum, &data, mode );
 }
@@ -295,7 +295,12 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		break;
 	case ExpressionTake:
 		switch ( mode ) {
-		case BM_INSTANCE:
+		case BM_LOAD: ;
+			char *expression = StringFinish( data->string, 0 );
+			bm_instantiate( expression, data->ctx );
+			StringReset( data->string, CNStringAll );
+			break;
+		case BM_INPUT:
 			break;
 		case BM_STORY: ;
 			occurrence = data->stack->ptr;
@@ -303,10 +308,6 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			occurrence->data->expression = StringFinish( data->string, 0 );
 			StringReset( data->string, CNStringMode );
 			break;
-		case BM_INI: ;
-			char *expression = StringFinish( data->string, 0 );
-			bm_instantiate( expression, data->ctx );
-			StringReset( data->string, CNStringAll );
 		}
 		break;
 	}
@@ -320,21 +321,21 @@ bm_read_init( BMStoryData *data, BMReadMode mode, BMContext *ctx )
 	memset( data, 0, sizeof(BMStoryData) );
 	data->string = newString();
 	switch ( mode ) {
+	case CN_LOAD:
+		parse_mode = BM_LOAD;
+		data->ctx = ctx;
+		data->type = DO;
+		break;
+	case CN_INPUT:
+		parse_mode = BM_INPUT;
+		data->type = DO;
+		break;
 	case CN_STORY:
 		parse_mode = BM_STORY;
 		data->narrative = newNarrative();
 		data->occurrence = data->narrative->root;
 		data->story = newRegistry( IndexedByName );
 		addItem( &data->stack, data->occurrence );
-		break;
-	case CN_INI:
-		parse_mode = BM_INI;
-		data->ctx = ctx;
-		data->type = DO;
-		break;
-	case CN_INSTANCE:
-		parse_mode = BM_INSTANCE;
-		data->type = DO;
 		break;
 	}
 	return parse_mode;
@@ -345,33 +346,31 @@ static void *
 bm_read_exit( int errnum, BMStoryData *data, BMReadMode mode )
 {
 	switch ( mode ) {
-	case CN_STORY:
-		freeString( data->string );
-		freeListItem( &data->stack );
-		CNStory *story = data->story;
-		if ( errnum ) {
-			freeStory( data->story );
-			story = NULL;
-		}
-		else if ( read_CB( NarrativeTake, 0, data ) )
-			return story;
-		if (( story )) {
-			fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
-			freeStory( data->story );
-		}
-		freeNarrative( data->narrative );
-		return NULL;
-	case CN_INI:
+	case CN_LOAD:
 		freeString( data->string );
 		union { int value; void *ptr; } icast;
 		icast.value = errnum;
 		return icast.ptr;
-	case CN_INSTANCE: ;
+	case CN_INPUT: ;
 		CNString *s = data->string;
 		char *expression = StringFinish( s, 0 );
 		StringReset( s, CNStringMode );
 		freeString( s );
 		return expression;
+	case CN_STORY:
+		freeString( data->string );
+		freeListItem( &data->stack );
+		CNStory *take = NULL;
+		if ( !errnum ) {
+			if ( read_CB( NarrativeTake, 0, data ) )
+				take = data->story;
+			else {
+				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
+			} }
+		if ( !take ) {
+			freeNarrative( data->narrative );
+			freeStory( data->story ); }
+		return take;
 	}
 }
 

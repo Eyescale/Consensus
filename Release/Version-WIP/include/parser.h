@@ -37,9 +37,9 @@ typedef struct {
 #define TAB_BASE	tab[3]
 
 typedef enum {
-	BM_INI = 1,
+	BM_LOAD = 1,
+	BM_INPUT,
 	BM_STORY,
-	BM_INSTANCE
 } BMParseMode;
 typedef enum {
 	NarrativeTake = 1,

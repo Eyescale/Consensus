@@ -94,6 +94,8 @@
 
 #define s_empty \
 	!StringInformed(s)
+#define	s_at( event ) \
+	( StringAt(s)==event )
 #define s_add( str ) \
 	for ( char *p=str; *p; StringAppend(s,*p++) );
 #define	s_reset( a ) \

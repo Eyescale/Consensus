@@ -6,7 +6,7 @@
 		in ( toto ? tata ? titi ? tutu :)
 		do input: <
 		do :~ titi : ~( tutu, tata )
-		do ( { tata,toto }, titi )
+		do ( { tata, toto }, titi )
 		do ~.:titi	// nop
 	else in ( titi ?: tata )
 	else in ( expr1 ? expr2 ? expr3 :: expr4 )

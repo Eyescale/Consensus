@@ -328,7 +328,7 @@ B:CND_endif
 			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
 				do_( same )	s_take
 						f_clr( FIRST|INFORMED ) }
-			else if ( is_f( SET ) ) {
+			else if ( is_f(SET) ) {
 				do_( same )	s_take
 						f_clr( INFORMED ) }
 		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
@@ -644,17 +644,14 @@ _CB( ExpressionPop, mode, data );
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 _CB( ExpressionTake, mode, data );
-	bgn_
-		on_any
-if ( mode==BM_STORY ) {		do_( "base" )	f_reset( FIRST, COMPOUND );
+		bgn_
+			on_any
+if ( mode==BM_INPUT ) {		do_( "" ) }
+else {				do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
 						data->opt = 0;
-						*type = 0; }
-else if ( mode==BM_INI ) {	do_( "base" )	f_reset( FIRST, COMPOUND );
-						TAB_CURRENT = 0;
-						data->opt = 0; }
-else 				do_( "" )
-		end
+if ( mode==BM_STORY ) {				*type = 0; } }
+			end
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------
@@ -701,9 +698,9 @@ bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
 {
 	BMStoryData *data = parser->user_data;
 	char *s = StringFinish( data->string, 0 );
-	char *	src = (mode==BM_INI)?(mode==BM_INSTANCE)?"bm_input":"bm_load":"bm_read";
+	char *	src = (mode==BM_LOAD)?(mode==BM_INPUT)?"bm_input":"bm_load":"bm_read";
 
-if ( mode==BM_INSTANCE )
+if ( mode==BM_INPUT )
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;

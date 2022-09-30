@@ -313,8 +313,8 @@ p_prune( PruneType type, char *p )
 		return prune_format( p );
 	case PRUNE_IDENTIFIER:
 		return prune_identifier( p );
-	case PRUNE_TERM:
-	case PRUNE_FILTER:;
+	case PRUNE_FILTER:
+	case PRUNE_TERM: ;
 		int informed = 0;
 		while ( *p ) {
 			switch ( *p ) {
@@ -397,7 +397,7 @@ prune_ternary( char *p )
 				p = prune_literal( p );
 				informed = 1; break;
 			}
-			p = prune_level( p, 0 );
+			p = prune_level( p+1, 1 );
 			informed = 1;
 			p++; break;
 		case ',':

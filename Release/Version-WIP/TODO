@@ -74,7 +74,6 @@ NICE TO HAVE
 		. Now the whole bm_instantiate() syntax is accessible
 		. and will need it later in new Cell constructor
 	. parser.c
-		. multiple separating commas inside { } => reduce to one and only
 		. integrate 'caught' in CNParserData => all flags
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?

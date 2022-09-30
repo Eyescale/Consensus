@@ -26,9 +26,9 @@
 #define ELSE_OUTPUT	(ELSE|OUTPUT)
 
 typedef enum {
-	CN_INI = 1,
+	CN_LOAD = 1,
+	CN_INPUT,
 	CN_STORY,
-	CN_INSTANCE,
 } BMReadMode;
 void *	bm_read( BMReadMode, ... );
 
