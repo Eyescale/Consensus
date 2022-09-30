@@ -347,7 +347,7 @@ case_( wildcard_CB )
 	else _continue
 case_( dot_identifier_CB )
 	if (( data->param_CB ))
-	 	data->param_CB( p, *data->exponent, data->user_data );
+	 	data->param_CB( p+1, *data->exponent, data->user_data );
 	_continue
 BMTraverseCBEnd
 
