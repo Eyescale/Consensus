@@ -23,12 +23,14 @@ typedef enum {
 	PRUNE_TERM,
 	PRUNE_FILTER,
 	PRUNE_LITERAL,
+	PRUNE_LIST,
 	PRUNE_FORMAT,
 	PRUNE_IDENTIFIER
 } PruneType;
 char *	p_prune( PruneType type, char * );
 int	p_filtered( char * );
 int	p_ternary( char * );
+int	p_list( char * );
 int	p_single( char * );
 
 

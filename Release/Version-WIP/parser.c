@@ -6,7 +6,7 @@
 #include "parser.h"
 
 //===========================================================================
-//	bm_parse
+//	cn_parse
 //===========================================================================
 /*
 		 B% Narrative File Format Interface
@@ -22,17 +22,17 @@
 	< >		input/output
 */
 int
-bm_parser_init( CNParserData *parser, BMParseMode mode )
+cn_parse_init( CNParseStory *data, CNParser *parser, CNParseMode mode, char *state, FILE *file )
 {
-	BMStoryData *data = parser->user_data;
+	cn_parser_init( parser, "base", file, data );
 	data->TAB_LAST = -1;
 	data->flags = FIRST;
 	return 1;
 }
 char *
-bm_parse( int event, CNParserData *parser, BMParseMode mode, BMParseCB _CB )
+cn_parse( int event, CNParser *parser, CNParseMode mode, CNParseCB _CB )
 {
-	BMStoryData *data = parser->user_data;
+	CNParseStory *data = parser->user_data;
 
 	// shared by reference
 	listItem **	stack	= &data->stack;
@@ -49,7 +49,7 @@ bm_parse( int event, CNParserData *parser, BMParseMode mode, BMParseCB _CB )
 	CNParserBegin( parser )
 CND_if_( data->opt, EXPR_BGN )
 	in_( "base" )
-if ( mode==BM_STORY ) {
+if ( mode==CN_STORY ) {
 		bgn_
 			on_( EOF )	do_( "" )
 			on_( '\t' )	do_( same )	TAB_CURRENT++;
@@ -81,7 +81,7 @@ if ( mode==BM_STORY ) {
 		on_( '\n' )	do_( "base" )
 		on_other	do_( same )
 		end
-CND_ifn( mode==BM_STORY, EXPR_BGN )
+CND_ifn( mode==CN_STORY, EXPR_BGN )
 	in_( "+" ) bgn_
 		on_( '+' )	do_( same )	TAB_SHIFT++;
 		on_other	do_( "base" )	REENTER
@@ -250,7 +250,7 @@ EXPR_BGN:CND_endif
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
-CND_if_( mode==BM_STORY, A )
+CND_if_( mode==CN_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER
 						f_clr( COMPOUND ) }
@@ -285,10 +285,10 @@ A:CND_else_( B )
 				do_( same )	s_take
 						f_set( MARKED|INFORMED ) }
 		on_( ':' ) if ( s_empty ) {
-				do_( same )	s_take
-						f_set( ASSIGN ) }
+					do_( same )	s_take
+							f_set( ASSIGN ) }
 			else if ( are_f(ASSIGN|INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
-				if ( !is_f(FILTERED) ) { // could be lifted
+				if ( !is_f(FILTERED) ) {
 					do_( same )	s_take
 							f_clr( INFORMED )
 							f_set( FILTERED ) } }
@@ -301,9 +301,9 @@ A:CND_else_( B )
 					do_( same )	REENTER
 							f_pop( stack, 0 ) } }
 			else if ( is_f(INFORMED) && !is_f(COMPOUND) ) {
-				do_( ":" )	s_take
-						f_clr( INFORMED )
-						f_set( FILTERED ) }
+					do_( ":" )	s_take
+							f_clr( INFORMED )
+							f_set( FILTERED ) }
 		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : is_f(INFORMED) ) {
 				if ( is_f(LEVEL) ) {
 					do_( "pop" )	s_take
@@ -324,13 +324,16 @@ B:CND_endif
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
-				; // err
+					; // err
 			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
-				do_( same )	s_take
-						f_clr( FIRST|INFORMED ) }
+				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR) ) {
+					do_( "," )	s_take
+							f_clr( FIRST|INFORMED ) }
+				else {	do_( same )	s_take
+							f_clr( FIRST|INFORMED ) } }
 			else if ( is_f(SET) ) {
-				do_( same )	s_take
-						f_clr( INFORMED ) }
+					do_( same )	s_take
+							f_clr( INFORMED ) }
 		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
 				!is_f(ASSIGN|FILTERED|SUB_EXPR) ) {
 				do_( "|" )	s_take
@@ -354,7 +357,7 @@ B:CND_endif
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression sub-states
 	//----------------------------------------------------------------------
-CND_ifn( mode==BM_STORY, C )
+CND_ifn( mode==CN_STORY, C )
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
@@ -422,11 +425,10 @@ _CB( ExpressionPop, mode, data );
 		on_( '.' ) if ( s_empty || ( is_f(ASSIGN|FILTERED) && !is_f(LEVEL|SUB_EXPR) ) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
-		on_( '(' ) if ( s_empty ) {
-				do_( "expr" )	REENTER
+		on_( '(' )	do_( "expr" )	REENTER
+				if ( s_empty ) {
 						s_add( "~" ) }
-			else {	do_( "expr" )	REENTER
-						s_add( "~" )
+				else {		s_add( "~" )
 						f_set( NEGATED ) }
 		ons( "{}?" )	; //err
 		on_other	do_( "expr" )	REENTER
@@ -550,18 +552,54 @@ C:CND_endif
 			end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' ) if ( *type & DO ) {
-				do_( "(:" )	s_take }
+		on_( ':' ) if ( *type&DO ) {
+				do_( "(:" )	s_take
+						f_set( LITERAL ) }
+		on_( '(' )	do_( "expr" )	REENTER
+						f_push( stack )
+						f_clr( DOT|SET|TERNARY )
+				if ( *type&DO && is_f(CLEAN) ) {
+						f_set( FIRST|LEVEL|LISTABLE|CLEAN ) }
+				else {		f_set( FIRST|LEVEL|CLEAN ) }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
 						f_clr( DOT|SET|TERNARY )
-						f_set( FIRST|LEVEL )
+				if ( *type&DO && is_f(CLEAN) ) {
+						f_set( FIRST|LEVEL|LISTABLE ) }
+				else {		f_set( FIRST|LEVEL ) }
 		end
+	in_( "," ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '.' )	do_( ",." )
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( ",." ) bgn_
+			on_( '.' )	do_( ",.." )	s_add( ".." )
+			on_other
+if ( mode==CN_STORY ) {			do_( "." )	REENTER }
+else 					; // err
+			end
+			in_( ",.." ) bgn_
+				on_( '.' )	do_( ",..." )	s_take
+				end
+			in_( ",..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' )	do_( ",...)" )	s_take
+								f_pop( stack, 0 )
+				end
+			in_( ",...)" ) bgn_
+				on_( ':' )	do_( "(:" )	s_take
+				end
 	in_( "(:" ) bgn_
-		on_( ')' )	do_( "expr" )	s_take
-						f_set( INFORMED )
+		on_( ')' ) if ( is_f(LITERAL) ) {
+				do_( "expr" )	s_take
+						f_set( INFORMED ) }
 		on_( '\\' )	do_( "(:\\" )	s_take
 		on_( '%' )	do_( "(:%" )	s_take
+		on_( ':' ) if ( is_f(LITERAL) ) {
+				do_( same )	s_take }
+			else {	do_( "(::" )	s_take }
+		on_( '\n' )	; // err
 		on_other	do_( same )	s_take
 		end
 		in_( "(:\\" ) bgn_
@@ -578,6 +616,11 @@ C:CND_endif
 			ons( "% " )	do_( "(:" )	s_take
 			on_separator	; // err
 			on_other	do_( "(:" )	s_take
+			end
+		in_( "(::" ) bgn_
+			on_( ')' )	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			on_other	do_( "(:" )	REENTER
 			end
 	in_( "(_?" ) bgn_ // Assumption: TERNARY is set, not INFORMED
 		ons( " \t" )	do_( same )
@@ -623,7 +666,7 @@ C:CND_endif
 							f_set( INFORMED )
 			end
 	in_( "term" ) bgn_
-CND_ifn( mode==BM_STORY, D )
+CND_ifn( mode==CN_STORY, D )
 		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|DOT) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
@@ -646,11 +689,11 @@ _CB( ExpressionPop, mode, data );
 _CB( ExpressionTake, mode, data );
 		bgn_
 			on_any
-if ( mode==BM_INPUT ) {		do_( "" ) }
+if ( mode==CN_INPUT ) {		do_( "" ) }
 else {				do_( "base" )	f_reset( FIRST, COMPOUND );
 						TAB_CURRENT = 0;
 						data->opt = 0;
-if ( mode==BM_STORY ) {				*type = 0; } }
+if ( mode==CN_STORY ) {				*type = 0; } }
 			end
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
@@ -685,22 +728,22 @@ if ( mode==BM_STORY ) {				*type = 0; } }
 	// bm_parse:	Parser End
 	//----------------------------------------------------------------------
 	CNParserEnd
-	if ( errnum ) bm_parser_report( errnum, parser, mode );
+	if ( errnum ) cn_parse_report( errnum, parser, mode );
 	data->flags = flags;
 	return state;
 }
 
 //===========================================================================
-//	bm_parser_report
+//	cn_parse_report
 //===========================================================================
 void
-bm_parser_report( BMParserError errnum, CNParserData *parser, BMParseMode mode )
+cn_parse_report( CNParseErr errnum, CNParser *parser, CNParseMode mode )
 {
-	BMStoryData *data = parser->user_data;
+	CNParseStory *data = parser->user_data;
 	char *s = StringFinish( data->string, 0 );
-	char *	src = (mode==BM_LOAD)?(mode==BM_INPUT)?"bm_input":"bm_load":"bm_read";
+	char *	src = (mode==CN_LOAD)?(mode==CN_INPUT)?"bm_input":"bm_load":"bm_read";
 
-if ( mode==BM_INPUT )
+if ( mode==CN_INPUT )
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
@@ -749,9 +792,9 @@ else {
 //	cn_parser_init
 //===========================================================================
 int
-cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data )
+cn_parser_init( CNParser *parser, char *state, FILE *stream, void *user_data )
 {
-	memset( parser, 0, sizeof(CNParserData) );
+	memset( parser, 0, sizeof(CNParser) );
 	parser->user_data = user_data;
 	parser->state = state;
 	parser->stream = stream;
@@ -765,7 +808,7 @@ cn_parser_init( CNParserData *parser, char *state, FILE *stream, void *user_data
 static int preprocess( int event, int *mode, int *buffer, int *skipped );
 
 int
-cn_parser_getc( CNParserData *data )
+cn_parser_getc( CNParser *data )
 /*
 	filters out comments and \cr line continuation from input
 */

@@ -18,6 +18,9 @@
 #define TERNARY		(1<<11)
 #define COUPLE		(1<<12)
 #define PIPED		(1<<13)
+#define LITERAL		(1<<14)
+#define CLEAN		(1<<15)
+#define LISTABLE	(1<<16)
 
 typedef enum {
 	BMPreemptCB = 0,

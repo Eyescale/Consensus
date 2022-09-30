@@ -2,6 +2,8 @@
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
+		do (:titi:)
+		do ( titi, (( toto, ... ):asdlkjasd:) )
 		in ( toto ? tata ? titi : roro : titi )
 		in ( toto ? tata ? titi ? tutu :)
 		do input: <

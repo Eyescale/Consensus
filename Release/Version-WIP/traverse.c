@@ -100,9 +100,6 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			bar_( BMOpenCB, break )
 			f_push( stack )
 			f_reset( LEVEL|FIRST, 0 )
-#if 0
-			if ( !p_single(p) ) f_set( COUPLE )
-#endif
 			p++; break;
 		case ':':
 			bar_( BMFilterCB, break )
@@ -162,6 +159,10 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 				f_clr( NEGATED )
 				f_set( INFORMED )
 				break;
+			}
+			else if ( p[1]=='.' ) {
+				p = p_prune( PRUNE_LIST, p );
+				p++; break;
 			}
 			bar_( BMWildCardCB, break )
 			f_clr( NEGATED )

@@ -5,7 +5,7 @@
 #include "program.h"
 #include "operation.h"
 #include "expression.h"
-#include "traverse.h"
+#include "query.h"
 
 // #define DEBUG
 

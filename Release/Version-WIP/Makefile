@@ -11,19 +11,19 @@ LFLAGS = -L../../Base
 LIBS = -lcn
 
 OBJDIR = .ofiles
-SRCS =	database.c \
-	db_op.c \
-	parser.c \
+SRCS =	narrative.c \
+		parser.c \
 	program.c \
-	narrative.c \
-	context.c \
-	operation.c \
-	expression.c \
-	deternarize.c \
-	instantiate.c \
-	traverse.c \
-	locate.c \
-	query.c
+		database.c \
+		context.c \
+		operation.c \
+			db_op.c \
+			deternarize.c \
+			expression.c \
+			instantiate.c \
+			query.c \
+				locate.c \
+				traverse.c
 
 CFLAGS = -O2
 #CFLAGS = -DDEBUG -DNULL_TERMINATED

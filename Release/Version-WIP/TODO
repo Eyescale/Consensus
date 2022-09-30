@@ -10,6 +10,7 @@ TODO
 	. Pass design/story/single-thread.story
 	. create ternary-operated expressions proper test case(s)
 	. update ./design/specs/bm-read-narrative-states.txt
+	  and provide software architecture document (package dependency diagram)
 	. bm_input()
 		. on EOF should do :input:~. instead of ~(*,input)
 		  => must modify version-1.0 and version-1.1

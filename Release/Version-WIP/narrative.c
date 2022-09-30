@@ -11,7 +11,7 @@
 CNStory *
 readStory( char *path )
 {
-	CNStory *story = bm_read( CN_STORY, path );
+	CNStory *story = bm_read( BM_STORY, path );
 	return story;
 }
 
@@ -126,19 +126,19 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 //===========================================================================
 //	bm_read	- internal
 //===========================================================================
-static int read_CB( BMParseOp, BMParseMode, void * );
-static int bm_read_init( BMStoryData *, BMReadMode, BMContext * );
-static void * bm_read_exit( int, BMStoryData *, BMReadMode );
+static int read_CB( CNParseOp, CNParseMode, void * );
+static CNParseMode bm_read_init( CNParseStory *, BMReadMode, BMContext *, CNParser *, FILE * );
+static void * bm_read_exit( int, CNParseStory *, BMReadMode );
 
 void *
 bm_read( BMReadMode mode, ... )
 /*
    Usage examples:
 	3. union { int value; void *ptr; } icast;
-	   icast.ptr = bm_read( CN_LOAD, (BMContext*) ctx, (char*) inipath );
+	   icast.ptr = bm_read( BM_LOAD, (BMContext*) ctx, (char*) inipath );
 	   int errnum = icast.value;
-	2. CNInstance *instance = bm_read( CN_INPUT, (FILE*) stream );
-	1. CNStory *story = bm_read( CN_STORY, (char*) path );
+	2. CNInstance *instance = bm_read( BM_INPUT, (FILE*) stream );
+	1. CNStory *story = bm_read( BM_STORY, (char*) path );
 */
 {
 	char *path;
@@ -147,13 +147,13 @@ bm_read( BMReadMode mode, ... )
 	va_list ap;
 	va_start( ap, mode );
 	switch ( mode ) {
-	case CN_INPUT:
+	case BM_INPUT:
 		file = va_arg( ap, FILE * );
 		break;
-	case CN_LOAD:
+	case BM_LOAD:
 		ctx = va_arg( ap, BMContext * );
 		// no break;
-	case CN_STORY:
+	case BM_STORY:
 		path = va_arg( ap, char * );
 		file = fopen( path, "r" );
 		if ( file == NULL ) {
@@ -165,18 +165,15 @@ bm_read( BMReadMode mode, ... )
 	}
 	va_end( ap );
 
-	BMStoryData data;
-	int parse_mode = bm_read_init( &data, mode, ctx );
-
-	CNParserData parser;
-	cn_parser_init( &parser, "base", file, &data );
-	bm_parser_init( &parser, parse_mode );
+	CNParser parser;
+	CNParseStory data;
+	CNParseMode parse_mode = bm_read_init( &data, mode, ctx, &parser, file );
 	do {
 		int event = cn_parser_getc( &parser );
 		if ( event!=EOF && event!='\n' ) {
 			parser.column++;
 		}
-		parser.state = bm_parse( event, &parser, parse_mode, read_CB );
+		parser.state = cn_parse( event, &parser, parse_mode, read_CB );
 		if ( !strcmp( parser.state, "" ) || parser.errnum ) {
 			break;
 		}
@@ -185,7 +182,7 @@ bm_read( BMReadMode mode, ... )
 			parser.line++;
 		}
 	} while ( strcmp( parser.state, "" ) );
-	if (!( mode == CN_INPUT ))
+	if (!( mode == BM_INPUT ))
 		fclose( file );
 	return bm_read_exit( parser.errnum, &data, mode );
 }
@@ -194,9 +191,9 @@ static void narrative_reorder( CNNarrative * );
 static CNNarrative * newNarrative( void );
 static CNOccurrence * newOccurrence( int );
 static int
-read_CB( BMParseOp op, BMParseMode mode, void *user_data )
+read_CB( CNParseOp op, CNParseMode mode, void *user_data )
 {
-	BMStoryData *data = user_data;
+	CNParseStory *data = user_data;
 	switch ( op ) {
 	case NarrativeTake: ;
 		CNNarrative *narrative = data->narrative;
@@ -295,14 +292,14 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		break;
 	case ExpressionTake:
 		switch ( mode ) {
-		case BM_LOAD: ;
+		case CN_LOAD: ;
 			char *expression = StringFinish( data->string, 0 );
 			bm_instantiate( expression, data->ctx );
 			StringReset( data->string, CNStringAll );
 			break;
-		case BM_INPUT:
+		case CN_INPUT:
 			break;
-		case BM_STORY: ;
+		case CN_STORY: ;
 			occurrence = data->stack->ptr;
 			occurrence->data->type = data->type;
 			occurrence->data->expression = StringFinish( data->string, 0 );
@@ -314,50 +311,51 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 	return 1;
 }
 
-static int
-bm_read_init( BMStoryData *data, BMReadMode mode, BMContext *ctx )
+static CNParseMode
+bm_read_init( CNParseStory *data, BMReadMode mode, BMContext *ctx, CNParser *parser, FILE *file )
 {
-	int parse_mode = 0;
-	memset( data, 0, sizeof(BMStoryData) );
+	CNParseMode parse_mode = 0;
+	memset( data, 0, sizeof(CNParseStory) );
 	data->string = newString();
 	switch ( mode ) {
-	case CN_LOAD:
-		parse_mode = BM_LOAD;
+	case BM_LOAD:
+		parse_mode = CN_LOAD;
 		data->ctx = ctx;
 		data->type = DO;
 		break;
-	case CN_INPUT:
-		parse_mode = BM_INPUT;
+	case BM_INPUT:
+		parse_mode = CN_INPUT;
 		data->type = DO;
 		break;
-	case CN_STORY:
-		parse_mode = BM_STORY;
+	case BM_STORY:
+		parse_mode = CN_STORY;
 		data->narrative = newNarrative();
 		data->occurrence = data->narrative->root;
 		data->story = newRegistry( IndexedByName );
 		addItem( &data->stack, data->occurrence );
 		break;
 	}
+	cn_parse_init( data, parser, parse_mode, "base", file );
 	return parse_mode;
 }
 
 static void freeNarrative( CNNarrative * );
 static void *
-bm_read_exit( int errnum, BMStoryData *data, BMReadMode mode )
+bm_read_exit( int errnum, CNParseStory *data, BMReadMode mode )
 {
 	switch ( mode ) {
-	case CN_LOAD:
+	case BM_LOAD:
 		freeString( data->string );
 		union { int value; void *ptr; } icast;
 		icast.value = errnum;
 		return icast.ptr;
-	case CN_INPUT: ;
+	case BM_INPUT: ;
 		CNString *s = data->string;
 		char *expression = StringFinish( s, 0 );
 		StringReset( s, CNStringMode );
 		freeString( s );
 		return expression;
-	case CN_STORY:
+	case BM_STORY:
 		freeString( data->string );
 		freeListItem( &data->stack );
 		CNStory *take = NULL;

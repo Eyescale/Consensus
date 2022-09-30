@@ -295,6 +295,7 @@ charscan( char *p, char_s *q )
 //---------------------------------------------------------------------------
 static char *prune_ternary( char * );
 static char *prune_literal( char * );
+static char *prune_list( char * );
 static char *prune_format( char * );
 static char *prune_character( char * );
 static char *prune_regex( char * );
@@ -309,6 +310,8 @@ p_prune( PruneType type, char *p )
 		return prune_ternary( p );
 	case PRUNE_LITERAL:
 		return prune_literal( p );
+	case PRUNE_LIST:
+		return prune_list( p );
 	case PRUNE_FORMAT:
 		return prune_format( p );
 	case PRUNE_IDENTIFIER:
@@ -442,17 +445,46 @@ RETURN:
 static char *
 prune_literal( char *p )
 /*
-	Assumption: *p=='(' and p[1]==':'
+	Assumption: p==(:sequence:) or p==(:sequence)
 */
 {
-	p+=2; // skip opening '"'
+	p+=2; // skip opening "(:"
 	while ( *p ) {
 		switch ( *p ) {
 		case ':':
-			if ( p[1]==')' ) {
+			if ( p[1]==')' )
 				return p+2;
-				break;
-			}
+			p++; break;
+		case ')':
+			return p+1;
+		case '\\':
+			if ( p[1] ) p++;
+			p++; break;
+		default:
+			p++; break;
+		}
+	}
+	return p;
+}
+static char *
+prune_list( char *p )
+/*
+	Assumption: p can be point to either one of the following
+		((expression,...):sequence:) OR ...):sequence:)
+		^-------------------------------^ p
+			     ^------------------^ Ellipsis
+*/
+{
+	int start = *p;
+	if ( start=='(' ) // not from prune_level
+		{ p = prune_level( p+2, 1 ); p++; }
+	else p += 4;
+	p++; // skip opening ':'
+	while ( *p ) {
+		switch ( *p ) {
+		case ':':
+			if ( p[1]==')' )
+				return ( start=='(' ? p+2 : p+1 );
 			p++; break;
 		case '\\':
 			if ( p[1] ) p++;
@@ -545,8 +577,7 @@ prune_level( char *p, int level )
 		case '(':
 			if ( p[1]==':' ) {
 				p = prune_literal( p );
-				break;
-			}
+				break; }
 			level++;
 			p++; break;
 		case ')':
@@ -562,6 +593,14 @@ prune_level( char *p, int level )
 		case '/':
 			p = prune_regex( p );
 			break;
+		case '.':
+			if (( level > 1 ) && p[1]=='.' ) {
+				level--;
+				// returns on closing ')'
+				p = prune_list( p );
+				break;
+			}
+			// no break
 		default:
 			do p++; while ( !is_separator(*p) );
 		}
@@ -591,6 +630,20 @@ p_filtered( char *p )
 {
 	p = p_prune( PRUNE_FILTER, p );
 	return ( *p==':' );
+}
+int
+p_list( char *p )
+/*
+	Assumption: *p=='('
+	We want to determine if p is ((expression,...):sequence:)
+		Ellipsis -------------------------^
+*/
+{
+	if ( p[1]=='(' ) {
+		p = p_prune( PRUNE_TERM, p+2 );
+		return !strncmp( p, ",..", 3 );
+	}
+	return 0;
 }
 
 //---------------------------------------------------------------------------

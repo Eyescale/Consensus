@@ -6,6 +6,21 @@
 #include "string_util.h"
 
 typedef struct {
+	FILE *	stream;
+	char *	state;
+	int	line, column,
+		mode[ 4 ], buffer,
+		errnum;
+	void *	user_data;
+} CNParser;
+
+int	cn_parser_init( CNParser *, char *state, FILE *, void * );
+int	cn_parser_getc( CNParser * );
+
+//===========================================================================
+//	bm_read - bm_parse interface
+//===========================================================================
+typedef struct {
 // shared between parser and bm_read()
 	CNString *	string;
 	int		tab[4], type;
@@ -16,18 +31,9 @@ typedef struct {
 	CNNarrative *	narrative;
 	Pair *		entry;
 	CNOccurrence *	occurrence;
-// parser only
+// bm_parse() only
 	int		flags, opt;
-} BMStoryData;
-
-typedef struct {
-	FILE *	stream;
-	char *	state;
-	int	line, column,
-		mode[ 4 ], buffer,
-		errnum;
-	void *	user_data;
-} CNParserData;
+} CNParseStory;
 
 // tab data informed by bm_parse
 
@@ -37,10 +43,10 @@ typedef struct {
 #define TAB_BASE	tab[3]
 
 typedef enum {
-	BM_LOAD = 1,
-	BM_INPUT,
-	BM_STORY,
-} BMParseMode;
+	CN_LOAD = 1,
+	CN_INPUT,
+	CN_STORY,
+} CNParseMode;
 typedef enum {
 	NarrativeTake = 1,
 	ProtoSet,
@@ -48,7 +54,7 @@ typedef enum {
 	ExpressionPush,
 	ExpressionPop,
 	ExpressionTake
-} BMParseOp;
+} CNParseOp;
 typedef enum {
 	ErrNone = 0,
 	ErrUnknownState,
@@ -65,14 +71,11 @@ typedef enum {
 	ErrNarrativeEmpty,
 	ErrNarrativeDouble,
 	ErrUnknownCommand,
-} BMParserError;
+} CNParseErr;
 
-typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
-char *	bm_parse( int event, CNParserData *, BMParseMode, BMParseCB );
-int	bm_parser_init( CNParserData *, BMParseMode );
-void	bm_parser_report( BMParserError, CNParserData *, BMParseMode );
-
-int	cn_parser_init( CNParserData *, char *state, FILE *, void * );
-int	cn_parser_getc( CNParserData * );
+typedef int (*CNParseCB)( CNParseOp, CNParseMode, void * );
+char *	cn_parse( int event, CNParser *, CNParseMode, CNParseCB );
+int	cn_parse_init( CNParseStory *, CNParser *, CNParseMode, char *state, FILE * );
+void	cn_parse_report( CNParseErr, CNParser *, CNParseMode );
 
 #endif	// PARSER_H

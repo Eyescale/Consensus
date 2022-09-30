@@ -203,7 +203,7 @@ bm_input( char *format, char *expression, BMContext *ctx )
 		}
 		break;
 	case '_':
-		input = bm_read( CN_INPUT, stdin );
+		input = bm_read( BM_INPUT, stdin );
 		if ( input == NULL ) return EOF;
 		break;
 	default:

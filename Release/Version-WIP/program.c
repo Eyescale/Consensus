@@ -29,7 +29,7 @@ newProgram( CNStory *story, char *inipath )
 		goto ERR;
 	}
 	if (( inipath )) {
-		if ( !!bm_read( CN_LOAD, cell->ctx, inipath ) ) {
+		if ( !!bm_read( BM_LOAD, cell->ctx, inipath ) ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			goto ERR;
 		}
