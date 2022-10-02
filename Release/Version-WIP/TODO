@@ -1,20 +1,19 @@
 See Also: design/new-features-and-additions.txt
 TODO
     Version-1.2
-	. Version-1.2 Engineering Complete
+	. Version-1.2 Feature Complete
 		. compile into .a instead of .so
 		. ../../Base/Examples/1_Yak
 		  remove workaround in string_util.c so that we can implement StringFinish as
 		  it should be - see s_cmp() in include/traverse.h. Right now if we check
 		  the string mode in StringFinish then Yak crashes
 			=> reimplement schemeFrame() in ../../Base/Examples/1_Yak/scheme.c
-	. Version-1.2 Feature complete
+	. Version-1.2 Engineering Complete
 		. Pass design/story/single-thread.story
 		. create ternary-operated expressions proper test case(s)
 		. update ./design/specs/bm-read-narrative-states.txt
 		  include guidelines on flags rules & precedence
 		. software architecture document (package dependency diagram)
-	. Publish as Version-1.2
 		. Reorganize Examples, e.g.
 			. Examples-v1.0
 				. 0_TuringMachine
@@ -30,9 +29,11 @@ TODO
 		. README.txt
 		. NOTE: everything is Pair, starting from [address,value]
 		. need feature-list.txt / Release Notes
-		. TO DOCUMENT
+		. DOCUMENT
 			. literal %% internally converts as (%,%) - error in current documentation
 			. instantiation may do half a job - since we do not pre-check with bm_void()
+	. Release Version-1.2
+
     Version-2.0
 	. on_event_ext
 		. need to separate expression from source
@@ -45,17 +46,16 @@ TODO
 		. Attention: bm_context_mark, when %< is set...
 	. Where to put bm_hear, bm_sound, bm_take ????
 		=> could have connection.c ???
-	. --------
-	. Publish as Version-2.0
-			. Examples-v2.0
-				. 0_TuringMachine.single
-				. 0_TuringMachine.head-tape
-				. 0_TuringMachine.head-tape-cell
-				. 0_TuringMaching.head-cell-reporter << to be written
-				. 1_Schematize	// using Scheme
-				. 1_Yak.0 // support Scheme files from schematize
-				. 1_Yak.1 // using new Cell design
-				. 2_interactive	// TBD
+	. Release Version-2.0
+		. Examples-v2.0
+			. 0_TuringMachine.single
+			. 0_TuringMachine.head-tape
+			. 0_TuringMachine.head-tape-cell
+			. 0_TuringMaching.head-cell-reporter << to be written
+			. 1_Schematize	// using Scheme
+			. 1_Yak.0 // support Scheme files from schematize
+			. 1_Yak.1 // using new Cell design
+			. 2_interactive	// TBD
 
 NICE TO HAVE
 	. do_input / do_output multiple args support
