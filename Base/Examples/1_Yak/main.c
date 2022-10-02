@@ -61,6 +61,7 @@ main( int argc, char *argv[] )
 	int p_opt = ( token ? P_TOK : 0 ) | ( space ? P_SPACE : 0 );
 	Scheme *scheme = readScheme( path );
 
+#if 1
 	outputScheme( scheme, token );
 	Parser *parser = newParser( scheme, p_opt );
 	if ( parser == NULL ) {
@@ -125,6 +126,7 @@ main( int argc, char *argv[] )
 	}
 	while ( state != Exit );
 	freeParser( parser );
+#endif
 	freeScheme( scheme );
 }
 

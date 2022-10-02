@@ -21,8 +21,20 @@ typedef enum {
 	WarnReadSchemeHyphen,
 	ErrReadSchemeNoErr	// always last
 } readSchemeErrNum;
-
-static readSchemeErrNum readSchemeFrame( Scheme *, int );
+typedef struct {
+	CNString *string[ 3 ];
+	listItem *list[ 2 ];
+	int position[ 2 ];
+	Scheme *scheme;
+	Rule *rule;
+	char *state;
+} ReadSchemeData;
+typedef enum {
+	RULE = 0,
+	SCHEMA,
+	TOKEN
+} ReadSchemeStringId;
+static readSchemeErrNum readSchemeFrame( ReadSchemeData *data, int );
 
 /*---------------------------------------------------------------------------
 	readScheme	- interface to File
@@ -30,66 +42,68 @@ static readSchemeErrNum readSchemeFrame( Scheme *, int );
 Scheme *
 readScheme( char *path )
 {
-	Scheme *scheme = newScheme();
-	if ( scheme == NULL ) return NULL;
-
 	FILE *file = fopen( path, "r" );
 	if ( file == NULL ) {
-		freeScheme( scheme );
+		fprintf( stderr, "Error: readScheme: unable to open %s\n", path );
 		return NULL;
 	}
-	int event = '\n', abort = 0, line = 0, column;
+	Scheme *scheme = newScheme();
+	if ( !scheme ) {
+		fprintf( stderr, "Error: readScheme: unable to allocate Scheme\n" );
+		fclose( file );
+		return NULL;
+	}
+	ReadSchemeData data;
+	memset( &data, 0, sizeof(data) );
+	data.scheme		= scheme;
+	data.string[ RULE ]	= newString();
+	data.string[ SCHEMA ]	= newString();
+	data.string[ TOKEN ]	= newString();
+	data.state		= "base";
+	int event, abort=0, line=1, column=1;
 	do {
-		if ( event == '\n' ) {
-			line++; column = 1;
-		}
-		else column++;
 		event = fgetc( file );
-		switch ( readSchemeFrame( scheme, event ) ) {
-			case ErrReadSchemeSyntaxError:
-				fprintf( stderr, "Error: readScheme: l%dc%d: syntax error\n", line, column );
-				abort = 1;
-				break;
-			case ErrReadSchemeEOF:
-				fprintf( stderr, "Error: readScheme: l%dc%d: premature EOF\n", line, column );
-				abort = 1;
-				break;
-			case WarnReadSchemeExtra:
-				fprintf( stderr, "Warning: readScheme: l%dc%c: extraneous information removed\n", line, column );
-				break;
-			case WarnReadSchemeHyphen:
-				fprintf( stderr, "Warning: readScheme: l%dc%c: multiple '%%-'\n", line, column );
-				break;
-			case ErrReadSchemeNoErr:
-				break;
-			}
-	} while (( event != EOF ) && !abort );
+		switch ( readSchemeFrame( &data, event ) ) {
+		case ErrReadSchemeSyntaxError:
+			fprintf( stderr, "Error: readScheme: l%dc%d: syntax error\n", line, column );
+			abort = 1;
+			break;
+		case ErrReadSchemeEOF:
+			fprintf( stderr, "Error: readScheme: l%dc%d: premature EOF\n", line, column );
+			abort = 1;
+			break;
+		case WarnReadSchemeExtra:
+			fprintf( stderr, "Warning: readScheme: l%dc%c: extraneous information removed\n", line, column );
+			break;
+		case WarnReadSchemeHyphen:
+			fprintf( stderr, "Warning: readScheme: l%dc%c: multiple '%%-'\n", line, column );
+			break;
+		case ErrReadSchemeNoErr:
+			break;
+		}
+		if ( event=='\n' ) { line++; column=1; }
+		else column++;
+	} while (!( event==EOF || abort ));
 	fclose( file );
-
 	if ( abort ) {
 		if ( event != EOF ) // cleanup
-			readSchemeFrame( scheme, EOF );
-		freeScheme( scheme );
-		scheme = NULL;
+			readSchemeFrame( &data, EOF );
+		freeScheme( data.scheme );
+		data.scheme = NULL;
 	}
-	else if (( scheme )) {
-		reorderListItem( &scheme->rules );
-		for ( listItem *i=scheme->rules; i!=NULL; i=i->next ) {
+	else if (( data.scheme )) {
+		reorderListItem( &data.scheme->rules );
+		for ( listItem *i=data.scheme->rules; i!=NULL; i=i->next ) {
 			Rule *r = i->ptr;
 			reorderListItem( &r->schemata );
 		}
 	}
-	return scheme;
+	return data.scheme;
 }
 
 /*---------------------------------------------------------------------------
 	readSchemeFrame
 ---------------------------------------------------------------------------*/
-enum {
-	RULE = 0,
-	SCHEMA,
-	TOKEN
-};
 static void	r_reset( CNString **, int *, listItem ** );
 static void 	r_append( CNString **, int );
 static Rule *	r_set( CNString **, Scheme * );
@@ -100,42 +114,33 @@ static void	t_finish( CNString **, Scheme *, listItem ** );
 static void	t_wrap( listItem **, int );
 
 static readSchemeErrNum
-readSchemeFrame( Scheme *scheme, int event )
+readSchemeFrame( ReadSchemeData *data, int event )
 {
-	static Rule *rule;
-	static CNString *string[ 3 ] = { NULL, NULL, NULL };
-	static int position = 0;
-	static char *state = "base";
-	static listItem *list[ 2 ] = { NULL, NULL };
-	static int regex_position = 0;
-
-	if ( string[ RULE ] == NULL ) {
-		string[ RULE ] = newString();
-		string[ SCHEMA ] = newString();
-		string[ TOKEN ] = newString();
-	}
-	int errnum = ErrReadSchemeNoErr;
-
+	CNString **string = data->string;
+	listItem **list	= data->list;
+	Scheme *scheme	= data->scheme;
+	Rule *rule	= data->rule;
+	int position	= data->position[ 0 ];
+	int rx_position = data->position[ 1 ];	// regex position
+	char *state	= data->state;
+	int errnum	= ErrReadSchemeNoErr;
 	BEGIN
 #ifdef SCH_DEBUG
-	fprintf( stderr, "readSchemeFrame: state=\"%s\" event='%c'\n", state, event );
+	fprintf( stderr, "readSchemeFrame: state=\"%s\" ", state );
+	if ( event=='\n') fprintf( stderr, "event='\\n'\n" );
+	else fprintf( stderr, "event='%c'\n", event );
 #endif
 	bgn_
 	on_( EOF ) bgn_
 		in_( "base" )	do_( same )
 		in_( "\\n" )	do_( "base" )
-		in_( ": \\n" )	do_( "base" )
-					s_finish( string, rule, &position, list );
-		in_( ": \\n_" )	do_( "base" )
-					s_finish( string, rule, &position, list );
-		in_other	do_( "base" )
-					errnum = ErrReadSchemeEOF;
+		in_( ": \\n" )	do_( "base" )	s_finish( string, rule, &position, list );
+		in_( ": \\n_" )	do_( "base" )	s_finish( string, rule, &position, list );
+		in_other	do_( "base" )	errnum = ErrReadSchemeEOF;
 		end
 		r_reset( string, &position, list );
-	in_( "error" )
-		r_reset( string, &position, list );
-		do_( "base" )
-			errnum = ErrReadSchemeSyntaxError;
+	in_( "error" )		do_( "base" )	r_reset( string, &position, list );
+						errnum = ErrReadSchemeSyntaxError;
 	in_( "base" ) bgn_
 		on_( '#' )	do_( "#" )
 		on_( '\n' )	do_( "\\n" )
@@ -156,16 +161,13 @@ readSchemeFrame( Scheme *scheme, int event )
 			end
 	in_( "rule" ) bgn_
 		on_space	do_( "rule_" )
-		on_( ':' )	do_( "schema" )
-					rule = r_set( string, scheme );
+		on_( ':' )	do_( "schema" )	rule = r_set( string, scheme );
 		on_separator	do_( "error" )	REENTER
-		on_other	do_( same )
-					r_append( string, event );
+		on_other	do_( same )	r_append( string, event );
 		end
 		in_( "rule_" ) bgn_
 			on_space	do_( same )
-			on_( ':' )	do_( "schema" )
-						rule = r_set( string, scheme );
+			on_( ':' )	do_( "schema" )	rule = r_set( string, scheme );
 			on_other	do_( "error" )	REENTER
 			end
 	in_( "schema" ) bgn_
@@ -173,36 +175,31 @@ readSchemeFrame( Scheme *scheme, int event )
 		on_( '%' )	do_( ": %" )
 		on_( '\n' )	do_( ": \\n" )
 		on_( '\\' )	do_( ": \\" )
-		on_other	do_( ": _" )
-					s_append( string, event, &position );
+		on_other	do_( ": _" )	s_append( string, event, &position );
 		end
 		in_( ": space" ) bgn_
 			on_space	do_( same )
 			on_( '%' )	do_( ": space%" )
-			on_( '\n' )	do_( ": \\n" )
-						regex_position = 0;
-						// space characters are ignored at the end of a schema
-			on_( '\\' )	do_( ": \\" )
-						regex_position = 0;
-						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-							s_append( string, ' ', &position );
-			on_other	do_( ": _" )
-						regex_position = 0;
-						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-							s_append( string, ' ', &position );
-						s_append( string, event, &position );
+			on_( '\n' )	do_( ": \\n" )	rx_position = 0;
+							// space characters are ignored at the end of a schema
+			on_( '\\' )	do_( ": \\" )	rx_position = 0;
+							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
+								s_append( string, ' ', &position );
+			on_other	do_( ": _" )	rx_position = 0;
+							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
+								s_append( string, ' ', &position );
+							s_append( string, event, &position );
 			end
 		in_( ": space%" ) bgn_
-			on_( '{' )	do_( "tokens" )
-						// space characters are ignored before the Token sign
-						// EXCEPT following regex rule
-						if ( regex_position ) {
-							regex_position = 0;
-							s_append( string, ' ', &position );
-						}
+			on_( '{' )	do_( "tokens" )	// space characters are ignored before the Token sign
+							// EXCEPT following regex rule
+							if ( rx_position ) {
+								rx_position = 0;
+								s_append( string, ' ', &position );
+							}
 			on_other	do_( ": %" )	REENTER
-						if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-							s_append( string, ' ', &position );
+							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
+								s_append( string, ' ', &position );
 			end
 		in_( ": \\n" ) bgn_
 			on_( '#' )	do_( ": #" )
@@ -214,40 +211,32 @@ readSchemeFrame( Scheme *scheme, int event )
 				end
 			in_( ": \\n_" ) bgn_
 				on_space	do_( same )
-				on_( '|' )	do_( "schema" )
-							s_finish( string, rule, &position, list );
+				on_( '|' )	do_( "schema" )	s_finish( string, rule, &position, list );
 				on_other	do_( "base" )	REENTER
-							s_finish( string, rule, &position, list );
+								s_finish( string, rule, &position, list );
 				end
 		in_( ": \\" ) bgn_
 			on_( '\n' )	do_( "schema" )
-			on_other	do_( "schema" )
-						s_append( string, '\\', &position );
-						s_append( string, event, &position );
+			on_other	do_( "schema" )	s_append( string, '\\', &position );
+							s_append( string, event, &position );
 			end
 		in_( ": _" ) bgn_
 			on_separator	do_( "schema" )	REENTER
-			on_other	do_( same )
-						s_append( string, event, &position );
+			on_other	do_( same )	s_append( string, event, &position );
 			end
 		in_( ": %" ) bgn_
 			on_( '{' )	do_( "tokens" )
 			on_( '-' )	do_( ": %-" )
-			on_( '/' )	do_( ": regex" )
-						s_append( string, '%', &position );
-						regex_position = position;
-						s_append( string, '/', &position );
-			on_( '\n' )	do_( ": \\n" )
-						errnum = WarnReadSchemeExtra;
-			on_space	do_( ": % " )
-						s_append( string, '%', &position );
-						s_append( string, ' ', &position );
-			on_separator	do_( "schema" ) 
-						s_append( string, '%', &position );
-						s_append( string, event, &position );
-			on_other	do_( ": %_" )
-						s_append( string, '%', &position );
-						s_append( string, event, &position );
+			on_( '/' )	do_( ": regex" )	s_append( string, '%', &position );
+								rx_position = position;
+								s_append( string, '/', &position );
+			on_( '\n' )	do_( ": \\n" )		errnum = WarnReadSchemeExtra;
+			on_space	do_( ": % " )		s_append( string, '%', &position );
+								s_append( string, ' ', &position );
+			on_separator	do_( "schema" )		s_append( string, '%', &position );
+								s_append( string, event, &position );
+			on_other	do_( ": %_" )		s_append( string, '%', &position );
+								s_append( string, event, &position );
 			end
 			in_( ": % " ) bgn_
 				on_space	do_( same )
@@ -258,75 +247,61 @@ readSchemeFrame( Scheme *scheme, int event )
 				end
 			in_( ": %_" ) bgn_
 				on_separator	do_( "schema" )	REENTER
-				on_other	do_( same )
-							s_append( string, event, &position );
+				on_other	do_( same )	s_append( string, event, &position );
 				end
 			in_( ": %-" ) bgn_
 				on_space	do_( same )
 				on_( '%' )	do_( ": %-%" )
-				on_( '\n' )	do_( ": \\n" )
-							if ( isRuleBase( rule ) && !( string[ SCHEMA ]->data )) {
-								s_append( string, '%', &position );
-								s_append( string, '-', &position );
-							}
-							else errnum = WarnReadSchemeExtra;
+				on_( '\n' )	do_( ": \\n" )	if ( isRuleBase( rule ) && !( string[ SCHEMA ]->data )) {
+									s_append( string, '%', &position );
+									s_append( string, '-', &position );
+								}
+								else errnum = WarnReadSchemeExtra;
 				on_( '\\' )	do_( ": %-\\" )
-				on_other	do_( ": _" )
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, event, &position );
+				on_other	do_( ": _" )	s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, event, &position );
 				end
 			in_( ": %-\\" ) bgn_
 				on_( '\n' )	do_( ": %-" )
-				on_other	do_( "schema" )
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, '\\', &position );
-							s_append( string, event, &position );
+				on_other	do_( "schema" )	s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, '\\', &position );
+								s_append( string, event, &position );
 				end
 			in_( ": %-%" ) bgn_
-				on_( '{' )	do_( "tokens" )
-							errnum = WarnReadSchemeExtra;
-				on_( '-' )	do_( ": %-" )
-							errnum = WarnReadSchemeHyphen;
-				on_( '/' )	do_( ": regex" )
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, '%', &position );
-							regex_position = position;
-							s_append( string, '/', &position );
-				on_( '\n' ) 	do_( ": \\n" )
-							errnum = WarnReadSchemeExtra;
-				on_space	do_( ": % " )
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, '%', &position );
-							s_append( string, ' ', &position );
-				on_separator	do_( "schema" ) 
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, '%', &position );
-							s_append( string, event, &position );
-				on_other	do_( ": %_" )
-							s_append( string, '%', &position );
-							s_append( string, '-', &position );
-							s_append( string, '%', &position );
-							s_append( string, event, &position );
+				on_( '{' )	do_( "tokens" )	errnum = WarnReadSchemeExtra;
+				on_( '-' )	do_( ": %-" )	errnum = WarnReadSchemeHyphen;
+				on_( '/' )	do_( ": regex" ) s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, '%', &position );
+								rx_position = position;
+								s_append( string, '/', &position );
+				on_( '\n' ) 	do_( ": \\n" )	errnum = WarnReadSchemeExtra;
+				on_space	do_( ": % " )	s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, '%', &position );
+								s_append( string, ' ', &position );
+				on_separator	do_( "schema" )	s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, '%', &position );
+								s_append( string, event, &position );
+				on_other	do_( ": %_" )	s_append( string, '%', &position );
+								s_append( string, '-', &position );
+								s_append( string, '%', &position );
+								s_append( string, event, &position );
 				end
 		in_( ": regex" ) bgn_
 			on_( '\n' )	do_( "error" )	REENTER
-						regex_position = 0;
+							rx_position = 0;
 			on_( '\\' )	do_( ": %/\\" )
-			on_( '/' )	do_( ": %//" )
-						s_append( string, event, &position );
-			on_other	do_( same )
-						s_append( string, event, &position );
+			on_( '/' )	do_( ": %//" )	s_append( string, event, &position );
+			on_other	do_( same )	s_append( string, event, &position );
 			end
 			in_( ": %/\\" ) bgn_
 				on_( '\n' )	do_( ": %/\\\\n" )
-				on_other	do_( ": regex" )
-							s_append( string, '\\', &position );
-							s_append( string, event, &position );
+				on_other	do_( ": regex" )	s_append( string, '\\', &position );
+									s_append( string, event, &position );
 				end
 				in_( ": %/\\\\n" ) bgn_
 					on_space	do_( same )
@@ -335,28 +310,24 @@ readSchemeFrame( Scheme *scheme, int event )
 			in_( ": %//" ) bgn_
 				on_space	do_( ": space" )
 				on_( '%' )	do_( ": %//%" )
-				on_other	do_( "schema" )	REENTER
-							regex_position = 0;
+				on_other	do_( "schema" )		REENTER
+									rx_position = 0;
 				end
 				in_( ": %//%" ) bgn_
 					on_( '{' )	do_( "tokens" )
 					on_other	do_( ": %" )	REENTER
-								regex_position = 0;
+									rx_position = 0;
 					end
 	in_( "tokens" ) bgn_
-		on_( '\n' )	do_( "error" )	REENTER
-		on_space	do_( "token " )
-					t_finish( string, scheme, list );
-		on_( '\\' )	do_( "token\\" )
-					t_finish( string, scheme, list );
-		on_( '}' )	do_( "%{_}" )
-					t_finish( string, scheme, list );
-					if ( regex_position )
-						t_wrap( list, regex_position );
-					else
-						t_wrap( list, position );
-		on_other	do_( same )
-					t_append( string, event );
+		on_( '\n' )	do_( "error" )		REENTER
+		on_space	do_( "token " )		t_finish( string, scheme, list );
+		on_( '\\' )	do_( "token\\" )	t_finish( string, scheme, list );
+		on_( '}' )	do_( "%{_}" )		t_finish( string, scheme, list );
+							if ( rx_position )
+								t_wrap( list, rx_position );
+							else
+								t_wrap( list, position );
+		on_other	do_( same )		t_append( string, event );
 		end
 		in_( "token " ) bgn_
 			on_space	do_( same )
@@ -364,23 +335,26 @@ readSchemeFrame( Scheme *scheme, int event )
 			end
 		in_( "token\\" ) bgn_
 			on_( '\n' )	do_( "tokens" )
-			on_other	do_( "tokens" )
-						t_append( string, '\\' );
-						t_append( string, event );
+			on_other	do_( "tokens" )	t_append( string, '\\' );
+							t_append( string, event );
 			end
 		in_( "%{_}" ) bgn_
 			on_space	do_( ": space" )
 			on_( '%' )	do_( "%{_}%" )
-			on_other	do_( "schema" )	REENTER
-						regex_position = 0;
+			on_other	do_( "schema" )		REENTER
+								rx_position = 0;
 			end
 			in_( "%{_}%" ) bgn_
 				on_( '{' )	do_( "tokens" )
 				on_( '-' )	do_( "%{_}" )
 				on_other	do_( ": %" )	REENTER
-							regex_position = 0;
+								rx_position = 0;
 				end
 	END
+	data->rule = rule;
+	data->position[ 0 ] = position;
+	data->position[ 1 ] = rx_position;
+	data->state = state;
 	return errnum;
 }
 
@@ -466,8 +440,10 @@ static void
 t_finish( CNString **s, Scheme *scheme, listItem **list )
 {
 	char *identifier = StringFinish( s[ TOKEN ], 0 );
-	if ( identifier == NULL ) return;
-
+	if ( identifier == NULL ) {
+		StringReset( s[ TOKEN ], CNStringAll );
+		return;
+	}
 	listItem *token = findToken( scheme, identifier );
 	if (( token ))
 		StringReset( s[ TOKEN ], CNStringAll );
@@ -730,10 +706,8 @@ freeRule( Rule *r )
 {
 	if ( strcmp( r->identifier, "" ) )
 		free( r->identifier );
-
 	for ( listItem *i=r->schemata; i!=NULL; i=i->next )
 		freeSchema( i->ptr );
-
 	freeListItem( &r->schemata );
 	freePair((Pair *) r );
 }

@@ -53,17 +53,11 @@ StringAppend( CNString *string, int event )
 }
 char *
 StringFinish( CNString *string, int trim )
-/*
-	Assumption: string->mode == CNStringBytes
-*/
 {
 #ifdef DEBUG_2
 	output( Debug, "StringFinish: '%c'", (char) event );
 #endif
-#if 0	// DO NOT CHECK string->mode - crashes ./Examples/1_Yak
-	if ( string->mode == CNStringBytes )
-#endif
-	{
+	if ( string->mode == CNStringBytes ) {
 		string->data = l2s((listItem **) &string->data, trim );
 		string->mode = CNStringText;
 	}
