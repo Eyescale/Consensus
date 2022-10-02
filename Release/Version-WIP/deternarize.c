@@ -132,6 +132,8 @@ case_( open_CB )
 		data->segment = newPair( p+1, NULL ); }
 	_continue
 case_( ternary_operator_CB )
+	f_set( TERNARY )
+	f_clr( NEGATED|FILTERED|INFORMED )
 	Pair *segment = data->segment;
 	// finish sequence==guard, reordered
 	segment->value = p;
@@ -156,13 +158,13 @@ case_( ternary_operator_CB )
 			p = p_prune( PRUNE_TERNARY, p );
 			_break( p ) }
 		else {
-			data->segment = newPair( p, NULL );
-			f_clr( INFORMED|NEGATED )
 			// resume past ':'
+			data->segment = newPair( p+1, NULL );
 			_break( p+1 ) } }
 	else if ( p[1]==':' ) {
 		// sequence==guard is our current candidate
-		// data->segment is informed
+		// sequence is already informed and completed
+		data->segment = NULL;
 		// proceed to ")"
 		p = p_prune( PRUNE_TERNARY, p+1 );
 		_break( p ) }
@@ -170,8 +172,8 @@ case_( ternary_operator_CB )
 		// release guard sequence
 		free_deternarized( data->sequence );
 		data->sequence = NULL;
-		data->segment = newPair( p, NULL );
 		// resume past '?'
+		data->segment = newPair( p+1, NULL );
 		_continue }
 case_( filter_CB )
 	if is_f( TERNARY ) {
@@ -184,26 +186,26 @@ case_( filter_CB )
 case_( close_CB )
 	if is_f( TERNARY ) {
 		Pair *segment = data->segment;
-		// special cases: segment is ~. or completed option
-		if ( !segment ) {
-			// add as-is to on-going expression
-			data->sequence = popListItem( &data->stack.sequence );
-			addItem( &data->sequence, newPair( NULL, NULL ) ); }
-		else if ( !data->sequence ) {
-			if ( !segment->value ) segment->value = p;
-			// add as-is to on-going expression
-			data->sequence = popListItem( &data->stack.sequence );
-			addItem( &data->sequence, newPair( segment, NULL ) ); }
-		else {
-			// finish current sequence, reordered
-			if ( !segment->value ) segment->value = p;
-			addItem( &data->sequence, newPair( segment, NULL ) );
-			reorderListItem( &data->sequence );
+		if (( data->sequence )) {
+			if (( segment )) { // sequence is not guard
+				// finish current sequence, reordered
+				if ( !segment->value ) segment->value = p;
+				addItem( &data->sequence, newPair( segment, NULL ) );
+				reorderListItem( &data->sequence );
+			}
 			// add as sub-Sequence to on-going expression
 			listItem *sub = data->sequence;
 			data->sequence = popListItem( &data->stack.sequence );
 			addItem( &data->sequence, newPair( NULL, sub ) );
 		}
+		else if (( segment )) {
+			if ( !segment->value ) segment->value = p;
+			// add as-is to on-going expression
+			data->sequence = popListItem( &data->stack.sequence );
+			addItem( &data->sequence, newPair( segment, NULL ) ); }
+		else { // special case: ~.
+			data->sequence = popListItem( &data->stack.sequence );
+			addItem( &data->sequence, newPair( NULL, NULL ) ); }
 		data->segment = newPair( p, NULL ); }
 	_continue
 BMTraverseCBEnd

@@ -594,11 +594,12 @@ prune_level( char *p, int level )
 			p = prune_regex( p );
 			break;
 		case '.':
-			if (( level > 1 ) && p[1]=='.' ) {
-				level--;
+			if ( p[1]=='.' && (level>0) ) {
 				// returns on closing ')'
 				p = prune_list( p );
-				break;
+				level--;
+				if ( !level ) return p;
+				else break;
 			}
 			// no break
 		default:

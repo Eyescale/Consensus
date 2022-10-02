@@ -12,7 +12,8 @@
 
 static int bm_void( char *, BMContext * );
 static listItem *bm_couple( listItem *sub[2], BMContext * );
-static CNInstance *bm_literal( char *, BMContext * );
+static CNInstance *bm_literal( char **, BMContext * );
+static listItem *bm_list( char **, listItem **, BMContext * );
 static listItem *bm_scan( char *, BMContext * );
 
 //===========================================================================
@@ -20,9 +21,10 @@ static listItem *bm_scan( char *, BMContext * );
 //===========================================================================
 static BMTraverseCB
 	preempt_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
-	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB,
+	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
 	wildcard_CB, identifier_CB, signal_CB, end_CB;
 typedef struct {
+	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
 	BMContext *ctx;
@@ -42,7 +44,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 		fprintf( stderr, ">>>>> B%%: bm_instantiate(): VOID: %s\n", expression );
 		exit( -1 );
 	}
-	else fprintf( stderr, "bm_instantiate: %s {\n", expression );
+	else fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
 #endif
 	BMInstantiateData data;
 	memset( &data, 0, sizeof(data) );
@@ -52,7 +54,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
-	listItem *stack = NULL;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMPreemptCB ]		= preempt_CB;
@@ -67,6 +68,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMStarCharacterCB ]	= identifier_CB;
 	table[ BMMarkRegisterCB ]	= mark_register_CB;
 	table[ BMLiteralCB ]		= literal_CB;
+	table[ BMListCB ]		= list_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMDecoupleCB ]		= decouple_CB;
 	table[ BMCloseCB ]		= close_CB;
@@ -74,7 +76,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMWildCardCB ]		= wildcard_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
-	bm_traverse( expression, &traverse_data, &stack, FIRST );
+	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
 
 	if ( traverse_data.done == 2 ) {
 		freeListItem( &data.sub[ 1 ] );
@@ -85,7 +87,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	}
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
-		fprintf( stderr, "bm_instantiate: } " );
+		fprintf( stderr, "bm_instantiate:........} " );
 		if ( traverse_data.done == 2 )
 			fprintf( stderr, "***INCOMPLETE***" );
 		else {
@@ -95,7 +97,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 		fprintf( stderr, "\n" ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
-	freeListItem( &stack );
+	freeListItem( &data.stack.flags );
 	freeListItem( &data.sub[ 0 ] );
 }
 
@@ -156,10 +158,24 @@ case_( mark_register_CB )
 		listItem **sub = &data->sub[ current ];
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr ); }
 	_continue
+case_( list_CB )
+	/*	((expression,...):_sequence_:)
+	   start p ----------^               ^
+		     return p ---------------
+	*/
+	data->sub[ 0 ] = bm_list( &p, data->sub, data->ctx );
+	f_pop( &data->stack.flags, 0 )
+	f_set( INFORMED )
+	_break( p )
 case_( literal_CB )
-	CNInstance *e = bm_literal( p, data->ctx );
+	/*		(:_sequence_:)
+	   start p -----^             ^
+		return p -------------
+	*/
+	CNInstance *e = bm_literal( &p, data->ctx );
 	data->sub[ current ] = newItem( e );
-	_continue
+	f_set( INFORMED )
+	_break( p+1 )
 case_( open_CB )
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 0 ] );
@@ -323,78 +339,143 @@ bm_couple( listItem *sub[2], BMContext *ctx )
 //===========================================================================
 //	bm_literal
 //===========================================================================
+static char *sequence_step( char *, CNInstance **, CNDB * );
+
 static CNInstance *
-bm_literal( char *expression, BMContext *ctx )
+bm_literal( char **position, BMContext *ctx )
 /*
-	Assumption: expression = (:ab...yz) resp. (:ab...z:)
+	Assumption: expression = (:_sequence_) resp. (:_sequence_:)
+	where
+		_sequence_ = ab...yz
 	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
 */
 {
 	CNDB *db = BMContextDB( ctx );
 	listItem *stack = NULL;
-	CNInstance *e=NULL, *mod=NULL, *backslash=NULL, *f;
-	char *p = expression + 2;
-	char_s q;
+	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
+	CNInstance *e, *f;
+	char *p = *position + 2; // skip opening "(:"
 	for ( ; ; ) {
 		switch ( *p ) {
 		case ')':
 			e = popListItem(&stack);
 			while (( f = popListItem(&stack) ))
 				e = db_instantiate( f, e, db );
-			return e;
-		case '%':
-			if ( mod == NULL ) mod = db_register( "%", db, 0 );
-			switch ( p[1] ) {
-			case '%':
-				e = db_instantiate( mod, mod, db );
-				p+=2; break;
-			default:
-				p++;
-				e = db_register( p, db, 0 );
-				e = db_instantiate( mod, e, db );
-				if ( !is_separator(*p) ) {
-					p = p_prune( PRUNE_IDENTIFIER, p+1 );
-					if ( *p=='\'' ) p++;
-				}
-			}
-			addItem( &stack, e );
-			break;
+			goto RETURN;
 		case ':':
-			if ( p[1]==')' )
+			if ( p[1]==')' ) {
 				e = db_register( "\0", db, 0 );
-			else {
-				q.value = p[ 0 ];
-				e = db_register( q.s, db, 0 );
+				p++; break;
 			}
-			addItem( &stack, e );
-			p++; break;
-		case '\\':
-			switch (( q.value = p[1] )) {
-			case '0':
-			case ' ':
-			case 'w':
-				if ( backslash == NULL ) {
-					backslash = db_register( "\\", db, 0 );
-				}
-				e = db_register( q.s, db, 0 );
-				e = db_instantiate( backslash, e, db );
-				p+=2; break;
-			case ')':
-				e = db_register( q.s, db, 0 );
-				p+=2; break;
-			default:
-				p += charscan( p, &q );
-				e = db_register( q.s, db, 0 );
-			}
-			addItem( &stack, e );
-			break;
+			// no break
 		default:
-			q.value = p[0];
-			e = db_register( q.s, db, 0 );
-			addItem( &stack, e );
-			p++;
+			p = sequence_step( p, work_instance, db );
+			e = work_instance[ 2 ];
 		}
+		if (( e )) addItem( &stack, e );
 	}
+RETURN:
+	*position = p;
+	return e;
+}
+
+//===========================================================================
+//	bm_list
+//===========================================================================
+static listItem *
+bm_list( char **position, listItem **sub, BMContext *ctx )
+/*
+	Assumption: ((expression,...):_sequence_:)
+	  start	*position -------^               ^
+		 return *position ---------------
+	where
+		_sequence_ = ab...yz
+	converts into ((((expression,a),b)...,y)z)
+*/
+{
+	if ( !sub[0] ) {
+		*position = p_prune( PRUNE_LIST, *position );
+		return NULL;
+	}
+	listItem *results = NULL;
+	CNDB *db = BMContextDB( ctx );
+	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
+	CNInstance *e;
+	char *q = *position + 5; // start past "...):"
+	char *p;
+	while (( e = popListItem(&sub[0]) )) {
+		CNInstance *f = NULL;
+		p = q;
+		for ( ; ; ) {
+			switch ( *p ) {
+			case ':':
+				if ( p[1]==')' ) goto BREAK;
+				// no break
+			default:
+				p = sequence_step( p, work_instance, db );
+				f = work_instance[ 2 ];
+			}
+			if (( f )) e = db_instantiate( e, f, db );
+		}
+BREAK:
+		addItem( &results, e );
+	}
+	*position = p+1;
+	return results;
+}
+
+static char *
+sequence_step( char *p, CNInstance **wi, CNDB *db )
+/*
+	wi means work-instance(s)
+	wi[ 0 ]	represents Mod (%)
+	wi[ 1 ] represents Backslash (\\)
+	wi[ 2 ]	represents return value
+*/
+{
+	CNInstance *e;
+	char_s q;
+	switch ( *p ) {
+	case '%':
+		if ( !wi[0] ) wi[0] = db_register( "%", db, 0 );
+		switch ( p[1] ) {
+		case '%':
+			e = db_instantiate( wi[0], wi[0], db );
+			p+=2; break;
+		default:
+			p++;
+			e = db_register( p, db, 0 );
+			e = db_instantiate( wi[0], e, db );
+			if ( !is_separator(*p) ) {
+				p = p_prune( PRUNE_IDENTIFIER, p+1 );
+				if ( *p=='\'' ) p++;
+			}
+		}
+		break;
+	case '\\':
+		switch (( q.value = p[1] )) {
+		case '0':
+		case ' ':
+		case 'w':
+			if ( !wi[1] ) wi[1] = db_register( "\\", db, 0 );
+			e = db_register( q.s, db, 0 );
+			e = db_instantiate( wi[1], e, db );
+			p+=2; break;
+		case ')':
+			e = db_register( q.s, db, 0 );
+			p+=2; break;
+		default:
+			p += charscan( p, &q );
+			e = db_register( q.s, db, 0 );
+		}
+		break;
+	default:
+		q.value = p[0];
+		e = db_register( q.s, db, 0 );
+		p++;
+	}
+	wi[ 2 ] = e;
+	return p;
 }
 
 //===========================================================================

@@ -3,7 +3,6 @@
 
 #include "query_private.h"
 #include "string_util.h"
-#include "traverse.h"
 #include "locate.h"
 
 // #define DEBUG
@@ -97,18 +96,6 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 }
 
 //===========================================================================
-//	bm_verify
-//===========================================================================
-static int
-bm_verify( CNInstance *e, char *expression, BMQueryData *data )
-{
-	return xp_verify( e, expression, data ) ?
-		( !data->user_CB ) ? BM_DONE :
-			data->user_CB( e, data->ctx, data->user_data ) :
-		BM_CONTINUE;
-}
-
-//===========================================================================
 //	xp_traverse
 //===========================================================================
 static CNInstance *
@@ -126,8 +113,7 @@ xp_traverse( char *expression, BMQueryData *data )
 	listItem *i, *j;
 	if ( !strncmp( pivot->name, "%!", 2 ) ) {
 		i = pivot->value;
-		e = i->ptr;
-	}
+		e = i->ptr; }
 	else {
 		e = pivot->value;
 		i = newItem( e );
@@ -209,6 +195,18 @@ RETURN:
 	if ( strncmp( pivot->name, "%!", 2 ) )
 		freeItem( i );
 	return success;
+}
+
+//===========================================================================
+//	bm_verify
+//===========================================================================
+static int
+bm_verify( CNInstance *e, char *expression, BMQueryData *data )
+{
+	return xp_verify( e, expression, data ) ?
+		( !data->user_CB ) ? BM_DONE :
+			data->user_CB( e, data->ctx, data->user_data ) :
+		BM_CONTINUE;
 }
 
 //===========================================================================
@@ -380,7 +378,7 @@ fprintf( stderr, " ........{\n" );
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
 		exit( -1 );
 	}
-	fprintf( stderr, "xp_verify:.......} success=%d\n", success );
+	fprintf( stderr, "xp_verify:........} success=%d\n", success );
 #endif
 	return success;
 }

@@ -33,7 +33,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 		case '{':
 			bar_( BMBgnSetCB, break )
 			f_push( stack )
-			f_reset( SET|FIRST, 0 )
+			f_reset( FIRST|SET, 0 )
 			p++; break;
 		case '}':
 			if ( !is_f(SET) )
@@ -70,10 +70,9 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 				p+=2; break;
 			}
 			else if ( p[1]=='(' ) {
-				if ( !p_single(p) ) f_set( COUPLE )
 				bar_( BMSubExpressionCB, break )
 				f_push( stack )
-				f_reset( SUB_EXPR|FIRST, 0 )
+				f_reset( FIRST|SUB_EXPR, SET )
 				p+=2; break;
 			}
 			else if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
@@ -93,13 +92,12 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			if ( p[1]==':' ) {
 				bar_( BMLiteralCB, break )
 				p = p_prune( PRUNE_LITERAL, p );
-				f_clr( NEGATED )
 				f_set( INFORMED )
 				break;
 			}
 			bar_( BMOpenCB, break )
 			f_push( stack )
-			f_reset( LEVEL|FIRST, 0 )
+			f_reset( FIRST|LEVEL, SET|SUB_EXPR|MARKED )
 			p++; break;
 		case ':':
 			bar_( BMFilterCB, break )
@@ -107,10 +105,10 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			f_set( FILTERED )
 			p++; break;
 		case ',':
-			if ( !is_f(SET|LEVEL|SUB_EXPR) )
+			if ( !is_f(SET|SUB_EXPR|LEVEL) )
 				{ traverse_data->done = 1; break; }
 			bar_( BMDecoupleCB, break )
-			if is_f( LEVEL|SUB_EXPR ) f_clr( FIRST )
+			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 			f_clr( FILTERED|INFORMED )
 			p++; break;
 		case ')':
@@ -150,7 +148,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 			if ( p[1]=='(' ) {
 				bar_( BMDotExpressionCB, break )
 				f_push( stack )
-				f_reset( DOT|LEVEL|FIRST, 0 )
+				f_reset( FIRST|DOT|LEVEL, SET|SUB_EXPR|MARKED )
 				p+=2; break;
 			}
 			else if ( !is_separator(p[1]) ) {
@@ -161,7 +159,11 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 				break;
 			}
 			else if ( p[1]=='.' ) {
+				bar_( BMListCB, break )
+				f_pop( stack, 0 );
+				// p_prune will return on closing ')'
 				p = p_prune( PRUNE_LIST, p );
+				f_set( INFORMED )
 				p++; break;
 			}
 			bar_( BMWildCardCB, break )

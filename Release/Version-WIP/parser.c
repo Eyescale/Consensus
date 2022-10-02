@@ -21,21 +21,13 @@
 	~		negation
 	< >		input/output
 */
-int
-cn_parse_init( CNParseStory *data, CNParser *parser, CNParseMode mode, char *state, FILE *file )
-{
-	cn_parser_init( parser, "base", file, data );
-	data->TAB_LAST = -1;
-	data->flags = FIRST;
-	return 1;
-}
 char *
 cn_parse( int event, CNParser *parser, CNParseMode mode, CNParseCB _CB )
 {
 	CNParseStory *data = parser->user_data;
 
 	// shared by reference
-	listItem **	stack	= &data->stack;
+	listItem **	stack	= &data->stack.flags;
 	CNString *	s	= data->string;
 	int *		tab	= data->tab;
 	int *		type	= &data->type;
@@ -44,7 +36,7 @@ cn_parse( int event, CNParser *parser, CNParseMode mode, CNParseCB _CB )
 	int		flags	= data->flags;
 
 	//----------------------------------------------------------------------
-	// bm_parse:	Parser Begin
+	// cn_parse:	Parser Begin
 	//----------------------------------------------------------------------
 	CNParserBegin( parser )
 CND_if_( data->opt, EXPR_BGN )
@@ -114,7 +106,7 @@ CND_ifn( mode==CN_STORY, EXPR_BGN )
 							TAB_SHIFT = 0; }
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative Declaration
+	// cn_parse:	Narrative Declaration
 	//----------------------------------------------------------------------
 	in_( ".id:" ) bgn_
 		ons( " \t" )	do_( same )
@@ -200,7 +192,7 @@ if ( _CB( ProtoSet, mode, data ) ) {
 }
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative in / on / do / en / else Command
+	// cn_parse:	Narrative in / on / do / en / else Command
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
 		ons( " \t" ) if ( !s_cmp( "in" ) ) {
@@ -247,24 +239,22 @@ if ( _CB( OccurrenceAdd, mode, data ) ) {
 }
 EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression
+	// cn_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
 CND_if_( mode==CN_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
-				do_( "expr_" )	REENTER
-						f_clr( COMPOUND ) }
+				do_( "expr_" )	REENTER }
 			else {	do_( same ) }
 		ons( "*%" ) if ( !is_f(INFORMED) ) {
 				do_( same )	s_take
 						f_set( INFORMED ) }
 		on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
 				do_( same )	s_take
-						f_pop( stack, COMPOUND )
+						f_pop( stack, 0 )
 						f_set( INFORMED ) }
 A:CND_else_( B )
 		ons( " \t" )	do_( same )
-		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) }
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" )	s_take }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
@@ -277,12 +267,13 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_push( stack )
 						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND) ) {
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
 						f_set( TERNARY ) }
 			else if ( !is_f(INFORMED|MARKED|NEGATED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
 				do_( same )	s_take
+						f_tag( stack, MARKED )
 						f_set( MARKED|INFORMED ) }
 		on_( ':' ) if ( s_empty ) {
 					do_( same )	s_take
@@ -307,18 +298,18 @@ A:CND_else_( B )
 		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : is_f(INFORMED) ) {
 				if ( is_f(LEVEL) ) {
 					do_( "pop" )	s_take
-							f_pop( stack, COMPOUND|MARKED )
+							f_pop( stack, 0 )
 							f_set( INFORMED ) }
 				else if ( is_f(SUB_EXPR) ) {
 					do_( "pop" )	s_take
-							f_pop( stack, COMPOUND )
+							f_pop( stack, 0 )
 							f_set( INFORMED ) } }
 B:CND_endif
+		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) }
 		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
 				; // err
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
-				do_( "expr_" )	REENTER
-						f_clr( COMPOUND ) }
+				do_( "expr_" )	REENTER }
 			else if ( is_f(SET) ) { // allow \nl inside { }
 				do_( "_^" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
@@ -326,7 +317,7 @@ B:CND_endif
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
 					; // err
 			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
-				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR) ) {
+				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
 					do_( "," )	s_take
 							f_clr( FIRST|INFORMED ) }
 				else {	do_( same )	s_take
@@ -339,7 +330,7 @@ B:CND_endif
 				do_( "|" )	s_take
 						f_clr( INFORMED ) }
 		on_( '{' ) if ( *type&DO && is_f(LEVEL|SET) &&
-				!is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR) ) {
+				!is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR|NEGATED) ) {
 				do_( same )	s_take
 						f_push( stack )
 						f_clr( LEVEL )
@@ -347,6 +338,7 @@ B:CND_endif
 		on_( '}' ) if ( are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( "}" )	s_take
 						f_pop( stack, 0 )
+						f_tag( stack, COMPOUND )
 						f_set( INFORMED|COMPOUND ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
@@ -355,7 +347,7 @@ B:CND_endif
 				do_( "term" )	s_take }
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression sub-states
+	// cn_parse:	Expression sub-states
 	//----------------------------------------------------------------------
 CND_ifn( mode==CN_STORY, C )
 	in_( "." ) bgn_
@@ -378,16 +370,16 @@ _CB( ExpressionPush, mode, data );
 	in_( "pop" ) bgn_
 		on_any	if ( is_f(TERNARY) && !is_f(FIRST) ) {
 				do_( same )	REENTER
-						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND ) }
+						f_pop( stack, 0 ) }
 			else if ( are_f(TERNARY|FIRST|DOT) ) {
 _CB( ExpressionPop, mode, data );
 				do_( "expr" )	REENTER
-						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND )
+						f_pop( stack, 0 )
 						f_set( INFORMED )
 						f_clr( DOT ) }
 			else if ( are_f(TERNARY|FIRST) ) {
 				do_( "expr" )	REENTER
-						f_pop( stack, is_f(LEVEL)?(COMPOUND|MARKED):COMPOUND )
+						f_pop( stack, 0 )
 						f_set( INFORMED ) }
 			else if ( is_f(DOT) ) {
 _CB( ExpressionPop, mode, data );
@@ -405,7 +397,7 @@ _CB( ExpressionPop, mode, data );
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "expr" )	s_take
 						f_push( stack )
-						f_reset( FIRST|SUB_EXPR, COMPOUND|DOT )
+						f_reset( FIRST|SUB_EXPR, DOT )
 		ons( "?!" )
 			if (!( *type&EN && s_empty )) {
 				do_( "expr" )	s_take
@@ -552,7 +544,7 @@ C:CND_endif
 			end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' ) if ( *type&DO ) {
+		on_( ':' ) if ( *type&DO && !is_f(SUB_EXPR|NEGATED) ) {
 				do_( "(:" )	s_take
 						f_set( LITERAL ) }
 		on_( '(' )	do_( "expr" )	REENTER
@@ -593,7 +585,8 @@ else 					; // err
 	in_( "(:" ) bgn_
 		on_( ')' ) if ( is_f(LITERAL) ) {
 				do_( "expr" )	s_take
-						f_set( INFORMED ) }
+						f_tag( stack, COMPOUND )
+						f_set( INFORMED|COMPOUND ) }
 		on_( '\\' )	do_( "(:\\" )	s_take
 		on_( '%' )	do_( "(:%" )	s_take
 		on_( ':' ) if ( is_f(LITERAL) ) {
@@ -619,6 +612,7 @@ else 					; // err
 			end
 		in_( "(::" ) bgn_
 			on_( ')' )	do_( "expr" )	REENTER
+							f_tag( stack, COMPOUND )
 							f_set( INFORMED )
 			on_other	do_( "(:" )	REENTER
 			end
@@ -683,20 +677,20 @@ _CB( ExpressionPop, mode, data );
 		on_other	do_( same )	s_take
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression End
+	// cn_parse:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 _CB( ExpressionTake, mode, data );
 		bgn_
 			on_any
 if ( mode==CN_INPUT ) {		do_( "" ) }
-else {				do_( "base" )	f_reset( FIRST, COMPOUND );
+else {				do_( "base" )	f_reset( FIRST, 0 );
 						TAB_CURRENT = 0;
 						data->opt = 0;
 if ( mode==CN_STORY ) {				*type = 0; } }
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Error Handling
+	// cn_parse:	Error Handling
 	//----------------------------------------------------------------------
 	CNParserDefault
 		on_( EOF )		errnum= ErrUnexpectedEOF;
@@ -725,7 +719,7 @@ if ( mode==CN_STORY ) {				*type = 0; } }
 			on_other	errnum = ErrSyntaxError;
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Parser End
+	// cn_parse:	Parser End
 	//----------------------------------------------------------------------
 	CNParserEnd
 	if ( errnum ) cn_parse_report( errnum, parser, mode );
@@ -786,6 +780,18 @@ else {
 	default:
 		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); break;
 	} }
+}
+
+//===========================================================================
+//	cn_parse_init
+//===========================================================================
+int
+cn_parse_init( CNParseStory *data, CNParser *parser, CNParseMode mode, char *state, FILE *file )
+{
+	cn_parser_init( parser, "base", file, data );
+	data->TAB_LAST = -1;
+	data->flags = FIRST;
+	return 1;
 }
 
 //===========================================================================

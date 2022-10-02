@@ -1,9 +1,11 @@
 #ifndef TRAVERSE_H
 #define TRAVERSE_H
 
-#include "flags.h"
-#include "query.h"
+#include "list.h"
 
+//===========================================================================
+//	traversal flags
+//===========================================================================
 #define FIRST		1
 #define FILTERED	(1<<1)
 #define SUB_EXPR	(1<<2)
@@ -22,6 +24,53 @@
 #define CLEAN		(1<<15)
 #define LISTABLE	(1<<16)
 
+#define are_f( b ) \
+	((flags&(b))==(b))
+#define is_f( b ) \
+	( flags & (b) )
+#define f_set( b ) \
+	flags |= (b);
+#define f_clr( b ) \
+	flags &= ~(b);
+#define f_xor( b ) \
+	flags ^= (b);
+#define f_reset( b, save ) \
+	flags = (b)|(flags&(save));
+#define	f_push( stack ) \
+	add_item( stack, flags );
+#define	f_pop( stack, save ) \
+	flags = pop_item( stack )|(flags&(save));
+#define f_tag( stack, flag ) \
+	traverse_tag( flags, stack, flag );
+
+inline void
+traverse_tag( int flags, listItem **stack, int flag )
+{
+	union { void *ptr; int value; } icast;
+	switch ( flag ) {
+	case MARKED:
+		if ( !is_f(LEVEL) ) return;
+		for ( listItem *i=*stack; i!=NULL; i=i->next ) {
+			icast.ptr = i->ptr;
+			flags = icast.value;
+			icast.value |= MARKED;
+			i->ptr = icast.ptr;
+			if (!( icast.value & LEVEL )) break;
+		}
+		break;
+	case COMPOUND:
+		for ( listItem *i=*stack; i!=NULL; i=i->next ) {
+			icast.ptr = i->ptr;
+			icast.value |= COMPOUND;
+			i->ptr = icast.ptr;
+		}
+		break;
+	}
+}
+
+//===========================================================================
+//	traverse callbacks
+//===========================================================================
 typedef enum {
 	BMPreemptCB = 0,
 	BMNotCB,		// ~
@@ -34,6 +83,7 @@ typedef enum {
 	BMStarCharacterCB,	// * followed by one of ,:)}|
 	BMDereferenceCB,	// *
 	BMLiteralCB,		// (:
+	BMListCB,		// ...):_sequence_:)
 	BMOpenCB,		// (
 	BMCloseCB,		// )
 	BMEndPipeCB,		// )
@@ -58,6 +108,10 @@ typedef struct {
 	int done;
 	char *p;
 } BMTraverseData;
+typedef enum {
+	BM_DONE = 0,
+	BM_CONTINUE
+} BMCB_take;
 
 typedef BMCB_take BMTraverseCB( BMTraverseData *, char *p, int flags );
 char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );

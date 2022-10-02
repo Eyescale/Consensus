@@ -64,21 +64,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 				CNString *s = newString();
 				s_scan( s, sequence );
 				char *guard = StringFinish( s, 0 );
-				if ( pass_CB( guard, user_data ) ) {
-					if ( p[1]==':' ) {
-						// sequence==guard is our current candidate
-						// segment is informed
-						p = p_prune( PRUNE_TERNARY, p+1 ); // proceed to ")"
-					}
-					else {
-						// release guard sequence
-						free_ternarized( sequence );
-						sequence = NULL;
-						p++; // resume past "?"
-						segment = newPair( p, NULL );
-					}
-				}
-				else {
+				if ( !pass_CB( guard, user_data ) ) {
 					// release guard sequence
 					free_ternarized( sequence );
 					sequence = NULL;
@@ -93,6 +79,20 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 						p++; // resume past ":"
 						segment = newPair( p, NULL );
 					}
+				}
+				else if ( p[1]==':' ) {
+					// sequence==guard is our current candidate
+					// sequence is already informed and completed
+					segment = NULL;
+					// proceed to ")"
+					p = p_prune( PRUNE_TERNARY, p+1 );
+				}
+				else {
+					// release guard sequence
+					free_ternarized( sequence );
+					sequence = NULL;
+					p++; // resume past "?"
+					segment = newPair( p, NULL );
 				}
 				freeString( s );
 				f_set( TERNARY )
@@ -111,28 +111,28 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
 			if is_f( TERNARY ) {
-				// special cases: segment is ~. or completed option
-				if ( !segment ) {
-					// add as-is to on-going expression
-					sequence = popListItem( &stack.sequence );
-					addItem( &sequence, newPair( NULL, NULL ) );
-				}
-				else if ( !sequence ) {
-					if ( !segment->value ) segment->value = p;
-					// add as-is to on-going expression
-					sequence = popListItem( &stack.sequence );
-					addItem( &sequence, newPair( segment, NULL ) );
-				}
-				else {
-					// finish current sequence, reordered
-					if ( !segment->value ) segment->value = p;
-					addItem( &sequence, newPair( segment, NULL ) );
-					reorderListItem( &sequence );
+				if (( sequence )) {
+					if (( segment )) { // sequence is not guard
+						// finish current sequence, reordered
+						if ( !segment->value ) segment->value = p;
+						addItem( &sequence, newPair( segment, NULL ) );
+						reorderListItem( &sequence );
+					}
 					// add as sub-Sequence to on-going expression
 					listItem *sub = sequence;
 					sequence = popListItem( &stack.sequence );
 					addItem( &sequence, newPair( NULL, sub ) );
 				}
+				else if (( segment )) {
+					if ( !segment->value ) segment->value = p;
+					// add as-is to on-going expression
+					sequence = popListItem( &stack.sequence );
+					addItem( &sequence, newPair( segment, NULL ) );
+				}
+				else { // special case: ~.
+					sequence = popListItem( &stack.sequence );
+					addItem( &sequence, newPair( NULL, NULL ) );
+				}	
 				segment = newPair( p, NULL );
 			}
 			f_pop( &stack.flags, 0 );

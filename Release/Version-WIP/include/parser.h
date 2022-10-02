@@ -22,9 +22,12 @@ int	cn_parser_getc( CNParser * );
 //===========================================================================
 typedef struct {
 // shared between parser and bm_read()
+	struct {
+		listItem *flags; // bm_parse() only
+		listItem *occurrences; // bm_read() only
+	} stack; 
 	CNString *	string;
 	int		tab[4], type;
-	listItem *	stack; 
 // bm_read() only
 	BMContext *	ctx;
 	CNStory *	story;
