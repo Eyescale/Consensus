@@ -2,9 +2,6 @@ See Also: design/new-features-and-additions.txt
 TODO
     Version-1.2
 	. Version-1.2 Engineering Complete
-		. bm_input()
-			. on EOF should do :input:~. instead of ~(*,input)
-			  => must modify version-1.0 and version-1.1
 		. compile into .a instead of .so
 		. ../../Base/Examples/1_Yak
 		  remove workaround in string_util.c so that we can implement StringFinish as
@@ -61,6 +58,10 @@ TODO
 				. 2_interactive	// TBD
 
 NICE TO HAVE
+	. do_input / do_output multiple args support
+	  Issue: what formalism? - e.g. could be
+		do { arg1, arg2, ..., argN } : "format" <
+		do > "format" : { arg1, arg2, ..., argN }
 	. bm_instantiate() - should it invoke bm_void() or not ?
 		. Pros: instantiate all or nothing
 		. Cons: performances
@@ -95,6 +96,13 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Tidied up do_input() / do_output() as well as bm_inputf() and bm_outputf()
+		. NOTE: deprecated access to db_output() outside of db_outputf()
+	. bm_input()
+		. Decision: we do not change bm_input() behavior on EOF, which
+		  consists of doing ~(*,input) - and not : input : ~.
+		  CAVEAT: if no input is read prior to EOF, no event is generated.
+		  (which I suppose is why even empty files generate \n prior to EOF)
 	. Version-1.2 new features implementation
 		. term~					(signal)
 		. var : value				(assignment)

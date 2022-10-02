@@ -11,15 +11,18 @@
 /*
 		 B% Narrative File Format Interface
 
-   used in both readStory() and db_input(), in which case mode value and
-   the relevant macros allow to filter out the following expressions:
+   used in either: a) mode==CN_STORY; or b) mode==CN_LOAD or mode==CN_INPUT,
+   in which case (b) the relevant macros allow cn_parse() to filter out the
+   following expressions:
 
 	*expr		dereferencing
 	%( )		sub_expr
 	expr : expr	filter
-	. ?		wildcard
+	.		wildcard
+	?		wildcard
 	~		negation
-	< >		input/output
+	<		input
+	>		output
 */
 char *
 cn_parse( int event, CNParser *parser, CNParseMode mode, CNParseCB _CB )

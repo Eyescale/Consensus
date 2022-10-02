@@ -110,63 +110,64 @@ bm_assign_op( int op, char *expression, BMContext *ctx, int *marked )
 //===========================================================================
 //	bm_inputf
 //===========================================================================
-static int bm_input( char *format, char *expression, BMContext * );
+static int bm_input( int type, char *expression, BMContext * );
 
-#define DEFAULT_FORMAT "_"
+#define DEFAULT_TYPE '_'
 
 int
-bm_inputf( char *format, listItem *args, BMContext *ctx )
+bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 /*
-	Assumption: format starts and finishes with \" or \0
+	Assumption: fmt starts and finishes with \" or \0
 */
 {
-	int event, delta;
+	int event=0, delta;
 	char_s q;
-	if ( *format ) {
-		format++; // skip opening double-quote
-		while ( *format ) {
-			switch (*format) {
-			case '\"':
+	if ( *fmt ) {
+		fmt++; // skip opening double-quote
+		while ( *fmt ) {
+			switch (*fmt) {
+			case '"':
 				goto RETURN;
 			case '%':
-				format++;
-				if ( *format == '\0' )
-					break;
-				else if ( *format == '%' ) {
-					event = fgetc( stdin );
-					if ( event==EOF || event!='%' )
-						goto RETURN;
+				if ( !fmt[1] ) goto RETURN;
+				else if ( fmt[1]=='%' ) {
+					event = fgetc(stdin);
+					if ( event==EOF ) goto RETURN;
+					else if ( event!='%' ) {
+						ungetc( event, stdin );
+						goto RETURN; }
 				}
 				else if ((args)) {
 					char *expression = args->ptr;
-					event = bm_input( format, expression, ctx );
+					event = bm_input( fmt[1], expression, ctx );
 					if ( event==EOF ) goto RETURN;
 					args = args->next;
 				}
-				format++;
-				break;
+				fmt+=2; break;
 			default:
-				delta = charscan( format, &q );
+				delta = charscan( fmt, &q );
 				if ( delta ) {
 					event = fgetc( stdin );
-					if ( event==EOF || event!=q.value )
-						goto RETURN;
-					format += delta;
+					if ( event==EOF ) goto RETURN;
+					else if ( event!=q.value ) {
+						ungetc( event, stdin );
+						fmt += delta;
+					}
 				}
-				else format++;
+				else fmt++;
 			}
 		}
 	}
 	else {
 		while (( args )) {
 			char *expression = args->ptr;
-			event = bm_input( DEFAULT_FORMAT, expression, ctx );
+			event = bm_input( DEFAULT_TYPE, expression, ctx );
 			if ( event == EOF ) break;
 			args = args->next;
 		}
 	}
 RETURN:
-	if ( event == EOF ) {
+	if ( event==EOF ) {
 		while (( args )) {
 			char *expression = args->ptr;
 			asprintf( &expression, "(*,%s)", expression );
@@ -175,17 +176,14 @@ RETURN:
 			args = args->next;
 		}
 	}
-	else if ( *format && *format!='\"' ) {
-		ungetc( event, stdin );
-	}
 	return 0;
 }
 static int
-bm_input( char *format, char *expression, BMContext *ctx )
+bm_input( int type, char *expression, BMContext *ctx )
 {
 	char *input;
 	int event;
-	switch ( *format ) {
+	switch ( type ) {
 	case 'c':
 		event = fgetc( stdin );
 		if ( event == EOF ) {
@@ -204,7 +202,7 @@ bm_input( char *format, char *expression, BMContext *ctx )
 		break;
 	case '_':
 		input = bm_read( BM_INPUT, stdin );
-		if ( input == NULL ) return EOF;
+		if ( !input ) return EOF;
 		break;
 	default:
 		return 0;
@@ -219,54 +217,51 @@ bm_input( char *format, char *expression, BMContext *ctx )
 //===========================================================================
 //	bm_outputf
 //===========================================================================
-static void bm_output( char *format, char *expression, BMContext *);
+static void bm_output( int type, char *expression, BMContext *);
 static BMQueryCB output_CB;
 typedef struct {
-	char *format;
+	int type;
 	int first;
 	CNInstance *last;
 } OutputData;
 
 int
-bm_outputf( char *format, listItem *args, BMContext *ctx )
+bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 /*
-	Assumption: format starts and finishes with \" or \0
+	Assumption: fmt starts and finishes with \" or \0
 */
 {
 	int delta; char_s q;
-	if ( *format ) {
-		format++; // skip opening double-quote
-		while ( *format ) {
-			switch ( *format ) {
-			case '\"':
+	if ( *fmt ) {
+		fmt++; // skip opening double-quote
+		while ( *fmt ) {
+			switch ( *fmt ) {
+			case '"':
 				goto RETURN;
 			case '%':
-				format++;
-				if ( *format == '\0')
-					break;
-				else if ( *format == '%' )
+				if ( !fmt[1] ) break;
+				else if ( fmt[1]=='%' )
 					putchar( '%' );
 				else if ((args)) {
-					char *expression = args->ptr;
-					bm_output( format, expression, ctx );
+					char *arg = args->ptr;
+					bm_output( fmt[1], arg, ctx );
 					args = args->next;
 				}
-				format++;
-				break;
+				fmt+=2; break;
 			default:
-				delta = charscan( format, &q );
+				delta = charscan( fmt, &q );
 				if ( delta ) {
 					printf( "%c", q.value );
-					format += delta;
+					fmt += delta;
 				}
-				else format++;
+				else fmt++;
 			}
 		}
 	}
 	else if ((args)) {
 		do {
-			char *expression = args->ptr;
-			bm_output( DEFAULT_FORMAT, expression, ctx );
+			char *arg = args->ptr;
+			bm_output( DEFAULT_TYPE, arg, ctx );
 			args = args->next;
 		} while ((args));
 	}
@@ -275,20 +270,27 @@ RETURN:
 	return 0;
 }
 static void
-bm_output( char *format, char *expression, BMContext *ctx )
+bm_output( int type, char *arg, BMContext *ctx )
 /*
-	outputs expression's results
+	outputs arg-expression's results
 	note that we rely on bm_query to eliminate doublons
 */
 {
-	OutputData data = { format, 1, NULL };
-	bm_query( BM_CONDITION, expression, ctx, output_CB, &data );
+	OutputData data = { type, 1, NULL };
+	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
 	CNDB *db = BMContextDB( ctx );
 	if ( data.first )
-		db_output( stdout, format, data.last, db );
+		switch ( type ) {
+		case 's':
+			db_outputf( stdout, db, "%s", data.last );
+			break;
+		default:
+			db_outputf( stdout, db, "%_", data.last );
+			break;
+		}
 	else {
 		printf( ", " );
-		db_output( stdout, DEFAULT_FORMAT, data.last, db );
+		db_outputf( stdout, db, "%_", data.last );
 		printf( " }" );
 	}
 }
@@ -297,15 +299,15 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	OutputData *data = user_data;
 	if (( data->last )) {
+		CNDB *db = BMContextDB( ctx );
 		if ( data->first ) {
-			if ( *data->format == 's' )
-				printf( "\\" );
-			printf( "{ " );
+			if ( data->type == 's' )
+				printf( "\\{ " );
+			else printf( "{ " );
 			data->first = 0;
 		}
 		else printf( ", " );
-		CNDB *db = BMContextDB( ctx );
-		db_output( stdout, DEFAULT_FORMAT, data->last, db );
+		db_outputf( stdout, db, "%_", data->last );
 	}
 	data->last = e;
 	return BM_CONTINUE;

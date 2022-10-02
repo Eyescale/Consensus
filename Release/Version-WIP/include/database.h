@@ -48,8 +48,7 @@ int db_out( CNDB * );
 //===========================================================================
 //	i/o
 //===========================================================================
-int	db_output( FILE *, char *format, CNInstance *, CNDB * );
-int	db_outputf( FILE *, char *format, ... );
+int	db_outputf( FILE *, CNDB *, char *fmt, ... );
 
 
 #endif	// DATABASE_H

@@ -88,13 +88,8 @@ bm_instantiate( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
-		if ( traverse_data.done == 2 )
-			fprintf( stderr, "***INCOMPLETE***" );
-		else {
-			CNDB *db = BMContextDB( ctx );
-			CNInstance *e = data.sub[ 0 ]->ptr;
-			db_outputf( stderr, "first=%_", db, e ); }
-		fprintf( stderr, "\n" ); }
+		if ( traverse_data.done == 2 ) fprintf( stderr, "***INCOMPLETE***\n" );
+		else db_outputf( stderr, BMContextDB(ctx), "first=%_\n", data.sub[0]->ptr ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
 	freeListItem( &data.stack.flags );

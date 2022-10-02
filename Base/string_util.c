@@ -251,7 +251,7 @@ is_space( int event )
 int
 is_escapable( int event )
 {
-	// Note: includes neither 'x' nor '\"'
+	// Note: includes neither 'x' nor '"'
 	return strmatch( "0tn\'\\", event );
 }
 
@@ -281,7 +281,7 @@ charscan( char *p, char_s *q )
 		case 'n':  q->value = '\n'; return 2;
 		case '\\': q->value = '\\'; return 2;
 		case '\'': q->value = '\''; return 2;
-		case '\"': q->value = '\"'; return 2;
+		case '"': q->value = '"'; return 2;
 		default: return 0;
 		}
 		break;
@@ -504,7 +504,7 @@ prune_format( char *p )
 	p++; // skip opening '"'
 	while ( *p ) {
 		switch ( *p ) {
-		case '\"': return p+1;
+		case '"': return p+1;
 		case '\\':
 			if ( p[1] ) p++;
 			p++; break;

@@ -100,11 +100,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "db_instantiate: ( " );
-	db_output( stderr, "", e, db );
-	fprintf( stderr, ", " );
-	db_output( stderr, "", f, db );
-	fprintf( stderr, " )\n" );
+	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL;
 	Pair *star = registryLookup( db->index, "*" );
@@ -114,8 +110,8 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
 			if ( db_to_be_manifested( candidate, db ) ) {
-				db_outputf( stderr, "B%%::Warning: ((*,(%_),%_) -> %_ "
-					"concurrent reassignment unauthorized\n", db,
+				db_outputf( stderr, db,
+					"B%%::Warning: ((*,(%_),%_) -> %_ concurrent reassignment unauthorized\n",
 					e->sub[1], candidate->sub[1], f );
 				if ( candidate->sub[ 1 ] == f )
 					return candidate;
@@ -405,18 +401,49 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 }
 
 //===========================================================================
-//	db_output / db_outputf
+//	db_outputf
 //===========================================================================
+static int db_output( FILE *, CNDB *, int type, CNInstance * );
+
 int
-db_output( FILE *stream, char *format, CNInstance *e, CNDB *db )
+db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
+{
+	CNInstance *e;
+	va_list ap;
+	va_start( ap, fmt );
+	for ( char *p=fmt; *p; p++ )
+		switch (*p) {
+		case '%':
+			switch ( p[1] ) {
+			case '%':
+				fprintf( stream, "%%" );
+				break;
+			case '_':
+			case 's':
+				e = va_arg( ap, CNInstance * );
+				db_output( stream, db, p[1], e );
+				break;
+			default:
+				; // unsupported
+			}
+			p++; break;
+		default:
+			fprintf( stream, "%c", *p );
+		}
+	va_end( ap );
+	return 0;
+}
+
+static int
+db_output( FILE *stream, CNDB *db, int type, CNInstance *e )
 /*
-	format is either "s" or "", the only difference being that,
-	in the former case, we but a backslash at the start of
+	type is either 's' or '_', the only difference being that,
+	in the former case, we insert a backslash at the start of
 	non-base entity expressions
 */
 {
 	if ( e == NULL ) return 0;
-	if ( *format == 's' ) {
+	if ( type=='s' ) {
 		if (( e->sub[ 0 ] ))
 			fprintf( stream, "\\" );
 		else {
@@ -467,32 +494,3 @@ RETURN:
 	return 0;
 }
 
-int
-db_outputf( FILE *stream, char *fmt, ... )
-{
-	CNInstance *e;
-	va_list ap;
-	va_start( ap, fmt );
-	CNDB *db = va_arg( ap, CNDB * );
-	for ( char *p=fmt; *p; p++ )
-		switch (*p) {
-		case '%':
-			switch ( p[1] ) {
-			case '%':
-				fprintf( stream, "%%" );
-				break;
-			case '_':
-				e = va_arg( ap, CNInstance * );
-				db_output( stream, "", e, db );
-				break;
-			default:
-				fprintf( stderr, "%%%c", *p );
-			}
-			p++;
-			break;
-		default:
-			fprintf( stream, "%c", *p );
-		}
-	va_end( ap );
-	return 0;
-}

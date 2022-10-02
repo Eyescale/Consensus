@@ -395,8 +395,8 @@ static int
 do_input( char *expression, BMContext *ctx )
 /*
 	Assuming expression is in the form e.g.
-		args : format <
-	reads input from stdin according to format
+		args : fmt <
+	reads input from stdin according to fmt
 */
 {
 #ifdef DEBUG
@@ -405,31 +405,26 @@ do_input( char *expression, BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
-	/* extract args:{ expression(s) } and format
-	*/
-	listItem *args = NULL;
-	CNString *string = newString();
+	// extract fmt and args:{ expression(s) }
 	char *p=expression, *q=p_prune( PRUNE_FILTER, p );
-	for ( ; *q==':'; q=p_prune( PRUNE_FILTER, p ) ) {
-		for ( char *s=p; s!=q; s++ )
-			StringAppend( string, *s );
-		char *arg = StringFinish( string, 0 );
-		addItem( &args, arg );
-		p = q + 1;
-		StringReset( string, CNStringMode );
-	}
-	reorderListItem( &args );
-	char *format = p;
-	freeString( string );
+	for ( ; *q==':'; q=p_prune( PRUNE_FILTER, p ) )
+		p = q+1;
+	char *fmt = ( *p=='"' ? p : "" );
+	q = p-1;
 
-	/* invoke bm_inputf()
-	*/
-	int retval = ( *format == '"' ) ?
-		bm_inputf( format, args, ctx ) :
-		bm_inputf( "", args, ctx );
+	CNString *s = newString();
+	for ( p=expression; p!=q; p++ )
+		StringAppend( s, *p );
+	p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
 
-	/* cleanup
-	*/
+	listItem *args = newItem( p );
+
+	// invoke bm_inputf()
+	int retval = bm_inputf( fmt, args, ctx ) ;
+
+	// cleanup
 	while (( p = popListItem( &args ) ))
 		free( p );
 #ifdef DEBUG
@@ -445,8 +440,8 @@ static int
 do_output( char *expression, BMContext *ctx )
 /*
 	Assuming expression is in the form
-		> format : expression(s)
-	then outputs expression(s) to stdout according to format
+		> fmt : expression(s)
+	then outputs expression(s) to stdout according to fmt
 */
 {
 #ifdef DEBUG
@@ -454,30 +449,17 @@ do_output( char *expression, BMContext *ctx )
 #endif
 	expression++; // skipping the leading '>'
 
-	/* extracts format and args:{ expression(s) }
-	*/
-	char *format;
-	switch ( *expression ) {
-	case '"':
-		format = expression;
-		expression = p_prune( PRUNE_FORMAT, format );
-		if ( *expression ) expression++; // skipping ':'
-		break;
-	case ':':
-		expression++;
-		// no break
-	default:
-		format = "";
-	}
-	listItem *args = NULL;
-	if ( *expression ) addItem( &args, expression );
+	// extracts fmt and args:{ expression(s) }
+	char *p = expression;
+	char *fmt = ( *p=='"' ? p : "" );
+	if ( *fmt ) p = p_prune( PRUNE_FORMAT, fmt );
+	if ( *p==':') p++;
+	listItem *args = ( *p ? newItem(p) : NULL );
 
-	/* invoke bm_outputf()
-	*/
-	int retval = bm_outputf( format, args, ctx );
+	// invoke bm_outputf()
+	int retval = bm_outputf( fmt, args, ctx );
 
-	/* cleanup
-	*/
+	// cleanup
 	freeListItem( &args );
 #ifdef DEBUG
 	fprintf( stderr, "do_output end\n" );
