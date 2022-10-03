@@ -47,12 +47,12 @@ char *expression[] = { // Attention: backslashes must be re-doubled here
 //	"A*"
 #else
 	"L?'(\\\\.|[^\\\\'])+'",
+	"[+\\-]?\\d+[uUlL]*",
 #if 0
 	"0[xX]\\h+[uUlL]*",
-	"[+\\-]?\\d+[uUlL]*",
 	"[+\\-]?\\d+(\\.\\d*)?([eE][+\\-]?\\d+)?[fFlL]?",
-#endif
 	"[+\\-]?\\.\\d+([eE][+\\-]?\\d+)?[fFlL]?"
+#endif
 #endif
 };
 #define NUMS (sizeof(expression)/sizeof(char*))

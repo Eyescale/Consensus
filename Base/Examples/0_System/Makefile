@@ -1,38 +1,30 @@
 
-# from http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html
-
 SHELL = /bin/sh
 
-.SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../include
-LFLAGS = -L../..
-LIBS = -lcn
+SRCS = main.c input.c parser.c operator.c
 
+TARGETS = system
+
+LFLAGS = -L. -L../..
 OBJDIR = .ofiles
-SRCS =	main.c input.c parser.c operator.c
-
-#CFLAGS = -DPREVIOUS
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = system
+INCLUDES = -I. -I./include -I../../include
+CFLAGS = -O2
 
-.PHONY: depend clean
+all:$(TARGETS)
 
-all:$(MAIN)
-
-$(MAIN): $(OBJS) 
-	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
-	cp ../../libcn.so .
+system: $(OBJDIR) $(OBJS) ../../libcn.a
+	$(CC) -o system $(INCLUDES) $(OBJS) $(LFLAGS) -lcn
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
+$(OBJDIR):
+	mkdir .ofiles
+
 clean:
-	$(RM) $(OBJDIR)/*.o $(MAIN)
-	$(RM) *.so
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
+	rmdir .ofiles
 
-depend: $(SRCS)
-	makedepend $(INCLUDES) $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it

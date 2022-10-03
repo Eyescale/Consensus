@@ -1,6 +1,4 @@
 
-# from http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html
-
 SHELL = /bin/sh
 
 .SUFFIXES: .c .o
@@ -27,15 +25,16 @@ all:$(TARGETS)
 btreefy: $(LIB)
 	$(CC) -o btreefy -DTEST $(INCLUDES) btree.c $(LFLAGS) -lcn
 
-$(LIB): $(OBJS)
+$(LIB): $(OBJDIR) $(OBJS)
 	ar -rcvus $(LIB) $(OBJS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
+$(OBJDIR):
+	mkdir .ofiles
+
 clean:
 	$(RM) $(OBJDIR)/*.o $(LIB) btreefy
-
-depend: $(SRCS)
-	makedepend $(INCLUDES) $^
+	rmdir .ofiles
 

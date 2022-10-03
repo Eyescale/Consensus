@@ -1,41 +1,37 @@
 
-# from http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html
-
 SHELL = /bin/sh
 
-.SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../include
-LFLAGS = -L../..
-LIBS = -lcn
-
-OBJDIR = .ofiles
 SRCS =	main.c scheme.c \
 	parser.c parser_debug.c \
 	regex.c regex_debug.c
 
-CFLAGS = -DDEBUG
+LIB = libyak.a
+TARGETS = yak $(LIB)
+
+LFLAGS = -L. -L../..
+OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = yak
+INCLUDES = -I. -I./include -I../../include
+#CFLAGS = -DDEBUG
+CFLAGS = -O2
 
-.PHONY: depend clean
+all:$(TARGETS)
 
-all:$(MAIN)
+yak: $(OBJDIR) $(LIB) main.c ../../libcn.a
+	$(CC) -o yak $(CFLAGS) $(INCLUDES) main.c $(LFLAGS) -lcn -lyak
 
-$(MAIN): $(OBJS) 
-	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
-	cc -shared -o libyak.so $(INCLUDES) parser.c scheme.c regex.c $(LFLAGS) $(LIBS)
-	cp ../../libcn.so .
+$(LIB): $(OBJS)
+	ar -rcvus $(LIB) $(OBJS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
+$(OBJDIR):
+	mkdir .ofiles
+
 clean:
-	$(RM) $(OBJDIR)/*.o $(MAIN) libyak.so
-	$(RM) *.so
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
+	rmdir .ofiles
 
-depend: $(SRCS)
-	makedepend $(INCLUDES) $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it

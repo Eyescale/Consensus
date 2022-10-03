@@ -1,6 +1,4 @@
 
-# from http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html
-
 SHELL = /bin/sh
 
 .SUFFIXES: .c .o
@@ -35,12 +33,15 @@ all:$(TARGETS)
 B%: $(LIB) main.c ../../Base/libcn.a
 	$(CC) -o B% $(INCLUDES) main.c $(LFLAGS) -lcn -lbmod
 
-$(LIB): $(OBJS) 
+$(LIB): $(OBJDIR) $(OBJS) 
 	ar -rcvus $(LIB) $(OBJS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
+$(OBJDIR):
+	mkdir .ofiles
+
 clean:
 	$(RM) $(OBJDIR)/*.o $(TARGETS)
-
+	rmdir .ofiles

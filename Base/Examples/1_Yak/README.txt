@@ -1,5 +1,5 @@
 Name
-	./Yak
+	Consensus/Base/Examples/1_Yak/yak
 
 Synopsis
 	Yak is a transducer - a la Yacc, Bison, PLY ...
@@ -130,7 +130,7 @@ Usage
 	./yak filename
 
  Example Scheme files
-	see ./Yak/test
+	see ./test
 
  API - cf main.c
 	Scheme *scheme = readScheme( filename );
@@ -253,5 +253,5 @@ Design
 	  we build intermediate results. It is up to the caller to decide whether he wants to use these or not.
 
 Implementation
-	cf Yak/ source code repository
+	cf this source code repository
 

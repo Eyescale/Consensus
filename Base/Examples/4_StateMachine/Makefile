@@ -1,38 +1,28 @@
 
-# from http://www.cs.swarthmore.edu/~newhall/unixhelp/howto_makefiles.html
-
 SHELL = /bin/sh
 
-.SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../include
-LFLAGS = -L../..
-LIBS = -lcn
+SRCS = smgen.c
+TARGETS = smgen
 
+LFLAGS = -L. -L../..
 OBJDIR = .ofiles
-SRCS =	smgen.c
-
-CFLAGS = -DTEST
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-MAIN = smgen
+INCLUDES = -I. -I./include -I../../include
+CFLAGS = -DTEST -O2
 
-.PHONY: depend clean
+all:$(TARGETS)
 
-all:$(MAIN)
-
-$(MAIN): $(OBJS) 
-	$(CC) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
-	cp ../../libcn.so .
+smgen: $(OBJDIR) $(OBJS) ../../libcn.a
+	$(CC) -o smgen $(INCLUDES) $(OBJS) $(LFLAGS) -lcn
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
+$(OBJDIR):
+	mkdir .ofiles
+
 clean:
-	$(RM) $(OBJDIR)/*.o ../base/.ofiles/*.o $(MAIN)
-	$(RM) *.so
-
-depend: $(SRCS)
-	makedepend $(INCLUDES) $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
+	rmdir .ofiles
