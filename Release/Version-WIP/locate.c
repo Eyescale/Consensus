@@ -9,9 +9,9 @@
 //	bm_locate_pivot
 //===========================================================================
 static BMTraverseCB
-	identifier_CB, character_CB, mod_character_CB, star_character_CB,
-	mark_register_CB, dereference_CB, sub_expression_CB, open_CB,
-	filter_CB, decouple_CB, close_CB;
+	dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
+	star_character_CB, mark_register_CB, dereference_CB, sub_expression_CB,
+	dot_expression_CB, open_CB, filter_CB, decouple_CB, close_CB;
 typedef struct {
 	int target;
 	listItem **exponent;
@@ -30,9 +30,10 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, QMARK|IDENTIFIER );
+	int target = bm_scour( expression, THIS|QMARK|IDENTIFIER );
 	if ( target == 0 ) return NULL;
-	else target =	( target & QMARK ) ? QMARK :
+	else target =	( target & THIS) ? THIS :
+			( target & QMARK ) ? QMARK :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :
@@ -49,6 +50,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMCharacterCB ]		= character_CB;
 	table[ BMModCharacterCB ]	= mod_character_CB;
@@ -56,6 +58,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	table[ BMMarkRegisterCB ]	= mark_register_CB;
 	table[ BMDereferenceCB ]	= dereference_CB;
 	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMDotExpressionCB ]	= dot_expression_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMFilterCB ]		= filter_CB;
 	table[ BMDecoupleCB ]		= decouple_CB;
@@ -71,20 +74,30 @@ bm_locate_pivot( char *expression, listItem **exponent )
 }
 
 static void pop_exponent( listItem **, listItem * );
-#define loc_( TARGET ) \
+#define loc_( p, TARGET ) \
 	if ( !is_f(NEGATED) && data->target==TARGET ) \
 		{ traverse_data->done = 2; _break( p ) } \
 	else _continue
 
 BMTraverseCBSwitch( bm_locate_pivot_traversal )
+case_( dot_identifier_CB )
+	listItem **exponent = data->exponent;
+	if ( !is_f(NEGATED) && data->target==THIS ) {
+		xpn_add( exponent, AS_SUB, 0 );
+		traverse_data->done = 2;
+		_break( p )
+	}
+	// apply dot operator to whatever comes next
+	xpn_add( exponent, AS_SUB, 1 );
+	loc_( p+1, IDENTIFIER )
 case_( identifier_CB )
-	loc_( IDENTIFIER )
+	loc_( p, IDENTIFIER )
 case_( character_CB )
-	loc_( CHARACTER )
+	loc_( p, CHARACTER )
 case_( mod_character_CB )
-	loc_( MOD )
+	loc_( p, MOD )
 case_( star_character_CB )
-	loc_( STAR )
+	loc_( p, STAR )
 case_( mark_register_CB )
 	if ( !is_f(NEGATED) )
 		switch ( p[1] ) {
@@ -102,7 +115,7 @@ case_( dereference_CB )
 		xpn_add( exponent, AS_SUB, 0 );
 		xpn_add( exponent, AS_SUB, 0 );
 		traverse_data->done = 2;
-		return BM_DONE; }
+		_break( p ) }
 	// apply dereferencing operator to whatever comes next
 	xpn_add( exponent, SUB, 1 );
 	xpn_add( exponent, AS_SUB, 0 );
@@ -124,6 +137,19 @@ case_( sub_expression_CB )
 	addItem( &data->stack.level, data->level );
 	data->level = *exponent;
 	_break( p+2 )
+case_( dot_expression_CB )
+	listItem **exponent = data->exponent;
+	if ( !is_f(NEGATED) && data->target==THIS ) {
+		xpn_add( exponent, AS_SUB, 0 );
+		traverse_data->done = 2;
+		_break( p )
+	}
+	// apply dot operator to whatever comes next
+	xpn_add( exponent, AS_SUB, 1 );
+	open_CB( traverse_data, p+1, flags );
+	flags = traverse_data->flags;
+	f_set( DOT )
+	_break( p+2 )
 case_( open_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -144,6 +170,8 @@ case_( close_CB )
 	if is_f( COUPLE ) {
 		pop_exponent( data->exponent, data->level );
 		popListItem( data->exponent ); }
+	if is_f( DOT ) {
+		popListItem( data->exponent ); }
 	data->level = popListItem( &data->stack.level );
 	if is_f( SUB_EXPR ) {
 		listItem *tag = popListItem( &data->stack.premark );
@@ -161,8 +189,8 @@ pop_exponent( listItem **exponent, listItem *level )
 //	bm_scour
 //===========================================================================
 static BMTraverseCB
-	sc_identifier_CB, sc_star_character_CB, sc_mod_character_CB,
-	sc_character_CB, sc_mark_register_CB;
+	sc_dot_expr_CB, sc_identifier_CB, sc_star_character_CB,
+	sc_mod_character_CB, sc_character_CB, sc_mark_register_CB;
 typedef struct {
 	int candidate, target;
 } BMScourData;
@@ -184,6 +212,8 @@ bm_scour( char *expression, int target )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMDotIdentifierCB ]	= sc_dot_expr_CB;
+	table[ BMDotExpressionCB ]	= sc_dot_expr_CB;
 	table[ BMIdentifierCB ]		= sc_identifier_CB;
 	table[ BMCharacterCB ]		= sc_character_CB;
 	table[ BMModCharacterCB ]	= sc_mod_character_CB;
@@ -197,6 +227,12 @@ bm_scour( char *expression, int target )
 }
 
 BMTraverseCBSwitch( bm_scour_traversal )
+case_( sc_dot_expr_CB )
+	if ( !is_f(NEGATED) ) {
+		data->candidate |= THIS;
+		if ( data->target & THIS )
+			_done( p ) }
+	_continue
 case_( sc_identifier_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= IDENTIFIER;
@@ -242,8 +278,8 @@ bm_locate_mark( char *expression, listItem **exponent )
 //	bm_locate_param
 //===========================================================================
 static BMTraverseCB
-	not_CB, fetch_CB, sub_CB, push_CB, cat_CB, sep_CB, pop_CB,
-	wildcard_CB, dot_identifier_CB;
+	not_CB, deref_CB, sub_CB, dot_push_CB, push_CB, sift_CB, sep_CB,
+	pop_CB, wildcard_CB, parameter_CB;
 typedef struct {
 	listItem **exponent;
 	BMLocateCB *param_CB;
@@ -279,14 +315,15 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMNotCB ]		= not_CB;
-	table[ BMDereferenceCB ]	= fetch_CB;
+	table[ BMDereferenceCB ]	= deref_CB;
 	table[ BMSubExpressionCB ]	= sub_CB;
+	table[ BMDotExpressionCB ]	= dot_push_CB;
 	table[ BMOpenCB ]		= push_CB;
-	table[ BMFilterCB ]		= cat_CB;
+	table[ BMFilterCB ]		= sift_CB;
 	table[ BMDecoupleCB ]		= sep_CB;
 	table[ BMCloseCB ]		= pop_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
-	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
+	table[ BMDotIdentifierCB ]	= parameter_CB;
 	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
 
 	if ( data.stack.flags ) {
@@ -304,7 +341,7 @@ case_( not_CB )
 		_break( p )
 	}
 	else _continue
-case_( fetch_CB )
+case_( deref_CB )
 	if (( data->param_CB )) {
 		p = p_prune( PRUNE_FILTER, p+1 );
 		f_set( INFORMED )
@@ -319,6 +356,12 @@ case_( sub_CB )
 	p = p_prune( PRUNE_FILTER, p+1 );
 	f_set( INFORMED )
 	_break( p )
+case_( dot_push_CB )
+	xpn_add( data->exponent, SUB, 1 );
+	push_CB( traverse_data, p+1, flags );
+	flags = traverse_data->flags;
+	f_set( DOT )
+	_break( p+2 )
 case_( push_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -328,7 +371,7 @@ case_( push_CB )
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
 	_break( p+1 )
-case_( cat_CB )
+case_( sift_CB )
 	pop_exponent( data->exponent, data->level );
 	_continue
 case_( sep_CB )
@@ -339,13 +382,15 @@ case_( pop_CB )
 	if is_f( COUPLE ) {
 		pop_exponent( data->exponent, data->level );
 		popListItem( data->exponent ); }
+	if is_f( DOT ) {
+		popListItem( data->exponent ); }
 	data->level = popListItem( &data->stack.level );
 	_continue;
 case_( wildcard_CB )
 	if ( *p=='?' && !data->param_CB )
 		{ traverse_data->done = 2; _break( p ) }
 	else _continue
-case_( dot_identifier_CB )
+case_( parameter_CB )
 	if (( data->param_CB ))
 	 	data->param_CB( p+1, *data->exponent, data->user_data );
 	_continue

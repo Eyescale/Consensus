@@ -14,7 +14,7 @@ newContext( CNDB *db )
 	CNInstance *this = cn_new( NULL, NULL );
 	this->sub[ 1 ] = (CNInstance *) db;
 	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "%", NULL ); // aka. %%
+	registryRegister( registry, ".", NULL ); // aka. %%
 	registryRegister( registry, "?", NULL ); // aka. %?
 	registryRegister( registry, "!", NULL ); // aka. %!
 	return (BMContext *) newPair( this, registry );
@@ -64,11 +64,24 @@ bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
 {
 	if ( !instance ) return;
 	Registry *registry = ctx->registry;
-	Pair *entry = registryLookup( registry, "%" );
+	Pair *entry = registryLookup( registry, "." );
 	entry->value = instance;
 	listItem *xpn = NULL;
 	RegisterData data = { instance, registry };
 	bm_locate_param( proto, &xpn, register_CB, &data );
+}
+CNInstance *
+bm_context_fetch( BMContext *ctx, char *unused )
+{
+	Pair *entry = registryLookup( ctx->registry, "." );
+	CNInstance *instance = entry->value;
+	if ( !instance ) {
+		// base narrative LOCALE declaration: authorize
+		// creation of a base entity named "this"
+		entry->value = db_register( "this", BMContextDB(ctx), 1 );
+		instance = entry->value;
+	}
+	return instance;
 }
 static void
 register_CB( char *p, listItem *xpn, void *user_data )
@@ -179,17 +192,13 @@ bm_context_lookup( BMContext *ctx, char *p )
 //===========================================================================
 int
 bm_context_register( BMContext *ctx, char *p )
+/*
+	register .locale(s)
+*/
 {
-	CNInstance *this;
+	CNInstance *this = bm_context_fetch( ctx, "." );
+	Pair *entry;
 	CNDB *db = BMContextDB( ctx );
-	Pair *entry = registryLookup( ctx->registry, "%" );
-	if (( entry )) this = entry->value;
-	else {
-		// base narrative LOCALE declaration: authorize
-		// creation of a base entity named "this"
-		this = db_register( "this", db, 1 );
-	}
-	// parse .locale(s) string
 	while ( *p=='.' ) {
 		p++;
 		entry = registryLookup( ctx->registry, p );
@@ -220,24 +229,20 @@ ERR: ;
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
-	if ( *p == '%' ) {
-		// looking up %%, %?, %! or just plain old %
+	switch ( *p ) {
+	case '.': return bm_context_lookup( ctx, "." );
+	case '%': // looking up %., %?, %! or just plain old %
 		switch ( p[1] ) {
-		case '%': return bm_context_lookup( ctx, "%" );
+		case '.': return bm_context_lookup( ctx, "." );
 		case '?': return bm_context_lookup( ctx, "?" );
-		case '!': return bm_context_lookup( ctx, "!" );
-		}
+		case '!': return bm_context_lookup( ctx, "!" ); }
 		return db_lookup( privy, p, BMContextDB(ctx) );
-	}
-	else if ( *p == '\'' ) {
-		// looking up single character identifier instance
+	case '\'': ; // looking up single character identifier instance
 		char_s q;
-		if ( charscan( p+1, &q ) ) {
+		if ( charscan( p+1, &q ) )
 			return db_lookup( privy, q.s, BMContextDB(ctx) );
-		}
 		return NULL;
-	}
-	else if ( !is_separator(*p) ) {
+	default: if ( is_separator(*p) ) break;
 		// looking up normal identifier instance
 		CNInstance *instance = bm_context_lookup( ctx, p );
 		if (( instance )) return instance;

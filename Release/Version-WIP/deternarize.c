@@ -37,7 +37,8 @@ pass_CB( char *guard, void *user_data )
 static void free_deternarized( listItem *sequence );
 static void s_scan( CNString *, listItem * );
 static BMTraverseCB
-	sub_expression_CB, open_CB, ternary_operator_CB, filter_CB, close_CB;
+	sub_expression_CB, dot_expression_CB, open_CB, ternary_operator_CB,
+	filter_CB, close_CB;
 typedef struct {
 	BMTernaryCB *user_CB;
 	void *user_data;
@@ -76,6 +77,7 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMDotExpressionCB ]	= dot_expression_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
 	table[ BMFilterCB ]		= filter_CB;
@@ -117,6 +119,8 @@ BMTraverseCBSwitch( deternarize_traversal )
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
 case_( sub_expression_CB )
+	_break( p+1 )	// hand over to open_CB
+case_( dot_expression_CB )
 	_break( p+1 )	// hand over to open_CB
 case_( open_CB )
 	if ( p_ternary( p ) ) {

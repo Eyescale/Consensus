@@ -20,12 +20,13 @@ void xpn_out( FILE *stream, listItem *xp );
 //      target acquisition (internal)
 //===========================================================================
 
-#define QMARK		1
-#define IDENTIFIER	2
-#define CHARACTER	4
-#define	MOD		8
-#define	STAR		16
-#define EMARK		32
+#define THIS		1
+#define QMARK		2
+#define IDENTIFIER	4
+#define CHARACTER	8
+#define	MOD		16
+#define	STAR		32
+#define EMARK		64
 
 int bm_scour( char *expression, int target );
 

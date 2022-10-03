@@ -407,8 +407,8 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 //===========================================================================
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
 static BMTraverseCB
-	match_CB, dereference_CB, sub_expression_CB, open_CB, filter_CB,
-	decouple_CB, close_CB, wildcard_CB;
+	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,
+	sub_expression_CB, open_CB, filter_CB, decouple_CB, close_CB, wildcard_CB;
 
 static int
 verify( int op, CNInstance *x, char **position, BMQueryData *data )
@@ -457,13 +457,14 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	table[ BMCharacterCB ]		= match_CB;
 	table[ BMRegexCB ]		= match_CB;
 	table[ BMIdentifierCB ]		= match_CB;
+	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
 	table[ BMDereferenceCB ]	= dereference_CB;
 	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMDotExpressionCB ]	= dot_expression_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMFilterCB ]		= filter_CB;
 	table[ BMDecoupleCB ]		= decouple_CB;
 	table[ BMCloseCB ]		= close_CB;
-	table[ BMDotIdentifierCB ]	= wildcard_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
 	bm_traverse( *position, &traverse_data, &data->stack.flags, data->flags );
 
@@ -490,6 +491,19 @@ case_( match_CB )
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
 	_continue
+case_( dot_identifier_CB )
+	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0; break;
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case  1:
+		xpn_set( data->stack.exponent, AS_SUB, 1 );
+		switch ( match( data->instance, p+1, data->base, data ) ) {
+		case -1: data->success = 0; break;
+		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
+	popListItem( &data->stack.exponent );
+	_continue
 case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
 	_done( p )
@@ -497,6 +511,21 @@ case_( sub_expression_CB )
 	bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) _done( p )
 	else _break( p+1 ) // hand over to open_CB
+case_( dot_expression_CB )
+	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0;
+		_break( p_prune( PRUNE_TERM, p+1 ) )
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
+		p = data->success ?
+			p_prune( PRUNE_FILTER, p+1 ) :
+			p_prune( PRUNE_TERM, p+1 );
+		_break( p )
+	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
+	open_CB( traverse_data, p+1, flags );
+	flags = traverse_data->flags;
+	f_set( DOT )
+	_break( p+2 );
 case_( open_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -523,6 +552,7 @@ case_( close_CB )
 	if ( data->stack.flags==data->OOS )
 		_done( p )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
+	if is_f( DOT ) popListItem( &data->stack.exponent );
 	f_pop( &data->stack.flags, 0 )
 	f_set( INFORMED )
 	if is_f( NEGATED ) { data->success = !data->success; f_clr( NEGATED ) }
@@ -564,19 +594,21 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	else if ( p == NULL ) // wildcard
 		return 1;
 
-	// name-based testing: note that %! MUST come first
+	// name-value-based testing: note that %! MUST come first
 	if ( !strncmp( p, "%!", 2 ) ) {
 		listItem *v = bm_context_lookup( data->ctx, "!" );
 		return !!lookupItem( v, y ); }
 	else if (( data->pivot ) && p==data->pivot->name )
-		return ( y == data->pivot->value );
+		return ( y==data->pivot->value );
+	else if ( *p=='.' )
+		return ( y==bm_context_lookup( data->ctx, "." ) );
 	else if ( *p=='*' )
-		return ( y == data->star );
+		return ( y==data->star );
 	else if ( !strncmp( p, "%?", 2 ) )
-		return ( y == bm_context_lookup( data->ctx, "?" ) );
+		return ( y==bm_context_lookup( data->ctx, "?" ) );
 	else if ( !is_separator(*p) ) {
 		CNInstance *found = bm_context_lookup( data->ctx, p );
-		if (( found )) return ( y == found ); }
+		if (( found )) return ( y==found ); }
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {

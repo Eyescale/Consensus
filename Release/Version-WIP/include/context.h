@@ -13,6 +13,7 @@ typedef struct {
 BMContext *	newContext( CNDB * );
 void		freeContext( BMContext * );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
+CNInstance *	bm_context_fetch( BMContext *, char * );
 void		bm_context_clear( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_register( BMContext *, char * );

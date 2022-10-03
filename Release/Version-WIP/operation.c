@@ -312,7 +312,9 @@ do_action( char *expression, BMContext *ctx )
 #endif
 	switch ( *expression ) {
 	case '.':
-		goto RETURN;
+		if ( expression[1]!='(' && is_separator( expression[1] ) )
+			goto RETURN;
+		break;
 	case ':':
 		bm_assign_op( DO, expression, ctx, NULL );
 		goto RETURN;
@@ -359,8 +361,14 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		// build query string "proto:expression"
-		for ( char *p=narrative->proto; *p; p++ )
+		for ( char *p=narrative->proto; *p; p++ ) {
+			// reducing proto params as we go
+			if ( *p=='.' ) {
+				do p++; while ( !is_separator(*p) );
+				if ( *p==':' ) continue;
+				StringAppend( s, '.' ); }
 			StringAppend( s, *p );
+		}
 		StringAppend( s, ':' );
 		for ( char *p=expression; *p; p++ )
 			StringAppend( s, *p );

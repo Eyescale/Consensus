@@ -54,8 +54,6 @@ typedef enum {
 	NarrativeTake = 1,
 	ProtoSet,
 	OccurrenceAdd,
-	ExpressionPush,
-	ExpressionPop,
 	ExpressionTake
 } CNParseOp;
 typedef enum {

@@ -22,7 +22,7 @@ static listItem *bm_scan( char *, BMContext * );
 static BMTraverseCB
 	preempt_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
-	wildcard_CB, identifier_CB, signal_CB, end_CB;
+	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
 typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
@@ -74,6 +74,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMCloseCB ]		= close_CB;
 	table[ BMCharacterCB ]		= identifier_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
+	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
 	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
@@ -189,6 +190,16 @@ case_( close_CB )
 	if (!is_f(FIRST)) {
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
+	if ( is_f(DOT) ) {
+		CNInstance *this = bm_context_fetch( data->ctx, "." );
+		if ((this) && (instances)) {
+			data->sub[ 0 ] = newItem( this );
+			data->sub[ 1 ] = instances;
+			listItem *localized = bm_couple( data->sub, data->ctx );
+			freeListItem( &data->sub[ 0 ] );
+			freeListItem( &data->sub[ 1 ] );
+			instances = localized; } }
+		else ; // err !!!
 	flags = traverse_data->f_next;
 	if is_f( FIRST )
 		data->sub[ 0 ] = instances;
@@ -199,6 +210,14 @@ case_( close_CB )
 case_( wildcard_CB )
 	if ( data->empty ) { traverse_data->done=2; _break( p ); }
 	data->sub[ current ] = newItem( NULL );
+	_continue
+case_( dot_identifier_CB )
+	CNInstance *this = bm_context_fetch( data->ctx, "." );
+	CNInstance *e = bm_register( data->ctx, p+1 );
+	if ((this) && (e)) {
+		e = db_instantiate( this, e, BMContextDB(data->ctx) );
+		data->sub[ current ] = newItem( e ); }
+	else ; // err !!!
 	_continue
 case_( identifier_CB )
 	CNInstance *e = bm_register( data->ctx, p );

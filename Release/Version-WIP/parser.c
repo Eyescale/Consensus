@@ -266,6 +266,8 @@ A:CND_else_( B )
 		on_( '>' ) if ( s_empty && *type&DO ) {
 				do_( ">" )	s_take
 						*type = (*type&ELSE)|OUTPUT; }
+		on_( '.' ) if ( !is_f(INFORMED) ) {
+				do_( "." ) 	s_take }
 		on_( '?' ) if ( are_f(TERNARY|INFORMED) ) {
 				do_( "(_?" )	s_take
 						f_push( stack )
@@ -299,22 +301,14 @@ A:CND_else_( B )
 							f_clr( INFORMED )
 							f_set( FILTERED ) }
 		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : is_f(INFORMED) ) {
-				if ( is_f(LEVEL) ) {
-					do_( "pop" )	s_take
-							f_pop( stack, 0 )
-							f_set( INFORMED ) }
-				else if ( is_f(SUB_EXPR) ) {
-					do_( "pop" )	s_take
-							f_pop( stack, 0 )
-							f_set( INFORMED ) } }
+				if ( is_f(LEVEL|SUB_EXPR) ) {
+					if ( is_f(TERNARY) && !is_f(FIRST) ) {
+						do_( same )	REENTER
+								f_pop( stack, 0 ) }
+					else {	do_( same )	s_take
+								f_pop( stack, 0 )
+								f_set( INFORMED ) } } }
 B:CND_endif
-		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) }
-		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
-				; // err
-			else if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
-				do_( "expr_" )	REENTER }
-			else if ( is_f(SET) ) { // allow \nl inside { }
-				do_( "_^" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
@@ -328,10 +322,14 @@ B:CND_endif
 			else if ( is_f(SET) ) {
 					do_( same )	s_take
 							f_clr( INFORMED ) }
-		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
-				!is_f(ASSIGN|FILTERED|SUB_EXPR) ) {
-				do_( "|" )	s_take
-						f_clr( INFORMED ) }
+		on_( '\'' ) if ( !is_f(INFORMED) ) {
+				do_( "char" )	s_take }
+		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
+				; // err
+			else if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
+				do_( "expr_" )	REENTER }
+			else if ( is_f(SET) ) { // allow \nl inside { }
+				do_( "_^" ) }
 		on_( '{' ) if ( *type&DO && is_f(LEVEL|SET) &&
 				!is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR|NEGATED) ) {
 				do_( same )	s_take
@@ -343,8 +341,10 @@ B:CND_endif
 						f_pop( stack, 0 )
 						f_tag( stack, COMPOUND )
 						f_set( INFORMED|COMPOUND ) }
-		on_( '\'' ) if ( !is_f(INFORMED) ) {
-				do_( "char" )	s_take }
+		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
+				!is_f(ASSIGN|FILTERED|SUB_EXPR) ) {
+				do_( "|" )	s_take
+						f_clr( INFORMED ) }
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
 				do_( "term" )	s_take }
@@ -356,39 +356,10 @@ CND_ifn( mode==CN_STORY, C )
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
-						s_add( "." )
 						f_set( INFORMED )
-		on_( '(' )
-_CB( ExpressionPush, mode, data );
-				do_( "expr" )	REENTER
-						f_clr( FIRST )
-						f_set( DOT )
+		on_( '(' )	do_( "expr" )	REENTER
 		on_separator	; // err
-		on_other
-_CB( ExpressionPush, mode, data );
-				do_( "term" )	s_take
-						f_clr( FIRST )
-						f_set( DOT )
-		end
-	in_( "pop" ) bgn_
-		on_any	if ( is_f(TERNARY) && !is_f(FIRST) ) {
-				do_( same )	REENTER
-						f_pop( stack, 0 ) }
-			else if ( are_f(TERNARY|FIRST|DOT) ) {
-_CB( ExpressionPop, mode, data );
-				do_( "expr" )	REENTER
-						f_pop( stack, 0 )
-						f_set( INFORMED )
-						f_clr( DOT ) }
-			else if ( are_f(TERNARY|FIRST) ) {
-				do_( "expr" )	REENTER
-						f_pop( stack, 0 )
-						f_set( INFORMED ) }
-			else if ( is_f(DOT) ) {
-_CB( ExpressionPop, mode, data );
-				do_( "expr" )	REENTER
-						f_clr( DOT ) }
-			else {	do_( "expr" )	REENTER }
+		on_other	do_( "term" )	s_take
 		end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
@@ -400,7 +371,7 @@ _CB( ExpressionPop, mode, data );
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "expr" )	s_take
 						f_push( stack )
-						f_reset( FIRST|SUB_EXPR, DOT )
+						f_reset( FIRST|SUB_EXPR, 0 )
 		ons( "?!" )
 			if (!( *type&EN && s_empty )) {
 				do_( "expr" )	s_take
@@ -429,35 +400,6 @@ _CB( ExpressionPop, mode, data );
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
 		end
-C:CND_endif
-	in_( ">" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( ':' )	do_( ">:" )	s_take
-		on_( '\"' )	do_( ">\"" )	s_take
-		end
-		in_( ">:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr" )	REENTER
-							f_set( INFORMED )
-			ons( "{}" )	; //err
-			on_other	do_( "expr" )	REENTER
-			end
-		in_( ">\"" ) bgn_
-			on_( '\t' )	do_( same )	s_add( "\\t" )
-			on_( '\n' )	do_( same )	s_add( "\\n" )
-			on_( '\\' )	do_( ">\"\\" )	s_take
-			on_( '\"' )	do_( ">_" )	s_take
-			on_other	do_( same )	s_take
-			end
-		in_( ">\"\\" ) bgn_
-			on_any		do_( ">\"" )	s_take
-			end
-		in_( ">_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ':' )	do_( ":" )	s_take
-			on_( '\n' )	do_( "expr" )	REENTER
-							f_set( INFORMED )
-			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( ":~" )
@@ -484,19 +426,19 @@ C:CND_endif
 			on_( '\"' )	do_( ":_" )	s_take
 			on_other	do_( same )	s_take
 			end
-		in_( ":\"\\" ) bgn_
-			on_any		do_( ":\"" )	s_take
-			end
-		in_( ":_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '<' )	do_( ":_<" )	s_take
-			end
-		in_( ":_<" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr" )	REENTER
-							*type = (*type&ELSE)|INPUT;
-							f_set( INFORMED )
-			end
+			in_( ":\"\\" ) bgn_
+				on_any		do_( ":\"" )	s_take
+				end
+			in_( ":_" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '<' )	do_( ":_<" )	s_take
+				end
+			in_( ":_<" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '\n' )	do_( "expr" )	REENTER
+								*type = (*type&ELSE)|INPUT;
+								f_set( INFORMED )
+				end
 	in_( "/" ) bgn_
 		on_( '/' )	do_( "expr" )	s_take
 						f_set( INFORMED )
@@ -529,6 +471,52 @@ C:CND_endif
 		in_( "/[\\x_" ) bgn_
 			on_xdigit	do_( "/[" )	s_take
 			end
+	in_( "(_?" ) bgn_ // Assumption: TERNARY is set, not INFORMED
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "(_?:" )	s_take
+						f_set( FILTERED )
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( "(_?:" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ')' )	; // err
+			on_other	do_( "expr" )	REENTER
+			end
+	in_( "(_?_:" ) bgn_ // Assumption: TERNARY|FILTERED are set, not INFORMED
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other	do_( "expr" )	REENTER
+		end
+	in_( ">" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( ">:" )	s_take
+		on_( '\"' )	do_( ">\"" )	s_take
+		end
+		in_( ">:" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			ons( "{}" )	; //err
+			on_other	do_( "expr" )	REENTER
+			end
+		in_( ">\"" ) bgn_
+			on_( '\t' )	do_( same )	s_add( "\\t" )
+			on_( '\n' )	do_( same )	s_add( "\\n" )
+			on_( '\\' )	do_( ">\"\\" )	s_take
+			on_( '\"' )	do_( ">_" )	s_take
+			on_other	do_( same )	s_take
+			end
+		in_( ">\"\\" ) bgn_
+			on_any		do_( ">\"" )	s_take
+			end
+		in_( ">_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ':' )	do_( ":" )	s_take
+			on_( '\n' )	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			end
+C:CND_endif
 	in_( "_^" ) bgn_	// \nl allowed inside { }
 		ons( " \t\n" )	do_( same )
 		on_( '#' )	do_( "_^#" )
@@ -552,13 +540,13 @@ C:CND_endif
 						f_set( LITERAL ) }
 		on_( '(' )	do_( "expr" )	REENTER
 						f_push( stack )
-						f_clr( DOT|SET|TERNARY )
+						f_clr( SET|TERNARY )
 				if ( *type&DO && is_f(CLEAN) ) {
 						f_set( FIRST|LEVEL|LISTABLE|CLEAN ) }
 				else {		f_set( FIRST|LEVEL|CLEAN ) }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
-						f_clr( DOT|SET|TERNARY )
+						f_clr( SET|TERNARY )
 				if ( *type&DO && is_f(CLEAN) ) {
 						f_set( FIRST|LEVEL|LISTABLE ) }
 				else {		f_set( FIRST|LEVEL ) }
@@ -585,6 +573,24 @@ else 					; // err
 			in_( ",...)" ) bgn_
 				on_( ':' )	do_( "(:" )	s_take
 				end
+	in_( "char" ) bgn_
+		on_( '\\' )	do_( "char\\" )	s_take
+		on_printable	do_( "char_" )	s_take
+		end
+		in_( "char\\" ) bgn_
+			on_escapable	do_( "char_" )	s_take
+			on_( 'x' )	do_( "char\\x" ) s_take
+			end
+		in_( "char\\x" ) bgn_
+			on_xdigit	do_( "char\\x_" ) s_take
+			end
+		in_( "char\\x_" ) bgn_
+			on_xdigit	do_( "char_" )	s_take
+			end
+		in_( "char_" ) bgn_
+			on_( '\'' )	do_( "expr" )	s_take
+							f_set( INFORMED )
+			end
 	in_( "(:" ) bgn_
 		on_( ')' ) if ( is_f(LITERAL) ) {
 				do_( "expr" )	s_take
@@ -619,64 +625,22 @@ else 					; // err
 							f_set( INFORMED )
 			on_other	do_( "(:" )	REENTER
 			end
-	in_( "(_?" ) bgn_ // Assumption: TERNARY is set, not INFORMED
+	in_( "}" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "(_?:" )	s_take
-						f_set( FILTERED )
-		on_other	do_( "expr" )	REENTER
-		end
-		in_( "(_?:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ')' )	; // err
-			on_other	do_( "expr" )	REENTER
-			end
-	in_( "(_?_:" ) bgn_ // Assumption: TERNARY|FILTERED are set, not INFORMED
-		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	REENTER
-						f_set( INFORMED )
-		on_other	do_( "expr" )	REENTER
+		ons( ",)" )	do_( "expr" )	REENTER
 		end
 	in_( "|" ) bgn_
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
 		end
-	in_( "}" ) bgn_
-		ons( " \t" )	do_( same )
-		ons( ",)" )	do_( "expr" )	REENTER
-		end
-	in_( "char" ) bgn_
-		on_( '\\' )	do_( "char\\" )	s_take
-		on_printable	do_( "char_" )	s_take
-		end
-		in_( "char\\" ) bgn_
-			on_escapable	do_( "char_" )	s_take
-			on_( 'x' )	do_( "char\\x" ) s_take
-			end
-		in_( "char\\x" ) bgn_
-			on_xdigit	do_( "char\\x_" ) s_take
-			end
-		in_( "char\\x_" ) bgn_
-			on_xdigit	do_( "char_" )	s_take
-			end
-		in_( "char_" ) bgn_
-			on_( '\'' )	do_( "expr" )	s_take
-							f_set( INFORMED )
-			end
 	in_( "term" ) bgn_
 CND_ifn( mode==CN_STORY, D )
-		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|DOT) ) {
+		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
 D:CND_endif
-		on_separator
-			if ( is_f(DOT) ) {
-_CB( ExpressionPop, mode, data );
-				do_( "expr" )	REENTER
-						f_clr( DOT )
+		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
-			}
-			else {	do_( "expr" )	REENTER
-						f_set( INFORMED ) }
 		on_other	do_( same )	s_take
 		end
 	//----------------------------------------------------------------------

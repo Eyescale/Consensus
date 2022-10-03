@@ -169,19 +169,6 @@ read_CB( CNParseOp op, CNParseMode mode, void *user_data )
 		addItem( &data->stack.occurrences, occurrence );
 		data->occurrence = occurrence;
 		break;
-	case ExpressionPush:
-		StringAppend( data->string, '(' );
-		for ( char *p = data->narrative->proto,
-			*q = (((p) && *p=='.') ? p+1 : "this:");
-			*q!=':'; q++ )
-		{
-			StringAppend( data->string, *q );
-		}
-		StringAppend( data->string, ',' );
-		break;
-	case ExpressionPop:
-		StringAppend( data->string, ')' );
-		break;
 	case ExpressionTake:
 		switch ( mode ) {
 		case CN_LOAD: ;
