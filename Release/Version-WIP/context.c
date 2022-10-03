@@ -51,7 +51,7 @@ freeContext( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_set / bm_context_clear
+//	bm_context_set / bm_context_fetch / bm_context_clear
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
