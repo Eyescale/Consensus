@@ -169,13 +169,13 @@ D. Consensus queries
 
 E. Example: Turing Machine
 
-	The directory ./Release/Examples/TuringMachine features a Turing Machine[1]
+	The directory ./Examples/0_TuringMachine features a Turing Machine[1]
 	implementation based on the above-described Consensus programming language
 	(the language itself has been named B%, say B-mod, for Behavioral Modeling)
 	thereby demonstrating the Turing completeness of the language.
 
-	More examples can be found e.g. in the ./Release/Version-1.0/Test directory of this
-	site, in particular the CN.suite program (aka. story in Consensus terms), which
+	More examples can be found e.g. in the ./Test directory of this site, in
+	particular the CN.suite program (aka. story in Consensus terms), which
 	provides a good starting point for learning and experimenting with the language.
 
 	References:

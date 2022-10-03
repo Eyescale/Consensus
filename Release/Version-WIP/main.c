@@ -32,8 +32,8 @@ main( int argc, char *argv[] )
 	}
 	else if ( !strncmp( argv[1], "-f", 2 ) ) {
 		if ( argc < 4 ) usage();
-		path[ 1 ] = argv[ 2 ];
 		path[ 0 ] = argv[ 3 ];
+		path[ 1 ] = argv[ 2 ];
 	}
 	else {
 		if ( argc < 2 ) usage();

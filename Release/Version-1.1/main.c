@@ -12,7 +12,7 @@ usage( void )
 {
 	fprintf( stderr, "B%%: Example Usage\n"
 		"\t./B%% file.story\n"
-		"\t./B%% -f file.db file.story\n"
+		"\t./B%% -f file.ini file.story\n"
 		"\t./B%% -p file.story\n"
 	);
 	exit(-1);
@@ -21,29 +21,39 @@ usage( void )
 int
 main( int argc, char *argv[] )
 {
-	if ( argc==1 ) usage();
+	// interprete B% command args
 
-	CNDB *db = NULL;
-	CNStory *story = NULL;
+	if ( argc < 2 ) usage();
+
+	char *path[ 2 ] = { NULL, NULL };
+	int printout = 0;
 	if ( !strncmp( argv[1], "-p", 2 ) ) {
-		story = readStory( argv[ 2 ] );
-		story_output( stdout, story );
+		if ( argc < 3 ) usage();
+		path[ 0 ] = argv[ 2 ];
+		printout = 1;
 	}
 	else if ( !strncmp( argv[1], "-f", 2 ) ) {
 		if ( argc < 4 ) usage();
-		db = newCNDB();
-		cnLoad( argv[ 2 ], db );
-		story = readStory( argv[ 3 ] );
-		while ( cnOperate( story, db ) )
-			cnUpdate( db );
+		path[ 0 ] = argv[ 3 ];
+		path[ 1 ] = argv[ 2 ];
 	}
 	else {
-		db = newCNDB();
-		story = readStory( argv[ 1 ] );
+		if ( argc < 2 ) usage();
+		path[ 0 ] = argv[ 1 ];
+	}
+
+	// execute B% command
+
+	CNStory *story = readStory( path[ 0 ] );
+	if ( printout )
+		story_output( stdout, story );
+	else {
+		CNDB *db = newCNDB();
+		if (( path[ 1 ] )) cnLoad( path[ 1 ], db );
 		while ( cnOperate( story, db ) )
 			cnUpdate( db );
+		freeCNDB( db );
 	}
 	freeStory( story );
-	freeCNDB( db );
 }
 
