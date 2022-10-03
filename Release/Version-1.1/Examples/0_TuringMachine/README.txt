@@ -1,8 +1,8 @@
 Name
-	./Release/Examples/0_TuringMachine
+	Consensus/Release/Version-1.1/Examples/0_TuringMachine/TM.story
 
 Usage
-	./B% TM.story < Turing.Machine
+	../../B% TM.story < Turing.Machine
 
 Description
 	Implements a Turing Machine[1] using the Consensus B% programming language.
@@ -14,9 +14,9 @@ Description
 	The Turing.Machine file features the machine from Lin and Rado which is given
 	as example[1].
 
-	The Test sub-directory features intermediate versions of the final TM.story.
-	The story Test/TM.4.verbose, akin to a 'debug' version, is intended to
-	facilitate understanding of the program.
+	See Also the Test sub-directory of the same example sub-directory of the
+	Consensus/Release/Version-1.0 release, which features intermediate versions
+	of the final TM.story.
 
 Reference
 	1. http://www.logique.jussieu.fr/~michel/tmi.html

@@ -1,10 +1,10 @@
 Name
-	./Examples/1_Schematize
+	Consensus/Release/Version-1.0/Examples/1_Schematize
 
 Usage
-	./B% -f Schemes/yak.example yak.story
-	./B% -f Schemes/file schematize
-	./B% hello_world.story
+	../../B% -f Schemes/yak.example yak.story
+	../../B% -f Schemes/file schematize
+	../../B% hello_world.story
 
 Description
 	This directory holds the examples targeted by the Version-1.1 release
