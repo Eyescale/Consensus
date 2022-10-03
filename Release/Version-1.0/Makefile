@@ -3,14 +3,8 @@
 
 SHELL = /bin/sh
 
-.SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../Base/include
-LFLAGS = -L../../Base
-LIBS = -lcn
-
-OBJDIR = .ofiles
 SRCS =	database.c \
 	expression.c \
 	narrative.c \
@@ -18,30 +12,28 @@ SRCS =	database.c \
 	traversal.c \
 	wildcard.c
 
-#CFLAGS = -DDEBUG
-CFLAGS = -DTRIM
+LIB = libbmod.a
+
+TARGETS = $(LIB) B%
+
+LFLAGS = -L. -L../../Base
+OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-TARGET = libbmod.so
+INCLUDES = -I. -I./include -I../../Base/include
+#CFLAGS = -DDEBUG
+CFLAGS = -O2 -DTRIM
 
-.PHONY: depend clean
+all:$(TARGETS)
 
-all:$(TARGET) B%
+B%: $(LIB) main.c ../../Base/libcn.a
+	$(CC) -o B% $(INCLUDES) main.c $(LFLAGS) -lcn -lbmod
 
-B%: $(OBJS)
-	$(CC) -o B% $(INCLUDES) main.c -L. -lcn -lbmod
-
-$(TARGET): $(OBJS) 
-	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
-	cp ../../Base/libcn.so .
+$(LIB): $(OBJS) 
+	ar -rcvus $(LIB) $(OBJS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	$(RM) $(OBJDIR)/*.o $(MAIN)
-	$(RM) *.so
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
 
-depend: $(SRCS)
-	makedepend $(INCLUDES) $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it
