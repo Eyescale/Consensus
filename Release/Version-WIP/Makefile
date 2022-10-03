@@ -3,14 +3,8 @@
 
 SHELL = /bin/sh
 
-.SUFFIXES:
 .SUFFIXES: .c .o
 
-INCLUDES = -I. -I./include -I../../Base/include
-LFLAGS = -L../../Base
-LIBS = -lcn
-
-OBJDIR = .ofiles
 SRCS =	narrative.c \
 		parser.c \
 	program.c \
@@ -24,32 +18,29 @@ SRCS =	narrative.c \
 			query.c \
 				locate.c \
 				traverse.c
+LIB = libbmod.a
 
+TARGETS = $(LIB) B%
+
+LFLAGS = -L. -L../../Base
+OBJDIR = .ofiles
+OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
+INCLUDES = -I. -I./include -I../../Base/include
 CFLAGS = -O2
 #CFLAGS = -DDEBUG -DNULL_TERMINATED
 #CFLAGS = -O2 -DUNIFIED
-OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-TARGET = libbmod.so
 
-.PHONY: depend clean
+all:$(TARGETS)
 
-all:$(TARGET) B%
+B%: $(LIB) main.c ../../Base/libcn.a
+	$(CC) -o B% $(INCLUDES) main.c $(LFLAGS) -lcn -lbmod
 
-B%: $(OBJS) main.c
-	$(CC) -o B% $(INCLUDES) main.c -L. -lcn -lbmod
-
-$(TARGET): $(OBJS) 
-	$(CC) -shared -o $(TARGET) $(OBJS) $(LFLAGS) $(LIBS)
-	cp ../../Base/libcn.so .
+$(LIB): $(OBJS) 
+	ar -rcvus $(LIB) $(OBJS)
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	$(RM) $(OBJDIR)/*.o $(MAIN)
-	$(RM) *.so
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
 
-depend: $(SRCS) include/*.h
-	makedepend $(INCLUDES) $^
-
-# DO NOT DELETE THIS LINE -- make depend needs it
