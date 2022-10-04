@@ -1,0 +1,134 @@
+
+Synopsis
+	bm_traverse - generic B% expression traversal
+
+References
+	definition
+		traverse.c
+		./include/traverse.h
+	use cases
+		instantiate.c	bm_instantiate()
+				bm_void()
+		deternarize.c	deternarize()
+		locate.c	bm_locate_pivot()
+				xp_target()
+				bm_locate_param()
+		feel.c		bm_verify()
+	value
+		homogenize B% (dynamic) expression traversal
+
+Usage & Implementation
+	static BMTraverseCB
+		bgn_CB, preempt_CB, negated_CB, ..., identifier_CB, end_CB;
+	typedef struct {
+		...
+	} MyDataType;
+	#define case_( func ) \
+		} static int func( BMTraverseData *traverse_data, char *p, int flags ) { \
+			MyDataType *data = traverse_data->user_data;
+
+	MyTakeType
+	myFunc( char *expression, BMContext *ctx )
+	{
+		...
+		MyDataType data;
+		memset( &data, 0, sizeof(data) );
+		// initialize my data
+		
+		BMTraverseData traverse_data;
+		memset( &traverse_data, 0, sizeof(traverse_data) );
+		traverse_data.user_data = &data;
+
+		BMTraverseCB *table[ BMTraverseCBNum ];
+		memset( table, 0, sizeof(table) );
+		listItem *stack = NULL;
+
+		/* inform only those table entries for which
+		   we want user-specific event processing
+		*/
+		BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+		table[ BMPreemptCB ]	= preempt_CB;
+		table[ BMNegatedCB ]	= negated_CB;
+		...
+		table[ BMIdentifierCB ]	= identifier_CB;
+
+		/* invoke bm_traverse() and traverse expressions
+		*/
+		bm_traverse( expression, &traverse_data, &stack, FIRST );
+
+		freeListItem* &stack );
+		return my_take;
+	}
+	BMTraverseCBSwitch( my_func_traversal )
+	case_( preempt_CB )
+		...
+		return BM_DONE or BM_CONTINUE;
+	case_( negated_CB )
+		My code, accessing (BMTraverseData *) traverse_data
+		including	traverse_data->flags
+				traverse_data->p
+				traverse_data->done
+		      and	traverse_data->user_data
+		       as	(MyDataType *) data
+			...
+		return BM_DONE or BM_CONTINUE;
+	case_( identifier_CB )
+		....
+		return BM_DONE or BM_CONTINUE;
+	BMTraverseCBEnd
+
+	Where
+		on user_CB return value BM_CONTINUE
+			bm_traverse continues informing p and flags
+		on user_CB return value BM_DONE
+			bm_traverse continues without informing anything
+		on traverse_data->done other than zero
+			bm_traverse breaks out of its parsing loop
+
+	char *
+	bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
+	{
+		BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
+		BMTraverseCB *user_CB;
+		char *	p = expression;
+		while ( *p && !traverse_data->done ) {
+			...	// BMPreemptCB
+			switch ( *p ) {
+			...
+			case '~':
+				if (( user_CB = table[ BMNegatedCB ] ) &&
+				    ( user_CB( traverse_data, p, flags )==BM_DONE ) ) {
+					p = traverse_data->p;
+					flags = traverse_data->flags;
+					break;
+				}
+				if is_f(NEGATED) f_clr( NEGATED )
+				else f_set( NEGATED )
+				p++; break;
+			...
+			}
+		}
+		return p;
+	}
+
+Events & callback names association
+
+	Events
+		~ { } | * % ( , : ) ? ! . " ' / (+non-separator)
+
+		Special combinations
+			% followed by one of ,:)}|
+			%(
+			%?
+			%!
+			* followed by one of ,:)}|
+			*
+			(:
+			informed ?
+			.(
+			.identifier
+			identifier
+
+	Callback Names
+		See ./include/traverse.h
+

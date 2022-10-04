@@ -1,0 +1,13 @@
+
+	on init
+		do ( TUPLE, {
+			(A,(0,(1,(RIGHT,B))))
+			(A,(1,(1,(RIGHT,H))))
+			(B,(0,(0,(RIGHT,C))))
+			(B,(1,(1,(RIGHT,B))))
+			(C,(0,(1,(LEFT,C))))
+			(C,(1,(1,(LEFT,A))))
+			} )
+	else
+		do >"%_\n":~%(?,.):~%(.,?)
+		do exit

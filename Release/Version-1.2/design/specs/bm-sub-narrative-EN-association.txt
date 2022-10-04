@@ -1,0 +1,124 @@
+
+DEFINITIONS
+
+	1. Sub-narrative are declared using either one of the following statements, at
+	   the very start of a line:
+
+		.identifier:( expression )
+	   OR	
+		:( expression )	// Version 1.1 compatibility
+
+	   Where Version 1.2 will translate at readStory() time the latter form into
+
+		.this:( expression )
+
+	2. in/on/do .expression commands are translated at readStory() time into
+
+		in/on/do ( identifier, expression )
+
+	   where identifier is the one specified in the current narrative proto.
+
+	   Example: where
+
+	   :( expression )	- is the sub-narrative declaration
+
+			do .identifier	// (1)
+
+			in .( expression1, expression2 ) // (2)
+
+		(1) becomes: do (this,identifier )
+		(2) becomes: in (this,(expression1,expression2))
+		
+	   Note that Version 1.1 ignores dotted expressions when issed from the
+	   base narrative.
+
+	   Version-1.2 translates them as above, giving the narrator the possibility
+	   to create and handle a base entity named "this".
+
+	3. LOCALE declarations allow the interpretation of the declared LOCALE
+	   as (identifier,locale) at run=time.
+
+	   Example: where
+
+	   :( expression )	- is the sub-narrative declaration
+
+		.position .event
+
+	   Subsequent references to position and event are interpreted at run-time
+	   as (this,position), (this,event) - these instances being created, if
+	   they do not exist, upon encountering the declaration.
+
+	4. EN / ELSE_EN occurrences are statements in the form
+
+		%( expression )
+	   OR
+		else %( expression )
+
+	   These enable the execution of all sub-narratives verifying
+
+		( expression1 ):%( expression2 )
+
+	  where expression1 pertains to an entire sub-narrative's declaration
+	  - a.k.a. prototype in C - and expression2 to the EN statement
+
+IMPLEMENTATION
+
+	sub-narratives are operated according to the following principle:
+	bm_operate( CNCell *cell, listItem **new, CNStory *story ) 
+	{
+		listItem *narratives = cell->entry->value;
+		BMContext *ctx = cell->context;
+
+		CNNarrative *base = narratives->ptr; // base narrative
+		Pair *en = newPair( base, NULL );
+		listItem *enabled = newItem( en );
+		do {
+			listItem *newly = enabled;
+			enabled = NULL;
+			while (( en = popListItem(&newly) )) {
+				CNNarrative *narrative = en->name;
+				CNInstance *instance = en->value;
+				operate( narrative, instance, ctx, narratives, &enabled, ... );
+				freePair( en );
+			}
+		} while ((enabled));
+	}
+
+	Where operate( narrative, ... ) will add to the passed "enabled" list all
+	[n,e] pairs it will find upon encountering a %(...) expression, as per:
+
+	operate( CNNarrative *narrative, CNInstance *instance, listItem *narratives, listItem **enabled, ... )
+	{
+		...
+		// upon encountering %(...)
+		for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+			CNNarrative *n = i->ptr;
+			foreach e in CNDB matching "n->proto:%(...)"
+				addItem( enabled, newPair(n,e) );
+			end for
+		}
+		...
+	}
+
+	Note that without serious care on the part of the narrator, bm_operate() may
+	easily never return, which is why in Version-1.1 we have limited sub-narrative
+	execution to only once per frame. However the limitation should really be per
+	CNDB instance, that is: each CNDB instance should be involved AT MOST once
+	per frame in a sub-narrative, which therefore represents the whole behavioral
+	state machine associated with this instance, itself representing a specific
+	association/grouping of CNDB base entities - a.k.a. neuronal configuration,
+	or path.
+
+	Version 1.2 restricts EN statements to only the base narrative.
+
+	The proper way to handle sub-narrative / EN associations would be to forbid such
+	associations from being recursive, on a per instance and frame-by-frame basis.
+	This would allow cross-referencing among sub-narratives, and thereby support
+	the familiar - though purely conceptual - "sub-routine" programming technique.
+
+	This we may do in Version 2.0.
+
+UPDATE 2022-09-16:
+	Version-1.2 no longer restricts EN statements to only the base narrative,
+	thanks to the "warden" implementaiton.
+

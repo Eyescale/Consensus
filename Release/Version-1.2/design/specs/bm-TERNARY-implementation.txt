@@ -1,0 +1,306 @@
+
+Synopsis
+	Version-1.2 supports ternary-operated expressions in either one of
+	the following forms:
+
+		( expr ? expr1 : expr2 ) / %( expr ? expr1 : expr2 )
+
+	1. Restrictions
+	. we do NOT support ( expr ?:)
+	. we do NOT support the sequence ':?' in N-ary cases - see below
+	. ternary-operated expressions are not allowed as external input -
+	  including from INI file
+
+	2. Extensions
+	. we do support ( expr ?: expr ) <=> OR: evaluates as first OR second expr
+	. we do support ( expr ? expr :) <=> AND: evaluates as second expr or none
+	. we do support N-ary operated expressions e.g.
+		( expr ? expr ? expr : expr : expr )
+		( expr ? expr ? expr :: expr )
+	. we do allow truncating after the last filter symbol (:) e.g.
+		( expr ? expr ? expr ? expr : expr )
+		( expr ?: expr ?: expr ?: expr )	// all OR
+		( expr ? expr ? expr ? expr :)		// all AND
+
+Code Analysis
+    A. File Format Interface - in Consensus/Release/Version-1.2/parser.c
+
+	To set TERNARY
+		on '?' if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
+				f_clr( INFORMED|FILTERED )
+				f_set( TERNARY ) }
+
+	Then if TERNARY is set
+		ons "{}|"	=> err: already handled due to SUB_EXPR
+		on ','		=> err
+	        on '('		=> f_push( stack ); f_clr( TERNARY )
+		on ':' if ( !is_f( FILTERED ) )
+				=> set_f( FILTERED )
+		on ')' if ( !is_f( FILTERED ) )
+				=> err
+
+    B. In Consensus/Base/
+
+	Internally the ternary operation is supported via the new p_prune()
+	interface - cf string_util.c:
+
+			char *position = p_prune( PRUNE_TERNARY, p )
+	  	Where
+	  		*p == either '(' or '?' or ':'
+
+		In the first case (*p=='(') p_prune returns on
+			. the inner '?' operator if the enclosed is ternary
+			. the separating ',' or closing ')' otherwise
+		In the second case (*p=='?') from inside a ternary expression
+			p_prune returns on the corresponding ':'
+		In the third case (*p==':') from inside a ternary expression
+			p_prune returns on the closing ')'
+
+	p_prune( PRUNE_TERNARY, p ) internally translates as prune_ternary(p).
+
+	Generally speaking, prune_ternary() proceeds inside of a [potentially
+	ternary] expression, whereas p_prune() with either PRUNE_FILTER or
+	PRUNE_TERM argument proceeds outside the expression it is passed.
+
+	p_prune( PRUNE_FILTER, p ) and p_prune( PRUNE_TERM, p ) have been
+	modified, so that in addition to previous ':' or ')' possibilities
+	they may now return on a '?' when it is a ternary operator.
+
+	p_filtered( p ) implementation remains unchanged, as
+		return ( *p_prune( PRUNE_FILTER, p )==':' );
+
+    C. In Consensus/Release/Version-1.2/	(currently Version-WIP)
+
+	The following functions invoke p_prune with PRUNE_TERM or PRUNE_FILTER
+	argument:
+
+		1. operation.c		do_input()
+					do_output()
+		2. expression.c		bm_substantiate()
+					bm_instantiate()
+					bm_void()
+					bm_assign_op()
+		3. locate.c		bm_locate_pivot()
+					xp_target()
+					bm_locate_param()
+		4. traversal.c		bm_verify()
+
+	However none of these functions need to be modified as expressions are
+	systematically "de-ternarized" prior to being operated on - see
+	operate() in operation.c, and the deternarization code in
+
+		../../Base/Examples/5_Ternarize/deternarize.c
+
+	whose design principles are explained below.
+
+Design
+    Overview
+	The key change needed to support ternary-operated expressions takes place
+	in traversal.c, where it affects bm_traverse() as follow:
+
+	Let us call "guard" the term in front of the ternary operator '?'. We want
+	guard to escape the expression itself, that is:
+
+		( toto, ( guard ? value : alternative ) )
+
+	does not check the existence of ( toto, guard ) but the existence of guard
+	itself to operate. If guard exists, then the expression above is reduced to
+	( toto, value ) otherwise the expression is reduced to ( toto, alternative )
+
+	Special cases:
+
+	. ( toto, ( guard ?: alternative ) )
+	  If guard exists, then the expression is indeed reduced to ( toto, guard )
+	  otherwise it is reduced to ( toto, alternative )
+	  This is equivalent to ( (toto,guard) ?: (toto,alternative) ) // OR
+
+	. ( toto, ( guard ? value :) )
+	  If guard exists, then the expression is reduced to ( toto, value )
+	  otherwise it is reduced to ( toto, ~. ) which fails
+	  This is equivalent to ( guard ? (toto,value) :) // AND
+
+	Given an arbitrary expression, we want to reduce all ternary-operated terms
+	prior to calling bm_traverse(). For this, we shall initially stack all guards
+	until we meet the terminating '?' of the last guard found, as in:
+									       BEYOND
+									       v
+		expression: ...( guard1:_( ...%( guard2:_ ? _ : _ )... ? _ : _ ).....
+		----------------^......................................^ first guard found
+		--------------------------------^.........^ last guard found
+
+	Upon meeting the terminating '?' of guard2, our algorithm will:
+	. create a copy of expression from its beginning until the opening parenthesis
+	  (not included) of guard1
+	. reduce the expression guarded by guard2 [see below]
+	. create a new version of guard1 where the previous reduction result replaces
+	  the expression previously guarded by guard2
+	. reduce the expression guarded by the new version of guard1 [see below]
+	. append the latter reduction result to the copy we started of expression,
+	  either as (?:result) or result - depending on whether the original was
+	  enclosed in () or %(), respectively
+	. continue to BEYOND
+
+	So that after the whole expression is traversed, our function - called
+	deternarize() - will return either
+		. NULL - expression does not have any ternary-operated term
+		. the completed, reduced copy of expression - to be freed by
+		  the caller.
+
+	. Now, since we allow guards to be filtered, we may have
+
+			expression: ( _:%( _ ? _ : _ ):%( _ ? _ : _ ):_ ? _ : _ )
+		---------------------^..................................^ guard1
+		--------------------------^..^ guard2
+
+		So that after first reduction we have:
+			expression: ( _:result:%( _ ? _ : _ ):_ ? _ : _ ).....
+		---------------------xxxxxxxxxxxx...............^ guard1
+		---------------------------------^..^ new guard
+
+		In which case we cannot immediately complete - let alone reduce -
+		the new version of guard1
+
+	  Our algorithm then becomes:
+		Until meeting the terminating '?' of guard1
+			Upon meeting the terminating '?' of guard2 (==last guard)
+			. If not done already
+				. create a copy of expression from its beginning until
+				  the opening parenthesis (not included) of guard1
+			. reduce the expression guarded by guard2
+			. create a new version of guard1 where the previous reduction result
+			  replaces the expression previously guarded by guard2
+			. If a new ternary-operated expression is encountered during the
+			  creation of the new version of guard1, then
+				update guard1->bgn to new guard->bgn
+				stack new guard:[bgn,end[ as guard2
+		Loop end
+		upon meeting the terminating '?' of guard1
+			. reduce the expression guarded by the new version of guard1 [see below]
+			. append the latter reduction result to the copy we started of expression,
+			  either as (?:result) or result - depending on whether the original was
+			  enclosed in () or %(), respectively
+			. continue to BEYOND
+
+	  Our algorithm still requires one last adjustment to be fully generic, which consists of
+	  using second-to-last guard instead of guard1. See full code in deternarize.c
+
+    Ternary-operated expression reduction
+
+	Starting from position p = expression start, and until p==BEYOND
+
+		on %(_?_:_) or (_?_:_)
+			. push [bgn,end[ on stack->guard
+		   	  where
+				 bgn   end	      BEYOND
+				 v     v	      v
+				(......?......:......)...
+				 ^	^      ^
+				 guard  value  alternative
+			. set p to bgn
+			. continue (parsing guard)
+
+		on *p=='?' and p==current guard->end
+		then
+			guard = pop( &stack->guard )
+			if ( bm_feel( BM_CONDITION, guard->bgn ) )
+				(we can discard alternative entirely)
+				if p[1]==':' then
+					. guard->[bgn,end[ resp. (?:guard->[bgn,end[) is
+					  candidate to replace the current expression
+					. q = p_prune( PRUNE_TERNARY, p+1 )
+					  set p to q+1 ==BEYOND
+				else
+					(we can discard guard entirely)
+					p = p+1;   // == value
+					q = p_prune( PRUNE_FILTER, p ) // either '?' or ':'
+					if *q=='?' // (_?_?_:_:_)
+						. push [p,q[ on stack->guard
+						. continue
+					else // *q==':'
+						. [p,q[ resp. (?:[p,q[) is candidate to
+						  replace the current expression
+						. continue (parsing "value")
+			else
+				(we can discard both guard and value entirely)
+				p = p_prune( PRUNE_TERNARY, p )	// ':'
+				if p[1]==')' then
+					. ~. resp. ~? is candidate to replace current expression
+					. set p to p+2 ==BEYOND
+					continue;
+				else
+					p = p+1;   // == alternative
+					q = p_prune( PRUNE_FILTER, p ) // either '?' or ':' or ')'
+					if *q=='?' // (_?_?_:_:_)
+						. push [p,q[ on stack->guard
+						. continue
+					else // *q==':' or *q==')'
+						. [p,q[ resp. (?:[p,q[) is candidate to
+						  replace the current expression
+						. continue (parsing "alternative")
+			endif
+
+		on *p==':'
+			if p==current candidate->end
+				(then current candidate replaces the current expression)
+				p = p_prune( PRUNE_TERNARY, p ); // ')'
+				set p to p+1 ==BEYOND
+			else p++; // normal FILTER
+
+		on *p==')'
+			if p==current candidate->end
+				(then current condidate replaces the current expression)
+				set p to p+1 ==BEYOND
+			else p++; // normal sub-expression
+	loop end
+
+Miscellaneous
+
+	1. The ternary-operated expression
+
+		( %(expr1?expr2:expr3) ? expr4 : expr5 )
+
+	   is equivalent to
+	
+		( expr1 ? expr2 ? expr4 : expr5 : expr3 ? expr4 : expr5 )
+					^	^               ^
+					|	|		expr3 fails
+					|	expr1 failed
+					expr2 failed
+
+	   Axiom: any multi-level ternary expression can be flattened,
+		  modulo repetition of terms.
+
+	3. Graph Representation
+
+				expr1
+			       	  ? 
+			      y	 / \  n
+			    ....     ....
+			  /		  \
+		       expr2		 expr3
+			 ?		   ?
+			  \               /
+			    ....     ....
+			       	 \ /   
+		                  +
+			      y	 / \  n
+			    ....     ....
+			  /		  \
+		       expr4		 expr5
+
+	   Note the alternative expansion and reduction of the graph, and
+	   how putting 'y' on the left side preserves the arguments order.
+
+	4. Narrative Representation
+
+		in expr1
+			in expr2
+				evaluate expr4 => set %?
+			else
+				evaluate expr5 => set %?
+		else
+			in expr3
+				evaluate expr4 => set %?
+			else
+				evaluate expr4 => set %?
+

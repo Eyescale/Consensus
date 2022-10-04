@@ -3,15 +3,16 @@ TODO
     Version-1.2
 	. Version-1.2 Engineering Complete
 	     Examples
-		. 0_TuringMachine	[DONE]
-		. 1_Schematize		[DONE]
-		. 2_TuringMachine.single => Pass design/story/single-thread.story
+		. 0_TuringMaching		[DONE]
+		. 1_Schematize			[DONE]
+		. 2_TuringMachine.single	[DONE]
+			=> Pass design/story/single-thread.story
+	. Branch Version-1.2
 	     Release Documents
 		. instantiation may do half a job - since we do not pre-check with bm_void()
 		. feature-list.txt / Release Notes / README.txt, etc.
 	     Announce / Version-2.0
 		. NOTE: everything is Pair, starting from [address,value]
-	. Branch Version-1.2
 
     Version-2.0
 	. on_event_ext
@@ -27,14 +28,15 @@ TODO
 		=> could have connection.c ???
 	. Release Version-2.0
 		. Examples-v2.0
-			. 0_TuringMachine.single
-			. 0_TuringMachine.head-tape
-			. 0_TuringMachine.head-tape-cell
-			. 0_TuringMaching.head-cell-reporter << to be written
-			. 1_Schematize	// using Scheme
-			. 1_Yak.0 // support Scheme files from schematize
-			. 1_Yak.1 // using new Cell design
-			. 2_interactive	// TBD
+			. 0_TuringMachine
+			. 1_Schematize
+			. .../TM.single
+			. .../TM.head-tape
+			. .../TM.head-tape-cell
+			. .../TM.head-cell-reporter << to be written
+		. Additonal examples
+			. yak using new Cell design (and literals)
+			. interactive // TBD
 
 NICE TO HAVE
 	. parser.c
@@ -72,6 +74,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. deprecated db_is_empty(db), added db_star(db) (db is never empty!)
 	. disentangled bm_read <-> bm_parse / CNParser interface
 	. Internal Specifications
 		. updated ./design/specs/bm-read-narrative-states.txt

@@ -1,0 +1,28 @@
+
+	on init
+		do '\0'
+		do toto
+		do '\t'
+		do '\x06'
+		do '\x41'	// aka. 'A'
+		do '['
+		do *
+		do '%'
+		do ( titi, toto )
+	else
+		do >"%%s: %s\n": .
+		do >"%%_: %_\n": .
+		do >":   "
+		do >: .
+		do >:
+		do >"%%s: %s\n": ( titi, . )
+		do >"%%_: %_\n": ( titi, . )
+		do >"%%s: %s\n": ~(.,.)
+		do >"%%_: %_\n": ~(.,.)
+		do >"%%s: %s\n": %( titi, ? )
+		do >"%%_: %_\n": %( titi, ? )
+		do >"%%s: %s\n": '\x06'
+		do >"%%_: %_\n": '\x06'
+		do >"%%s: %s\n": 'A'
+		do >"%%_: %_\n": 'A'
+		do exit

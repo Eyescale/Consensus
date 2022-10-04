@@ -1,0 +1,73 @@
+
+Brainstorming...
+
+---------------------------------------------------------------------------
+Implementation
+---------------------------------------------------------------------------
+%% usage
+	!! Class
+		instantiates ( %%, address )
+		where address: new [ Class narrative, CNDB ]
+	: variable : !! Class
+		instantiates ((*,variable),("%%",address))
+		where address: new [ Class narrative, CNDB ]
+	%%	represents ( "%%", this )
+	..	represents ( "%%", parent )
+	on expression < ?
+		sets %? to appropriate ( "%%", address )
+		allowing
+			in %?: ..
+			in %?: %%
+			in %?: *variable
+	on expression < variable
+		checks event from *variable = ( "%%", address )
+	on expression < %%
+		checks event from %% which is ( "%%", this )
+		AS IF we had ((*,"%%"), ("%%",this))
+	on expression < ..
+		checks event from .. which is ( "..", parent )
+		AS IF we had ((*,".."), ("%%",parent))
+
+RESTRICTIONS
+	We don't want to allow .. nor %% to be used in expressions such as
+		%(%%:(?,.)) or %(%%:(.,?))
+		%(..:(?,.)) or %(..:(.,?))
+	How about do : variable : %%
+		then %(*variable:(?,.)) would be accessible???
+	Actually after on expression < ?
+		do : variable : %(%?:(.,?)) would do just that
+	So
+	We have to restrict access to all ("%%",.) and ("..",.)
+	that is: treat such relationship instances as Base entities
+#define ESUB(e,ndx) \
+	( e->sub[0] ? e->sub[ndx] : NULL )
+becomes
+#define ESUB(e,ndx) \
+	(((e->sub[0]) && ((e->sub[0]->sub[0]) || strcmp(e->sub[0]->sub[1],"%%"))) ? \
+		e->sub[ndx] : NULL )
+	=> which is going to affect performances... a lot !!
+
+inline Entity *
+ESUB( Entity *e, int ndx )
+{
+	Entity *f = e->sub[0];
+	if ( f == NULL )
+		return NULL;
+	if ( f->sub[0] == NULL ) {
+		if ( !strcmp(f->sub[1],"%%") )
+			return NULL;
+		if ( !strcmp(f->sub[1],"..") )
+			return NULL;
+	}
+	return e->sub[ndx];
+}
+Alternatively: 
+	id: [ sub:[ NULL, address ], as_sub[ {("%%",id)}, NULL ]]
+	not registered in index => will it be freed ? Yes
+	Can it be accessed? Sure:
+		do ( toto, %(%%:(.,?)) ) - here we go
+	BUT then db_identifier( e, db )
+		MUST do registryLookup( db->index, NULL, e );
+		possibly NULL
+
+

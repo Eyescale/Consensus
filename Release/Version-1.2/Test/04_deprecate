@@ -1,0 +1,23 @@
+	on init
+		do ((*,r),((rule,hello),(CONSUMED,(frame,*))))
+		do ((*,f),((((((frame,*),h),e),l),l),o))
+		do ((*,s),base)
+		do ((*,(((schema,(h,(e,(l,(l,(o,'\0')))))),(CONSUMED,(frame,*))),event)),o)
+		do ((*,(((schema,(h,(e,(l,(l,(o,'\0')))))),(CONSUMED,(frame,*))),position)),(o,'\0'))
+		do ((*,input),o)
+		do ((*,frame),((((((frame,*),h),e),l),l),o))
+		do ((*,base),hello)
+		do READY
+		do init
+		do (((rule,hello),(CONSUMED,(frame,*))),COMPLETE)
+		do (((rule,hello),(CONSUMED,(frame,*))),(CONSUMED,((((((frame,*),h),e),l),l),o)))
+		do (((rule,hello),(CONSUMED,(frame,*))),base)
+		do ((rule,hello),(schema,(h,(e,(l,(l,(o,'\0')))))))
+		do (((schema,(h,(e,(l,(l,(o,'\0')))))),(CONSUMED,(frame,*))),COMPLETE)
+		do (((schema,(h,(e,(l,(l,(o,'\0')))))),(CONSUMED,(frame,*))),(CONSUMED,((((((frame,*),h),e),l),l),o)))
+		do (((schema,(h,(e,(l,(l,(o,'\0')))))),(CONSUMED,(frame,*))),((rule,hello),(CONSUMED,(frame,*))))
+	else on ~( frame )
+		do > "%_\n": ~%(.,?): ~%(?,.)
+		do exit
+	else
+		do ~( frame )

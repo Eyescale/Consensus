@@ -1,0 +1,76 @@
+int
+event_from( char *expression, CNInstance *connection, BMContext *ctx )
+/*
+	connection: %( this, that )
+*/
+{
+	CNInstance *that = connection->sub[ 1 ];
+	if ( that == NULL ) return 0;
+
+	CNDB *db = ctx->db; // backup db
+	CNCell *cell = (CNCell *) that->sub[ 0 ];
+	push context where
+	   . db = cell->core->db
+	   . %% = connection	// active connection*
+	   . %? = as_is		// can be used in expression
+	   . %< = as_is
+
+	traverse expression in new context
+
+	if successful
+		. overwrite db with original ctx->db in context
+		. %% = NULL	// no active connection*
+  IF REQUIRED	. %? is already set to result in candidate's db
+  IF REQUIRED	. %< is already set to connection (which was %%)
+	  otherwise
+		. pop context
+
+	return success;
+}
+/*
+[ * ]:	%% conditions the way the event expression is interpreted
+		if set, then it is set to connection=%(this,that)
+		but must be interpreted as %(that,this), which is
+		the proxy of this cell in target 
+
+	%? is always interpreted with respect to %<
+		if %< is set, then %? is interpreted with respect
+		to connection=%(this,that) and so that references
+		to other connections (that,?) are translated
+		into (this,?)
+
+	=> %% when NULL must be interpreted as...
+		1. %< 			???
+		2. connection to self	???
+
+	Examples
+	1.	on : current : ? < .	 (I)
+			in %?: %%	(II)
+	    in (I)
+		. db = connection->sub[1]->sub[0]->core->db
+		. %% = connection	// active
+		. %? = as_is		// can be used in expression
+		. %< = as_is
+	    in (II)
+		. db = original
+		. %% = NULL	// no active connection*
+		. %? = result in candidate's db
+		. %< = connection (which was %%)
+
+	2.	on init
+			on %% < ?
+				do : parent : %<	(II)
+		on init
+			on %% < ?
+				do ~( %< )		(II)
+
+		=> parent and child are both initially actively connected
+
+	    in (II)
+		. db = current
+		. %% = NULL
+		. %? = NULL
+		. %< = connection
+
+*/
+

@@ -1,0 +1,67 @@
+
+	ASSIGN operations
+
+		in : variable : value
+		on : variable : value
+		do : variable : value
+
+		in : variable : ~.
+		on : variable : ~.
+		do : variable : ~.
+
+	While the first three forms about literally translate into
+
+		in ((*,variable), value )
+		on ((*,variable), value )
+		do ((*,variable), value )
+
+	The last three forms operate slightly differently.
+	In particular
+
+		do : variable : ~.
+
+		literally DOES assign nothing (~.) to variable,
+		that is:
+
+			if variable was assigned, then
+				do ~((*,variable), . )
+				AND manifest (*,variable)
+			otherwise
+				do (*,variable)
+				AND manifest (*,variable)
+	Then
+		in : variable : ~.
+			if variable is assigned, then
+				fails
+			otherwise translates as
+				in (*,variable)
+
+		on : variable : ~.
+			if variable is assigned, then
+				fails
+			otherwise translates as
+				on (*,variable)
+
+	Besides the fact that we do not want to allow ~. inside of
+	relationship instance expression, the objective here is to
+	allow future support of expressions* such as
+
+		do : state :
+			s1 ? : event :
+				e : s2
+				...
+			...
+	    where
+		s1 and s2 can be ~.
+
+	*See ../../Base/Examples/4_StateMachine
+
+	Note: at such point we may also want to support
+
+		on : variable : ( ~. ? . )
+
+	to query any change in the variable's assignment status
+	(including unassignment).
+				
+
+	
