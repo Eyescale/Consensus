@@ -490,7 +490,7 @@ case_( match_CB )
 	case -1: data->success = 0; break;
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
-	_continue
+	_break
 case_( dot_identifier_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
@@ -503,29 +503,27 @@ case_( dot_identifier_CB )
 		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
 	popListItem( &data->stack.exponent );
-	_continue
+	_break
 case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
-	_done( p )
+	_return( p )
 case_( sub_expression_CB )
 	bm_locate_mark( p+1, &data->mark_exp );
-	if (( data->mark_exp )) _done( p )
-	else _break( p+1 ) // hand over to open_CB
+	if (( data->mark_exp )) _return( p )
+	else _continue( p+1 ) // hand over to open_CB
 case_( dot_expression_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case -1: data->success = 0;
-		_break( p_prune( PRUNE_TERM, p+1 ) )
+		_continue( p_prune( PRUNE_TERM, p+1 ) )
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
 		p = data->success ?
 			p_prune( PRUNE_FILTER, p+1 ) :
 			p_prune( PRUNE_TERM, p+1 );
-		_break( p )
+		_continue( p )
 	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
-	open_CB( traverse_data, p+1, flags );
-	flags = traverse_data->flags;
-	f_set( DOT )
-	_break( p+2 );
+	_post_( open_CB, p+1, DOT )
+	_continue( p+2 )
 case_( open_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -533,34 +531,34 @@ case_( open_CB )
 		f_set( COUPLE )
 		xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	}
-	_break( p+1 )
+	_continue( p+1 )
 case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
-		_done( p )
+		_return( p )
 	else if ( !data->success )
-		_break( p_prune( PRUNE_TERM, p+1 ) )
-	else _continue
+		_continue( p_prune( PRUNE_TERM, p+1 ) )
+	else _break
 case_( decouple_CB )
 	if ( data->stack.flags==data->OOS )
-		_done( p )
+		_return( p )
 	else if ( !data->success )
-		_break( p_prune( PRUNE_TERM, p+1 ) )
+		_continue( p_prune( PRUNE_TERM, p+1 ) )
 	else {
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
-		_continue }
+		_break }
 case_( close_CB )
 	if ( data->stack.flags==data->OOS )
-		_done( p )
+		_return( p )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
 	f_pop( &data->stack.flags, 0 )
 	f_set( INFORMED )
 	if is_f( NEGATED ) { data->success = !data->success; f_clr( NEGATED ) }
 	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
-		_done( p+1 )
-	else _break( p+1 )
+		_return( p+1 )
+	else _continue( p+1 )
 case_( wildcard_CB )
-	if ( !strncmp( p, "?:", 2 ) ) _break( p+2 )
+	if ( !strncmp( p, "?:", 2 ) ) _continue( p+2 )
 	else if is_f( NEGATED ) data->success = 0;
 	else if ( !data->stack.exponent || (int)data->stack.exponent->ptr==1 )
 		data->success = 1; // wildcard is any or as_sub[1]
@@ -568,7 +566,7 @@ case_( wildcard_CB )
 		case -1: // no break
 		case  0: data->success = 0; break;
 		case  1: data->success = 1; break; }
-	_continue
+	_break
 BMTraverseCBEnd
 
 //===========================================================================

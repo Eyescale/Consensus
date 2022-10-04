@@ -1,5 +1,5 @@
 Name
-	Consensus/Release/Version-1.0/Examples/1_Schematize
+	Consensus/Release/Version-1.1/Examples/1_Schematize
 
 Usage
 	../../B% -f Schemes/yak.example yak.story

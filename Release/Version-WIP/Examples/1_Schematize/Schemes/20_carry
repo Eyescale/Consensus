@@ -1,0 +1,12 @@
+#	Yak scheme definition file:
+#		((identifier,%), (a,(b,...((%,id),...(z,'\0')))) )
+#		((base,%), ((%,identifier),'\0') )
+#	Assumed to be used in conjunction with schematize, as in
+#		./%B -f Schemes/file schematize < input
+
+#	The idea of this specific test is to ensure that input such as
+#	!titi!toto will return the proper result - as the first completion
+#	occurs on '!' unconsumed => to be carried over
+
+	((identifier,%), ('!',(('\\',w),'\0')) )
+	((base,%), ((%,identifier),'\0') )

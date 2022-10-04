@@ -76,8 +76,8 @@ bm_locate_pivot( char *expression, listItem **exponent )
 static void pop_exponent( listItem **, listItem * );
 #define loc_( p, TARGET ) \
 	if ( !is_f(NEGATED) && data->target==TARGET ) \
-		{ traverse_data->done = 2; _break( p ) } \
-	else _continue
+		{ traverse_data->done = 2; _continue( p ) } \
+	else _break
 
 BMTraverseCBSwitch( bm_locate_pivot_traversal )
 case_( dot_identifier_CB )
@@ -85,7 +85,7 @@ case_( dot_identifier_CB )
 	if ( !is_f(NEGATED) && data->target==THIS ) {
 		xpn_add( exponent, AS_SUB, 0 );
 		traverse_data->done = 2;
-		_break( p )
+		_continue( p )
 	}
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
@@ -102,12 +102,12 @@ case_( mark_register_CB )
 	if ( !is_f(NEGATED) )
 		switch ( p[1] ) {
 		case '?': if ( data->target==QMARK )
-			{ traverse_data->done = 2; _break( p ) }
+			{ traverse_data->done = 2; _continue( p ) }
 			break;
 		default: if ( data->target==EMARK )
-			{ traverse_data->done = 2; _break( p ) }
+			{ traverse_data->done = 2; _continue( p ) }
 		}
-	_continue
+	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==STAR ) {
@@ -115,12 +115,12 @@ case_( dereference_CB )
 		xpn_add( exponent, AS_SUB, 0 );
 		xpn_add( exponent, AS_SUB, 0 );
 		traverse_data->done = 2;
-		_break( p ) }
+		_continue( p ) }
 	// apply dereferencing operator to whatever comes next
 	xpn_add( exponent, SUB, 1 );
 	xpn_add( exponent, AS_SUB, 0 );
 	xpn_add( exponent, AS_SUB, 1 );
-	_continue
+	_break
 case_( sub_expression_CB )
 	listItem **exponent = data->exponent;
 	f_push( &data->stack.flags )
@@ -136,20 +136,18 @@ case_( sub_expression_CB )
 		f_set( COUPLE ) }
 	addItem( &data->stack.level, data->level );
 	data->level = *exponent;
-	_break( p+2 )
+	_continue( p+2 )
 case_( dot_expression_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==THIS ) {
 		xpn_add( exponent, AS_SUB, 0 );
 		traverse_data->done = 2;
-		_break( p )
+		_continue( p )
 	}
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
-	open_CB( traverse_data, p+1, flags );
-	flags = traverse_data->flags;
-	f_set( DOT )
-	_break( p+2 )
+	_post_( open_CB, p+1, DOT )
+	_continue( p+2 )
 case_( open_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -158,14 +156,14 @@ case_( open_CB )
 		f_set( COUPLE ) }
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
-	_break( p+1 )
+	_continue( p+1 )
 case_( filter_CB )
 	pop_exponent( data->exponent, data->level );
-	_continue
+	_break
 case_( decouple_CB )
 	pop_exponent( data->exponent, data->level );
 	xpn_set( *data->exponent, AS_SUB, 1 );
-	_continue
+	_break
 case_( close_CB )
 	if is_f( COUPLE ) {
 		pop_exponent( data->exponent, data->level );
@@ -176,7 +174,7 @@ case_( close_CB )
 	if is_f( SUB_EXPR ) {
 		listItem *tag = popListItem( &data->stack.premark );
 		pop_exponent( data->exponent, tag ); }
-	_continue;
+	_break;
 BMTraverseCBEnd
 
 static void
@@ -231,38 +229,38 @@ case_( sc_dot_expr_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= THIS;
 		if ( data->target & THIS )
-			_done( p ) }
-	_continue
+			_return( p ) }
+	_break
 case_( sc_identifier_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= IDENTIFIER;
 		if ( data->target & IDENTIFIER )
-			_done( p ) }
-	_continue
+			_return( p ) }
+	_break
 case_( sc_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= CHARACTER;
-	_continue
+	_break
 case_( sc_mod_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= MOD;
-	_continue
+	_break
 case_( sc_star_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= STAR;
-	_continue
+	_break
 case_( sc_mark_register_CB )
 	if ( !is_f(NEGATED) )
 		switch ( p[1] ) {
 		case '?':
 			data->candidate |= QMARK;
 			if ( data->target & QMARK )
-				_done( p )
+				_return( p )
 			break;
 		default:
 			data->candidate |= EMARK;
 		}
-	_continue
+	_break
 BMTraverseCBEnd
 
 //===========================================================================
@@ -338,30 +336,30 @@ case_( not_CB )
 	if (( data->param_CB )) {
 		p = p_prune( PRUNE_FILTER, p+1 );
 		f_set( INFORMED )
-		_break( p )
+		_continue( p )
 	}
-	else _continue
+	else _break
 case_( deref_CB )
 	if (( data->param_CB )) {
 		p = p_prune( PRUNE_FILTER, p+1 );
 		f_set( INFORMED )
-		_break( p )
+		_continue( p )
 	}
 	listItem **exponent = data->exponent;
 	xpn_add( exponent, AS_SUB, 1 );
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
-	_continue
+	_break
 case_( sub_CB )
 	p = p_prune( PRUNE_FILTER, p+1 );
 	f_set( INFORMED )
-	_break( p )
+	_continue( p )
 case_( dot_push_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	push_CB( traverse_data, p+1, flags );
 	flags = traverse_data->flags;
 	f_set( DOT )
-	_break( p+2 )
+	_continue( p+2 )
 case_( push_CB )
 	f_push( &data->stack.flags )
 	f_reset( LEVEL|FIRST, 0 )
@@ -370,14 +368,14 @@ case_( push_CB )
 		xpn_add( data->exponent, SUB, 0 ); }
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
-	_break( p+1 )
+	_continue( p+1 )
 case_( sift_CB )
 	pop_exponent( data->exponent, data->level );
-	_continue
+	_break
 case_( sep_CB )
 	pop_exponent( data->exponent, data->level );
 	xpn_set( *data->exponent, SUB, 1 );
-	_continue
+	_break
 case_( pop_CB )
 	if is_f( COUPLE ) {
 		pop_exponent( data->exponent, data->level );
@@ -385,15 +383,15 @@ case_( pop_CB )
 	if is_f( DOT ) {
 		popListItem( data->exponent ); }
 	data->level = popListItem( &data->stack.level );
-	_continue;
+	_break;
 case_( wildcard_CB )
 	if ( *p=='?' && !data->param_CB )
-		{ traverse_data->done = 2; _break( p ) }
-	else _continue
+		{ traverse_data->done = 2; _continue( p ) }
+	else _break
 case_( parameter_CB )
 	if (( data->param_CB ))
 	 	data->param_CB( p+1, *data->exponent, data->user_data );
-	_continue
+	_break
 BMTraverseCBEnd
 
 //===========================================================================

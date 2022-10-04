@@ -1,0 +1,13 @@
+#	Yak scheme definition file:
+#		((identifier,%), (a,(b,...((%,id),...(z,'\0')))) )
+#		((base,%), ((%,identifier),'\0') )
+#	Assumed to be used in conjunction with yak.story, as in
+#		../../B% -f yak.right-recursive yak.story
+
+
+	(( Rule, eee ), ( Schema, {
+		(e,'\0'),
+		(e,((%,eee),'\0'))	#right-recursive
+	}))
+	(( Rule, g ), ( Schema, ((%,eee), ('.','\0')) ))
+	(( Rule, base ), ( Schema, ((%,g),'\0') ))

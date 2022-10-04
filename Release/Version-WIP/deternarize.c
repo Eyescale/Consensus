@@ -119,9 +119,9 @@ BMTraverseCBSwitch( deternarize_traversal )
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
 case_( sub_expression_CB )
-	_break( p+1 )	// hand over to open_CB
+	_continue( p+1 )	// hand over to open_CB
 case_( dot_expression_CB )
-	_break( p+1 )	// hand over to open_CB
+	_continue( p+1 )	// hand over to open_CB
 case_( open_CB )
 	if ( p_ternary( p ) ) {
 		data->ternary = 1;
@@ -134,7 +134,7 @@ case_( open_CB )
 		addItem( &data->stack.sequence, data->sequence );
 		data->sequence = NULL;
 		data->segment = newPair( p+1, NULL ); }
-	_continue
+	_break
 case_( ternary_operator_CB )
 	f_set( TERNARY )
 	f_clr( NEGATED|FILTERED|INFORMED )
@@ -160,33 +160,33 @@ case_( ternary_operator_CB )
 			data->segment = NULL;
 			// proceed to ")"
 			p = p_prune( PRUNE_TERNARY, p );
-			_break( p ) }
+			_continue( p ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
-			_break( p+1 ) } }
+			_continue( p+1 ) } }
 	else if ( p[1]==':' ) {
 		// sequence==guard is our current candidate
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
 		p = p_prune( PRUNE_TERNARY, p+1 );
-		_break( p ) }
+		_continue( p ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
 		data->sequence = NULL;
 		// resume past '?'
 		data->segment = newPair( p+1, NULL );
-		_continue }
+		_break }
 case_( filter_CB )
 	if is_f( TERNARY ) {
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
 		p = p_prune( PRUNE_TERNARY, p );
-		_break( p ) }
-	else _continue
+		_continue( p ) }
+	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {
 		Pair *segment = data->segment;
@@ -211,7 +211,7 @@ case_( close_CB )
 			data->sequence = popListItem( &data->stack.sequence );
 			addItem( &data->sequence, newPair( NULL, NULL ) ); }
 		data->segment = newPair( p, NULL ); }
-	_continue
+	_break
 BMTraverseCBEnd
 
 //===========================================================================

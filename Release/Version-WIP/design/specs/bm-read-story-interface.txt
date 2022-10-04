@@ -57,7 +57,7 @@ DETAILS
 		narrative->proto = proto;
 		return 1;
 
-	. in story_add( story, narrative ) we have the three same cases
+	. in story_add( story, narrative ) we have the same three cases
 		1. narrative->proto: NULL
 		2. narrative->proto: identifier
 		3. narrative->proto: .identifier:expression - resp. ( expression )
@@ -69,5 +69,5 @@ DETAILS
 	  3. add narrative as listItem to current story entry
 
 	=> current story entry must be passed as well, for which bm_parse()
-	   passes BMStoryData* (aka. parser->user_data) to these functions
+	   passes the whole BMParseData* block to these functions
 

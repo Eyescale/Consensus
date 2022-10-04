@@ -101,20 +101,20 @@ BMTraverseCBSwitch( bm_instantiate_traversal )
 case_( preempt_CB )
 	if ( p_filtered( p ) )
 		return collect_CB( traverse_data, p, flags );
-	_continue
+	_break
 case_( collect_CB )
 	if (!( data->sub[ current ] = bm_scan( p, data->ctx ) ))
 		traverse_data->done = 2;
 	else {
 		p = p_prune( PRUNE_TERM, p );
 		f_set( INFORMED ); }
-	_break( p )
+	_continue( p )
 case_( bgn_set_CB )
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 0 ] );
 		data->sub[ 0 ] = NULL; }
 	addItem( &data->results, NULL );
-	_continue
+	_break
 case_( end_set_CB )
 	/* Assumption:	!is_f(LEVEL)
 	*/
@@ -126,7 +126,7 @@ case_( end_set_CB )
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
-	_continue
+	_break
 case_( bgn_pipe_CB )
 	bm_push_mark( data->ctx, '!', data->sub[ current ] );
 	addItem( &data->results, data->sub[ 0 ] );
@@ -134,7 +134,7 @@ case_( bgn_pipe_CB )
 		addItem( &data->results, data->sub[ 1 ] );
 		data->sub[ 1 ] = NULL; }
 	data->sub[ 0 ] = NULL;
-	_continue
+	_break
 case_( end_pipe_CB )
 	bm_pop_mark( data->ctx, '!' );
 	freeListItem( &data->sub[ 0 ] );
@@ -142,18 +142,18 @@ case_( end_pipe_CB )
 	if (!is_f(FIRST))
 		data->sub[ 1 ] = popListItem( &data->results );
 	data->sub[ 0 ] = popListItem( &data->results );
-	_continue
+	_break
 case_( mark_register_CB )
 	if ( p[1]=='?' ) {
 		CNInstance *e = bm_context_lookup( data->ctx, "?" );
-		if ( !e ) { traverse_data->done=2; _break( p ) }
+		if ( !e ) { traverse_data->done=2; _continue( p ) }
 		data->sub[ current ] = newItem( e ); }
 	else if ( p[1]=='!' ) {
 		listItem *i = bm_context_lookup( data->ctx, "!" );
-		if ( !i ) { traverse_data->done=2; _break( p ) }
+		if ( !i ) { traverse_data->done=2; _continue( p ) }
 		listItem **sub = &data->sub[ current ];
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr ); }
-	_continue
+	_break
 case_( list_CB )
 	/*	((expression,...):_sequence_:)
 	   start p ----------^               ^
@@ -162,7 +162,7 @@ case_( list_CB )
 	data->sub[ 0 ] = bm_list( &p, data->sub, data->ctx );
 	f_pop( &data->stack.flags, 0 )
 	f_set( INFORMED )
-	_break( p )
+	_continue( p )
 case_( literal_CB )
 	/*		(:_sequence_:)
 	   start p -----^             ^
@@ -171,19 +171,19 @@ case_( literal_CB )
 	CNInstance *e = bm_literal( &p, data->ctx );
 	data->sub[ current ] = newItem( e );
 	f_set( INFORMED )
-	_break( p+1 )
+	_continue( p+1 )
 case_( open_CB )
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 0 ] );
 		data->sub[ 0 ] = NULL; }
-	_continue
+	_break
 case_( decouple_CB )
 	if (!is_f(LEVEL)) {	// Assumption: is_f(SET)
 		listItem **results = &data->results;
 		listItem *instances = popListItem( results );
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
 		data->sub[ 0 ] = NULL; }
-	_continue
+	_break
 case_( close_CB )
 	listItem *instances = is_f( FIRST ) ?
 		data->sub[ 0 ] : bm_couple( data->sub, data->ctx );
@@ -206,11 +206,11 @@ case_( close_CB )
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
-	_continue
+	_break
 case_( wildcard_CB )
-	if ( data->empty ) { traverse_data->done=2; _break( p ); }
+	if ( data->empty ) { traverse_data->done=2; _continue( p ); }
 	data->sub[ current ] = newItem( NULL );
-	_continue
+	_break
 case_( dot_identifier_CB )
 	CNInstance *this = bm_context_fetch( data->ctx, "." );
 	CNInstance *e = bm_register( data->ctx, p+1 );
@@ -218,15 +218,15 @@ case_( dot_identifier_CB )
 		e = db_instantiate( this, e, BMContextDB(data->ctx) );
 		data->sub[ current ] = newItem( e ); }
 	else ; // err !!!
-	_continue
+	_break
 case_( identifier_CB )
 	CNInstance *e = bm_register( data->ctx, p );
 	data->sub[ current ] = newItem( e );
-	_continue
+	_break
 case_( signal_CB )
 	CNInstance *e = data->sub[ current ]->ptr;
 	db_signal( e, BMContextDB(data->ctx) );
-	_continue
+	_break
 BMTraverseCBEnd
 
 //===========================================================================
@@ -282,7 +282,7 @@ BMTraverseCBSwitch( bm_void_traversal )
 case_( feel_CB )
 	if ( p_filtered( p ) )
 		return feel( traverse_data, p, flags );
-	_continue
+	_break
 case_( check_CB )
 	int target = bm_scour( p, EMARK );
 	if ( target&EMARK && target!=EMARK ) {
@@ -293,11 +293,11 @@ case_( check_CB )
 case_( touch_CB )
 	if ( p[1]=='?' && !bm_context_lookup( data->ctx, "?" ) )
 		{ traverse_data->done=2; return BM_DONE; }
-	_continue
+	_break
 case_( sound_CB )
 	if ( data->empty )
 		{ traverse_data->done=2; return BM_DONE; }
-	_continue
+	_break
 BMTraverseCBEnd
 
 static BMCB_take

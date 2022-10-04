@@ -3,15 +3,15 @@ TODO
     Version-1.2
 	. Version-1.2 Engineering Complete
 	     Examples
-		. 0_TuringMachine
-		. 1_Yak
+		. 0_TuringMachine	[DONE]
+		. 1_Schematize		[DONE]
 		. 2_TuringMachine.single => Pass design/story/single-thread.story
 	     Release Documents
 		. instantiation may do half a job - since we do not pre-check with bm_void()
 		. feature-list.txt / Release Notes / README.txt, etc.
 	     Announce / Version-2.0
 		. NOTE: everything is Pair, starting from [address,value]
-	. Release Version-1.2
+	. Branch Version-1.2
 
     Version-2.0
 	. on_event_ext
@@ -56,7 +56,8 @@ NICE TO HAVE
 		  => bm_instantiate() may do half a job (user responsibility)
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
-	. move btreefy from ../../Base to ../../Base/Examples/
+	. extract btreefy from ../../Base to ../../Base/Examples/
+		. write ../../Base/Examples/Z_Btreefy example
 	. allow more to be done in INI files (e.g. assignment) ?
 		. Now the whole bm_instantiate() syntax is accessible
 		. and will need it later in new Cell constructor
@@ -71,8 +72,10 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. disentangled bm_read <-> bm_parse / CNParser interface
 	. Internal Specifications
 		. updated ./design/specs/bm-read-narrative-states.txt
+		  -> bm-parse_states.txt
 		. created ./design/specs/bm-software-packages.txt
 	. Programming Guide correction - Table page 15
 		. %% in literal internally converts as (%,%)

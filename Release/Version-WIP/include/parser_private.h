@@ -14,7 +14,7 @@
 
 #ifdef DEBUG
 #define	DBGMonitor \
-	fprintf( stderr, "CNParser:l%dc%d: in \"%s\" on ", line, column, state ); \
+	fprintf( stderr, "bm_parse:l%dc%d: in \"%s\" on ", line, column, state ); \
 	switch ( event ) { \
 	case EOF: fprintf( stderr, "EOF" ); break; \
 	case '\n': fprintf( stderr, "'\\n'" ); break; \
@@ -26,7 +26,7 @@
 #define	DBGMonitor
 #endif
 
-#define CNParserBegin( parser ) \
+#define BMParseBegin( parser ) \
 			char *state	= parser->state; \
 			int column	= parser->column; \
 			int line	= parser->line; \
@@ -80,11 +80,11 @@
 #define REENTER				caught |= CNCaughtReenter;
 #define end			}
 
-#define CNParserDefault		end \
+#define BMParseDefault		end \
 				if ( caught&CNCaughtTrans ) ; \
 				else bgn_
 
-#define CNParserEnd		end \
+#define BMParseEnd		end \
 			} while ( !errnum && (caught&CNCaughtReenter) ); \
 			parser->errnum = errnum;
 

@@ -12,6 +12,7 @@ Consensus B% Version-1.1
 		,	expr
 			,.	.
 				,..	,...	,...)	(:
+		term	expr
 		char	char_	expr
 			char\\	char_	expr
 				char\\x	char\\x_ char_ expr
@@ -21,10 +22,15 @@ Consensus B% Version-1.1
 			(:%	(:
 			(::	(:
 				expr
-		expr_
 		}	expr
 		|	expr
-		term	expr
+		_^	expr
+			_^#	_^
+		_#	expr
+		expr_
+	expr_	base
+		""
+
 
 	parser.c: bm_parse() - state transitions for mode==STORY
 
@@ -46,7 +52,6 @@ Consensus B% Version-1.1
 				_expr
 			cmd_	_expr
 		_expr	expr
-
 	expr	.	expr
 			term
 		*	expr
@@ -73,13 +78,12 @@ Consensus B% Version-1.1
 			>\"	>\"\\	>\"
 				>_	:
 					expr
-		_^	expr
-			_^#	_^
 		(	(:
 			expr
 		,	expr
 			,.	.
 				,..	,...	,...)	(:
+		term	expr
 		char	char_	expr
 			char\\	char_	expr
 				char\\x	char\\x_ char_ expr
@@ -89,11 +93,12 @@ Consensus B% Version-1.1
 			(:%	(:
 			(::	(:
 				expr
-		expr_
 		}	expr
 		|	expr
-		term	expr
-
+		_^	_#
+			expr
+		_#	expr
+		expr_
 	expr_	base
 		""
 

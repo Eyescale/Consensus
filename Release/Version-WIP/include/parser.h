@@ -11,10 +11,9 @@ typedef struct {
 	int	line, column,
 		mode[ 4 ], buffer,
 		errnum;
-	void *	user_data;
 } CNParser;
 
-int	cn_parser_init( CNParser *, char *state, FILE *, void * );
+int	cn_parser_init( CNParser *, char *state, FILE * );
 int	cn_parser_getc( CNParser * );
 
 //===========================================================================
@@ -26,6 +25,7 @@ typedef struct {
 		listItem *flags; // bm_parse() only
 		listItem *occurrences; // bm_read() only
 	} stack; 
+	CNParser *	parser;
 	CNString *	string;
 	int		tab[4], type;
 // bm_read() only
@@ -36,7 +36,7 @@ typedef struct {
 	CNOccurrence *	occurrence;
 // bm_parse() only
 	int		flags, opt;
-} CNParseStory;
+} BMParseData;
 
 // tab data informed by bm_parse
 
@@ -45,17 +45,13 @@ typedef struct {
 #define TAB_SHIFT	tab[2]
 #define TAB_BASE	tab[3]
 
-typedef enum {
-	CN_LOAD = 1,
-	CN_INPUT,
-	CN_STORY,
-} CNParseMode;
+typedef BMReadMode BMParseMode;
 typedef enum {
 	NarrativeTake = 1,
 	ProtoSet,
 	OccurrenceAdd,
 	ExpressionTake
-} CNParseOp;
+} BMParseOp;
 typedef enum {
 	ErrNone = 0,
 	ErrUnknownState,
@@ -72,11 +68,11 @@ typedef enum {
 	ErrNarrativeEmpty,
 	ErrNarrativeDouble,
 	ErrUnknownCommand,
-} CNParseErr;
+} BMParseErr;
 
-typedef int (*CNParseCB)( CNParseOp, CNParseMode, void * );
-char *	cn_parse( int event, CNParser *, CNParseMode, CNParseCB );
-int	cn_parse_init( CNParseStory *, CNParser *, CNParseMode, char *state, FILE * );
-void	cn_parse_report( CNParseErr, CNParser *, CNParseMode );
+typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
+char *	bm_parse( int event, BMParseData *, BMParseMode, BMParseCB );
+int	bm_parse_init( BMParseData *, CNParser *, BMParseMode, char *state, FILE * );
+void	bm_parse_report( BMParseData *, BMParseErr, BMParseMode );
 
 #endif	// PARSER_H

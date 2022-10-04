@@ -118,16 +118,20 @@ char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 
 #define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
-#define _break( q ) { \
+#define _post_( _CB_, q, f ) { \
+		_CB_( traverse_data, q, flags ); \
+		flags = traverse_data->flags; \
+		f_set( f ) }
+#define _return( q ) { \
+		traverse_data->done = 1; \
+		_continue( q ) }
+#define _continue( q ) { \
 		traverse_data->flags = flags; \
 		traverse_data->p = q; \
 		return BM_DONE; }
-#define _done( q ) { \
-		traverse_data->done = 1; \
-		_break( q ) }
-#define	_continue \
+#define	_break \
 		return BM_CONTINUE;
-#define BMTraverseCBEnd	\
+#define BMTraverseCBEnd \
 	}
 
 
