@@ -1,0 +1,9 @@
+
+	on init
+		do : toto : titi
+		do ( hello, . )
+	else on : toto : .
+		do : *toto : tata
+	else
+		do >"%s\n": %(**toto)
+		do exit

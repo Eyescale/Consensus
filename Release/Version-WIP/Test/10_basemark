@@ -1,8 +1,9 @@
-on init
-	do ((*,toto), titi )
-else on ((*,toto), ?:titi )
-	do >"found1:%_\n": %?
-	do ((*,toto), tata )
-else on ~((*,toto), ? )
-	do >"found2:%_\n": %?
-	do exit
+
+	on init
+		do : variable : value
+	else on : variable : .
+		do : variable : ~.
+	else on ~((*,variable), ? )
+		do >"%_\n": %?
+		do exit
+

@@ -8,7 +8,7 @@ Usage
 
 Description
 	The objective of this version was to support the examples provided
-	in the ./design/story sub-directory of this site, eventually allowing
+	in the ./design/story sub-directory of this release, eventually allowing
 	to specify and execute multiple B% ( narrative, CNDB ) instances
 	in parallel.
 
@@ -36,8 +36,8 @@ Description
 
 	However, after we completed our task, we realized that the amount of
 	changes affecting the existing code base justified the creation of an
-	intermediate minor release, as a basis for the targeted major feature
-	development.
+	intermediate minor release, as a basis for the targeted major new
+	feature development.
 
 Contents
     File Format extensions
@@ -73,7 +73,7 @@ Contents
 			else on : variable : .
 				do : variable : ~.
 			else on ~((*,variable), ? )
-				do >"%_": %?
+				do >"%_\n": %?
 				do exit
 
 	  will output the variable's previous value - here "value" -
