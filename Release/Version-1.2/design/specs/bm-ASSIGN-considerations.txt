@@ -9,7 +9,7 @@
 		on : variable : ~.
 		do : variable : ~.
 
-	While the first three forms about literally translate into
+	While the first three forms above literally translate into
 
 		in ((*,variable), value )
 		on ((*,variable), value )

@@ -24,8 +24,8 @@ Consensus B% Version-1.1
 				expr
 		}	expr
 		|	expr
-		_^	expr
-			_^#	_^
+		_^	_#
+			expr
 		_#	expr
 		expr_
 	expr_	base
@@ -38,7 +38,7 @@ Consensus B% Version-1.1
 		#	base
 		+	base
 		-	base
-		^.	^.$ 	^.$_	^.$
+		^.	^.$ 	^.$_	^.
 					_expr
 					.id:	sub	def$
 							sub$	sub
