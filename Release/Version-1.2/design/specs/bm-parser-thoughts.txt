@@ -10,7 +10,7 @@ CHALLENGE
 
 	*See the ./include/parser_private.h file for more information
 
-OTHER POSSIBILITY
+ALTERNATIVE
 	Provided that we split bm_parse into the separate parser routines
 
 		parse_from_base
@@ -47,14 +47,13 @@ OTHER POSSIBILITY
 ISSUE
 	For bm_read to catch all parse_from_xxx transitions, REENTER would need to be
 	handled in cnParserGetc( &parser ), instead of the CNParserBegin / CNParserEnd
-	macros as it is now [ still a bit hackily to be honest ]
-		=> last event would have to be stored in parser
+	macros as it is now => last event would have to be stored in parser
 
 	This would be nice to have, but is it really necessary right now?
 
 DECISION
 	The above-mentioned macros combined with the parse_CB mechanism allow us to
-	keep the code centralized without performance penalty, and to keep CNStory
-	operations managed by story.c
+	keep the code centralized without performance penalty, and to keep CNNarrative
+	operations localized in read.c
 
 

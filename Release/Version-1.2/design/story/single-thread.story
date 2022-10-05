@@ -67,6 +67,6 @@
 			else on : shift : LEFT
 				do : current : ( %(*current:(?:~TAPE,TAPE)) ?: (TAPE,*current) )
 		else
-			do >"Error: start not set\n"
+			do >"Error: no starting cell\n"
 			do exit
 

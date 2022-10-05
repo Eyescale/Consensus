@@ -1,11 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-    Version-1.2 Documentation
-	     Release Documents
-		. instantiation may do half a job - since we do not pre-check with bm_void()
-		. feature-list.txt / Release Notes / README.txt, etc.
-	     Announce / Version-2.0
-		. NOTE: everything is Pair, starting from [address,value]
     Version-2.0
 	. on_event_ext
 		. need to separate expression from source
@@ -18,6 +12,8 @@ TODO
 		. Attention: bm_context_mark, when %< is set...
 	. Where to put bm_hear, bm_sound, bm_take ????
 		=> could have connection.c ???
+	. Pass design/story/{all}
+	. Remodel occurrence->data->expression from char * to TBD
 	. Release Version-2.0
 		. Examples-v2.0
 			. 0_TuringMachine
@@ -29,6 +25,13 @@ TODO
 		. Additonal examples
 			. yak using new Cell design (and literals)
 			. interactive // TBD
+ON-GOING
+    Version-1.2 Documentation
+	     Release Documents
+		. instantiation may do half a job - since we do not pre-check with bm_void()
+		. feature-list.txt / Release Notes / README.txt, etc.
+	     Announce / Version-2.0
+		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
 	. parser.c
@@ -55,7 +58,6 @@ NICE TO HAVE
 	. allow more to be done in INI files (e.g. assignment) ?
 		. Now the whole bm_instantiate() syntax is accessible
 		. and will need it later in new Cell constructor
-	. different underlying data representation (instead of expressions as-is)
 	. per proto:expression <<< where proto can be '?' or narrative-type proto
 		. PER/ELSE_PER
 		. also DO_PER, e.g.

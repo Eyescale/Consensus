@@ -1,7 +1,7 @@
 
 SYNOPSIS
 
-	This document details the story.c/parser.c - resp. readStory()/bm_parse() -
+	This document details the narrative.c/parser.c - resp. readStory()/bm_parse() -
 	story creation interface.
 
 CONTENTS

@@ -2,12 +2,12 @@ See Also: design/new-features-and-additions.txt
 TODO
     Version-1.2 Documentation
 	     Release Documents
-		. Complete README.txt
-		. Update Programming Guide
+		. README.txt
+		. Programming Guide
 		  Note: instantiation may do half a job - as bm_void() not invoked
 
 DONE
-    Version-1.2
+    Version-1.1 -> Version-1.2
 	. Branched Version-1.2 on github
 	. Version-1.2 Engineering Complete
 	     Examples

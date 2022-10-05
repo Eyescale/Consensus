@@ -41,7 +41,6 @@
 				do >"%s": *state
 			else do >" "
 			do >"%s ": %( **address ?: *BLANK )
-//			do >"%s ": *BLANK
 			in %?: (TAPE,.:~TAPE)
 				do : address : %(%?:(.,?))
 			else in ?:( %?, TAPE )
@@ -68,6 +67,6 @@
 			else on : shift : LEFT
 				do : current : ( %(*current:(?:~TAPE,TAPE)) ?: (TAPE,*current) )
 		else
-			do >"Error: start not set\n"
+			do >"Error: no starting cell\n"
 			do exit
 

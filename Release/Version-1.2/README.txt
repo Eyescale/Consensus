@@ -9,8 +9,8 @@ Usage
 Description
 	The objective of this release was originally to support all of
 	the examples located in its ./design/story sub-directory, and
-	ultimately to allow the user specification and concurrent execution
-	of multiple ( narrative, CNDB ) instances.
+	ultimately to allow the user to specify and concurrently execute
+	multiple ( narrative, CNDB ) instances from a single story.
 
 	The first of these prototypes, named single-thread.story, features
 	a [much] simplified version of the original Turing Machine example.
@@ -24,7 +24,7 @@ Description
 	pertaining to its execution are visible from one source - namely
 	Examples/2_TM.single/TM-single.story
 
-	This, together with the addition of other readability-enhancement-
+	This, together with the addition of minor readability-enhancement
 	targeted features [listed below] required substantial changes to be
 	made to our existing Version-1.1 code base.
 
