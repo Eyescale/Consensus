@@ -1,0 +1,196 @@
+See Also: design/new-features-and-additions.txt
+TODO
+    Version-1.2 Documentation
+	     Release Documents
+		. Complete README.txt
+		. Update Programming Guide
+		  Note: instantiation may do half a job - as bm_void() not invoked
+
+DONE
+    Version-1.2
+	. Branched Version-1.2 on github
+	. Version-1.2 Engineering Complete
+	     Examples
+		. 0_TuringMaching
+		. 1_Schematize
+		. 2_TuringMachine.single
+			=> Pass design/story/single-thread.story
+	. deprecated db_is_empty(db), added db_star(db) (db is never empty!)
+	. disentangled bm_read <-> bm_parse / CNParser interface
+	. Internal Specifications
+		. updated ./design/specs/bm-read-narrative-states.txt
+			-> renamed as bm-parse_states.txt
+		. created ./design/specs/bm-software-packages.txt
+	. Programming Guide correction - Table page 15
+		. %% in literal internally converts as (%,%)
+	. Version-1.2 build & packaging
+		. compile into .a instead of .so
+		. cleanup Makefiles
+			. create / remove .ofiles directory
+		. consistent main.c under each Release Version
+		. Reorganize Examples into
+			Consensus/Base/Examples
+			Consensus/Release/Version-1.0/Examples
+			Consensus/Release/Version-1.1/Examples
+			Consensus/Release/Version-WIP/Examples
+		  => removed Consensus/Release/Examples
+	. implemented native support for .identifier and .(expression)
+	. FIXED ../../Base/Examples/1_Yak
+		. reimplement schemeFrame() in scheme.c
+		  => remove workaround in string_util.c so that we can implement
+		  StringFinish as it should be - see s_cmp() in include/traverse.h
+	. Tidied up do_input() / do_output() as well as bm_inputf() and bm_outputf()
+		. NOTE: deprecated access to db_output() outside of db_outputf()
+	. bm_input()
+		. Decision: we do not change bm_input() behavior on EOF, which
+		  consists of doing ~(*,input) - vs. do : input : ~.
+		  CAVEAT: if no input is read prior to EOF, no event is generated.
+		  (which I suppose is why even empty files generate \n prior to EOF)
+	. Version-1.2 new features implementation
+		. term~					(signal)
+		. var : value				(assignment)
+		. var : ~.				(un-assignment)
+		. in/on ~.: expression			(anti-occurrence)
+		. in/on/do ( expr ? expr : expr ) 	(ternary-operated expression)
+		. do ((expr,...):_sequence_:)		(list/ellipsis)
+	. consistent usage of flags across all C-traversals
+		. See ./design/specs/bm-TRAVERSE-design.txt
+			. Events: '{', etc.
+			. Usage: where C-traversal happens
+			. Template - and flags
+		. use only ONE set of flags consistently
+			. use p_prune( PRUNE_LITERAL, p ) everywhere
+                . instantiate.c		bm_instantiate()
+					bm_void()
+                . query.c		verify()
+                . deternarize.c		deternarize()
+                . locate.c		bm_locate_pivot()
+					bm_scour()
+					bm_locate_param()
+	. deternarize integration:
+		. ternary-operated expressions supported in all cases except
+		  input from external sources (including INI files)
+		. bm_parse(): no longer flags deternarized expressions as MARKED
+		. deternarize() handle the whole B% syntax (e.g. characters, etc.)
+		. ./design/specs/bm-TERNARY-implementation.txt finalized
+		  Note: ternary operations are only supported in mode==CN_STORY
+	. Code restructuring
+		. parser.c re-enabled ternary in DO-type - not only SUB_EXPR
+		. traversal.c renamed as feel.c
+		. bm_instantiate() and bm_void() extracted from expression.c
+		  	=> [ NEW ] instantiate.c
+			=> [ NEW ] p_prune( PRUNE_LITERAL, p )
+		. deternarize.c [ NEW ]
+		. database.c: deprecated db_couple() - along with bm_substantiate()
+		. expression.c: deprecated bm_substantiate()
+			. Now bm_read() calls bm_instantiate(), which integrates
+			  support for bm_literal() - could be used anywhere
+			. untested: instantiation events during 'on init'
+		. traversal.c: ternary support in xp_verify() & bm_verify() undone
+			. expression is assumed to be deternarized
+	. bm_locate_mark() now returns mark exponent even if expression is negated
+	  	as it may be negated twice, esp. after deternarize()
+	. Added ../../Base/Examples/5_Ternarize [ NEW ]
+		. ternarize.c
+		. deternarize.c
+		. Cleaned up ../../Base/Examples/3_Segmentize
+			. free_segmentized() corrected
+	. ternary-operated expressions - see bm-TERNARY-implementation.txt
+		. parser.c	- bm_parse()
+		. string_util.c - p_prune( PRUNE_TERNARY, p )
+		. locate.c	- bm_locate_pivot(), xp_target(), bm_locate_param()
+	. Restored backward compatibility w/ Version-1.1
+	  sub-narrative execution
+		. bm_operation.c: implemented operation registries & warden
+		. parser.c : lift "base-narrative-only" EN/ELSE_EN restriction
+		. context.c:
+			. bm_context_set() / bm_context_clear() implementation
+			. restore bm_lookup & bm_register functionality including
+			  ALL ctx->registry variables
+		. operate()
+			. restore LOCALE support
+			. restore EN/ELSE_EN support
+		. pass ./B% -f Test/yak.ini Test/yak
+	. Parser optimization: if ( data->opt ) goto EXPR_BGN
+		and: set data->opt in _expr; clear it in expr_
+	. Restore sub-narratives, EN, LOCALE, and do .expression commands as per
+	  Version-1.1 in parser.c - cf ./design/specs/bm-sub-narrative-EN-association.txt
+		. sub-narrative proto format is
+			.identifier:( expression1 )
+			:( expression1 ) // pre-processed as .this:( expression1 )
+		. LOCALE are declarations
+			.var1 .var2 .... .varN
+		. EN / ELSE_EN are statements in the form
+			%( expression2 )
+			else %( expression2 )
+		  these statements enable execution of all sub-narratives verifying
+		  "proto:statement" - i.e. ( expression1 ):%( expression2 )
+		. do .expression commands are translated at readStory() time into
+			do ( identifier, expression )
+		  where identifier is the one specified in the current narrative proto
+		  Note that do .expression commands from the main narrative translate
+		  as do (this,expression) instantiating the base entity named "this"
+	. string_util.c - ternary operator support
+		. p_prune( PRUNE_TERNARY, p ), p_ternary( p )
+		. updated p_prune( type, p) so that
+		  with (new) type==PRUNE_TERNARY,
+			when called on opening '(' in ( expr ? expr : expr ),
+				returns on appropriate '?' [level==1] if there is
+		   with type==PRUNE_TERM or type==PRUNE_FILTER
+				when called past '(' in ( expr ? expr : expr ),
+				returns on appropriate '?' or ':' or ')'
+	. parser.c 	-> rewritten
+		. deprecated filterable() : replaced using COMPOUND flag
+		. implemented SIGNAL interface in file format: do signal~
+		. use one stack for all
+		. use flags instead of level (LEVEL) and stack.level (SET)
+		. support (: ) in DO expressions
+		. allow \cr to act as ',' in { }
+		. db_io.c eliminated - db_output() back to database.c
+		. bm_read(), in story.c, supercedes previous cnLoad() and db_input()
+	. narrative.c
+		. readStory rewritten separating cmd and expr
+		. transport typelse as part of type
+		. complete rewrite / CNParser
+		. changed CNOccurrence from [type,data:[expression,sub]] to [data:[type,expression],sub]
+		. Allow base mark in condition/event expressions
+		. Do not allow negated base mark - except "on ~( ... ? ... )"
+		. Story = Registry vs. listItem
+		. Deprecated sub-narrative File Format Interface
+	. db_op.c
+		. db_init() / db_exit() / db_in() / db_out()
+		. db_update() resets nil->sub[0] to NULL
+	. operation.c
+		. invoke bm_context_mark(), in locate.c
+		. do_input => unhacked
+	. locate.c [ NEW ]
+		. was part of context.c and traversal.c before
+		. added bm_context_mark()
+	. traversal.c / new BMContext definition
+		. changed xp_init, bm_feel, bm_traverse, xp_traverse
+		. returns CNInstance *found
+		. no more bm_push_mark()
+		. bm_locate becomes bm_locate_pivot, now in locate.c
+	. context.c
+		. BMContext:[ db, registry ] becomes [ this, registry ]
+		. extracted locate functions -> locate.c
+	. program.c / program.h [ NEW ]
+		. db_init() done after new cells made active, and updated
+		  once for TO_BE_MANIFESTED to become MANIFESTED
+	. Base/{list.c,registry.c,string_util.c}
+		=> include <stdint.h>
+		=> create pop_item() in list.c
+	. database.c
+		. implemented db_signal() db_coupled() db_uncouple()
+		. simplified freeCNDB() using cn_prune()
+		. db_couple() : no longer allow concurrent reassignments
+		. implemented db_outputf( FILE *, format, ... ) using db_output()
+		  used in e.g. db_instantiate() - and elsewhere...
+	. registry.c, btree.c, string_util.c, etc.
+		=> used proper casting - see BUG from Rob Kedoin
+		+  introduced pop_item()
+	. cache.h => integrated into pair.c
+		=> removed cache.c cache.h
+		=> everything derives from Pair
+
+
