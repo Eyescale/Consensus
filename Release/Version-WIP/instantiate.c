@@ -273,8 +273,8 @@ case_( feel_CB )
 case_( sound_CB )
 	int target = bm_scour( p, EMARK );
 	if ( target&EMARK && target!=EMARK ) {
-			fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
-			"dubious combination of query terms with %%!\n", p );
+		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
+		"dubious combination of query terms with %%!\n", p );
 	}
 	return feel( traverse_data, p, flags );
 case_( touch_CB )

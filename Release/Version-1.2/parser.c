@@ -356,10 +356,7 @@ B:CND_endif
 CND_ifn( mode==BM_STORY, C )
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
-		ons( ",)\n" )	do_( "expr" )	REENTER
-						WarnEntireCNDBCoupling
-						f_set( INFORMED )
-		ons( ":\n" )	do_( "expr" )	REENTER
+		ons( ":,)\n" )	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_( '(' )	do_( "expr" )	REENTER
 		on_separator	; // err
@@ -707,11 +704,7 @@ bm_parse_report( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	CNParser *parser = data->parser;
 	char *src = (mode==BM_LOAD)?(mode==BM_INPUT)?"bm_input":"bm_load":"bm_read";
 
-if ( errnum==ErrEntireCNDBCoupling ) {
-	int l = parser->line, c = parser->column;
-	fprintf( stderr, "Warning: %s: l%dc%d: coupling the entire CNDB...\n", src, l, c  );
-}
-else if ( mode==BM_INPUT ) {
+if ( mode==BM_INPUT ) {
 	char *s = StringFinish( data->string, 0 );
 	switch ( errnum ) {
 	case ErrUnknownState:

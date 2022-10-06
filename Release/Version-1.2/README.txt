@@ -53,7 +53,7 @@ Contents
 				on ~.: expression		passes if no event matches expression
 				do ~.: expression		nop
 
-	  signals		do identifier~			releases base entity upon creation
+	  signals		do identifier~			releases identifier base entity upon creation
 
 
     Other Changes and Additions [ SECTION TO BE COMPLETED ]

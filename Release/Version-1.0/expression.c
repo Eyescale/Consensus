@@ -29,10 +29,6 @@ fprintf( stderr, " ........{\n" );
 	data.stack.not = NULL;
 	data.stack.neg = NULL;
 	data.stack.p = NULL;
-#ifdef TRIM
-	// used by wildcard_opt
-	data.btree = btreefy( expression );
-#endif
 	data.db = db;
 	data.privy = privy;
 	data.empty = db_is_empty( db );
@@ -40,9 +36,6 @@ fprintf( stderr, " ........{\n" );
 	data.couple = 0;
 
 	int success = xp_verify( privy, x, expression, db, &data );
-#ifdef TRIM
-	freeBTree( data.btree );
-#endif
 #ifdef DEBUG
 fprintf( stderr, "db_verify:.......} success=%d\n", success );
 #endif
@@ -168,9 +161,8 @@ db_verify_sub( int op, int success,
 		case '?':
 			if ( not ) { success = 0; not = 0; }
 			else if ( data->empty ) success = 0;
-#ifdef TRIM
-			else if ( wildcard_opt( p, data->btree ) ) success = 1;
-#endif
+                        else if (( *exponent == NULL ) || ((int)(*exponent)->ptr == 1 ))
+                                success = 1; // wildcard is as_sub[1]
 			else success = ( xp_match( privy, *x, NULL, star, *exponent, base, db ) > 0 );
 			p++;
 			break;

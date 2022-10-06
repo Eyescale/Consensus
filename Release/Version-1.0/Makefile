@@ -19,7 +19,8 @@ OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 INCLUDES = -I. -I./include -I../../Base/include
 #CFLAGS = -DDEBUG
-CFLAGS = -O2 -DTRIM
+#CFLAGS = -O2 -DTRIM
+CFLAGS = -O2
 
 all:$(TARGETS)
 

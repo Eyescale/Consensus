@@ -119,9 +119,11 @@ BMTraverseCBSwitch( deternarize_traversal )
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
 case_( sub_expression_CB )
-	_continue( p+1 )	// hand over to open_CB
+	_post_( open_CB, p+1, 0 )
+	_break
 case_( dot_expression_CB )
-	_continue( p+1 )	// hand over to open_CB
+	_post_( open_CB, p+1, 0 )
+	_break
 case_( open_CB )
 	if ( p_ternary( p ) ) {
 		data->ternary = 1;
@@ -159,8 +161,7 @@ case_( ternary_operator_CB )
 			// ~. is our current candidate
 			data->segment = NULL;
 			// proceed to ")"
-			p = p_prune( PRUNE_TERNARY, p );
-			_continue( p ) }
+			p++; _prune( BM_PRUNE_TERNARY ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
@@ -170,8 +171,7 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		p = p_prune( PRUNE_TERNARY, p+1 );
-		_continue( p ) }
+		p++; _prune( BM_PRUNE_TERNARY ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -184,8 +184,7 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		p = p_prune( PRUNE_TERNARY, p );
-		_continue( p ) }
+		_prune( BM_PRUNE_TERNARY ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {

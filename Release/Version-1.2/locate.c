@@ -72,41 +72,40 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	}
 	return ( traverse_data.done==2 ? traverse_data.p : NULL );
 }
-
-static void pop_exponent( listItem **, listItem * );
-#define loc_( p, TARGET ) \
-	if ( !is_f(NEGATED) && data->target==TARGET ) \
-		{ traverse_data->done = 2; _continue( p ) } \
-	else _break
+#define pop_exponent( exponent, level ) \
+	while ( *exponent!=level ) popListItem( exponent );
 
 BMTraverseCBSwitch( bm_locate_pivot_traversal )
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==THIS ) {
 		xpn_add( exponent, AS_SUB, 0 );
-		traverse_data->done = 2;
-		_continue( p )
+		_return( 2 )
 	}
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
-	loc_( p+1, IDENTIFIER )
+	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
+		_post_return( 2 )
+	_break
 case_( identifier_CB )
-	loc_( p, IDENTIFIER )
+	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
+		_return( 2 )
+	_break
 case_( character_CB )
-	loc_( p, CHARACTER )
+	if ( !is_f(NEGATED) && data->target==CHARACTER )
+		_return( 2 )
+	_break
 case_( mod_character_CB )
-	loc_( p, MOD )
+	if ( !is_f(NEGATED) && data->target==MOD )
+		_return( 2 )
+	_break
 case_( star_character_CB )
-	loc_( p, STAR )
+	if ( !is_f(NEGATED) && data->target==STAR )
+		_return( 2 )
+	_break
 case_( mark_register_CB )
-	if ( !is_f(NEGATED) )
-		switch ( p[1] ) {
-		case '?': if ( data->target==QMARK )
-			{ traverse_data->done = 2; _continue( p ) }
-			break;
-		default: if ( data->target==EMARK )
-			{ traverse_data->done = 2; _continue( p ) }
-		}
+	if ( !is_f(NEGATED) && data->target==( p[1]=='?' ? QMARK : EMARK ) )
+		_return( 2 )
 	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
@@ -141,8 +140,7 @@ case_( dot_expression_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==THIS ) {
 		xpn_add( exponent, AS_SUB, 0 );
-		traverse_data->done = 2;
-		_continue( p )
+		_return( 2 )
 	}
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
@@ -176,12 +174,6 @@ case_( close_CB )
 		pop_exponent( data->exponent, tag ); }
 	_break;
 BMTraverseCBEnd
-
-static void
-pop_exponent( listItem **exponent, listItem *level )
-{
-	while ( *exponent!=level ) popListItem( exponent );
-}
 
 //===========================================================================
 //	bm_scour
@@ -229,13 +221,13 @@ case_( sc_dot_expr_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= THIS;
 		if ( data->target & THIS )
-			_return( p ) }
+			_return( 1 ) }
 	_break
 case_( sc_identifier_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= IDENTIFIER;
 		if ( data->target & IDENTIFIER )
-			_return( p ) }
+			_return( 1 ) }
 	_break
 case_( sc_character_CB )
 	if ( !is_f(NEGATED) )
@@ -255,7 +247,7 @@ case_( sc_mark_register_CB )
 		case '?':
 			data->candidate |= QMARK;
 			if ( data->target & QMARK )
-				_return( p )
+				_return( 1 )
 			break;
 		default:
 			data->candidate |= EMARK;
@@ -276,7 +268,7 @@ bm_locate_mark( char *expression, listItem **exponent )
 //	bm_locate_param
 //===========================================================================
 static BMTraverseCB
-	not_CB, deref_CB, sub_CB, dot_push_CB, push_CB, sift_CB, sep_CB,
+	not_CB, deref_CB, sub_expr_CB, dot_push_CB, push_CB, sift_CB, sep_CB,
 	pop_CB, wildcard_CB, parameter_CB;
 typedef struct {
 	listItem **exponent;
@@ -314,7 +306,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMNotCB ]		= not_CB;
 	table[ BMDereferenceCB ]	= deref_CB;
-	table[ BMSubExpressionCB ]	= sub_CB;
+	table[ BMSubExpressionCB ]	= sub_expr_CB;
 	table[ BMDotExpressionCB ]	= dot_push_CB;
 	table[ BMOpenCB ]		= push_CB;
 	table[ BMFilterCB ]		= sift_CB;
@@ -334,31 +326,26 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 BMTraverseCBSwitch( bm_locate_param_traversal )
 case_( not_CB )
 	if (( data->param_CB )) {
-		p = p_prune( PRUNE_FILTER, p+1 );
 		f_set( INFORMED )
-		_continue( p )
+		_prune( BM_PRUNE_FILTER )
 	}
 	else _break
 case_( deref_CB )
 	if (( data->param_CB )) {
-		p = p_prune( PRUNE_FILTER, p+1 );
 		f_set( INFORMED )
-		_continue( p )
+		_prune( BM_PRUNE_FILTER )
 	}
 	listItem **exponent = data->exponent;
 	xpn_add( exponent, AS_SUB, 1 );
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
 	_break
-case_( sub_CB )
-	p = p_prune( PRUNE_FILTER, p+1 );
+case_( sub_expr_CB )
 	f_set( INFORMED )
-	_continue( p )
+	_prune( BM_PRUNE_FILTER )
 case_( dot_push_CB )
 	xpn_add( data->exponent, SUB, 1 );
-	push_CB( traverse_data, p+1, flags );
-	flags = traverse_data->flags;
-	f_set( DOT )
+	_post_( push_CB, p+1, DOT )
 	_continue( p+2 )
 case_( push_CB )
 	f_push( &data->stack.flags )

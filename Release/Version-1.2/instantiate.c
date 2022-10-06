@@ -97,16 +97,17 @@ bm_instantiate( char *expression, BMContext *ctx )
 
 BMTraverseCBSwitch( bm_instantiate_traversal )
 case_( preempt_CB )
-	if ( p_filtered( p ) )
-		return collect_CB( traverse_data, p, flags );
+	if ( p_filtered( p ) ) {
+		if (!( data->sub[current] = bm_scan(p,data->ctx) ))
+			_return( 2 )
+		f_set( INFORMED )
+		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( collect_CB )
-	if (!( data->sub[ current ] = bm_scan( p, data->ctx ) ))
-		traverse_data->done = 2;
-	else {
-		p = p_prune( PRUNE_TERM, p );
-		f_set( INFORMED ); }
-	_continue( p )
+	if (!( data->sub[current] = bm_scan(p,data->ctx) ))
+		_return( 2 )
+	f_set( INFORMED )
+	_prune( BM_PRUNE_TERM )
 case_( bgn_set_CB )
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 0 ] );
@@ -144,11 +145,11 @@ case_( end_pipe_CB )
 case_( mark_register_CB )
 	if ( p[1]=='?' ) {
 		CNInstance *e = bm_context_lookup( data->ctx, "?" );
-		if ( !e ) { traverse_data->done=2; _continue( p ) }
+		if ( !e ) _return( 2 )
 		data->sub[ current ] = newItem( e ); }
 	else if ( p[1]=='!' ) {
 		listItem *i = bm_context_lookup( data->ctx, "!" );
-		if ( !i ) { traverse_data->done=2; _continue( p ) }
+		if ( !i ) _return( 2 )
 		listItem **sub = &data->sub[ current ];
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr ); }
 	_break
@@ -267,33 +268,27 @@ bm_void( char *expression, BMContext *ctx )
 
 BMTraverseCBSwitch( bm_void_traversal )
 case_( feel_CB )
-	if ( p_filtered( p ) )
-		return feel( traverse_data, p, flags );
+	if ( p_filtered( p ) ) {
+		if ( !bm_feel( BM_CONDITION, p, ctx ) )
+			_return( 2 )
+		f_set( INFORMED )
+		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( sound_CB )
 	int target = bm_scour( p, EMARK );
 	if ( target&EMARK && target!=EMARK ) {
-			fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
-			"dubious combination of query terms with %%!\n", p );
+		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
+		"dubious combination of query terms with %%!\n", p );
 	}
-	return feel( traverse_data, p, flags );
+	if ( !bm_feel( BM_CONDITION, p, ctx ) )
+		_return( 2 )
+	f_set( INFORMED )
+	_prune( BM_PRUNE_TERM )
 case_( touch_CB )
 	if ( p[1]=='?' && !bm_context_lookup( ctx, "?" ) )
-		{ traverse_data->done=2; return BM_DONE; }
+		_return( 2 )
 	_break
 BMTraverseCBEnd
-
-static BMCB_take
-feel( BMTraverseData *traverse_data, char *p, int flags )
-{
-	BMContext *ctx = traverse_data->user_data;
-	if ( !bm_feel( BM_CONDITION, p, ctx ) )
-		traverse_data->done = 2;
-	else {
-		traverse_data->p = p_prune( PRUNE_TERM, p );
-		traverse_data->flags = f_set( INFORMED ); }
-	return BM_DONE;
-}
 
 //===========================================================================
 //	bm_couple

@@ -23,8 +23,8 @@ ANALYSIS
 	. ctx->this->sub[ 0 ] = list of active subscriptions to other cells
 		= { cn_instance( this, that ) / this and that are cells }
 		= beyond the scope of Version-1.2
-	. entry is the cell-specific [ name, narratives:{} ] entry into the
-		story:Registry( [ name, narratives:{} ] )
+	. entry is the cell-specific [ name, narratives:{} ] entry into our
+		CNStory:Registry( [ name, narratives:{} ] )
 	  which is passed to bm_operate( cell, ..., story )
     Note
 	cell->ctx is initialized upon cell's activation by Program -
@@ -59,7 +59,7 @@ ANALYSIS
 			   impairs code readability
 			2. still must ward off repetition, which in Version-1.1
 			   relies on "no more than one sub-narrative execution
-			   per frame" - which is not the idea
+			   per frame" - which is not the correct idea
 			   => we do need post- (vs. pre-) bufferization
 			   => same difference in memory usage
 			   => Pros no más
@@ -70,11 +70,6 @@ ANALYSIS
 	derived from the passed cell's entry - is completed, bm_operate() invokes
 	operate() on each of the [ narrative, instance ] pair operate() just
 	enabled-registered - thereby completing a new pass - and bis repitita..
-
-	Note	Version-1.2 restricts EN/ELSE_EN occurrence to base narrative,
-		so we shall only have two passes. However we still must ward off
-		repetition - which, depending on the implementation, may eventually
-		cause us to lift this restriction.
 
 	The question is where to set ctx prior to each [ narrative, instance ]
 	operation. This must be done from the current sub-narrative's execution
@@ -90,7 +85,7 @@ ANALYSIS
 		=> We only need
 			enabled:[ [ narrative, instance ], registry ]
 
-	Q: How would we ward off [ narrative, instance ] repetition ?
+	Q: How do we ward off [ narrative, instance ] repetition ?
 	A: First, at operate() level. Then, at bm_operate() level.
 		We want a Registry( IndexedByAddress )
 			indexed by narrative (could be either way)
@@ -111,23 +106,21 @@ ANALYSIS
 	So now we have
 	Pair *request = operate( narrative, instance, ctx, narratives, story );
 	Each of request->enable and request->new must be integrated right away into a
-	bm_compound level container/Registry which later on will check duplicates.
+	bm_operate level container/Registry warding off duplicates.
 
 CONCLUSION
 	1. operate() scope changed: does not take &new, &enabled arguments,
 	   but instead returns Pair *request:[ enable, new ]
 	2. upon EN/ELSE_EN occurrences, operate allocates variable registry
 	   according to narrative[].proto:expression, which it registers into
-	   the double Registry request.enable - if no entry is found.
+	   the double Registry request.enable - if it is not already there.
 		=> The context registry creation and usage is the part I must
 		   retrieve from Version-1.1 - see the differences with
 		   ../Version-1.1/context.c
 	3. bm_operate() algorithm changed
 	3.1. integrates operate() request.enable return value into own
-	     cross-narratives double Registry
+	     inter-narratives double Registry
 	3.2. attaches operate() request.new return value to passed **new
-
-	Can start with #3 (within #ifdef)
 
 ERRATUM
 	bm_operate() should return its own list of Cells to be managed, as

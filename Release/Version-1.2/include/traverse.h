@@ -98,7 +98,6 @@ typedef enum {
 	BMRegexCB,		// /
 	BMIdentifierCB,		// identifier
 	BMSignalCB,		// identifier~
-	BMSyntaxErrorCB,
 	BMCBNum
 } BMCBName;
 typedef struct {
@@ -110,7 +109,10 @@ typedef struct {
 } BMTraverseData;
 typedef enum {
 	BM_DONE = 0,
-	BM_CONTINUE
+	BM_CONTINUE,
+	BM_PRUNE_TERNARY,
+	BM_PRUNE_FILTER,
+	BM_PRUNE_TERM,
 } BMCB_take;
 
 typedef BMCB_take BMTraverseCB( BMTraverseData *, char *p, int flags );
@@ -122,9 +124,16 @@ char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 		_CB_( traverse_data, q, flags ); \
 		flags = traverse_data->flags; \
 		f_set( f ) }
-#define _return( q ) { \
-		traverse_data->done = 1; \
-		_continue( q ) }
+#define _prune( take ) { \
+		traverse_data->flags = flags; \
+		traverse_data->p = p; \
+		return (take); }
+#define _return( val ) { \
+		traverse_data->done = val; \
+		_continue( p ) }
+#define _post_return( val ) { \
+		traverse_data->done = val; \
+		_continue( p+1 ) }
 #define _continue( q ) { \
 		traverse_data->flags = flags; \
 		traverse_data->p = q; \

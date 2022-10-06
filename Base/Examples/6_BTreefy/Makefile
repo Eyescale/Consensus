@@ -3,26 +3,20 @@ SHELL = /bin/sh
 
 .SUFFIXES: .c .o
 
-SRCS =	pair.c \
-	list.c \
-	entity.c \
-	registry.c \
-	string_util.c
+SRCS = main.c btree.c
 
-LIB = libcn.a
+TARGETS = btreefy
 
-TARGETS = $(LIB)
-
-LFLAGS = -L.
+LFLAGS = -L. -L../..
 OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
-INCLUDES = -I. -I./include
+INCLUDES = -I. -I./include -I../../include
 CFLAGS = -O2
 
 all:$(TARGETS)
 
-$(LIB): $(OBJDIR) $(OBJS)
-	ar -rcvus $(LIB) $(OBJS)
+btreefy: $(OBJDIR) $(OBJS) ../../libcn.a
+	$(CC) -o btreefy $(INCLUDES) $(OBJS) $(LFLAGS) -lcn
 
 $(OBJS): $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
@@ -31,6 +25,6 @@ $(OBJDIR):
 	mkdir .ofiles
 
 clean:
-	$(RM) $(OBJDIR)/*.o $(LIB) btreefy
+	$(RM) $(OBJDIR)/*.o $(TARGETS)
 	rmdir .ofiles
 

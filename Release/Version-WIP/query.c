@@ -101,7 +101,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 static CNInstance *
 xp_traverse( char *expression, BMQueryData *data )
 /*
-	Traverses data->pivot's exponent invoking verify on every match
+	Traverses data->pivot's exponent invoking bm_verify on every match
 	returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumption: pivot->value is not deprecated - and neither are its subs
 */

@@ -1,8 +1,11 @@
+See Also
+	Consensus/Release/Version-1.2/bm-sub-narrative-EN-implementation.txt
+
 Definition
 	We call Cell a [ narrative, CNDB ] Relationship Instance
 	It has	. a parent
-		. connections: proxies to other cells this cell
-		  subscribes to, such that
+		. connections: proxies to other cells this cell subscribes to,
+		  so that
 			proxy->sub:[ NULL, other-cell ]
 			proxy->as_sub:[ {}, {} ] // CNDB specific
 	So we have
@@ -187,7 +190,7 @@ cnRun( CNStory *story, char *inipath )
 
 ---------------------------------------------------------------------------
 Issues:
-	1. The current implementation will delete this entity on parent's
+	1. The current implementation will delete this entity upon parent's
 	   exit - unless check entity.sub[0]==NULL - due to the relationship
 	   instance with parent's %% base entity
 	2. Can we prevent ( %%, . ) relationship instances other than

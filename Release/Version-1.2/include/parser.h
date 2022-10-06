@@ -68,7 +68,6 @@ typedef enum {
 	ErrNarrativeEmpty,
 	ErrNarrativeDouble,
 	ErrUnknownCommand,
-	ErrEntireCNDBCoupling,
 } BMParseErr;
 
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
