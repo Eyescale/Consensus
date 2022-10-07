@@ -9,7 +9,7 @@
 //===========================================================================
 //	btreefy
 //===========================================================================
-static BTreeNode * newBTree( void * );
+static BTreeNode *newNode( char * );
 
 BTreeNode *
 btreefy( char *sequence )
@@ -18,41 +18,48 @@ btreefy( char *sequence )
 */
 {
 	listItem *stack = NULL;
-	BTreeNode *root = newBTree( NULL );
+	BTreeNode *root = newNode( NULL );
 
 	// fake '('
 	BTreeNode *node = root;
 	int position = POSITION_LEFT;
-	BTreeNode *sub = ( *sequence==':' ) ? NULL: newBTree( sequence );
+	BTreeNode *sub = ( *sequence==':' ) ? NULL: newNode( sequence );
 
-	for ( char *p=sequence; *p; p++ ) {
+	char *p = sequence;
+	for ( ; *p; p++ ) {
 		switch ( *p ) {
 		case '{':
 		case '(':
+			sub->data->end = p;
 			addItem( &stack, sub );
 			addItem( &stack, node );
 			add_item( &stack, position );
 			node = sub;
 			position = POSITION_LEFT;
-			sub = newBTree( p+1 );
+			sub = newNode( p+1 );
 			break;
 		case '|':
 		case ':':
-			if ((sub)) addItem( &node->sub[ position ], sub );
-			sub = newBTree( p );
+			if ((sub)) {
+				sub->data->end = p;
+				addItem( &node->sub[ position ], sub );
+			}
+			sub = newNode( p );
 			break;
 		case ',':
 			if ( !stack ) goto RETURN;
+			sub->data->end = p;
 			addItem( &node->sub[ position ], sub );
 			if (!( *(char *)node->data == '{' )) {
 				reorderListItem( &node->sub[ 0 ] );
 				position = POSITION_RIGHT;
 			}
-			sub = newBTree( p );
+			sub = newNode( p );
 			break;
 		case '}':
 		case ')':
 			if ( !stack ) goto RETURN;
+			sub->data->end = p;
 			addItem( &node->sub[ position ], sub );
 			reorderListItem( &node->sub[ position ] );
 			position = pop_item( &stack );
@@ -62,13 +69,17 @@ btreefy( char *sequence )
 		}
 	}
 RETURN:
-	if ((sub)) addItem( &root->sub[ 0 ], sub );
+	if ((sub)) {
+		sub->data->end = p;
+		addItem( &root->sub[ 0 ], sub );
+	}
 	reorderListItem( &root->sub[0] );
 	return root;
 }
 static BTreeNode *
-newBTree( void *data )
+newNode( char *bgn )
 {
+	Pair *data = newPair( bgn, NULL );
 	Pair *sub = newPair( NULL, NULL );
 	return (BTreeNode *) newPair( data, sub );
 }
@@ -76,7 +87,7 @@ newBTree( void *data )
 //===========================================================================
 //	output_btree
 //===========================================================================
-static void output_data( char *p, int level, int base );
+static void output_data( Pair *data, int level, int base );
 static void output_tab( int level );
 
 void
@@ -88,7 +99,7 @@ output_btree( BTreeNode *root, int base )
 	int level = base;
 	while (( i )) {
 		BTreeNode *node = i->ptr;
-		output_data( node->data, level, base );
+		output_data((Pair *) node->data, level, base );
 		listItem *j = node->sub[ position ];
 		if (( j )) {
 			if ( position==POSITION_LEFT ) {
@@ -127,7 +138,7 @@ output_btree( BTreeNode *root, int base )
 	}
 }
 static void
-output_data( char *p, int level, int base )
+output_data( Pair *data, int level, int base )
 /*
    Use Cases
 	_	{	(
@@ -137,6 +148,7 @@ output_data( char *p, int level, int base )
 	,_	,_{	,_(	,_|	,_:	,_,	,_)	,_}
 */
 {
+	char *p = data->name;
 	switch ( *p ) {
 		case '{':
 		case '(':
@@ -250,6 +262,7 @@ freeNode( BTreeNode *node )
 {
 	freeListItem( &node->sub[ POSITION_LEFT ] );
 	freeListItem( &node->sub[ POSITION_RIGHT ] );
+	freePair((Pair *) node->data );
 	freePair((Pair *) node->sub );
 	freePair((Pair *) node );
 }
