@@ -5,21 +5,127 @@
 #include "traverse.h"
 
 #define BMTraverseError -1
+typedef struct {
+	struct {
+		char *p;
+		union { void *ptr; int value; } flags;
+	} *data;
+	listItem **sub;
+} BTNode;
 
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
-static char *traverse( char *, BMTraverseData *, listItem **, int );
+static char *traverse( char *, BMTraverseData *, listItem **, int, BTNode * );
+static BTNode *newNode( void * );
+static void freeBTree( BTNode * );
+static BMTraverseCB
+	bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB, sub_expression_CB,
+	dot_expression_CB, open_CB, ternary_operator_CB, filter_CB, decouple_CB,
+	close_CB;
+typedef struct {
+	BTNode *root;
+	BTNode *node;
+	BTNode *sub;
+	int position;
+	listItem *stack;
+} BTreefyData;
+#define case_( func ) \
+	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
+		BTreefyData *data = traverse_data->user_data;
 
 char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
 {
-	char *p = traverse( expression, traverse_data, stack, flags );
+	// btreefy expression in order to set flags COUPLE, TERNARY, FILTERED
+	BTreefyData data;
+	memset( &data, 0, sizeof(data) );
+	listItem *stack = NULL;
+
+	BMTraverseData traverse_data;
+	memset( &traversedata, 0, sizeof(traverse_data) );
+	traverse_data.user_data = &data;
+
+	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMBgnSetCB ]		= bgn_set_CB;
+	table[ BMEndSetCB ]		= end_set_CB;
+	table[ BMBgnPipeCB ]		= bgn_pipe_CB;
+	table[ BMEndPipeCB ]		= end_pipe_CB;
+	table[ BMSubExpressionCB ]	= sub_expression_CB;
+	table[ BMDotExpressionCB ]	= dot_expression_CB;
+	table[ BMOpenCB ]		= open_CB;
+	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
+	table[ BMFilterCB ]		= filter_CB;
+	table[ BMDecoupleCB ]		= decouple_CB;
+	table[ BMCloseCB ]		= close_CB;
+	traverse( expression, &traverse_data, &stack, FIRST, NULL );
+	reorderListItem( &data.root->sub[ 0 ] );
+
+	// then traverse expression and btree together
+	char *p = traverse( expression, traverse_data, stack, flags, data.root );
 	switch ( traverse_data->done ) {
 	case BMTraverseError:
-		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error\n" );
+		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
+			"in expression: %s, at %s\n", expression, traverse_data->p );
 	}
+	freeBTree( data.root );
 	return p;
+}
+
+BMTraverseCBSwitch( btreefy_traversal )
+case_( bgn_set_CB )
+case_( end_set_CB )
+case_( bgn_pipe_CB )
+case_( end_pipe_CB )
+case_( sub_expression_CB )
+case_( dot_expression_CB )
+case_( ternary_operator_CB )
+case_( open_CB )
+	if ( !data->sub ) {
+		data->sub = newNode( p ); <<<<<<
+		if (( data->root )) {
+			addItem( &data->node->sub[data->position], sub );
+		}
+		else data->root = data->node = data->sub;
+	}
+	addItem( &data->stack, node );
+	add_item( &data->stack, data->position );
+	data->node = data->sub;
+	data->sub = NULL;
+	data->position = 0;
+	_break
+case_( decouple_CB )
+	data->position = 1;
+	data->sub = newNode( p ); <<<<<
+	addItem( &data->node->sub[ 1 ], data->sub )
+	_break
+case_( filter_CB )
+	data->sub = newNode( p );
+	addItem( &data->node->sub[ data->position ], data->sub )
+	_break
+case_( close_CB )
+	BTNode *node = data->node;
+	reorderListItem( &node->sub[ 0 ] );
+	reorderListItem( &node->sub[ 1 ] );
+	data->position = pop_item( &data->stack );
+	node = popListItem( &data->stack );
+	data->sub = node->sub[ position ]->ptr;
+	_break
+default:
+	if ( !sub ) {
+		sub = newBTree( p );
+		if (( root )) {
+			addItem( &node->sub[position], sub );
+		}
+		else root = node = sub;
+	}
+BMTraverseCBEnd
+
+static BTNode *
+newNode( void *data )
+{
+	Pair *sub = newPair( NULL, NULL );
+	return (BTNode *) newPair( data, sub );
 }
 
 //===========================================================================
@@ -28,7 +134,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, 
 static void CB_alert( BMCBName, char * );
 
 static char *
-traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
+traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags, BTNode *btree )
 {
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
 	union { int value; void *ptr; } icast;

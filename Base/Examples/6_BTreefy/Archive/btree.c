@@ -19,52 +19,56 @@ btreefy( char *sequence )
 	if ( !*sequence ) return NULL;
 
 	listItem *stack = NULL;
-	BTreeNode *root = newBTree( NULL );
 
-	// fake '('
-	BTreeNode *node = root;
-	int position = POSITION_LEFT;
-	BTreeNode *sub = ( *sequence==':' ) ? NULL: newBTree( sequence );
+	int position = POSITION_LEFT, scope = 1;
+	BTreeNode *sub = NULL;
+	BTreeNode *node = NULL;
+	BTreeNode *root = NULL;
 
-	for ( char *p=sequence; *p; p++ ) {
+	for ( char *p=sequence; *p && scope; p++ ) {
 		switch ( *p ) {
-		case '{':
 		case '(':
-			addItem( &stack, sub );
+			scope++;
+			if ( !sub ) {
+				sub = newBTree( p );
+				if (( root )) {
+					addItem( &node->sub[position], sub );
+				}
+				else root = node = sub;
+			}
 			addItem( &stack, node );
 			add_item( &stack, position );
-			node = sub;
+			node = sub; sub = NULL;
 			position = POSITION_LEFT;
-			sub = newBTree( p+1 );
 			break;
 		case ',':
-			if ( !stack ) goto RETURN;
-			addItem( &node->sub[ position ], sub );
-			if (!( *(char *)node->data == '{' )) {
-				reorderListItem( &node->sub[ 0 ] );
-				position = POSITION_RIGHT;
-			}
-			sub = newBTree( p );
-			break;
-		case '|':
+			position = POSITION_RIGHT;
+			// no break
 		case ':':
-			if ((sub)) addItem( &node->sub[ position ], sub );
 			sub = newBTree( p );
-			break;
-		case '}':
-		case ')':
-			if ( !stack ) goto RETURN;
 			addItem( &node->sub[ position ], sub );
-			reorderListItem( &node->sub[ position ] );
+			break;
+		case ')':
+			scope--;
+			if ( !scope ) break;
+			reorderListItem( &node->sub[ 0 ] );
+			reorderListItem( &node->sub[ 1 ] );
 			position = pop_item( &stack );
 			node = popListItem( &stack );
-			sub = popListItem( &stack );
+			sub = node->sub[ position ]->ptr;
 			break;
+		default:
+			if ( !sub ) {
+				sub = newBTree( p );
+				if (( root )) {
+					addItem( &node->sub[position], sub );
+				}
+				else root = node = sub;
+			}
 		}
 	}
-RETURN:
-	if ((sub)) addItem( &root->sub[ 0 ], sub );
-	reorderListItem( &root->sub[0] );
+	freeListItem( &stack );
+	reorderListItem( &root->sub[ 0 ] );
 	return root;
 }
 static BTreeNode *
