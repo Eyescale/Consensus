@@ -12,6 +12,7 @@ typedef struct {
 #define POSITION_RIGHT	1
 
 BTreeNode *btreefy( char *sequence );
+void output_btree( BTreeNode *, int );
 enum {
 	BT_DONE,
 	BT_PRUNE,

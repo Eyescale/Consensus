@@ -3,6 +3,7 @@
 
 #include "list.h"
 #include "pair.h"
+#include "string_util.h"
 #include "btree.h"
 
 //===========================================================================
@@ -35,6 +36,11 @@ btreefy( char *sequence )
 			position = POSITION_LEFT;
 			sub = newBTree( p+1 );
 			break;
+		case '|':
+		case ':':
+			if ((sub)) addItem( &node->sub[ position ], sub );
+			sub = newBTree( p );
+			break;
 		case ',':
 			if ( !stack ) goto RETURN;
 			addItem( &node->sub[ position ], sub );
@@ -42,11 +48,6 @@ btreefy( char *sequence )
 				reorderListItem( &node->sub[ 0 ] );
 				position = POSITION_RIGHT;
 			}
-			sub = newBTree( p );
-			break;
-		case '|':
-		case ':':
-			if ((sub)) addItem( &node->sub[ position ], sub );
 			sub = newBTree( p );
 			break;
 		case '}':
@@ -73,155 +74,182 @@ newBTree( void *data )
 }
 
 //===========================================================================
-//	bt_traverse
+//	output_btree
 //===========================================================================
-int
-bt_traverse( BTreeNode *node, BTreeTraverseCB callback, void *user_data )
+static void output_data( char *p, int level, int base );
+static void output_tab( int level );
+
+void
+output_btree( BTreeNode *root, int base )
 {
-	if ( node == NULL ) return 0;
-
-	union { int value; void *ptr; } icast;
-	listItem *stack = NULL, *path = NULL;
-
-	int	position = POSITION_LEFT,
-		as_sub_position = 0,	//  N/A
-		prune = 0;
-
-	listItem *i = newItem( node );
-	for ( ; ; ) {
-		node = i->ptr;
-		addItem( &path, node );
-		if ( callback ) {
-			switch ( callback( &path, as_sub_position, i, user_data ) ) {
-			case BT_DONE: goto RETURN;
-			case BT_PRUNE: prune = 1;
+	listItem *stack = NULL;
+	int position = POSITION_LEFT;
+	listItem *i = root->sub[ POSITION_LEFT ];
+	int level = base;
+	while (( i )) {
+		BTreeNode *node = i->ptr;
+		output_data( node->data, level, base );
+		listItem *j = node->sub[ position ];
+		if (( j )) {
+			if ( position==POSITION_LEFT ) {
+				addItem( &stack, i );
+				add_item( &stack, POSITION_LEFT );
+				level++;
 			}
+			else position = POSITION_LEFT;
+			i = j; continue;
 		}
-		if ( prune ) prune = 0;
-		else {
-			listItem *j = node->sub[ position ];
-			if (( j )) {
-				as_sub_position = position;
-				if ( position == POSITION_LEFT ) {
-					addItem( &stack, i );
-					add_item( &stack, POSITION_LEFT );
-				}
-				i = j;
-				position = POSITION_LEFT;
-				continue;
-			}
-		}
-		for ( ; ; ) {
-			if (( node )) popListItem( &path );
-			if (( i->next )) {
-				i = i->next;
-				break;
-			}
-			else if (( stack )) {
-				union { int value; void *ptr; } icast;
+		if (( i->next ))
+			i = i->next;
+		else if (( stack )) {
+			union { int value; void *ptr; } icast;
+			do {
 				icast.ptr = stack->ptr;
-				as_sub_position = icast.value;
-				if ( as_sub_position == POSITION_LEFT ) {
+				if ( icast.value==POSITION_LEFT ) {
 					icast.value = POSITION_RIGHT;
 					stack->ptr = icast.ptr;
-					listItem *k = stack->next->ptr;
-					BTreeNode *parent = k->ptr;
-					listItem *j = parent->sub[ POSITION_RIGHT ];
-					if (( j )) {
-						i = j;
-						as_sub_position = POSITION_RIGHT;
-						position = POSITION_LEFT;
-						break;
-					}
-					else node = NULL;
+
+					listItem *j = stack->next->ptr;
+					BTreeNode *parent = j->ptr;
+
+					i = parent->sub[ POSITION_RIGHT ];
 				}
 				else {
+					level--;
 					position = pop_item( &stack );
 					i = popListItem( &stack );
-					node = i->ptr;
+					i = i->next;
 				}
+				position = POSITION_LEFT;
+			} while ( !i && (stack) );
+		}
+		else break;
+	}
+}
+static void
+output_data( char *p, int level, int base )
+/*
+   Use Cases
+	_	{	(
+	_|	_{	_(	_:	_,	_)	_}
+	|_	|_{	|_(	|_|	|_:	|_,	|_)	|_}
+	:_	:_{	:_(	:_|	:_:	:_,	:_)	:_}
+	,_	,_{	,_(	,_|	,_:	,_,	,_)	,_}
+*/
+{
+	switch ( *p ) {
+		case '{':
+		case '(':
+			output_tab( level );
+			putchar( *p );
+			putchar( '\n' );
+			return;
+		case ',':
+			output_tab( level-1 );
+			putchar( ',' );
+			putchar( '\n' );
+			output_tab( level );
+			break;
+		case '|':
+		case ':':
+		default:
+			output_tab( level );
+			putchar( *p );
+			break;
+	}
+	for ( p++; *p; p++ ) {
+		switch ( *p ) {
+		case '{':
+		case '(':
+			putchar( *p );
+			putchar( '\n' );
+			return;
+		case '}':
+		case ')':
+			do {
+				level--;
+				putchar( '\n' );
+				output_tab( level );
+				putchar( *p );
+				putchar( '\n' );
 			}
-			else {
-				freeItem( i );
-				return 0;
-			}
+			while ((level>base) && ((p[1]=='}'||p[1]==')') ? p++ : NULL ));
+			return;
+		case '|':
+		case ':':
+		case ',':
+			putchar( '\n' );
+			return;
+		default:
+			putchar( *p );
 		}
 	}
-RETURN:
-	freeListItem( &path );
-	while (( stack )) {
-		position = pop_item( &stack );
-		i = popListItem( &stack );
-	}
-	freeItem( i );
-	return 1;
+	// here we finished sequence !
+	putchar( '\n' );
+}
+static void
+output_tab( int level )
+{
+	while ( level-- ) putchar( '\t' );
 }
 
 //===========================================================================
 //	freeBTree
 //===========================================================================
+static void freeNode( BTreeNode * );
+
 void
-freeBTree( BTreeNode *node )
+freeBTree( BTreeNode *root )
 {
-	if ( node == NULL ) return;
-
-	union { int value; void *ptr; } icast;
 	listItem *stack = NULL;
-
-	int	position = POSITION_LEFT;
-
-	listItem *i = newItem( node );
-	for ( ; ; ) {
-		node = i->ptr;
+	int position = POSITION_LEFT;
+	listItem *i = root->sub[ position ];
+	while (( i )) {
+		BTreeNode *node = i->ptr;
 		listItem *j = node->sub[ position ];
 		if (( j )) {
 			if ( position == POSITION_LEFT ) {
 				addItem( &stack, i );
-				add_item( &stack, position );
+				add_item( &stack, POSITION_LEFT );
 			}
-			i = j;
 			position = POSITION_LEFT;
-			continue;
+			i = j; continue;
 		}
-		for ( ; ; ) {
-			if (( node )) {
-				freeListItem( &node->sub[ POSITION_LEFT ] );
-				freeListItem( &node->sub[ POSITION_RIGHT ] );
-				freePair((Pair *) node->sub );
-				freePair((Pair *) node );
-			}
-			if (( i->next )) {
-				i = i->next;
-				break;
-			}
-			else if (( stack )) {
-				union { int value; void *ptr; } icast;
+		freeNode( node );
+		if (( i->next ))
+			i = i->next;
+		else if (( stack )) {
+			union { int value; void *ptr; } icast;
+			do {
 				icast.ptr = stack->ptr;
-				int as_sub_position = icast.value;
-				if ( as_sub_position == POSITION_LEFT ) {
+				if ( icast.value==POSITION_LEFT ) {
 					icast.value = POSITION_RIGHT;
 					stack->ptr = icast.ptr;
-					listItem *k = stack->next->ptr;
-					BTreeNode *as_sub = k->ptr;
-					listItem *j = as_sub->sub[ POSITION_RIGHT ];
-					if (( j )) {
-						i = j;
-						position = POSITION_LEFT;
-						break;
-					}
-					else node = NULL;
+
+					listItem *j = stack->next->ptr;
+					BTreeNode *parent = j->ptr;
+
+					i = parent->sub[ POSITION_RIGHT ];
 				}
 				else {
 					position = pop_item( &stack );
 					i = popListItem( &stack );
-					node = i->ptr;
+					freeNode( i->ptr );
+					i = i->next;
 				}
-			}
-			else {
-				freeItem( i );
-				return;
-			}
+				position = POSITION_LEFT;
+			} while ( !i && (stack) );
 		}
+		else break;
 	}
+	freeNode( root );
 }
 
+static void
+freeNode( BTreeNode *node )
+{
+	freeListItem( &node->sub[ POSITION_LEFT ] );
+	freeListItem( &node->sub[ POSITION_RIGHT ] );
+	freePair((Pair *) node->sub );
+	freePair((Pair *) node );
+}
