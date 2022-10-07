@@ -4,137 +4,18 @@
 #include "string_util.h"
 #include "traverse.h"
 
-#define BMTraverseError -1
-typedef struct {
-	struct {
-		char *p;
-		union { void *ptr; int value; } flags;
-	} *data;
-	listItem **sub;
-} BTNode;
-
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
-static char *traverse( char *, BMTraverseData *, listItem **, int, BTNode * );
-static BTNode *newNode( void * );
-static void freeBTree( BTNode * );
-static BMTraverseCB
-	bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB, sub_expression_CB,
-	dot_expression_CB, open_CB, ternary_operator_CB, filter_CB, decouple_CB,
-	close_CB;
-typedef struct {
-	BTNode *root;
-	BTNode *node;
-	BTNode *sub;
-	int position;
-	listItem *stack;
-} BTreefyData;
-#define case_( func ) \
-	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
-		BTreefyData *data = traverse_data->user_data;
-
+static void bm_callback_alert( BMCBName, char * );
+#define BMTraverseError -1
+#define bar_( CB, out ) \
+	if ((table[CB]) && table[CB]( traverse_data, p, flags )==BM_DONE ) { \
+		flags = traverse_data->flags; \
+		p = traverse_data->p; \
+		out; }
 char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags )
-{
-	// btreefy expression in order to set flags COUPLE, TERNARY, FILTERED
-	BTreefyData data;
-	memset( &data, 0, sizeof(data) );
-	listItem *stack = NULL;
-
-	BMTraverseData traverse_data;
-	memset( &traversedata, 0, sizeof(traverse_data) );
-	traverse_data.user_data = &data;
-
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMBgnSetCB ]		= bgn_set_CB;
-	table[ BMEndSetCB ]		= end_set_CB;
-	table[ BMBgnPipeCB ]		= bgn_pipe_CB;
-	table[ BMEndPipeCB ]		= end_pipe_CB;
-	table[ BMSubExpressionCB ]	= sub_expression_CB;
-	table[ BMDotExpressionCB ]	= dot_expression_CB;
-	table[ BMOpenCB ]		= open_CB;
-	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
-	table[ BMFilterCB ]		= filter_CB;
-	table[ BMDecoupleCB ]		= decouple_CB;
-	table[ BMCloseCB ]		= close_CB;
-	traverse( expression, &traverse_data, &stack, FIRST, NULL );
-	reorderListItem( &data.root->sub[ 0 ] );
-
-	// then traverse expression and btree together
-	char *p = traverse( expression, traverse_data, stack, flags, data.root );
-	switch ( traverse_data->done ) {
-	case BMTraverseError:
-		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
-			"in expression: %s, at %s\n", expression, traverse_data->p );
-	}
-	freeBTree( data.root );
-	return p;
-}
-
-BMTraverseCBSwitch( btreefy_traversal )
-case_( bgn_set_CB )
-case_( end_set_CB )
-case_( bgn_pipe_CB )
-case_( end_pipe_CB )
-case_( sub_expression_CB )
-case_( dot_expression_CB )
-case_( ternary_operator_CB )
-case_( open_CB )
-	if ( !data->sub ) {
-		data->sub = newNode( p ); <<<<<<
-		if (( data->root )) {
-			addItem( &data->node->sub[data->position], sub );
-		}
-		else data->root = data->node = data->sub;
-	}
-	addItem( &data->stack, node );
-	add_item( &data->stack, data->position );
-	data->node = data->sub;
-	data->sub = NULL;
-	data->position = 0;
-	_break
-case_( decouple_CB )
-	data->position = 1;
-	data->sub = newNode( p ); <<<<<
-	addItem( &data->node->sub[ 1 ], data->sub )
-	_break
-case_( filter_CB )
-	data->sub = newNode( p );
-	addItem( &data->node->sub[ data->position ], data->sub )
-	_break
-case_( close_CB )
-	BTNode *node = data->node;
-	reorderListItem( &node->sub[ 0 ] );
-	reorderListItem( &node->sub[ 1 ] );
-	data->position = pop_item( &data->stack );
-	node = popListItem( &data->stack );
-	data->sub = node->sub[ position ]->ptr;
-	_break
-default:
-	if ( !sub ) {
-		sub = newBTree( p );
-		if (( root )) {
-			addItem( &node->sub[position], sub );
-		}
-		else root = node = sub;
-	}
-BMTraverseCBEnd
-
-static BTNode *
-newNode( void *data )
-{
-	Pair *sub = newPair( NULL, NULL );
-	return (BTNode *) newPair( data, sub );
-}
-
-//===========================================================================
-//	traverse
-//===========================================================================
-static void CB_alert( BMCBName, char * );
-
-static char *
-traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int flags, BTNode *btree )
 {
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
 	union { int value; void *ptr; } icast;
@@ -152,7 +33,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				flags = traverse_data->flags;
 				p = p_prune( PRUNE_TERM, p+1 );
 				continue;
-			default: CB_alert( BMPreemptCB, p );
+			default: bm_callback_alert( BMPreemptCB, p );
 			} }
 		switch ( *p ) {
 		case '>':
@@ -175,7 +56,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = p_prune( PRUNE_TERM, p+1 );
 					continue;
-				default: CB_alert( BMNotCB, p );
+				default: bm_callback_alert( BMNotCB, p );
 				} }
 			if is_f( NEGATED ) f_clr( NEGATED )	
 			else f_set( NEGATED )
@@ -185,7 +66,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				switch ( table[BMBgnSetCB]( traverse_data, p, flags ) ) {
 				case BM_CONTINUE:
 					break;
-				default: CB_alert( BMBgnSetCB, p );
+				default: bm_callback_alert( BMBgnSetCB, p );
 				} }
 			f_push( stack )
 			f_reset( FIRST|SET, 0 )
@@ -201,7 +82,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				switch ( table[BMEndSetCB]( traverse_data, p, flags ) ) {
 				case BM_CONTINUE:
 					break;
-				default: CB_alert( BMEndSetCB, p );
+				default: bm_callback_alert( BMEndSetCB, p );
 				} }
 			f_pop( stack, 0 )
 			f_clr( NEGATED )
@@ -218,7 +99,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				switch ( table[BMBgnPipeCB]( traverse_data, p, flags ) ) {
 				case BM_CONTINUE:
 					break;
-				default: CB_alert( BMBgnPipeCB, p );
+				default: bm_callback_alert( BMBgnPipeCB, p );
 				} }
 			f_push( stack )
 			f_reset( PIPED, SET )
@@ -233,7 +114,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = traverse_data->p;
 						continue;
-					default: CB_alert( BMStarCharacterCB, p );
+					default: bm_callback_alert( BMStarCharacterCB, p );
 					} }
 				f_clr( NEGATED )
 				f_set( INFORMED )
@@ -255,7 +136,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = p_prune( PRUNE_TERM, p+1 );
 					continue;
-				default: CB_alert( BMDereferenceCB, p );
+				default: bm_callback_alert( BMDereferenceCB, p );
 				} }
 			f_clr( INFORMED )
 			p++; break;
@@ -277,7 +158,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = p_prune( PRUNE_TERM, p );
 						continue;
-					default: CB_alert( BMMarkRegisterCB, p );
+					default: bm_callback_alert( BMMarkRegisterCB, p );
 					} }
 				f_clr( NEGATED )
 				f_set( INFORMED )
@@ -300,7 +181,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = p_prune( PRUNE_TERM, p+1 );
 						continue;
-					default: CB_alert( BMSubExpressionCB, p );
+					default: bm_callback_alert( BMSubExpressionCB, p );
 					} }
 				f_push( stack )
 				f_reset( FIRST|SUB_EXPR, SET )
@@ -315,13 +196,17 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = traverse_data->p;
 						continue;
-					default: CB_alert( BMModCharacterCB, p );
+					default: bm_callback_alert( BMModCharacterCB, p );
 					} }
 				f_clr( NEGATED )
 				f_set( INFORMED )
 				p++; break;
 			}
-			else traverse_data->done = BMTraverseError;
+			else {
+				fprintf( stderr, ">>>>> B%%: Error: bm_traverse: unexpected '%%'_continuation\n" );
+				traverse_data->done = BMTraverseError;
+				break;
+			}
 			break;
 		case '(':
 			if ( p[1]==':' ) {
@@ -333,7 +218,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = traverse_data->p;
 						continue;
-					default: CB_alert( BMLiteralCB, p );
+					default: bm_callback_alert( BMLiteralCB, p );
 					} }
 				p = p_prune( PRUNE_LITERAL, p );
 				f_set( INFORMED )
@@ -347,7 +232,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMOpenCB, p );
+				default: bm_callback_alert( BMOpenCB, p );
 				} }
 			f_push( stack )
 			f_reset( FIRST|LEVEL, SET|SUB_EXPR|MARKED )
@@ -396,7 +281,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = p_prune( PRUNE_TERM, p+1 );
 					continue;
-				default: CB_alert( BMDecoupleCB, p );
+				default: bm_callback_alert( BMDecoupleCB, p );
 				} }
 			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 			f_clr( FILTERED|INFORMED )
@@ -411,7 +296,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					switch ( table[BMEndPipeCB]( traverse_data, p, flags ) ) {
 					case BM_CONTINUE:
 						break;
-					default: CB_alert( BMEndPipeCB, p );
+					default: bm_callback_alert( BMEndPipeCB, p );
 					} }
 				f_pop( stack, 0 )
 			}
@@ -429,7 +314,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMCloseCB, p );
+				default: bm_callback_alert( BMCloseCB, p );
 				} }
 			f_pop( stack, 0 );
 			f_clr( NEGATED )
@@ -452,7 +337,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						p = traverse_data->p;
 						p = p_prune( PRUNE_TERNARY, p ); // move to ')'
 						continue;
-					default: CB_alert( BMTernaryOperatorCB, p );
+					default: bm_callback_alert( BMTernaryOperatorCB, p );
 					} }
 				f_clr( NEGATED|FILTERED|INFORMED )
 				f_set( TERNARY )
@@ -466,7 +351,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMWildCardCB, p );
+				default: bm_callback_alert( BMWildCardCB, p );
 				} }
 			f_clr( NEGATED )
 			f_set( INFORMED )
@@ -489,7 +374,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = p_prune( PRUNE_TERM, p+1 );
 						continue;
-					default: CB_alert( BMDotExpressionCB, p );
+					default: bm_callback_alert( BMDotExpressionCB, p );
 					} }
 				f_push( stack )
 				f_reset( FIRST|DOT|LEVEL, SET|SUB_EXPR|MARKED )
@@ -504,7 +389,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = traverse_data->p;
 						continue;
-					default: CB_alert( BMDotIdentifierCB, p );
+					default: bm_callback_alert( BMDotIdentifierCB, p );
 					} }
 				p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				f_clr( NEGATED )
@@ -520,7 +405,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 						flags = traverse_data->flags;
 						p = traverse_data->p;
 						continue;
-					default: CB_alert( BMListCB, p );
+					default: bm_callback_alert( BMListCB, p );
 					} }
 				f_pop( stack, 0 );
 				// p_prune will return on closing ')'
@@ -536,7 +421,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMWildCardCB, p );
+				default: bm_callback_alert( BMWildCardCB, p );
 				} }
 			f_clr( NEGATED )
 			f_set( INFORMED )
@@ -546,7 +431,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				switch ( table[BMFormatCB]( traverse_data, p, flags ) ) {
 				case BM_CONTINUE:
 					break;
-				default: CB_alert( BMFormatCB, p );
+				default: bm_callback_alert( BMFormatCB, p );
 				} }
 			p = p_prune( PRUNE_FORMAT, p );
 			f_clr( NEGATED )
@@ -561,7 +446,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMCharacterCB, p );
+				default: bm_callback_alert( BMCharacterCB, p );
 				} }
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			f_clr( NEGATED )
@@ -572,7 +457,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 				switch ( table[BMRegexCB]( traverse_data, p, flags ) ) {
 				case BM_CONTINUE:
 					break;
-				default: CB_alert( BMRegexCB, p );
+				default: bm_callback_alert( BMRegexCB, p );
 				} }
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			f_clr( NEGATED )
@@ -580,6 +465,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 			break;
 		default:
 			if ( is_separator(*p) ) {
+				fprintf( stderr, ">>>>> B%%: Error: bm_traverse: identifier expected\n" );
 				traverse_data->done = BMTraverseError;
 				break;
 			}
@@ -591,7 +477,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					flags = traverse_data->flags;
 					p = traverse_data->p;
 					continue;
-				default: CB_alert( BMIdentifierCB, p );
+				default: bm_callback_alert( BMIdentifierCB, p );
 				} }
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			if ( *p=='~' ) {
@@ -599,7 +485,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 					switch ( table[BMSignalCB]( traverse_data, p, flags ) ) {
 					case BM_CONTINUE:
 						break;
-					default: CB_alert( BMSignalCB, p );
+					default: bm_callback_alert( BMSignalCB, p );
 					} }
 				p++;
 			}
@@ -611,7 +497,7 @@ traverse( char *expression, BMTraverseData *traverse_data, listItem **stack, int
 }
 
 static void
-CB_alert( BMCBName name, char *p )
+bm_callback_alert( BMCBName name, char *p )
 {
 	fprintf( stderr, ">>>>> B%%: Error: bm_traverse: callback return value not handled\n" );
 }

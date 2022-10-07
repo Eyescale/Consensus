@@ -300,14 +300,11 @@ A:CND_else_( B )
 					do_( ":" )	s_take
 							f_clr( INFORMED )
 							f_set( FILTERED ) }
-		on_( ')' ) if ( is_f(TERNARY) ? is_f(FILTERED) : is_f(INFORMED) ) {
-				if ( is_f(LEVEL|SUB_EXPR) ) {
-					if ( is_f(TERNARY) && !is_f(FIRST) ) {
-						do_( same )	REENTER
-								f_pop( stack, 0 ) }
-					else {	do_( same )	s_take
-								f_pop( stack, 0 )
-								f_set( INFORMED ) } } }
+		on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && (is_f(TERNARY)?is_f(FILTERED):is_f(INFORMED)) ) {
+					do_( same )	s_take
+				if ( is_f(TERNARY) ) {	while (!is_f(FIRST)) f_pop( stack, 0 ) }
+							f_pop( stack, 0 )
+							f_set( INFORMED ) }
 B:CND_endif
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
@@ -342,8 +339,9 @@ B:CND_endif
 						f_tag( stack, COMPOUND )
 						f_set( INFORMED|COMPOUND ) }
 		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
-				!is_f(ASSIGN|FILTERED|SUB_EXPR) ) {
+				!is_f(ASSIGN|NEGATED|FILTERED|SUB_EXPR) ) {
 				do_( "|" )	s_take
+						f_tag( stack, COMPOUND )
 						f_clr( INFORMED ) }
 		on_( '#' )	do_( "_#" )
 		on_separator	; // err
@@ -590,7 +588,7 @@ D:CND_endif
 		on_( ')' ) if ( is_f(LITERAL) ) {
 				do_( "expr" )	s_take
 						f_tag( stack, COMPOUND )
-						f_set( INFORMED|COMPOUND ) }
+						f_set( INFORMED ) }
 		on_( '\\' )	do_( "(:\\" )	s_take
 		on_( '%' )	do_( "(:%" )	s_take
 		on_( ':' ) if ( is_f(LITERAL) ) {
@@ -627,6 +625,7 @@ D:CND_endif
 	in_( "|" ) bgn_
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
+						f_set( COMPOUND )
 		end
 	in_( "_^" ) bgn_	// \nl allowed inside { }
 		ons( " \t\n" )	do_( same )

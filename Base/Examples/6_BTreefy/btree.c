@@ -16,8 +16,6 @@ btreefy( char *sequence )
 	assumption: sequence is syntactically correct
 */
 {
-	if ( !*sequence ) return NULL;
-
 	listItem *stack = NULL;
 	BTreeNode *root = newBTree( NULL );
 
