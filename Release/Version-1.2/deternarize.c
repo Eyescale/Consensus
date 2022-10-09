@@ -152,12 +152,11 @@ case_( ternary_operator_CB )
 		data->sequence = NULL;
 		// proceed to alternative
 		p = p_prune( PRUNE_TERNARY, p ); // ":"
-		if ( p[1]==':' || p[1]==')' ) {
+		if ( p[1]==')' || p[1]==':' ) {
 			// ~. is our current candidate
 			data->segment = NULL;
 			// proceed to ")"
-			p = p_prune( PRUNE_TERNARY, p );
-			_continue( p ) }
+			_prune( BM_PRUNE_TERNARY ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
@@ -167,8 +166,7 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		p = p_prune( PRUNE_TERNARY, p+1 );
-		_continue( p ) }
+		p++; _prune( BM_PRUNE_TERNARY ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -181,8 +179,7 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		p = p_prune( PRUNE_TERNARY, p );
-		_continue( p ) }
+		_prune( BM_PRUNE_TERNARY ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {

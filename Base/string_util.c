@@ -308,6 +308,8 @@ p_prune( PruneType type, char *p )
 		return prune_list( p );
 	case PRUNE_FORMAT:
 		return prune_format( p );
+	case PRUNE_CHARACTER:
+		return prune_character( p );
 	case PRUNE_IDENTIFIER:
 		return prune_identifier( p );
 	case PRUNE_FILTER:

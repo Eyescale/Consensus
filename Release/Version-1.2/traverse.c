@@ -31,7 +31,7 @@ _CB( BMNotCB )		if is_f( NEGATED ) f_clr( NEGATED )
 _CB( BMBgnSetCB )	f_push( stack )
 			f_reset( FIRST|SET, 0 )
 			p++;
-_CB( BMPreTermCB )	break;
+_CB( BMTermCB )	break;
 		case '}':
 			if ( !is_f(SET) )
 				{ traverse_data->done = 1; break; }
@@ -86,7 +86,7 @@ _CB( BMLiteralCB )		p = p_prune( PRUNE_LITERAL, p );
 _CB( BMOpenCB )			f_push( stack )
 				f_reset( FIRST|LEVEL, SET|SUB_EXPR|MARKED )
 				p++;
-_CB(( BMPreTermCB ))		}
+_CB(( BMTermCB ))		}
 			break;
 		case ':':
 _CB( BMFilterCB )	f_clr( INFORMED )
@@ -98,7 +98,7 @@ _CB( BMFilterCB )	f_clr( INFORMED )
 _CB( BMDecoupleCB )	if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 			f_clr( FILTERED|INFORMED )
 			p++;
-_CB( BMPreTermCB )	break;
+_CB( BMTermCB )	break;
 		case ')':
 			if ( is_f(PIPED) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ((*stack)) {
@@ -153,7 +153,7 @@ _CB( BMFormatCB )	p = p_prune( PRUNE_FORMAT, p );
 			f_set( INFORMED )
 			break;
 		case '\'':
-_CB( BMCharacterCB )	p = p_prune( PRUNE_IDENTIFIER, p );
+_CB( BMCharacterCB )	p = p_prune( PRUNE_CHARACTER, p );
 			f_clr( NEGATED )
 			f_set( INFORMED )
 			break;
@@ -186,7 +186,7 @@ static BMCB_take
 traverse_CB( BMCBName func, BMTraverseData *traverse_data, char **p, int *flags )
 {
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data->table;
-	if ( table[func] ) {
+	if (( table[func] )) {
 		switch ( table[func]( traverse_data, *p, *flags ) ) {
 		case BM_CONTINUE:
 			break;
@@ -219,6 +219,7 @@ traverse_CB( BMCBName func, BMTraverseData *traverse_data, char **p, int *flags 
 			case BMDereferenceCB:
 			case BMNotCB:
 				*flags = traverse_data->flags;
+				// Assumption: p==traverse_data->p
 				*p = p_prune( PRUNE_FILTER, *p+1 );
 				return BM_DONE;
 			default:
@@ -231,7 +232,7 @@ traverse_CB( BMCBName func, BMTraverseData *traverse_data, char **p, int *flags 
 				*flags = traverse_data->flags;
 				*p = p_prune( PRUNE_TERM, *p+2 );
 				return BM_DONE;
-			case BMPreTermCB:
+			case BMTermCB:
 			case BMDotExpressionCB:
 			case BMDecoupleCB:
 			case BMFilterCB:
@@ -239,6 +240,7 @@ traverse_CB( BMCBName func, BMTraverseData *traverse_data, char **p, int *flags 
 			case BMDereferenceCB:
 			case BMNotCB:
 				*flags = traverse_data->flags;
+				// Assumption: p==traverse_data->p
 				*p = p_prune( PRUNE_TERM, *p+1 );
 				return BM_DONE;
 			default:
@@ -250,7 +252,7 @@ traverse_CB( BMCBName func, BMTraverseData *traverse_data, char **p, int *flags 
 			case BMTernaryOperatorCB:
 			case BMFilterCB:
 				*flags = traverse_data->flags;
-				*p = p_prune( PRUNE_TERNARY, *p );
+				*p = p_prune( PRUNE_TERNARY, traverse_data->p );
 				return BM_DONE;
 			default:
 				return CB_alert( traverse_data, func, *p );
