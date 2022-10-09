@@ -4,7 +4,7 @@
 #include "list.h"
 
 typedef struct {
-	struct { char *bgn; char *end; } *data;
+	char *p;
 	listItem **sub;
 } BTreeNode;
 

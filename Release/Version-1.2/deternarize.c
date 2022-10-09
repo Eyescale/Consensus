@@ -76,8 +76,8 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMSubExpressionCB ]	= sub_expression_CB;
-	table[ BMDotExpressionCB ]	= dot_expression_CB;
+	table[ BMSubExpressionCB ]	= open_CB;
+	table[ BMDotExpressionCB ]	= open_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
 	table[ BMFilterCB ]		= filter_CB;
@@ -118,14 +118,9 @@ BMTraverseCBSwitch( deternarize_traversal )
 /*
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
-case_( sub_expression_CB )
-	_post_( open_CB, p+1, 0 )
-	_break
-case_( dot_expression_CB )
-	_post_( open_CB, p+1, 0 )
-	_break
 case_( open_CB )
-	if ( p_ternary( p ) ) {
+	if ( *p=='.' || *p=='%' ) p++;
+	if ( p_ternary(p) ) {
 		data->ternary = 1;
 		Pair *segment = data->segment;
 		// finish current Sequence after '(' - without reordering,
@@ -161,7 +156,8 @@ case_( ternary_operator_CB )
 			// ~. is our current candidate
 			data->segment = NULL;
 			// proceed to ")"
-			p++; _prune( BM_PRUNE_TERNARY ) }
+			p = p_prune( PRUNE_TERNARY, p );
+			_continue( p ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
@@ -171,7 +167,8 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		p++; _prune( BM_PRUNE_TERNARY ) }
+		p = p_prune( PRUNE_TERNARY, p+1 );
+		_continue( p ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -184,7 +181,8 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERNARY ) }
+		p = p_prune( PRUNE_TERNARY, p );
+		_continue( p ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {
@@ -199,8 +197,7 @@ case_( close_CB )
 			// add as sub-Sequence to on-going expression
 			listItem *sub = data->sequence;
 			data->sequence = popListItem( &data->stack.sequence );
-			addItem( &data->sequence, newPair( NULL, sub ) );
-		}
+			addItem( &data->sequence, newPair( NULL, sub ) ); }
 		else if (( segment )) {
 			if ( !segment->value ) segment->value = p;
 			// add as-is to on-going expression
@@ -242,8 +239,7 @@ free_deternarized( listItem *sequence )
 			item->value = i->next;
 			addItem( &stack, item );
 			i = item->name; // traverse sub
-			continue;
-		}
+			continue; }
 		else if (( item->name ))
 			freePair( item->name ); // segment
 		freePair( item );

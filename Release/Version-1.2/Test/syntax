@@ -9,7 +9,7 @@
 		do input: <
 		do :~ titi : ~( tutu, tata )
 		do ( { tata, toto }, titi )
-		do ~.:titi	// nop
+		do ~.	// nop
 	else in ( titi ?: tata )
 	else in ( expr1 ? expr2 ? expr3 :: expr4 )
 	else on ~.:((*,titi),toto)
@@ -22,7 +22,6 @@
 	else on ((*,input), . )
 		do >"read: %s\n": *input
 		do titi~
-		do tutu:tata
 	else in ( *, input )
 		do input: <
 		in alpha

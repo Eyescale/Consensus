@@ -510,7 +510,7 @@ case_( dereference_CB )
 case_( sub_expression_CB )
 	bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) _return( 1 )
-	_post_( open_CB, p+1, 0 )
+	_post( open_CB, p+1, SUB_EXPR )
 	_continue( p+2 )
 case_( dot_expression_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
@@ -520,7 +520,7 @@ case_( dot_expression_CB )
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
 		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
 	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
-	_post_( open_CB, p+1, DOT )
+	_post( open_CB, p+1, DOT )
 	_continue( p+2 )
 case_( open_CB )
 	f_push( &data->stack.flags )
@@ -553,7 +553,7 @@ case_( close_CB )
 	f_set( INFORMED )
 	if is_f( NEGATED ) { data->success = !data->success; f_clr( NEGATED ) }
 	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
-		_post_return( 1 )
+		{ p++; _return( 1 ) }
 	_continue( p+1 )
 case_( wildcard_CB )
 	if ( !strncmp( p, "?:", 2 ) ) _continue( p+2 )

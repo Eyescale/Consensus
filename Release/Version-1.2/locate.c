@@ -85,7 +85,7 @@ case_( dot_identifier_CB )
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
 	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
-		_post_return( 2 )
+		{ p++; _return( 2 ) }
 	_break
 case_( identifier_CB )
 	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
@@ -144,7 +144,7 @@ case_( dot_expression_CB )
 	}
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
-	_post_( open_CB, p+1, DOT )
+	_post( open_CB, p+1, DOT )
 	_continue( p+2 )
 case_( open_CB )
 	f_push( &data->stack.flags )
@@ -345,7 +345,7 @@ case_( sub_expr_CB )
 	_prune( BM_PRUNE_FILTER )
 case_( dot_push_CB )
 	xpn_add( data->exponent, SUB, 1 );
-	_post_( push_CB, p+1, DOT )
+	_post( push_CB, p+1, DOT )
 	_continue( p+2 )
 case_( push_CB )
 	f_push( &data->stack.flags )

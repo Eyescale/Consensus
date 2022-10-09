@@ -72,7 +72,7 @@ traverse_tag( int flags, listItem **stack, int flag )
 //	traverse callbacks
 //===========================================================================
 typedef enum {
-	BMPreemptCB = 0,
+	BMPreTermCB = 0,
 	BMNotCB,		// ~
 	BMBgnSetCB,		// {
 	BMEndSetCB,		// }
@@ -120,7 +120,7 @@ char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 
 #define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
-#define _post_( _CB_, q, f ) { \
+#define _post( _CB_, q, f ) { \
 		_CB_( traverse_data, q, flags ); \
 		flags = traverse_data->flags; \
 		f_set( f ) }
@@ -131,9 +131,6 @@ char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
 #define _return( val ) { \
 		traverse_data->done = val; \
 		_continue( p ) }
-#define _post_return( val ) { \
-		traverse_data->done = val; \
-		_continue( p+1 ) }
 #define _continue( q ) { \
 		traverse_data->flags = flags; \
 		traverse_data->p = q; \

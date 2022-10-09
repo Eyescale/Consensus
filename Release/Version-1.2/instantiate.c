@@ -20,7 +20,7 @@ static listItem *bm_scan( char *, BMContext * );
 //	bm_instantiate
 //===========================================================================
 static BMTraverseCB
-	preempt_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
+	pre_term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
 	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
 typedef struct {
@@ -54,7 +54,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMPreemptCB ]		= preempt_CB;
+	table[ BMPreTermCB ]		= pre_term_CB;
 	table[ BMNotCB ]		= collect_CB;
 	table[ BMDereferenceCB ]	= collect_CB;
 	table[ BMBgnSetCB ]		= bgn_set_CB;
@@ -96,7 +96,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 }
 
 BMTraverseCBSwitch( bm_instantiate_traversal )
-case_( preempt_CB )
+case_( pre_term_CB )
 	if ( p_filtered( p ) ) {
 		if (!( data->sub[current] = bm_scan(p,data->ctx) ))
 			_return( 2 )
@@ -255,7 +255,7 @@ bm_void( char *expression, BMContext *ctx )
 	listItem *stack = NULL;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMPreemptCB ]		= feel_CB;
+	table[ BMPreTermCB ]		= feel_CB;
 	table[ BMNotCB ]		= sound_CB;
 	table[ BMDereferenceCB ]	= sound_CB;
 	table[ BMSubExpressionCB ]	= sound_CB;

@@ -364,7 +364,7 @@ CND_ifn( mode==BM_STORY, C )
 		ons( " \t" )	do_( same )
 		ons( ":,)}\n" )	do_( "expr" )	REENTER
 						f_set( INFORMED )
-		ons( "{" )	; //err
+		ons( "{~" )	; //err
 		on_other	do_( "expr" )	REENTER
 		end
 	in_( "%" ) bgn_
@@ -651,7 +651,8 @@ _CB( ExpressionTake, mode, data );
 		bgn_
 			on_any
 if ( mode==BM_INPUT ) {		do_( "" ) }
-else {				do_( "base" )	f_reset( FIRST, 0 );
+else if (!( *type&DO && !is_f(ASSIGN) && is_f(FILTERED) )) {
+				do_( "base" )	f_reset( FIRST, 0 );
 						TAB_CURRENT = 0;
 						data->opt = 0;
 if ( mode==BM_STORY ) {				*type = 0; } }
@@ -677,6 +678,7 @@ if ( mode==BM_STORY ) {				*type = 0; } }
 		in_( ":_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;
 		in_( ">_" )		errnum = ErrOutputScheme;
+		in_( "expr_" )		errnum = ErrInstantiationFiltered;
 		in_other bgn_
 			on_( '\n' )	errnum = ErrUnexpectedCR;
 			on_( ' ' )	errnum = ErrSpace;
@@ -726,6 +728,8 @@ else {
 		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
 	case ErrSpace:
 		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
+	case ErrInstantiationFiltered:
+		fprintf( stderr, "Error: %s: l%dc%d: instantiation must be unfiltered\n", src, l, c  ); break;
 	case ErrUnexpectedCR:
 		fprintf( stderr, "Error: %s: l%dc%d: statement incomplete\n", src, l, c  ); break;
 	case ErrIndentation:

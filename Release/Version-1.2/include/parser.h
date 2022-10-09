@@ -57,6 +57,7 @@ typedef enum {
 	ErrUnknownState,
 	ErrUnexpectedEOF,
 	ErrSpace,
+	ErrInstantiationFiltered,
 	ErrUnexpectedCR,
 	ErrIndentation,
 	ErrSyntaxError,

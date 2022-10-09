@@ -76,8 +76,8 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	traverse_data.user_data = &data;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMSubExpressionCB ]	= sub_expression_CB;
-	table[ BMDotExpressionCB ]	= dot_expression_CB;
+	table[ BMSubExpressionCB ]	= open_CB;
+	table[ BMDotExpressionCB ]	= open_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
 	table[ BMFilterCB ]		= filter_CB;
@@ -118,12 +118,9 @@ BMTraverseCBSwitch( deternarize_traversal )
 /*
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
-case_( sub_expression_CB )
-	_continue( p+1 )	// hand over to open_CB
-case_( dot_expression_CB )
-	_continue( p+1 )	// hand over to open_CB
 case_( open_CB )
-	if ( p_ternary( p ) ) {
+	if ( *p=='.' || *p=='%' ) p++;
+	if ( p_ternary(p) ) {
 		data->ternary = 1;
 		Pair *segment = data->segment;
 		// finish current Sequence after '(' - without reordering,
@@ -200,8 +197,7 @@ case_( close_CB )
 			// add as sub-Sequence to on-going expression
 			listItem *sub = data->sequence;
 			data->sequence = popListItem( &data->stack.sequence );
-			addItem( &data->sequence, newPair( NULL, sub ) );
-		}
+			addItem( &data->sequence, newPair( NULL, sub ) ); }
 		else if (( segment )) {
 			if ( !segment->value ) segment->value = p;
 			// add as-is to on-going expression
@@ -243,8 +239,7 @@ free_deternarized( listItem *sequence )
 			item->value = i->next;
 			addItem( &stack, item );
 			i = item->name; // traverse sub
-			continue;
-		}
+			continue; }
 		else if (( item->name ))
 			freePair( item->name ); // segment
 		freePair( item );
