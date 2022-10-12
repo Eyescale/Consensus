@@ -1,6 +1,8 @@
 See Also: design/new-features-and-additions.txt
 TODO
     Version-2.0
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. on_event_ext
 		. need to separate expression from source
 			on expression < source
@@ -34,8 +36,6 @@ ON-GOING
 		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
-	. extract btreefication from traverse.c
-		. btree can be transported as part of occurrence
 	. code cleanup
 		. replace all the for ( ; ; ) with the model found
 	  	  in Base/Examples/6_BTreefy/btree.c
@@ -52,17 +52,13 @@ NICE TO HAVE
 		. Cons: performances
 		. Alternative:
 		  1. propose special execution mode (like Debug)
-		  2. special do - e.g. do$ - where bm_void() is enabled
+		  2. special do - e.g. do$ - where bm_void() is enforced
 	  Current status & Decision
 		. bm_instantiate() does not invoke bm_void()
 		  => bm_instantiate() may do half a job (user responsibility)
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
-	. extract btreefy from ../../Base to ../../Base/Examples/
-		. write ../../Base/Examples/Z_Btreefy example
 	. allow more to be done in INI files (e.g. assignment) ?
 		. Now the whole bm_instantiate() syntax is accessible
-		. and will need it later in new Cell constructor
+		. and I will need new capabilities for Cell constructor
 	. per proto:expression <<< where proto can be '?' or narrative-type proto
 		. PER/ELSE_PER
 		. also DO_PER, e.g.
@@ -74,7 +70,4 @@ NICE TO HAVE
 
 DONE
 	. rewrote Base/Examples/6_BTreefy
-		. Now integrating in Version-1.2: bm_traverse() uses btree
-		  Benefits:
-			. no more p_ternary() p_filtered() p_single()
-			. _prune() optimized
+	. extract btreefy from ../../Base to ../../Base/Examples/

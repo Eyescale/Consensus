@@ -104,7 +104,6 @@ typedef struct {
 	void *user_data;
 	listItem **stack;
 	void *table[ BMCBNum ];
-	void *btree, *btt;
 	int flags, done;
 	char *p;
 } BMTraverseData;

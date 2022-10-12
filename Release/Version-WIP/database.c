@@ -128,7 +128,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 			CNInstance *candidate = i->ptr;
 			if ( db_to_be_manifested( candidate, db ) ) {
 				db_outputf( stderr, db,
-					"B%%::Warning: ((*,(%_),%_) -> %_ concurrent reassignment unauthorized\n",
+					"B%%::Warning: ((*,%_),%_) -> %_ concurrent reassignment unauthorized\n",
 					e->sub[1], candidate->sub[1], f );
 				if ( candidate->sub[ 1 ] == f )
 					return candidate;

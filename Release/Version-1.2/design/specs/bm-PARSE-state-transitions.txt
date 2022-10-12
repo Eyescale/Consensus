@@ -1,7 +1,7 @@
 
-Consensus B% Version-1.1
+Consensus B% Version-1.2
 
-	parser.c: bm_parse() - state transitions for mode!=STORY
+    parser.c: bm_parse() - state transitions for mode!=STORY
 
 	base	""
 		#	base
@@ -32,7 +32,7 @@ Consensus B% Version-1.1
 		""
 
 
-	parser.c: bm_parse() - state transitions for mode==STORY
+    parser.c: bm_parse() - state transitions for mode==STORY
 
 	base	""
 		#	base

@@ -72,7 +72,7 @@ traverse_tag( int flags, listItem **stack, int flag )
 //	traverse callbacks
 //===========================================================================
 typedef enum {
-	BMPreemptCB = 0,
+	BMTermCB = 0,
 	BMNotCB,		// ~
 	BMBgnSetCB,		// {
 	BMEndSetCB,		// }
@@ -98,37 +98,37 @@ typedef enum {
 	BMRegexCB,		// /
 	BMIdentifierCB,		// identifier
 	BMSignalCB,		// identifier~
-	BMSyntaxErrorCB,
 	BMCBNum
 } BMCBName;
 typedef struct {
 	void *user_data;
+	listItem **stack;
 	void *table[ BMCBNum ];
-	int flags, f_next;
-	int done;
+	int flags, done;
 	char *p;
 } BMTraverseData;
 typedef enum {
-	BM_DONE = 0,
-	BM_CONTINUE
-} BMCB_take;
+	BM_CONTINUE = 0,
+	BM_DONE,
+	BM_PRUNE_FILTER,
+	BM_PRUNE_TERM,
+	BM_PRUNE_LIST,
+	BM_PRUNE_LITERAL,
+	BM_PRUNE_TERNARY,
+} BMCBTake;
 
-typedef BMCB_take BMTraverseCB( BMTraverseData *, char *p, int flags );
-char *bm_traverse( char *expression, BMTraverseData *, listItem **, int );
+typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next );
+char *bm_traverse( char *expression, BMTraverseData *, int );
 
 #define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
-#define _post_( _CB_, q, f ) { \
-		_CB_( traverse_data, q, flags ); \
-		flags = traverse_data->flags; \
-		f_set( f ) }
-#define _return( q ) { \
-		traverse_data->done = 1; \
-		_continue( q ) }
-#define _continue( q ) { \
-		traverse_data->flags = flags; \
-		traverse_data->p = q; \
+#define _prune( take ) \
+		return take;
+#define _return( val ) { \
+		traverse_data->done = val; \
 		return BM_DONE; }
+#define _continue( q ) \
+		return BM_DONE;
 #define	_break \
 		return BM_CONTINUE;
 #define BMTraverseCBEnd \

@@ -7,7 +7,8 @@ TODO
 		  Note: instantiation may do half a job - as bm_void() not invoked
 
 DONE
-    Version-1.1 -> Version-1.2
+	. traverse.c / bm_traverse() implementation
+    Version-1.1 -> Version-1.2 [ BETA ]
 	. Branched Version-1.2 on github
 	. Version-1.2 Engineering Complete
 	     Examples
