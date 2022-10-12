@@ -317,8 +317,7 @@ B:CND_endif
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED ) } }
 			else if ( is_f(SET) ) {
-					do_( same )	s_take
-							f_clr( INFORMED ) }
+					do_( "," ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
 		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
@@ -536,8 +535,17 @@ C:CND_endif
 		end
 	in_( "," ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '.' )	do_( ",." )
-		on_other	do_( "expr" )	REENTER
+		on_( '}' )	do_( "expr" )	REENTER
+		on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) ) {
+				do_( ",." ) }
+			else {	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+		on_other if ( is_f(LEVEL|SUB_EXPR) ) {
+				do_( "expr" )	REENTER }
+			else {	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
 		end
 		in_( ",." ) bgn_
 			on_( '.' )	do_( ",.." )	s_add( ".." )

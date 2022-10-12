@@ -30,9 +30,8 @@ btreefy( char *sequence )
 		switch ( *p ) {
 		case '{':
 		case '(':
-			addItem( &stack, sub );
-			addItem( &stack, node );
 			add_item( &stack, position );
+			addItem( &stack, node );
 			node = sub;
 			position = POSITION_LEFT;
 			node_sub = &node->sub[ POSITION_LEFT ];
@@ -58,9 +57,9 @@ btreefy( char *sequence )
 			if ( !stack ) goto RETURN;
 			addItem( node_sub, sub );
 			reorderListItem( node_sub );
-			position = pop_item( &stack );
+			sub = node;
 			node = popListItem( &stack );
-			sub = popListItem( &stack );
+			position = pop_item( &stack );
 			node_sub = &node->sub[ position ];
 			break;
 		}

@@ -36,9 +36,5 @@ typedef struct {
 	} stack;
 } BMQueryData;
 
-#define case_( func ) \
-	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
-		BMQueryData *data = traverse_data->user_data;
-
 
 #endif	// QUERY_PRIVATE_H

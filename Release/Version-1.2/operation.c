@@ -383,7 +383,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 	freeString( s );
 	return 1;
 }
-static BMCB_take
+static BMCBTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	EnableData *data = user_data;
@@ -460,7 +460,7 @@ do_output( char *expression, BMContext *ctx )
 	// extracts fmt and args:{ expression(s) }
 	char *p = expression;
 	char *fmt = ( *p=='"' ? p : "" );
-	if ( *fmt ) p = p_prune( PRUNE_FORMAT, fmt );
+	if ( *fmt ) p = p_prune( PRUNE_FILTER, fmt );
 	if ( *p==':') p++;
 	listItem *args = ( *p ? newItem(p) : NULL );
 

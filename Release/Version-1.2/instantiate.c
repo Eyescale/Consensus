@@ -30,8 +30,8 @@ typedef struct {
 	BMContext *ctx;
 } BMInstantiateData;
 #define case_( func ) \
-	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
-		BMInstantiateData *data = traverse_data->user_data;
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		BMInstantiateData *data = traverse_data->user_data; char *p = *q;
 #define current \
 	( is_f( FIRST ) ? 0 : 1 )
 
@@ -52,6 +52,8 @@ bm_instantiate( char *expression, BMContext *ctx )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
+	traverse_data.stack = &data.stack.flags;
+	traverse_data.done = INFORMED;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMTermCB ]		= term_CB;
@@ -75,7 +77,7 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
-	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
+	bm_traverse( expression, &traverse_data, FIRST );
 
 	if ( traverse_data.done == 2 ) {
 		freeListItem( &data.sub[ 1 ] );
@@ -97,16 +99,14 @@ bm_instantiate( char *expression, BMContext *ctx )
 
 BMTraverseCBSwitch( bm_instantiate_traversal )
 case_( term_CB )
-	if ( p_filtered( p ) ) {
+	if is_f( FILTERED ) {
 		if (!( data->sub[current] = bm_scan(p,data->ctx) ))
 			_return( 2 )
-		f_set( INFORMED )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( collect_CB )
 	if (!( data->sub[current] = bm_scan(p,data->ctx) ))
 		_return( 2 )
-	f_set( INFORMED )
 	_prune( BM_PRUNE_TERM )
 case_( bgn_set_CB )
 	if (!is_f(FIRST)) {
@@ -115,12 +115,11 @@ case_( bgn_set_CB )
 	addItem( &data->results, NULL );
 	_break
 case_( end_set_CB )
-	/* Assumption:	!is_f(LEVEL)
+	/* Assumption:	!is_f(LEVEL|SUB_EXPR)
 	*/
 	listItem *instances = popListItem( &data->results );
 	instances = catListItem( instances, data->sub[ 0 ] );
-	flags = traverse_data->f_next;
-	if is_f( FIRST )
+	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
@@ -137,47 +136,49 @@ case_( bgn_pipe_CB )
 case_( end_pipe_CB )
 	bm_pop_mark( data->ctx, '!' );
 	freeListItem( &data->sub[ 0 ] );
-	flags = traverse_data->f_next;
-	if (!is_f(FIRST))
+	if (!(f_next&FIRST))
 		data->sub[ 1 ] = popListItem( &data->results );
 	data->sub[ 0 ] = popListItem( &data->results );
 	_break
 case_( mark_register_CB )
-	if ( p[1]=='?' ) {
+	switch ( p[1] ) {
+	case '?': ;
 		CNInstance *e = bm_context_lookup( data->ctx, "?" );
 		if ( !e ) _return( 2 )
-		data->sub[ current ] = newItem( e ); }
-	else if ( p[1]=='!' ) {
+		data->sub[ current ] = newItem( e );
+		break;
+	case '!': ;
 		listItem *i = bm_context_lookup( data->ctx, "!" );
 		if ( !i ) _return( 2 )
 		listItem **sub = &data->sub[ current ];
-		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr ); }
+		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr );
+		break; }
 	_break
 case_( list_CB )
 	/*	((expression,...):_sequence_:)
 	   start p ----------^               ^
 		     return p ---------------
 	*/
-	data->sub[ 0 ] = bm_list( &p, data->sub, data->ctx );
-	f_pop( &data->stack.flags, 0 )
-	f_set( INFORMED )
-	_continue( p )
+	data->sub[ 0 ] = bm_list( q, data->sub, data->ctx );
+	_prune( BM_PRUNE_LIST )
 case_( literal_CB )
 	/*		(:_sequence_:)
 	   start p -----^             ^
 		return p -------------
 	*/
-	CNInstance *e = bm_literal( &p, data->ctx );
+	CNInstance *e = bm_literal( q, data->ctx );
 	data->sub[ current ] = newItem( e );
-	f_set( INFORMED )
-	_continue( p+1 )
+	(*q)++;
+	_prune( BM_PRUNE_LITERAL )
 case_( open_CB )
+	if ( f_next & DOT )
+		_break
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 0 ] );
 		data->sub[ 0 ] = NULL; }
 	_break
 case_( decouple_CB )
-	if (!is_f(LEVEL)) {	// Assumption: is_f(SET)
+	if (!is_f(LEVEL|SUB_EXPR)) {	// Assumption: is_f(SET)
 		listItem **results = &data->results;
 		listItem *instances = popListItem( results );
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
@@ -199,8 +200,7 @@ case_( close_CB )
 			freeListItem( &data->sub[ 1 ] );
 			instances = localized; } }
 		else ; // err !!!
-	flags = traverse_data->f_next;
-	if is_f( FIRST )
+	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
@@ -235,8 +235,8 @@ static BMTraverseCB
 	feel_CB, sound_CB, touch_CB;
 #undef case_
 #define case_( func ) \
-	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
-		BMContext *ctx = traverse_data->user_data;
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		BMContext *ctx = traverse_data->user_data; char *p = *q;
 
 static int
 bm_void( char *expression, BMContext *ctx )
@@ -248,11 +248,13 @@ bm_void( char *expression, BMContext *ctx )
 */
 {
 	// fprintf( stderr, "bm_void: %s\n", expression );
+	listItem *stack = NULL;
 
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = ctx;
-	listItem *stack = NULL;
+	traverse_data.stack = &stack;
+	traverse_data.done = INFORMED;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMTermCB ]		= feel_CB;
@@ -260,7 +262,7 @@ bm_void( char *expression, BMContext *ctx )
 	table[ BMDereferenceCB ]	= sound_CB;
 	table[ BMSubExpressionCB ]	= sound_CB;
 	table[ BMMarkRegisterCB ]	= touch_CB;
-	bm_traverse( expression, &traverse_data, &stack, FIRST );
+	bm_traverse( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
 	return ( traverse_data.done==2 );
@@ -268,10 +270,9 @@ bm_void( char *expression, BMContext *ctx )
 
 BMTraverseCBSwitch( bm_void_traversal )
 case_( feel_CB )
-	if ( p_filtered( p ) ) {
+	if is_f( FILTERED ) {
 		if ( !bm_feel( BM_CONDITION, p, ctx ) )
 			_return( 2 )
-		f_set( INFORMED )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( sound_CB )
@@ -282,7 +283,6 @@ case_( sound_CB )
 	}
 	if ( !bm_feel( BM_CONDITION, p, ctx ) )
 		_return( 2 )
-	f_set( INFORMED )
 	_prune( BM_PRUNE_TERM )
 case_( touch_CB )
 	if ( p[1]=='?' && !bm_context_lookup( ctx, "?" ) )
@@ -485,7 +485,7 @@ bm_scan( char *expression, BMContext *ctx )
 	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
 	return results;
 }
-static BMCB_take
+static BMCBTake
 scan_CB( CNInstance *e, BMContext *ctx, void *results )
 {
 	addIfNotThere((listItem **) results, e );

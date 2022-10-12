@@ -10,7 +10,7 @@ typedef enum {
         BM_INSTANTIATED
 } BMQueryType;
 
-typedef BMCB_take BMQueryCB( CNInstance *, BMContext *, void * );
+typedef BMCBTake BMQueryCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_query( BMQueryType, char *expression, BMContext *, BMQueryCB, void * );
 
 #endif	// QUERY_H

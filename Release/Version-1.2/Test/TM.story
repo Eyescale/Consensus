@@ -156,6 +156,7 @@ else in *phase: OUTPUT
         not shown here: *state
 */
 
+
 : Toto
 on init
 	%(hello,(.,world))
@@ -171,3 +172,4 @@ else
 	do .( hello, .(.(toto,.titi)) )	// comment
 	on (this)
 		do ~(this)
+

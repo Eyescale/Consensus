@@ -300,18 +300,6 @@ char *
 p_prune( PruneType type, char *p )
 {
 	switch ( type ) {
-	case PRUNE_TERNARY:
-		return prune_ternary( p );
-	case PRUNE_LITERAL:
-		return prune_literal( p );
-	case PRUNE_LIST:
-		return prune_list( p );
-	case PRUNE_FORMAT:
-		return prune_format( p );
-	case PRUNE_CHARACTER:
-		return prune_character( p );
-	case PRUNE_IDENTIFIER:
-		return prune_identifier( p );
 	case PRUNE_FILTER:
 	case PRUNE_TERM: ;
 		int informed = 0;
@@ -338,6 +326,8 @@ p_prune( PruneType type, char *p )
 				p++; break;
 			case ',':
 			case ')':
+			case '}':
+			case '|':
 				return p;
 			case ':':
 				if ( type==PRUNE_FILTER )
@@ -364,6 +354,18 @@ p_prune( PruneType type, char *p )
 			}
 		}
 		return p;
+	case PRUNE_TERNARY:
+		return prune_ternary( p );
+	case PRUNE_LITERAL:
+		return prune_literal( p );
+	case PRUNE_LIST:
+		return prune_list( p );
+	case PRUNE_FORMAT:
+		return prune_format( p );
+	case PRUNE_CHARACTER:
+		return prune_character( p );
+	case PRUNE_IDENTIFIER:
+		return prune_identifier( p );
 	}
 }
 static char *

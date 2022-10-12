@@ -37,8 +37,7 @@ pass_CB( char *guard, void *user_data )
 static void free_deternarized( listItem *sequence );
 static void s_scan( CNString *, listItem * );
 static BMTraverseCB
-	sub_expression_CB, dot_expression_CB, open_CB, ternary_operator_CB,
-	filter_CB, close_CB;
+	open_CB, ternary_operator_CB, filter_CB, close_CB;
 typedef struct {
 	BMTernaryCB *user_CB;
 	void *user_data;
@@ -48,8 +47,8 @@ typedef struct {
 	Pair *segment;
 } DeternarizeData;
 #define case_( func ) \
-	} static BMCB_take func( BMTraverseData *traverse_data, char *p, int flags ) { \
-		DeternarizeData *data = traverse_data->user_data;
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		DeternarizeData *data = traverse_data->user_data; char *p = *q;
 
 static char *
 deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
@@ -74,15 +73,15 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
+	traverse_data.stack = &data.stack.flags;
+	traverse_data.done = TERNARY|INFORMED;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMSubExpressionCB ]	= open_CB;
-	table[ BMDotExpressionCB ]	= open_CB;
 	table[ BMOpenCB ]		= open_CB;
 	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
 	table[ BMFilterCB ]		= filter_CB;
 	table[ BMCloseCB ]		= close_CB;
-	bm_traverse( expression, &traverse_data, &data.stack.flags, FIRST );
+	bm_traverse( expression, &traverse_data, FIRST );
 	
 	if ( !data.ternary )
 		freePair( data.segment );
@@ -106,7 +105,7 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	}
 	// return deternarized
 	if ((data.stack.sequence)||(data.stack.flags)) {
-		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak\n" );
+		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: %d %s\n", (int)data.stack.sequence, expression );
 		freeListItem( &data.stack.sequence );
 		freeListItem( &data.stack.flags );
 		free( deternarized );
@@ -119,22 +118,18 @@ BMTraverseCBSwitch( deternarize_traversal )
    Note: only pre-ternary-operated sequences are pushed on stack.sequence
 */
 case_( open_CB )
-	if ( *p=='.' || *p=='%' ) p++;
-	if ( p_ternary(p) ) {
-		data->ternary = 1;
-		Pair *segment = data->segment;
-		// finish current Sequence after '(' - without reordering,
-		// which will take place on return
-		segment->value = p+1;
-		addItem( &data->sequence, newPair( segment, NULL ) );
-		// push current Sequence on stack.sequence and start new
-		addItem( &data->stack.sequence, data->sequence );
-		data->sequence = NULL;
-		data->segment = newPair( p+1, NULL ); }
+	data->ternary = 1;
+	Pair *segment = data->segment;
+	// finish current Sequence after '(' - without reordering,
+	// which will take place on return
+	segment->value = p+1;
+	addItem( &data->sequence, newPair( segment, NULL ) );
+	// push current Sequence on stack.sequence and start new
+	addItem( &data->stack.sequence, data->sequence );
+	data->sequence = NULL;
+	data->segment = newPair( p+1, NULL );
 	_break
 case_( ternary_operator_CB )
-	f_set( TERNARY )
-	f_clr( NEGATED|FILTERED|INFORMED )
 	Pair *segment = data->segment;
 	// finish sequence==guard, reordered
 	segment->value = p;
@@ -150,23 +145,23 @@ case_( ternary_operator_CB )
 		// release guard sequence
 		free_deternarized( data->sequence );
 		data->sequence = NULL;
-		// proceed to alternative
-		p = p_prune( PRUNE_TERNARY, p ); // ":"
+		// proceed to alternative, i.e. ':'
+		p = *q = p_prune( PRUNE_TERNARY, p );
 		if ( p[1]==')' || p[1]==':' ) {
 			// ~. is our current candidate
 			data->segment = NULL;
 			// proceed to ")"
-			_prune( BM_PRUNE_TERNARY ) }
+			_prune( BM_PRUNE_TERM ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
-			_continue( p+1 ) } }
+			_prune( BM_PRUNE_TERNARY ); } }
 	else if ( p[1]==':' ) {
 		// sequence==guard is our current candidate
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		p++; _prune( BM_PRUNE_TERNARY ) }
+		_prune( BM_PRUNE_TERM ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -179,7 +174,7 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERNARY ) }
+		_prune( BM_PRUNE_TERM ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {

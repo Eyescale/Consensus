@@ -409,6 +409,9 @@ static int match( CNInstance *, char *, listItem *, BMQueryData * );
 static BMTraverseCB
 	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,
 	sub_expression_CB, open_CB, filter_CB, decouple_CB, close_CB, wildcard_CB;
+#define case_( func ) \
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		BMQueryData *data = traverse_data->user_data; char *p = *q;
 
 static int
 verify( int op, CNInstance *x, char **position, BMQueryData *data )
@@ -449,6 +452,7 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = data;
+	traverse_data.stack = &data->stack.flags;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMMarkRegisterCB ]	= match_CB;
@@ -466,7 +470,7 @@ verify( int op, CNInstance *x, char **position, BMQueryData *data )
 	table[ BMDecoupleCB ]		= decouple_CB;
 	table[ BMCloseCB ]		= close_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
-	bm_traverse( *position, &traverse_data, &data->stack.flags, data->flags );
+	bm_traverse( *position, &traverse_data, data->flags );
 
 	*position = traverse_data.p;
 	if (( data->mark_exp )) {
@@ -510,8 +514,7 @@ case_( dereference_CB )
 case_( sub_expression_CB )
 	bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) _return( 1 )
-	_post( open_CB, p+1, SUB_EXPR )
-	_continue( p+2 )
+	_break
 case_( dot_expression_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
@@ -520,16 +523,11 @@ case_( dot_expression_CB )
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
 		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
 	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
-	_post( open_CB, p+1, DOT )
-	_continue( p+2 )
+	_break
 case_( open_CB )
-	f_push( &data->stack.flags )
-	f_reset( LEVEL|FIRST, 0 )
-	if ( !p_single(p) ) {
-		f_set( COUPLE )
+	if ( f_next & COUPLE )
 		xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	}
-	_continue( p+1 )
+	_break
 case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
@@ -549,15 +547,12 @@ case_( close_CB )
 		_return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
-	f_pop( &data->stack.flags, 0 )
-	f_set( INFORMED )
-	if is_f( NEGATED ) { data->success = !data->success; f_clr( NEGATED ) }
+	if ( f_next & NEGATED ) data->success = !data->success;
 	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
-		{ p++; _return( 1 ) }
-	_continue( p+1 )
+		traverse_data->done = 1; // after popping
+	_break
 case_( wildcard_CB )
-	if ( !strncmp( p, "?:", 2 ) ) _continue( p+2 )
-	else if is_f( NEGATED ) data->success = 0;
+	if is_f( NEGATED ) data->success = 0;
 	else if ( !data->stack.exponent || (int)data->stack.exponent->ptr==1 )
 		data->success = 1; // wildcard is any or as_sub[1]
 	else switch ( match( data->instance, NULL, data->base, data ) ) {

@@ -170,61 +170,6 @@ tie_up( listItem **alternative, listItem **sequence, listItem **stack )
 }
 
 //===========================================================================
-//	free_segmentized
-//===========================================================================
-void
-free_segmentized( listItem *sequence )
-/*
-	free Sequence:{
-		| [ segment:Segment, NULL ]
-		| Alternative:[ :Sequence, next:Alternative ]
-		| [ NULL, NULL ]
-		}
-	where
-		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; }
-*/
-{
-	listItem *stack = NULL;
-	listItem *i = sequence;
-	while (( i )) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item is a list of alternative sequences
-			listItem *j = (listItem *) item;
-			addItem( &stack, newPair( j, i->next ) );
-			i = j->ptr;
-			continue;
-		}
-		if (( item->name )) freePair( item->name ); // segment
-		freePair( item );
-		if (( i->next ))
-			i = i->next;
-		else if (( stack )) {
-			do {
-				item = stack->ptr;
-				listItem *alternative = item->name;
-				freeListItem((listItem **) &alternative->ptr );
-				if (( alternative->next )) {
-					item->name = alternative->next;
-					freeItem( alternative );
-					alternative = item->name;
-					i = alternative->ptr;
-					break;
-				}
-				else {
-					i = item->value;
-					freeItem( alternative );
-					freePair( item );
-					popListItem( &stack );
-				}
-			} while ( !i && (stack) );
-		}
-		else break;
-	}
-	freeListItem( &sequence );
-}
-
-//===========================================================================
 //	expand, firsti, nexti
 //===========================================================================
 void
@@ -318,13 +263,13 @@ cycle_through( listItem **stack )
 	*/
 	listItem *next_i;
 	for ( listItem *i=stack[ BRANCH ]; i!=NULL; i=next_i ) {
-		Pair *index = i->ptr;
+		Pair *iterator = i->ptr;
 		next_i = i->next;
-		listItem *alternative = index->value;
-		if (( index->value = alternative->next ))
+		listItem *alternative = iterator->value;
+		if (( iterator->value = alternative->next ))
 			break;
 		else {
-			freePair( index );
+			freePair( iterator );
 			popListItem( &stack[ BRANCH ] );
 		}
 	}
@@ -333,10 +278,65 @@ cycle_through( listItem **stack )
 	/* buid new path, setting branches in proper order
 	*/
 	for ( listItem *i=stack[ BRANCH ]; i!=NULL; i=i->next ) {
-		Pair *index = i->ptr;
-		addItem( &stack[ PATH ], ((listItem *) index->value )->ptr );
+		Pair *iterator = i->ptr;
+		addItem( &stack[ PATH ], ((listItem *) iterator->value )->ptr );
 	}
 	stack[ 3 ] = stack[ PATH ];
 	return 1;
+}
+
+//===========================================================================
+//	free_segmentized
+//===========================================================================
+void
+free_segmentized( listItem *sequence )
+/*
+	free Sequence:{
+		| [ segment:Segment, NULL ]
+		| Alternative:[ :Sequence, next:Alternative ]
+		| [ NULL, NULL ]
+		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; }
+*/
+{
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	while (( i )) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			// item is a list of alternative sequences
+			listItem *j = (listItem *) item;
+			addItem( &stack, newPair( j, i->next ) );
+			i = j->ptr;
+			continue;
+		}
+		if (( item->name )) freePair( item->name ); // segment
+		freePair( item );
+		if (( i->next ))
+			i = i->next;
+		else if (( stack )) {
+			do {
+				item = stack->ptr;
+				listItem *alternative = item->name;
+				freeListItem((listItem **) &alternative->ptr );
+				if (( alternative->next )) {
+					item->name = alternative->next;
+					freeItem( alternative );
+					alternative = item->name;
+					i = alternative->ptr;
+					break;
+				}
+				else {
+					i = item->value;
+					freeItem( alternative );
+					freePair( item );
+					popListItem( &stack );
+				}
+			} while ( !i && (stack) );
+		}
+		else break;
+	}
+	freeListItem( &sequence );
 }
 
