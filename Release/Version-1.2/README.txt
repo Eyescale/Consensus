@@ -30,7 +30,7 @@ Description
 	substantial than anticipated.
 
 	Hence our decision to create this intermediate minor release, limited
-	to supporting the 2_TM.single story example, prior to moving on to our
+	to supporting the TM.single story example, prior to moving on to our
 	targeted major feature development - now in Version-WIP.
 
 Contents
