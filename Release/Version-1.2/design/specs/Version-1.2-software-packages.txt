@@ -1,5 +1,7 @@
+Synopsis
+	Consensus B% Version-1.2 Software Packages
 
-CONTENTS
+Contents
 
 	1.	narrative.c
 	1.1.		parser.c
@@ -15,8 +17,8 @@ CONTENTS
 	2.3.5.1.			locate.c
 	2.3.5.2.			traverse.c
 
-DESCRIPTION
-			FILE				API
+Description
+			File				API
 
 	1.	narrative.c				readStory
 							bm_read

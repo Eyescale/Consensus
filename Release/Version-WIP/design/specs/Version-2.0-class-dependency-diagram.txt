@@ -1,0 +1,42 @@
+Synopsis
+	Consensus B% Version-2.0 classes & dependency diagram
+
+Overview
+	We have
+
+		CNProgram:[ story:CNStory, threads:[ active:{CNCell}, new:{CNCell} ] ]
+
+	where
+		CNStory:Registry(CNNarrativeEntry:[ name, narratives:{ CNNarrative } ])
+		where
+			CNNarrative:[ proto:char*, root:CNOccurrence ]
+			where
+				CNOccurrence:[ data:[ type, expression ], sub:{CNOccurrence} ]
+
+	and
+		CNCell:[ entry:CNNarrativeEntry, ctx:BMContext ]
+		where
+			BMContext:[ this:CNInstance, registry:Registry(CNRegisterVariable:[ name, value ]) ]
+			where
+				this->sub[ 1 ] = CNDB
+
+	So essentially we have
+
+		CNCell:[ CNNarrativeEntry, ctx:[ this:CNInstance( NULL, CNDB ), registry ] ]
+
+	where
+		CNCell's entry = cell-specific CNNarrativeEntry into parent CNProgram's story
+
+	Note here that a CNCell uniquely combines a CNNarrativeEntry - also known as type,
+	or class, or even DNA, as it describes the way the cell responds to events - with
+	a CNDB - where CNDB stands for Consensus Database - the latter being encapsulated
+	by the cell's "this" CNInstance, which is its interface to the outside world.
+
+	The cell's "this" CNInstance does not pertain to any known CNDB - other, conceptually,
+	than its parent CNProgram. It is nonetheless the crucial element that will allow us
+	to implement and support the inter-cell connection and communication mechanism
+	targeted by our Version-2.0 release.
+
+See Also
+	Version-2.0 File Format Interface
+

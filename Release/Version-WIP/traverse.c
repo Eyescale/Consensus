@@ -31,7 +31,7 @@ static BMCBTake traverse_CB( BMCBName, BMTraverseData *, char **, int *, int );
 	if ( traverse_CB(cb,traverse_data,&p,&flags,f_next)==BM_DONE ) \
 		continue;
 #define _sCB( cb ) \
-	if (!(mode&TERNARY) || p_ternary(p)) \
+	if ( !(mode&TERNARY) || p_ternary(p) ) \
 		_CB( cb )
 
 static char *

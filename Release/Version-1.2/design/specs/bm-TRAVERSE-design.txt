@@ -133,141 +133,139 @@ Events & callback names association
 		See ./include/traverse.h
 
 
-Implementation
-//===========================================================================
-//	Code Analysis: BMTraverseCB take values
-//===========================================================================
-deternarize.c
-	sub_expression_CB	_break
-	dot_expression_CB	_break
-	open_CB			if ( p_ternary(p) )
-					...
-				_break
-	ternary_operator_CB	_prune( PRUNE_TERNARY )	// proceed to ')' // Assumption: *p==':'
-				_continue( p )		// resume past ':'
-				_break			// resume past '?'
-	filter_CB		_prune( PRUNE_TERNARY )	// proceeds to ')'
-				_break
-	close_CB		_break
+Implementation - Code Analysis: BMTraverseCB take values
 
-instantiate.c
-    bm_instantiate()
-	preempt_CB		if ( p_filtered(p) ) {
-					if ( !bm_scan(...) ) _return( 2 )
-					_prune( PRUNE_TERM ) }
-				_break
-	// not_CB //
-	// derefence_CB //
-	// sub_expr_CB //
-	collect_CB		if ( !bm_scan(p,...) ) _return( 2 )
-				_prune( PRUNE_TERM )
-	bgn_set_CB		_break
-	end_set_CB		_break
-	bgn_pipe_CB		_break
-	end_pipe_CB		_break
-	mark_register_CB	if ( !e ) _return( 2 )
-				if ( !i ) _return( 2 )
-				_break
-	list_CB			_continue( p )	 <<< modified by bm_list: could do _break
-	literal_CB		_continue( p+1 ) <<< modified by bm_literal: could do _break
-	open_CB			_break
-	decouple_CB		_break
-	close_CB		_break
-	wildcard_CB		_break
-	dot_identifier_CB	_break
-	// mod_character_CB //
-	// star_character_CB //
-	// character_CB //
-	identifier_CB		_break
-	signal_CB		_break
+	deternarize.c
+		sub_expression_CB	_break
+		dot_expression_CB	_break
+		open_CB			if ( p_ternary(p) )
+						...
+					_break
+		ternary_operator_CB	_prune( PRUNE_TERNARY )	// proceed to ')' // Assumption: *p==':'
+					_continue( p )		// resume past ':'
+					_break			// resume past '?'
+		filter_CB		_prune( PRUNE_TERNARY )	// proceeds to ')'
+					_break
+		close_CB		_break
 
-    bm_void()
-	// preempt_CB //
-	feel_CB			if ( p_filtered(p) ) {
-					if ( !bm_feel(...) ) _return( 2 )
-					_prune( PRUNE_TERM ) }
-				_break
-	// BMNotCB //
-	// BMDereferenceCB //
-	// BMSubExpressionCB //
-	sound_CB		if ( !bm_feel(...) ) _return( 2 )
-				_prune( PRUNE_TERM )
-	// BMMarkRegisterCB //
-	touch_CB		if ( ... )
-					_return( 2 )
-				_break
-locate.c
-    bm_locate_pivot()
-	dot_identifier_CB	if ( THIS ) _return( 2 )
-				if ( IDENTIFIER) _post_return( 2 )
-				_break
-	identifier_CB		if ( ... ) _return( 2 )
-				_break
-	character_CB		if ( ... ) _return( 2 )
-				_break
-	mod_character_CB	if ( ... ) _return( 2 )
-				_break
-	star_character_CB	if ( ... ) _return( 2 )
-				_break
-	mark_register_CB	if ( ... ) _return( 2 )
-	dereference_CB		_break
-	sub_expression_CB	_continue( p+2 )
-	dot_expression_CB	if ( ... ) _return( 2 )
-				_continue( p+2 )
-	open_CB			_continue( p+1 )
-	filter_CB		_break
-	decouple_CB		_break
-	close_CB		_break
+	instantiate.c
+	    bm_instantiate()
+		preempt_CB		if ( p_filtered(p) ) {
+						if ( !bm_scan(...) ) _return( 2 )
+						_prune( PRUNE_TERM ) }
+					_break
+		// not_CB //
+		// dereference_CB //
+		// sub_expr_CB //
+		collect_CB		if ( !bm_scan(p,...) ) _return( 2 )
+					_prune( PRUNE_TERM )
+		bgn_set_CB		_break
+		end_set_CB		_break
+		bgn_pipe_CB		_break
+		end_pipe_CB		_break
+		mark_register_CB	if ( !e ) _return( 2 )
+					if ( !i ) _return( 2 )
+					_break
+		list_CB			_continue( p )	 <<< modified by bm_list: could do _break
+		literal_CB		_continue( p+1 ) <<< modified by bm_literal: could do _break
+		open_CB			_break
+		decouple_CB		_break
+		close_CB		_break
+		wildcard_CB		_break
+		dot_identifier_CB	_break
+		// mod_character_CB //
+		// star_character_CB //
+		// character_CB //
+		identifier_CB		_break
+		signal_CB		_break
 
-    bm_scour()			
-	..._CB			_break	or _return( 1 )
+	    bm_void()
+		// preempt_CB //
+		feel_CB			if ( p_filtered(p) ) {
+						if ( !bm_feel(...) ) _return( 2 )
+						_prune( PRUNE_TERM ) }
+					_break
+		// BMNotCB //
+		// BMDereferenceCB //
+		// BMSubExpressionCB //
+		sound_CB		if ( !bm_feel(...) ) _return( 2 )
+					_prune( PRUNE_TERM )
+		// BMMarkRegisterCB //
+		touch_CB		if ( ... )
+						_return( 2 )
+					_break
+	locate.c
+	    bm_locate_pivot()
+		dot_identifier_CB	if ( THIS ) _return( 2 )
+					if ( IDENTIFIER) _post_return( 2 )
+					_break
+		identifier_CB		if ( ... ) _return( 2 )
+					_break
+		character_CB		if ( ... ) _return( 2 )
+					_break
+		mod_character_CB	if ( ... ) _return( 2 )
+					_break
+		star_character_CB	if ( ... ) _return( 2 )
+					_break
+		mark_register_CB	if ( ... ) _return( 2 )
+		dereference_CB		_break
+		sub_expression_CB	_continue( p+2 )
+		dot_expression_CB	if ( ... ) _return( 2 )
+					_continue( p+2 )
+		open_CB			_continue( p+1 )
+		filter_CB		_break
+		decouple_CB		_break
+		close_CB		_break
 
-    bm_locate_param()		
-	not_CB			if (( param_CB ))
-					_prune( PRUNE_FILTER )
-				_break
-	deref_CB		if (( param_CB ))
-					_prune( PRUNE_FILTER )
-				_break
-	sub_expr_CB		_prune( PRUNE_FILTER )
-	dot_push_CB		_post_( push_CB, p+1, DOT ) _continue( p+2 )
-				_continue( p+2 )
-	push_CB			_continue( p+1 )
-	sift_CB			_break
-	sep_CB			_break
-	pop_CB			_break
-	wildcard_CB		if ( ... )
-					_return( 2 )
-				_break
-	sift_CB			_break
-	// dot_identifier_CB //
-	parameter_CB		_break
+	    bm_scour()			
+		..._CB			_break	or _return( 1 )
 
-query.c
-	// mark_register_CB //
-	// star_character_CB //
-	// mod_character_CB //
-	// character_CB //
-	// regex_CB //
-	// identifier_CB //
-	match_CB		_break
-	dot_identifier_CB	_break
-	dereference_CB		_return( 1 )
-	sub_expression_CB	if (( data->mark_exp ))
-					_return( 1 )
-				_post_( open_CB, p+1, 0 ) _continue( p+2 )
-	dot_expression_CB	_prune( PRUNE_FILTER )
-				_prune( PRUNE_TERM )
-				_post_( open_CB, p+1, DOT ) _continue( p+2 )
-	open_CB			_continue( p+1 )
-	filter_CB		_return( 1 )
-				_prune( PRUNE_TERM )	// => past ':'
-				_break
-	decouple_CB		_return( 1 )
-				_prune( PRUNE_TERM )	// => past ','
-				_break
-	close_CB		_return( 1 )	
-				_post_return( 1 )
-				_continue( p+1 )
-	wildcard_CB		_break
+	    bm_locate_param()		
+		not_CB			if (( param_CB ))
+						_prune( PRUNE_FILTER )
+					_break
+		deref_CB		if (( param_CB ))
+						_prune( PRUNE_FILTER )
+					_break
+		sub_expr_CB		_prune( PRUNE_FILTER )
+		dot_push_CB		_post_( push_CB, p+1, DOT ) _continue( p+2 )
+					_continue( p+2 )
+		push_CB			_continue( p+1 )
+		sift_CB			_break
+		sep_CB			_break
+		pop_CB			_break
+		wildcard_CB		if ( ... )
+						_return( 2 )
+					_break
+		sift_CB			_break
+		// dot_identifier_CB //
+		parameter_CB		_break
+
+	query.c
+		// mark_register_CB //
+		// star_character_CB //
+		// mod_character_CB //
+		// character_CB //
+		// regex_CB //
+		// identifier_CB //
+		match_CB		_break
+		dot_identifier_CB	_break
+		dereference_CB		_return( 1 )
+		sub_expression_CB	if (( data->mark_exp ))
+						_return( 1 )
+					_post_( open_CB, p+1, 0 ) _continue( p+2 )
+		dot_expression_CB	_prune( PRUNE_FILTER )
+					_prune( PRUNE_TERM )
+					_post_( open_CB, p+1, DOT ) _continue( p+2 )
+		open_CB			_continue( p+1 )
+		filter_CB		_return( 1 )
+					_prune( PRUNE_TERM )	// => past ':'
+					_break
+		decouple_CB		_return( 1 )
+					_prune( PRUNE_TERM )	// => past ','
+					_break
+		close_CB		_return( 1 )	
+					_post_return( 1 )
+					_continue( p+1 )
+		wildcard_CB		_break
 
