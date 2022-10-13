@@ -21,7 +21,8 @@ Version-1.2 File Format Interface additions
 			it is evaluated as BM_CONDITION outside of
 			the overall expression's level
 	. list
-			do (( expr, ... ):_sequence_:)	// ellipsis
+			do (( expr, ... ):_sequence_:)
+				    ^---------- Ellipsis
 	. signals
 			do identifier~
 

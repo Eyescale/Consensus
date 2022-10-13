@@ -1,5 +1,5 @@
 Name
-	Consensus Programming Language (B%) version 1.2	[BETA]
+	Consensus Programming Language (B%) version 1.2	[ BETA ]
 
 Usage
 	./B% program.story
@@ -7,30 +7,31 @@ Usage
 	./B% -f file.ini program.story
 
 Description
-	The objective of this release was originally to support all of
-	the examples located in its ./design/story sub-directory, and
-	ultimately to allow the user to specify and concurrently execute
-	multiple ( narrative, CNDB ) instances from a single story.
+	This release was originally intended to support all the prototype
+	stories located in its ./design/story sub-directory, and
+	ultimately to support user specification and concurrent execution
+	of multiple ( narrative, CNDB ) instances, from a single story.
 
 	The first of these prototypes, named single-thread.story, features
-	a [much] simplified version of the original Turing Machine example.
-
-	The original version is still supported, and can be found under the
+	a simplified Turing Machine example implementation - note that the
+	original version is still supported, and can be found under the
 	Examples/0_TuringMachine sub-directory of this release.
 
-	The new version is located in the Examples/2_TM.single sub-directory.
+	The new version is located in the Examples/2_TM.single sub-directory
+	of this release.
 
 	This example does not use an ini file, so that all the information
 	pertaining to its execution are visible from one source - namely
 	Examples/2_TM.single/TM-single.story
 
-	This, together with the addition of minor readability-enhancement
-	targeted features [listed below] required substantial changes to be
-	made to our existing Version-1.1 code base.
+	This, together with the introduction of other minor features - aimed
+	at enhancing narrative readability [see list below] - required changes
+	to be made to our existing Version-1.1 code base which proved more
+	substantial than anticipated.
 
-	This motivated our decision to create this intermediate minor release,
-	limited to this single Example, prior to moving on to our targeted new
-	major feature development - now happening in Version-WIP.
+	Hence our decision to create this intermediate minor release, limited
+	to supporting the 2_TM.single story example, prior to moving on to our
+	targeted major feature development - now in Version-WIP.
 
 Contents
     Version-1.2 File Format extensions
@@ -41,9 +42,10 @@ Contents
 	  			in/on/do : variable : ~.	(( *, variable ), value ) released if it was
 								instantiated, and ( *, variable ) manifested
 
-	  list		      (( expr, ... ):_sequence_:)	-- where _sequence_ is as per B% literal --
-		      ellipsis --------^			instantiates ((((( expr, * ), a ), b ), ... ), z )
-									    star --------^
+	  list		      (( expr, ... ):_sequence_:)	instantiates ((((( expr, * ), a ), b ), ... ), z )
+				       ^-------- ellipsis	            star --------^
+								where
+									_sequence_ is as per B% literal
 
 	  ternary operator    ( ... expr ? expr : expr ... )	the first sub-expression (which we call guard)
 								is evaluated independently of its level in the
