@@ -44,7 +44,7 @@ Description
 
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
-	cell subscribe to each other upon instantiation. This enables them
+	cells subscribe to each other upon instantiation. This enables them
 	to track each other's events (a.k.a. changes) via narrative EENO.
 
 	In addition to creating a CNCell instance, the second subset of
@@ -57,10 +57,10 @@ Description
 	after which neither parent nor child are able to track each other's
 	changes - until potentially future explicit connection.
 
-	The very last occurrence in the above list unassigns and releases the
+	The very last occurrence in the above list releases and unassigns the
 	connection upon instantiation, which leaves the (*,handle) relationship
 	instance created but with nothing to show for it - not even via
-	on ~((*,handle),?) It is, however, manifested.
+	on ~((*,handle),?) ... It is, however, manifested.
 
 	2. Subscribe
 
