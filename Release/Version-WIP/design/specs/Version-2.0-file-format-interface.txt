@@ -1,0 +1,50 @@
+Name
+	Consensus B% Version-2.0 File Format Interface - New Features
+
+Synopsis
+	    	Feature Name			Usage
+
+	Instantiate			do : handle : !! Narrative( ... ) @<
+					do : handle : !! Narrative( ... ) ~<
+
+					do !! Narrative ( ... ) @<
+					do !! Narrative ( ... ) ~<
+
+	Subscribe			do @< expression
+	Unsubscribe			do ~< expression
+
+	EENO				on event < src
+	EENO Register Variables		%<?
+					%<!
+
+Description
+	External Event Narrative Occurrences (EENO) are occurrences
+	in the form
+
+		on event < src
+
+	where
+		event and src are expressions - see Caveats section below
+
+	The EENO Register Variables %<? and %<! allow subsequent reference,
+	by the narrative, to the EENO expression results, as
+
+		%<?	representing event - first match
+		%<!	representing src - corresponding proxy
+
+Caveats
+	Any term of the EENO event and src expressions which requires
+	a dereferencing operation - such as
+
+		expression:filter
+		%( expression )
+		*expression
+
+	will be dereferenced within the narrative's own cell's CNDB
+	PRIOR to performing the query.
+
+	Such is the limitation imposed, by design, to the Consensus
+	B% inter-cell communication protocol, which allows only to
+	query the manifested changes - and not one another's internal
+	condition.
+
