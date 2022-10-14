@@ -72,7 +72,7 @@ Description
 	that it is passed a proxy instance of a connection to that cell by one
 	of its connections - or by its parent, at instantiation.
 
-	See example usage in the Narrative this register variable section below.
+	See example usage in the Narrative this Register Variable section below.
 
 	3. Unsubscribe
 
