@@ -2,49 +2,126 @@ Name
 	Consensus B% Version-2.0 File Format Interface - New Features
 
 Synopsis
-	    	Feature Name			Usage
+	    	Feature Name			Expression
 
-	Instantiate			do : handle : !! Narrative( ... ) @<
-					do : handle : !! Narrative( ... ) ~<
-
+	Instantiate			do !! Narrative ( ... )
 					do !! Narrative ( ... ) @<
 					do !! Narrative ( ... ) ~<
 
+					do : handle : !! Narrative ( ... )
+					do : handle : !! Narrative ( ... ) @<
+					do : handle : !! Narrative ( ... ) ~<
+
 	Subscribe			do @< expression
+					do : handle : @< expression
+
 	Unsubscribe			do ~< expression
+					do : handle : ~< expression
 
 	EENO				on event < src
-	EENO Register Variables		%<?
+
+	EENO register variables		%<?
 					%<!
 
+	this register variable		%%
+
+	parent register variable	..
+
 Description
-	External Event Narrative Occurrences (EENO) are occurrences
-	in the form
+	1. Instantiate
 
-		on event < src
+	CNCell instances are created upon one of the following parent cell's
+	narrative operations:
 
-	where
-		event and src are expressions - see Caveats section below
+		do !! Narrative ( ... )
+		do !! Narrative ( ... ) @<
+		do !! Narrative ( ... ) ~<
 
-	The EENO Register Variables %<? and %<! allow subsequent reference,
-	by the narrative, to the EENO query results, as
+		do : handle : !! Narrative ( ... )
+		do : handle : !! Narrative ( ... ) @<
+		do : handle : !! Narrative ( ... ) ~<
+
+	The first occurrence within each subset is equivalent to the second,
+	whereby both parent and cell subscribe to each other, and therefore are
+	able to track each other's events (a.k.a. changes) via narrative EENO.
+
+	The second subset of above-listed occurrences allow to assign a handle
+	- expression - to a proxy of the instantiated connection, if it is
+	instantiated - see below concerning the very last occurrence.
+
+	The last occurrence within each subset denotes an occurrence whereby
+	parent unsubscribes from its instantiated cell upon instantiation,
+	after which neither parent nor child are able to track each other
+	events (a.k.a. changes) until future explicit connection.
+
+	The very last occurrence unassigns and releases the connection upon
+	instantiation, which leaves the (*,handle) relationship instance
+	created and manifested, but with nothing to show for it - not even
+	via ~((*,handle),?)
+
+	2. Subscribe
+
+	CNCell instantiation instantiates connections, which can be handled,
+	transported and stored (as proxy) within a cell's CNDB. It is thereby
+	possible for a cell to subscribe to another, unrelated cell, provided
+	it is passed a proxy to that cell via one of its connections - or by
+	its parent, at instantiation.
+
+	3. Unsubscribe
+
+	Same as above, with unsubscribe from instead of subscribe to.
+
+	4. EENO
+
+	External Event Narrative Occurrences (EENO) are occurrences in the form
+
+			on event < src
+
+		where
+			event and src are expressions - see Caveats section below
+
+	5. EENO register variables
+
+	The EENO register variables %<? and %<! allow subsequent reference to be
+	made by the narrative to the EENO query results, as
 
 		%<?	representing event - first match
-		%<!	representing src - corresponding proxy (= *handle)
+		%<!	representing src - corresponding proxy (resp. *handle)
+
+	6. Narrative this register variable
+
+	The Narrative this register variable %% references a proxy to the
+	narrative's current cell->ctx->this CNInstance, to be used for
+	comparison - e.g.
+
+		on : connection : ? < .
+			// one of my sources just registered a new connection
+			in %<?: %%
+				// that connection is me
+			else in %<?
+				// already subscribed
+			else
+				// subscribe to my source's new connection
+				do @< %<?
+
+	7. Narrative parent register variable
+
+	Likewise the Narrative parent register variable .. references a proxy to
+	the narrative's parent cell - provided parent did not unsubscribe upon
+	instantiation.
 
 Caveats
-	Any term of the EENO event and src expressions which requires
-	a dereferencing operation - such as
+	Any referencing term of the EENO event and src expressions, such as
 
+		register variables
 		expression:filter
 		%( expression )
 		*expression
 
-	will be dereferenced within the narrative instance's own cell's
-	CNDB PRIOR to performing the query.
+	will be dereferenced within the narrative instance's own cell's CNDB
+	PRIOR to the query being launched.
 
-	Such is the limitation imposed, by design, to the Consensus
-	B% inter-cell communication protocol, which allows only to
-	query the manifested changes - and not one another's internal
-	condition.
+	Such is the limitation imposed, by design, to the Consensus B%
+	inter-cell communication protocol, in that it allows only to query
+	manifested changes - and not one another's internal condition.
 
