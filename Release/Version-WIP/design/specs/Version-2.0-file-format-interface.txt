@@ -46,7 +46,7 @@ Description
 	cell subscribe to each other upon instantiation. This enables them
 	to track each other's events (a.k.a. changes) via narrative EENO.
 
-	In addition to creating a CNCell instance, the second subset in the
+	In addition to creating a CNCell instance, the second subset of
 	above-listed occurrences allows a proxy of the instantiated connection
 	to be assigned to a local CNDB handle - expression - if the connection
 	was instantiated.
@@ -54,17 +54,17 @@ Description
 	The last occurrence within both subset denotes an occurrence whereby
 	parent unsubscribes from its instantiated cell upon instantiation,
 	after which neither parent nor child are able to track each other's
-	events - until potentially future explicit connection.
+	changes - until potentially future explicit connection.
 
-	The very last occurrence unassigns and releases the connection upon
-	instantiation, which leaves the (*,handle) relationship instance
-	created but with nothing to show for it - not even via ~((*,handle),?)
-	It is, however, manifested.
+	The very last occurrence in the above list unassigns and releases the
+	connection upon instantiation, which leaves the (*,handle) relationship
+	instance created but with nothing to show for it - not even via
+	on ~((*,handle),?) It is, however, manifested.
 
 	2. Subscribe
 
 	CNCell instantiation involves instantiating connections, which can be
-	handled and stored (as proxy) within a cell's CNDB.
+	handled and stored as proxies within a cell's CNDB.
 
 	Proxies can also be communicated from one cell to another, thereby
 	allowing a cell to subscribe to another, unrelated cell, provided only
