@@ -18,14 +18,15 @@ Synopsis
 	Unsubscribe			do ~< expression
 					do : handle : ~< expression
 
-	EENO				on event < src
+	External Event Narrative	on event < src
+	Occurrence (EENO)
 
-	EENO register variables		%<?
+	EENO Register Variables		%<?
 					%<!
 
-	this register variable		%%
+	this Register Variable		%%
 
-	parent register variable	..
+	parent Register Variable	..
 
 Description
 	1. Instantiate
@@ -77,7 +78,7 @@ Description
 
 	Same as above, with unsubscribe from instead of subscribe to.
 
-	4. EENO
+	4. External Event Narrative Occurrence (EENO)
 
 	External Event Narrative Occurrences (EENO) are occurrences in the form
 
@@ -89,18 +90,18 @@ Description
 	See information related to how these expressions are processed prior to
 	launching the query in the Caveats section below.
 
-	5. EENO register variables
+	5. EENO Register Variables
 
-	The EENO register variables %<? and %<! allow subsequent references to
+	The EENO Register Variables %<? and %<! allow subsequent references to
 	the EENO query results to be made by the narrative, using
 
 		%<?	to represent event = first match
 		%<!	to represent src = proxy to the corresponding connection
 
-	6. Narrative this register variable
+	6. Narrative this Register Variable
 
-	The Narrative this register variable %% allows a proxy to the narrative's
-	current cell->ctx->this CNInstance to be used for comparison - e.g.
+	The Narrative this Register Variable %% allows a proxy to the narrative's
+	current ctx->this CNInstance to be used for comparison - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
@@ -112,9 +113,9 @@ Description
 				// subscribe to my source's new connection
 				do @< %<?
 
-	7. Narrative parent register variable
+	7. Narrative parent Register Variable
 
-	Likewise the Narrative parent register variable .. references a proxy to
+	Likewise the Narrative parent Register Variable .. references a proxy to
 	the narrative's parent cell - provided parent did not unsubscribe upon
 	instantiation.
 
