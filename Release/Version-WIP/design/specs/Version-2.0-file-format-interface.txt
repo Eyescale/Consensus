@@ -40,8 +40,8 @@ Caveats
 		%( expression )
 		*expression
 
-	will be dereferenced within the narrative's own cell's CNDB
-	PRIOR to performing the query.
+	will be dereferenced within the narrative instance's own cell's
+	CNDB PRIOR to performing the query.
 
 	Such is the limitation imposed, by design, to the Consensus
 	B% inter-cell communication protocol, which allows only to
