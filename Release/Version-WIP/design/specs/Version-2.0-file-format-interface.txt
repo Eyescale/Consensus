@@ -27,7 +27,7 @@ Description
 		event and src are expressions - see Caveats section below
 
 	The EENO Register Variables %<? and %<! allow subsequent reference,
-	by the narrative, to the EENO expression results, as
+	by the narrative, to the EENO query results, as
 
 		%<?	representing event - first match
 		%<!	representing src - corresponding proxy
