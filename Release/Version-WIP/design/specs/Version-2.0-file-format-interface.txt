@@ -30,7 +30,7 @@ Description
 	by the narrative, to the EENO query results, as
 
 		%<?	representing event - first match
-		%<!	representing src - corresponding proxy
+		%<!	representing src - corresponding proxy (= *handle)
 
 Caveats
 	Any term of the EENO event and src expressions which requires
