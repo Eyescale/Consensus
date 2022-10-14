@@ -51,7 +51,7 @@ Description
 	to be assigned to a local CNDB handle - expression - if the connection
 	was instantiated.
 
-	The last occurrence within both subset denotes an occurrence whereby
+	The last occurrence within both subsets denotes an occurrence whereby
 	parent unsubscribes from its instantiated cell upon instantiation,
 	after which neither parent nor child are able to track each other's
 	changes - until potentially future explicit connection.
