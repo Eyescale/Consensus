@@ -91,17 +91,16 @@ Description
 
 	5. EENO register variables
 
-	The EENO register variables %<? and %<! allow subsequent reference to be
-	made by the narrative to the EENO query results, as
+	The EENO register variables %<? and %<! allow subsequent references to
+	the EENO query results to be made by the narrative, using
 
-		%<?	representing event - first match
-		%<!	representing src - proxy to the corresponding connection
+		%<?	to represent event = first match
+		%<!	to represent src = proxy to the corresponding connection
 
 	6. Narrative this register variable
 
-	The Narrative this register variable %% references a proxy to the
-	narrative's current cell->ctx->this CNInstance, to be used for
-	comparison - e.g.
+	The Narrative this register variable %% allows a proxy to the narrative's
+	current cell->ctx->this CNInstance to be used for comparison - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
