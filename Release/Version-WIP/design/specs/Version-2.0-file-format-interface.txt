@@ -42,6 +42,19 @@ Description
 		do : handle : !! Narrative ( ... ) @<
 		do : handle : !! Narrative ( ... ) ~<
 
+	The instantiated cell's init condition are specified within the
+	parentheses - in lieu of the ellipsis symbol - as a list of comma-
+	and/or newline- separated expressions. Referencing terms, such as
+
+		register variable
+		expression:filter
+		%( expression )
+		*expression
+
+	are allowed in these expressions. These will be dereferenced within
+	the parent cell's CNDB prior to the result being replicated into the
+	new cell's CNDB.
+
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
 	cells subscribe to each other upon instantiation. This enables them
