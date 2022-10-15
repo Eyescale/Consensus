@@ -52,8 +52,8 @@ Description
 		*expression
 
 	are allowed in these expressions. These will be dereferenced within
-	the parent cell's CNDB prior to the result being replicated into the
-	new cell's CNDB.
+	the parent cell's CNDB prior to the resulting expression's being
+	replicated into the new cell's CNDB.
 
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
@@ -141,7 +141,7 @@ Caveats
 		*expression
 
 	will be dereferenced within the narrative instance's own cell's CNDB
-	PRIOR to the query being launched.
+	PRIOR to the query's being launched.
 
 	Such is the limitation imposed, by design, to the Consensus B%
 	inter-cell communication protocol, in that it allows only to query
