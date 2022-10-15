@@ -52,21 +52,21 @@ Description
 		*expression
 
 	are allowed in these expressions. These will be dereferenced within
-	the parent cell's CNDB prior to the resulting expression's being
-	replicated into the new cell's CNDB.
+	the parent cell's CNDB for the resulting expression to be replicated
+	into the CNDB of the cell under construction.
 
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
 	cells subscribe to each other upon instantiation. This enables them
-	to track each other's events (a.k.a. changes) via narrative EENO.
+	to track each other's events (a.k.a. changes) via Narrative EENO.
 
 	In addition to creating a CNCell instance, the second subset of
 	above-listed occurrences allows a proxy of the instantiated connection
 	to be assigned to a local CNDB handle - expression - if the connection
 	was instantiated.
 
-	The last occurrence within both subsets denotes an occurrence whereby
-	parent unsubscribes from its instantiated cell upon instantiation,
+	The last occurrence within both subsets denotes an occurrence where
+	parent unsubscribes upon instantiation from its instantiated cell,
 	after which neither parent nor child are able to track each other's
 	changes - until potentially future explicit connection.
 
