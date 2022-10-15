@@ -52,8 +52,8 @@ Description
 		*expression
 
 	are allowed in these expressions. These will be dereferenced within
-	the parent cell's CNDB for the resulting expression to be replicated
-	into the CNDB of the cell under construction.
+	the parent cell's CNDB prior to the resulting expression's being
+	replicated into the new cell's CNDB.
 
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
