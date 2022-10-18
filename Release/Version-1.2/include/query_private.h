@@ -24,10 +24,8 @@ typedef struct {
 	int op, success;
 	CNInstance *instance;
 	listItem *mark_exp;
-	listItem *sub_exp;
 	listItem *base;
 	listItem *OOS;
-	int flags;
 	struct {
 		listItem *flags;
 		listItem *scope;
@@ -35,6 +33,14 @@ typedef struct {
 		listItem *base;
 	} stack;
 } BMQueryData;
+
+static BMTraverseCB
+	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,
+	sub_expression_CB, open_CB, filter_CB, decouple_CB, close_CB, wildcard_CB;
+
+#define case_( func ) \
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		BMQueryData *data = traverse_data->user_data; char *p = *q;
 
 
 #endif	// QUERY_PRIVATE_H

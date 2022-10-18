@@ -102,7 +102,7 @@
 #define	s_at( event ) \
 	( StringAt(s)==event )
 #define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
+	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
 #define	s_reset( a ) \
 	StringReset( s, a );
 #define s_take \

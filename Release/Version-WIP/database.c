@@ -22,6 +22,9 @@ newCNDB( void )
 #endif
 	char *p = strmake( "*" );
 	CNInstance *star = cn_new( NULL, NULL );
+#ifdef UNIFIED
+	star->sub[ 1 ] = p;
+#endif
 	registryRegister( index, p, star );
 
 	CNInstance *nil = cn_new( NULL, star );
@@ -165,38 +168,32 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 }
 
 //===========================================================================
-//	db_coupled
+//	db_unassign
 //===========================================================================
-int
-db_coupled( int privy, CNInstance *x, CNDB *db )
+CNInstance *
+db_unassign( CNInstance *x, CNDB *db )
 /*
-	Assumption: invoked by bm_assign_op(), with x:(*,.)
+	deprecate ((*,x),.) and force manifest (*,x) if it exists
+	otherwise instantiate (*,x)
 */
 {
-	for ( listItem *i=x->as_sub[0]; i!=NULL; i=i->next ) {
-		CNInstance *e = i->ptr;
-		if ( !db_private( privy, e, db ) )
-			return 1;
+	CNInstance *star = db_star( db );
+	CNInstance *e;
+	for ( listItem *i=x->as_sub[1]; i!=NULL; i=i->next ) {
+		e = i->ptr;
+		if ( e->sub[0]!=star )
+			continue;
+		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
+			CNInstance *f = j->ptr;
+			if ( db_deprecatable(f,db) )
+				db_deprecate( f, db );
+		}
+		db_op( DB_REASSIGN_OP, e, db );
+		return e;
 	}
-	return 0;
-}
-
-//===========================================================================
-//	db_uncouple
-//===========================================================================
-void
-db_uncouple( CNInstance *x, CNDB *db )
-/*
-	Assumption: invoked by bm_assign_op(), with x:(*,.)
-	deprecate (x,.) and force manifest - aka. reassign - x
-*/
-{
-	for ( listItem *i=x->as_sub[0]; i!=NULL; i=i->next ) {
-		CNInstance *e = i->ptr;
-		if ( db_deprecatable(e,db) )
-			db_deprecate( e, db );
-	}
-	db_op( DB_REASSIGN_OP, x, db );
+	e = cn_new( star, x );
+	db_op( DB_MANIFEST_OP, e, db );
+	return e;
 }
 
 //===========================================================================

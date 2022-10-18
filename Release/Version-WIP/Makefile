@@ -13,6 +13,7 @@ SRCS =	narrative.c \
 			deternarize.c \
 			expression.c \
 			instantiate.c \
+				assignment.c \
 			query.c \
 				locate.c \
 				traverse.c

@@ -1,20 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "instantiate_private.h"
 #include "string_util.h"
 #include "database.h"
-#include "narrative.h"
-#include "expression.h"
-#include "traverse.h"
-#include "locate.h"
-
-// #define DEBUG
-
-static int bm_void( char *, BMContext * );
-static listItem *bm_couple( listItem *sub[2], BMContext * );
-static CNInstance *bm_literal( char **, BMContext * );
-static listItem *bm_list( char **, listItem **, BMContext * );
-static listItem *bm_scan( char *, BMContext * );
 
 //===========================================================================
 //	bm_instantiate
@@ -23,27 +12,12 @@ static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
 	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
-typedef struct {
-	struct { listItem *flags; } stack;
-	listItem *sub[ 2 ];
-	listItem *results;
-	BMContext *ctx;
-} BMInstantiateData;
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMInstantiateData *data = traverse_data->user_data; char *p = *q;
-#define current \
-	( is_f( FIRST ) ? 0 : 1 )
 
 void
 bm_instantiate( char *expression, BMContext *ctx )
 {
 #ifdef DEBUG
-	if ( bm_void( expression, ctx ) ) {
-		fprintf( stderr, ">>>>> B%%: bm_instantiate(): VOID: %s\n", expression );
-		exit( -1 );
-	}
-	else fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
+	fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
 #endif
 	BMInstantiateData data;
 	memset( &data, 0, sizeof(data) );
@@ -53,7 +27,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = INFORMED;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
 	table[ BMTermCB ]		= term_CB;
@@ -77,26 +50,37 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 	table[ BMSignalCB ]		= signal_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
 
-	if ( traverse_data.done == 2 ) {
+	if ( *expression==':' )
+		bm_instantiate_assignment( expression, &traverse_data );
+	else {
+		DBG_VOID( expression )
+		traverse_data.done = INFORMED;
+		bm_traverse( expression, &traverse_data, FIRST ); }
+
+	if ( traverse_data.done==2 ) {
+		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantation\n"
+                        "\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data.p );
+		freeListItem( &data.stack.flags );
 		freeListItem( &data.sub[ 1 ] );
 		listItem *instances;
 		listItem **results = &data.results;
 		while (( instances = popListItem(results) ))
 			freeListItem( &instances );
-	}
+		bm_flush_pipe( ctx ); }
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
-		if ( traverse_data.done == 2 ) fprintf( stderr, "***INCOMPLETE***\n" );
+		if ( traverse_data.done==2 ) fprintf( stderr, "***INCOMPLETE***\n" );
 		else db_outputf( stderr, BMContextDB(ctx), "first=%_\n", data.sub[0]->ptr ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
-	freeListItem( &data.stack.flags );
 	freeListItem( &data.sub[ 0 ] );
 }
 
+//---------------------------------------------------------------------------
+//	bm_instantiate_traversal
+//---------------------------------------------------------------------------
 BMTraverseCBSwitch( bm_instantiate_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
@@ -126,7 +110,7 @@ case_( end_set_CB )
 		data->sub[ 1 ] = instances; }
 	_break
 case_( bgn_pipe_CB )
-	bm_push_mark( data->ctx, '!', data->sub[ current ] );
+	bm_push_mark( data->ctx, '|', data->sub[ current ] );
 	addItem( &data->results, data->sub[ 0 ] );
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 1 ] );
@@ -134,7 +118,7 @@ case_( bgn_pipe_CB )
 	data->sub[ 0 ] = NULL;
 	_break
 case_( end_pipe_CB )
-	bm_pop_mark( data->ctx, '!' );
+	bm_pop_mark( data->ctx, '|' );
 	freeListItem( &data->sub[ 0 ] );
 	if (!(f_next&FIRST))
 		data->sub[ 1 ] = popListItem( &data->results );
@@ -143,12 +127,13 @@ case_( end_pipe_CB )
 case_( mark_register_CB )
 	switch ( p[1] ) {
 	case '?': ;
-		CNInstance *e = bm_context_lookup( data->ctx, "?" );
+	case '!': ;
+		CNInstance *e = bm_context_lookup( data->ctx, ((char_s)(int)p[1]).s );
 		if ( !e ) _return( 2 )
 		data->sub[ current ] = newItem( e );
 		break;
-	case '!': ;
-		listItem *i = bm_context_lookup( data->ctx, "!" );
+	case '|': ;
+		listItem *i = bm_context_lookup( data->ctx, "|" );
 		if ( !i ) _return( 2 )
 		listItem **sub = &data->sub[ current ];
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr );
@@ -198,8 +183,8 @@ case_( close_CB )
 			listItem *localized = bm_couple( data->sub, data->ctx );
 			freeListItem( &data->sub[ 0 ] );
 			freeListItem( &data->sub[ 1 ] );
-			instances = localized; } }
-		else ; // err !!!
+			instances = localized; }
+		else _return( 2 ) }
 	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
 	else {
@@ -215,7 +200,7 @@ case_( dot_identifier_CB )
 	if ((this) && (e)) {
 		e = db_instantiate( this, e, BMContextDB(data->ctx) );
 		data->sub[ current ] = newItem( e ); }
-	else ; // err !!!
+	else _return( 2 )
 	_break
 case_( identifier_CB )
 	CNInstance *e = bm_register( data->ctx, p );
@@ -227,72 +212,28 @@ case_( signal_CB )
 	_break
 BMTraverseCBEnd
 
-//===========================================================================
-//	bm_void
-//===========================================================================
-static BMTraverseCB feel;
-static BMTraverseCB
-	feel_CB, sound_CB, touch_CB;
-#undef case_
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMContext *ctx = traverse_data->user_data; char *p = *q;
+//---------------------------------------------------------------------------
+//	bm_scan
+//---------------------------------------------------------------------------
+static BMQueryCB scan_CB;
 
-static int
-bm_void( char *expression, BMContext *ctx )
-/*
-	tests if expression is instantiable, ie. that
-	. all inner queries have results
-	. all the associations it contains can be made 
-	returns 0 if it is instantiable, 1 otherwise
-*/
+static listItem *
+bm_scan( char *expression, BMContext *ctx )
 {
-	// fprintf( stderr, "bm_void: %s\n", expression );
-	listItem *stack = NULL;
-
-	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
-	traverse_data.user_data = ctx;
-	traverse_data.stack = &stack;
-	traverse_data.done = INFORMED;
-
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMTermCB ]		= feel_CB;
-	table[ BMNotCB ]		= sound_CB;
-	table[ BMDereferenceCB ]	= sound_CB;
-	table[ BMSubExpressionCB ]	= sound_CB;
-	table[ BMMarkRegisterCB ]	= touch_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
-
-	freeListItem( &stack );
-	return ( traverse_data.done==2 );
+	listItem *results = NULL;
+	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
+	return results;
+}
+static BMCBTake
+scan_CB( CNInstance *e, BMContext *ctx, void *results )
+{
+	addIfNotThere((listItem **) results, e );
+	return BM_CONTINUE;
 }
 
-BMTraverseCBSwitch( bm_void_traversal )
-case_( feel_CB )
-	if is_f( FILTERED ) {
-		if ( !bm_feel( BM_CONDITION, p, ctx ) )
-			_return( 2 )
-		_prune( BM_PRUNE_TERM ) }
-	_break
-case_( sound_CB )
-	int target = bm_scour( p, EMARK );
-	if ( target&EMARK && target!=EMARK ) {
-		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
-		"dubious combination of query terms with %%!\n", p );
-	}
-	if ( !bm_feel( BM_CONDITION, p, ctx ) )
-		_return( 2 )
-	_prune( BM_PRUNE_TERM )
-case_( touch_CB )
-	if ( p[1]=='?' && !bm_context_lookup( ctx, "?" ) )
-		_return( 2 )
-	_break
-BMTraverseCBEnd
-
-//===========================================================================
+//---------------------------------------------------------------------------
 //	bm_couple
-//===========================================================================
+//---------------------------------------------------------------------------
 static listItem *
 bm_couple( listItem *sub[2], BMContext *ctx )
 /*
@@ -328,9 +269,9 @@ bm_couple( listItem *sub[2], BMContext *ctx )
 	return results;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	bm_literal
-//===========================================================================
+//---------------------------------------------------------------------------
 static char *sequence_step( char *, CNInstance **, CNDB * );
 
 static CNInstance *
@@ -371,9 +312,9 @@ RETURN:
 	return e;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	bm_list
-//===========================================================================
+//---------------------------------------------------------------------------
 static listItem *
 bm_list( char **position, listItem **sub, BMContext *ctx )
 /*
@@ -474,21 +415,68 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 }
 
 //===========================================================================
-//	bm_scan
+//	bm_void
 //===========================================================================
-static BMQueryCB scan_CB;
+static BMTraverseCB feel;
+static BMTraverseCB
+	feel_CB, sound_CB, touch_CB;
+#undef case_
+#define case_( func ) \
+	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+		BMContext *ctx = traverse_data->user_data; char *p = *q;
 
-static listItem *
-bm_scan( char *expression, BMContext *ctx )
+int
+bm_void( char *expression, BMContext *ctx )
+/*
+	tests if expression is instantiable, ie. that
+	. all inner queries have results
+	. all the associations it contains can be made 
+	returns 0 if it is instantiable, 1 otherwise
+*/
 {
-	listItem *results = NULL;
-	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
-	return results;
+	// fprintf( stderr, "bm_void: %s\n", expression );
+	listItem *stack = NULL;
+
+	BMTraverseData traverse_data;
+	memset( &traverse_data, 0, sizeof(traverse_data) );
+	traverse_data.user_data = ctx;
+	traverse_data.stack = &stack;
+	traverse_data.done = INFORMED;
+
+	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
+	table[ BMTermCB ]		= feel_CB;
+	table[ BMNotCB ]		= sound_CB;
+	table[ BMDereferenceCB ]	= sound_CB;
+	table[ BMSubExpressionCB ]	= sound_CB;
+	table[ BMMarkRegisterCB ]	= touch_CB;
+	bm_traverse( expression, &traverse_data, FIRST );
+
+	freeListItem( &stack );
+	return ( traverse_data.done==2 );
 }
-static BMCBTake
-scan_CB( CNInstance *e, BMContext *ctx, void *results )
-{
-	addIfNotThere((listItem **) results, e );
-	return BM_CONTINUE;
-}
+
+//---------------------------------------------------------------------------
+//	bm_void_traversal
+//---------------------------------------------------------------------------
+BMTraverseCBSwitch( bm_void_traversal )
+case_( feel_CB )
+	if is_f( FILTERED ) {
+		if ( !bm_feel( BM_CONDITION, p, ctx ) )
+			_return( 2 )
+		_prune( BM_PRUNE_TERM ) }
+	_break
+case_( sound_CB )
+	int target = bm_scour( p, PMARK );
+	if ( target&PMARK && target!=PMARK ) {
+		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
+		"dubious combination of query terms with %%!\n", p );
+	}
+	if ( !bm_feel( BM_CONDITION, p, ctx ) )
+		_return( 2 )
+	_prune( BM_PRUNE_TERM )
+case_( touch_CB )
+	if ( strmatch("?!",p[1]) && !bm_context_lookup( ctx, ((char_s)(int)p[1]).s ) )
+		_return( 2 )
+	_break
+BMTraverseCBEnd
 

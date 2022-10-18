@@ -1,5 +1,8 @@
+Synopsis
+	Consensus B% Version-1.2 Software Packages
 
-T.O.C.
+Contents
+
 	1.	narrative.c
 	1.1.		parser.c
 	2.	program.c
@@ -10,46 +13,64 @@ T.O.C.
 	2.3.2.			deternarize.c
 	2.3.3.			expression.c
 	2.3.4.			instantiate.c
+	2.3.4.1.			assignment.c
 	2.3.5.			query.c
 	2.3.5.1.			locate.c
 	2.3.5.2.			traverse.c
 
-Contents (Public only)
+Description
+			File				API
+
 	1.	narrative.c				readStory
 							bm_read
 							freeStory
 							cnStoryOutput
-	1.1.		parser.c			cn_parse
-							cn_parse_report
-							cn_parse_init
+	1.1.		parser.c			bm_parse
+							bm_parse_report
+							bm_parse_init
 							cn_parser_init
 							cn_parser_getc
-	2.	program.c				newProgram / freeProgram
-							newCell / freeCell
+	2.	program.c				newProgram
+							freeProgram
+							newCell
+							freeCell
 							cnUpdate
 							cnOperate
-	2.1.		database.c			newCNDB / freeCNDB
+	2.1.		database.c			newCNDB
+							freeCNDB
 							db_...	// data management
-	2.2.		context.c			newContext / freeContext
-							bm_context_set / bm_context_fetch / bm_context_clear
+	2.2.		context.c			newContext
+							freeContext
+							bm_context_set
+							bm_context_fetch
 							bm_context_mark
-							bm_push_mark / bm_pop_mark
-							bm_context_lookup / bm_context_register
-							bm_lookup / bm_register
+							bm_context_flush
+							bm_flush_pipe
+							bm_push_mark
+							bm_pop_mark
+							bm_context_lookup
+							bm_context_register
+							bm_lookup
+							bm_register
 	2.3.		operation.c			bm_operate
 							bm_update
 	2.3.1.			db_op.c			db_...	// nil operations
 	2.3.2.			deternarize.c		bm_deternarize
 	2.3.3.			expression.c		bm_feel
 							bm_release
-							bm_assign_op
 							bm_inputf
 							bm_outputf
 	2.3.4.			instantiate.c		bm_instantiate
+	2.3.4.1.			assignment.c	bm_instantiate_assignment
+							bm_query_assignment
 	2.3.5.			query.c			bm_query
+							xp_traverse
+							xp_verify
 	2.3.5.1.			locate.c	bm_locate_pivot
 							bm_scour
 							bm_locate_mark
 							bm_locate_param
-							xpn_add / xpn_set / xpn_out
+							xpn_add
+							xpn_set
+							xpn_out
 	2.3.5.2.			traverse.c	bm_traverse

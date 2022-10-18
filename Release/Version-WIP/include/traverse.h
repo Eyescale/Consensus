@@ -23,6 +23,7 @@
 #define LITERAL		(1<<14)
 #define CLEAN		(1<<15)
 #define LISTABLE	(1<<16)
+#define NEW		(1<<17)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

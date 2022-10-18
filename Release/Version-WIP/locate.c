@@ -30,15 +30,16 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, THIS|QMARK|IDENTIFIER );
+	int target = bm_scour( expression, THIS|EMARK|QMARK|IDENTIFIER );
 	if ( target == 0 ) return NULL;
 	else target =	( target & THIS) ? THIS :
+			( target & EMARK ) ? EMARK :
 			( target & QMARK ) ? QMARK :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :
 			( target & STAR ) ? STAR :
-			( target & EMARK ) ? EMARK : 0;
+			( target & PMARK ) ? PMARK : 0;
 
 	BMLocatePivotData data;
 	memset( &data, 0, sizeof(data) );
@@ -64,15 +65,19 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	table[ BMFilterCB ]		= filter_CB;
 	table[ BMDecoupleCB ]		= decouple_CB;
 	table[ BMCloseCB ]		= close_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
+	char *p = bm_traverse( expression, &traverse_data, FIRST );
 
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
 		freeListItem( &data.stack.level );
 		freeListItem( &data.stack.premark );
 	}
-	return ( traverse_data.done==2 ? traverse_data.p : NULL );
+	return ( traverse_data.done==2 ? p : NULL );
 }
+
+//---------------------------------------------------------------------------
+//	bm_locate_pivot_traversal
+//---------------------------------------------------------------------------
 #define pop_exponent( exponent, level ) \
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 
@@ -105,7 +110,9 @@ case_( star_character_CB )
 		_return( 2 )
 	_break
 case_( mark_register_CB )
-	if ( !is_f(NEGATED) && data->target==( p[1]=='?' ? QMARK : EMARK ) )
+	if ( !is_f(NEGATED) && data->target==(
+		p[1]=='!' ? EMARK :
+		p[1]=='?' ? QMARK : PMARK ) )
 		_return( 2 )
 	_break
 case_( dereference_CB )
@@ -201,7 +208,7 @@ bm_scour( char *expression, int target )
 	table[ BMStarCharacterCB ]	= sc_star_character_CB;
 	table[ BMDereferenceCB ]	= sc_star_character_CB;
 	table[ BMMarkRegisterCB ]	= sc_mark_register_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
+	char *p = bm_traverse( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
 	return data.candidate;
@@ -240,8 +247,13 @@ case_( sc_mark_register_CB )
 			if ( data->target & QMARK )
 				_return( 1 )
 			break;
-		default:
+		case '!':
 			data->candidate |= EMARK;
+			if ( data->target & EMARK )
+				_return( 1 )
+			break;
+		default:
+			data->candidate |= PMARK;
 		}
 	_break
 BMTraverseCBEnd
@@ -306,25 +318,23 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 	table[ BMCloseCB ]		= pop_CB;
 	table[ BMWildCardCB ]		= wildcard_CB;
 	table[ BMDotIdentifierCB ]	= parameter_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
+	char *p = bm_traverse( expression, &traverse_data, FIRST );
 
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
 		freeListItem( &data.stack.level );
 	}
-	return ( *traverse_data.p=='?' ? traverse_data.p : NULL );
+	return ( *p=='?' ? p : NULL );
 }
 
 BMTraverseCBSwitch( bm_locate_param_traversal )
 case_( not_CB )
 	if (( data->param_CB )) {
-		_prune( BM_PRUNE_FILTER )
-	}
+		_prune( BM_PRUNE_FILTER ) }
 	else _break
 case_( deref_CB )
 	if (( data->param_CB )) {
-		_prune( BM_PRUNE_FILTER )
-	}
+		_prune( BM_PRUNE_FILTER ) }
 	listItem **exponent = data->exponent;
 	xpn_add( exponent, AS_SUB, 1 );
 	xpn_add( exponent, SUB, 0 );

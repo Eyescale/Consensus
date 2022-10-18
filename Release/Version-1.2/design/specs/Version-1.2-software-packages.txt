@@ -42,8 +42,9 @@ Description
 							freeContext
 							bm_context_set
 							bm_context_fetch
-							bm_context_clear
 							bm_context_mark
+							bm_context_flush
+							bm_flush_pipe
 							bm_push_mark
 							bm_pop_mark
 							bm_context_lookup

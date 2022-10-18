@@ -1,5 +1,14 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. support cell instantation + proxy
+		. [ DONE ] parser.c
+		. operation.c
+			. do_action // Actually I don't need new type of occurrences!
+			. program.c
+		. simple test program (multi-cell without inter-cell communication)
+	. support EENO
+	. instantiate.c error handling
+		. MUST pop & flush pipe and data->sub's lists *** all the way down ***
     Version-2.0
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
@@ -69,5 +78,8 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. changed Pipe Register Variable name from %! to %|
+	. parser.c
+		. cell instantiation syntax (!!)
 	. rewrote Base/Examples/6_BTreefy
 	. extract btreefy from ../../Base to ../../Base/Examples/

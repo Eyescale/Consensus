@@ -5,6 +5,7 @@
 #include "program.h"
 #include "operation.h"
 #include "expression.h"
+#include "locate.h"
 #include "query.h"
 
 // #define DEBUG
@@ -76,32 +77,27 @@ operate(
 			addItem( &stack, i );
 			add_item( &stack, marked );
 			i = j; marked = 0;
-			continue;
-		}
+			continue; }
 		for ( ; ; ) {
 			if (( marked )) {
-				bm_pop_mark( ctx, '?' );
-				marked = 0;
-			}
+				if ( marked&EMARK ) bm_pop_mark( ctx, '!' );
+				if ( marked&QMARK ) bm_pop_mark( ctx, '?' );
+				marked = 0; }
 			if (( i->next )) {
 				i = i->next;
-				break;
-			}
+				break; }
 			else if (( stack )) {
 				passed = 1; // otherwise we would not be here
 				marked = pop_item( &stack );
-				i = popListItem( &stack );
-				occurrence = i->ptr;
-			}
+				i = popListItem( &stack ); }
 			else goto RETURN;
 		}
 	}
 RETURN:
 	freeItem( i );
-	bm_context_clear( ctx );
+	bm_context_flush( ctx );
 	if ( !subs->entries ) {
-		freeRegistry( subs, NULL );
-	}
+		freeRegistry( subs, NULL ); }
 	else call->subs = subs;
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
@@ -145,11 +141,8 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 				BMCall *call = operate( narrative, instance, ctx, narratives, story );
 				if (( call->subs )) {
 					enlist( index[ 1 ], call->subs, warden );
-					freeRegistry( call->subs, NULL );
-				}
-				freePair((Pair *) call );
-			}
-		}
+					freeRegistry( call->subs, NULL ); }
+				freePair((Pair *) call ); } }
 	} while (( index[ 1 ]->entries ));
 	freeRegistry( warden, relieve_CB );
 	freeRegistry( index[ 0 ], NULL );
@@ -187,8 +180,7 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 			registryRegister( warden, narrative, sub->value );
 			s_place( selection, index, narrative );
 			for ( listItem *i=sub->value; i!=NULL; i=i->next )
-				addItem( selection, i->ptr );
-		}
+				addItem( selection, i->ptr ); }
 		else {
 			listItem **enlisted = (listItem **) &found->value;
 			listItem **candidates = (listItem **) &sub->value;
@@ -196,10 +188,7 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 				if (( addIfNotThere( enlisted, instance ) )) {
 					s_place( selection, index, narrative );
 					addItem( selection, instance );
-				}
-			}
-		}
-	}
+		} } } }
 }
 
 //===========================================================================
@@ -222,27 +211,17 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 	Assumption: *marked = 0 to begin with
 */
 {
-	CNInstance *found;
-	int success, negated=0;
 #ifdef DEBUG
 	fprintf( stderr, "in condition bgn: %s\n", expression );
 #endif
+	CNInstance *found;
+	int success, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
-	switch ( *expression ) {
-	case ':':
-		success = bm_assign_op( IN, expression, ctx, marked );
-		goto RETURN;
-	case '~':
-		switch ( expression[ 1 ] ) {
-		case '.':
-			success = 0;
-			goto RETURN;
-		}
-		break;
-	}
-DEFAULT:
+	if ( !strcmp( expression, "~." ) )
+		{ success=0; goto RETURN; }
+
 	found = bm_feel( BM_CONDITION, expression, ctx );
 	success = bm_context_mark( ctx, expression, found, marked );
 RETURN:
@@ -261,18 +240,15 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	Assumption: *marked = 0 to begin with
 */
 {
-	CNInstance *found;
-	int success, negated=0;
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
+	CNInstance *found;
+	int success, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
 	switch ( *expression ) {
-	case ':':
-		success = bm_assign_op( ON, expression, ctx, marked );
-		goto RETURN;
 	case '~':
 		switch ( expression[1] ) {
 		case '(':
@@ -282,16 +258,13 @@ on_event( char *expression, BMContext *ctx, int *marked )
 			goto RETURN;
 		case '.':
 			success = db_still( BMContextDB(ctx) );
-			goto RETURN;
-		}
+			goto RETURN; }
 		break;
 	default:
 		if ( !strcmp( expression, "init" ) ) {
 			success = db_in( BMContextDB(ctx) );
-			goto RETURN;
-		}
-	}
-DEFAULT:
+			goto RETURN; } }
+
 	found = bm_feel( BM_INSTANTIATED, expression, ctx );
 	success = bm_context_mark( ctx, expression, found, marked );
 RETURN:
@@ -315,9 +288,6 @@ do_action( char *expression, BMContext *ctx )
 		if ( expression[1]!='(' && is_separator( expression[1] ) )
 			goto RETURN;
 		break;
-	case ':':
-		bm_assign_op( DO, expression, ctx, NULL );
-		goto RETURN;
 	case '~':
 		switch ( expression[1] ) {
 		case '(':
@@ -330,10 +300,8 @@ do_action( char *expression, BMContext *ctx )
 	default:
 		if ( !strcmp( expression, "exit" ) ) {
 			db_exit( BMContextDB(ctx) );
-			goto RETURN;
-		}
+			goto RETURN; }
 	}
-DEFAULT:
 	bm_instantiate( expression, ctx );
 RETURN:
 #ifdef DEBUG

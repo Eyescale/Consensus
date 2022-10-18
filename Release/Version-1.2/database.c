@@ -22,6 +22,9 @@ newCNDB( void )
 #endif
 	char *p = strmake( "*" );
 	CNInstance *star = cn_new( NULL, NULL );
+#ifdef UNIFIED
+	star->sub[ 1 ] = p;
+#endif
 	registryRegister( index, p, star );
 
 	CNInstance *nil = cn_new( NULL, star );

@@ -3,8 +3,6 @@
 
 #include "program.h"
 
-// #define DEBUG
-
 void
 usage( void )
 {

@@ -50,7 +50,13 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 			case '>':
 			case '<':
 				p++; break;
+			case '!':
+				p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				break;
+			case '@':
 			case '~':
+				if ( p[1]=='<' ) {
+					p+=2; break; }
 _CB( BMNotCB )			if is_f( NEGATED ) f_clr( NEGATED )	
 				else f_set( NEGATED )
 				p++; break;
@@ -88,7 +94,7 @@ _CB( BMStarCharacterCB )		f_clr( NEGATED )
 _CB( BMDereferenceCB )			f_clr( INFORMED ) }
 				p++; break;
 			case '%':
-				if ( strmatch( "?!", p[1] ) ) {
+				if ( strmatch( "?!|", p[1] ) ) {
 _CB( BMMarkRegisterCB )			f_clr( NEGATED )
 					f_set( INFORMED )
 					p+=2; break;
@@ -131,7 +137,8 @@ _CB( BMFilterCB )		f_clr( INFORMED )
 				f_set( FILTERED )
 				p++; break;
 			case ',':
-				if ( !is_f(SET|SUB_EXPR|LEVEL) ) { traverse_data->done=1; break; }
+				if ( !is_f(SET|SUB_EXPR|LEVEL) )
+					{ traverse_data->done=1; break; }
 _CB( BMDecoupleCB )		if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( FILTERED|INFORMED )
 				p++;

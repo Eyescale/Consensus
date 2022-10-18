@@ -26,7 +26,7 @@ void xpn_out( FILE *stream, listItem *xp );
 #define CHARACTER	8
 #define	MOD		16
 #define	STAR		32
-#define EMARK		64
+#define PMARK		64
 
 int bm_scour( char *expression, int target );
 

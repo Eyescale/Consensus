@@ -245,6 +245,22 @@ EXPR_BGN:CND_endif
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
+		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
+				do_( "expr_" )	REENTER }
+			else if ( is_f(SET) ) { // allow \nl inside { }
+				do_( "_^" ) }
+		on_( '(' ) if ( !is_f(INFORMED) ) {
+				do_( "(" )	s_take }
+		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
+					; // err
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
+				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
+					do_( "," )	s_take
+							f_clr( FIRST|INFORMED ) }
+				else {	do_( same )	s_take
+							f_clr( FIRST|INFORMED ) } }
+			else if ( is_f(SET) ) {
+					do_( "," ) }
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER }
@@ -306,26 +322,8 @@ A:CND_else_( B )
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
 B:CND_endif
-		on_( '(' ) if ( !is_f(INFORMED) ) {
-				do_( "(" )	s_take }
-		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
-					; // err
-			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) ) {
-				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
-					do_( "," )	s_take
-							f_clr( FIRST|INFORMED ) }
-				else {	do_( same )	s_take
-							f_clr( FIRST|INFORMED ) } }
-			else if ( is_f(SET) ) {
-					do_( "," ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
-		on_( '\n' ) if ( is_f(ASSIGN) && !is_f(FILTERED) )
-				; // err
-			else if ( is_f(INFORMED) && !is_f(LEVEL|SET|SUB_EXPR) ) {
-				do_( "expr_" )	REENTER }
-			else if ( is_f(SET) ) { // allow \nl inside { }
-				do_( "_^" ) }
 		on_( '{' ) if ( *type&DO && is_f(LEVEL|SET) &&
 				!is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR|NEGATED) ) {
 				do_( same )	s_take
@@ -515,6 +513,22 @@ CND_ifn( mode==BM_STORY, C )
 							f_set( INFORMED )
 			end
 C:CND_endif
+	in_( "_^" ) bgn_	// \nl allowed inside { }
+		ons( " \t\n" )	do_( same )
+		on_( '#' )	do_( "_#" )
+		on_( '}' )	do_( "expr" )	REENTER
+		on_( ',' )	; // err
+		on_other // allow newline to act as comma
+			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
+				do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+			else {	do_( "expr" )	REENTER }
+		end
+	in_( "_#" ) bgn_
+		on_( '\n' )	do_( "expr" )	REENTER
+		on_other	do_( same )
+		end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' ) if ( *type&DO && !is_f(SUB_EXPR|NEGATED) ) {
@@ -635,22 +649,6 @@ D:CND_endif
 		ons( "({" )	do_( "expr" )	REENTER
 						f_set( COMPOUND )
 		end
-	in_( "_^" ) bgn_	// \nl allowed inside { }
-		ons( " \t\n" )	do_( same )
-		on_( '#' )	do_( "_#" )
-		on_( '}' )	do_( "expr" )	REENTER
-		on_( ',' )	; // err
-		on_other // allow newline to act as comma
-			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
-				do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED ) }
-			else {	do_( "expr" )	REENTER }
-		end
-	in_( "_#" ) bgn_
-		on_( '\n' )	do_( "expr" )	REENTER
-		on_other	do_( same )
-		end
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
@@ -659,11 +657,11 @@ _CB( ExpressionTake, mode, data );
 		bgn_
 			on_any
 if ( mode==BM_INPUT ) {		do_( "" ) }
-else if (!( *type&DO && !is_f(ASSIGN) && is_f(FILTERED) )) {
+else if ( is_f(ASSIGN) ? is_f(FILTERED) : !( *type&DO && is_f(FILTERED) ) ) {
 				do_( "base" )	f_reset( FIRST, 0 );
 						TAB_CURRENT = 0;
 						data->opt = 0;
-if ( mode==BM_STORY ) {				*type = 0; } }
+	if ( mode==BM_STORY ) {			*type = 0; } }
 			end
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling

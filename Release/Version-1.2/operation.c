@@ -98,7 +98,7 @@ operate(
 	}
 RETURN:
 	freeItem( i );
-	bm_context_clear( ctx );
+	bm_context_flush( ctx );
 	if ( !subs->entries ) {
 		freeRegistry( subs, NULL );
 	}

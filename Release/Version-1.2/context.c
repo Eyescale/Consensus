@@ -14,7 +14,7 @@ newContext( CNDB *db )
 	CNInstance *this = cn_new( NULL, NULL );
 	this->sub[ 1 ] = (CNInstance *) db;
 	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, ".", NULL ); // aka. %%
+	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
 	registryRegister( registry, "!", NULL ); // aka. %!
 	return (BMContext *) newPair( this, registry );
@@ -22,7 +22,7 @@ newContext( CNDB *db )
 void
 freeContext( BMContext *ctx )
 /*
-	Assumption: ctx->registry is clear (see bm_context_clear)
+	Assumption: ctx->registry is clear (see bm_context_flush)
 */
 {
 	CNInstance *this = ctx->this;
@@ -51,7 +51,7 @@ freeContext( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_set / bm_context_fetch / bm_context_clear
+//	bm_context_set / bm_context_fetch
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -70,6 +70,20 @@ bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
 	RegisterData data = { instance, registry };
 	bm_locate_param( proto, &xpn, register_CB, &data );
 }
+static void
+register_CB( char *p, listItem *exponent, void *user_data )
+{
+	RegisterData *data = user_data;
+	listItem *xpn = NULL;
+	for ( listItem *i=exponent; i!=NULL; i=i->next )
+		addItem( &xpn, i->ptr );
+	int exp; // note that we do not reorder xpn
+	CNInstance *instance = data->instance;
+	while (( exp = pop_item( &xpn ) ))
+		instance = instance->sub[ exp & 1 ];
+	registryRegister( data->registry, p, instance );
+}
+
 CNInstance *
 bm_context_fetch( BMContext *ctx, char *unused )
 {
@@ -83,22 +97,40 @@ bm_context_fetch( BMContext *ctx, char *unused )
 	}
 	return instance;
 }
-static void
-register_CB( char *p, listItem *xpn, void *user_data )
+//===========================================================================
+//	bm_context_mark
+//===========================================================================
+static inline CNInstance * xsub( CNInstance *, listItem ** );
+
+int
+bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 {
-	RegisterData *data = user_data;
-	listItem *exponent = NULL;
-	for ( listItem *i=xpn; i!=NULL; i=i->next )
-		addItem( &exponent, i->ptr );
-	int exp;
-	CNInstance *instance = data->instance;
-	while (( exp = pop_item( &exponent ) ))
-		instance = instance->sub[ exp & 1 ];
-	registryRegister( data->registry, p, instance );
+	if ( !x ) return 0;
+	listItem *xpn = NULL;
+	if (( bm_locate_mark( expression, &xpn ) )) {
+		*marked = 1;
+		bm_push_mark( ctx, '?', xsub(x,&xpn) ); }
+	return 1;
 }
 
+static inline CNInstance *
+xsub( CNInstance *x, listItem **xpn )
+/*
+	Assumption: x.xpn exists by construction
+*/
+{
+	int exp;
+	reorderListItem( xpn );
+	while (( exp = pop_item( xpn ) ))
+		x = x->sub[ exp & 1 ];
+	return x;
+}
+
+//===========================================================================
+//	bm_context_flush / bm_flush_pipe
+//===========================================================================
 void
-bm_context_clear( BMContext *ctx )
+bm_context_flush( BMContext *ctx )
 {
 	Registry *registry = ctx->registry;
 	listItem **entries = &registry->entries;
@@ -108,45 +140,25 @@ bm_context_clear( BMContext *ctx )
 		next_i = i->next;
 		char *name = entry->name;
 		switch ( *name ) {
+		case '?':
 		case '!':
 			freeListItem((listItem **) &entry->value );
 			last_i = i;
 			break;
-		case '?':
-			// Version-2.0: each item will be a Pair *
-			freeListItem((listItem **) &entry->value );
-			last_i = i;
-			break;
 		default:
-			if ( is_separator( *name ) ) {
-				last_i = i;
-				break;
-			}
-			clipListItem( entries, i, last_i, next_i );
-			freePair( entry );
+			if ( !is_separator( *name ) ) {
+				clipListItem( entries, i, last_i, next_i );
+				freePair( entry ); }
+			else last_i = i;
 		}
 	}
 }
 
-//===========================================================================
-//	bm_context_mark
-//===========================================================================
-int
-bm_context_mark( BMContext *ctx, char *expression, CNInstance *found, int *marked )
+void
+bm_flush_pipe( BMContext *ctx )
 {
-	if ( !found ) return 0;
-	else {
-		listItem *xpn = NULL;
-		if (( bm_locate_mark( expression, &xpn ) )) {
-			*marked = 1;
-			reorderListItem( &xpn );
-			int exp;
-			while (( exp = pop_item( &xpn ) ))
-				found = found->sub[ exp & 1 ];
-			bm_push_mark( ctx, '?', found );
-		}
-	}
-	return 1;
+	Pair *entry = registryLookup( ctx->registry, "!" );
+	freeListItem((listItem **) &entry->value );
 }
 
 //===========================================================================
@@ -178,8 +190,7 @@ bm_context_lookup( BMContext *ctx, char *p )
 		case '!':
 			if ((entry->value)) {
 				listItem *stack = entry->value;
-				return stack->ptr;
-			}
+				return stack->ptr; }
 			break;
 		default:
 			return entry->value;

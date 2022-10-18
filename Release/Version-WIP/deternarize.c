@@ -1,29 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "string_util.h"
+#include "deternarize_private.h"
 #include "expression.h"
-#include "traverse.h"
 
-typedef int BMTernaryCB( char *, void * );
-
-//===========================================================================
-//	bm_deternarize
-//===========================================================================
-static char *deternarize( char *expression, BMTernaryCB, void *user_data );
-static BMTernaryCB pass_CB;
-
-char *
-bm_deternarize( char **expression, BMContext *ctx )
-{
-	char *backup = *expression;
-	char *deternarized = deternarize( backup, pass_CB, ctx );
-	if (( deternarized )) {
-		*expression = deternarized;
-		return backup;
-	}
-	else return NULL;
-}
 static int
 pass_CB( char *guard, void *user_data )
 {
@@ -32,43 +12,21 @@ pass_CB( char *guard, void *user_data )
 }
 
 //===========================================================================
-//	deternarize
+//	bm_deternarize
 //===========================================================================
-static void free_deternarized( listItem *sequence );
-static void s_scan( CNString *, listItem * );
-static BMTraverseCB
-	open_CB, ternary_operator_CB, filter_CB, close_CB;
-typedef struct {
-	BMTernaryCB *user_CB;
-	void *user_data;
-	int ternary;
-	struct { listItem *sequence, *flags; } stack;
-	listItem *sequence;
-	Pair *segment;
-} DeternarizeData;
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		DeternarizeData *data = traverse_data->user_data; char *p = *q;
+static char * deternarize( char *, listItem **, BMTraverseData *, char * );
 
-static char *
-deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
-/*
-	build Sequence:{
-		| [ segment:Segment, NULL ]
-		| [ NULL, sub:Sequence ]
-		| [ NULL, NULL ] // ~.
-		}
-	where
-		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-*/
+char *
+bm_deternarize( char **expression, BMContext *ctx )
 {
+	char *backup = *expression;
 	char *deternarized = NULL;
+	listItem *sequence[ 2 ] = { NULL, NULL };
 
 	DeternarizeData data;
 	memset( &data, 0, sizeof(data) );
-	data.segment = newPair( expression, NULL );
-	data.user_CB = user_CB;
-	data.user_data = user_data;
+	data.user_CB = pass_CB;
+	data.user_data = ctx;
 
 	BMTraverseData traverse_data;
 	memset( &traverse_data, 0, sizeof(traverse_data) );
@@ -81,41 +39,96 @@ deternarize( char *expression, BMTernaryCB user_CB, void *user_data )
 	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
 	table[ BMFilterCB ]		= filter_CB;
 	table[ BMCloseCB ]		= close_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
-	
-	if ( !data.ternary )
-		freePair( data.segment );
+
+	if ( *backup != ':' ) {
+		deternarize( backup, NULL, &traverse_data, backup );
+		if (( data.sequence )) {
+			// convert sequence to char *string
+			CNString *s = newString();
+			s_scan( s, data.sequence );
+			deternarized = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			// release sequence
+			free_deternarized( data.sequence ); } }
 	else {
-		// finish current sequence, reordered
-		if ( data.segment->name != traverse_data.p ) {
-			data.segment->value = traverse_data.p;
-			addItem( &data.sequence, newPair( data.segment, NULL ) );
-		} else freePair( data.segment );
-		reorderListItem( &data.sequence );
+		char *p = backup + 1;
+		p = deternarize( p, sequence, &traverse_data, backup );
 
-		// convert sequence to char *string
-		CNString *s = newString();
-		s_scan( s, data.sequence );
-		deternarized = StringFinish( s, 0 );
-		StringReset( s, CNStringMode );
-		freeString( s );
+		data.sequence = NULL;
+		traverse_data.done = TERNARY|INFORMED;
+		char *q = deternarize( p+1, sequence+1, &traverse_data, backup );
 
-		// release sequence
-		free_deternarized( data.sequence );
-	}
-	// return deternarized
-	if ((data.stack.sequence)||(data.stack.flags)) {
-		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: %d %s\n", (int)data.stack.sequence, expression );
-		freeListItem( &data.stack.sequence );
-		freeListItem( &data.stack.flags );
-		free( deternarized );
-		exit( -1 ); }
-	return deternarized;
+		if ((sequence[ 0 ])||(sequence[ 1 ])) {
+			CNString *s = newString();
+			if (( sequence[ 0 ] )) {
+				StringAppend( s, ':' );
+				s_scan( s, sequence[ 0 ] ); }
+			else s_append( backup, p )
+			if (( sequence[ 1 ] )) {
+				StringAppend( s, ',' );
+				s_scan( s, sequence[ 1 ] ); }
+			else s_append( p, q )
+			deternarized = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			// release sequences
+			free_deternarized( sequence[ 0 ] );
+			free_deternarized( sequence[ 1 ] );
+		} }
+
+	if (( deternarized )) {
+		*expression = deternarized;
+		return backup; }
+	else return NULL;
 }
 
+static char *
+deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression )
+{
+	DeternarizeData *data = traverse_data->user_data;
+
+	data->segment = newPair( p, NULL );
+	p = bm_traverse( p, traverse_data, FIRST );
+
+	if ((data->stack.sequence)||(data->stack.flags)) {
+		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: 0x%x %s\n",
+			(int) data->stack.sequence, expression );
+		freeListItem( &data->stack.sequence );
+		freeListItem( &data->stack.flags );
+		exit( -1 ); }
+	else if ( !data->ternary )
+		freePair( data->segment );
+	else {
+		listItem **sequence = &data->sequence;
+		Pair *segment = data->segment;
+		if ( segment->name != p ) {
+			segment->value = p;
+			addItem( sequence, newPair( segment, NULL ) );
+		}
+		else freePair( segment );
+		reorderListItem( sequence );
+		if (( s )) *s = *sequence; }
+	return p;
+}
+
+//===========================================================================
+//	deternarize_traversal
+//===========================================================================
 BMTraverseCBSwitch( deternarize_traversal )
 /*
-   Note: only pre-ternary-operated sequences are pushed on stack.sequence
+	build Sequence:{
+		| [ segment:Segment, NULL ]
+		| [ NULL, sub:Sequence ]
+		| [ NULL, NULL ] // ~.
+		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+
+	and convert into string
+
+   Note
+	only pre-ternary-operated sequences are pushed on stack.sequence
 */
 case_( open_CB )
 	data->ternary = 1;
@@ -256,11 +269,6 @@ free_deternarized( listItem *sequence )
 //===========================================================================
 //	s_scan
 //===========================================================================
-#define s_append( bgn, end ) \
-	for ( char *p=bgn; p!=end; StringAppend(s,*p++) );
-#define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
-
 static void
 s_scan( CNString *s, listItem *sequence )
 /*

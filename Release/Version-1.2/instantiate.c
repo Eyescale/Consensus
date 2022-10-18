@@ -1,40 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "instantiate_private.h"
 #include "string_util.h"
 #include "database.h"
-#include "narrative.h"
-#include "expression.h"
-#include "traverse.h"
-#include "locate.h"
-
-// #define DEBUG
-
-static int bm_void( char *, BMContext * );
-static listItem *bm_couple( listItem *sub[2], BMContext * );
-static CNInstance *bm_literal( char **, BMContext * );
-static listItem *bm_list( char **, listItem **, BMContext * );
-static listItem *bm_scan( char *, BMContext * );
 
 //===========================================================================
 //	bm_instantiate
 //===========================================================================
-static BMTraverseCB
-	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
-	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
-	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
-typedef struct {
-	struct { listItem *flags; } stack;
-	listItem *sub[ 2 ];
-	listItem *results;
-	BMContext *ctx;
-} BMInstantiateData;
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMInstantiateData *data = traverse_data->user_data; char *p = *q;
-#define current \
-	( is_f( FIRST ) ? 0 : 1 )
-
 void
 bm_instantiate( char *expression, BMContext *ctx )
 {
@@ -80,12 +53,15 @@ bm_instantiate( char *expression, BMContext *ctx )
 	bm_traverse( expression, &traverse_data, FIRST );
 
 	if ( traverse_data.done == 2 ) {
+		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantiation of\n"
+                        "\t\t%s\n\t<<<<< failed on '%s'\n", expression, traverse_data.p );
+		freeListItem( &data.stack.flags );
 		freeListItem( &data.sub[ 1 ] );
 		listItem *instances;
 		listItem **results = &data.results;
 		while (( instances = popListItem(results) ))
 			freeListItem( &instances );
-	}
+		bm_flush_pipe( ctx ); }
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
@@ -93,7 +69,6 @@ bm_instantiate( char *expression, BMContext *ctx )
 		else db_outputf( stderr, BMContextDB(ctx), "first=%_\n", data.sub[0]->ptr ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
-	freeListItem( &data.stack.flags );
 	freeListItem( &data.sub[ 0 ] );
 }
 
@@ -276,8 +251,8 @@ case_( feel_CB )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( sound_CB )
-	int target = bm_scour( p, EMARK );
-	if ( target&EMARK && target!=EMARK ) {
+	int target = bm_scour( p, PMARK );
+	if ( target&PMARK && target!=PMARK ) {
 		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
 		"dubious combination of query terms with %%!\n", p );
 	}
