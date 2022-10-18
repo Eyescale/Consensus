@@ -24,9 +24,9 @@ LFLAGS = -L. -L../../Base
 OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 INCLUDES = -I. -I./include -I../../Base/include
-CFLAGS = -O2
+#CFLAGS = -O2
 #CFLAGS = -DDEBUG -DNULL_TERMINATED
-#CFLAGS = -O2 -DUNIFIED
+CFLAGS = -O2 -DUNIFIED
 
 all:$(TARGETS)
 

@@ -7,8 +7,7 @@ SRCS =	database.c \
 	expression.c \
 	narrative.c \
 	operation.c \
-	traversal.c \
-	wildcard.c
+	traversal.c
 
 LIB = libbmod.a
 

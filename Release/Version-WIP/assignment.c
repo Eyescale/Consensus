@@ -110,7 +110,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		case BM_INSTANTIATED: ;
 			listItem *s = NULL;
 			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
-				if ( ESUB(e,0)!=star || (assignment(e,db)) )
+				if ( e->sub[0]!=star || (assignment(e,db)) )
 					continue;
 				if ( xp_verify( e->sub[1], expression, data ) ) {
 					freeListItem( &s );
@@ -165,7 +165,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 			listItem *s = NULL;
 			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
 				CNInstance *f = ESUB( e, 0 );
-				if ( !f || ESUB(f,0)!=star ) continue;
+				if ( !f || f->sub[0]!=star ) continue;
 				if ( xp_verify( f->sub[1], expression, data ) &&
 				     xp_verify( e->sub[1], value, data ) ) {
 					freeListItem( &s );
@@ -223,7 +223,7 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 	char *variable = data->user_data;
 	for ( listItem *i=e->as_sub[1], *j; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
-		if ( e->sub[0]!=star || db_private(0,e,db) )
+		if ( e->sub[0]->sub[0]!=star || db_private(0,e,db) )
 			continue;
 		CNInstance *f = e->sub[ 0 ]; // e:(f:(*,.),e)
 		if ( xp_verify( f->sub[1], variable, data ) ) {
@@ -234,7 +234,8 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 }
 
 static inline CNInstance *
-assignment( CNInstance *e, CNDB *db ) {
+assignment( CNInstance *e, CNDB *db )
+{
 	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
 		if ( !db_private( 0, j->ptr, db ) )
 			return j->ptr;

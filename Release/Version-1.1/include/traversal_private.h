@@ -1,7 +1,7 @@
 #ifndef TRAVERSAL_PRIVATE_H
 #define TRAVERSAL_PRIVATE_H
 
-#include "btree.h"
+// #include "btree.h"
 #include "database.h"
 #include "context.h"
 

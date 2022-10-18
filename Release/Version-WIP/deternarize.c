@@ -4,17 +4,17 @@
 #include "deternarize_private.h"
 #include "expression.h"
 
+//===========================================================================
+//	bm_deternarize
+//===========================================================================
+static char * deternarize( char *, listItem **, BMTraverseData *, char * );
+
 static int
 pass_CB( char *guard, void *user_data )
 {
 	BMContext *ctx = user_data;
 	return !!bm_feel( BM_CONDITION, guard, ctx );
 }
-
-//===========================================================================
-//	bm_deternarize
-//===========================================================================
-static char * deternarize( char *, listItem **, BMTraverseData *, char * );
 
 char *
 bm_deternarize( char **expression, BMContext *ctx )
@@ -53,12 +53,10 @@ bm_deternarize( char **expression, BMContext *ctx )
 			free_deternarized( data.sequence ); } }
 	else {
 		char *p = backup + 1;
-		p = deternarize( p, sequence, &traverse_data, backup );
-
+		p = deternarize( p, &sequence[0], &traverse_data, backup );
 		data.sequence = NULL;
 		traverse_data.done = TERNARY|INFORMED;
-		char *q = deternarize( p+1, sequence+1, &traverse_data, backup );
-
+		char *q = deternarize( p+1, &sequence[1], &traverse_data, backup );
 		if ((sequence[ 0 ])||(sequence[ 1 ])) {
 			CNString *s = newString();
 			if (( sequence[ 0 ] )) {
@@ -77,18 +75,18 @@ bm_deternarize( char **expression, BMContext *ctx )
 			free_deternarized( sequence[ 1 ] );
 		} }
 
-	if (( deternarized )) {
-		*expression = deternarized;
-		return backup; }
-	else return NULL;
+	return ( !!deternarized ? ((*expression=deternarized),backup) : NULL );
 }
 
+//===========================================================================
+//	deternarize
+//===========================================================================
 static char *
 deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression )
 {
 	DeternarizeData *data = traverse_data->user_data;
-
 	data->segment = newPair( p, NULL );
+
 	p = bm_traverse( p, traverse_data, FIRST );
 
 	if ((data->stack.sequence)||(data->stack.flags)) {
@@ -100,6 +98,7 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 	else if ( !data->ternary )
 		freePair( data->segment );
 	else {
+		// finish sequence
 		listItem **sequence = &data->sequence;
 		Pair *segment = data->segment;
 		if ( segment->name != p ) {
@@ -112,9 +111,9 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 	return p;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	deternarize_traversal
-//===========================================================================
+//---------------------------------------------------------------------------
 BMTraverseCBSwitch( deternarize_traversal )
 /*
 	build Sequence:{

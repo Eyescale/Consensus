@@ -2,7 +2,6 @@
 #define TRAVERSAL_H
 
 #include "list.h"
-#include "btree.h"
 #include "database.h"
 
 //===========================================================================
@@ -34,9 +33,6 @@ typedef struct {
 		listItem *neg;
 		listItem *p;
 	} stack;
-#ifdef TRIM
-	BTreeNode *btree;
-#endif
 	CNDB *db;
 	int privy;
 	char *pivot;

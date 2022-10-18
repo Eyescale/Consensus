@@ -4,7 +4,6 @@
 #include "list.h"
 #include "database.h"
 #include "traversal.h"
-#include "wildcard.h"
 
 int	db_verify( int privy, CNInstance *, char *expression, CNDB * );
 int     db_verify_sub( int op, int success, CNInstance **, char **position,
