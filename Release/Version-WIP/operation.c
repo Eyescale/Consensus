@@ -289,14 +289,13 @@ do_action( char *expression, BMContext *ctx )
 			bm_release( expression+1, ctx );
 			goto RETURN;
 		case '.':
-			goto RETURN;
-		}
+			goto RETURN; }
 		break;
 	default:
 		if ( !strcmp( expression, "exit" ) ) {
 			db_exit( BMContextDB(ctx) );
-			goto RETURN; }
-	}
+			goto RETURN; } }
+
 	bm_instantiate( expression, ctx );
 RETURN:
 #ifdef DEBUG

@@ -33,7 +33,7 @@
 			do ~( init )
 	else
 		on : current : .
-			do : address : %(((TAPE,.):~%(TAPE,?))) // left-most cell
+			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
 			in %?: *start
 				do >"|"
@@ -41,7 +41,6 @@
 				do >"%s": *state
 			else do >" "
 			do >"%s ": %( **address ?: *BLANK )
-//			do >"%s ": *BLANK
 			in %?: (TAPE,.:~TAPE)
 				do : address : %(%?:(.,?))
 			else in ?:( %?, TAPE )
