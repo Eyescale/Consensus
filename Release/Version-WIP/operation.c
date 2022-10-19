@@ -80,8 +80,7 @@ operate(
 			continue; }
 		for ( ; ; ) {
 			if (( marked )) {
-				if ( marked&EMARK ) bm_pop_mark( ctx, '!' );
-				if ( marked&QMARK ) bm_pop_mark( ctx, '?' );
+				bm_context_unmark( ctx, marked );
 				marked = 0; }
 			if (( i->next )) {
 				i = i->next;
@@ -284,10 +283,6 @@ do_action( char *expression, BMContext *ctx )
 	fprintf( stderr, "do_action: do %s\n", expression );
 #endif
 	switch ( *expression ) {
-	case '.':
-		if ( expression[1]!='(' && is_separator( expression[1] ) )
-			goto RETURN;
-		break;
 	case '~':
 		switch ( expression[1] ) {
 		case '(':

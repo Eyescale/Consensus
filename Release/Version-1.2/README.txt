@@ -31,7 +31,7 @@ Description
 
 	Hence our decision to create this intermediate minor release, limited
 	to supporting the TM.single story example, prior to moving on to our
-	targeted major feature development - now in Version-WIP.
+	targeted major feature development - now happening in Version-WIP.
 
 Contents
     Version-1.2 File Format extensions
@@ -62,7 +62,7 @@ Contents
 
 	      Feature Name				Description
 
-	  Base mark		The position of the register variable indicator "?" is no longer restricted.
+	  Base mark		The position of the query signum ? is no longer restricted.
 				For instance the following narrative - distributed as Test/10_basemark
 
 					on init

@@ -23,7 +23,7 @@ newCNDB( void )
 	char *p = strmake( "*" );
 	CNInstance *star = cn_new( NULL, NULL );
 #ifdef UNIFIED
-	star->sub[ 1 ] = p;
+	star->sub[ 1 ] = (CNInstance *) p;
 #endif
 	registryRegister( index, p, star );
 
@@ -404,7 +404,7 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 //===========================================================================
 //	db_outputf
 //===========================================================================
-static int db_output( FILE *, CNDB *, int type, CNInstance * );
+static int outputf( FILE *, CNDB *, int type, CNInstance * );
 
 int
 db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
@@ -422,7 +422,7 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
 			case '_':
 			case 's':
 				e = va_arg( ap, CNInstance * );
-				db_output( stream, db, p[1], e );
+				outputf( stream, db, p[1], e );
 				break;
 			default:
 				; // unsupported
@@ -436,7 +436,7 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
 }
 
 static int
-db_output( FILE *stream, CNDB *db, int type, CNInstance *e )
+outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 /*
 	type is either 's' or '_', the only difference being that,
 	in the former case, we insert a backslash at the start of
@@ -450,9 +450,8 @@ db_output( FILE *stream, CNDB *db, int type, CNInstance *e )
 		else {
 			char *p = db_identifier( e, db );
 			if (( p )) fprintf( stream, "%s", p );
-			return 0;
-		}
-	}
+			return 0; } }
+
 	listItem *stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {
@@ -461,9 +460,7 @@ db_output( FILE *stream, CNDB *db, int type, CNInstance *e )
 			add_item( &stack, ndx );
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
-			ndx = 0;
-			continue;
-		}
+			ndx=0; continue; }
 		char *p = db_identifier( e, db );
 		if (( p )) {
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
@@ -478,20 +475,13 @@ db_output( FILE *stream, CNDB *db, int type, CNInstance *e )
 				default:
 					if ( is_printable(*p) ) fprintf( stream, "'%c'", *p );
 					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
-				}
-			}
-		}
+				} } }
 		for ( ; ; ) {
 			if (( stack )) {
 				e = popListItem( &stack );
-				ndx = pop_item( &stack );
-				if ( ndx==0 ) { ndx = 1; break; }
-				else fprintf( stream, ")" );
-			}
-			else goto RETURN;
-		}
-	}
-RETURN:
-	return 0;
+				if (( ndx = pop_item( &stack ) )) {
+					fprintf( stream, ")" ); }
+				else { ndx=1; break; } }
+			else return 0; } }
 }
 

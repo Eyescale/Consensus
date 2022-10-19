@@ -101,54 +101,6 @@ bm_context_fetch( BMContext *ctx, char *unused )
 }
 
 //===========================================================================
-//	bm_context_mark
-//===========================================================================
-static inline CNInstance * xsub( CNInstance *, listItem ** );
-
-int
-bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
-{
-	if ( !x ) return 0;
-	listItem *xpn = NULL;
-	if ( *expression==':' ) {
-		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
-		if ( !strncmp( value, "~.", 2 ) ) {
-			// we know x: ( *, e )
-			if (( bm_locate_mark( expression, &xpn ) )) {
-				*marked = QMARK|EMARK;
-				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) );
-				bm_push_mark( ctx, '!', NULL ); } }
-		else {
-			// we know x: (( *, e ), f )
-			if (( bm_locate_mark( value, &xpn ) )) {
-				*marked = EMARK|QMARK;
-				bm_push_mark( ctx, '!', x->sub[0]->sub[1] );
-				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) ); }
-			else if (( bm_locate_mark( expression, &xpn ) )) {
-				*marked = QMARK|EMARK;
-				bm_push_mark( ctx, '?', xsub(x->sub[0]->sub[1],&xpn) );
-				bm_push_mark( ctx, '!', x->sub[1] ); } } }
-	else {
-		if (( bm_locate_mark( expression, &xpn ) )) {
-			*marked = QMARK;
-			bm_push_mark( ctx, '?', xsub(x,&xpn) ); } }
-	return 1;
-}
-
-static inline CNInstance *
-xsub( CNInstance *x, listItem **xpn )
-/*
-	Assumption: x.xpn exists by construction
-*/
-{
-	int exp;
-	reorderListItem( xpn );
-	while (( exp = pop_item( xpn ) ))
-		x = x->sub[ exp & 1 ];
-	return x;
-}
-
-//===========================================================================
 //	bm_context_flush / bm_flush_pipe
 //===========================================================================
 void
@@ -182,6 +134,60 @@ bm_flush_pipe( BMContext *ctx )
 {
 	Pair *entry = registryLookup( ctx->registry, "|" );
 	freeListItem((listItem **) &entry->value );
+}
+
+//===========================================================================
+//	bm_context_mark / bm_context_unmark
+//===========================================================================
+static inline CNInstance * xsub( CNInstance *, listItem ** );
+
+int
+bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
+{
+	if ( !x ) return 0;
+	listItem *xpn = NULL;
+	if ( *expression==':' ) {
+		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
+		if ( !strncmp( value, "~.", 2 ) ) {
+			// we know x: ( *, e )
+			if (( bm_locate_mark( expression, &xpn ) )) {
+				*marked = QMARK|EMARK;
+				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) );
+				bm_push_mark( ctx, '!', NULL ); } }
+		else {
+			// we know x: (( *, e ), f )
+			if (( bm_locate_mark( value, &xpn ) )) {
+				*marked = EMARK|QMARK;
+				bm_push_mark( ctx, '!', x->sub[0]->sub[1] );
+				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) ); }
+			else if (( bm_locate_mark( expression, &xpn ) )) {
+				*marked = QMARK|EMARK;
+				bm_push_mark( ctx, '?', xsub(x->sub[0]->sub[1],&xpn) );
+				bm_push_mark( ctx, '!', x->sub[1] ); } } }
+	else {
+		if (( bm_locate_mark( expression, &xpn ) )) {
+			*marked = QMARK;
+			bm_push_mark( ctx, '?', xsub(x,&xpn) ); } }
+	return 1;
+}
+static inline CNInstance *
+xsub( CNInstance *x, listItem **xpn )
+/*
+	Assumption: x.xpn exists by construction
+*/
+{
+	int exp;
+	reorderListItem( xpn );
+	while (( exp = pop_item( xpn ) ))
+		x = x->sub[ exp & 1 ];
+	return x;
+}
+
+void
+bm_context_unmark( BMContext *ctx, int marked )
+{
+	if ( marked&EMARK ) bm_pop_mark( ctx, '!' );
+	if ( marked&QMARK ) bm_pop_mark( ctx, '?' );
 }
 
 //===========================================================================
@@ -285,7 +291,6 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 	}
 	return db_lookup( privy, p, BMContextDB(ctx) );
 }
-
 
 //===========================================================================
 //	bm_register
