@@ -12,11 +12,12 @@
 		do : BLANK : 0
 #		do (( init, * ), A )
 		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
-	else on ( init )
-		do : current : (TAPE,TAPE) // instantiate origin
-		do : record : %(( init, * ), . )
 	else in ( init )
-		in ?: %(*record:(.,?))
+		on ( init )
+			do : record : %(( init, * ), . )
+			do : current : (TAPE,TAPE) // instantiate origin
+		else in ?: %(*record:(.,?))
+			do : record : ( %(*record,.) ?: ~. )
 			in %?: /[01]/
 				do : *current : %?
 			else in %?: ' '
@@ -24,7 +25,6 @@
 			else
 				do : state : %?
 				do : start : *current
-			do : record : ( %(*record,.) ?: ~. )
 		else 
 			do { '|', ' ' }	// needed for report
 			do : current : *start
