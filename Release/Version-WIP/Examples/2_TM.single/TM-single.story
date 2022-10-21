@@ -33,9 +33,9 @@
 		on : current : .
 			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
-			// report current cell
+			// cell report
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
-			// move to cell on the right side
+			// move on to right cell
 			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
 		else on : address : ~.
 			do >: // next round
