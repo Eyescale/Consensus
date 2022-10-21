@@ -40,7 +40,7 @@
 			// move to cell on the right side
 			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
 		else on : address : ~.
-			do >:
+			do >: // next round
 			do : symbol : ( **current ?: *BLANK )
 		else on : symbol : ?
 			in *state : *HALT
