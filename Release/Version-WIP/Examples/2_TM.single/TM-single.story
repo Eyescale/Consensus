@@ -38,7 +38,7 @@
 			// report on current cell
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
 			// move to cell on the right side
-			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: ( %(%?,TAPE) ?: ~. ) )
+			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
 		else on : address : ~.
 			do >:
 			do : symbol : ( **current ?: *BLANK )
