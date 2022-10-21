@@ -442,11 +442,6 @@ CND_ifn( mode==BM_STORY, C )
 		on_( '(' )	do_( "expr" )	REENTER
 						s_add( "~" )
 			   if ( !s_empty ) {	f_set( NEGATED ) }
-#if 0
-		on_( '.' ) if ( s_empty || (are_f(ASSIGN|FILTERED)&&!is_f(LEVEL|SUB_EXPR)) ) {
-				do_( "expr" )	REENTER
-						s_add( "~" ) }
-#endif
 		on_( '<' ) if ( s_empty && *type&DO ) {
 				do_( "expr" )	s_add( "~<" )
 						f_set( VECTOR ) }
