@@ -24,6 +24,7 @@
 #define CLEAN		(1<<15)
 #define LISTABLE	(1<<16)
 #define NEW		(1<<17)
+#define SUBSCRIBE	(1<<18)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

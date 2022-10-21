@@ -1,4 +1,3 @@
-See Also: design/new-features-and-additions.txt
 TODO
     Version-1.2 Documentation
 	     Release Documents

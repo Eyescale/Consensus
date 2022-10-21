@@ -279,17 +279,19 @@ CND_if_( mode==BM_STORY, A )
 						f_set( INFORMED ) }
 A:CND_else_( B )
 		ons( " \t" )	do_( same )
+		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) 	s_take }
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" )	s_take }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 		on_( '/' ) if ( !is_f(INFORMED) && !(*type&DO) ) {
 				do_( "/" )	s_take }
+		on_( '@' ) if ( s_empty && *type&DO ) {
+				do_( "@" )	s_take }
 		on_( '>' ) if ( s_empty && *type&DO ) {
 				do_( ">" )	s_take
 						*type = (*type&ELSE)|OUTPUT; }
-		on_( '.' ) if ( !is_f(INFORMED) ) {
-				do_( "." ) 	s_take }
-		on_( '!' ) if ( *type&DO && !is_f(INFORMED|LEVEL|SUB_EXPR|SET) && (!is_f(FILTERED)||is_f(ASSIGN)) ) {
+		on_( '!' ) if ( *type&DO && ( s_empty || (are_f(ASSIGN|FILTERED) &&
+				!is_f(INFORMED|LEVEL|SUB_EXPR|SET|NEGATED)) ) ) {
 				do_( "!" )	s_take }
 		on_( '?' ) if ( are_f(TERNARY|INFORMED) ) {
 				do_( "(_?" )	s_take
@@ -335,19 +337,22 @@ A:CND_else_( B )
 B:CND_endif
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
-		on_( '{' ) if ( *type&DO && is_f(LEVEL|SET) &&
-				!is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR|NEGATED) ) {
+		on_( '{' ) if ( *type&DO && !is_f(INFORMED|ASSIGN|FILTERED|SUB_EXPR|NEGATED|SUBSCRIBE) ) {
 				do_( same )	s_take
 						f_push( stack )
 						f_clr( LEVEL )
 						f_set( SET ) }
 		on_( '}' ) if ( are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
-				do_( "}" )	s_take
-						f_pop( stack, 0 )
-						f_tag( stack, COMPOUND )
-						f_set( INFORMED|COMPOUND ) }
+				if ( is_f(SUBSCRIBE) ) {
+					do_( same )	s_take
+							f_clr( SET )
+							f_set( INFORMED|COMPOUND ) }
+				else {	do_( same )	s_take
+							f_pop( stack, 0 )
+							f_tag( stack, COMPOUND )
+							f_set( INFORMED|COMPOUND ) } }
 		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
-				!is_f(ASSIGN|NEGATED|FILTERED|SUB_EXPR) ) {
+				!is_f(ASSIGN|FILTERED|SUB_EXPR|NEGATED|SUBSCRIBE) ) {
 				do_( "|" )	s_take
 						f_tag( stack, COMPOUND )
 						f_clr( INFORMED ) }
@@ -426,18 +431,29 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
-		on_( '.' ) if ( s_empty || ( is_f(ASSIGN|FILTERED) && !is_f(LEVEL|SUB_EXPR) ) ) {
+		on_( '(' )	do_( "expr" )	REENTER
+						s_add( "~" )
+			   if ( !s_empty ) {	f_set( NEGATED ) }
+		on_( '.' ) if ( s_empty || (are_f(ASSIGN|FILTERED)&&!is_f(LEVEL|SUB_EXPR)) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
-		on_( '(' )	do_( "expr" )	REENTER
-				if ( s_empty ) {
-						s_add( "~" ) }
-				else {		s_add( "~" )
-						f_set( NEGATED ) }
+		on_( '<' ) if ( s_empty && *type&DO ) {
+				do_( ".<" )	s_add( "~<" )
+						f_set( SUBSCRIBE ) }
 		ons( "{}?" )	; //err
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
 		end
+	in_( "@" ) bgn_
+		on_( '<' )	do_( ".<" )	s_take
+						f_set( SUBSCRIBE )
+		end
+		in_( ".<" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '{' )	do_( "expr" )	s_take
+							f_set( SET )
+			on_other	do_( "expr" )	REENTER
+			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( ":~" )
@@ -684,10 +700,6 @@ D:CND_endif
 							f_set( INFORMED )
 			on_other	do_( "(:" )	REENTER
 			end
-	in_( "}" ) bgn_
-		ons( " \t" )	do_( same )
-		ons( ",)" )	do_( "expr" )	REENTER
-		end
 	in_( "|" ) bgn_
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER

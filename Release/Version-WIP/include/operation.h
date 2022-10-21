@@ -3,13 +3,8 @@
 
 #include "program.h"
 
-typedef struct {
-	Registry *subs;
-	listItem *connect;
-} BMCall;
-
 int	bm_operate( CNCell *, listItem **new, CNStory * );
-void	bm_update( BMContext *, int new );
+void	bm_update( BMContext * );
 
 
 #endif	// OPERATION_H

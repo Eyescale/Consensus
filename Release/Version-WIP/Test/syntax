@@ -2,6 +2,8 @@
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
+		do @< %(?:(toto,titi))
+		do ~< { asdlkj, alsdkj }
 		do : toto : !! world (
 			baby, titi
 			tutu

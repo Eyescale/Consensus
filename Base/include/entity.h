@@ -15,5 +15,8 @@ void cn_prune( CNEntity * );
 void cn_release( CNEntity * );
 void cn_free( CNEntity * );
 
+#define CNSUB(e,ndx) \
+	( e->sub[!ndx] ? e->sub[ndx] : NULL )
+
 
 #endif	// ENTITY_H

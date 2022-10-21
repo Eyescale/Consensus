@@ -22,5 +22,8 @@ void	freeProgram( CNProgram * );
 int	cnOperate( CNProgram * );
 void	cnUpdate( CNProgram * );
 
+CNCell *newCell( Pair *, CNDB * );
+void freeCell( CNCell * );
+
 
 #endif	// PROGRAM_H

@@ -12,7 +12,7 @@
 static listItem * bm_assign( listItem *sub[2], BMContext *ctx );
 
 void
-bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data )
+bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
 {
 	BMInstantiateData *data = traverse_data->user_data;
 	char *p = expression + 1;
@@ -25,9 +25,18 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data )
 		return;
 	sub[ 0 ] = data->sub[ 0 ];
 	data->sub[ 0 ] = NULL;
+	p++; // move past ',' - aka. ':'
 
-	p++; // move past ','
-	if ( !strncmp( p, "~.", 2 ) ) {
+	if ( *p=='!' ) {
+		p += 2; // skip '!!'
+		CNDB *db = BMContextDB( data->ctx );
+		Pair *entry = registryLookup( story, p );
+		char *q = p = p_prune( PRUNE_IDENTIFIER, p );
+		for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
+			CNInstance *proxy = bm_conceive( p, traverse_data, entry );
+			db_assign( i->ptr, proxy, db );
+		} }
+	else if ( !strncmp( p, "~.", 2 ) ) {
 		sub[ 1 ] = NULL;
 		data->sub[ 0 ] = bm_assign( sub, data->ctx );
 		freeListItem( &sub[ 0 ] ); }
@@ -50,7 +59,7 @@ bm_assign( listItem *sub[2], BMContext *ctx )
 	Note that the number of assignments actually performed is
 		INF( cardinal(sub[0]), cardinal(sub[1]) )
 	And that nothing is done with the excess, if there is -
-		except for sub[1]==NULL
+		case sub[1]==NULL excepted
 */
 {
 	CNDB *db = BMContextDB( ctx );
@@ -58,12 +67,9 @@ bm_assign( listItem *sub[2], BMContext *ctx )
 	if ( !sub[1] )
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 			addItem( &results, db_unassign( i->ptr, db ) );
-	else {
-		CNInstance *star = db_star( db );
-		for ( listItem *i=sub[0], *j=sub[1]; (i) && (j); i=i->next, j=j->next ) {
-			CNInstance *e = db_instantiate( star, i->ptr, db );
-			addItem( &results, db_instantiate( e, j->ptr, db ) );
-		} }
+	else
+		for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next )
+			addItem( &results, db_assign( i->ptr, j->ptr, db ) );
 	return results;
 }
 
@@ -164,7 +170,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		case BM_INSTANTIATED: ;
 			listItem *s = NULL;
 			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
-				CNInstance *f = ESUB( e, 0 );
+				CNInstance *f = CNSUB( e, 0 );
 				if ( !f || f->sub[0]!=star ) continue;
 				if ( xp_verify( f->sub[1], expression, data ) &&
 				     xp_verify( e->sub[1], value, data ) ) {

@@ -12,7 +12,7 @@
 
 static int in_condition( char *, BMContext *, int *marked );
 static int on_event( char *, BMContext *, int *marked );
-static int do_action( char *, BMContext * );
+static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
@@ -22,17 +22,14 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
-static BMCall *
-operate(
-	CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
-	listItem *narratives, CNStory *story )
+static void
+operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
+	BMContext *ctx, listItem *narratives, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
-	BMCall *call = (BMCall *) newPair( NULL, NULL );
 	bm_context_set( ctx, narrative->proto, instance );
-	Registry *subs = newRegistry( IndexedByAddress );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1, marked = 0;
 	for ( ; ; ) {
@@ -54,11 +51,11 @@ operate(
 			break;
 		ctrl(ELSE_DO) case DO:
 			deternarized = bm_deternarize( &expression, ctx );
-			do_action( expression, ctx );
+			do_action( expression, ctx, story );
 			break;
 		ctrl(ELSE_EN) case EN:
 			deternarized = bm_deternarize( &expression, ctx );
-			do_enable( subs, narratives, expression, ctx );
+			do_enable( registry, narratives, expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			deternarized = bm_deternarize( &expression, ctx );
@@ -95,13 +92,9 @@ operate(
 RETURN:
 	freeItem( i );
 	bm_context_flush( ctx );
-	if ( !subs->entries ) {
-		freeRegistry( subs, NULL ); }
-	else call->subs = subs;
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
-	return call;
 }
 
 //===========================================================================
@@ -117,6 +110,7 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 	fprintf( stderr, "bm_operate: bgn\n" );
 #endif
 	BMContext *ctx = cell->ctx;
+	freeListItem( BMContextCarry(ctx) );
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
@@ -137,11 +131,10 @@ bm_operate( CNCell *cell, listItem **new, CNStory *story )
 			CNNarrative *narrative = entry->name;
 			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
 				CNInstance *instance = popListItem( instances );
-				BMCall *call = operate( narrative, instance, ctx, narratives, story );
-				if (( call->subs )) {
-					enlist( index[ 1 ], call->subs, warden );
-					freeRegistry( call->subs, NULL ); }
-				freePair((Pair *) call ); } }
+				Registry *subs = newRegistry( IndexedByAddress );
+				operate( narrative, instance, subs, ctx, narratives, story );
+				enlist( index[ 1 ], subs, warden );
+				freeRegistry( subs, NULL ); } }
 	} while (( index[ 1 ]->entries ));
 	freeRegistry( warden, relieve_CB );
 	freeRegistry( index[ 0 ], NULL );
@@ -194,11 +187,10 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 //	bm_update
 //===========================================================================
 void
-bm_update( BMContext *ctx, int new )
+bm_update( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db );
-	if ( new ) db_init( db );
 }
 
 //===========================================================================
@@ -277,7 +269,7 @@ RETURN:
 //	do_action
 //===========================================================================
 static int
-do_action( char *expression, BMContext *ctx )
+do_action( char *expression, BMContext *ctx, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "do_action: do %s\n", expression );
@@ -287,16 +279,21 @@ do_action( char *expression, BMContext *ctx )
 		switch ( expression[1] ) {
 		case '(':
 			bm_release( expression+1, ctx );
-			goto RETURN;
-		case '.':
-			goto RETURN; }
-		break;
+			break;
+		case '<':
+			bm_proxy_op( expression, ctx );
+			break; }
+		goto RETURN;
+	case '@':
+		if ( expression[1]=='<' )
+			bm_proxy_op( expression, ctx );
+		goto RETURN;
 	default:
 		if ( !strcmp( expression, "exit" ) ) {
 			db_exit( BMContextDB(ctx) );
 			goto RETURN; } }
 
-	bm_instantiate( expression, ctx );
+	bm_instantiate( expression, ctx, story );
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "do_action end\n" );

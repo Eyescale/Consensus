@@ -129,7 +129,7 @@ fprintf( stderr, "\n" );
 		if (( exponent )) {
 			exp = (int) exponent->ptr;
 			if ( exp & 2 ) {
-				e = ESUB( e, exp&1 );
+				e = CNSUB( e, exp&1 );
 				if (( e )) {
 					addItem ( &stack, i );
 					addItem( &stack, exponent );
@@ -256,7 +256,7 @@ fprintf( stderr, " ........{\n" );
 					i = j; continue; }
 				else x = NULL; }
 			else {
-				x = ESUB( x, exp&1 );
+				x = CNSUB( x, exp&1 );
 				if (( x )) {
 					addItem( &stack.as_sub, i );
 					addItem( &stack.as_sub, exponent );
@@ -278,7 +278,7 @@ fprintf( stderr, " ........{\n" );
 					addItem( &sub_exp, i->ptr );
 				while (( x ) && (sub_exp)) {
 					int exp = pop_item( &sub_exp );
-					x = ESUB( x, exp&1 ); }
+					x = CNSUB( x, exp&1 ); }
 				flags = traverse_data.flags;
 				// backup context
 				addItem( &stack.mark_exp, mark_exp );
@@ -390,8 +390,8 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 	case BM_BGN:
 		if ( *p++=='*' ) {
 			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
-			CNInstance *y = ESUB( x, 0 );
-			if ( !y || ESUB(y,0)!=data->star ) {
+			CNInstance *y = CNSUB( x, 0 );
+			if ( !y || CNSUB(y,0)!=data->star ) {
 				data->success = 0;
 				x = NULL; break; }
 			x = y->sub[ 1 ]; }
@@ -518,7 +518,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	CNInstance *y = x;
 	while (( y ) && (xpn)) {
 		int exp = pop_item( &xpn );
-		y = ESUB( y, exp&1 ); }
+		y = CNSUB( y, exp&1 ); }
 	if ( y == NULL ) {
 		freeListItem( &xpn );
 		return -1; }

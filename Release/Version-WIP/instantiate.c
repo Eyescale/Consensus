@@ -14,7 +14,7 @@ static BMTraverseCB
 	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
 
 void
-bm_instantiate( char *expression, BMContext *ctx )
+bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
@@ -52,7 +52,12 @@ bm_instantiate( char *expression, BMContext *ctx )
 	table[ BMSignalCB ]		= signal_CB;
 
 	if ( *expression==':' )
-		bm_instantiate_assignment( expression, &traverse_data );
+		bm_instantiate_assignment( expression, &traverse_data, story );
+	else if ( *expression=='!' ) {
+		char *p = expression + 2; // skip '!!'
+		Pair *entry = registryLookup( story, p );
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		bm_conceive( p, &traverse_data, entry ); }
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
@@ -76,6 +81,32 @@ bm_instantiate( char *expression, BMContext *ctx )
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
 	freeListItem( &data.sub[ 0 ] );
+}
+
+//---------------------------------------------------------------------------
+//	bm_conceive
+//---------------------------------------------------------------------------
+CNInstance *
+bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
+/*
+	Assumption: *expression=='('
+*/
+{
+	BMInstantiateData *data = traverse_data->user_data;
+	BMContext *ctx = data->ctx;
+	// instantiate new cell & proxy
+	CNDB *db = newCNDB();
+	CNCell *cell = newCell( entry, db );
+	CNInstance *proxy = NEW_PROXY( cell->ctx->this );
+	// inform new cell
+	db_init( db );
+	data->new = cell;
+	traverse_data->done = INFORMED|NEW;
+	p = bm_traverse( p, traverse_data, FIRST );
+	// carry cell
+	addItem( BMContextCarry(ctx), cell );
+	if ( *p!='~' ) bm_activate( proxy, ctx, NULL );
+	return proxy;
 }
 
 //---------------------------------------------------------------------------
@@ -297,7 +328,7 @@ bm_literal( char **position, BMContext *ctx )
 			goto RETURN;
 		case ':':
 			if ( p[1]==')' ) {
-				e = db_register( "\0", db, 0 );
+				e = db_register( "\0", db );
 				p++; break;
 			}
 			// no break
@@ -373,14 +404,14 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 	char_s q;
 	switch ( *p ) {
 	case '%':
-		if ( !wi[0] ) wi[0] = db_register( "%", db, 0 );
+		if ( !wi[0] ) wi[0] = db_register( "%", db );
 		switch ( p[1] ) {
 		case '%':
 			e = db_instantiate( wi[0], wi[0], db );
 			p+=2; break;
 		default:
 			p++;
-			e = db_register( p, db, 0 );
+			e = db_register( p, db );
 			e = db_instantiate( wi[0], e, db );
 			if ( !is_separator(*p) ) {
 				p = p_prune( PRUNE_IDENTIFIER, p+1 );
@@ -393,21 +424,21 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		case '0':
 		case ' ':
 		case 'w':
-			if ( !wi[1] ) wi[1] = db_register( "\\", db, 0 );
-			e = db_register( q.s, db, 0 );
+			if ( !wi[1] ) wi[1] = db_register( "\\", db );
+			e = db_register( q.s, db );
 			e = db_instantiate( wi[1], e, db );
 			p+=2; break;
 		case ')':
-			e = db_register( q.s, db, 0 );
+			e = db_register( q.s, db );
 			p+=2; break;
 		default:
 			p += charscan( p, &q );
-			e = db_register( q.s, db, 0 );
+			e = db_register( q.s, db );
 		}
 		break;
 	default:
 		q.value = p[0];
-		e = db_register( q.s, db, 0 );
+		e = db_register( q.s, db );
 		p++;
 	}
 	wi[ 2 ] = e;

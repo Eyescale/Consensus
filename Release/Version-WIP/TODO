@@ -1,31 +1,25 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. support cell instantation + proxy
-		. [ DONE ] parser.c
-		. operation.c
-			. do_action // Actually I don't need new type of occurrences!
-			. program.c
-		. simple test program (multi-cell without inter-cell communication)
+	. multi-variable output => modify TM-single.story
 	. support EENO
-	. instantiate.c error handling
-		. MUST pop & flush pipe and data->sub's lists *** all the way down ***
-    Version-2.0
+		. traversal.c
+			. Handle %? when %< is set - including special case: %(%?:...)
+			. Attention: bm_context_mark, when %< is set...
+		. dangling connections => to be checked & released upon
+			. on event < ...
+			. do @< ...
+			. do ~< ...
+	. Testing
+		. simple test program (multi-cell without inter-cell communication)
+	. support CNDB proxy
+		. Write document / specs
+		. [ DONE ] implementation
+		. [ DONE ] activation / deactivation
+		. [ DONE ] output @@@ in case of proxy
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
-	. on_event_ext
-		. need to separate expression from source
-			on expression < source
-		  simplest is to replace occurrence with Pair
-	. traversal.c
-		. Handle %? when %< is set - including special case: %(%?:...)
-		. ESUB(this,e,ndx) \
-			( e->sub[0]==this  ? NULL : ( e->sub[!ndx] ? e->sub[ndx] : NULL ))
-		. Attention: bm_context_mark, when %< is set...
-	. Where to put bm_hear, bm_sound, bm_take ????
-		=> could have connection.c ???
 	. Pass design/story/{all}
-	. Remodel occurrence->data->expression from char * to TBD
-	. Release Version-2.0
+	. Release
 		. Examples-v2.0
 			. 0_TuringMachine
 			. 1_Schematize
@@ -45,6 +39,12 @@ ON-GOING
 		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
+	. extend do : variable, value to allow arguments to be FILTERED
+		. issue is: in the simple case where we have
+			do : variable : value
+		  then we need to replace the second ':' with ','
+		  => post-process string (post-processing easy)
+	. Remodel occurrence->data->expression from char * to TBD
 	. code cleanup
 		. replace all the for ( ; ; ) with the model found
 	  	  in Base/Examples/6_BTreefy/btree.c
@@ -78,8 +78,23 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. cell exit conditions => freeContext()
+		. prune proxies prior to freeing CNDB
+		. flush active Register Variable @
+	. operation.c
+		. implemented bm_proxy_op() for do @<... and do ~<...
+		  => invokes bm_activate() / bm_deactivate() as BMQueryCB
+	. instantiate.c
+		. on no-completion: pop & flush pipe all the way
+		. support cell instantiation (!!)
+	. renamed ESUB(e,ndx) into CNSUB(e,ndx), where
+		#define CNSUB(e,ndx) \
+			( e->sub[!ndx] ? e->sub[ndx] : NULL )
+		. now in Base/include/entity.h (was in query.h)
+	. db_register() always manifests
 	. changed Pipe Register Variable name from %! to %|
 	. parser.c
 		. cell instantiation syntax (!!)
 	. rewrote Base/Examples/6_BTreefy
 	. extract btreefy from ../../Base to ../../Base/Examples/
+

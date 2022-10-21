@@ -34,12 +34,6 @@ typedef struct {
 	} stack;
 } BMQueryData;
 
-#ifdef UNIFIED
-#define ESUB(e,ndx) ( e->sub[0] ? e->sub[ndx] : NULL )
-#else
-#define ESUB(e,ndx) e->sub[ndx]
-#endif
-
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 CNInstance *xp_traverse( char *, BMQueryData *, XPTraverseCB );
 int xp_verify( CNInstance *, char *, BMQueryData * );

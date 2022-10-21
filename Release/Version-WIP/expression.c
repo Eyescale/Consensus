@@ -37,6 +37,24 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 }
 
 //===========================================================================
+//	bm_proxy_op
+//===========================================================================
+void
+bm_proxy_op( char *expression, BMContext *ctx )
+{
+	char *p = expression;
+	BMQueryCB *op = ( *p=='@' ) ?
+		bm_activate : bm_deactivate;
+	p += 2;
+	if ( *p!='{' )
+		bm_query( BM_CONDITION, p, ctx, op, NULL );
+	else do {
+		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
+		p = p_prune( PRUNE_TERM, p );
+	} while ( *p!='}' );
+}
+
+//===========================================================================
 //	bm_inputf
 //===========================================================================
 static int bm_input( int type, char *expression, BMContext * );
@@ -138,7 +156,7 @@ bm_input( int type, char *expression, BMContext *ctx )
 	}
 	asprintf( &expression, "((*,%s),%s)", expression, input );
 	free( input );
-	bm_instantiate( expression, ctx );
+	bm_instantiate( expression, ctx, NULL );
 	free( expression );
 	return 0;
 }

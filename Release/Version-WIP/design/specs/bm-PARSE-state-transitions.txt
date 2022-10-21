@@ -1,0 +1,102 @@
+
+Consensus B% Version-1.2
+
+    parser.c: bm_parse() - state transitions for mode!=STORY
+
+	base	""
+		#	base
+		expr
+	expr	expr_
+		(	(:
+			expr
+		,	expr
+			,.	.
+				,..	,...	,...)	(:
+		term	expr
+		char	char_	expr
+			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
+		(:	expr
+			(:\\	(:
+				(:\\x	(:\\x_	(:
+			(:%	(:
+			(::	(:
+				expr
+		|	expr
+		_^	_#
+			expr
+		_#	expr
+		expr_
+	expr_	base
+		""
+
+
+    parser.c: bm_parse() - state transitions for mode==STORY
+
+	base	""
+		#	base
+		+	base
+		-	base
+		^.	^.$ 	^.$_	^.
+					_expr
+					.id:	sub	def$
+							sub$	sub
+							sub.	sub
+								sub.$	sub.$_	sub.$:	sub
+		def	.id:
+			def$_
+			def$	def$_	base
+		cmd	_expr
+			else	cmd
+				_expr
+			cmd_	_expr
+		_expr	expr
+	expr	.	expr
+			term
+		*	expr
+		%	expr
+			%_	expr
+		~	expr
+		:	expr
+			:_<
+			/
+			:~	:
+				~
+			:\"	:\"\\	:\"
+				:_	:_<	expr
+		/	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
+		(_?	expr
+			(_?:	expr
+		(_?_:	expr
+		>	>:	expr
+			>\"	>\"\\	>\"
+				>_	:
+					expr
+		(	(:
+			expr
+		,	expr
+			,.	.
+				,..	,...	,...)	(:
+		term	expr
+		char	char_	expr
+			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
+		(:	expr
+			(:\\	(:
+				(:\\x	(:\\x_	(:
+			(:%	(:
+			(::	(:
+				expr
+		|	expr
+		_^	_#
+			expr
+		_#	expr
+		expr_
+	expr_	base
+		""
+

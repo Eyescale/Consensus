@@ -15,6 +15,7 @@ newContext( CNDB *db )
 	CNInstance *this = cn_new( NULL, NULL );
 	this->sub[ 1 ] = (CNInstance *) db;
 	Registry *registry = newRegistry( IndexedByCharacter );
+	registryRegister( registry, "@", NULL ); // active connections (proxies)
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
 	registryRegister( registry, "!", NULL ); // aka. %!
@@ -24,30 +25,28 @@ newContext( CNDB *db )
 void
 freeContext( BMContext *ctx )
 /*
-	Assumption: ctx->registry is clear (see bm_context_flush)
+	Assumption: ctx->this->sub[ 0 ]==*BMContextCarry(ctx)==NULL
 */
 {
 	CNInstance *this = ctx->this;
-	// free input connections %( this, . )
+	// prune CNDB proxies & free input connections ( this, . )
 	for ( listItem *i=this->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-		CNInstance *instance = i->ptr;
-		removeItem( &instance->sub[1]->as_sub[1], instance );
-	}
+		CNInstance *connection = i->ptr;
+		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
+		removeItem( &connection->sub[1]->as_sub[1], connection );
+		freeListItem( &connection->as_sub[ 0 ] ); }
 	freeListItem( &this->as_sub[ 0 ] );
-	// nullify this in subscribers' connections %( ., this )
-	// note that subscriber is responsible for removing the instance
-	for ( listItem *i=this->as_sub[ 1 ]; i!=NULL; i=i->next ) {
-		CNInstance *instance = i->ptr;
-		instance->sub[ 1 ] = NULL;
-	}
-	freeListItem( &this->as_sub[ 1 ] );
-	// free list of active connections
-	freeListItem((listItem **) &this->sub[ 0 ] );
-	// free whole CNDB along with "this"
-	CNDB *db = (CNDB *) this->sub[1];
-	cn_prune( this );
+	// flush active connections Register
+	Pair *entry = registryLookup( ctx->registry, "@" );
+	freeListItem((listItem **) &entry->value );
+	// free CNDB now that it is free from any proxy attachment
+	CNDB *db = (CNDB *) this->sub[ 1 ];
+	this->sub[ 1 ] = NULL;
 	freeCNDB( db );
-	// free context & variable registry
+	// cn_release will nullify this in subscribers' connections ( ., this )
+	// subscriber is responsible for removing dangling connections
+	cn_release( this );
+	// free context & variable registry - now presumably all flushed out
 	freeRegistry( ctx->registry, NULL );
 	freePair((Pair *) ctx );
 }
@@ -94,10 +93,65 @@ bm_context_fetch( BMContext *ctx, char *unused )
 	if ( !instance ) {
 		// base narrative LOCALE declaration: authorize
 		// creation of a base entity named "this"
-		entry->value = db_register( "this", BMContextDB(ctx), 1 );
+		entry->value = db_register( "this", BMContextDB(ctx) );
 		instance = entry->value;
 	}
 	return instance;
+}
+
+//===========================================================================
+//	bm_context_inform
+//===========================================================================
+static CNInstance * lookup_proxy( BMContext *, CNInstance * );
+
+CNInstance *
+bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
+{
+	if ( !e ) return NULL;
+	CNDB *db_src = BMContextDB( ctx );
+	CNDB *db_dst = BMContextDB( dst );
+	struct { listItem *src, *dst; } stack = { NULL, NULL };
+	CNInstance *instance;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(e,ndx) )) {
+			add_item( &stack.src, ndx );
+			addItem( &stack.src, e );
+			e = e->sub[ ndx ];
+			ndx = 0; continue; }
+
+		if (( e->sub[ 0 ] )) { // proxy e:(( dst->this, that ), NULL )
+			CNInstance *that = e->sub[ 0 ]->sub[ 1 ];
+			if (!( instance = lookup_proxy( ctx, that ) ))
+				instance = NEW_PROXY( that ); }
+		else {
+			char *p = db_identifier( e, db_src );
+			instance = db_register( strmake(p), db_dst ); }
+		for ( ; ; ) {
+			if (( stack.src )) {
+				e = popListItem( &stack.src );
+				if (( ndx = pop_item( &stack.src ) )) {
+					e = popListItem( &stack.dst );
+					instance = db_instantiate( e, instance, db_dst ); }
+				else {
+					addItem( &stack.dst, instance );
+					ndx=1; break; } }
+			else return instance; } }
+}
+static CNInstance *
+lookup_proxy( BMContext *ctx, CNInstance *that )
+/*
+	Assumption: there is at most one %( ?:( ctx->this, that ), . )
+	and - if there is one - that is to ( %?, NULL )==that proxy
+	otherwise we would have to test each (%?,.) to find (%?,NULL)
+*/
+{
+	CNInstance *this = ctx->this;
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNInstance *connection = i->ptr;
+		if ( connection->sub[ 1 ]==that )
+			return connection->as_sub[ 0 ]->ptr; }
+	return NULL;
 }
 
 //===========================================================================
@@ -128,7 +182,6 @@ bm_context_flush( BMContext *ctx )
 		}
 	}
 }
-
 void
 bm_flush_pipe( BMContext *ctx )
 {
@@ -191,6 +244,26 @@ bm_context_unmark( BMContext *ctx, int marked )
 }
 
 //===========================================================================
+//	bm_activate / bm_deactivate
+//===========================================================================
+BMCBTake
+bm_activate( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( (e->sub[ 0 ]) && !e->sub[ 1 ] ) {
+		Pair *entry = registryLookup( ctx->registry, "@" );
+		addIfNotThere((listItem**)&entry->value, e ); }
+	return BM_CONTINUE;
+}
+BMCBTake
+bm_deactivate( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( (e->sub[ 0 ]) && !e->sub[ 1 ] ) {
+		Pair *entry = registryLookup( ctx->registry, "@" );
+		removeIfThere((listItem**)&entry->value,e ); }
+	return BM_CONTINUE;
+}
+
+//===========================================================================
 //	bm_push_mark / bm_pop_mark
 //===========================================================================
 listItem *
@@ -218,9 +291,8 @@ bm_context_lookup( BMContext *ctx, char *p )
 		case '?':
 		case '!':
 		case '|':
-			if ((entry->value)) {
-				listItem *stack = entry->value;
-				return stack->ptr; }
+			if ((entry->value))
+				return ((listItem*)entry->value)->ptr;
 			break;
 		default:
 			return entry->value;
@@ -245,7 +317,7 @@ bm_context_register( BMContext *ctx, char *p )
 		entry = registryLookup( ctx->registry, p );
 		if (( entry )) goto ERR; // already registered
 		else {
-			CNInstance *x = db_register( p, db, 1 );
+			CNInstance *x = db_register( p, db );
 			x = db_instantiate( this, x, db );
 			registryRegister( ctx->registry, p, x );
 		}
@@ -302,7 +374,7 @@ bm_register( BMContext *ctx, char *p )
 		// registering single character identifier instance
 		char_s q;
 		if ( charscan( p+1, &q ) ) {
-			return db_register( q.s, BMContextDB(ctx), 1 );
+			return db_register( q.s, BMContextDB(ctx) );
 		}
 		return NULL;
 	}
@@ -311,5 +383,5 @@ bm_register( BMContext *ctx, char *p )
 		Pair *entry = registryLookup( ctx->registry, p );
 		if (( entry )) return entry->value;
 	}
-	return db_register( p, BMContextDB(ctx), 1 );
+	return db_register( p, BMContextDB(ctx) );
 }

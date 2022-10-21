@@ -173,7 +173,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		switch ( mode ) {
 		case BM_LOAD: ;
 			char *expression = StringFinish( data->string, 0 );
-			bm_instantiate( expression, data->ctx );
+			bm_instantiate( expression, data->ctx, NULL );
 			StringReset( data->string, CNStringAll );
 			break;
 		case BM_INPUT:

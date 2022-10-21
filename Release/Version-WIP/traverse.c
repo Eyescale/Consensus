@@ -56,7 +56,8 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 			case '@':
 			case '~':
 				if ( p[1]=='<' ) {
-					p+=2; break; }
+					if ( mode&NEW ){ traverse_data->done=1; break; }
+					else { p+=2; break; } }
 _CB( BMNotCB )			if is_f( NEGATED ) f_clr( NEGATED )	
 				else f_set( NEGATED )
 				p++; break;

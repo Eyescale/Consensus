@@ -3,6 +3,7 @@
 
 #include "expression.h"
 #include "traverse.h"
+#include "program.h"
 
 // #define DEBUG
 
@@ -20,10 +21,12 @@ typedef struct {
 	listItem *sub[ 2 ];
 	listItem *results;
 	BMContext *ctx;
+	CNCell *new;
 } BMInstantiateData;
 
 int bm_void( char *, BMContext * );
-void bm_instantiate_assignment( char *, BMTraverseData * );
+void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
+CNInstance *bm_conceive( char *, BMTraverseData *, Pair * );
 
 
 #endif	// INSTANTIATE_H

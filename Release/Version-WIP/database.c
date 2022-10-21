@@ -20,15 +20,11 @@ newCNDB( void )
 #else
 	Registry *index = newRegistry( IndexedByCharacter );
 #endif
-	char *p = strmake( "*" );
-	CNInstance *star = cn_new( NULL, NULL );
-#ifdef UNIFIED
-	star->sub[ 1 ] = (CNInstance *) p;
-#endif
-	registryRegister( index, p, star );
-
-	CNInstance *nil = cn_new( NULL, star );
-	return (CNDB *) newPair( nil, index );
+	CNInstance *nil = cn_new( NULL, NULL );
+	CNDB *db = (CNDB *) newPair( nil, index );
+	// optimize db_star( db )
+	nil->sub[ 1 ] = db_register( "*", db );
+	return db;
 }
 
 //===========================================================================
@@ -72,10 +68,10 @@ db_star( CNDB *db )
 //	db_register
 //===========================================================================
 CNInstance *
-db_register( char *p, CNDB *db, int manifest )
+db_register( char *p, CNDB *db )
 /*
 	register instance represented by p
-	manifest only if requested AND if instance is new or rehabilitated
+	manifest only if instance is new or rehabilitated
 */
 {
 	if ( p == NULL ) return NULL;
@@ -86,7 +82,7 @@ db_register( char *p, CNDB *db, int manifest )
 	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		e = entry->value;
-		if ( manifest ) db_op( DB_REHABILITATE_OP, e, db );
+		db_op( DB_REHABILITATE_OP, e, db );
 #ifdef NULL_TERMINATED
 		free( p );
 #endif
@@ -100,7 +96,7 @@ db_register( char *p, CNDB *db, int manifest )
 		e->sub[ 1 ] = (CNInstance *) p;
 #endif
 		registryRegister( db->index, p, e );
-		if ( manifest ) db_op( DB_MANIFEST_OP, e, db );
+		db_op( DB_MANIFEST_OP, e, db );
 	}
 	return e;
 }
@@ -125,46 +121,49 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 #endif
 	CNInstance *instance = NULL;
 	if ( e->sub[ 0 ]==db_star(db) ) {
-		/* Ward off concurrent reassignment case
+		/* Assignment case - as we have e:( *, . )
 		*/
+		// ward off concurrent reassignment case
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
 			if ( db_to_be_manifested( candidate, db ) ) {
 				db_outputf( stderr, db,
 					"B%%::Warning: ((*,%_),%_) -> %_ concurrent reassignment unauthorized\n",
 					e->sub[1], candidate->sub[1], f );
-				if ( candidate->sub[ 1 ] == f )
+				if ( candidate->sub[ 1 ]==f )
 					return candidate;
-				else return NULL;
-			}
-		}
-		/* Assignment case - as we have e:( *, . )
-		*/
+				else return NULL; } }
+		// perform assignment
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
-			if ( candidate->sub[ 1 ] == f ) {
+			if ( candidate->sub[ 1 ] == f )
 				instance = candidate;
-			}
 			else if ( db_deprecatable( candidate, db ) )
-				db_deprecate( candidate, db );
-		}
+				db_deprecate( candidate, db ); }
 		if (( instance )) {
 			db_op( DB_REASSIGN_OP, instance, db );
-			return instance;
-		}
-	}
+			return instance; } }
 	else {
 		/* General case
 		*/
 		instance = cn_instance( e, f, 0 );
 		if (( instance )) {
 			db_op( DB_REHABILITATE_OP, instance, db );
-			return instance;
-		}
-	}
+			return instance; } }
+
 	instance = cn_new( e, f );
 	db_op( DB_MANIFEST_OP, instance, db );
 	return instance;
+}
+
+//===========================================================================
+//	db_assign
+//===========================================================================
+CNInstance *
+db_assign( CNInstance *variable, CNInstance *value, CNDB *db )
+{
+	variable = db_instantiate( db_star(db), variable, db );
+	return db_instantiate( variable, value, db );
 }
 
 //===========================================================================
@@ -221,34 +220,21 @@ db_deprecate( CNInstance *x, CNDB *db )
 		if (( j )) {
 			addItem( &stack, i );
 			add_item( &stack, ndx );
-			ndx = 0;
-			i = j; continue;
-		}
+			ndx=0; i=j; continue; }
 		for ( ; ; ) {
-			if ( ndx == 0 ) {
-				ndx = 1;
-				break;
-			}
-			if ((x)) {
-				db_op( DB_DEPRECATE_OP, x, db );
-			}
+			if ( ndx==0 ) { ndx=1; break; }
+			if ((x)) db_op( DB_DEPRECATE_OP, x, db );
 			if (( i->next )) {
 				i = i->next;
 				if ( !db_deprecatable( i->ptr, db ) )
 					x = NULL;
-				else {
-					ndx = 0;
-					break;
-				}
-			}
+				else { ndx=0; break; } }
 			else if (( stack )) {
 				ndx = pop_item( &stack );
 				i = popListItem( &stack );
-				if ( ndx ) x = i->ptr;
-			}
+				if ( ndx ) x = i->ptr; }
 			else goto RETURN;
-		}
-	}
+		} }
 RETURN:
 	freeItem( i );
 }
@@ -268,8 +254,7 @@ db_signal( CNInstance *x, CNDB *db )
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db )
 {
-	if ( p == NULL )
-		return NULL;
+	if ( !p ) return NULL;
 #ifdef NULL_TERMINATED
 	p = strmake( p );
 	Pair *entry = registryLookup( db->index, p );
@@ -286,10 +271,8 @@ db_lookup( int privy, char *p, CNDB *db )
 //===========================================================================
 char *
 db_identifier( CNInstance *e, CNDB *db )
-/*
-	Assumption: e->sub[0]==NULL already verified
-*/
 {
+	if (( e->sub[0] )) return NULL; // proxy
 #ifdef UNIFIED
 	return (char *) e->sub[ 1 ];
 #else
@@ -323,10 +306,7 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 			e = i->ptr;
 			if ( !db_private( 0, e, db ) ) {
 				addItem( stack, i );
-				return e;
-			}
-		}
-	}
+				return e; } } }
 	listItem *i = popListItem( stack );
 	for ( ; ; ) {
 		if (( i->next )) {
@@ -336,18 +316,13 @@ db_next( CNDB *db, CNInstance *e, listItem **stack )
 			else {
 				// e in db->index
 				Pair *entry = i->ptr;
-				e = entry->value;
-			}
+				e = entry->value; }
 			if ( !db_private( 0, e, db ) ) {
 				addItem( stack, i );
-				return e;
-			}
-		}
-		else if (( *stack )) {
+				return e; } }
+		else if (( *stack ))
 			i = popListItem( stack );
-		}
-		else return NULL;
-	}
+		else return NULL; }
 }
 int
 db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
@@ -364,40 +339,31 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 			e = i->ptr;
 		else {
 			Pair *pair = i->ptr;
-			e = pair->value;
-		}
+			e = pair->value; }
 		listItem *j = e->as_sub[ 0 ];
 		if (( j )) {
 			addItem( &stack, i );
-			i = j; continue;
-		}
+			i = j; continue; }
 		while (( i )) {
 			if ( user_CB( e, db, user_data ) ) {
 				freeListItem( &n );
 				freeListItem( &stack );
-				return 1;
-			}
+				return 1; }
 			if (( i->next )) {
 				i = i->next;
-				break;
-			}
+				break; }
 			else if (( stack )) {
 				i = popListItem( &stack );
 				if ((stack) || (n))
 					e = i->ptr;
 				else {
 					Pair *pair = i->ptr;
-					e = pair->value;
-				}
-			}
+					e = pair->value; } }
 			else if (( n )) {
 				freeListItem( &n );
 				i = db->index->entries;
-				break;
-			}
-			else i = NULL;
-		}
-	}
+				break; }
+			else i = NULL; } }
 	return 0;
 }
 
@@ -445,11 +411,12 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 {
 	if ( e == NULL ) return 0;
 	if ( type=='s' ) {
-		if (( e->sub[ 0 ] ))
+		if ((e->sub[ 0 ])&&(e->sub[ 1 ]))
 			fprintf( stream, "\\" );
 		else {
 			char *p = db_identifier( e, db );
-			if (( p )) fprintf( stream, "%s", p );
+			if ( !p ) fprintf( stream, "@@@" );
+			else fprintf( stream, "%s", p );
 			return 0; } }
 
 	listItem *stack = NULL;
@@ -462,7 +429,9 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
 		char *p = db_identifier( e, db );
-		if (( p )) {
+		if ( !p )
+			fprintf( stream, "@@@" ); // proxy
+		else {
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
 			else {
