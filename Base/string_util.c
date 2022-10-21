@@ -303,6 +303,7 @@ p_prune( PruneType type, char *p )
 	case PRUNE_FILTER:
 	case PRUNE_TERM: ;
 		int informed = 0;
+		char *start = p; // Assumption: *start==':' <=> start inside of TERNARY
 		while ( *p ) {
 			switch ( *p ) {
 			case '(':
@@ -336,7 +337,8 @@ p_prune( PruneType type, char *p )
 				informed = 0;
 				p++; break;
 			case '?':
-				if ( informed ) return p;
+				if ( informed && ( type==PRUNE_FILTER || *start!=':' ) ) 
+					return p;
 				informed = 1;
 				p++; break;
 			case '"':

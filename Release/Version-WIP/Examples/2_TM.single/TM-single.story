@@ -26,17 +26,17 @@
 				do : state : %?
 				do : start : *current
 		else 
-			do { '|', ' ' }	// needed for report
+			do { '|', ' ' }	// needed for reporting
 			do : current : *start
 			do ~( init )
 	else
 		on : current : .
 			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
-			// cell report
+			// output cell report
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
 			// move on to right cell
-			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: ( %(%?,TAPE) ?: ~. ) )
+			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
 		else on : address : ~.
 			do >: // next round
 			do : symbol : ( **current ?: *BLANK )
