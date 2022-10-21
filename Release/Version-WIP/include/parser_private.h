@@ -88,10 +88,8 @@
 			} while ( !errnum && (caught&CNCaughtReenter) ); \
 			parser->errnum = errnum;
 
-
-#define WarnEntireCNDBCoupling \
-	if ( *type&DO && is_f(LEVEL) && !is_f(SUB_EXPR|NEGATED|FILTERED) ) \
-		bm_parse_report( data, ErrEntireCNDBCoupling, mode );
+#define CB_if_( cb, mode, data ) \
+	if ( _CB( cb, mode, data ) )
 
 //===========================================================================
 //	bm_parse string utilities - macros

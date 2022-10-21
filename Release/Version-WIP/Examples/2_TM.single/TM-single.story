@@ -10,8 +10,8 @@
 			} )
 		do : HALT : H
 		do : BLANK : 0
-#		do (( init, * ), A )
-		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
+		do (( init, * ), A )
+#		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
 	else in ( init )
 		on ( init )
 			do : record : %(( init, * ), . )
@@ -36,7 +36,7 @@
 			// cell report
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
 			// move on to right cell
-			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
+			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: ( %(%?,TAPE) ?: ~. ) )
 		else on : address : ~.
 			do >: // next round
 			do : symbol : ( **current ?: *BLANK )

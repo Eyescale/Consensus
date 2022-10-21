@@ -64,14 +64,13 @@ if ( mode==BM_STORY ) {
 			on_separator	; // err
 			on_other	do_( "cmd" )	s_take
 							TAB_BASE = column;
-			end
-} else {	bgn_
+			end }
+else {		bgn_
 			on_( EOF )	do_( "" )
 			on_( '#' )	do_( "#" )
 			ons( " \t\n" )	do_( same )
 			on_other	do_( "expr" )	REENTER
-			end
-}
+			end }
 	in_( "#" ) bgn_
 		on_( '\n' )	do_( "base" )
 		on_other	do_( same )
@@ -114,9 +113,8 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 	in_( ".id:" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '(' )
-if ( _CB( NarrativeTake, mode, data ) ) {
-				do_( "sub" )	REENTER
-}
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "sub" )	REENTER }
 		end
 		in_( "sub" ) bgn_
 			ons( " \t" )	do_( same )
@@ -180,19 +178,17 @@ if ( _CB( NarrativeTake, mode, data ) ) {
 		end
 	in_( "def$" ) bgn_
 		ons( " \t\n" )
-if ( _CB( NarrativeTake, mode, data ) ) {
-				do_( "def$_" )	REENTER
-}
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "def$_" )	REENTER }
 		on_separator	; // err
 		on_other	do_( same )	s_take
 		end
 	in_( "def$_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-if ( _CB( ProtoSet, mode, data ) ) {
+CB_if_( ProtoSet, mode, data ) {
 				do_( "base" )	TAB_CURRENT = 0;
-						TAB_LAST = -1;
-}
+						TAB_LAST = -1; }
 		end
 	//----------------------------------------------------------------------
 	// bm_parse:	Narrative in / on / do / en / else Command
@@ -233,13 +229,12 @@ if ( _CB( ProtoSet, mode, data ) ) {
 						s_reset( CNStringAll )
 		end
 	in_( "_expr" )
-if ( _CB( OccurrenceAdd, mode, data ) ) {
+CB_if_( OccurrenceAdd, mode, data ) {
 		bgn_
 			on_any	do_( "expr" )	REENTER
 						TAB_LAST = TAB_CURRENT;
 						data->opt = 1;
-			end
-}
+			end }
 EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression
