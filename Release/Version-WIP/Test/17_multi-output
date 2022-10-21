@@ -1,0 +1,6 @@
+
+	on init
+		do : titi : toto
+	else
+		do >"variable=%_, value=%_\n":< titi, *titi >
+		do exit
