@@ -20,7 +20,7 @@ ternary_check( char *guard, void *user_data )
 //	main
 //===========================================================================
 // char *expression = "( hello, world )";
-// char *expression = "%( bambina ? hello : world )";
+// char *expression = "( bambina ? hello : world )";
 // char *expression = "( bambina ? world :)";
 // char *expression = "( hi:bambina ? hello : world )";
 // char *expression = "( hi:bambina ?: carai )";

@@ -406,22 +406,33 @@ do_input( char *expression, BMContext *ctx )
 static int
 do_output( char *expression, BMContext *ctx )
 /*
-	Assuming expression is in the form
-		> fmt : expression(s)
+	Assuming expression is one the following forms
+		> fmt
+		> fmt : expression
+		> fmt : < expression1, expression2, ... >
+		>:
+		>: expression
+		>: < expression1, expression2, ... >
+
 	then outputs expression(s) to stdout according to fmt
 */
 {
 #ifdef DEBUG
 	fprintf( stderr, "do_output bgn: %s\n", expression );
 #endif
-	expression++; // skipping the leading '>'
-
 	// extracts fmt and args:{ expression(s) }
-	char *p = expression;
+	char *p = expression + 1; // skipping the leading '>'
+	listItem *args = NULL;
 	char *fmt = ( *p=='"' ? p : "" );
-	if ( *fmt ) p = p_prune( PRUNE_FILTER, fmt );
-	if ( *p==':') p++;
-	listItem *args = ( *p ? newItem(p) : NULL );
+	if ( *fmt ) p = p_prune( PRUNE_FILTER, p );
+	if ( *p==':' ) {
+		p++;
+		if ( *p=='<' ) {
+			do { p++; addItem( &args, p ); }
+			while ( *(p=p_prune( PRUNE_TERM, p ))==',' );
+			reorderListItem( &args ); }
+		else if ( *p )
+			addItem( &args, p ); }
 
 	// invoke bm_outputf()
 	int retval = bm_outputf( fmt, args, ctx );

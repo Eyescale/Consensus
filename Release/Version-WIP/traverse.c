@@ -48,6 +48,11 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
 			case '>':
+				if ( is_f(VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
+					f_pop( stack, 0 )
+					f_clr( NEGATED )
+					f_set( INFORMED ) }
+				p++; break;
 			case '<':
 				p++; break;
 			case '!':
@@ -134,11 +139,16 @@ _sCB( BMOpenCB )			f_push( stack )
 _CB(( BMTermCB ))		}
 				break;
 			case ':':
-_CB( BMFilterCB )		f_clr( INFORMED )
-				f_set( FILTERED )
-				p++; break;
+				if ( p[1]=='<' ) {
+					f_push( stack );
+					f_set( VECTOR );
+					p+=2; break; }
+				else {
+_CB( BMFilterCB )			f_clr( INFORMED )
+					f_set( FILTERED )
+					p++; break; }
 			case ',':
-				if ( !is_f(SET|SUB_EXPR|LEVEL) )
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
 					{ traverse_data->done=1; break; }
 _CB( BMDecoupleCB )		if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( FILTERED|INFORMED )

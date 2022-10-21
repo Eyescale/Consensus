@@ -10,18 +10,18 @@
 			} )
 		do : HALT : H
 		do : BLANK : 0
-		do : origin : (TAPE,TAPE) // starting cell
 #		do (( init, * ), A )
 		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
+		do { '|', ' ' }	// needed for output
 	else on ( init )
-		do : current : *origin
+		do : current : (TAPE,TAPE) // origin
 		do : record : %(( init, * ), . )
 	else in ( init )
 		in ?: %(*record:(.,?))
 			in %?: /[01]/
 				do : *current : %?
 			else in %?: ' '
-				do : current : (*current,TAPE) // create RIGHT cell
+				do : current : (*current,TAPE) // create right cell
 			else
 				do : state : %?
 				do : start : *current
@@ -35,20 +35,15 @@
 		on : current : .
 			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
-			in %?: *start
-				do >"|"
-			in %?: *current
-				do >"%s": *state
-			else do >" "
-			do >"%s ": %( **address ?: *BLANK )
+			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
 			in %?: (TAPE,.:~TAPE)
 				do : address : %(%?:(.,?))
 			else in ?:( %?, TAPE )
 				do : address : %?
 			else
 				do : address : ~.
-				do >:
 		else on : address : ~.
+			do >:
 			do : symbol : ( **current ?: *BLANK )
 		else on : symbol : ?
 			in *state : *HALT

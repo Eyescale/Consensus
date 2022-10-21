@@ -326,6 +326,7 @@ p_prune( PruneType type, char *p )
 				p++; break;
 			case ',':
 			case ')':
+			case '>':
 			case '}':
 			case '|':
 				return p;

@@ -90,8 +90,8 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 	p = bm_traverse( p, traverse_data, FIRST );
 
 	if ((data->stack.sequence)||(data->stack.flags)) {
-		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: 0x%x %s\n",
-			(int) data->stack.sequence, expression );
+		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: 0x%x %s, at %s\n",
+			(int) data->stack.sequence, expression, p );
 		freeListItem( &data->stack.sequence );
 		freeListItem( &data->stack.flags );
 		exit( -1 ); }
@@ -114,6 +114,8 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 //---------------------------------------------------------------------------
 //	deternarize_traversal
 //---------------------------------------------------------------------------
+static char *optimize( Pair *, char * );
+
 BMTraverseCBSwitch( deternarize_traversal )
 /*
 	build Sequence:{
@@ -190,6 +192,7 @@ case_( filter_CB )
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {
+		char *next_p;
 		Pair *segment = data->segment;
 		if (( data->sequence )) {
 			if (( segment )) { // sequence is not guard
@@ -201,18 +204,35 @@ case_( close_CB )
 			// add as sub-Sequence to on-going expression
 			listItem *sub = data->sequence;
 			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
 			addItem( &data->sequence, newPair( NULL, sub ) ); }
 		else if (( segment )) {
 			if ( !segment->value ) segment->value = p;
 			// add as-is to on-going expression
 			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
 			addItem( &data->sequence, newPair( segment, NULL ) ); }
 		else { // special case: ~.
 			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
 			addItem( &data->sequence, newPair( NULL, NULL ) ); }
-		data->segment = newPair( p, NULL ); }
+		data->segment = newPair( next_p, NULL ); }
 	_break
 BMTraverseCBEnd
+
+static char *
+optimize( Pair *segment, char *p )
+/*
+	remove ternary expression's enclosing parentheses if possible
+*/
+{
+	segment = segment->name;
+	char *bgn = segment->name;
+	char *end = segment->value; // segment ended after '('
+	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
+		{ segment->value--; return p+1; }
+	else return p;
+}
 
 //===========================================================================
 //	free_deternarized

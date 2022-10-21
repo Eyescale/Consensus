@@ -11,6 +11,7 @@
 //	deternarize
 //===========================================================================
 static void s_scan( CNString *, listItem * );
+static char *optimize( Pair *, char * );
 
 char *
 deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
@@ -111,6 +112,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 		case ')':
 			if (!is_f( LEVEL )) { done=1; break; }
 			if is_f( TERNARY ) {
+				char *next_p;
 				if (( sequence )) {
 					if (( segment )) { // sequence is not guard
 						// finish current sequence, reordered
@@ -121,19 +123,22 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 					// add as sub-Sequence to on-going expression
 					listItem *sub = sequence;
 					sequence = popListItem( &stack.sequence );
+					next_p = optimize( sequence->ptr, p );
 					addItem( &sequence, newPair( NULL, sub ) );
 				}
 				else if (( segment )) {
 					if ( !segment->value ) segment->value = p;
 					// add as-is to on-going expression
 					sequence = popListItem( &stack.sequence );
+					next_p = optimize( sequence->ptr, p );
 					addItem( &sequence, newPair( segment, NULL ) );
 				}
 				else { // special case: ~.
 					sequence = popListItem( &stack.sequence );
+					next_p = optimize( sequence->ptr, p );
 					addItem( &sequence, newPair( NULL, NULL ) );
 				}	
-				segment = newPair( p, NULL );
+				segment = newPair( next_p, NULL );
 			}
 			f_pop( &stack.flags, 0 );
 			f_set( INFORMED )
@@ -186,6 +191,20 @@ RETURN:
 		exit( -1 );
 	}
 	return deternarized;
+}
+
+static char *
+optimize( Pair *segment, char *p )
+/*
+	remove ternary expression's enclosing parentheses if possible
+*/
+{
+	segment = segment->name;
+	char *bgn = segment->name;
+	char *end = segment->value; // segment ended after '('
+	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
+		{ segment->value--; return p+1; }
+	else return p;
 }
 
 //===========================================================================
