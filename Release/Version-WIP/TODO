@@ -1,6 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. multi-variable output => modify TM-single.story
 	. support EENO
 		. traversal.c
 			. Handle %? when %< is set - including special case: %(%?:...)
@@ -78,6 +77,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. multi-variable output => improved TM-single.story
 	. cell exit conditions => freeContext()
 		. prune proxies prior to freeing CNDB
 		. flush active Register Variable @

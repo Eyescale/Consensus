@@ -12,7 +12,6 @@
 		do : BLANK : 0
 #		do (( init, * ), A )
 		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
-		do { '|', ' ' }	// needed for output
 	else on ( init )
 		do : current : (TAPE,TAPE) // instantiate origin
 		do : record : %(( init, * ), . )
@@ -25,17 +24,16 @@
 			else
 				do : state : %?
 				do : start : *current
-			in ?: ( *record, . )
-				do : record : %?
-			else do ~( record )
+			do : record : ( %(*record,.) ?: ~. )
 		else 
+			do { '|', ' ' }	// needed for report
 			do : current : *start
 			do ~( init )
 	else
 		on : current : .
 			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
-			// report on current cell
+			// report current cell
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), (**address?:*BLANK)>
 			// move to cell on the right side
 			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
