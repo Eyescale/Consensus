@@ -33,10 +33,8 @@
 		on : current : .
 			do : address : %((TAPE,.):~%(TAPE,?)) // left-most cell
 		else on : address : ?
-			// output cell report
+			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. ) // right cell
 			do >"%s%s%s ":<((%?:*start)?'|':), ((%?:*current)?*state:' '), ((*%?)?:*BLANK)>
-			// move on to right cell
-			do : address : ( %(%?:(TAPE,?:~TAPE)) ?: %(%?,TAPE) ?: ~. )
 		else on : address : ~.
 			do >: // next round
 			do : symbol : ( **current ?: *BLANK )
