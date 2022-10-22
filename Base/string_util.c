@@ -298,12 +298,15 @@ static char *prune_level( char *, int );
 
 char *
 p_prune( PruneType type, char *p )
+/*
+	Assumption: *p==':' => assume we start inside of TERNARY
+*/
 {
 	switch ( type ) {
 	case PRUNE_FILTER:
 	case PRUNE_TERM: ;
 		int informed = 0;
-		char *start = p; // Assumption: *start==':' <=> start inside of TERNARY
+		char *start = p;
 		while ( *p ) {
 			switch ( *p ) {
 			case '(':
