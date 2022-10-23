@@ -31,7 +31,7 @@ Definitions
 	. The active @ RegistryEntry contains the cell's active connections,
 	  that is: the list of CNDB proxies to be used in EENO.
 
-	  %@ is not made public in this release (Version-2.0)
+	  Note that %@ will not be made public in this release (Version-2.0)
 
 Narrative parent Register Variable ..
 
@@ -84,7 +84,7 @@ Narrative self Register Variable %%
 	. do ~( %% ) or any expression to that effect will release both
 	  connection (this,this) and proxy ((this,this),NULL)
 
-	  Note that this does NOT affect any "self-connecting" capability
-	  of the current cell, since it possesses none.
+	  Note that this does NOT affect any "self-connecting" capability of
+	  the current cell, since it possesses none.
 
 
