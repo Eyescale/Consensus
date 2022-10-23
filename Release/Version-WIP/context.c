@@ -12,8 +12,8 @@
 BMContext *
 newContext( CNDB *db )
 {
-	CNInstance *this = cn_new( NULL, NULL );
-	this->sub[ 1 ] = (CNInstance *) db;
+	CNEntity *this = cn_new( NULL, NULL );
+	this->sub[ 0 ] = (CNEntity *) db;
 	Registry *registry = newRegistry( IndexedByCharacter );
 	registryRegister( registry, "@", NULL ); // active connections (proxies)
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
@@ -25,13 +25,13 @@ newContext( CNDB *db )
 void
 freeContext( BMContext *ctx )
 /*
-	Assumption: ctx->this->sub[ 0 ]==*BMContextCarry(ctx)==NULL
+	Assumption: ctx->this->sub[ 1 ]==*BMContextCarry(ctx)==NULL
 */
 {
-	CNInstance *this = ctx->this;
+	CNEntity *this = ctx->this;
 	// prune CNDB proxies & free input connections ( this, . )
 	for ( listItem *i=this->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-		CNInstance *connection = i->ptr;
+		CNEntity *connection = i->ptr;
 		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
 		removeItem( &connection->sub[1]->as_sub[1], connection );
 		freeListItem( &connection->as_sub[ 0 ] ); }
@@ -40,8 +40,8 @@ freeContext( BMContext *ctx )
 	Pair *entry = registryLookup( ctx->registry, "@" );
 	freeListItem((listItem **) &entry->value );
 	// free CNDB now that it is free from any proxy attachment
-	CNDB *db = (CNDB *) this->sub[ 1 ];
-	this->sub[ 1 ] = NULL;
+	CNDB *db = (CNDB *) this->sub[ 0 ];
+	this->sub[ 0 ] = NULL;
 	freeCNDB( db );
 	// cn_release will nullify this in subscribers' connections ( ., this )
 	// subscriber is responsible for removing dangling connections

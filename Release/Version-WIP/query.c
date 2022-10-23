@@ -410,7 +410,7 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 		*/
 		if ( op==BM_END ) {
 			data->base = popListItem( &data->stack.base );
-			popListItem( &data->stack.scope ); // done with this one
+			popListItem( &data->stack.scope ); // done with that one
 			data->OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL ); }
 		else {
 			data->base = data->stack.exponent;

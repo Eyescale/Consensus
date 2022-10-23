@@ -9,8 +9,8 @@ typedef struct {
 	Registry *registry;
 } BMContext;
 
-#define BMContextDB(ctx) ((CNDB *) ctx->this->sub[1])
-#define BMContextCarry(ctx) ((listItem **) &ctx->this->sub[0])
+#define BMContextDB(ctx) ((CNDB *) ctx->this->sub[0])
+#define BMContextCarry(ctx) ((listItem **) &ctx->this->sub[1])
 #define NEW_PROXY( that ) cn_new( cn_new( ctx->this, that ), NULL )
 
 BMContext *	newContext( CNDB * );

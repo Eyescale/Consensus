@@ -15,7 +15,7 @@
 	else in ( init )
 		on ( init )
 			do : record : %(( init, * ), . )
-			do : current : (TAPE,TAPE) // instantiate origin
+			do : current : (TAPE,TAPE) // instantiate TAPE origin
 		else in ?: %(*record:(.,?))
 			do : record : ( %(*record,.) ?: ~. )
 			in %?: /[01]/

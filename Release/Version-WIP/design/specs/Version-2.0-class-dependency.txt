@@ -16,13 +16,13 @@ Overview
 	and
 		CNCell:[ entry:CNNarrativeEntry, ctx:BMContext ]
 		where
-			BMContext:[ this:CNInstance, registry:Registry(CNRegisterVariable:[ name, value ]) ]
+			BMContext:[ this:CNEntity, registry:Registry(CNRegisterVariable:[ name, value ]) ]
 			where
 				this->sub[ 1 ] = CNDB
 
 	So essentially we have
 
-		CNCell:[ CNNarrativeEntry, ctx:[ this:CNInstance( NULL, CNDB ), registry ] ]
+		CNCell:[ CNNarrativeEntry, ctx:[ this:CNEntity( NULL, CNDB ), registry ] ]
 
 	where
 		CNCell's entry = cell-specific CNNarrativeEntry into parent CNProgram's story
@@ -30,14 +30,15 @@ Overview
 	Note here that a CNCell uniquely combines a CNNarrativeEntry - also known as type,
 	or class, or even DNA, as it describes the way the cell responds to events - with
 	a CNDB - where CNDB stands for Consensus Database - the latter being encapsulated
-	by the cell's "this" CNInstance, which is its interface to the outside world.
+	by the cell's "this" CNEntity, which is its interface to the outside world.
 
-	The cell's "this" CNInstance does not pertain to any known CNDB - other, conceptually,
+	The cell's "this" CNEntity does not pertain to any known CNDB - other, conceptually,
 	than its parent CNProgram. It is nonetheless the crucial element that will allow us
 	to implement and support the inter-cell connection and communication mechanism
 	targeted by our Version-2.0 release.
 
 See Also
+	design/specs/bm-PROXY-considerations
 	design/specs/Version-2.0-software-packages.txt
 	design/new-features-and-additions.txt
 
