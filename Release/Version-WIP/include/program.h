@@ -22,7 +22,7 @@ void	freeProgram( CNProgram * );
 int	cnOperate( CNProgram * );
 void	cnUpdate( CNProgram * );
 
-CNCell *newCell( Pair *, CNDB * );
+CNCell *newCell( Pair *, CNDB *, CNEntity *parent );
 void freeCell( CNCell * );
 
 

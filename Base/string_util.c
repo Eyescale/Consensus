@@ -474,9 +474,11 @@ static char *
 prune_list( char *p )
 /*
 	Assumption: p can be point to either one of the following
-		((expression,...):sequence:) OR ...):sequence:)
-		^-------------------------------^ p
-			     ^------------------^ Ellipsis
+		((expression,...):sequence:)
+		|	     ^------------------ p (Ellipsis)
+		^------------------------------- p (expression)
+	In the first case (Ellipsis) we return on the closing ')'
+	In the second case (expression) we return after the closing ')'
 */
 {
 	int start = *p;

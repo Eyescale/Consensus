@@ -30,10 +30,10 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, THIS|QMARK|IDENTIFIER );
+	int target = bm_scour( expression, QMARK );
 	if ( target == 0 ) return NULL;
-	else target =	( target & THIS) ? THIS :
-			( target & QMARK ) ? QMARK :
+	else target =	( target & QMARK ) ? QMARK :
+			( target & THIS) ? THIS :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :

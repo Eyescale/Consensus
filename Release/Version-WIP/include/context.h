@@ -9,12 +9,16 @@ typedef struct {
 	Registry *registry;
 } BMContext;
 
-#define BMContextDB(ctx) ((CNDB *) ctx->this->sub[0])
-#define BMContextCarry(ctx) ((listItem **) &ctx->this->sub[1])
-#define NEW_PROXY( that ) cn_new( cn_new( ctx->this, that ), NULL )
+#define BMContextDB( ctx ) ((CNDB *) ctx->this->sub[0])
+#define BMContextCarry( ctx ) ((listItem **) &ctx->this->sub[1])
+#define NEW_PROXY( this, that ) cn_new( cn_new( this, that ), NULL )
 
-BMContext *	newContext( CNDB * );
+BMContext *	newContext( CNDB *, CNEntity *parent );
 void		freeContext( BMContext * );
+void		bm_context_discharge( BMContext *ctx );
+CNInstance *	bm_context_parent( BMContext *ctx );
+CNInstance *	bm_context_fetch_self( BMContext *ctx );
+int		bm_context_match_self( BMContext *ctx, CNInstance * );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 CNInstance *	bm_context_fetch( BMContext *, char * );
 CNInstance *	bm_context_inform( BMContext *, CNInstance *, BMContext * );

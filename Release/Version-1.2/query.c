@@ -581,8 +581,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );
 		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
-		default: return !strcomp( p, identifier, 1 );
-		}
-	}
+		default: return !strcomp( p, identifier, 1 ); } }
+
 	return 0; // not a base entity
 }

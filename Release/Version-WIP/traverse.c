@@ -101,7 +101,7 @@ _CB( BMDereferenceCB )			f_clr( INFORMED ) }
 				p++; break;
 			case '%':
 				if ( strmatch( "?!|", p[1] ) ) {
-_CB( BMMarkRegisterCB )			f_clr( NEGATED )
+_CB( BMRegisterVariableCB )		f_clr( NEGATED )
 					f_set( INFORMED )
 					p+=2; break;
 				}
@@ -200,12 +200,15 @@ _CB( BMDotIdentifierCB )		p = p_prune( PRUNE_FILTER, p+2 );
 					f_set( INFORMED )
 					break; }
 				else if ( p[1]=='.' ) {
-_CB( BMListCB )				if (!table[ BMListCB ]) {
-						// p_prune will return on closing ')'
-						p = p_prune( PRUNE_LIST, p ); }
-					f_pop( stack, 0 )
-					f_set( INFORMED )
-					break; }
+					if ( p[2]=='.' ) {
+_CB( BMListCB )					if (!table[ BMListCB ]) {
+							// p_prune will return on closing ')'
+							p = p_prune( PRUNE_LIST, p ); }
+						f_pop( stack, 0 )
+						f_set( INFORMED )
+						break; }
+					else {
+_CB( BMRegisterVariableCB )			p+=2; break; } }
 				else {
 _CB( BMWildCardCB )			f_clr( NEGATED )
 					f_set( INFORMED )

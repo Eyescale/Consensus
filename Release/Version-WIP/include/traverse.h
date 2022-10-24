@@ -80,7 +80,7 @@ typedef enum {
 	BMEndSetCB,		// }
 	BMBgnPipeCB,		// |
 	BMModCharacterCB, 	// % followed by one of ,:)}|
-	BMMarkRegisterCB,	// %? or %!
+	BMRegisterVariableCB,	// %? or %! or ..
 	BMSubExpressionCB,	// %(
 	BMStarCharacterCB,	// * followed by one of ,:)}|
 	BMDereferenceCB,	// *

@@ -20,8 +20,7 @@ typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
-	BMContext *ctx;
-	CNCell *new;
+	BMContext *ctx, *new;
 } BMInstantiateData;
 
 int bm_void( char *, BMContext * );

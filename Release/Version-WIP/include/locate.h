@@ -23,11 +23,12 @@ void xpn_out( FILE *stream, listItem *xp );
 #define EMARK		1
 #define QMARK		2
 #define PMARK		4
-#define THIS		8
-#define IDENTIFIER	16
-#define CHARACTER	32
-#define	MOD		64
-#define	STAR		128
+#define	PARENT		8
+#define THIS		16
+#define IDENTIFIER	32
+#define CHARACTER	64
+#define	MOD		128
+#define	STAR		256
 
 int bm_scour( char *expression, int target );
 

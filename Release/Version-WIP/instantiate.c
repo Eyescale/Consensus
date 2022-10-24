@@ -10,7 +10,7 @@
 //===========================================================================
 static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
-	open_CB, close_CB, decouple_CB, mark_register_CB, literal_CB, list_CB,
+	open_CB, close_CB, decouple_CB, register_variable_CB, literal_CB, list_CB,
 	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
 
 void
@@ -39,7 +39,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	table[ BMSubExpressionCB ]	= collect_CB;
 	table[ BMModCharacterCB ]	= identifier_CB;
 	table[ BMStarCharacterCB ]	= identifier_CB;
-	table[ BMMarkRegisterCB ]	= mark_register_CB;
+	table[ BMRegisterVariableCB ]	= register_variable_CB;
 	table[ BMLiteralCB ]		= literal_CB;
 	table[ BMListCB ]		= list_CB;
 	table[ BMOpenCB ]		= open_CB;
@@ -94,18 +94,23 @@ bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
 {
 	BMInstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	// instantiate new cell & proxy
+	CNEntity *this = ctx->this;
+	// instantiate new cell
 	CNDB *db = newCNDB();
-	CNCell *cell = newCell( entry, db );
-	CNInstance *proxy = NEW_PROXY( cell->ctx->this );
-	// inform new cell
-	db_init( db );
-	data->new = cell;
+	CNCell *cell = newCell( entry, db, this );
+	BMContext *new = cell->ctx;
+	// inform cell
+	data->new = new;
 	traverse_data->done = INFORMED|NEW;
 	p = bm_traverse( p, traverse_data, FIRST );
-	// carry cell
+	// carry on
 	addItem( BMContextCarry(ctx), cell );
-	if ( *p!='~' ) bm_activate( proxy, ctx, NULL );
+	CNInstance *proxy = NULL;
+	if ( *p=='~' ) 
+		bm_context_discharge( new );
+	else {
+		proxy = NEW_PROXY( this, new->this );
+		bm_activate( proxy, ctx, NULL ); }
 	return proxy;
 }
 
@@ -155,11 +160,12 @@ case_( end_pipe_CB )
 		data->sub[ 1 ] = popListItem( &data->results );
 	data->sub[ 0 ] = popListItem( &data->results );
 	_break
-case_( mark_register_CB )
+case_( register_variable_CB )
+	CNInstance *e;
 	switch ( p[1] ) {
-	case '?': ;
-	case '!': ;
-		CNInstance *e = bm_context_lookup( data->ctx, ((char_s)(int)p[1]).s );
+	case '?':
+	case '!':
+		e = bm_context_lookup( data->ctx, ((char_s)(int)p[1]).s );
 		if ( !e ) _return( 2 )
 		data->sub[ current ] = newItem( e );
 		break;
@@ -168,6 +174,16 @@ case_( mark_register_CB )
 		if ( !i ) _return( 2 )
 		listItem **sub = &data->sub[ current ];
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr );
+		break;
+	case '.':
+		e = bm_context_parent( data->ctx );
+		if ( !e ) _return( 2 )
+		data->sub[ current ] = newItem( e );
+		break;
+	case '%':
+		e = bm_context_fetch_self( data->ctx );
+		if ( !e ) _return( 2 )
+		data->sub[ current ] = newItem( e );
 		break; }
 	_break
 case_( list_CB )
@@ -479,7 +495,7 @@ bm_void( char *expression, BMContext *ctx )
 	table[ BMNotCB ]		= sound_CB;
 	table[ BMDereferenceCB ]	= sound_CB;
 	table[ BMSubExpressionCB ]	= sound_CB;
-	table[ BMMarkRegisterCB ]	= touch_CB;
+	table[ BMRegisterVariableCB ]	= touch_CB;
 	bm_traverse( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
@@ -506,8 +522,16 @@ case_( sound_CB )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
 case_( touch_CB )
-	if ( strmatch("?!",p[1]) && !bm_context_lookup( ctx, ((char_s)(int)p[1]).s ) )
-		_return( 2 )
+	switch ( p[1] ) {
+	case '.':
+		if ( !bm_context_parent( ctx ) )
+			_return( 2 )
+		break;
+	case '?':
+	case '!':
+		if ( !bm_context_lookup( ctx, ((char_s)(int)p[1]).s ) )
+			_return( 2 )
+		break; }
 	_break
 BMTraverseCBEnd
 

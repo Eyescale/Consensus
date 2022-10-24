@@ -227,7 +227,7 @@ fprintf( stderr, " ........{\n" );
 	traverse_data.stack = &data->stack.flags;
 
 	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMMarkRegisterCB ]	= match_CB;
+	table[ BMRegisterVariableCB ]	= match_CB;
 	table[ BMStarCharacterCB ]	= match_CB;
 	table[ BMModCharacterCB ]	= match_CB;
 	table[ BMCharacterCB ]		= match_CB;
@@ -532,13 +532,16 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	else if (( data->pivot ) && p==data->pivot->name )
 		return ( y==data->pivot->value );
 	else if ( *p=='.' )
-		return ( y==bm_context_lookup( data->ctx, "." ) );
+		return ( p[1]=='.' ?
+			y==bm_context_parent( data->ctx ) :
+			y==bm_context_lookup( data->ctx, "." ) );
 	else if ( *p=='*' )
 		return ( y==data->star );
-	else if ( !strncmp( p, "%?", 2 ) )
-		return ( y==bm_context_lookup( data->ctx, "?" ) );
-	else if ( !strncmp( p, "%!", 2 ) )
-		return ( y==bm_context_lookup( data->ctx, "!" ) );
+	else if ( *p=='%' )
+		switch ( p[1] ) {
+		case '?': return ( y==bm_context_lookup( data->ctx, "?" ) );
+		case '!': return ( y==bm_context_lookup( data->ctx, "!" ) );
+		case '%': return bm_context_match_self( data->ctx, y ); }
 	else if ( !is_separator(*p) ) {
 		CNInstance *found = bm_context_lookup( data->ctx, p );
 		if (( found )) return ( y==found ); }
@@ -550,8 +553,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );
 		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
-		default: return !strcomp( p, identifier, 1 );
-		}
-	}
+		default: return !strcomp( p, identifier, 1 ); } }
+
 	return 0; // not a base entity
 }

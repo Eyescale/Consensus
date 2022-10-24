@@ -18,7 +18,7 @@ newProgram( CNStory *story, char *inipath )
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL; }
 	CNDB *db = newCNDB();
-	CNCell *cell = newCell( entry, db );
+	CNCell *cell = newCell( entry, db, NULL );
 	if ( !cell ) {
 		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
 		goto ERR; }
@@ -75,7 +75,7 @@ cnUpdate( CNProgram *program )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
 			CNCell *cell = j->ptr;
 			BMContext *ctx = cell->ctx;
-			// integrate parent-set init conditions
+			// integrate init conditions
 			bm_update( ctx );
 			// re-init cell for its own narrative
 			db_init( BMContextDB(ctx) );
@@ -125,10 +125,10 @@ cnOperate( CNProgram *program )
 //	newCell / freeCell
 //===========================================================================
 CNCell *
-newCell( Pair *entry, CNDB *db )
+newCell( Pair *entry, CNDB *db, CNEntity *parent )
 {
 	if ( !db ) return NULL;
-	BMContext *ctx = newContext( db );
+	BMContext *ctx = newContext( db, parent );
 	if ( !ctx ) return NULL;
 	return (CNCell *) newPair( entry, ctx );
 }

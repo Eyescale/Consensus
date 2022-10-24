@@ -10,7 +10,7 @@
 //===========================================================================
 static BMTraverseCB
 	dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
-	star_character_CB, mark_register_CB, dereference_CB, sub_expression_CB,
+	star_character_CB, register_variable_CB, dereference_CB, sub_expression_CB,
 	dot_expression_CB, open_CB, filter_CB, decouple_CB, close_CB;
 typedef struct {
 	int target;
@@ -30,11 +30,12 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, THIS|EMARK|QMARK|IDENTIFIER );
+	int target = bm_scour( expression, EMARK|QMARK|PARENT );
 	if ( target == 0 ) return NULL;
-	else target =	( target & THIS) ? THIS :
-			( target & EMARK ) ? EMARK :
+	else target =	( target & EMARK ) ? EMARK :
 			( target & QMARK ) ? QMARK :
+			( target & PARENT ) ? PARENT :
+			( target & THIS ) ? THIS :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :
@@ -57,7 +58,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	table[ BMCharacterCB ]		= character_CB;
 	table[ BMModCharacterCB ]	= mod_character_CB;
 	table[ BMStarCharacterCB ]	= star_character_CB;
-	table[ BMMarkRegisterCB ]	= mark_register_CB;
+	table[ BMRegisterVariableCB ]	= register_variable_CB;
 	table[ BMDereferenceCB ]	= dereference_CB;
 	table[ BMSubExpressionCB ]	= sub_expression_CB;
 	table[ BMDotExpressionCB ]	= dot_expression_CB;
@@ -109,11 +110,13 @@ case_( star_character_CB )
 	if ( !is_f(NEGATED) && data->target==STAR )
 		_return( 2 )
 	_break
-case_( mark_register_CB )
-	if ( !is_f(NEGATED) && data->target==(
-		p[1]=='!' ? EMARK :
-		p[1]=='?' ? QMARK : PMARK ) )
-		_return( 2 )
+case_( register_variable_CB )
+	if ( !is_f(NEGATED) )
+		switch ( p[1] ) {
+		case '!': if ( data->target==EMARK ) _return( 2 ) else break;
+		case '?': if ( data->target==QMARK ) _return( 2 ) else break;
+		case '|': if ( data->target==PMARK ) _return( 2 ) else break;
+		case '.': if ( data->target==PARENT ) _return( 2 ) else break; }
 	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
@@ -176,7 +179,7 @@ BMTraverseCBEnd
 //===========================================================================
 static BMTraverseCB
 	sc_dot_expr_CB, sc_identifier_CB, sc_star_character_CB,
-	sc_mod_character_CB, sc_character_CB, sc_mark_register_CB;
+	sc_mod_character_CB, sc_character_CB, sc_register_variable_CB;
 typedef struct {
 	int candidate, target;
 } BMScourData;
@@ -207,7 +210,7 @@ bm_scour( char *expression, int target )
 	table[ BMModCharacterCB ]	= sc_mod_character_CB;
 	table[ BMStarCharacterCB ]	= sc_star_character_CB;
 	table[ BMDereferenceCB ]	= sc_star_character_CB;
-	table[ BMMarkRegisterCB ]	= sc_mark_register_CB;
+	table[ BMRegisterVariableCB ]	= sc_register_variable_CB;
 	char *p = bm_traverse( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
@@ -239,22 +242,17 @@ case_( sc_star_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= STAR;
 	_break
-case_( sc_mark_register_CB )
-	if ( !is_f(NEGATED) )
+case_( sc_register_variable_CB )
+	if ( !is_f(NEGATED) ) {
+		int mark;
 		switch ( p[1] ) {
-		case '?':
-			data->candidate |= QMARK;
-			if ( data->target & QMARK )
-				_return( 1 )
-			break;
-		case '!':
-			data->candidate |= EMARK;
-			if ( data->target & EMARK )
-				_return( 1 )
-			break;
-		default:
-			data->candidate |= PMARK;
-		}
+		case '?': mark = QMARK; break;
+		case '!': mark = EMARK; break;
+		case '|': mark = PMARK; break;
+		case '.': mark = PARENT; break; }
+		data->candidate |= mark;
+		if ( data->target & mark )
+			_return( 1 ) }
 	_break
 BMTraverseCBEnd
 

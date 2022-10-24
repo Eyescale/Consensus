@@ -5,17 +5,24 @@
 #include "context.h"
 #include "locate.h"
 
-
 //===========================================================================
 //	newContext / freeContext
 //===========================================================================
+static void freeContextId( BMContext *ctx );
+
 BMContext *
-newContext( CNDB *db )
+newContext( CNDB *db, CNEntity *parent )
 {
 	CNEntity *this = cn_new( NULL, NULL );
 	this->sub[ 0 ] = (CNEntity *) db;
+	Pair *id = newPair( NULL, NULL );
+	listItem *active = NULL;
+	if (( parent )) {
+		CNInstance *proxy = NEW_PROXY( this, parent );
+		id->name = proxy; active = newItem( proxy ); }
 	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "@", NULL ); // active connections (proxies)
+	registryRegister( registry, "%", id ); // aka. .. and %%
+	registryRegister( registry, "@", active ); // active connections (proxies)
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
 	registryRegister( registry, "!", NULL ); // aka. %!
@@ -36,9 +43,10 @@ freeContext( BMContext *ctx )
 		removeItem( &connection->sub[1]->as_sub[1], connection );
 		freeListItem( &connection->as_sub[ 0 ] ); }
 	freeListItem( &this->as_sub[ 0 ] );
-	// flush active connections Register
+	// flush active connections and context id Registers
 	Pair *entry = registryLookup( ctx->registry, "@" );
 	freeListItem((listItem **) &entry->value );
+	freeContextId( ctx );
 	// free CNDB now that it is free from any proxy attachment
 	CNDB *db = (CNDB *) this->sub[ 0 ];
 	this->sub[ 0 ] = NULL;
@@ -49,6 +57,71 @@ freeContext( BMContext *ctx )
 	// free context & variable registry - now presumably all flushed out
 	freeRegistry( ctx->registry, NULL );
 	freePair((Pair *) ctx );
+}
+static void
+freeContextId( BMContext *ctx )
+{
+	Pair *entry = registryLookup( ctx->registry, "%" );
+	Pair *id = entry->value;
+	CNEntity *self = id->value;
+	if (( self )) {
+		CNEntity *connection = self->sub[ 0 ];
+		connection->sub[ 0 ] = connection->sub[ 1 ] = NULL;
+		cn_free( connection ); cn_prune( self ); }
+	freePair( id );
+	entry->value = NULL;
+}
+
+//===========================================================================
+//	bm_context_discharge / bm_context_parent
+//===========================================================================
+void
+bm_context_discharge( BMContext *ctx )
+/*
+	Assumption: only invoked at inception - see bm_conceive()
+*/
+{
+	Pair *entry = registryLookup( ctx->registry, "@" );
+	freeListItem((listItem **) &entry->value );
+	Pair *id = registryLookup( ctx->registry, "%" )->value;
+	CNInstance *proxy = id->name;
+	CNEntity *connection = proxy->sub[ 0 ];
+	cn_free( proxy ); // proceed top-down
+	cn_free( connection );
+	id->name = NULL;
+}
+CNInstance *
+bm_context_parent( BMContext *ctx )
+{
+	Pair *id = registryLookup( ctx->registry, "%" )->value;
+	return id->name;
+}
+//===========================================================================
+//	bm_context_fetch_self / bm_context_match_self
+//===========================================================================
+CNInstance *
+bm_context_fetch_self( BMContext *ctx )
+/*
+	creates and register ((this,this),NULL) if it does not exist
+*/
+{
+	Pair *id = registryLookup( ctx->registry, "%" )->value;
+	if (( id->value )) return id->value;
+	CNEntity *connection = cn_new( NULL, NULL );
+	connection->sub[ 0 ] = connection->sub[ 1 ] = ctx->this;
+	CNInstance *self = cn_new( NULL, NULL );
+	self->sub[ 0 ] = connection;
+	id->value = self;
+	return self;
+}
+int
+bm_context_match_self( BMContext *ctx, CNInstance *x )
+/*
+	return true if x:((.,this),NULL)
+	return false otherwise
+*/
+{
+	return ( ((x->sub[0])&&!x->sub[ 1 ]) && x->sub[0]->sub[ 1 ]==ctx->this );
 }
 
 //===========================================================================
@@ -108,6 +181,7 @@ CNInstance *
 bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
 {
 	if ( !e ) return NULL;
+	CNEntity *this = ctx->this;
 	CNDB *db_src = BMContextDB( ctx );
 	CNDB *db_dst = BMContextDB( dst );
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
@@ -123,7 +197,7 @@ bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
 		if (( e->sub[ 0 ] )) { // proxy e:(( dst->this, that ), NULL )
 			CNInstance *that = e->sub[ 0 ]->sub[ 1 ];
 			if (!( instance = lookup_proxy( ctx, that ) ))
-				instance = NEW_PROXY( that ); }
+				instance = NEW_PROXY( this, that ); }
 		else {
 			char *p = db_identifier( e, db_src );
 			instance = db_register( strmake(p), db_dst ); }
