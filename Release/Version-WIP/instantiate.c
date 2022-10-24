@@ -89,7 +89,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 CNInstance *
 bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
 /*
-	Assumption: *expression=='('
+	Assumption: *p=='('
 */
 {
 	BMInstantiateData *data = traverse_data->user_data;
@@ -103,7 +103,7 @@ bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
 	data->new = new;
 	traverse_data->done = INFORMED|NEW;
 	p = bm_traverse( p, traverse_data, FIRST );
-	// carry on
+	// carry
 	addItem( BMContextCarry(ctx), cell );
 	CNInstance *proxy = NULL;
 	if ( *p=='~' ) 

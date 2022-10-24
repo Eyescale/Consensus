@@ -37,7 +37,8 @@ Narrative parent Register Variable ..
 
 	The Narrative parent Register Variable .. is either NULL or set to the
 	proxy of the cell's parent connection. Both connection and proxy were
-	created by the parent if the parent did subscribe, at instantiation.
+	created from within the parent if the parent did subscribe, at
+	instantiation - see bm_conceive()
 
     Caveats
 	. The Narrative parent Register Variable .. supports all regular proxy
@@ -85,6 +86,6 @@ Narrative self Register Variable %%
 	  connection (this,this) and proxy ((this,this),NULL)
 
 	  Note that this does NOT affect any "self-connecting" capability of
-	  the current cell, since it possesses none.
+	  the current cell, since these are built-in.
 
 
