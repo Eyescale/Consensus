@@ -103,13 +103,14 @@ bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
 	data->new = new;
 	traverse_data->done = INFORMED|NEW;
 	p = bm_traverse( p, traverse_data, FIRST );
-	// carry
-	addItem( BMContextCarry(ctx), cell );
+	// carry cell
 	CNInstance *proxy = NULL;
+	addItem( BMContextCarry(ctx), cell );
 	if ( *p=='~' ) 
-		bm_context_discharge( new );
+		bm_context_finish( cell->ctx, 0 );
 	else {
-		proxy = NEW_PROXY( this, new->this );
+		bm_context_finish( cell->ctx, 1 );
+		proxy = db_proxy( this, new->this, BMContextDB(ctx) );
 		bm_activate( proxy, ctx, NULL ); }
 	return proxy;
 }
@@ -176,13 +177,12 @@ case_( register_variable_CB )
 		for ( ; i!=NULL; i=i->next ) addItem( sub, i->ptr );
 		break;
 	case '.':
-		e = bm_context_parent( data->ctx );
+		e = BMContextParent( data->ctx );
 		if ( !e ) _return( 2 )
 		data->sub[ current ] = newItem( e );
 		break;
 	case '%':
-		e = bm_context_fetch_self( data->ctx );
-		if ( !e ) _return( 2 )
+		e = BMContextSelf( data->ctx );
 		data->sub[ current ] = newItem( e );
 		break; }
 	_break
@@ -524,7 +524,7 @@ case_( sound_CB )
 case_( touch_CB )
 	switch ( p[1] ) {
 	case '.':
-		if ( !bm_context_parent( ctx ) )
+		if ( !BMContextParent( ctx ) )
 			_return( 2 )
 		break;
 	case '?':

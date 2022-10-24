@@ -30,11 +30,12 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, EMARK|QMARK|PARENT );
+	int target = bm_scour( expression, EMARK|QMARK|PARENT|SELF );
 	if ( target == 0 ) return NULL;
 	else target =	( target & EMARK ) ? EMARK :
 			( target & QMARK ) ? QMARK :
 			( target & PARENT ) ? PARENT :
+			( target & SELF ) ? SELF :
 			( target & THIS ) ? THIS :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
@@ -116,7 +117,8 @@ case_( register_variable_CB )
 		case '!': if ( data->target==EMARK ) _return( 2 ) else break;
 		case '?': if ( data->target==QMARK ) _return( 2 ) else break;
 		case '|': if ( data->target==PMARK ) _return( 2 ) else break;
-		case '.': if ( data->target==PARENT ) _return( 2 ) else break; }
+		case '.': if ( data->target==PARENT ) _return( 2 ) else break;
+		case '%': if ( data->target==SELF ) _return( 2 ) else break; }
 	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
@@ -249,7 +251,8 @@ case_( sc_register_variable_CB )
 		case '?': mark = QMARK; break;
 		case '!': mark = EMARK; break;
 		case '|': mark = PMARK; break;
-		case '.': mark = PARENT; break; }
+		case '.': mark = PARENT; break;
+		case '%': mark = SELF; break; }
 		data->candidate |= mark;
 		if ( data->target & mark )
 			_return( 1 ) }

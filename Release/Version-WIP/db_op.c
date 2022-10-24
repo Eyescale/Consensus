@@ -114,38 +114,46 @@ static void
 db_remove( CNInstance *e, CNDB *db )
 {
 	if (( e->sub[0] )) {
-		cn_release( e );
-		return;
-	}
+		if (( e->sub[ 1 ] ))
+			cn_release( e );
+		else {
+			// e is proxy:( connection, NULL )
+			CNEntity *connection = e->sub[ 0 ];
+			cn_release( e );
+			if (( connection->sub[ 0 ] )) { // would be self
+				/* We have connection:( this, that )
+				   cn_release() will remove connection from
+				   this->as_sub[ 0 ] and from that->as_sub[ 1 ]
+				*/
+				cn_release( connection ); }
+		} }
+	else {
 #ifdef UNIFIED
-	e->sub[1] = NULL;
+		e->sub[1] = NULL;
 #endif
-	cn_release( e );
-
-	Registry *index = db->index;
-	listItem *next_i, *last_i=NULL;
-	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
-		Pair *entry = i->ptr;
-		next_i = i->next;
-		if ( entry->value == e ) {
-			if (( last_i )) last_i->next = next_i;
-			else index->entries = next_i;
-			free( entry->name );
-			freePair( entry );
-			freeItem( i );
-			break;
-		}
-		else last_i = i;
-	}
+		cn_release( e );
+		// deregister e from db->index
+		Registry *index = db->index;
+		listItem *next_i, *last_i=NULL;
+		for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
+			Pair *entry = i->ptr;
+			next_i = i->next;
+			if ( entry->value == e ) {
+				if (( last_i )) last_i->next = next_i;
+				else index->entries = next_i;
+				free( entry->name );
+				freePair( entry );
+				freeItem( i );
+				break; }
+			else last_i = i;
+		} }
 }
 
 //===========================================================================
 //	db_update
 //===========================================================================
-#define TRASH(x) \
-	addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x )
 void
-db_update( CNDB *db )
+db_update( CNDB *db, CNInstance *parent )
 /*
    cf design/specs/db-update.txt
 */
@@ -190,7 +198,11 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-			TRASH( x );
+			// TRASH( x )
+			if (( x->sub[0] )) {
+				if (( x->sub[1] )) addItem( &trash[0], x );
+				else if ( x!=parent ) addItem( &trash[1], x ); }
+			else addItem( &trash[1], x );
 		}
 		else { // just newborn
 			db_remove( g, db );
@@ -220,7 +232,11 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		if ( !f->as_sub[1] ) {
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
-			TRASH( x );
+			// TRASH( x )
+			if (( x->sub[0] )) {
+				if (( x->sub[1] )) addItem( &trash[0], x );
+				else if ( x!=parent ) addItem( &trash[1], x ); }
+			else addItem( &trash[1], x );
 		}
 	}
 	for ( int i=0; i<2; i++ )

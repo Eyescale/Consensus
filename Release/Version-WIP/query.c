@@ -533,7 +533,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		return ( y==data->pivot->value );
 	else if ( *p=='.' )
 		return ( p[1]=='.' ?
-			y==bm_context_parent( data->ctx ) :
+			y==BMContextParent( data->ctx ) :
 			y==bm_context_lookup( data->ctx, "." ) );
 	else if ( *p=='*' )
 		return ( y==data->star );
@@ -541,7 +541,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		switch ( p[1] ) {
 		case '?': return ( y==bm_context_lookup( data->ctx, "?" ) );
 		case '!': return ( y==bm_context_lookup( data->ctx, "!" ) );
-		case '%': return bm_context_match_self( data->ctx, y ); }
+		case '%': return BMContextMatchSelf( data->ctx, y ); }
 	else if ( !is_separator(*p) ) {
 		CNInstance *found = bm_context_lookup( data->ctx, p );
 		if (( found )) return ( y==found ); }

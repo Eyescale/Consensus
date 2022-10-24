@@ -3,23 +3,22 @@
 
 #include "string_util.h"
 #include "context.h"
+#include "program.h"
 #include "locate.h"
 
 //===========================================================================
 //	newContext / freeContext
 //===========================================================================
-static void freeContextId( BMContext *ctx );
-
 BMContext *
 newContext( CNDB *db, CNEntity *parent )
 {
 	CNEntity *this = cn_new( NULL, NULL );
 	this->sub[ 0 ] = (CNEntity *) db;
 	Pair *id = newPair( NULL, NULL );
-	listItem *active = NULL;
-	if (( parent )) {
-		CNInstance *proxy = NEW_PROXY( this, parent );
-		id->name = proxy; active = newItem( proxy ); }
+	if (( parent ))
+		id->name = db_proxy( this, parent, db );
+	id->value = db_proxy( NULL, this, db );
+	Pair *active = newPair( newPair(NULL,NULL), NULL );
 	Registry *registry = newRegistry( IndexedByCharacter );
 	registryRegister( registry, "%", id ); // aka. .. and %%
 	registryRegister( registry, "@", active ); // active connections (proxies)
@@ -29,99 +28,138 @@ newContext( CNDB *db, CNEntity *parent )
 	registryRegister( registry, "|", NULL ); // aka. %|
 	return (BMContext *) newPair( this, registry );
 }
+
 void
 freeContext( BMContext *ctx )
 /*
 	Assumption: ctx->this->sub[ 1 ]==*BMContextCarry(ctx)==NULL
 */
 {
+	// flush active connections register
+	Pair *entry = registryLookup( ctx->registry, "@" );
+	freeListItem((listItem **) &entry->value );
+
+	/* prune CNDB proxies & release input connections ( this, . )
+	   this includes parent connection & proxy if these were set
+	*/
 	CNEntity *this = ctx->this;
-	// prune CNDB proxies & free input connections ( this, . )
 	for ( listItem *i=this->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
 		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		removeItem( &connection->sub[1]->as_sub[1], connection );
-		freeListItem( &connection->as_sub[ 0 ] ); }
-	freeListItem( &this->as_sub[ 0 ] );
-	// flush active connections and context id Registers
-	Pair *entry = registryLookup( ctx->registry, "@" );
-	freeListItem((listItem **) &entry->value );
-	freeContextId( ctx );
+		cn_release( connection ); }
+
+	// free context id register
+	entry = registryLookup( ctx->registry, "%" );
+	Pair *id = entry->value;
+	CNInstance *self = id->value; // self is a proxy
+	if (( self )) {
+		CNEntity *connection = self->sub[ 0 ];
+		cn_prune( self ); cn_free( connection ); }
+	freePair( id );
+
 	// free CNDB now that it is free from any proxy attachment
 	CNDB *db = (CNDB *) this->sub[ 0 ];
 	this->sub[ 0 ] = NULL;
 	freeCNDB( db );
-	// cn_release will nullify this in subscribers' connections ( ., this )
-	// subscriber is responsible for removing dangling connections
+
+	/* release this now that both its subs are NULL
+	   cn_release will nullify this in subscribers' connections ( ., this )
+	   subscriber is responsible for removing dangling connections
+	*/
 	cn_release( this );
-	// free context & variable registry - now presumably all flushed out
+
+	/* free context register & variable registry - now presumably
+	   all flushed out
+	*/
 	freeRegistry( ctx->registry, NULL );
 	freePair((Pair *) ctx );
 }
-static void
-freeContextId( BMContext *ctx )
+
+//===========================================================================
+//	bm_context_finish
+//===========================================================================
+void
+bm_context_finish( BMContext *ctx, int subscribe )
+/*
+	Assumption: only invoked at inception - see bm_conceive()
+	finish cell's context: activate or deprecate proxy to parent
+*/
 {
-	Pair *entry = registryLookup( ctx->registry, "%" );
-	Pair *id = entry->value;
-	CNEntity *self = id->value;
-	if (( self )) {
-		CNEntity *connection = self->sub[ 0 ];
-		connection->sub[ 0 ] = connection->sub[ 1 ] = NULL;
-		cn_free( connection ); cn_prune( self ); }
-	freePair( id );
-	entry->value = NULL;
+	Pair *id = registryLookup( ctx->registry, "%" )->value;
+	if ( subscribe )
+		bm_activate( id->name, ctx, NULL );
+	else {
+		db_deprecate( id->name, BMContextDB(ctx) );
+		id->name = NULL; }
 }
 
 //===========================================================================
-//	bm_context_discharge / bm_context_parent
+//	bm_activate / bm_deactivate
 //===========================================================================
+typedef struct {
+	struct { listItem *activated, *deactivated; } *buffer;
+	listItem *value;
+} ActiveRV;
+	
+BMCBTake
+bm_activate( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ((e->sub[1]) || !e->sub[0] || e->sub[0]->sub[1]==ctx->this )
+		return BM_CONTINUE;
+	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	addIfNotThere( &active->buffer->activated, e );
+	return BM_CONTINUE;
+}
+BMCBTake
+bm_deactivate( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ((e->sub[1]) || !e->sub[0] || e->sub[0]->sub[1]==ctx->this )
+		return BM_CONTINUE;
+	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	addIfNotThere( &active->buffer->deactivated, e );
+	return BM_CONTINUE;
+}
+
+//===========================================================================
+//	bm_context_init / bm_context_update
+//===========================================================================
+static void update_active( BMContext * );
+
 void
-bm_context_discharge( BMContext *ctx )
-/*
-	Assumption: only invoked at inception - see bm_conceive()
-*/
+bm_context_init( BMContext *ctx )
 {
-	Pair *entry = registryLookup( ctx->registry, "@" );
-	freeListItem((listItem **) &entry->value );
-	Pair *id = registryLookup( ctx->registry, "%" )->value;
-	CNInstance *proxy = id->name;
-	CNEntity *connection = proxy->sub[ 0 ];
-	cn_free( proxy ); // proceed top-down
-	cn_free( connection );
-	id->name = NULL;
+	CNDB *db = BMContextDB( ctx );
+	db_update( db, NULL ); // integrate cell's init conditions
+	update_active( ctx );
+	db_init( db );
 }
-CNInstance *
-bm_context_parent( BMContext *ctx )
+static void
+update_active( BMContext *ctx )
 {
-	Pair *id = registryLookup( ctx->registry, "%" )->value;
-	return id->name;
+	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	listItem **change = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		removeIfThere( &active->value, e );
+	change = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		addIfNotThere( &active->value, e );
 }
-//===========================================================================
-//	bm_context_fetch_self / bm_context_match_self
-//===========================================================================
-CNInstance *
-bm_context_fetch_self( BMContext *ctx )
-/*
-	creates and register ((this,this),NULL) if it does not exist
-*/
+
+void
+bm_context_update( BMContext *ctx )
 {
-	Pair *id = registryLookup( ctx->registry, "%" )->value;
-	if (( id->value )) return id->value;
-	CNEntity *connection = cn_new( NULL, NULL );
-	connection->sub[ 0 ] = connection->sub[ 1 ] = ctx->this;
-	CNInstance *self = cn_new( NULL, NULL );
-	self->sub[ 0 ] = connection;
-	id->value = self;
-	return self;
-}
-int
-bm_context_match_self( BMContext *ctx, CNInstance *x )
-/*
-	return true if x:((.,this),NULL)
-	return false otherwise
-*/
-{
-	return ( ((x->sub[0])&&!x->sub[ 1 ]) && x->sub[0]->sub[ 1 ]==ctx->this );
+	CNDB *db = BMContextDB( ctx );
+	db_update( db, BMContextParent(ctx) );
+	update_active( ctx );
+	// deactivate connections whose proxies were deprecated
+	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	listItem **entries = &active->value;
+	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
+		CNInstance *e = i->ptr;
+		next_i = i->next;
+		if ( !db_deprecatable( e, db ) )
+			clipListItem( entries, i, last_i, next_i );
+		else last_i = i; }
 }
 
 //===========================================================================
@@ -194,10 +232,10 @@ bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
 			e = e->sub[ ndx ];
 			ndx = 0; continue; }
 
-		if (( e->sub[ 0 ] )) { // proxy e:(( dst->this, that ), NULL )
+		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
 			CNInstance *that = e->sub[ 0 ]->sub[ 1 ];
-			if (!( instance = lookup_proxy( ctx, that ) ))
-				instance = NEW_PROXY( this, that ); }
+			if (!( instance = lookup_proxy( dst, that ) ))
+				instance = db_proxy( dst->this, that, db_dst ); }
 		else {
 			char *p = db_identifier( e, db_src );
 			instance = db_register( strmake(p), db_dst ); }
@@ -221,6 +259,7 @@ lookup_proxy( BMContext *ctx, CNInstance *that )
 */
 {
 	CNInstance *this = ctx->this;
+	if ( that==this ) return BMContextSelf( ctx );
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNInstance *connection = i->ptr;
 		if ( connection->sub[ 1 ]==that )
@@ -318,26 +357,6 @@ bm_context_unmark( BMContext *ctx, int marked )
 }
 
 //===========================================================================
-//	bm_activate / bm_deactivate
-//===========================================================================
-BMCBTake
-bm_activate( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	if ( (e->sub[ 0 ]) && !e->sub[ 1 ] ) {
-		Pair *entry = registryLookup( ctx->registry, "@" );
-		addIfNotThere((listItem**)&entry->value, e ); }
-	return BM_CONTINUE;
-}
-BMCBTake
-bm_deactivate( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	if ( (e->sub[ 0 ]) && !e->sub[ 1 ] ) {
-		Pair *entry = registryLookup( ctx->registry, "@" );
-		removeIfThere((listItem**)&entry->value,e ); }
-	return BM_CONTINUE;
-}
-
-//===========================================================================
 //	bm_push_mark / bm_pop_mark
 //===========================================================================
 listItem *
@@ -417,13 +436,16 @@ CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx )
 {
 	switch ( *p ) {
-	case '.': return bm_context_lookup( ctx, "." );
-	case '%': // looking up %., %?, %!, %| or just plain old %
+	case '.':
 		switch ( p[1] ) {
-		case '.': return bm_context_lookup( ctx, "." );
+		case '.': return BMContextParent( ctx );
+		default: return bm_context_lookup( ctx, "." ); }
+	case '%': // looking up %?, %!, %|, %% or just plain old %
+		switch ( p[1] ) {
 		case '?': return bm_context_lookup( ctx, "?" );
 		case '!': return bm_context_lookup( ctx, "!" );
-		case '|': return bm_context_lookup( ctx, "|" ); }
+		case '|': return bm_context_lookup( ctx, "|" );
+		case '%': return BMContextSelf( ctx ); }
 		return db_lookup( privy, p, BMContextDB(ctx) );
 	case '\'': ; // looking up single character identifier instance
 		char_s q;

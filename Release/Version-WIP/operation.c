@@ -184,13 +184,18 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 }
 
 //===========================================================================
-//	bm_update
+//	bm_update / bm_init
 //===========================================================================
 void
-bm_update( BMContext *ctx )
+bm_update( CNCell *cell )
 {
-	CNDB *db = BMContextDB( ctx );
-	db_update( db );
+	bm_context_update( cell->ctx );
+}
+
+void
+bm_init( CNCell *cell )
+{
+	bm_context_init( cell->ctx );
 }
 
 //===========================================================================

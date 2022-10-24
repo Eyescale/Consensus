@@ -27,9 +27,12 @@ Definitions
 	. CNDB proxies are treated as CNDB Base Entities, owing to the fact
 	  that one of their subs is NULL.
 	  They are unnamed, and will show in output results as @@@
+	  In general, releasing a CNDB proxy entity will release the underlying
+	  connection - see below exceptions in the cases of the Narrative
+	  parent (..) and self (%%) Register Variables
 
 	. The active @ RegistryEntry contains the cell's active connections,
-	  that is: the list of CNDB proxies to be used in EENO.
+	  that is: the list of CNDB proxies to be used in EENO
 
 	  Note that %@ will not be made public in this release (Version-2.0)
 
@@ -37,12 +40,19 @@ Narrative parent Register Variable ..
 
 	The Narrative parent Register Variable .. is either NULL or set to the
 	proxy of the cell's parent connection. Both connection and proxy were
-	created from within the parent and kept activated unless the parent
+	created from within the parent and kept active unless the parent
 	unsubscribed, at instantiation - see bm_conceive()
 
     Caveats
 	. The Narrative parent Register Variable .. supports all regular proxy
-	  usages (assignment, activation, deactivation, etc.) release excepted.
+	  usages (assignment, activation, deactivation, etc.)
+	. do ~< .. or any expression to that effect deactivates the connection
+	. do @< .. or any expression to that effect [re]activates the connection
+	. do ~( .. ) or any expression to that effect will deprecate the proxy
+	  entity ((this,parent),NULL) and therefore all its ascendants. It will
+	  also deactivate the underlying (this,parent) connection. However:
+	    1. The entity itself will not be released
+	    2. The Narrative parent Register Variable usage remains unaffected
 
 Narrative self Register Variable %%
 
@@ -54,10 +64,9 @@ Narrative self Register Variable %%
 	Since proxies can be assigned to variables, the current cell may end up
 	having to assign a proxy to itself to its own variable.
 
-	Therefore it is necessary to create ((this,this),NULL) proxy, although
-	this particular proxy does not represent any activable connection - in
-	other words: although we do support %% to represent (.,this) in other
-	cells, we do not support
+	To this effect we use the ((NULL,this),NULL) special proxy, which does
+	not represent any activable connection - in other words: although we do
+	support %% to represent (.,this) in other cells, we do not support
 
 		on expression < %%
 
@@ -77,15 +86,12 @@ Narrative self Register Variable %%
 	. When used for comparison - cf. query.c:match() - %% simply means
 	  that the tested entity should verify ((.,this),NULL)
 
-	. When %% is used in instantiation - cf. instantiate.c - we must
-	  create and manifest ((this,this),NULL) if it does not exist.
-
 	. do @< %% or any expression to that effect does nothing
 	. do ~< %% or any expression to that effect does nothing
-	. do ~( %% ) or any expression to that effect will release both
-	  connection (this,this) and proxy ((this,this),NULL)
-
-	  Note that this does NOT affect any "self-connecting" capability of
-	  the current cell, since these are built-in.
-
+	. do ~( %% ) or any expression to that effect will deprecate the proxy
+	  entity ((NULL,this),NULL) and therefore all its ascendants. However:
+	    1. The entity itself will not be released
+	    2. The Narrative self Register Variable usage remains unaffected
+	    3. No "self-connecting" capability of the current cell will be
+	       affected, since these are built-in.
 

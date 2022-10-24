@@ -22,10 +22,12 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 CNInstance *	db_star( CNDB * );
 CNInstance *	db_register( char *identifier, CNDB * );
+CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_unassign( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
+int		db_deprecatable( CNInstance *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );
 CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
 char *		db_identifier( CNInstance *, CNDB * );
@@ -37,7 +39,7 @@ int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 //	op (nil-based)
 //===========================================================================
 CNInstance * db_log( int first, int released, CNDB *, listItem ** );
-void db_update( CNDB * );
+void db_update( CNDB *, CNInstance * );
 int db_private( int privy, CNInstance *, CNDB * );
 int db_still( CNDB * );
 void db_init( CNDB * );

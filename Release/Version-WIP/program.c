@@ -66,19 +66,15 @@ cnUpdate( CNProgram *program )
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		CNCell *cell = i->ptr;
-		BMContext *ctx = cell->ctx;
-		bm_update( ctx );
-		addItem( new, *BMContextCarry(ctx) ); }
+		bm_update( cell );
+		listItem *carry = *BMContextCarry( cell->ctx );
+		if (( carry )) addItem( new, carry ); }
 
 	// activate new cells
 	for ( listItem *i; (i=popListItem(new)); )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
 			CNCell *cell = j->ptr;
-			BMContext *ctx = cell->ctx;
-			// integrate init conditions
-			bm_update( ctx );
-			// re-init cell for its own narrative
-			db_init( BMContextDB(ctx) );
+			bm_init( cell );
 			addItem( active, cell ); }
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: end\n" );

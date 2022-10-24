@@ -29,6 +29,7 @@ void xpn_out( FILE *stream, listItem *xp );
 #define CHARACTER	64
 #define	MOD		128
 #define	STAR		256
+#define	SELF		512
 
 int bm_scour( char *expression, int target );
 
