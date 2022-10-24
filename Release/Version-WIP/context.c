@@ -9,6 +9,11 @@
 //===========================================================================
 //	newContext / freeContext
 //===========================================================================
+typedef struct {
+	struct { listItem *activated, *deactivated; } *buffer;
+	listItem *value;
+} ActiveRV;
+	
 BMContext *
 newContext( CNDB *db, CNEntity *parent )
 {
@@ -36,8 +41,12 @@ freeContext( BMContext *ctx )
 */
 {
 	// flush active connections register
-	Pair *entry = registryLookup( ctx->registry, "@" );
-	freeListItem((listItem **) &entry->value );
+	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	freeListItem( &active->buffer->activated );
+	freeListItem( &active->buffer->deactivated );
+	freePair((Pair *) active->buffer );
+	freeListItem( &active->value );
+	freePair((Pair *) active );
 
 	/* prune CNDB proxies & release input connections ( this, . )
 	   this includes parent connection & proxy if these were set
@@ -49,8 +58,7 @@ freeContext( BMContext *ctx )
 		cn_release( connection ); }
 
 	// free context id register
-	entry = registryLookup( ctx->registry, "%" );
-	Pair *id = entry->value;
+	Pair *id = registryLookup( ctx->registry, "%" )->value;
 	CNInstance *self = id->value; // self is a proxy
 	if (( self )) {
 		CNEntity *connection = self->sub[ 0 ];
@@ -96,11 +104,6 @@ bm_context_finish( BMContext *ctx, int subscribe )
 //===========================================================================
 //	bm_activate / bm_deactivate
 //===========================================================================
-typedef struct {
-	struct { listItem *activated, *deactivated; } *buffer;
-	listItem *value;
-} ActiveRV;
-	
 BMCBTake
 bm_activate( CNInstance *e, BMContext *ctx, void *user_data )
 {

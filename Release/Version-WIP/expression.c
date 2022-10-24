@@ -15,7 +15,6 @@ CNInstance *
 bm_feel( BMQueryType type, char *expression, BMContext *ctx )
 {
 	return bm_query( type, expression, ctx, NULL, NULL );
-
 }
 
 //===========================================================================
@@ -46,12 +45,12 @@ bm_proxy_op( char *expression, BMContext *ctx )
 	BMQueryCB *op = ( *p=='@' ) ?
 		bm_activate : bm_deactivate;
 	p += 2;
-	if ( *p!='{' )
+	if ( *p=='{' )
+		do {	p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
+			p = p_prune( PRUNE_TERM, p );
+		} while ( *p!='}' );
+	else
 		bm_query( BM_CONDITION, p, ctx, op, NULL );
-	else do {
-		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
-		p = p_prune( PRUNE_TERM, p );
-	} while ( *p!='}' );
 }
 
 //===========================================================================

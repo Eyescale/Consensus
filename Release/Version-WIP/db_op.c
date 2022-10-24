@@ -152,6 +152,12 @@ db_remove( CNInstance *e, CNDB *db )
 //===========================================================================
 //	db_update
 //===========================================================================
+#define TRASH( x, parent ) \
+	if (( x->sub[0] )) { \
+		if (( x->sub[1] )) addItem( &trash[0], x ); \
+		else if ( x!=parent ) addItem( &trash[1], x ); } \
+	else addItem( &trash[1], x );
+
 void
 db_update( CNDB *db, CNInstance *parent )
 /*
@@ -198,11 +204,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-			// TRASH( x )
-			if (( x->sub[0] )) {
-				if (( x->sub[1] )) addItem( &trash[0], x );
-				else if ( x!=parent ) addItem( &trash[1], x ); }
-			else addItem( &trash[1], x );
+			TRASH( x, parent )
 		}
 		else { // just newborn
 			db_remove( g, db );
@@ -232,11 +234,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		if ( !f->as_sub[1] ) {
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
-			// TRASH( x )
-			if (( x->sub[0] )) {
-				if (( x->sub[1] )) addItem( &trash[0], x );
-				else if ( x!=parent ) addItem( &trash[1], x ); }
-			else addItem( &trash[1], x );
+			TRASH( x, parent )
 		}
 	}
 	for ( int i=0; i<2; i++ )
