@@ -1,20 +1,14 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. support EENO
+	. parser.c: File Format support for %% and .. Register Variables
+	. EENO Implementation
 		. traversal.c
 			. Handle %? when %< is set - including special case: %(%?:...)
 			. Attention: bm_context_mark, when %< is set...
 		. dangling connections => to be checked & released upon
-			. on event < ...
-			. do @< ...
-			. do ~< ...
+			. on event < expression
 	. Testing
 		. simple test program (multi-cell without inter-cell communication)
-	. support CNDB proxy
-		. Write document / specs
-		. [ DONE ] implementation
-		. [ DONE ] activation / deactivation
-		. [ DONE ] output @@@ in case of proxy
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. Pass design/story/{all}
@@ -77,6 +71,20 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Bufferized active @ register so that activation/deactivation changes
+	  are applied at the end of the frame - and not during.
+	. Implementation support for Narrative parent .. and self %% R. V.
+	  Challenge: as CNDB entities, we must allow these variables to be
+	  deprecated - and thereby deprecate all their ascendants - without
+	  them being released. This required adapting db_update() - now taking
+	  argument 'parent' - and db_remove() to not remove said proxies.
+	. support CNDB proxy
+		. See design/specs/bm-PROXY-considerations.txt
+		. implementation: database.c, db_op.c, context.c
+		. activation / deactivation
+		. output @@@ in case of proxy
+	. parser.c: support do @< expression / do ~< expression
+		. implementation done in expression.c: bm_proxy_op()
 	. multi-variable output => improved TM-single.story
 	. cell exit conditions => freeContext()
 		. prune proxies prior to freeing CNDB
