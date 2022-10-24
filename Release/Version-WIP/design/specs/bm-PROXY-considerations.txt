@@ -51,7 +51,7 @@ Narrative parent Register Variable ..
 	. do ~( .. ) or any expression to that effect will deprecate the proxy
 	  entity ((this,parent),NULL) and therefore all its ascendants. It will
 	  also deactivate the underlying (this,parent) connection. However:
-	    1. The entity itself will not be released
+	    1. Neither the entity itself nor the connection will be released
 	    2. The Narrative parent Register Variable usage remains unaffected
 
 Narrative self Register Variable %%
