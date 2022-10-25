@@ -90,72 +90,72 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 	expression++;
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
 	if ( !strncmp( value, "~.", 2 ) ) {
-		switch ( type ) {
-		case BM_CONDITION: ;
-			listItem *exponent = NULL;
-			char *p = bm_locate_pivot( expression, &exponent );
-			if (( p )) {
-				e = bm_lookup( 0, p, ctx );
-				if ( !e ) {
-					freeListItem( &exponent );
-					break; }
-				data->exponent = exponent;
-				data->pivot = newPair( p, e );
-				success = xp_traverse( expression, data, bm_verify_unassigned );
-				if (( success )) success = data->instance; // ( *, success )
-				freePair( data->pivot );
-				freeListItem( &exponent ); }
-			else {
+		listItem *exponent = NULL;
+		char *p = bm_locate_pivot( expression, &exponent );
+		if (( p )) {
+			e = bm_lookup( 0, p, ctx );
+			if ( !e ) {
+				freeListItem( &exponent );
+				return NULL; }
+			data->exponent = exponent;
+			data->pivot = newPair( p, e );
+			success = xp_traverse( expression, data, bm_verify_unassigned );
+			if (( success )) success = data->instance; // ( *, success )
+			freePair( data->pivot );
+			freeListItem( &exponent ); }
+		else {
+			switch ( data->type ) {
+			case BM_CONDITION: ;
 				for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
 					CNInstance *e = i->ptr;
 					if (( assignment(e,db) )) continue;
 					if ( xp_verify( e->sub[1], expression, data ) ) {
 						success = e; // return (*,.)
-						break; } } }
-			break;
-		default: ;
-			listItem *s = NULL;
-			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
-				if ( e->sub[0]!=star || (assignment(e,db)) )
-					continue;
-				if ( xp_verify( e->sub[1], expression, data ) ) {
-					freeListItem( &s );
-					success = e; // return (*,.)
-					break; } }
-			break; }
-	}
+						break; } }
+				break;
+			default: ;
+				listItem *s = NULL;
+				for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
+					if ( e->sub[0]!=star || (assignment(e,db)) )
+						continue;
+					if ( xp_verify( e->sub[1], expression, data ) ) {
+						freeListItem( &s );
+						success = e; // return (*,.)
+						break; } }
+				break;
+			} } }
 	else {
-		switch ( type ) {
-		case BM_CONDITION: ;
-			listItem *exponent = NULL;
-			char *p = bm_locate_pivot( expression, &exponent );
+		listItem *exponent = NULL;
+		char *p = bm_locate_pivot( expression, &exponent );
+		if (( p )) {
+			e = bm_lookup( 0, p, ctx );
+			if ( !e ) {
+				freeListItem( &exponent );
+				return NULL; }
+			data->exponent = exponent;
+			data->pivot = newPair( p, e );
+			data->user_data = value;
+			success = xp_traverse( expression, data, bm_verify_value );
+			if (( success )) success = data->instance; // ((*,success),.)
+			freePair( data->pivot );
+			freeListItem( &exponent ); }
+		else {
+			p = bm_locate_pivot( value, &exponent );
 			if (( p )) {
 				e = bm_lookup( 0, p, ctx );
 				if ( !e ) {
 					freeListItem( &exponent );
-					break; }
+					return NULL; }
 				data->exponent = exponent;
 				data->pivot = newPair( p, e );
-				data->user_data = value;
-				success = xp_traverse( expression, data, bm_verify_value );
-				if (( success )) success = data->instance; // ((*,success),.)
+				data->user_data = expression;
+				success = xp_traverse( value, data, bm_verify_variable );
+				if (( success )) success = data->instance; // ((*,.),success)
 				freePair( data->pivot );
 				freeListItem( &exponent ); }
 			else {
-				p = bm_locate_pivot( value, &exponent );
-				if (( p )) {
-					e = bm_lookup( 0, p, ctx );
-					if ( !e ) {
-						freeListItem( &exponent );
-						break; }
-					data->exponent = exponent;
-					data->pivot = newPair( p, e );
-					data->user_data = expression;
-					success = xp_traverse( value, data, bm_verify_variable );
-					if (( success )) success = data->instance; // ((*,.),success)
-					freePair( data->pivot );
-					freeListItem( &exponent ); }
-				else {
+				switch ( data->type ) {
+				case BM_CONDITION: ;
 					for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
 						CNInstance *e = i->ptr, *f;
 						if ( db_private(0,e,db) || !(f=assignment(e,db)) )
@@ -163,45 +163,49 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 						if ( xp_verify( e->sub[1], expression, data ) &&
 						     xp_verify( f->sub[1], value, data ) ) {
 							success = f;	// return ((*,.),.)
-							break; } } } }
-			break;
-		default: ;
-			listItem *s = NULL;
-			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
-				CNInstance *f = CNSUB( e, 0 );
-				if ( !f || f->sub[0]!=star ) continue;
-				if ( xp_verify( f->sub[1], expression, data ) &&
-				     xp_verify( e->sub[1], value, data ) ) {
-					freeListItem( &s );
-					success = e; // return ((*,.),.)
-					break; } }
-			break; } }
+							break; } }
+					break;
+				default: ;
+					listItem *s = NULL;
+					for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
+						CNInstance *f = CNSUB( e, 0 );
+						if ( !f || f->sub[0]!=star ) continue;
+						if ( xp_verify( f->sub[1], expression, data ) &&
+						     xp_verify( e->sub[1], value, data ) ) {
+							freeListItem( &s );
+							success = e; // return ((*,.),.)
+							break; } }
+					break;
+			} } } }
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY_ASSIGNMENT: success=%d\n", !!success );
 #endif
 	return success;
 }
-
 static int
 bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 {
-	if ( !xp_verify( e, variable, data ) ) return BM_CONTINUE;
+	if ( !xp_verify( e, variable, data ) )
+		return BM_CONTINUE;
+	int type = data->type;
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
-	for ( listItem *i=e->as_sub[1], *j; i!=NULL; i=i->next ) {
+	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
-		if ( e->sub[0]!=star || assignment(e,db) )
+		if ( e->sub[0]!=star ) continue;
+		if ( type==BM_INSTANTIATED && !db_manifested(e,db) )
 			continue;
+		if ( assignment(e,db) ) continue;
 		data->instance = e; // return (*,e)
-		return BM_DONE;
-	}
+		return BM_DONE; }
 	return BM_CONTINUE;
 }
-
 static int
 bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 {
-	if ( !xp_verify( e, variable, data ) ) return BM_CONTINUE;
+	if ( !xp_verify( e, variable, data ) )
+		return BM_CONTINUE;
+	int type = data->type;
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
 	char *value = data->user_data;
@@ -209,32 +213,34 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 		CNInstance *f = i->ptr, *g; // f:(.,e)
 		if ( f->sub[0]!=star || !(g=assignment(f,db)) )
 			continue;
+		if ( type==BM_INSTANTIATED && !db_manifested(g,db) )
+			continue;
 		if ( xp_verify( g->sub[1], value, data ) ) {
 			data->instance = g; // return ((*,e),.)
-			return BM_DONE;
-		} }
+			return BM_DONE; } }
 	return BM_CONTINUE;
 }
-
 static int
 bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 {
-	if ( !xp_verify( e, value, data ) ) return BM_CONTINUE;
+	if ( !xp_verify( e, value, data ) )
+		return BM_CONTINUE;
+	int type = data->type;
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
 	char *variable = data->user_data;
-	for ( listItem *i=e->as_sub[1], *j; i!=NULL; i=i->next ) {
+	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
 		if ( e->sub[0]->sub[0]!=star || db_private(0,e,db) )
+			continue;
+		if ( type==BM_INSTANTIATED && !db_manifested(e,db) )
 			continue;
 		CNInstance *f = e->sub[ 0 ]; // e:(f:(*,.),e)
 		if ( xp_verify( f->sub[1], variable, data ) ) {
 			data->instance = e; // return ((*,.),e)
-			return BM_DONE;
-		} }
+			return BM_DONE; } }
 	return BM_CONTINUE;
 }
-
 static inline CNInstance *
 assignment( CNInstance *e, CNDB *db )
 {
