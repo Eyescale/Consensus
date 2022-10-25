@@ -1,25 +1,24 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. parser.c: File Format support for %% and .. Register Variables
+	. instantiate.c apply data->new when set
 	. EENO Implementation
 		. traversal.c
 			. Handle %? when %< is set - including special case: %(%?:...)
 			. Attention: bm_context_mark, when %< is set...
 		. dangling connections => to be checked & released upon
-			. on event < expression
+			on event < expression
 	. Testing
-		. simple test program (multi-cell without inter-cell communication)
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
+		. 3_TM.multi/TM-head_tape.story
 	. Pass design/story/{all}
 	. Release
 		. Examples-v2.0
 			. 0_TuringMachine
 			. 1_Schematize
-			. .../TM.single
-			. .../TM.head-tape
-			. .../TM.head-tape-cell
-			. .../TM.head-cell-reporter << to be written
+			. 2_TM.single
+			. 3_TM.multi
+				. TM-head_tape.story
+				. TM-head_tape_cell.story
+				. TM-head_cell_reporter.story << to be written
 		. Additonal examples
 			. yak using new Cell design (and literals)
 			. interactive // TBD
@@ -38,17 +37,17 @@ NICE TO HAVE
 		  then we need to replace the second ':' with ','
 		  => post-process string (post-processing easy)
 	. Remodel occurrence->data->expression from char * to TBD
-	. code cleanup
-		. replace all the for ( ; ; ) with the model found
-	  	  in Base/Examples/6_BTreefy/btree.c
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. parser.c
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?
 		. integrate 'caught' in CNParserData => all flags
-	. do_input / do_output multiple args support
-	  Issue: what formalism? - e.g. could be
+	. do_input multiple args support
 		do < arg1, arg2, ..., argN > : "format" <
-		do > "format" : < arg1, arg2, ..., argN >
+	. code cleanup
+		. replace all the for ( ; ; ) with the model found
+	  	  in Base/Examples/6_BTreefy/btree.c
 	. bm_void() - should bm_instantiate() verify expression?
 		. Pros: instantiate all or nothing
 		. Cons: performances
@@ -71,6 +70,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. parser.c: File Format support for %% and .. Register Variables
 	. Bufferized active @ register so that activation/deactivation changes
 	  are applied at the end of the frame - and not during.
 	. Implementation support for Narrative parent .. and self %% R. V.
