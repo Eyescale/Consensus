@@ -41,7 +41,7 @@ freeContext( BMContext *ctx )
 */
 {
 	// flush active connections register
-	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	ActiveRV *active = BMContextActive( ctx );
 	freeListItem( &active->buffer->activated );
 	freeListItem( &active->buffer->deactivated );
 	freePair((Pair *) active->buffer );
@@ -58,7 +58,7 @@ freeContext( BMContext *ctx )
 		cn_release( connection ); }
 
 	// free context id register
-	Pair *id = registryLookup( ctx->registry, "%" )->value;
+	Pair *id = BMContextId( ctx );
 	CNInstance *self = id->value; // self is a proxy
 	if (( self )) {
 		CNEntity *connection = self->sub[ 0 ];
@@ -93,9 +93,10 @@ bm_context_finish( BMContext *ctx, int subscribe )
 	finish cell's context: activate or deprecate proxy to parent
 */
 {
-	Pair *id = registryLookup( ctx->registry, "%" )->value;
-	if ( subscribe )
-		bm_activate( id->name, ctx, NULL );
+	Pair *id = BMContextId( ctx );
+	if ( subscribe ) {
+		ActiveRV *active = BMContextActive( ctx );
+		addIfNotThere( &active->buffer->activated, id->name ); }
 	else {
 		db_deprecate( id->name, BMContextDB(ctx) );
 		id->name = NULL; }
@@ -105,57 +106,46 @@ bm_context_finish( BMContext *ctx, int subscribe )
 //	bm_activate / bm_deactivate
 //===========================================================================
 BMCBTake
-bm_activate( CNInstance *e, BMContext *ctx, void *user_data )
+bm_activate( CNInstance *proxy, BMContext *ctx, void *user_data )
 {
-	if ((e->sub[1]) || !e->sub[0] || e->sub[0]->sub[1]==ctx->this )
+	if ((proxy->sub[1]) || !proxy->sub[0] || !proxy->sub[0]->sub[0] )
 		return BM_CONTINUE;
-	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
-	addIfNotThere( &active->buffer->activated, e );
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, proxy );
 	return BM_CONTINUE;
 }
 BMCBTake
-bm_deactivate( CNInstance *e, BMContext *ctx, void *user_data )
+bm_deactivate( CNInstance *proxy, BMContext *ctx, void *user_data )
 {
-	if ((e->sub[1]) || !e->sub[0] || e->sub[0]->sub[1]==ctx->this )
+	if ((proxy->sub[1]) || !proxy->sub[0] || !proxy->sub[0]->sub[0] )
 		return BM_CONTINUE;
-	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
-	addIfNotThere( &active->buffer->deactivated, e );
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->deactivated, proxy );
 	return BM_CONTINUE;
 }
 
 //===========================================================================
 //	bm_context_init / bm_context_update
 //===========================================================================
-static void update_active( BMContext * );
+static void update_active( ActiveRV * );
 
 void
 bm_context_init( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db, NULL ); // integrate cell's init conditions
-	update_active( ctx );
+	update_active( BMContextActive(ctx) );
 	db_init( db );
 }
-static void
-update_active( BMContext *ctx )
-{
-	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
-	listItem **change = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(change) ); )
-		removeIfThere( &active->value, e );
-	change = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(change) ); )
-		addIfNotThere( &active->value, e );
-}
-
 void
 bm_context_update( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db, BMContextParent(ctx) );
-	update_active( ctx );
+
 	// deactivate connections whose proxies were deprecated
-	ActiveRV *active = registryLookup( ctx->registry, "@" )->value;
+	ActiveRV *active = BMContextActive( ctx );
+	update_active( active );
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
 		CNInstance *e = i->ptr;
@@ -164,6 +154,17 @@ bm_context_update( BMContext *ctx )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
 }
+static void
+update_active( ActiveRV *active )
+{
+	listItem **change = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		removeIfThere( &active->value, e );
+	change = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		addIfNotThere( &active->value, e );
+}
+
 
 //===========================================================================
 //	bm_context_set / bm_context_fetch
@@ -295,8 +296,7 @@ bm_context_flush( BMContext *ctx )
 				clipListItem( entries, i, last_i, next_i );
 				freePair( entry ); }
 			else last_i = i;
-		}
-	}
+		} }
 }
 void
 bm_flush_pipe( BMContext *ctx )

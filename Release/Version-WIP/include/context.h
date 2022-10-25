@@ -9,10 +9,12 @@ typedef struct {
 	Registry *registry;
 } BMContext;
 
-#define BMContextDB( ctx ) ((CNDB *) ctx->this->sub[0])
-#define BMContextCarry( ctx ) ((listItem **) &ctx->this->sub[1])
-#define BMContextParent( ctx ) (((Pair *) registryLookup( ctx->registry, "%" )->value )->name )
-#define BMContextSelf( ctx ) (((Pair *) registryLookup( ctx->registry, "%" )->value )->value )
+#define BMContextDB( ctx )	((CNDB *) ctx->this->sub[0])
+#define BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
+#define BMContextActive( ctx )	( registryLookup( ctx->registry, "@" )->value )
+#define BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
+#define BMContextParent( ctx )	( BMContextId(ctx)->name )
+#define BMContextSelf( ctx )	( BMContextId(ctx)->value )
 #define BMContextMatchSelf( ctx, e ) ( !e->sub[1] && (e->sub[0]) && e->sub[0]->sub[1]==ctx->this )
 
 BMContext *	newContext( CNDB *, CNEntity *parent );
