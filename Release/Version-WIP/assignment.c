@@ -187,13 +187,13 @@ bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
-	int type = data->type;
+	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
 		if ( e->sub[0]!=star ) continue;
-		if ( type==BM_INSTANTIATED && !db_manifested(e,db) )
+		if ( manifest && !db_manifested(e,db) )
 			continue;
 		if ( assignment(e,db) ) continue;
 		data->instance = e; // return (*,e)
@@ -205,7 +205,7 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
-	int type = data->type;
+	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
 	char *value = data->user_data;
@@ -213,7 +213,7 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 		CNInstance *f = i->ptr, *g; // f:(.,e)
 		if ( f->sub[0]!=star || !(g=assignment(f,db)) )
 			continue;
-		if ( type==BM_INSTANTIATED && !db_manifested(g,db) )
+		if ( manifest && !db_manifested(g,db) )
 			continue;
 		if ( xp_verify( g->sub[1], value, data ) ) {
 			data->instance = g; // return ((*,e),.)
@@ -225,7 +225,7 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 {
 	if ( !xp_verify( e, value, data ) )
 		return BM_CONTINUE;
-	int type = data->type;
+	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = BMContextDB( data->ctx );
 	CNInstance *star = data->star;
 	char *variable = data->user_data;
@@ -233,7 +233,7 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 		e = i->ptr; // e:(.,e)
 		if ( e->sub[0]->sub[0]!=star || db_private(0,e,db) )
 			continue;
-		if ( type==BM_INSTANTIATED && !db_manifested(e,db) )
+		if ( manifest && !db_manifested(e,db) )
 			continue;
 		CNInstance *f = e->sub[ 0 ]; // e:(f:(*,.),e)
 		if ( xp_verify( f->sub[1], variable, data ) ) {
