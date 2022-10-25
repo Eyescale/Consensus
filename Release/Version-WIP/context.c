@@ -415,18 +415,15 @@ bm_context_register( BMContext *ctx, char *p )
 		else {
 			CNInstance *x = db_register( p, db );
 			x = db_instantiate( this, x, db );
-			registryRegister( ctx->registry, p, x );
-		}
+			registryRegister( ctx->registry, p, x ); }
 		p = p_prune( PRUNE_IDENTIFIER, p );
-		while ( *p==' ' || *p=='\t' ) p++;
-	}
+		while ( *p==' ' || *p=='\t' ) p++; }
 	return 1;
 ERR: ;
 	CNInstance *instance = entry->value;
-	if ( instance->sub[ 0 ] == this ) {
+	if ( instance->sub[ 0 ]==this ) {
 		fprintf( stderr, ">>>>> B%%: Error: LOCALE "
-			"multiple declarations: '.%s'\n", p );
-	}
+			"multiple declarations: '.%s'\n", p ); }
 	else fprintf( stderr, ">>>>> B%%: Error: LOCALE name '.%s' "
 		"conflict with sub-narrative .arg\n", p );
 	return -1;
@@ -473,14 +470,12 @@ bm_register( BMContext *ctx, char *p )
 		// registering single character identifier instance
 		char_s q;
 		if ( charscan( p+1, &q ) ) {
-			return db_register( q.s, BMContextDB(ctx) );
-		}
-		return NULL;
-	}
+			return db_register( q.s, BMContextDB(ctx) ); }
+		return NULL; }
 	else if ( !is_separator(*p) ) {
 		// registering normal identifier instance
 		Pair *entry = registryLookup( ctx->registry, p );
-		if (( entry )) return entry->value;
-	}
+		if (( entry )) return entry->value; }
+
 	return db_register( p, BMContextDB(ctx) );
 }

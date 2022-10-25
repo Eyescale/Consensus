@@ -395,12 +395,14 @@ CND_ifn( mode==BM_STORY, C )
 		in_( ")." ) bgn_
 			on_( '<' )	do_( ").<" )	s_take
 			end
-		in_( ").<" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr_" )	REENTER
-			end
+			in_( ").<" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '\n' )	do_( "expr_" )	REENTER
+				end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
+		on_( '.' )	do_( "expr" )	s_take
+						f_set( INFORMED )
 		ons( ":,)\n" )	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_( '(' )	do_( "expr" )	REENTER
@@ -418,7 +420,7 @@ CND_ifn( mode==BM_STORY, C )
 		on_( '(' )	do_( "expr" )	s_take
 						f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
-		ons( "?!|" )
+		ons( "?!|%" )
 			if (!( *type&EN && s_empty )) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
