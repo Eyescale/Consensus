@@ -113,7 +113,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 						success = e; // return (*,.)
 						break; } } }
 			break;
-		case BM_INSTANTIATED: ;
+		default: ;
 			listItem *s = NULL;
 			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
 				if ( e->sub[0]!=star || (assignment(e,db)) )
@@ -122,8 +122,6 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 					freeListItem( &s );
 					success = e; // return (*,.)
 					break; } }
-			// no break
-		default:
 			break; }
 	}
 	else {
@@ -167,7 +165,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 							success = f;	// return ((*,.),.)
 							break; } } } }
 			break;
-		case BM_INSTANTIATED: ;
+		default: ;
 			listItem *s = NULL;
 			for ( e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
 				CNInstance *f = CNSUB( e, 0 );
@@ -177,8 +175,6 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 					freeListItem( &s );
 					success = e; // return ((*,.),.)
 					break; } }
-			// no break
-		default:
 			break; } }
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY_ASSIGNMENT: success=%d\n", !!success );

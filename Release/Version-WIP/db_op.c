@@ -324,8 +324,8 @@ int
 db_to_be_manifested( CNInstance *e, CNDB *db )
 /*
 	called by db_deprecate()
-	returns 0 if e is either newborn or to-be-manifested
-	returns 1 otherwise.
+	returns 1 if e is either newborn or to-be-manifested
+	returns 0 otherwise.
 	Assumption: we don't have e:(.,nil) or e:(nil,.)
 */
 {
@@ -360,6 +360,13 @@ db_deprecated( CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( e, nil, 1 );
 	return (( f ) && !f->as_sub[0] && !f->as_sub[1] );
+}
+int
+db_manifested( CNInstance *e, CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	CNInstance *f = cn_instance( nil, e, 0 );
+	return (( f ) && !f->as_sub[0] );
 }
 
 //===========================================================================

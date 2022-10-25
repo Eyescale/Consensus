@@ -64,8 +64,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 					success = e;
 					break; }
 			break;
-		case BM_RELEASED:
-		case BM_INSTANTIATED:
+		default:
 			for ( e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
 					freeListItem( &s );
@@ -90,7 +89,7 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 			BM_DONE : BM_CONTINUE;
 	case BM_INSTANTIATED: ;
 		db = BMContextDB( data->ctx );
-		return ((cn_instance(db->nil,e,0)) && xp_verify(e,expression,data)) ?
+		return ( db_manifested(e,db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE;
 	case BM_RELEASED:
 		db = BMContextDB( data->ctx );
