@@ -26,6 +26,7 @@ void		bm_context_init( BMContext *ctx );
 void		bm_context_update( BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 CNInstance *	bm_context_fetch( BMContext *, char * );
+listItem *	bm_inform( BMContext *, listItem **, BMContext * );
 CNInstance *	bm_context_inform( BMContext *, CNInstance *, BMContext * );
 void		bm_context_flush( BMContext * );
 void		bm_flush_pipe( BMContext * );

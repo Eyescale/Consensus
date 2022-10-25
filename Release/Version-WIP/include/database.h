@@ -27,7 +27,7 @@ CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_unassign( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
-int		db_deprecatable( CNInstance *, CNDB * );
+int		db_deprecated( CNInstance *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );
 CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
 char *		db_identifier( CNInstance *, CNDB * );

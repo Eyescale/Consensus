@@ -148,9 +148,8 @@ bm_context_update( BMContext *ctx )
 	update_active( active );
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
-		CNInstance *e = i->ptr;
-		next_i = i->next;
-		if ( !db_deprecatable( e, db ) )
+		CNInstance *e = i->ptr; next_i = i->next;
+		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
 }
@@ -215,15 +214,23 @@ bm_context_fetch( BMContext *ctx, char *unused )
 }
 
 //===========================================================================
-//	bm_context_inform
+//	bm_inform / bm_context_inform
 //===========================================================================
 static CNInstance * lookup_proxy( BMContext *, CNInstance * );
 
+listItem *
+bm_inform( BMContext *ctx, listItem **instances, BMContext *dst )
+{
+	listItem *results = NULL;
+	for ( CNInstance *e;( e = popListItem(instances) ); ) {
+		e = bm_context_inform( ctx, e, dst );
+		if (( e )) addItem( &results, e ); }
+	return results;
+}
 CNInstance *
 bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
 {
 	if ( !e ) return NULL;
-	CNEntity *this = ctx->this;
 	CNDB *db_src = BMContextDB( ctx );
 	CNDB *db_dst = BMContextDB( dst );
 	struct { listItem *src, *dst; } stack = { NULL, NULL };

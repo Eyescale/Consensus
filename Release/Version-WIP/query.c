@@ -29,6 +29,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData));
+	data.type = type;
 	data.ctx = ctx;
 	data.star = db_star( db );
 	data.user_CB = user_CB;
@@ -38,43 +39,39 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY: %s\n", expression );
 #endif
-	int privy = 0;
+	int privy = type==BM_RELEASED ? 1 : 0;
 	CNInstance *success = NULL, *e;
-	switch ( type ) {
-	case BM_CONDITION: ;
-		listItem *exponent = NULL;
-		char *p = bm_locate_pivot( expression, &exponent );
-		if (( p )) {
-			e = bm_lookup( 0, p, ctx );
-			if ( !e ) {
-				freeListItem( &exponent );
-				break; }
-			data.exponent = exponent;
-			data.privy = !strncmp( p, "%|", 2 ) ? 2 : 0;
-			data.pivot = newPair( p, e );
-			success = xp_traverse( expression, &data, bm_verify );
-			freePair( data.pivot );
-			freeListItem( &exponent ); }
-		else {
-			listItem *s = NULL;
+	listItem *exponent = NULL;
+	char *p = bm_locate_pivot( expression, &exponent );
+	if (( p )) {
+		e = bm_lookup( privy, p, ctx );
+		if ( !e ) {
+			freeListItem( &exponent );
+			return NULL; }
+		data.exponent = exponent;
+		data.privy = strncmp( p, "%|", 2 ) ? privy : 2;
+		data.pivot = newPair( p, e );
+		success = xp_traverse( expression, &data, bm_verify );
+		freePair( data.pivot );
+		freeListItem( &exponent ); }
+	else {
+		listItem *s = NULL;
+		switch ( type ) {
+		case BM_CONDITION:
 			for ( e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
 				if ( bm_verify( e, expression, &data )==BM_DONE ) {
 					freeListItem( &s );
 					success = e;
-					break; } }
-		break;
-	case BM_RELEASED:
-		privy = data.privy = 1;
-		// no break
-	case BM_INSTANTIATED: ;
-		listItem *s = NULL;
-		for ( e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) )
-			if ( xp_verify( e, expression, &data ) ) {
-				freeListItem( &s );
-				success = e;
-				break; }
-		break;
-	}
+					break; }
+			break;
+		case BM_RELEASED:
+		case BM_INSTANTIATED:
+			for ( e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) )
+				if ( xp_verify( e, expression, &data ) ) {
+					freeListItem( &s );
+					success = e;
+					break; }
+			break; } }
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY: success=%d\n", !!success );
 #endif
@@ -84,10 +81,21 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 static int
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
-	return xp_verify( e, expression, data ) ?
-		( !data->user_CB ) ? BM_DONE :
-			data->user_CB( e, data->ctx, data->user_data ) :
-		BM_CONTINUE;
+	CNDB *db;
+	switch ( data->type ) {
+	case BM_CONDITION:
+		return xp_verify( e, expression, data ) ?
+			(data->user_CB) ?
+				data->user_CB( e, data->ctx, data->user_data ) :
+			BM_DONE : BM_CONTINUE;
+	case BM_INSTANTIATED: ;
+		db = BMContextDB( data->ctx );
+		return ((cn_instance(db->nil,e,0)) && xp_verify(e,expression,data)) ?
+			BM_DONE : BM_CONTINUE;
+	case BM_RELEASED:
+		db = BMContextDB( data->ctx );
+		return ( db_deprecated(e,db) && xp_verify(e,expression,data)) ?
+			BM_DONE : BM_CONTINUE; }
 }
 
 //===========================================================================

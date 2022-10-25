@@ -13,6 +13,7 @@ typedef enum {
 } DBOperation;
 
 int db_op( DBOperation op, CNInstance *e, CNDB *db );
+int db_deprecatable( CNInstance *, CNDB * );
 int db_to_be_manifested( CNInstance *, CNDB * );
 
 

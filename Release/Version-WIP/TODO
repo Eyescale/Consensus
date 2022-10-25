@@ -1,6 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. instantiate.c apply data->new when set
 	. EENO Implementation
 		. traversal.c
 			. Handle %? when %< is set - including special case: %(%?:...)
@@ -70,6 +69,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. instantiate.c apply data->carry when set
 	. parser.c: File Format support for %% and .. Register Variables
 	. Bufferized active @ register so that activation/deactivation changes
 	  are applied at the end of the frame - and not during.
@@ -84,7 +84,7 @@ DONE
 		. activation / deactivation
 		. output @@@ in case of proxy
 	. parser.c: support do @< expression / do ~< expression
-		. implementation done in expression.c: bm_proxy_op()
+		. implementation - see expression.c: bm_proxy_op()
 	. multi-variable output => improved TM-single.story
 	. cell exit conditions => freeContext()
 		. prune proxies prior to freeing CNDB

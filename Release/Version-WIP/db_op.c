@@ -297,7 +297,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	. if privy==1 - traversing db_log( released, ... )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
-	. if privy==2 - traversing %!
+	. if privy==2 - traversing %|
 		returns 1 if e:( ., nil ) or e:( nil, . )
 		returns 0 otherwise
 */
@@ -337,7 +337,7 @@ db_to_be_manifested( CNInstance *e, CNDB *db )
 }
 
 //===========================================================================
-//	db_deprecatable
+//	db_deprecatable / db_deprecated
 //===========================================================================
 int
 db_deprecatable( CNInstance *e, CNDB *db )
@@ -353,6 +353,13 @@ db_deprecatable( CNInstance *e, CNDB *db )
 		return 0;
 	CNInstance *f = cn_instance( e, nil, 1 );
 	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
+}
+int
+db_deprecated( CNInstance *e, CNDB *db )
+{
+	CNInstance *nil = db->nil;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	return (( f ) && !f->as_sub[0] && !f->as_sub[1] );
 }
 
 //===========================================================================

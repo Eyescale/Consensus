@@ -20,7 +20,7 @@ typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
-	BMContext *ctx, *new;
+	BMContext *ctx, *carry;
 } BMInstantiateData;
 
 int bm_void( char *, BMContext * );
