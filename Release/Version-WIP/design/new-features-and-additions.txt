@@ -21,8 +21,11 @@ Synopsis
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	EENO Register Variables		%<(?)
-					%<(!)
+	EENO Register Variables		%<
+					%<?>
+					%<!>
+					%<?:sub>
+					%<!:sub>
 
 	this Register Variable		%%
 
@@ -108,8 +111,10 @@ Description
 	The EENO Register Variables %<(?) and %<(!) allow subsequent references
 	to the EENO query results to be made by the narrative, using
 
-		%<(?)	to represent event = first match
-		%<(!)	to represent src = proxy to the corresponding connection
+		%<?>	to represent event = first match
+		%<!>	to represent the complementary match (variable or value)
+			in case of assignment expression - if marked
+		%<	to represent src = proxy to the corresponding connection
 
 	6. Narrative this Register Variable
 
@@ -118,13 +123,13 @@ Description
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
-			in %<(?): %%
+			in %<?>: %%
 				// that connection is me
-			else in %<(?)
+			else in %<?>
 				// already subscribed
 			else
 				// subscribe to my source's new connection
-				do @< %<(?)
+				do @< %<?>
 
 	7. Narrative parent Register Variable
 

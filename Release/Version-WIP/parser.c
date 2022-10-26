@@ -282,7 +282,12 @@ A:CND_else_( B )
 				do_( "/" )	s_take }
 		on_( '@' ) if ( s_empty && *type&DO ) {
 				do_( "@" )	s_take }
-		on_( '<' ) if ( *type&OUTPUT && !is_f(INFORMED|SET|LEVEL|SUB_EXPR|NEGATED|FILTERED) ) {
+		on_( '<' ) if ( *type&ON && is_f(INFORMED) && !is_f(SET|LEVEL|SUB_EXPR) &&
+				(is_f(ASSIGN)?is_f(FILTERED):is_f(FIRST)) ) {
+				do_( same )	s_take
+						*type = (*type&ELSE)|ON_X;
+						f_clr( FIRST|INFORMED|NEGATED ) }
+			else if ( *type&OUTPUT && !is_f(INFORMED|SET|LEVEL|SUB_EXPR|NEGATED|FILTERED) ) {
 				do_( same )	s_take
 						f_set( SET ) }
 		on_( '>' ) if ( s_empty && *type&DO ) {

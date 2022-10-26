@@ -1,11 +1,23 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. EENO Implementation
-		. traversal.c
+		. parser.c, traverse.c, string_util.c:p_prune()
+			. handle '<'		[DONE]
+		. operation.c
+			. on_event_from		[DONE]
+		. expression.c
+			. bm_proxy_in		[DONE]
+			. bm_proxy_still	[DONE]
+			. bm_check_active	[DONE]
+			. bm_scan_active	[DONE]
+			. bm_proxy_feel		[WIP]
+		. query.c: match()
 			. Handle %? when %< is set - including special case: %(%?:...)
 			. Attention: bm_context_mark, when %< is set...
-		. dangling connections => to be checked & released upon
-			on event < expression
+		. EENO register variables
+			. update design/new-features-and-additions.txt [DONE]
+			. implementation
+				. context.c: bm_context_mark_x
 	. Testing
 		. 3_TM.multi/TM-head_tape.story
 	. Pass design/story/{all}

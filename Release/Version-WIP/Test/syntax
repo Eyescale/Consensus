@@ -10,6 +10,8 @@
 			baby, titi
 			tutu
 			) ~<
+		on toto < titi
+			do >"bingo\n"
 		do (:titi:)
 		do ( titi, (( toto, ... ):asdlkjasd:) )
 		in ( toto ? tata ? titi : roro : titi )

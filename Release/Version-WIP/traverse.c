@@ -18,8 +18,7 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
 	switch ( traverse_data->done ) {
 	case BMTraverseError:
 		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
-			"in expression: %s, at %s\n", expression, p );
-	}
+			"in expression: %s, at %s\n", expression, p ); }
 	return p;
 }
 
@@ -48,12 +47,13 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
 			case '>':
-				if ( is_f(VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
+				if ( is_f(VECTOR) ) {
 					f_pop( stack, 0 )
-					f_clr( NEGATED )
-					f_set( INFORMED ) }
+					f_cls }
 				p++; break;
 			case '<':
+				if ( is_f(INFORMED) ) // EENO
+					f_clr( NEGATED|FILTERED|INFORMED )
 				p++; break;
 			case '!':
 				p = p_prune( PRUNE_IDENTIFIER, p+2 );
@@ -77,34 +77,26 @@ _CB( BMTermCB )			break;
 				if ( !is_f(SET) ) { traverse_data->done=1; break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
-					f_next = icast.value;
-				}
+					f_next = icast.value; }
 _CB( BMEndSetCB )		f_pop( stack, 0 )
-				f_clr( NEGATED )
-				f_set( INFORMED )
-				p++; break;
+				f_cls; p++; break;
 			case '|':
 				if ( !is_f(LEVEL|SET) ) { traverse_data->done=1; break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
-					f_next = icast.value;
-				}
+					f_next = icast.value; }
 _CB( BMBgnPipeCB )		f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;
 			case '*':
 				if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
-_CB( BMStarCharacterCB )		f_clr( NEGATED )
-					f_set( INFORMED ) }
+_CB( BMStarCharacterCB )		f_cls }
 				else {
 _CB( BMDereferenceCB )			f_clr( INFORMED ) }
 				p++; break;
 			case '%':
-				if ( strmatch( "?!|", p[1] ) ) {
-_CB( BMRegisterVariableCB )		f_clr( NEGATED )
-					f_set( INFORMED )
-					p+=2; break;
-				}
+				if ( strmatch( "?!|%", p[1] ) ) {
+_CB( BMRegisterVariableCB )		f_cls; p+=2; break; }
 				else if ( p[1]=='(' ) {
 _CB( BMSubExpressionCB )		p++;
 					f_next = FIRST|SUB_EXPR|is_f(SET);
@@ -112,13 +104,9 @@ _CB( BMSubExpressionCB )		p++;
 						f_next |= COUPLE;
 _sCB( BMOpenCB )			f_push( stack )
 					f_reset( f_next, 0 )
-					p++; break;
-				}
+					p++; break; }
 				else if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
-_CB( BMModCharacterCB )			f_clr( NEGATED )
-					f_set( INFORMED )
-					p++; break;
-				}
+_CB( BMModCharacterCB )			f_cls; p++; break; }
 				else traverse_data->done = BMTraverseError;
 				break;
 			case '(':
@@ -136,7 +124,7 @@ _sCB( BMOpenCB )			f_push( stack )
 					p++;
 					if ( table[BMTermCB] && p_filtered(p) )
 						f_set( FILTERED )
-_CB(( BMTermCB ))		}
+_CB(( BMTermCB ))			}
 				break;
 			case ':':
 				if ( p[1]=='<' ) {
@@ -144,9 +132,7 @@ _CB(( BMTermCB ))		}
 					f_set( VECTOR );
 					p+=2; break; }
 				else {
-_CB( BMFilterCB )			f_clr( INFORMED )
-					f_set( FILTERED )
-					p++; break; }
+_CB( BMFilterCB )			f_cls; p++; break; }
 			case ',':
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
 					{ traverse_data->done=1; break; }
@@ -160,27 +146,21 @@ _CB( BMTermCB )			break;
 				if ( is_f(PIPED) && !is_f(LEVEL|SUB_EXPR) ) {
 					if ((*stack)) {
 						icast.ptr = (*stack)->ptr;
-						f_next = icast.value;
-					}
-_CB( BMEndPipeCB )			f_pop( stack, 0 )
-				}
+						f_next = icast.value; }
+_CB( BMEndPipeCB )			f_pop( stack, 0 ) }
 				if ( !is_f(LEVEL|SUB_EXPR) ) { traverse_data->done=1; break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
-					f_next = icast.value;
-				}
+					f_next = icast.value; }
 _CB( BMCloseCB )		f_pop( stack, 0 );
-				f_clr( NEGATED )
-				f_set( INFORMED )
-				p++; break;
+				f_cls; p++; break;
 			case '?':
 				if is_f( INFORMED ) {
 					if ( !is_f(SET|LEVEL|SUB_EXPR) ) { traverse_data->done=1; break; }
 _CB( BMTernaryOperatorCB )		f_clr( NEGATED|FILTERED|INFORMED )
 					f_set( TERNARY ) }
 				else {
-_CB( BMWildCardCB )			f_clr( NEGATED )
-					f_set( INFORMED ) }
+_CB( BMWildCardCB )			f_cls }
 				p++; break;
 			case '.':
 				if ( p[1]=='(' ) {
@@ -196,46 +176,34 @@ _sCB( BMOpenCB )			f_push( stack )
 _CB( BMTermCB )				break; }
 				else if ( !is_separator(p[1]) ) {
 _CB( BMDotIdentifierCB )		p = p_prune( PRUNE_FILTER, p+2 );
-					f_clr( NEGATED )
-					f_set( INFORMED )
-					break; }
+					f_cls; break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
 _CB( BMListCB )					if (!table[ BMListCB ]) {
 							// p_prune will return on closing ')'
 							p = p_prune( PRUNE_LIST, p ); }
 						f_pop( stack, 0 )
-						f_set( INFORMED )
-						break; }
+						f_cls; break; }
 					else {
-_CB( BMRegisterVariableCB )			p+=2; break; } }
+_CB( BMRegisterVariableCB )			f_cls; p+=2; break; } }
 				else {
-_CB( BMWildCardCB )			f_clr( NEGATED )
-					f_set( INFORMED )
-					p++; break; }
+_CB( BMWildCardCB )			f_cls; p++; break; }
 			case '"':
 _CB( BMFormatCB )		p = p_prune( PRUNE_FILTER, p );
-				f_clr( NEGATED )
-				f_set( INFORMED )
-				break;
+				f_cls; break;
 			case '\'':
 _CB( BMCharacterCB )		p = p_prune( PRUNE_FILTER, p );
-				f_clr( NEGATED )
-				f_set( INFORMED )
-				break;
+				f_cls; break;
 			case '/':
 _CB( BMRegexCB )		p = p_prune( PRUNE_FILTER, p );
-				f_clr( NEGATED )
-				f_set( INFORMED )
-				break;
+				f_cls; break;
 			default:
 				if ( is_separator(*p) ) traverse_data->done = BMTraverseError;
 				else {
 _CB( BMIdentifierCB )			p = p_prune( PRUNE_FILTER, p );
 					if ( *p=='~' ) {
 _CB( BMSignalCB )				p++; }
-					f_clr( NEGATED )
-					f_set( INFORMED )
+					f_cls; break;
 			} } }
 	traverse_data->flags = flags;
 	traverse_data->p = p;

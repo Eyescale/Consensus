@@ -356,14 +356,12 @@ fprintf( stderr, " ........{\n" );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent\n" );
-		exit( -1 );
-	}
+		exit( -1 ); }
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
 	if ((data->stack.scope) || (data->stack.base)) {
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
-		exit( -1 );
-	}
+		exit( -1 ); }
 	fprintf( stderr, "xp_verify:........} success=%d\n", success );
 #endif
 	return success;
@@ -377,8 +375,7 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 		listItem *xpn = popListItem( &stack->as_sub );
 		int exp = (int) xpn->ptr;
 		if (!( exp & 2 )) freeItem( j );
-		j = popListItem( &stack->as_sub );
-	}
+		j = popListItem( &stack->as_sub ); }
 	freeItem( j );
 	freeListItem( mark_exp );
 	stack->as_sub = popListItem( &stack->sub );

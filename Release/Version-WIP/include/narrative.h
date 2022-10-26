@@ -11,15 +11,17 @@
 #define ROOT		0
 #define	IN		1
 #define ON		2
-#define DO		4
-#define EN		8
-#define INPUT		16
-#define OUTPUT		32
-#define LOCALE		64
+#define ON_X		4
+#define DO		8
+#define EN		16
+#define INPUT		32
+#define OUTPUT		64
+#define LOCALE		128
 
-#define ELSE		256
+#define ELSE		512
 #define ELSE_IN		(ELSE|IN)
 #define ELSE_ON		(ELSE|ON)
+#define ELSE_ON_X	(ELSE|ON_X)
 #define ELSE_DO		(ELSE|DO)
 #define ELSE_EN		(ELSE|EN)
 #define ELSE_INPUT	(ELSE|INPUT)

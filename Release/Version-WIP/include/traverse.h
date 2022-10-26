@@ -44,6 +44,8 @@
 	flags = pop_item( stack )|(flags&(save));
 #define f_tag( stack, flag ) \
 	traverse_tag( flags, stack, flag );
+#define f_cls \
+	f_clr(NEGATED) f_set(INFORMED)
 
 inline void
 traverse_tag( int flags, listItem **stack, int flag )

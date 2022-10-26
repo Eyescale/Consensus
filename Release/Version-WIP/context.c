@@ -9,23 +9,19 @@
 //===========================================================================
 //	newContext / freeContext
 //===========================================================================
-typedef struct {
-	struct { listItem *activated, *deactivated; } *buffer;
-	listItem *value;
-} ActiveRV;
-	
 BMContext *
-newContext( CNDB *db, CNEntity *parent )
+newContext( CNEntity *parent )
 {
 	CNEntity *this = cn_new( NULL, NULL );
+	CNDB *db = newCNDB();
 	this->sub[ 0 ] = (CNEntity *) db;
 	Pair *id = newPair( NULL, NULL );
+	id->name = db_proxy( NULL, this, db );
 	if (( parent ))
-		id->name = db_proxy( this, parent, db );
-	id->value = db_proxy( NULL, this, db );
+		id->value = db_proxy( this, parent, db );
 	Pair *active = newPair( newPair(NULL,NULL), NULL );
 	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "%", id ); // aka. .. and %%
+	registryRegister( registry, "%", id ); // aka. %% and ..
 	registryRegister( registry, "@", active ); // active connections (proxies)
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
@@ -57,9 +53,9 @@ freeContext( BMContext *ctx )
 		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
 		cn_release( connection ); }
 
-	// free context id register
+	// free context id register value
 	Pair *id = BMContextId( ctx );
-	CNInstance *self = id->value; // self is a proxy
+	CNInstance *self = id->name; // self is a proxy
 	if (( self )) {
 		CNEntity *connection = self->sub[ 0 ];
 		cn_prune( self ); cn_free( connection ); }
@@ -73,6 +69,7 @@ freeContext( BMContext *ctx )
 	/* release this now that both its subs are NULL
 	   cn_release will nullify this in subscribers' connections ( ., this )
 	   subscriber is responsible for removing dangling connections
+	   see bm_check_active() below
 	*/
 	cn_release( this );
 
@@ -96,14 +93,14 @@ bm_context_finish( BMContext *ctx, int subscribe )
 	Pair *id = BMContextId( ctx );
 	if ( subscribe ) {
 		ActiveRV *active = BMContextActive( ctx );
-		addIfNotThere( &active->buffer->activated, id->name ); }
+		addIfNotThere( &active->buffer->activated, id->value ); }
 	else {
-		db_deprecate( id->name, BMContextDB(ctx) );
-		id->name = NULL; }
+		db_deprecate( id->value, BMContextDB(ctx) );
+		id->value = NULL; }
 }
 
 //===========================================================================
-//	bm_activate / bm_deactivate
+//	bm_activate / bm_deactivate / bm_check_active
 //===========================================================================
 BMCBTake
 bm_activate( CNInstance *proxy, BMContext *ctx, void *user_data )
@@ -123,6 +120,20 @@ bm_deactivate( CNInstance *proxy, BMContext *ctx, void *user_data )
 	addIfNotThere( &active->buffer->deactivated, proxy );
 	return BM_CONTINUE;
 }
+void
+bm_check_active( BMContext *ctx )
+{
+	CNDB *db = BMContextDB( ctx );
+	ActiveRV *active = BMContextActive( ctx );
+	listItem **entries = &active->value;
+	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
+		CNInstance *proxy = i->ptr; next_i = i->next;
+		CNEntity *connection = proxy->sub[ 0 ];
+		if ( !connection->sub[ 1 ] ) {
+			clipListItem( entries, i, last_i, next_i );
+			db_deprecate( proxy, db ); }
+		else last_i = i; }
+}
 
 //===========================================================================
 //	bm_context_init / bm_context_update
@@ -137,6 +148,17 @@ bm_context_init( BMContext *ctx )
 	update_active( BMContextActive(ctx) );
 	db_init( db );
 }
+static void
+update_active( ActiveRV *active )
+{
+	listItem **change = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		removeIfThere( &active->value, e );
+	change = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(change) ); )
+		addIfNotThere( &active->value, e );
+}
+
 void
 bm_context_update( BMContext *ctx )
 {
@@ -153,17 +175,6 @@ bm_context_update( BMContext *ctx )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
 }
-static void
-update_active( ActiveRV *active )
-{
-	listItem **change = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(change) ); )
-		removeIfThere( &active->value, e );
-	change = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(change) ); )
-		addIfNotThere( &active->value, e );
-}
-
 
 //===========================================================================
 //	bm_context_set / bm_context_fetch
@@ -313,7 +324,7 @@ bm_flush_pipe( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_mark / bm_context_unmark
+//	bm_context_mark / bm_context_mark_x / bm_context_unmark
 //===========================================================================
 static inline CNInstance * xsub( CNInstance *, listItem ** );
 
@@ -357,6 +368,13 @@ xsub( CNInstance *x, listItem **xpn )
 	while (( exp = pop_item( xpn ) ))
 		x = x->sub[ exp & 1 ];
 	return x;
+}
+
+int
+bm_context_mark_x( BMContext *ctx, char *expression, CNInstance *x, int *marked )
+{
+	if ( !x ) return 0;
+	return 1;
 }
 
 void

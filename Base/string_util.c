@@ -312,8 +312,7 @@ p_prune( PruneType type, char *p )
 			case '(':
 				if ( p[1]==':' ) {
 					p = prune_literal( p );
-					informed = 1; break;
-				}
+					informed = 1; break; }
 				p = prune_ternary( p );
 				switch ( *p ) {
 				case '?':
@@ -324,12 +323,12 @@ p_prune( PruneType type, char *p )
 					p = prune_level( p, 1 ); // we are inside
 					break;
 				case ')':
-					break;
-				}
+					break; }
 				informed = 1;
 				p++; break;
 			case ',':
 			case ')':
+			case '<':
 			case '>':
 			case '}':
 			case '|':
@@ -340,7 +339,7 @@ p_prune( PruneType type, char *p )
 				informed = 0;
 				p++; break;
 			case '?':
-				if ( informed && ( type==PRUNE_FILTER || *start!=':' ) ) 
+				if ( informed && ( *start!=':' || type==PRUNE_FILTER ) ) 
 					return p;
 				informed = 1;
 				p++; break;
@@ -356,9 +355,7 @@ p_prune( PruneType type, char *p )
 			default:
 				// including case '.'
 				do p++; while ( !is_separator(*p) );
-				informed = 1;
-			}
-		}
+				informed = 1; } }
 		return p;
 	case PRUNE_TERNARY:
 		return prune_ternary( p );
@@ -402,8 +399,7 @@ prune_ternary( char *p )
 		case '(':
 			if ( p[1]==':' ) {
 				p = prune_literal( p );
-				informed = 1; break;
-			}
+				informed = 1; break; }
 			p = prune_level( p+1, 1 );
 			informed = 1;
 			p++; break;
@@ -414,8 +410,7 @@ prune_ternary( char *p )
 			if ( informed ) {
 				if ( start=='(' ) goto RETURN;
 				ternary++;
-				informed = 0;
-			}
+				informed = 0; }
 			else informed = 1;
 			p++; break;
 		case ':':
@@ -423,9 +418,8 @@ prune_ternary( char *p )
 				ternary--;
 				if ( start=='?' ) {
 					candidate = p;
-					if ( !ternary ) goto RETURN;
-				}
-			}
+					if ( !ternary )
+						goto RETURN; } }
 			informed = 0;
 			p++; break;
 		case '"':
@@ -439,9 +433,7 @@ prune_ternary( char *p )
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) );
-			informed = 1;
-		}
-	}
+			informed = 1; } }
 RETURN:
 	if (( candidate )) return candidate;
 	else return p;
@@ -465,9 +457,7 @@ prune_literal( char *p )
 			if ( p[1] ) p++;
 			p++; break;
 		default:
-			p++; break;
-		}
-	}
+			p++; break; } }
 	return p;
 }
 static char *
@@ -496,9 +486,7 @@ prune_list( char *p )
 			if ( p[1] ) p++;
 			p++; break;
 		default:
-			p++; break;
-		}
-	}
+			p++; break; } }
 	return p;
 }
 static char *
@@ -515,9 +503,7 @@ prune_format( char *p )
 			if ( p[1] ) p++;
 			p++; break;
 		default:
-			p++; break;
-		}
-	}
+			p++; break; } }
 	return p;
 }
 static char *
@@ -552,9 +538,7 @@ prune_regex( char *p )
 			bracket = 0;
 			p++; break;
 		default:
-			p++; break;
-		}
-	}
+			p++; break; } }
 	return p;
 }
 static char *
@@ -571,8 +555,7 @@ prune_identifier( char *p )
 		p = prune_regex( p );
 		break;
 	default:
-		while ( !is_separator(*p) ) p++;
-	}
+		while ( !is_separator(*p) ) p++; }
 	return p;
 }
 static char *
@@ -600,18 +583,22 @@ prune_level( char *p, int level )
 			p = prune_regex( p );
 			break;
 		case '.':
-			if ( p[1]=='.' && (level>0) ) {
-				// returns on closing ')'
-				p = prune_list( p );
-				level--;
-				if ( !level ) return p;
-				else break;
-			}
+			if ( p[1]!='.' )
+				;
+			else if ( p[2]!='.' ) {
+				p+=2; break; }
+			else {
+				if ( !level ) {
+					p+=3; break; }
+				else {
+					// returns on closing ')'
+					p = prune_list( p );
+					level--;
+					if ( !level ) return p;
+					else break; } }
 			// no break
 		default:
-			do p++; while ( !is_separator(*p) );
-		}
-	}
+			do p++; while ( !is_separator(*p) ); } }
 	return p;
 }
 int
@@ -648,8 +635,7 @@ p_list( char *p )
 {
 	if ( p[1]=='(' ) {
 		p = p_prune( PRUNE_TERM, p+2 );
-		return !strncmp( p, ",..", 3 );
-	}
+		return !strncmp( p, ",...", 4 ); }
 	return 0;
 }
 

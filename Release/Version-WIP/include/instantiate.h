@@ -23,7 +23,6 @@ typedef struct {
 	BMContext *ctx, *carry;
 } BMInstantiateData;
 
-int bm_void( char *, BMContext * );
 void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 CNInstance *bm_conceive( char *, BMTraverseData *, Pair * );
 

@@ -12,6 +12,7 @@
 
 static int in_condition( char *, BMContext *, int *marked );
 static int on_event( char *, BMContext *, int *marked );
+static int on_event_from( char *, BMContext *, int *marked );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
@@ -49,6 +50,10 @@ operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
 			deternarized = bm_deternarize( &expression, ctx );
 			passed = on_event( expression, ctx, &marked );
 			break;
+		ctrl(ELSE_ON_X) case ON_X:
+			deternarized = bm_deternarize( &expression, ctx );
+			passed = on_event_from( expression, ctx, &marked );
+			break;
 		ctrl(ELSE_DO) case DO:
 			deternarized = bm_deternarize( &expression, ctx );
 			do_action( expression, ctx, story );
@@ -67,8 +72,8 @@ operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
 			break;
 		case LOCALE:
 			bm_context_register( ctx, expression );
-			break;
-		}
+			break; }
+
 		if (( deternarized )) free( expression );
 		if (( j && passed )) {
 			addItem( &stack, i );
@@ -86,9 +91,7 @@ operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
 				passed = 1; // otherwise we would not be here
 				marked = pop_item( &stack );
 				i = popListItem( &stack ); }
-			else goto RETURN;
-		}
-	}
+			else goto RETURN; } }
 RETURN:
 	freeItem( i );
 	bm_context_flush( ctx );
@@ -184,18 +187,17 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 }
 
 //===========================================================================
-//	bm_update / bm_init
+//	bm_init / bm_update
 //===========================================================================
-void
-bm_update( CNCell *cell )
-{
-	bm_context_update( cell->ctx );
-}
-
 void
 bm_init( CNCell *cell )
 {
 	bm_context_init( cell->ctx );
+}
+void
+bm_update( CNCell *cell )
+{
+	bm_context_update( cell->ctx );
 }
 
 //===========================================================================
@@ -267,6 +269,54 @@ RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
+	return ( negated ? !success : success );
+}
+
+//===========================================================================
+//	on_event_from
+//===========================================================================
+static int
+on_event_from( char *expression, BMContext *ctx, int *marked )
+/*
+	Assumption: *marked = 0 to begin with
+*/
+{
+#ifdef DEBUG
+	fprintf( stderr, "on_event_from bgn: %s\n", expression );
+#endif
+	CNInstance *found;
+	int success, negated=0;
+	if ( !strncmp( expression, "~.:", 3 ) )
+		{ negated=1; expression += 3; }
+
+	char *src = p_prune( PRUNE_TERM, expression ) + 1;
+	listItem *candidates = bm_scan_active( src, ctx );
+
+	for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+		switch ( *expression ) {
+		case '~':
+			switch ( expression[1] ) {
+			case '(':
+				found = bm_proxy_feel( proxy, BM_RELEASED, expression+1, ctx );
+				success = bm_context_mark_x( ctx, expression+1, found, marked );
+				if ( success ) goto RETURN; else continue;
+			case '.':
+				success = bm_proxy_still( proxy );
+				if ( success ) goto RETURN; else continue; }
+			break;
+		default:
+			if ( !strcmp( expression, "init" ) ) {
+				success = bm_proxy_in( proxy );
+				if ( success ) goto RETURN; else continue; }
+
+		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
+		success = bm_context_mark_x( ctx, expression, found, marked );
+		if ( success ) goto RETURN; } }
+RETURN:
+#ifdef DEBUG
+	fprintf( stderr, "on_event_from end\n" );
+#endif
+	freeListItem( &candidates );
 	return ( negated ? !success : success );
 }
 

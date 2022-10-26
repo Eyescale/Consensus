@@ -12,33 +12,27 @@
 CNProgram *
 newProgram( CNStory *story, char *inipath )
 {
-	if ( story == NULL ) return NULL;
+	if ( !story ) return NULL;
 	Pair *entry = registryLookup( story, "" );
-	if ( !entry || entry->value == NULL ) {
+	if ( !entry || !entry->value ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL; }
-	CNDB *db = newCNDB();
-	CNCell *cell = newCell( entry, db, NULL );
+	CNCell *cell = newCell( entry, NULL );
 	if ( !cell ) {
 		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
-		goto ERR; }
-	if (( inipath )) {
-		if ( !!bm_read( BM_LOAD, cell->ctx, inipath ) ) {
-			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-			goto ERR; } }
+		return NULL; }
+	if (( inipath && !!bm_read( BM_LOAD, cell->ctx, inipath ) )) {
+		fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
+		freeCell( cell ); return NULL; }
 	// threads->new is a list of lists
 	Pair *threads = newPair( NULL, newItem(newItem(cell)) );
 	return (CNProgram *) newPair( story, threads );
-ERR:
-	freeCNDB( db );
-	return NULL;
 }
 
 void
 freeProgram( CNProgram *program )
 {
-	if ( program == NULL ) return;
-
+	if ( !program ) return;
 	CNCell *cell;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
@@ -59,8 +53,7 @@ cnUpdate( CNProgram *program )
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: bgn\n" );
 #endif
-	if ( program == NULL ) return;
-
+	if ( !program ) return;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
 	// update active cells
@@ -69,7 +62,6 @@ cnUpdate( CNProgram *program )
 		bm_update( cell );
 		listItem *carry = *BMContextCarry( cell->ctx );
 		if (( carry )) addItem( new, carry ); }
-
 	// activate new cells
 	for ( listItem *i; (i=popListItem(new)); )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
@@ -90,8 +82,7 @@ cnOperate( CNProgram *program )
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: bgn\n" );
 #endif
-	if ( program == NULL ) return 0;
-
+	if ( !program ) return 0;
 	CNCell *cell;
 	CNStory *story = program->story;
 	listItem **active = &program->threads->active;
@@ -121,16 +112,15 @@ cnOperate( CNProgram *program )
 //	newCell / freeCell
 //===========================================================================
 CNCell *
-newCell( Pair *entry, CNDB *db, CNEntity *parent )
+newCell( Pair *entry, CNEntity *parent )
 {
-	if ( !db ) return NULL;
-	BMContext *ctx = newContext( db, parent );
-	if ( !ctx ) return NULL;
-	return (CNCell *) newPair( entry, ctx );
+	BMContext *ctx = newContext( parent );
+	return (ctx) ? (CNCell *) newPair( entry, ctx ) : NULL;
 }
 void
 freeCell( CNCell *cell )
 {
+	if ( !cell ) return;
 	freeContext( cell->ctx );
 	freePair((Pair *) cell );
 }

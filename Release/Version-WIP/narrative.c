@@ -51,8 +51,7 @@ bm_read( BMReadMode mode, ... )
 		if ( file == NULL ) {
 			fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 			va_end( ap );
-			return NULL;
-		}
+			return NULL; }
 		break;
 	}
 	va_end( ap );
@@ -63,16 +62,13 @@ bm_read( BMReadMode mode, ... )
 	do {
 		int event = cn_parser_getc( &parser );
 		if ( event!=EOF && event!='\n' ) {
-			parser.column++;
-		}
+			parser.column++; }
 		parser.state = bm_parse( event, &data, mode, read_CB );
 		if ( !strcmp( parser.state, "" ) || parser.errnum ) {
-			break;
-		}
+			break; }
 		if ( event=='\n' ) {
 			parser.column = 0;
-			parser.line++;
-		}
+			parser.line++; }
 	} while ( strcmp( parser.state, "" ) );
 	if (!( mode == BM_INPUT ))
 		fclose( file );
@@ -95,48 +91,40 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		Pair *entry = data->entry;
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->story, "", newItem(narrative) );
-		}	
+			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
 		else if ( is_separator( *proto ) ) {
 			addItem((listItem **) &entry->value, narrative );
-			if ( !mode ) reorderListItem((listItem **) &entry->value );
-		}
+			if ( !mode ) reorderListItem((listItem **) &entry->value ); }
 		else {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
 			data->entry = registryRegister( data->story, proto, newItem(narrative) );
-			narrative->proto = NULL;
-		}
+			narrative->proto = NULL; }
 		if ( mode ) {
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
-			addItem( &data->stack.occurrences, data->narrative->root );
-		}
+			addItem( &data->stack.occurrences, data->narrative->root ); }
 		break;
 	case ProtoSet:
 		proto = StringFinish( data->string, 0 );
 		StringReset( data->string, CNStringMode );
 		if ( !proto ) {
 			if (( registryLookup( data->story, "" ) ))
-				return 0; // main already exists
-		}
+				return 0; } // main already exists
 		else if ( is_separator( *proto ) ) {
 			if ( !registryLookup( data->story, "" ) )
 				return 0; // no main
-			data->narrative->proto = proto;
-		}
+			data->narrative->proto = proto; }
 		else {
 			if (( registryLookup( data->story, proto ) ))
 				return 0; // double-def
-			data->narrative->proto = proto;
-		}
+			data->narrative->proto = proto; }
 		break;
 	case OccurrenceAdd: ;
 		int *tab = data->tab;
 		if ( TAB_LAST == -1 ) {
 			// very first occurrence
 			if ( data->type & ELSE )
-				return 0;
-		}
+				return 0; }
 		else if ( TAB_CURRENT == TAB_LAST + 1 ) {
 			if ( data->type & ELSE )
 				return 0;
@@ -145,11 +133,10 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			case ROOT: case ELSE:
 			case IN: case ELSE_IN:
 			case ON: case ELSE_ON:
+			case ON_X: case ELSE_ON_X:
 				break;
 			default:
-				return 0;
-			}
-		}
+				return 0; } }
 		else if ( TAB_CURRENT <= TAB_LAST ) {
 			for ( ; ; ) {
 				CNOccurrence *sibling = popListItem( &data->stack.occurrences );
@@ -158,10 +145,9 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 					return 0;
 				else if ( TAB_CURRENT <= TAB_LAST )
 					continue;
-				else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON) )
+				else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
 					break;
-			}
-		}
+				} }
 		else return 0;
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;
@@ -184,10 +170,8 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			occurrence->data->type = data->type;
 			occurrence->data->expression = StringFinish( data->string, 0 );
 			StringReset( data->string, CNStringMode );
-			break;
-		}
-		break;
-	}
+			break; }
+		break; }
 	return 1;
 }
 
@@ -209,8 +193,7 @@ bm_read_init( CNParser *parser, BMParseData *data, BMReadMode mode, BMContext *c
 		data->occurrence = data->narrative->root;
 		data->story = newRegistry( IndexedByName );
 		addItem( &data->stack.occurrences, data->occurrence );
-		break;
-	}
+		break; }
 	bm_parse_init( data, parser, mode, "base", file );
 	return mode;
 }
@@ -244,8 +227,7 @@ bm_read_exit( int errnum, BMParseData *data, BMReadMode mode )
 		if ( !take ) {
 			freeNarrative( data->narrative );
 			freeStory( data->story ); }
-		return take;
-	}
+		return take; }
 }
 
 //===========================================================================
@@ -270,8 +252,7 @@ free_CB( Registry *registry, Pair *entry )
 		CNNarrative *narrative = i->ptr;
 		if (( narrative->proto ))
 			free( narrative->proto );
-		freeOccurrence( narrative->root );
-	}
+		freeOccurrence( narrative->root ); }
 	freeListItem((listItem **) &entry->value );
 }
 
@@ -290,9 +271,7 @@ cnStoryOutput( FILE *stream, CNStory *story )
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );
-			fprintf( stream, "\n" );
-		}
-	}
+			fprintf( stream, "\n" ); } }
 	return 1;
 }
 static int
@@ -300,14 +279,12 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 {
 	if ( narrative == NULL ) {
 		fprintf( stderr, "Error: narrative_output: No narrative\n" );
-		return 0;
-	}
+		return 0; }
 	char *proto = narrative->proto;
 	if (( proto )) {
 		if ( !is_separator( *proto ) )
 			fprintf( stream, ": " );
-		fprintf( stream, "%s\n", proto );
-	}
+		fprintf( stream, "%s\n", proto ); }
 	CNOccurrence *occurrence = narrative->root;
 
 	listItem *i = newItem( occurrence ), *stack = NULL;
@@ -327,12 +304,11 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 				fprintf( stream, "else " );
 			if ( type&IN )
 				fprintf( stream, "in " );
-			else if ( type&ON )
+			else if ( type&(ON|ON_X) )
 				fprintf( stream, "on " );
 			else if ( type&(DO|INPUT|OUTPUT|NEW) )
 				fprintf( stream, "do " );
-			fprintf( stream, "%s\n", expression );
-		}
+			fprintf( stream, "%s\n", expression ); }
 
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i = j; level++; }
@@ -341,19 +317,13 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 				if (( i->next )) {
 					i = i->next;
 					occurrence = i->ptr;
-					break;
-				}
+					break; }
 				else if (( stack )) {
 					i = popListItem( &stack );
-					level--;
-				}
+					level--; }
 				else {
 					freeItem( i );
-					return 0;
-				}
-			}
-		}
-	}
+					return 0; } } } }
 }
 
 //===========================================================================
@@ -372,8 +342,7 @@ freeNarrative( CNNarrative *narrative )
 		char *proto = narrative->proto;
 		if (( proto )) free( proto );
 		freeOccurrence( narrative->root );
-		freePair((Pair *) narrative );
-	}
+		freePair((Pair *) narrative ); }
 }
 
 //===========================================================================
@@ -393,20 +362,14 @@ narrative_reorder( CNNarrative *narrative )
 			for ( ; ; ) {
 				if (( i->next )) {
 					i = i->next;
-					break;
-				}
+					break; }
 				else if (( stack )) {
 					i = popListItem( &stack );
 					occurrence = i->ptr;
-					reorderListItem( &occurrence->sub );
-				}
+					reorderListItem( &occurrence->sub ); }
 				else {
 					freeItem( i );
-					return;
-				}
-			}
-		}
-	}
+					return; } } } }
 }
 
 //===========================================================================
@@ -438,19 +401,13 @@ freeOccurrence( CNOccurrence *occurrence )
 				freePair((Pair *) occurrence );
 				if (( i->next )) {
 					i = i->next;
-					break;
-				}
+					break; }
 				else if (( stack )) {
 					i = popListItem( &stack );
 					occurrence = i->ptr;
-					freeListItem( &occurrence->sub );
-				}
+					freeListItem( &occurrence->sub ); }
 				else {
 					freeItem( i );
-					return;
-				}
-			}
-		}
-	}
+					return; } } } }
 }
 

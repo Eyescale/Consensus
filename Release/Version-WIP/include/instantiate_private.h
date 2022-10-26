@@ -10,7 +10,6 @@
 #define current \
 	( is_f( FIRST ) ? 0 : 1 )
 
-static listItem *bm_scan( char *, BMContext * );
 static listItem *bm_couple( listItem *sub[2], BMContext * );
 static CNInstance *bm_literal( char **, BMContext * );
 static listItem *bm_list( char **, listItem **, BMContext * );

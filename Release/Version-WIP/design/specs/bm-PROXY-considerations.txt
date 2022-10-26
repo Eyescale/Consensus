@@ -85,7 +85,6 @@ Narrative self Register Variable %%
     Caveats
 	. When used for comparison - cf. query.c:match() - %% simply means
 	  that the tested entity should verify ((.,this),NULL)
-
 	. do @< %% or any expression to that effect does nothing
 	. do ~< %% or any expression to that effect does nothing
 	. do ~( %% ) or any expression to that effect will deprecate the proxy
