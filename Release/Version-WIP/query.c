@@ -509,6 +509,9 @@ BMTraverseCBEnd
 //===========================================================================
 //	match
 //===========================================================================
+static inline int match_x( CNDB *, CNInstance *, char *, BMQueryData * );
+static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
+
 static int
 match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 /*
@@ -528,6 +531,8 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		return -1; }
 	else if ( p == NULL ) // wildcard
 		return 1;
+	else if (( data->db_x ))
+		return match_x( data->db_x, y, p, data );
 
 	// name-value-based testing: note that %! MUST come first
 	if ( !strncmp( p, "%|", 2 ) ) {
@@ -560,4 +565,80 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		default: return !strcomp( p, identifier, 1 ); } }
 
 	return 0; // not a base entity
+}
+static inline int
+match_x( CNDB *db_x, CNInstance *x, char *p, BMQueryData *data )
+/*
+	matching is taking place in external event narrative occurrence
+*/
+{
+	if (( data->pivot ) && p==data->pivot->name )
+		return ( x==data->pivot->value );
+	else if ( *p=='.' ) {
+		CNDB *db = BMContextDB( data->ctx );
+		return ( p[1]=='.' ?
+			db_x_match( db_x, x, db, BMContextParent(data->ctx) ) :
+			db_x_match( db_x, x, db, bm_context_lookup(data->ctx,".") ) ); }
+	else if ( *p=='*' && p[1] && !strmatch( ":,)", p[1] ) )
+		return ( x==data->star ); // dereferencing operator
+	else if ( *p=='%' ) {
+		CNDB *db = BMContextDB( data->ctx );
+		switch ( p[1] ) {
+		case '?': return db_x_match( db_x, x, db, bm_context_lookup(data->ctx,"?") );
+		case '!': return db_x_match( db_x, x, db, bm_context_lookup(data->ctx,"!") );
+		case '%': return db_x_match( db_x, x, db, BMContextSelf(data->ctx) ); } }
+
+	if ( !x->sub[0] ) {
+		char *identifier = db_identifier( x, db_x );
+		char_s q;
+		switch ( *p ) {
+		case '/': return !strcomp( p, identifier, 2 );
+		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
+		default: return !strcomp( p, identifier, 1 ); } }
+
+	return 0; // not a base entity
+}
+static inline int
+db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
+/*
+	Assumption: x!=NULL
+	Note that we use y to lead the traversal - but words either way
+*/
+{
+	if ( !y ) return 0;
+	listItem *stack = NULL;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(y,ndx) )) {
+			if ( !CNSUB(x,ndx) )
+				goto FAIL;
+			add_item( &stack, ndx );
+			addItem( &stack, y );
+			addItem( &stack, x );
+			y = y->sub[ ndx ];
+			x = x->sub[ ndx ];
+			ndx = 0; continue; }
+
+		if (( y->sub[ 0 ] )) {
+			// y is proxy==(( this, that ), NULL )
+			if (!( !x->sub[1] && (x->sub[0]) &&
+				x->sub[0]->sub[1]==y->sub[0]->sub[1] ))
+				goto FAIL; }
+		else {
+			if (( x->sub[ 0 ] ))
+				goto FAIL;
+			char *p_x = db_identifier( x, db_x );
+			char *p_y = db_identifier( y, db_y );
+			if ( strcomp( p_x, p_y, 1 ) )
+				goto FAIL; }
+		for ( ; ; ) {
+			if ( !stack ) return 1;
+			x = popListItem( &stack );
+			y = popListItem( &stack );
+			if ( !pop_item( &stack ) )
+				{ ndx=1; break; }
+		} }
+FAIL:
+	freeListItem( &stack );
+	return 0;
 }

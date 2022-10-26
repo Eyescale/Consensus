@@ -2,8 +2,10 @@
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
+	else in toto
 		do >"asd":< alpha,
 			beta >
+		do ( *.( toto ), titi )
 		do @< %(?:(toto,titi))
 		do ~< { asdlkj, alsdkj }
 		do : toto : !! world (

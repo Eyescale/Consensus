@@ -231,16 +231,17 @@ case_( close_CB )
 	if ( is_f(DOT) ) {
 		BMContext *ctx = data->ctx;
 		CNInstance *this = bm_context_fetch( ctx, "." );
-		if ((this) && (instances)) {
+		if (( instances )) {
 			if (( data->carry )) {
 				this = bm_context_inform( ctx, this, data->carry );
 				ctx = data->carry; }
-			data->sub[ 0 ] = newItem( this );
-			data->sub[ 1 ] = instances;
-			listItem *localized = bm_couple( data->sub, ctx );
-			freeListItem( &data->sub[ 0 ] );
-			freeListItem( &data->sub[ 1 ] );
-			instances = localized; }
+			if (( this )) {
+				data->sub[ 0 ] = newItem( this );
+				data->sub[ 1 ] = instances;
+				listItem *localized = bm_couple( data->sub, ctx );
+				freeListItem( &data->sub[ 0 ] );
+				freeListItem( &data->sub[ 1 ] );
+				instances = localized; } }
 		else _return( 2 ) }
 	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
@@ -252,21 +253,26 @@ case_( wildcard_CB )
 	data->sub[ current ] = newItem( NULL );
 	_break
 case_( dot_identifier_CB )
+	CNDB *db;
 	BMContext *ctx = data->ctx;
-	CNInstance *this = bm_context_fetch( ctx, "." );
+	CNInstance *this = bm_context_fetch( ctx, "." ), *e;
 	if (( data->carry )) {
 		this = bm_context_inform( ctx, this, data->carry );
-		ctx = data->carry; }
-	CNInstance *e = bm_register( ctx, p+1 );
-	if ((this) && (e)) {
-		e = db_instantiate( this, e, BMContextDB(ctx) );
-		data->sub[ current ] = newItem( e ); }
-	else _return( 2 )
+		db = BMContextDB( data->carry );
+		e = db_register( p+1, db ); }
+	else {
+		db = BMContextDB( ctx );
+		e = bm_register( ctx, p+1 ); }
+	if (( this )) e = db_instantiate( this, e, db );
+	data->sub[ current ] = newItem( e );
 	_break
 case_( identifier_CB )
-	BMContext *ctx = (data->carry) ? data->carry : data->ctx;
-	CNInstance *e = bm_register( ctx, p );
-	data->sub[ current ] = newItem( e );
+	if (( data->carry )) {
+		CNInstance *e = db_register( p, BMContextDB(data->carry) );
+		data->sub[ current ] = newItem( e ); }
+	else {
+		CNInstance *e = bm_register( data->ctx, p );
+		data->sub[ current ] = newItem( e ); }
 	_break
 case_( signal_CB )
 	BMContext *ctx = (data->carry) ? data->carry : data->ctx;

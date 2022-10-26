@@ -48,7 +48,7 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 		switch ( *p ) {
 			case '>':
 				if ( is_f(VECTOR) ) {
-					f_pop( stack, 0 )
+					f_clr( VECTOR )
 					f_cls }
 				p++; break;
 			case '<':
@@ -89,7 +89,7 @@ _CB( BMBgnPipeCB )		f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;
 			case '*':
-				if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
+				if ( !p[1] || strmatch( ":,)}|", p[1] ) ) {
 _CB( BMStarCharacterCB )		f_cls }
 				else {
 _CB( BMDereferenceCB )			f_clr( INFORMED ) }
@@ -128,7 +128,6 @@ _CB(( BMTermCB ))			}
 				break;
 			case ':':
 				if ( p[1]=='<' ) {
-					f_push( stack );
 					f_set( VECTOR );
 					p+=2; break; }
 				else {

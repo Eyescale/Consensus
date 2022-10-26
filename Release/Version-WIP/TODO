@@ -1,5 +1,13 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. DEBUG: do ( *.(toto), titi ) passes parser but exit(-1)
+	. context.c: bm_context_fetch( ctx, "." ) - deprecate
+		in main narrative: set %. to Self proxy
+		the use bm_context_lookup(ctx,".") consistently everywhere
+	 	instead of bm_context_fetch()
+	. instantiate.c
+		DOT expressions / identifier - in data->carry: rethink
+	. Optimize the number of calls to BMContextDB(ctx) all over the code
 	. EENO Implementation
 		. parser.c, traverse.c, string_util.c:p_prune()
 			. handle '<'		[DONE]
@@ -12,6 +20,16 @@ TODO
 			. bm_scan_active	[DONE]
 			. bm_proxy_feel		[WIP]
 		. query.c: match()
+			. need to handle y==proxy
+				if ( !y->sub[0] ) { ... }
+				else if ( !y->sub[1] ) {
+					what do I do then? }
+			  y is a proxy but we have already addressed all
+			  the relevant p cases - %% and .. (and later %<)
+			  => so OK
+
+			. extended BMQueryData to hold db_x
+			. introduced match_x() / overrides match() when db_x is set
 			. Handle %? when %< is set - including special case: %(%?:...)
 			. Attention: bm_context_mark, when %< is set...
 		. EENO register variables
@@ -33,6 +51,11 @@ TODO
 		. Additonal examples
 			. yak using new Cell design (and literals)
 			. interactive // TBD
+	. ISSUE: both instantiate.c:bm_conceive() and query.c:match_x() proceed on
+		the assumption that expression's identifiers are not locale(s).
+		This is the correct assumption. but we should introduce %identifier
+		to enable the use of locale(s) in such expressions.
+	. ISSUE: *.identifier and *.( ) are allowed - but never tested (?)
 ON-GOING
     Version-1.2 Documentation
 	     Release Documents

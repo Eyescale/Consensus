@@ -262,15 +262,15 @@ bm_context_inform( BMContext *ctx, CNInstance *e, BMContext *dst )
 			char *p = db_identifier( e, db_src );
 			instance = db_register( strmake(p), db_dst ); }
 		for ( ; ; ) {
-			if (( stack.src )) {
-				e = popListItem( &stack.src );
-				if (( ndx = pop_item( &stack.src ) )) {
-					e = popListItem( &stack.dst );
-					instance = db_instantiate( e, instance, db_dst ); }
-				else {
-					addItem( &stack.dst, instance );
-					ndx=1; break; } }
-			else return instance; } }
+			if ( !stack.src ) return instance;
+			e = popListItem( &stack.src );
+			if (( ndx = pop_item( &stack.src ) )) {
+				e = popListItem( &stack.dst );
+				instance = db_instantiate( e, instance, db_dst ); }
+			else {
+				addItem( &stack.dst, instance );
+				ndx=1; break; }
+		} }
 }
 static CNInstance *
 lookup_proxy( BMContext *ctx, CNInstance *that )

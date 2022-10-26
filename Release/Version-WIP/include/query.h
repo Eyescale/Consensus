@@ -14,6 +14,7 @@ typedef BMCBTake BMQueryCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_query( BMQueryType, char *expression, BMContext *, BMQueryCB, void * );
 
 typedef struct {
+	CNDB *db_x;
 	BMQueryType type;
 	BMQueryCB *user_CB;
 	void *user_data;
