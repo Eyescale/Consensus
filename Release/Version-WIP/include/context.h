@@ -14,11 +14,10 @@ void		freeContext( BMContext * );
 void		bm_context_finish( BMContext *ctx, int subscribe );
 BMCBTake	bm_activate( CNInstance *, BMContext *, void * );
 BMCBTake	bm_deactivate( CNInstance *, BMContext *, void * );
-void		bm_check_active( BMContext *ctx );
+void		bm_context_check( BMContext *ctx );
 void		bm_context_init( BMContext *ctx );
 void		bm_context_update( BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
-CNInstance *	bm_context_fetch( BMContext *, char * );
 listItem *	bm_inform( BMContext *, listItem **, BMContext * );
 CNInstance *	bm_context_inform( BMContext *, CNInstance *, BMContext * );
 void		bm_context_flush( BMContext * );
@@ -39,6 +38,7 @@ typedef struct {
 } ActiveRV;
 
 #define BMContextDB( ctx )	((CNDB *) ctx->this->sub[0])
+#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 #define BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
 #define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx->registry, "@" )->value )
 #define BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )

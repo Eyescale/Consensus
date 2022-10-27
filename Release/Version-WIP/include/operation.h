@@ -3,9 +3,8 @@
 
 #include "program.h"
 
-int	bm_operate( CNCell *, listItem **new, CNStory * );
-void	bm_update( CNCell * );
-void	bm_init( CNCell * );
+void bm_operate( CNNarrative *, BMContext *, CNInstance *,
+	Registry *subs, listItem *narratives, CNStory *story );
 
 
 #endif	// OPERATION_H

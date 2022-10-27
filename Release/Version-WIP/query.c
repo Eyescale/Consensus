@@ -440,17 +440,23 @@ case_( match_CB )
 	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
 	_break
 case_( dot_identifier_CB )
-	xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
-	case -1: data->success = 0; break;
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-	case  1:
-		xpn_set( data->stack.exponent, AS_SUB, 1 );
+	if (( BMContextPerso( data->ctx ) )) {
+		xpn_add( &data->stack.exponent, AS_SUB, 0 );
+		switch ( match( data->instance, p, data->base, data ) ) {
+		case -1: data->success = 0; break;
+		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+		case  1:
+			xpn_set( data->stack.exponent, AS_SUB, 1 );
+			switch ( match( data->instance, p+1, data->base, data ) ) {
+			case -1: data->success = 0; break;
+			case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+			default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
+		popListItem( &data->stack.exponent ); }
+	else {
 		switch ( match( data->instance, p+1, data->base, data ) ) {
 		case -1: data->success = 0; break;
 		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
-	popListItem( &data->stack.exponent );
 	_break
 case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
@@ -460,13 +466,14 @@ case_( sub_expression_CB )
 	if (( data->mark_exp )) _return( 1 )
 	_break
 case_( dot_expression_CB )
-	xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
-	case -1: data->success = 0;
-		_prune( BM_PRUNE_TERM )
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
-		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
-	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
+	if (( BMContextPerso( data->ctx ) )) {
+		xpn_add( &data->stack.exponent, AS_SUB, 0 );
+		switch ( match( data->instance, p, data->base, data ) ) {
+		case -1: data->success = 0;
+			_prune( BM_PRUNE_TERM )
+		case  0: data->success = is_f( NEGATED ) ? 1 : 0;
+			_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
+		case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); } }
 	_break
 case_( open_CB )
 	if ( f_next & COUPLE )
@@ -490,7 +497,8 @@ case_( close_CB )
 	if ( data->stack.flags==data->OOS )
 		_return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
-	if is_f( DOT ) popListItem( &data->stack.exponent );
+	if ( is_f( DOT ) && (BMContextPerso(data->ctx)) )
+		popListItem( &data->stack.exponent );
 	if ( f_next & NEGATED ) data->success = !data->success;
 	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
 		traverse_data->done = 1; // after popping
@@ -519,6 +527,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	is either NULL or the exponent of p as expression term
 */
 {
+	CNDB *db_x;
 	listItem *xpn = NULL;
 	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
@@ -531,8 +540,8 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		return -1; }
 	else if ( p == NULL ) // wildcard
 		return 1;
-	else if (( data->db_x ))
-		return match_x( data->db_x, y, p, data );
+	else if (( db_x = DB_X(data) ))
+		return match_x( db_x, y, p, data );
 
 	// name-value-based testing: note that %! MUST come first
 	if ( !strncmp( p, "%|", 2 ) ) {
@@ -541,9 +550,9 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	else if (( data->pivot ) && p==data->pivot->name )
 		return ( y==data->pivot->value );
 	else if ( *p=='.' )
-		return ( p[1]=='.' ?
+		return ( p[1]=='.' ) ?
 			y==BMContextParent( data->ctx ) :
-			y==bm_context_lookup( data->ctx, "." ) );
+			y==BMContextPerso( data->ctx );
 	else if ( *p=='*' )
 		return ( y==data->star );
 	else if ( *p=='%' )
@@ -576,9 +585,9 @@ match_x( CNDB *db_x, CNInstance *x, char *p, BMQueryData *data )
 		return ( x==data->pivot->value );
 	else if ( *p=='.' ) {
 		CNDB *db = BMContextDB( data->ctx );
-		return ( p[1]=='.' ?
+		return ( p[1]=='.' ) ?
 			db_x_match( db_x, x, db, BMContextParent(data->ctx) ) :
-			db_x_match( db_x, x, db, bm_context_lookup(data->ctx,".") ) ); }
+			db_x_match( db_x, x, db, BMContextPerso(data->ctx) ); }
 	else if ( *p=='*' && p[1] && !strmatch( ":,)", p[1] ) )
 		return ( x==data->star ); // dereferencing operator
 	else if ( *p=='%' ) {

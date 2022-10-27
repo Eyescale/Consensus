@@ -1,33 +1,23 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. DEBUG: do ( *.(toto), titi ) passes parser but exit(-1)
-	. context.c: bm_context_fetch( ctx, "." ) - deprecate
-		in main narrative: set %. to Self proxy
-		the use bm_context_lookup(ctx,".") consistently everywhere
-	 	instead of bm_context_fetch()
-	. instantiate.c
-		DOT expressions / identifier - in data->carry: rethink
-	. Optimize the number of calls to BMContextDB(ctx) all over the code
+	. on_event_x
+		. implement on_proxy_feel => bm_query( type, expression, ctx, NULL, db_x )
+			. query.c	=> set db_x
+			. locate.c	=> do not enter sub_expression
+			. bm_lookup	=> 
+			. assignment
 	. EENO Implementation
 		. parser.c, traverse.c, string_util.c:p_prune()
-			. handle '<'		[DONE]
+			. handle '<'		[ DONE ]
 		. operation.c
-			. on_event_from		[DONE]
+			. on_event_from		[ DONE ]
 		. expression.c
-			. bm_proxy_in		[DONE]
-			. bm_proxy_still	[DONE]
-			. bm_check_active	[DONE]
-			. bm_scan_active	[DONE]
-			. bm_proxy_feel		[WIP]
+			. bm_proxy_in		[ DONE ]
+			. bm_proxy_still	[ DONE ]
+			. bm_check_active	[ DONE ]
+			. bm_scan_active	[ DONE ]
+			. bm_proxy_feel		[ WIP ]
 		. query.c: match()
-			. need to handle y==proxy
-				if ( !y->sub[0] ) { ... }
-				else if ( !y->sub[1] ) {
-					what do I do then? }
-			  y is a proxy but we have already addressed all
-			  the relevant p cases - %% and .. (and later %<)
-			  => so OK
-
 			. extended BMQueryData to hold db_x
 			. introduced match_x() / overrides match() when db_x is set
 			. Handle %? when %< is set - including special case: %(%?:...)
@@ -36,6 +26,9 @@ TODO
 			. update design/new-features-and-additions.txt [DONE]
 			. implementation
 				. context.c: bm_context_mark_x
+	. context.c: create registry entry "" for Base Narrative Pin
+	. instantiate.c / assignment.c: handle entry==NULL prior to bm_conceive()
+	. Optimize the number of calls to BMContextDB(ctx) all over the code
 	. Testing
 		. 3_TM.multi/TM-head_tape.story
 	. Pass design/story/{all}
@@ -55,7 +48,9 @@ TODO
 		the assumption that expression's identifiers are not locale(s).
 		This is the correct assumption. but we should introduce %identifier
 		to enable the use of locale(s) in such expressions.
-	. ISSUE: *.identifier and *.( ) are allowed - but never tested (?)
+	. ISSUE: BMContextPin(ctx) returns NULL in case of Base Narrative. This is
+		correct, but the code would be lighter if we could have a unique
+		CNInstance to identify base narrative as well.
 ON-GOING
     Version-1.2 Documentation
 	     Release Documents
@@ -104,6 +99,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. deprecated bm_context_fetch() -> BMContextPin() [may be NULL]
 	. instantiate.c apply data->carry when set
 	. parser.c: File Format support for %% and .. Register Variables
 	. Bufferized active @ register so that activation/deactivation changes

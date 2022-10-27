@@ -24,7 +24,7 @@ typedef struct {
 } BMInstantiateData;
 
 void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
-CNInstance *bm_conceive( char *, BMTraverseData *, Pair * );
+CNInstance *bm_conceive( Pair *, char *, BMTraverseData * );
 
 
 #endif	// INSTANTIATE_H

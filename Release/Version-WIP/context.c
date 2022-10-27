@@ -21,7 +21,7 @@ newContext( CNEntity *parent )
 		id->value = db_proxy( this, parent, db );
 	Pair *active = newPair( newPair(NULL,NULL), NULL );
 	Registry *registry = newRegistry( IndexedByCharacter );
-	registryRegister( registry, "%", id ); // aka. %% and ..
+	registryRegister( registry, "%", id ); // aka. %% and .. (proxies)
 	registryRegister( registry, "@", active ); // active connections (proxies)
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
@@ -69,7 +69,7 @@ freeContext( BMContext *ctx )
 	/* release this now that both its subs are NULL
 	   cn_release will nullify this in subscribers' connections ( ., this )
 	   subscriber is responsible for removing dangling connections
-	   see bm_check_active() below
+	   see bm_context_check() below
 	*/
 	cn_release( this );
 
@@ -100,7 +100,7 @@ bm_context_finish( BMContext *ctx, int subscribe )
 }
 
 //===========================================================================
-//	bm_activate / bm_deactivate / bm_check_active
+//	bm_activate / bm_deactivate / bm_context_check
 //===========================================================================
 BMCBTake
 bm_activate( CNInstance *proxy, BMContext *ctx, void *user_data )
@@ -121,7 +121,7 @@ bm_deactivate( CNInstance *proxy, BMContext *ctx, void *user_data )
 	return BM_CONTINUE;
 }
 void
-bm_check_active( BMContext *ctx )
+bm_context_check( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	ActiveRV *active = BMContextActive( ctx );
@@ -164,10 +164,10 @@ bm_context_update( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db, BMContextParent(ctx) );
-
-	// deactivate connections whose proxies were deprecated
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
+
+	// deactivate connections whose proxies were deprecated
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
 		CNInstance *e = i->ptr; next_i = i->next;
@@ -177,7 +177,7 @@ bm_context_update( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_set / bm_context_fetch
+//	bm_context_set
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -210,19 +210,6 @@ register_CB( char *p, listItem *exponent, void *user_data )
 	registryRegister( data->registry, p, instance );
 }
 
-CNInstance *
-bm_context_fetch( BMContext *ctx, char *unused )
-{
-	Pair *entry = registryLookup( ctx->registry, "." );
-	CNInstance *instance = entry->value;
-	if ( !instance ) {
-		// base narrative LOCALE declaration: authorize
-		// creation of a base entity named "this"
-		entry->value = db_register( "this", BMContextDB(ctx) );
-		instance = entry->value;
-	}
-	return instance;
-}
 
 //===========================================================================
 //	bm_inform / bm_context_inform
@@ -411,7 +398,7 @@ bm_context_lookup( BMContext *ctx, char *p )
 		switch ( *p ) {
 		case '?':
 		case '!':
-		case '|':
+		case '|': ;
 			if ((entry->value))
 				return ((listItem*)entry->value)->ptr;
 			break;
@@ -430,7 +417,7 @@ bm_context_register( BMContext *ctx, char *p )
 	register .locale(s)
 */
 {
-	CNInstance *this = bm_context_fetch( ctx, "." );
+	CNInstance *perso = BMContextPerso( ctx );
 	Pair *entry;
 	CNDB *db = BMContextDB( ctx );
 	while ( *p=='.' ) {
@@ -439,14 +426,14 @@ bm_context_register( BMContext *ctx, char *p )
 		if (( entry )) goto ERR; // already registered
 		else {
 			CNInstance *x = db_register( p, db );
-			x = db_instantiate( this, x, db );
+			if (( perso )) x = db_instantiate( perso, x, db );
 			registryRegister( ctx->registry, p, x ); }
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
 	return 1;
 ERR: ;
 	CNInstance *instance = entry->value;
-	if ( instance->sub[ 0 ]==this ) {
+	if ( instance->sub[ 0 ]==perso ) {
 		fprintf( stderr, ">>>>> B%%: Error: LOCALE "
 			"multiple declarations: '.%s'\n", p ); }
 	else fprintf( stderr, ">>>>> B%%: Error: LOCALE name '.%s' "

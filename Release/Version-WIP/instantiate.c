@@ -57,7 +57,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		char *p = expression + 2; // skip '!!'
 		Pair *entry = registryLookup( story, p );
 		p = p_prune( PRUNE_IDENTIFIER, p );
-		bm_conceive( p, &traverse_data, entry ); }
+		bm_conceive( entry, p, &traverse_data ); }
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
@@ -87,7 +87,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 //	bm_conceive
 //---------------------------------------------------------------------------
 CNInstance *
-bm_conceive( char *p, BMTraverseData *traverse_data, Pair *entry )
+bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 /*
 	Assumption: *p=='('
 */
@@ -230,13 +230,13 @@ case_( close_CB )
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( is_f(DOT) ) {
 		BMContext *ctx = data->ctx;
-		CNInstance *this = bm_context_fetch( ctx, "." );
+		CNInstance *perso = BMContextPerso( ctx );
 		if (( instances )) {
 			if (( data->carry )) {
-				this = bm_context_inform( ctx, this, data->carry );
+				perso = bm_context_inform( ctx, perso, data->carry );
 				ctx = data->carry; }
-			if (( this )) {
-				data->sub[ 0 ] = newItem( this );
+			if (( perso )) {
+				data->sub[ 0 ] = newItem( perso );
 				data->sub[ 1 ] = instances;
 				listItem *localized = bm_couple( data->sub, ctx );
 				freeListItem( &data->sub[ 0 ] );
@@ -255,15 +255,15 @@ case_( wildcard_CB )
 case_( dot_identifier_CB )
 	CNDB *db;
 	BMContext *ctx = data->ctx;
-	CNInstance *this = bm_context_fetch( ctx, "." ), *e;
+	CNInstance *perso = BMContextPerso( ctx ), *e;
 	if (( data->carry )) {
-		this = bm_context_inform( ctx, this, data->carry );
+		perso = bm_context_inform( ctx, perso, data->carry );
 		db = BMContextDB( data->carry );
 		e = db_register( p+1, db ); }
 	else {
 		db = BMContextDB( ctx );
 		e = bm_register( ctx, p+1 ); }
-	if (( this )) e = db_instantiate( this, e, db );
+	if (( perso )) e = db_instantiate( perso, e, db );
 	data->sub[ current ] = newItem( e );
 	_break
 case_( identifier_CB )

@@ -33,7 +33,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 		Pair *entry = registryLookup( story, p );
 		char *q = p = p_prune( PRUNE_IDENTIFIER, p );
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
-			CNInstance *proxy = bm_conceive( p, traverse_data, entry );
+			CNInstance *proxy = bm_conceive( entry, p, traverse_data );
 			db_assign( i->ptr, proxy, db );
 		} }
 	else if ( !strncmp( p, "~.", 2 ) ) {

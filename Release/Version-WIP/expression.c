@@ -10,40 +10,7 @@
 // #define DEBUG
 
 //===========================================================================
-//	bm_feel / bm_proxy_feel
-//===========================================================================
-CNInstance *
-bm_feel( BMQueryType type, char *expression, BMContext *ctx )
-{
-	return bm_query( type, expression, ctx, NULL, NULL );
-}
-CNInstance *
-bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
-{
-	return NULL;
-}
-
-//===========================================================================
-//	bm_proxy_op
-//===========================================================================
-void
-bm_proxy_op( char *expression, BMContext *ctx )
-{
-	bm_check_active( ctx ); // remove dangling connections
-	char *p = expression;
-	BMQueryCB *op = ( *p=='@' ) ?
-		bm_activate : bm_deactivate;
-	p += 2;
-	if ( *p=='{' )
-		do {	p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
-			p = p_prune( PRUNE_TERM, p );
-		} while ( *p!='}' );
-	else
-		bm_query( BM_CONDITION, p, ctx, op, NULL );
-}
-
-//===========================================================================
-//	bm_scan / bm_scan_active
+//	bm_scan
 //===========================================================================
 static BMQueryCB scan_CB;
 
@@ -61,25 +28,22 @@ scan_CB( CNInstance *e, BMContext *ctx, void *results )
 	return BM_CONTINUE;
 }
 
-listItem *
-bm_scan_active( char *expression, BMContext *ctx )
-/*
-	return all context's active connections matching expression
-*/
+//===========================================================================
+//	bm_release
+//===========================================================================
+static BMQueryCB release_CB;
+
+void
+bm_release( char *expression, BMContext *ctx )
 {
-	bm_check_active( ctx ); // remove dangling connections
-	listItem *results = NULL;
 	CNDB *db = BMContextDB( ctx );
-	BMQueryData data;
-	memset( &data, 0, sizeof(BMQueryData) );
-	data.type = BM_CONDITION;
-	data.ctx = ctx;
-	data.star = db_star( db );
-	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
-		CNInstance *proxy = i->ptr;
-		if ( xp_verify( proxy, expression, &data ) )
-			addItem( &results, proxy ); }
-	return results;
+	bm_query( BM_CONDITION, expression, ctx, release_CB, db );
+}
+static BMCBTake
+release_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	db_deprecate( e, (CNDB *) user_data );
+	return BM_CONTINUE;
 }
 
 //===========================================================================
@@ -156,21 +120,52 @@ case_( touch_CB )
 BMTraverseCBEnd
 
 //===========================================================================
-//	bm_release
+//	bm_proxy_op
 //===========================================================================
-static BMQueryCB release_CB;
-
 void
-bm_release( char *expression, BMContext *ctx )
+bm_proxy_op( char *expression, BMContext *ctx )
 {
-	CNDB *db = BMContextDB( ctx );
-	bm_query( BM_CONDITION, expression, ctx, release_CB, db );
+	if ( !expression || !(*expression)) return;
+
+	bm_context_check( ctx ); // remove dangling connections
+	char *p = expression;
+	BMQueryCB *op = ( *p=='@' ) ?
+		bm_activate : bm_deactivate;
+	p += 2;
+	if ( *p!='{' )
+		bm_query( BM_CONDITION, p, ctx, op, NULL );
+	else do {
+		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
+		p = p_prune( PRUNE_TERM, p );
+	} while ( *p!='}' );
 }
-static BMCBTake
-release_CB( CNInstance *e, BMContext *ctx, void *user_data )
+
+//===========================================================================
+//	bm_proxy_scan
+//===========================================================================
+listItem *
+bm_proxy_scan( char *expression, BMContext *ctx )
+/*
+	return all context's active connections (proxies) matching expression
+*/
 {
-	db_deprecate( e, (CNDB *) user_data );
-	return BM_CONTINUE;
+	if ( !expression || !(*expression)) return NULL;
+
+	bm_context_check( ctx ); // remove dangling connections
+	listItem *results = NULL;
+
+	CNDB *db = BMContextDB( ctx );
+	BMQueryData data;
+	memset( &data, 0, sizeof(BMQueryData) );
+	data.type = BM_CONDITION;
+	data.ctx = ctx;
+	data.star = db_star( db );
+
+	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
+		CNInstance *proxy = i->ptr;
+		if ( xp_verify( proxy, expression, &data ) )
+			addItem( &results, proxy ); }
+	return results;
 }
 
 //===========================================================================

@@ -23,7 +23,6 @@ int	cnOperate( CNProgram * );
 void	cnUpdate( CNProgram * );
 
 CNCell *newCell( Pair *, CNEntity * );
-void freeCell( CNCell * );
 
 
 #endif	// PROGRAM_H

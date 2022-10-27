@@ -14,7 +14,6 @@ typedef BMCBTake BMQueryCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_query( BMQueryType, char *expression, BMContext *, BMQueryCB, void * );
 
 typedef struct {
-	CNDB *db_x;
 	BMQueryType type;
 	BMQueryCB *user_CB;
 	void *user_data;
@@ -39,5 +38,7 @@ typedef struct {
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 CNInstance *xp_traverse( char *, BMQueryData *, XPTraverseCB );
 int xp_verify( CNInstance *, char *, BMQueryData * );
+
+#define DB_X( data ) ((CNDB*) ((data->user_CB) ? NULL : data->user_data ))
 
 #endif	// QUERY_H

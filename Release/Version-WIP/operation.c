@@ -5,27 +5,25 @@
 #include "program.h"
 #include "operation.h"
 #include "expression.h"
-#include "locate.h"
-#include "query.h"
 
 // #define DEBUG
 
 static int in_condition( char *, BMContext *, int *marked );
 static int on_event( char *, BMContext *, int *marked );
-static int on_event_from( char *, BMContext *, int *marked );
+static int on_event_x( char *, BMContext *, int *marked );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 
 //===========================================================================
-//	operate
+//	bm_operate
 //===========================================================================
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
-static void
-operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
-	BMContext *ctx, listItem *narratives, CNStory *story )
+void
+bm_operate( CNNarrative *narrative, BMContext *ctx, CNInstance *instance,
+	Registry *subs, listItem *narratives, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
@@ -52,7 +50,7 @@ operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
 			break;
 		ctrl(ELSE_ON_X) case ON_X:
 			deternarized = bm_deternarize( &expression, ctx );
-			passed = on_event_from( expression, ctx, &marked );
+			passed = on_event_x( expression, ctx, &marked );
 			break;
 		ctrl(ELSE_DO) case DO:
 			deternarized = bm_deternarize( &expression, ctx );
@@ -60,7 +58,7 @@ operate( CNNarrative *narrative, CNInstance *instance, Registry *registry,
 			break;
 		ctrl(ELSE_EN) case EN:
 			deternarized = bm_deternarize( &expression, ctx );
-			do_enable( registry, narratives, expression, ctx );
+			do_enable( subs, narratives, expression, ctx );
 			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			deternarized = bm_deternarize( &expression, ctx );
@@ -98,106 +96,6 @@ RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
-}
-
-//===========================================================================
-//	bm_operate
-//===========================================================================
-static void enlist( Registry *subs, Registry *index, Registry *warden );
-static void relieve_CB( Registry *, Pair *entry );
-
-int
-bm_operate( CNCell *cell, listItem **new, CNStory *story )
-{
-#ifdef DEBUG
-	fprintf( stderr, "bm_operate: bgn\n" );
-#endif
-	BMContext *ctx = cell->ctx;
-	freeListItem( BMContextCarry(ctx) );
-	CNDB *db = BMContextDB( ctx );
-	if ( db_out(db) ) return 0;
-
-	Registry *warden, *index[ 2 ], *swap;
-	warden = newRegistry( IndexedByAddress );
-	index[ 0 ] = newRegistry( IndexedByAddress );
-	index[ 1 ] = newRegistry( IndexedByAddress );
-
-	listItem *narratives = cell->entry->value;
-	CNNarrative *base = narratives->ptr; // base narrative
-	registryRegister( index[ 1 ], base, newItem( NULL ) );
-	do {
-		swap = index[ 0 ];
-		index[ 0 ] = index[ 1 ];
-		index[ 1 ] = swap;
-		listItem **active = &index[ 0 ]->entries; // narratives to be operated
-		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
-			CNNarrative *narrative = entry->name;
-			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
-				CNInstance *instance = popListItem( instances );
-				Registry *subs = newRegistry( IndexedByAddress );
-				operate( narrative, instance, subs, ctx, narratives, story );
-				enlist( index[ 1 ], subs, warden );
-				freeRegistry( subs, NULL ); } }
-	} while (( index[ 1 ]->entries ));
-	freeRegistry( warden, relieve_CB );
-	freeRegistry( index[ 0 ], NULL );
-	freeRegistry( index[ 1 ], NULL );
-#ifdef DEBUG
-	fprintf( stderr, "bm_operate: end\n" );
-#endif
-	return 1;
-}
-static void
-relieve_CB( Registry *warden, Pair *entry )
-{
-	freeListItem((listItem **) &entry->value );
-}
-static void
-enlist( Registry *index, Registry *subs, Registry *warden )
-/*
-	enlist subs:%{[ narrative, instance:%{} ]} into index of same type,
-	under warden supervision: we rely on registryRegister() to return
-	the found entry if there is one, and on addIfNotThere() to return
-	NULL is there is none.
-*/
-{
-#define s_place( s, index, narrative ) \
-	if (!( s )) { \
-		Pair *entry = registryRegister( index, narrative, NULL ); \
-		s = (listItem **) &entry->value; }
-
-	listItem **narratives = (listItem **) &subs->entries;
-	for ( Pair *sub;( sub = popListItem(narratives) ); freePair(sub) ) {
-		CNNarrative *narrative = sub->name;
-		listItem **selection = NULL;
- 		Pair *found = registryLookup( warden, narrative );
-		if (!( found )) {
-			registryRegister( warden, narrative, sub->value );
-			s_place( selection, index, narrative );
-			for ( listItem *i=sub->value; i!=NULL; i=i->next )
-				addItem( selection, i->ptr ); }
-		else {
-			listItem **enlisted = (listItem **) &found->value;
-			listItem **candidates = (listItem **) &sub->value;
-			for ( CNInstance *instance;( instance = popListItem(candidates) ); ) {
-				if (( addIfNotThere( enlisted, instance ) )) {
-					s_place( selection, index, narrative );
-					addItem( selection, instance );
-		} } } }
-}
-
-//===========================================================================
-//	bm_init / bm_update
-//===========================================================================
-void
-bm_init( CNCell *cell )
-{
-	bm_context_init( cell->ctx );
-}
-void
-bm_update( CNCell *cell )
-{
-	bm_context_update( cell->ctx );
 }
 
 //===========================================================================
@@ -273,16 +171,16 @@ RETURN:
 }
 
 //===========================================================================
-//	on_event_from
+//	on_event_x
 //===========================================================================
 static int
-on_event_from( char *expression, BMContext *ctx, int *marked )
+on_event_x( char *expression, BMContext *ctx, int *marked )
 /*
 	Assumption: *marked = 0 to begin with
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "on_event_from bgn: %s\n", expression );
+	fprintf( stderr, "on_event_x bgn: %s\n", expression );
 #endif
 	CNInstance *found;
 	int success, negated=0;
@@ -290,7 +188,7 @@ on_event_from( char *expression, BMContext *ctx, int *marked )
 		{ negated=1; expression += 3; }
 
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
-	listItem *candidates = bm_scan_active( src, ctx );
+	listItem *candidates = bm_proxy_scan( src, ctx );
 
 	for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
 		switch ( *expression ) {
@@ -314,7 +212,7 @@ on_event_from( char *expression, BMContext *ctx, int *marked )
 		if ( success ) goto RETURN; } }
 RETURN:
 #ifdef DEBUG
-	fprintf( stderr, "on_event_from end\n" );
+	fprintf( stderr, "on_event_x end\n" );
 #endif
 	freeListItem( &candidates );
 	return ( negated ? !success : success );
