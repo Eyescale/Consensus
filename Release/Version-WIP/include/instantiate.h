@@ -20,7 +20,8 @@ typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
-	BMContext *ctx, *carry;
+	BMContext *ctx;
+	CNEntity *carry;
 } BMInstantiateData;
 
 void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );

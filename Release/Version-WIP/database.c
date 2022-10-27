@@ -76,7 +76,7 @@ db_register( char *p, CNDB *db )
 {
 	if ( p == NULL ) return NULL;
 #ifdef NULL_TERMINATED
-	p = strmake( p );
+	p = strmake( p ); // for comparison
 #endif
 	CNInstance *e = NULL;
 	Pair *entry = registryLookup( db->index, p );
@@ -89,7 +89,7 @@ db_register( char *p, CNDB *db )
 	}
 	else {
 #ifndef NULL_TERMINATED
-		p = strmake( p );
+		p = strmake( p ); // for storage
 #endif
 		e = cn_new( NULL, NULL );
 #ifdef UNIFIED
@@ -288,17 +288,17 @@ db_lookup( int privy, char *p, CNDB *db )
 //===========================================================================
 //	db_identifier
 //===========================================================================
+#ifndef UNIFIED
 char *
 db_identifier( CNInstance *e, CNDB *db )
+/*
+	Assumption: e->sub[0]==e->sub[1]==NULL
+*/
 {
-	if (( e->sub[0] )) return NULL; // proxy
-#ifdef UNIFIED
-	return (char *) e->sub[ 1 ];
-#else
 	Pair *entry = registryLookup( db->index, NULL, e );
 	return ( entry ) ? entry->name : NULL;
-#endif
 }
+#endif	// UNIFIED
 
 //===========================================================================
 //	db_first, db_next, db_traverse
@@ -430,27 +430,28 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 {
 	if ( e == NULL ) return 0;
 	if ( type=='s' ) {
-		if ((e->sub[ 0 ])&&(e->sub[ 1 ]))
+		if (( e->sub[ 0 ] ) && ( e->sub[ 1 ] ))
 			fprintf( stream, "\\" );
+		else if ( !e->sub[0] ) {
+			fprintf( stream, "%s", db_identifier(e,db) );
+			return 0; }
 		else {
-			char *p = db_identifier( e, db );
-			if ( !p ) fprintf( stream, "@@@" );
-			else fprintf( stream, "%s", p );
+			fprintf( stream, "@@@" ); // proxy
 			return 0; } }
 
 	listItem *stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {
-		if (( e->sub[ ndx ] )) {
+		if (( CNSUB(e,ndx) )) {
 			fprintf( stream, ndx==0 ? "(" : "," );
 			add_item( &stack, ndx );
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
-		char *p = db_identifier( e, db );
-		if ( !p )
+		if (( e->sub[ 0 ] ))
 			fprintf( stream, "@@@" ); // proxy
 		else {
+			char *p = db_identifier( e, db );
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
 			else {

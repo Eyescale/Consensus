@@ -31,10 +31,15 @@ void		db_deprecate( CNInstance *, CNDB * );
 int		db_deprecated( CNInstance *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );
 CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
-char *		db_identifier( CNInstance *, CNDB * );
 CNInstance *	db_first( CNDB *, listItem ** );
 CNInstance *	db_next( CNDB *, CNInstance *, listItem ** );
 int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
+
+#ifdef UNIFIED
+#define db_identifier( e, db )	((char *) e->sub[1] )
+#else
+char * db_identifier( CNInstance *, CNDB * );
+#endif
 
 //===========================================================================
 //	op (nil-based)

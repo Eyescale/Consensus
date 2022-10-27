@@ -24,7 +24,7 @@ void xpn_out( FILE *stream, listItem *xp );
 #define QMARK		2
 #define PMARK		4
 #define	PARENT		8
-#define THIS		16
+#define PERSO		16
 #define IDENTIFIER	32
 #define CHARACTER	64
 #define	MOD		128

@@ -36,7 +36,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 			( target & QMARK ) ? QMARK :
 			( target & PARENT ) ? PARENT :
 			( target & SELF ) ? SELF :
-			( target & THIS ) ? THIS :
+			( target & PERSO ) ? PERSO :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :
@@ -86,7 +86,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 BMTraverseCBSwitch( bm_locate_pivot_traversal )
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
-	if ( !is_f(NEGATED) && data->target==THIS ) {
+	if ( !is_f(NEGATED) && data->target==PERSO ) {
 		xpn_add( exponent, AS_SUB, 0 );
 		_return( 2 )
 	}
@@ -143,10 +143,9 @@ case_( sub_expression_CB )
 	_break
 case_( dot_expression_CB )
 	listItem **exponent = data->exponent;
-	if ( !is_f(NEGATED) && data->target==THIS ) {
+	if ( !is_f(NEGATED) && data->target==PERSO ) {
 		xpn_add( exponent, AS_SUB, 0 );
-		_return( 2 )
-	}
+		_return( 2 ) }
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
 	_break
@@ -222,8 +221,8 @@ bm_scour( char *expression, int target )
 BMTraverseCBSwitch( bm_scour_traversal )
 case_( sc_dot_expr_CB )
 	if ( !is_f(NEGATED) ) {
-		data->candidate |= THIS;
-		if ( data->target & THIS )
+		data->candidate |= PERSO;
+		if ( data->target & PERSO )
 			_return( 1 ) }
 	_break
 case_( sc_identifier_CB )
@@ -323,8 +322,8 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
-		freeListItem( &data.stack.level );
-	}
+		freeListItem( &data.stack.level ); }
+
 	return ( *p=='?' ? p : NULL );
 }
 
@@ -404,7 +403,6 @@ xpn_out( FILE *stream, listItem *xp )
 	while ( xp ) {
 		icast.ptr = xp->ptr;
 		fprintf( stream, "%d", icast.value );
-		xp = xp->next;
-	}
+		xp = xp->next; }
 }
 

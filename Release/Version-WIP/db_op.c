@@ -119,12 +119,13 @@ db_remove( CNInstance *e, CNDB *db )
 		else {
 			// e is proxy:( connection, NULL )
 			CNEntity *connection = e->sub[ 0 ];
-			cn_release( e );
-			if (( connection->sub[ 0 ] )) { // would be self
+			// do not release ((NULL,.),NULL) which is Self (proxy)
+			if (( connection->sub[ 0 ] )) {
 				/* We have connection:( this, that )
 				   cn_release() will remove connection from
 				   this->as_sub[ 0 ] and from that->as_sub[ 1 ]
 				*/
+				cn_release( e ); // remove proxy
 				cn_release( connection ); }
 		} }
 	else {

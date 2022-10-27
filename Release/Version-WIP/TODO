@@ -1,11 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. on_event_x
-		. implement on_proxy_feel => bm_query( type, expression, ctx, NULL, db_x )
-			. query.c	=> set db_x
-			. locate.c	=> do not enter sub_expression
-			. bm_lookup	=> 
-			. assignment
+	. on_event_x -> on_proxy_feel==bm_query( type, expression, ctx, NULL, src )
+		. query.c	=> set CNEntity *src via user_data	[ DONE ]
+				=> x_match(), x_db_match()		[ DONE ]
+		. bm_lookup	=> take CNentity *src as argument	[ DONE ]
+				=> bm_x_lookup				[ WIP ]
+		. assignment	=> set CNDB / BMQueryThat(data)
+		. locate.c	=> do not enter sub_expression
 	. EENO Implementation
 		. parser.c, traverse.c, string_util.c:p_prune()
 			. handle '<'		[ DONE ]
@@ -16,21 +17,24 @@ TODO
 			. bm_proxy_still	[ DONE ]
 			. bm_check_active	[ DONE ]
 			. bm_scan_active	[ DONE ]
-			. bm_proxy_feel		[ WIP ]
-		. query.c: match()
-			. extended BMQueryData to hold db_x
-			. introduced match_x() / overrides match() when db_x is set
-			. Handle %? when %< is set - including special case: %(%?:...)
-			. Attention: bm_context_mark, when %< is set...
+			. bm_proxy_feel		[ DONE ]
 		. EENO register variables
 			. update design/new-features-and-additions.txt [DONE]
 			. implementation
+				.query.c: match(), x_match()
+					. Handle %? when %< is set - including special case: %(%?:...)
+					. Attention: bm_context_mark, when %< is set...
 				. context.c: bm_context_mark_x
-	. context.c: create registry entry "" for Base Narrative Pin
-	. instantiate.c / assignment.c: handle entry==NULL prior to bm_conceive()
-	. Optimize the number of calls to BMContextDB(ctx) all over the code
+	. context.c
+		. create registry entry "" for Base Narrative Pin
+		  => optimize instantiate.c and query.c (as there is always a BMContextPerso())
+	. instantiate.c / assignment.c
+		. handle entry==NULL prior to bm_conceive()
 	. Testing
 		. 3_TM.multi/TM-head_tape.story
+	. Optimizations (low-hanging fruits)
+		. minimize number of calls to BMContextDB(ctx) all over the code
+		. #define db_init / db_in / db_star / etc. from db_op.c
 	. Pass design/story/{all}
 	. Release
 		. Examples-v2.0

@@ -93,7 +93,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
 		if (( p )) {
-			e = bm_lookup( 0, p, ctx );
+			e = bm_lookup( 0, p, ctx, BMQueryThat(data) );
 			if ( !e ) {
 				freeListItem( &exponent );
 				return NULL; }
@@ -128,7 +128,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
 		if (( p )) {
-			e = bm_lookup( 0, p, ctx );
+			e = bm_lookup( 0, p, ctx, BMQueryThat(data) );
 			if ( !e ) {
 				freeListItem( &exponent );
 				return NULL; }
@@ -142,7 +142,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		else {
 			p = bm_locate_pivot( value, &exponent );
 			if (( p )) {
-				e = bm_lookup( 0, p, ctx );
+				e = bm_lookup( 0, p, ctx, BMQueryThat(data) );
 				if ( !e ) {
 					freeListItem( &exponent );
 					return NULL; }

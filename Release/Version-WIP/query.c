@@ -43,8 +43,9 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	CNInstance *success = NULL, *e;
 	listItem *exponent = NULL;
 	char *p = bm_locate_pivot( expression, &exponent );
+	CNEntity *that = ((user_CB) ? NULL : user_data );
 	if (( p )) {
-		e = bm_lookup( privy, p, ctx );
+		e = bm_lookup( privy, p, ctx, that );
 		if ( !e ) {
 			freeListItem( &exponent );
 			return NULL; }
@@ -64,7 +65,8 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 					success = e;
 					break; }
 			break;
-		default:
+		default: ;
+			if (( that )) db = BMThisDB( that );
 			for ( e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
 					freeListItem( &s );
@@ -80,6 +82,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 static int
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
+	CNEntity *that;
 	CNDB *db;
 	switch ( data->type ) {
 	case BM_CONDITION:
@@ -87,12 +90,14 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 			(data->user_CB) ?
 				data->user_CB( e, data->ctx, data->user_data ) :
 			BM_DONE : BM_CONTINUE;
-	case BM_INSTANTIATED: ;
-		db = BMContextDB( data->ctx );
+	case BM_INSTANTIATED:
+		that = BMQueryThat(data);
+		db = ((that) ? BMThisDB(that) : BMContextDB( data->ctx ) );
 		return ( db_manifested(e,db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE;
 	case BM_RELEASED:
-		db = BMContextDB( data->ctx );
+		that = BMQueryThat(data);
+		db = ((that) ? BMThisDB(that) : BMContextDB( data->ctx ) );
 		return ( db_deprecated(e,db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE; }
 }
@@ -517,7 +522,7 @@ BMTraverseCBEnd
 //===========================================================================
 //	match
 //===========================================================================
-static inline int match_x( CNDB *, CNInstance *, char *, BMQueryData * );
+static inline int x_match( CNEntity *, CNInstance *, char *, BMQueryData * );
 static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 
 static int
@@ -527,7 +532,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	is either NULL or the exponent of p as expression term
 */
 {
-	CNDB *db_x;
+	CNEntity *that;
 	listItem *xpn = NULL;
 	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
@@ -540,33 +545,32 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		return -1; }
 	else if ( p == NULL ) // wildcard
 		return 1;
-	else if (( db_x = DB_X(data) ))
-		return match_x( db_x, y, p, data );
+	else if (( that = BMQueryThat(data) ))
+		return x_match( that, y, p, data );
 
 	// name-value-based testing: note that %! MUST come first
+	BMContext *ctx = data->ctx;
 	if ( !strncmp( p, "%|", 2 ) ) {
-		listItem *v = bm_context_lookup( data->ctx, "|" );
+		listItem *v = bm_context_lookup( ctx, "|" );
 		return !!lookupItem( v, y ); }
 	else if (( data->pivot ) && p==data->pivot->name )
 		return ( y==data->pivot->value );
 	else if ( *p=='.' )
-		return ( p[1]=='.' ) ?
-			y==BMContextParent( data->ctx ) :
-			y==BMContextPerso( data->ctx );
+		return ( y==((p[1]=='.')?BMContextParent(ctx):BMContextPerso(ctx)) );
 	else if ( *p=='*' )
 		return ( y==data->star );
 	else if ( *p=='%' )
 		switch ( p[1] ) {
-		case '?': return ( y==bm_context_lookup( data->ctx, "?" ) );
-		case '!': return ( y==bm_context_lookup( data->ctx, "!" ) );
-		case '%': return BMContextMatchSelf( data->ctx, y ); }
+		case '?': return ( y==bm_context_lookup( ctx, "?" ) );
+		case '!': return ( y==bm_context_lookup( ctx, "!" ) );
+		case '%': return ( isProxy(y) && BMProxyThat(y)==ctx->this ); }
 	else if ( !is_separator(*p) ) {
-		CNInstance *found = bm_context_lookup( data->ctx, p );
+		CNInstance *found = bm_context_lookup( ctx, p );
 		if (( found )) return ( y==found ); }
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {
-		char *identifier = db_identifier( y, BMContextDB(data->ctx) );
+		char *identifier = db_identifier( y, BMContextDB(ctx) );
 		char_s q;
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );
@@ -576,20 +580,22 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	return 0; // not a base entity
 }
 static inline int
-match_x( CNDB *db_x, CNInstance *x, char *p, BMQueryData *data )
+x_match( CNEntity *that, CNInstance *x, char *p, BMQueryData *data )
 /*
 	matching is taking place in external event narrative occurrence
 */
 {
 	if (( data->pivot ) && p==data->pivot->name )
 		return ( x==data->pivot->value );
-	else if ( *p=='.' ) {
+	else if ( *p=='*' && p[1] && !strmatch( ":,)", p[1] ) )
+		return ( x==data->star ); // dereferencing operator
+
+	CNDB *db_x = BMThisDB( that );
+	if ( *p=='.' ) {
 		CNDB *db = BMContextDB( data->ctx );
 		return ( p[1]=='.' ) ?
 			db_x_match( db_x, x, db, BMContextParent(data->ctx) ) :
 			db_x_match( db_x, x, db, BMContextPerso(data->ctx) ); }
-	else if ( *p=='*' && p[1] && !strmatch( ":,)", p[1] ) )
-		return ( x==data->star ); // dereferencing operator
 	else if ( *p=='%' ) {
 		CNDB *db = BMContextDB( data->ctx );
 		switch ( p[1] ) {
@@ -630,8 +636,7 @@ db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 
 		if (( y->sub[ 0 ] )) {
 			// y is proxy==(( this, that ), NULL )
-			if (!( !x->sub[1] && (x->sub[0]) &&
-				x->sub[0]->sub[1]==y->sub[0]->sub[1] ))
+			if ( !isProxy(x) || BMProxyThat(x)!=BMProxyThat(y) )
 				goto FAIL; }
 		else {
 			if (( x->sub[ 0 ] ))
