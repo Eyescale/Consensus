@@ -38,9 +38,9 @@ typedef struct {
 } ActiveRV;
 
 #define BMContextDB( ctx )	((CNDB *) ctx->this->sub[0])
-#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 #define BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
 #define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx->registry, "@" )->value )
+#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 #define BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
 #define BMContextSelf( ctx )	( BMContextId(ctx)->name )
 #define BMContextParent( ctx )	( BMContextId(ctx)->value )
