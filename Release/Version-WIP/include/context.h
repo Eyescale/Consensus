@@ -40,13 +40,16 @@ typedef struct {
 #define BMContextDB( ctx )	((CNDB *) ctx->this->sub[0])
 #define BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
 #define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx->registry, "@" )->value )
-#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 #define BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
 #define BMContextSelf( ctx )	( BMContextId(ctx)->name )
 #define BMContextParent( ctx )	( BMContextId(ctx)->value )
-#define BMContextMatchSelf( ctx, e ) ( !e->sub[1] && (e->sub[0]) && e->sub[0]->sub[1]==ctx->this )
+#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 
-#define BMProxyDB( proxy )	((CNDB *) proxy->sub[0]->sub[1]->sub[0] )
+#define BMContextMatchSelf( ctx, e ) \
+	( !e->sub[1] && (e->sub[0]) && e->sub[0]->sub[1]==ctx->this )
+
+#define BMProxyDB( proxy ) \
+	((CNDB *) proxy->sub[0]->sub[1]->sub[0] )
 
 
 #endif	// CONTEXT_H
