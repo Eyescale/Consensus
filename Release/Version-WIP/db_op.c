@@ -182,14 +182,12 @@ fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 		f = cn_instance( x, nil, 1 );
 		if (( g->as_sub[ 1 ] )) { // to-be-manifested
 			if (( f )) // released to-be-manifested
-				db_remove( f, db );
-		}
+				db_remove( f, db ); }
 		else if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
 			db_remove( f->as_sub[0]->ptr, db );
-			db_remove( f, db );
-		}
+			db_remove( f, db ); }
 		else db_remove( g, db ); // possibly to-be-released
-	}
+		}
 #ifdef DEBUG
 fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 #endif
@@ -211,8 +209,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( g, db );
 			db_remove( f, db );
 			cn_new( nil, x );
-		}
-	}
+		} }
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
@@ -224,8 +221,7 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 			if ((next_i) && next_i->ptr==g )
 				next_i = next_i->next;
 			db_remove( g, db );
-		}
-	}
+		} }
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
 #endif
@@ -236,8 +232,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
 			TRASH( x, parent )
-		}
-	}
+		} }
 	for ( int i=0; i<2; i++ )
 		while (( x = popListItem( &trash[i] ) ))
 			db_remove( x, db );
@@ -248,8 +243,7 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) {
 			db_remove( f->as_sub[1]->ptr, db );
-		}
-	}
+		} }
 #ifdef DEBUG
 fprintf( stderr, "--\n" );
 #endif
@@ -368,43 +362,5 @@ db_manifested( CNInstance *e, CNDB *db )
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( nil, e, 0 );
 	return (( f ) && !f->as_sub[0] );
-}
-
-//===========================================================================
-//	db_still
-//===========================================================================
-int
-db_still( CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	return !( nil->as_sub[0] || nil->as_sub[1] );
-}
-
-//===========================================================================
-//	db_init / db_exit / db_in / db_out
-//===========================================================================
-void
-db_init( CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	nil->sub[ 0 ] = nil;
-}
-void
-db_exit( CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	nil->sub[ 1 ] = nil;
-}
-int
-db_in( CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	return ( nil->sub[0]==nil );
-}
-int
-db_out( CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	return ( nil->sub[1]==nil );
 }
 

@@ -22,7 +22,7 @@ void clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *nex
 
 listItem *addIfNotThere( listItem **list, void *ptr );
 listItem *lookupIfThere( listItem *list, void *ptr );
-void removeIfThere( listItem **list, void *ptr );
+int removeIfThere( listItem **list, void *ptr );
 
 listItem *catListItem( listItem *list1, listItem *list2 );
 void *popListItem( listItem **item );

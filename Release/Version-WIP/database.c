@@ -4,7 +4,6 @@
 
 #include "string_util.h"
 #include "database.h"
-#include "db_op.h"
 
 // #define DEBUG
 // #define NULL_TERMINATED
@@ -48,20 +47,6 @@ free_CB( Registry *registry, Pair *entry )
 {
 	free( entry->name );
 	cn_prune((CNInstance *) entry->value );
-}
-
-//===========================================================================
-//	db_star
-//===========================================================================
-CNInstance *
-db_star( CNDB *db )
-/*
-	Assumption: CNDB is freed upon exit, so that no attempt to access
-	db->nil will be made after db_exit() - which overwrites nil->sub[1]
-*/
-{
-	CNInstance *nil = db->nil;
-	return nil->sub[ 1 ];
 }
 
 //===========================================================================

@@ -23,10 +23,8 @@ clipItem( listItem **list, listItem *item )
 		next_i = i->next;
 		if ( i == item ) {
 			clipListItem( list, i, last_i, next_i );
-			break;
-		}	
-		else last_i = i;
-	}
+			break; }	
+		else last_i = i; }
 }
 listItem *
 addItem( listItem **list, void *ptr )
@@ -43,20 +41,16 @@ removeItem( listItem **list, void *ptr )
 */
 {
 	listItem *last_i=NULL, *next_i;
-	for ( listItem *i=*list; i!=NULL; i=next_i )
-	{
+	for ( listItem *i=*list; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		if ( i->ptr == ptr ) {
 			clipListItem( list, i, last_i, next_i );
-			break;
-		}
-		else last_i = i;
-	}
+			break; }
+		else last_i = i; }
 #ifdef DEBUG
 	if (( lookupItem( *list, ptr ) )) {
 		fprintf( stderr, ">>>>> B%%: Error: removeItem(): doublon\n" );
-		exit( -1 );
-	}
+		exit( -1 ); }
 #endif
 }
 listItem *
@@ -77,62 +71,54 @@ clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *next_i )
 listItem *
 addIfNotThere( listItem **list, void *ptr )
 {
-        listItem *item, *i, *last_i = NULL;
-        for ( i=*list; i!=NULL; i=i->next ) {
+	listItem *item, *i, *last_i = NULL;
+	for ( i=*list; i!=NULL; i=i->next ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
-                if ( comparison < 0 ) {
-                        last_i = i;
-                        continue;
-                }
-                if ( comparison == 0 ) {
+		if ( comparison < 0 ) {
+			last_i = i;
+			continue; }
+		if ( comparison == 0 ) {
 #ifdef DEBUG
 			output( Debug, "addIfNotThere: Warning: result already registered" );
 #endif
-                        return NULL;
-                }
-                break;
-        }
-        item = newItem( ptr );
-        if ( last_i == NULL ) {
-                item->next = *list;
-                *list = item;
-        } else {
-                item->next = i;
-                last_i->next = item;
-        }
+			return NULL; }
+		break; }
+	item = newItem( ptr );
+	if ( last_i == NULL ) {
+		item->next = *list;
+		*list = item; }
+	else {
+		item->next = i;
+		last_i->next = item; }
 	return item;
 }
 listItem *
 lookupIfThere( listItem *list, void *ptr )
 {
-        for ( listItem *i=list; i!=NULL; i=i->next ) {
+	for ( listItem *i=list; i!=NULL; i=i->next ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
-                if ( comparison < 0 ) {
-                        continue;
-                }
-                else if ( comparison == 0 ) {
+		if ( comparison < 0 )
+			continue;
+                else if ( comparison == 0 )
 			return i;
-                }
-                break;
-        }
+		break; }
 	return NULL;
 }
-void
+int
 removeIfThere( listItem **list, void *ptr )
 {
-        listItem *last_i = NULL, *next_i;
-        for ( listItem *i=*list; i!=NULL; i=next_i ) {
+	listItem *last_i = NULL, *next_i;
+	for ( listItem *i=*list; i!=NULL; i=next_i ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
 		next_i = i->next;
-                if ( comparison < 0 ) {
-                        last_i = i;
-                        continue;
-                }
-                else if ( comparison == 0 ) {
+		if ( comparison < 0 ) {
+			last_i = i;
+			continue; }
+		else if ( comparison == 0 ) {
 			clipListItem( list, i, last_i, next_i );
-                }
-                break;
-        }
+			return 1; }
+		break; }
+	return 0;
 }
 listItem *
 catListItem( listItem *list1, listItem *list2 )

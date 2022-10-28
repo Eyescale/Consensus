@@ -16,8 +16,7 @@ SRCS =	narrative.c \
 			instantiate.c \
 				assignment.c \
 			query.c \
-				locate.c \
-				traverse.c
+				locate.c
 LIB = libbmod.a
 
 TARGETS = $(LIB) B%

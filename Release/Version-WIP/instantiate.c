@@ -56,8 +56,13 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	else if ( *expression=='!' ) {
 		char *p = expression + 2; // skip '!!'
 		Pair *entry = registryLookup( story, p );
-		p = p_prune( PRUNE_IDENTIFIER, p );
-		bm_conceive( entry, p, &traverse_data ); }
+		if (( entry )) {
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			bm_conceive( entry, p, &traverse_data ); }
+		else {
+			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+				"\t\tdo !! %s\n\t<<<<<\n", p );
+			exit( -1 ); } }
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;

@@ -15,7 +15,7 @@ void
 bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
 {
 	BMInstantiateData *data = traverse_data->user_data;
-	char *p = expression + 1;
+	char *p = expression + 1; // skip leading ':'
 	listItem *sub[ 2 ];
 
 	DBG_VOID( p )
@@ -31,11 +31,15 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 		p += 2; // skip '!!'
 		CNDB *db = BMContextDB( data->ctx );
 		Pair *entry = registryLookup( story, p );
-		char *q = p = p_prune( PRUNE_IDENTIFIER, p );
-		for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
-			CNInstance *proxy = bm_conceive( entry, p, traverse_data );
-			db_assign( i->ptr, proxy, db );
-		} }
+		if (( entry )) {
+			char *q = p = p_prune( PRUNE_IDENTIFIER, p );
+			for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
+				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
+				db_assign( i->ptr, proxy, db ); } }
+		else {
+			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+				"\t\tdo !! %s\n\t<<<<<\n", p );
+			exit( -1 ); } }
 	else if ( !strncmp( p, "~.", 2 ) ) {
 		sub[ 1 ] = NULL;
 		data->sub[ 0 ] = bm_assign( sub, data->ctx );
@@ -52,7 +56,6 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 			freeListItem( &sub[ 0 ] );
 			freeListItem( &sub[ 1 ] ); } }
 }
-
 static listItem *
 bm_assign( listItem *sub[2], BMContext *ctx )
 /*
@@ -87,7 +90,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *star = data->star;
 	CNInstance *success = NULL, *e;
-	expression++;
+	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
 	if ( !strncmp( value, "~.", 2 ) ) {
 		listItem *exponent = NULL;
@@ -104,7 +107,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 			freePair( data->pivot );
 			freeListItem( &exponent ); }
 		else {
-			switch ( data->type ) {
+			switch ( type ) {
 			case BM_CONDITION: ;
 				for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
 					CNInstance *e = i->ptr;
@@ -154,7 +157,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 				freePair( data->pivot );
 				freeListItem( &exponent ); }
 			else {
-				switch ( data->type ) {
+				switch ( type ) {
 				case BM_CONDITION: ;
 					for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
 						CNInstance *e = i->ptr, *f;
@@ -248,5 +251,79 @@ assignment( CNInstance *e, CNDB *db )
 		if ( !db_private( 0, j->ptr, db ) )
 			return j->ptr;
 	return NULL;
+}
+
+//===========================================================================
+//	bm_proxy_feel_assignment
+//===========================================================================
+CNInstance *
+bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
+{
+	BMProxyFeelData *data = traverse_data->user_data;
+	expression++; // skip leading ':'
+	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
+	CNDB *db_x = data->db_x;
+	CNInstance *success = NULL, *e;
+	CNInstance *star = db_star( db_x );
+	if ( !strncmp( value, "~.", 2 ) ) {
+		/* we want to find x:(*,variable) in manifested log, so that
+		   	. ( x, . ) is not manifested as well
+		   	. variable verifies expression
+		   There is no guarantee that, were both ((*,variable),.) and
+		   (*,variable) manifested, they would appear in any order.
+		   So first we generate a list of suitable candidates...
+		   Assumption: if they do appear, they appear only once.
+		*/
+		listItem *s = NULL;
+		listItem *warden=NULL, *candidates=NULL;
+		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+			CNInstance *f = CNSUB( e, 0 );
+			if ( !f ) continue;
+			else if ( f==star ) {
+				if ( !removeIfThere( &warden, f ) )
+					addItem( &candidates, f ); }
+			else if ( f->sub[ 0 ]==star ) {
+				if ( !removeIfThere( &candidates, f ) )
+					addItem( &warden, f ); } }
+		while (( e = popListItem( &candidates ) )) {
+			data->x = e->sub[ 0 ];
+			bm_traverse( expression, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0; }
+			else {
+				freeListItem( &s );
+				success = e; // return (*,.)
+				break; } } }
+	else {
+		/* we want to find x:((*,variable),value) in manifested log,
+		   so that:
+			. variable verifies expression
+			. value verifies value expression
+		*/
+		listItem *s = NULL;
+		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
+			if ( !f || f->sub[0]!=star ) continue;
+			data->x = f->sub[ 1 ];
+			bm_traverse( expression, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0;
+				continue; }
+			data->x = e->sub[ 1 ];
+			traverse_data->done = 0;
+			bm_traverse( value, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0; }
+			else {
+				freeListItem( &s );
+				success = e; // return ((*,.),.)
+				break; } } }
+	return success;
 }
 

@@ -2,6 +2,7 @@
 #define TRAVERSE_H
 
 #include "list.h"
+#include "string_util.h"
 
 //===========================================================================
 //	traversal flags
@@ -120,9 +121,7 @@ typedef enum {
 	BM_PRUNE_LITERAL,
 	BM_PRUNE_TERNARY,
 } BMCBTake;
-
 typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next );
-char *bm_traverse( char *expression, BMTraverseData *, int );
 
 #define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
@@ -137,6 +136,12 @@ char *bm_traverse( char *expression, BMTraverseData *, int );
 		return BM_CONTINUE;
 #define BMTraverseCBEnd \
 	}
+
+//===========================================================================
+//	bm_traverse	- NO recursion
+//===========================================================================
+#include "traverse.c"
+#undef _CB
 
 
 #endif	// TRAVERSE_H

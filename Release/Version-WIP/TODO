@@ -1,40 +1,23 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. EENO Implementation
-		. parser.c, traverse.c, string_util.c:p_prune()
-			. handle '<'		[ DONE ]
-		. operation.c
-			. on_event_from		[ DONE ]
-		. expression.c
-			. bm_proxy_in		[ DONE ]
-			. bm_proxy_still	[ DONE ]
-			. bm_check_active	[ DONE ]
-			. bm_scan_active	[ DONE ]
-		. proxy.c [ NEW ]
-			. bm_proxy_feel		[ WIP ]
-				. x_match / db_x_match		[ DONE ]
-				. bm_proxy_feel_assignment
-		. EENO register variables
-			. update design/new-features-and-additions.txt [ WIP ]
-			. implementation
-				. proxy.c: x_match()
-				. query.c: match()
-					. Handle %? when %< is set - including special case: %(%?:...)
-					. Attention: bm_context_mark, when %< is set...
-				. context.c: bm_context_mark / bm_context_mark_x ???
+	. EENO register variables
+		. update design/new-features-and-additions.txt [ WIP ]
+			. missing: sub - explain
+		. implementation
+			. proxy.c: adapt x_match()
+			. query.c: adapt match()
+				. Handle %? when %< is set - including special case: %(%?:...)
+				. Attention: bm_context_mark, when %< is set...
+			. context.c: bm_context_mark / bm_context_mark_x ???
 	. instantiate.c / assignment.c
-		. handle entry==NULL prior to bm_conceive()
+		. handle case narrative entry == NULL prior to bm_conceive()
 	. context.c
 		. create registry entry "" for Base Narrative perso << could use ProxySelf ?
 		  => simplify instantiate.c and query.c (as there is always a BMContextPerso())
-	. traverse.c / traverse.h - NO recursion
-		. inline bm_traverse(), etc.
-		. #include traverse.c in traverse.h
 	. Testing
 		. 3_TM.multi/TM-head_tape.story
-	. Optimizations (low-hanging fruits)
+	. Optimizations (low-hanging fruits only)
 		. minimize number of calls to BMContextDB(ctx) all over the code
-		. #define db_init / db_in / db_star / etc. from db_op.c
 	. Pass design/story/{all}
 	. Release
 		. Examples-v2.0
@@ -103,6 +86,24 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. EENO Implementation
+		. parser.c, traverse.c, string_util.c:p_prune()
+			. handle '<'		[ DONE ]
+		. operation.c
+			. on_event_from		[ DONE ]
+		. expression.c
+			. bm_proxy_in		[ DONE ]
+			. bm_proxy_still	[ DONE ]
+			. bm_check_active	[ DONE ]
+			. bm_scan_active	[ DONE ]
+		. proxy.c [ NEW ]
+			. bm_proxy_feel		[ DONE ]
+				. x_match / db_x_match		[ DONE ]
+				. bm_proxy_feel_assignment	[ CONE ]
+	. traverse.c / traverse.h - NO recursion
+		. declare bm_traverse() as static and include traverse.c in traverse.h
+	. db_op.h
+		. inlined db_init / db_in / db_star / etc.
 	. deprecated bm_context_fetch() -> BMContextPin() [may be NULL]
 	. instantiate.c apply data->carry when set
 	. parser.c: File Format support for %% and .. Register Variables

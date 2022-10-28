@@ -5,6 +5,7 @@
 #include "database.h"
 #include "locate.h"
 #include "expression.h"
+#include "assignment.h"
 
 // #define DEBUG
 
@@ -16,12 +17,6 @@ static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 //===========================================================================
 static BMTraverseCB
 	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
-typedef struct {
-	struct { listItem *flags, *x; } stack;
-	CNDB *db_x;
-	CNInstance *x;
-	BMContext *ctx;
-} BMProxyFeelData;
 #define case_( func ) \
 	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		BMProxyFeelData *data = traverse_data->user_data; char *p = *q;
@@ -64,18 +59,21 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	table[ BMCharacterCB ]		= identifier_CB;
 	table[ BMIdentifierCB ]		= identifier_CB;
 
-	listItem *s = NULL;
-	for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
-		data.x = e;
-		bm_traverse( expression, &traverse_data, FIRST );
-		if ( traverse_data.done==2 ) {
-			freeListItem( &data.stack.flags );
-			freeListItem( &data.stack.x );
-			traverse_data.done = 0; }
-		else {
-			freeListItem( &s );
-			success = e;
-			break; } }
+	if ( *expression==':' )
+		success = bm_proxy_feel_assignment( proxy, expression, &traverse_data );
+	else {
+		listItem *s = NULL;
+		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
+			data.x = e;
+			bm_traverse( expression, &traverse_data, FIRST );
+			if ( traverse_data.done==2 ) {
+				freeListItem( &data.stack.flags );
+				freeListItem( &data.stack.x );
+				traverse_data.done = 0; }
+			else {
+				freeListItem( &s );
+				success = e;
+				break; } } }
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: success=%d\n", !!success );
 #endif
