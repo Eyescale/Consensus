@@ -23,7 +23,6 @@ typedef struct {
 	CNEntity *carry;
 } BMInstantiateData;
 
-CNInstance *bm_conceive( Pair *, char *, BMTraverseData * );
 void bm_instantiate( char *expression, BMContext *, CNStory * );
 
 

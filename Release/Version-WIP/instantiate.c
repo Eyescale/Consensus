@@ -10,6 +10,7 @@
 //	bm_instantiate
 //===========================================================================
 static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
+static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
 static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	open_CB, close_CB, decouple_CB, register_variable_CB, literal_CB, list_CB,
@@ -93,7 +94,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 //---------------------------------------------------------------------------
 //	bm_conceive
 //---------------------------------------------------------------------------
-CNInstance *
+static CNInstance *
 bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 /*
 	Assumption: *p=='('
