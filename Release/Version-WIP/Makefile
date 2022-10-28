@@ -6,10 +6,10 @@ SHELL = /bin/sh
 SRCS =	narrative.c \
 		parser.c \
 	program.c \
-		database.c \
 		context.c \
-		operation.c \
+			database.c \
 			db_op.c \
+		operation.c \
 			traverse.c \
 			deternarize.c \
 			expression.c \
