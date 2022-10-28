@@ -3,7 +3,6 @@
 
 #include "traverse.h"
 #include "instantiate_private.h"
-#include "assignment.h"
 #include "string_util.h"
 #include "database.h"
 
@@ -12,6 +11,7 @@
 //===========================================================================
 //	bm_instantiate
 //===========================================================================
+static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	open_CB, close_CB, decouple_CB, register_variable_CB, literal_CB, list_CB,
@@ -458,5 +458,76 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		p++; }
 	wi[ 2 ] = e;
 	return p;
+}
+
+//===========================================================================
+//	bm_instantiate_assignment
+//===========================================================================
+static listItem * bm_assign( listItem *sub[2], BMContext *ctx );
+
+static void
+bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
+{
+	BMInstantiateData *data = traverse_data->user_data;
+	char *p = expression + 1; // skip leading ':'
+	listItem *sub[ 2 ];
+
+	DBG_VOID( p )
+	traverse_data->done = INFORMED;
+	p = bm_traverse( p, traverse_data, FIRST );
+	if ( traverse_data->done==2 || !data->sub[ 0 ] )
+		return;
+	sub[ 0 ] = data->sub[ 0 ];
+	data->sub[ 0 ] = NULL;
+	p++; // move past ',' - aka. ':'
+
+	if ( *p=='!' ) {
+		p += 2; // skip '!!'
+		CNDB *db = BMContextDB( data->ctx );
+		Pair *entry = registryLookup( story, p );
+		if (( entry )) {
+			char *q = p = p_prune( PRUNE_IDENTIFIER, p );
+			for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
+				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
+				if (( proxy )) db_assign( i->ptr, proxy, db );
+				else db_unassign( i->ptr, db ); } }
+		else {
+			fprintf( stderr, ">>>>> B%%: Error: Narrative class not found in expression\n"
+				"\t\tdo !! %s\n\t<<<<<\n", p );
+			exit( -1 ); } }
+	else if ( !strncmp( p, "~.", 2 ) ) {
+		sub[ 1 ] = NULL;
+		data->sub[ 0 ] = bm_assign( sub, data->ctx );
+		freeListItem( &sub[ 0 ] ); }
+	else {
+		DBG_VOID( p )
+		traverse_data->done = INFORMED;
+		p = bm_traverse( p, traverse_data, FIRST );
+		if ( traverse_data->done==2 )
+			freeListItem( &sub[ 0 ] );
+		else {
+			sub[ 1 ] = data->sub[ 0 ];
+			data->sub[ 0 ] = bm_assign( sub, data->ctx );
+			freeListItem( &sub[ 0 ] );
+			freeListItem( &sub[ 1 ] ); } }
+}
+static listItem *
+bm_assign( listItem *sub[2], BMContext *ctx )
+/*
+	Note that the number of assignments actually performed is
+		INF( cardinal(sub[0]), cardinal(sub[1]) )
+	And that nothing is done with the excess, if there is -
+		case sub[1]==NULL excepted
+*/
+{
+	CNDB *db = BMContextDB( ctx );
+	listItem *results = NULL;
+	if ( !sub[1] )
+		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
+			addItem( &results, db_unassign( i->ptr, db ) );
+	else
+		for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next )
+			addItem( &results, db_assign( i->ptr, j->ptr, db ) );
+	return results;
 }
 

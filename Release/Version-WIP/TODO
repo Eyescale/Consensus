@@ -1,16 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. EENO register variables
-		. finalize design/new-features-and-additions.txt [ WIP ]
-			. missing: sub - explain
 		. implementation
-			. in query.c: adapt match()
-				. Handle %? when %< is set - including special case: %(%?:...)
-				. Attention: bm_context_mark, when %< is set...
-			. in proxy.c: adapt x_match()
 			. in context.c: bm_context_mark / bm_context_mark_x
+			. in query.c: adapt match()
+			. in proxy.c: adapt x_match()
 	. Testing
-		. 3_TM.multi/TM-head_tape.story (after review)
+		. 3_TM.multi/TM-head_tape.story (to be added)
 	. context.c
 		. create registry entry "" for Base Narrative perso << could use ProxySelf ?
 		  => simplify instantiate.c and query.c (as there is always a BMContextPerso())
@@ -84,6 +80,9 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. updated doc design/new-features-and-additions.txt
+		. explained "sub" in Additions / EENO (Table)
+		. rules of assignment %? %! and EENO %<?> %<!> in Changes section
 	. instantiate.c / assignment.c
 		. case narrative entry == NULL prior to bm_conceive()
 		  	scream and exit(-1)

@@ -14,7 +14,6 @@ SRCS =	narrative.c \
 			expression.c \
 				proxy.c \
 			instantiate.c \
-				assignment.c \
 			query.c \
 				locate.c
 LIB = libbmod.a

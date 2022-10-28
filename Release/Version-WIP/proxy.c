@@ -4,20 +4,94 @@
 #include "string_util.h"
 #include "database.h"
 #include "traverse.h"
-#include "assignment.h"
+#include "query.h"
+#include "proxy.h"
 
 #include "bm_traverse.h"
 
 // #define DEBUG
 
-static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
-static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
+//===========================================================================
+//	bm_proxy_op
+//===========================================================================
+static BMQueryCB activate_CB, deactivate_CB;
+
+void
+bm_proxy_op( char *expression, BMContext *ctx )
+{
+	if ( !expression || !(*expression)) return;
+
+	bm_context_check( ctx ); // remove dangling connections
+	char *p = expression;
+	BMQueryCB *op = ( *p=='@' ) ?
+		activate_CB: deactivate_CB;
+	p += 2;
+	if ( *p!='{' )
+		bm_query( BM_CONDITION, p, ctx, op, NULL );
+	else do {
+		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
+		p = p_prune( PRUNE_TERM, p );
+	} while ( *p!='}' );
+}
+static BMCBTake
+activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( !isProxy(e) || isProxySelf(e) )
+		return BM_CONTINUE;
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, e );
+	return BM_CONTINUE;
+}
+static BMCBTake
+deactivate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( !isProxy(e) || isProxySelf(e) )
+		return BM_CONTINUE;
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->deactivated, e );
+	return BM_CONTINUE;
+}
+
+//===========================================================================
+//	bm_proxy_scan
+//===========================================================================
+listItem *
+bm_proxy_scan( char *expression, BMContext *ctx )
+/*
+	return all context's active connections (proxies) matching expression
+*/
+{
+	if ( !expression || !(*expression)) return NULL;
+
+	bm_context_check( ctx ); // remove dangling connections
+	listItem *results = NULL;
+
+	CNDB *db = BMContextDB( ctx );
+	BMQueryData data;
+	memset( &data, 0, sizeof(BMQueryData) );
+	data.type = BM_CONDITION;
+	data.ctx = ctx;
+	data.star = db_star( db );
+
+	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
+		CNInstance *proxy = i->ptr;
+		if ( xp_verify( proxy, expression, &data ) )
+			addItem( &results, proxy ); }
+	return results;
+}
 
 //===========================================================================
 //	bm_proxy_feel
 //===========================================================================
+static CNInstance * bm_proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
 static BMTraverseCB
 	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
+typedef struct {
+	BMContext *ctx;
+	struct { listItem *flags, *x; } stack;
+	CNDB *db_x;
+	CNInstance *x;
+} BMProxyFeelData;
 #define case_( func ) \
 	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		BMProxyFeelData *data = traverse_data->user_data; char *p = *q;
@@ -84,6 +158,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //---------------------------------------------------------------------------
 //	bm_proxy_feel_traversal
 //---------------------------------------------------------------------------
+static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
+static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 #define bm_proxy_verify( p, data ) \
 	bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data )
@@ -164,7 +240,6 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 
 	return 0; // not a base entity
 }
-
 static inline int
 db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 /*
@@ -206,5 +281,80 @@ db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 FAIL:
 	freeListItem( &stack );
 	return 0;
+}
+
+//===========================================================================
+//	bm_proxy_feel_assignment
+//===========================================================================
+static CNInstance *
+bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
+{
+	BMProxyFeelData *data = traverse_data->user_data;
+	expression++; // skip leading ':'
+	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
+	CNDB *db_x = data->db_x;
+	CNInstance *success = NULL, *e;
+	CNInstance *star = db_star( db_x );
+	if ( !strncmp( value, "~.", 2 ) ) {
+		/* we want to find x:(*,variable) in manifested log, so that
+		   	. ( x, . ) is not manifested as well
+		   	. variable verifies expression
+		   There is no guarantee that, were both ((*,variable),.) and
+		   (*,variable) manifested, they would appear in any order.
+		   So first we generate a list of suitable candidates...
+		   Assumption: if they do appear, they appear only once.
+		*/
+		listItem *s = NULL;
+		listItem *warden=NULL, *candidates=NULL;
+		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+			CNInstance *f = CNSUB( e, 0 );
+			if ( !f ) continue;
+			else if ( f==star ) {
+				if ( !removeIfThere( &warden, f ) )
+					addItem( &candidates, f ); }
+			else if ( f->sub[ 0 ]==star ) {
+				if ( !removeIfThere( &candidates, f ) )
+					addItem( &warden, f ); } }
+		freeListItem( &warden );
+		while (( e = popListItem( &candidates ) )) {
+			data->x = e->sub[ 0 ];
+			bm_traverse( expression, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0; }
+			else {
+				freeListItem( &s );
+				success = e; // return (*,.)
+				break; } } }
+	else {
+		/* we want to find x:((*,variable),value) in manifested log,
+		   so that:
+			. variable verifies expression
+			. value verifies value expression
+		*/
+		listItem *s = NULL;
+		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
+			if ( !f || f->sub[0]!=star ) continue;
+			data->x = f->sub[ 1 ];
+			bm_traverse( expression, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0;
+				continue; }
+			data->x = e->sub[ 1 ];
+			traverse_data->done = 0;
+			bm_traverse( value, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0; }
+			else {
+				freeListItem( &s );
+				success = e; // return ((*,.),.)
+				break; } } }
+	return success;
 }
 

@@ -6,6 +6,7 @@
 #include "operation.h"
 #include "expression.h"
 #include "instantiate.h"
+#include "proxy.h"
 
 // #define DEBUG
 

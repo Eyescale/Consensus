@@ -7,8 +7,45 @@ Synopsis
 	. The name of the Narrative pipe Register Variable was changed
 	  from %! in Version-1.x to %| in Version-2.0
 
-    Additions
+	. The rules of assignment are as follow:
 
+	  When the query signus ? is included in the variable part of
+	  the assignment occurrence, then the %? mark register variable
+	  holds the corresponding query result, if any, and the %!
+	  register variable holds the instance corresponding to the value
+	  part of the query result.
+
+	  Conversely, when the query signus ? is included in the value
+	  part of the assignment occurrence, then the %? mark register
+	  variable hold the corresponding query result, if any, and the
+	  %! holds the instance corresponding to the variable part of
+	  the query result.
+
+	. The same rules apply to the %<?> and %<!> EENO register variables,
+	  where in addition the EENO register variable %< holds the proxy
+	  corresponding to the query result, if any.
+
+	  Note here that the occurrence expression
+
+		on : variable : value < ?
+
+	  will yield the following results, if any
+
+		%< 	matching source (proxy)
+		%<?>	matching variable
+		%<!>	matching value
+
+	  whereas the occurrence expression
+
+		on : variable : ? < .
+
+	  will yield the following results, if any
+
+		%< 	matching source (proxy)
+		%<?>	matching value
+		%<!>	matching variable
+
+    Additions
 	    	Feature Name			Expression			Comment
 
 	Instantiate			do !! Narrative ( ... )
@@ -28,12 +65,12 @@ Synopsis
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	EENO Register Variables		%<				sub is any expression enclosed in
-					%<?>				parentheses whose terms are limited
-					%<!>				to the wildcard . and optionally
-					%<?:sub>			one query signus ?
-					%<!:sub>	
-
+	EENO Register Variables		%<
+					%<?>
+					%<!>
+					%<?:sub>			sub is a valid expression whose terms
+					%<!:sub>			are restricted to the wildcard signus .
+									and a single optional query signus ?
 	this Register Variable		%%
 
 	parent Register Variable	..
