@@ -21,26 +21,17 @@ int db_to_be_manifested( CNInstance *, CNDB * );
 //---------------------------------------------------------------------------
 /*
 	Assumption: CNDB is freed upon exit, so that no attempt to access
-	db->nil will be made after db_exit() - which overwrites nil->sub[1]
+	db->nil will be made after db_exit() - which overwrites nil->sub[ 1 ]
 */
-inline CNInstance * db_star( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	return nil->sub[ 1 ]; }
-inline int db_still( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	return !( nil->as_sub[0] || nil->as_sub[1] ); }
-inline void db_init( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	nil->sub[ 0 ] = nil; }
-inline void db_exit( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	nil->sub[ 1 ] = nil; }
-inline int db_in( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	return ( nil->sub[0]==nil ); }
-inline int db_out( CNDB *db ) {
-	CNInstance *nil = db->nil;
-	return ( nil->sub[1]==nil ); }
+#define db_star( db )	( db->nil->sub[ 1 ] )
+#define	db_still( db )	( !db->nil->as_sub[ 0 ] && !db->nil->as_sub[ 1 ] )
+
+#define	db_init( db )	{ db->nil->sub[ 0 ] = db->nil; }
+#define	db_exit( db )	{ db->nil->sub[ 1 ] = db->nil; }
+
+#define	db_in( db )	( db->nil->sub[ 0 ]==db->nil )
+#define	db_out( db )	( db->nil->sub[ 1 ]==db->nil )
+
 
 
 #endif // DB_OP_H

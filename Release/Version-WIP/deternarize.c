@@ -2,7 +2,10 @@
 #include <stdlib.h>
 
 #include "deternarize_private.h"
+#include "traverse.h"
 #include "expression.h"
+
+#include "bm_traverse.h"
 
 //===========================================================================
 //	bm_deternarize

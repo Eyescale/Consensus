@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include "traverse.h"
 #include "parser.h"
 #include "expression.h"
+#include "instantiate.h"
 
 //===========================================================================
 //	readStory

@@ -1,7 +1,6 @@
 #ifndef QUERY_PRIVATE_H
 #define QUERY_PRIVATE_H
 
-#include "context.h"
 #include "query.h"
 
 //===========================================================================

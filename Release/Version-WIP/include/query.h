@@ -39,7 +39,5 @@ typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 CNInstance *xp_traverse( char *, BMQueryData *, XPTraverseCB );
 int xp_verify( CNInstance *, char *, BMQueryData * );
 
-#define BMQueryThat( data ) ((CNEntity *) (((data)->user_CB) ? NULL : (data)->user_data ))
-
 
 #endif	// QUERY_H

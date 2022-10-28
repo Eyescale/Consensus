@@ -3,9 +3,10 @@
 
 #include "string_util.h"
 #include "database.h"
-#include "locate.h"
-#include "expression.h"
+#include "traverse.h"
 #include "assignment.h"
+
+#include "bm_traverse.h"
 
 // #define DEBUG
 
@@ -103,9 +104,8 @@ case_( open_CB )
 		CNInstance *x = data->x;
 		if ( !CNSUB(x,0) )
 			_return( 2 )
-		else {
-			addItem( &data->stack.x, x );
-			data->x = x->sub[ 0 ]; } }
+		addItem( &data->stack.x, x );
+		data->x = x->sub[ 0 ]; }
 	_break
 case_( decouple_CB )
 	data->x = ((CNInstance *) data->stack.x->ptr )->sub[ 1 ];

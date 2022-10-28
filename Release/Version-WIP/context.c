@@ -3,7 +3,6 @@
 
 #include "string_util.h"
 #include "context.h"
-#include "program.h"
 #include "locate.h"
 
 //===========================================================================
@@ -82,7 +81,7 @@ freeContext( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_finish
+//	bm_context_finish / bm_activate
 //===========================================================================
 void
 bm_context_finish( BMContext *ctx, int subscribe )
@@ -100,41 +99,11 @@ bm_context_finish( BMContext *ctx, int subscribe )
 		id->value = NULL; }
 }
 
-//===========================================================================
-//	bm_activate / bm_deactivate / bm_context_check
-//===========================================================================
-BMCBTake
-bm_activate( CNInstance *proxy, BMContext *ctx, void *user_data )
+void
+bm_context_activate( BMContext *ctx, CNInstance *proxy )
 {
-	if ((proxy->sub[1]) || !proxy->sub[0] || !proxy->sub[0]->sub[0] )
-		return BM_CONTINUE;
 	ActiveRV *active = BMContextActive( ctx );
 	addIfNotThere( &active->buffer->activated, proxy );
-	return BM_CONTINUE;
-}
-BMCBTake
-bm_deactivate( CNInstance *proxy, BMContext *ctx, void *user_data )
-{
-	if ((proxy->sub[1]) || !proxy->sub[0] || !proxy->sub[0]->sub[0] )
-		return BM_CONTINUE;
-	ActiveRV *active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->deactivated, proxy );
-	return BM_CONTINUE;
-}
-void
-bm_context_check( BMContext *ctx )
-{
-	CNDB *db = BMContextDB( ctx );
-	ActiveRV *active = BMContextActive( ctx );
-	listItem **entries = &active->value;
-	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
-		next_i = i->next;
-		CNInstance *proxy = i->ptr;
-		CNEntity *connection = proxy->sub[ 0 ];
-		if ( !connection->sub[ 1 ] ) {
-			clipListItem( entries, i, last_i, next_i );
-			db_deprecate( proxy, db ); }
-		else last_i = i; }
 }
 
 //===========================================================================
@@ -179,7 +148,7 @@ bm_context_update( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_set
+//	bm_context_set / bm_context_check
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -210,6 +179,22 @@ register_CB( char *p, listItem *exponent, void *user_data )
 	while (( exp = pop_item( &xpn ) ))
 		instance = instance->sub[ exp & 1 ];
 	registryRegister( data->registry, p, instance );
+}
+
+void
+bm_context_check( BMContext *ctx )
+{
+	CNDB *db = BMContextDB( ctx );
+	ActiveRV *active = BMContextActive( ctx );
+	listItem **entries = &active->value;
+	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
+		next_i = i->next;
+		CNInstance *proxy = i->ptr;
+		CNEntity *connection = proxy->sub[ 0 ];
+		if ( !connection->sub[ 1 ] ) {
+			clipListItem( entries, i, last_i, next_i );
+			db_deprecate( proxy, db ); }
+		else last_i = i; }
 }
 
 //===========================================================================

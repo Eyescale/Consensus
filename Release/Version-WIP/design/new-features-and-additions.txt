@@ -2,7 +2,14 @@ Name
 	Consensus B% Version-2.0 File Format Interface - New Features
 
 Synopsis
-	    	Feature Name			Expression
+    Changes
+
+	. The name of the Narrative pipe Register Variable was changed
+	  from %! in Version-1.x to %| in Version-2.0
+
+    Additions
+
+	    	Feature Name			Expression			Comment
 
 	Instantiate			do !! Narrative ( ... )
 					do !! Narrative ( ... ) @<
@@ -21,18 +28,18 @@ Synopsis
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	EENO Register Variables		%<
-					%<?>
-					%<!>
-					%<?:sub>
-					%<!:sub>
+	EENO Register Variables		%<				sub is any expression enclosed in
+					%<?>				parentheses whose terms are limited
+					%<!>				to the wildcard . and optionally
+					%<?:sub>			one query signus ?
+					%<!:sub>	
 
 	this Register Variable		%%
 
 	parent Register Variable	..
 
 Description
-	1. Instantiate
+    1. Instantiate
 
 	CNCell instances are created upon either one of the following parent
 	cell's narrative operations:
@@ -78,7 +85,7 @@ Description
 	instance created but with nothing to show for it - not even via
 	on ~((*,handle),?) ... It is, however, manifested.
 
-	2. Subscribe
+    2. Subscribe
 
 	CNCell instantiation involves instantiating connections, which can be
 	handled and stored as proxies within a cell's CNDB.
@@ -90,11 +97,11 @@ Description
 
 	See example usage in the Narrative this Register Variable section below.
 
-	3. Unsubscribe
+    3. Unsubscribe
 
 	Same as above, with unsubscribe from instead of subscribe to.
 
-	4. External Event Narrative Occurrence (EENO)
+    4. External Event Narrative Occurrence (EENO)
 
 	External Event Narrative Occurrences (EENO) are occurrences in the form
 
@@ -103,10 +110,29 @@ Description
 		where
 			event and src are expressions
 
-	See information related to how these expressions are processed prior to
-	launching the query in the Caveats section below.
+	Any referencing term found in the EENO event and src expressions, namely
 
-	5. EENO Register Variables
+		*identifier
+		.identifier
+		~identifier
+		*( expression )
+		%( expression )
+		.( expression )
+		~( expression )
+		expression:filter
+
+	as well as either one of the following register variable names
+
+		.. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
+
+	will be dereferenced within the narrative instance's own cell's CNDB
+	PRIOR to the query's being launched.
+
+	Such is the limitation imposed, by design, to the Consensus B%
+	inter-cell communication protocol, in that it allows only to query
+	manifested changes - and not one another's internal condition.
+
+    5. EENO Register Variables
 
 	The EENO Register Variables %<(?) and %<(!) allow subsequent references
 	to the EENO query results to be made by the narrative, using
@@ -116,7 +142,7 @@ Description
 			in case of assignment expression - if marked
 		%<	to represent src = proxy to the corresponding connection
 
-	6. Narrative this Register Variable
+    6. Narrative this Register Variable
 
 	The Narrative this Register Variable %% allows a proxy to the narrative's
 	current ctx->this CNInstance to be used for comparison - e.g.
@@ -131,24 +157,9 @@ Description
 				// subscribe to my source's new connection
 				do @< %<?>
 
-	7. Narrative parent Register Variable
+    7. Narrative parent Register Variable
 
 	Likewise the Narrative parent Register Variable .. references a proxy to
 	the narrative's parent cell - provided parent did not unsubscribe upon
 	instantiation.
-
-Caveats
-	Any referencing term of the EENO event and src expressions, such as
-
-		register variable
-		expression:filter
-		%( expression )
-		*expression
-
-	will be dereferenced within the narrative instance's own cell's CNDB
-	PRIOR to the query's being launched.
-
-	Such is the limitation imposed, by design, to the Consensus B%
-	inter-cell communication protocol, in that it allows only to query
-	manifested changes - and not one another's internal condition.
 

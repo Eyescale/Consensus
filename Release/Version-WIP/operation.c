@@ -5,6 +5,7 @@
 #include "program.h"
 #include "operation.h"
 #include "expression.h"
+#include "instantiate.h"
 
 // #define DEBUG
 

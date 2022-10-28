@@ -3,8 +3,13 @@
 
 #include "string_util.h"
 #include "database.h"
-#include "locate.h"
+#include "traverse.h"
 #include "expression.h"
+#include "instantiate.h"
+#include "locate.h"
+#include "narrative.h"
+
+#include "bm_traverse.h"
 
 // #define DEBUG
 
@@ -120,6 +125,8 @@ BMTraverseCBEnd
 //===========================================================================
 //	bm_proxy_op
 //===========================================================================
+static BMQueryCB activate_CB, deactivate_CB;
+
 void
 bm_proxy_op( char *expression, BMContext *ctx )
 {
@@ -128,7 +135,7 @@ bm_proxy_op( char *expression, BMContext *ctx )
 	bm_context_check( ctx ); // remove dangling connections
 	char *p = expression;
 	BMQueryCB *op = ( *p=='@' ) ?
-		bm_activate : bm_deactivate;
+		activate_CB: deactivate_CB;
 	p += 2;
 	if ( *p!='{' )
 		bm_query( BM_CONDITION, p, ctx, op, NULL );
@@ -136,6 +143,24 @@ bm_proxy_op( char *expression, BMContext *ctx )
 		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
 		p = p_prune( PRUNE_TERM, p );
 	} while ( *p!='}' );
+}
+static BMCBTake
+activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( !isProxy(e) || isProxySelf(e) )
+		return BM_CONTINUE;
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, e );
+	return BM_CONTINUE;
+}
+static BMCBTake
+deactivate_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	if ( !isProxy(e) || isProxySelf(e) )
+		return BM_CONTINUE;
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->deactivated, e );
+	return BM_CONTINUE;
 }
 
 //===========================================================================

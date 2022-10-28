@@ -2,7 +2,6 @@
 #define	ASSIGNMENT_H
 
 #include "narrative.h"
-#include "traverse.h"
 #include "query.h"
 #include "proxy.h"
 

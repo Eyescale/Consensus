@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "string_util.h"
 #include "query_private.h"
 #include "assignment.h"
-#include "string_util.h"
 #include "locate.h"
+
+#include "bm_traverse.h"
 
 // #define DEBUG
 

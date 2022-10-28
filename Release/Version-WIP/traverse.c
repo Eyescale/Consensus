@@ -1,4 +1,4 @@
-#ifdef TRAVERSE_H
+#ifdef BM_TRAVERSE_H
 
 #define BMTraverseError -1
 
@@ -244,4 +244,4 @@ traverse_CB( BMCBName cb, BMTraverseData *traverse_data, char **p, int *f_ptr, i
 	else return BM_CONTINUE;
 }
 
-#endif	// TRAVERSE_H
+#endif	// BM_TRAVERSE_H

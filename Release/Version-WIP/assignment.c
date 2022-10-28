@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "string_util.h"
+#include "traverse.h"
 #include "instantiate.h"
 #include "assignment.h"
-#include "string_util.h"
 #include "locate.h"
+
+#include "bm_traverse.h"
 
 //===========================================================================
 //	bm_instantiate_assignment
@@ -35,9 +38,10 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 			char *q = p = p_prune( PRUNE_IDENTIFIER, p );
 			for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
 				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
-				db_assign( i->ptr, proxy, db ); } }
+				if (( proxy )) db_assign( i->ptr, proxy, db );
+				else db_unassign( i->ptr, db ); } }
 		else {
-			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+			fprintf( stderr, ">>>>> B%%: Error: Narrative class not found in expression\n"
 				"\t\tdo !! %s\n\t<<<<<\n", p );
 			exit( -1 ); } }
 	else if ( !strncmp( p, "~.", 2 ) ) {

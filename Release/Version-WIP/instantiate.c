@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "traverse.h"
 #include "instantiate_private.h"
+#include "assignment.h"
 #include "string_util.h"
 #include "database.h"
+
+#include "bm_traverse.h"
 
 //===========================================================================
 //	bm_instantiate
@@ -114,7 +118,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	else {
 		bm_context_finish( cell->ctx, 1 );
 		proxy = db_proxy( this, carry, BMContextDB(ctx) );
-		bm_activate( proxy, ctx, NULL ); }
+		bm_context_activate( ctx, proxy ); }
 	return proxy;
 }
 

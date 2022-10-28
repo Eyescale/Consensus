@@ -2,7 +2,6 @@
 #define	INSTANTIATE_H
 
 #include "expression.h"
-#include "traverse.h"
 #include "program.h"
 
 // #define DEBUG
@@ -24,8 +23,8 @@ typedef struct {
 	CNEntity *carry;
 } BMInstantiateData;
 
-void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 CNInstance *bm_conceive( Pair *, char *, BMTraverseData * );
+void bm_instantiate( char *expression, BMContext *, CNStory * );
 
 
 #endif	// INSTANTIATE_H

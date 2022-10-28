@@ -5,6 +5,7 @@
 #include <strings.h>
 #include <ctype.h>
 
+#include "pair.h"
 #include "list.h"
 
 typedef union { char s[2]; int value; } char_s;
@@ -33,7 +34,6 @@ int	p_filtered( char * );
 int	p_ternary( char * );
 int	p_list( char * );
 int	p_single( char * );
-
 
 enum {
 	CNStringMode = 0,

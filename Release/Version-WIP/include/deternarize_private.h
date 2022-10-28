@@ -1,8 +1,6 @@
 #ifndef DETERNARIZE_PRIVATE_H
 #define DETERNARIZE_PRIVATE_H
 
-#include "pair.h"
-#include "list.h"
 #include "string_util.h"
 #include "traverse.h"
 

@@ -1,7 +1,6 @@
 #ifndef TRAVERSE_H
 #define TRAVERSE_H
 
-#include "list.h"
 #include "string_util.h"
 
 //===========================================================================

@@ -189,11 +189,9 @@ db_unassign( CNInstance *x, CNDB *db )
 		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
 			CNInstance *f = j->ptr;
 			if ( db_deprecatable(f,db) )
-				db_deprecate( f, db );
-		}
+				db_deprecate( f, db ); }
 		db_op( DB_REASSIGN_OP, e, db );
-		return e;
-	}
+		return e; }
 	e = cn_new( star, x );
 	db_op( DB_MANIFEST_OP, e, db );
 	return e;

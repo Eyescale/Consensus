@@ -2,7 +2,6 @@
 #define CONTEXT_H
 
 #include "database.h"
-#include "traverse.h"
 
 typedef struct {
 	CNInstance *this;
@@ -12,12 +11,11 @@ typedef struct {
 BMContext *	newContext( CNEntity *parent );
 void		freeContext( BMContext * );
 void		bm_context_finish( BMContext *ctx, int subscribe );
-BMCBTake	bm_activate( CNInstance *, BMContext *, void * );
-BMCBTake	bm_deactivate( CNInstance *, BMContext *, void * );
-void		bm_context_check( BMContext *ctx );
+void		bm_context_activate( BMContext *ctx, CNInstance *proxy );
 void		bm_context_init( BMContext *ctx );
 void		bm_context_update( BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
+void		bm_context_check( BMContext *ctx );
 void		bm_context_flush( BMContext * );
 void		bm_flush_pipe( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
@@ -48,8 +46,9 @@ typedef struct {
 #define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
 
 #define isProxy( e )		((e->sub[0]) && !e->sub[1])
+#define BMProxyThis( proxy )	((proxy)->sub[0]->sub[0])
 #define BMProxyThat( proxy )	((proxy)->sub[0]->sub[1])
-#define BMContextMatchSelf( ctx, e ) ( isProxy(e) && BMProxyThat(e)==ctx->this )
+#define isProxySelf( proxy )	(!BMProxyThis(proxy))
 
 
 #endif	// CONTEXT_H
