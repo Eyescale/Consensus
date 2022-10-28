@@ -12,6 +12,7 @@ SRCS =	narrative.c \
 			db_op.c \
 			deternarize.c \
 			expression.c \
+				proxy.c \
 			instantiate.c \
 				assignment.c \
 			query.c \

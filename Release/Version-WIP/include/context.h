@@ -27,7 +27,7 @@ listItem *	bm_push_mark( BMContext *, int, void * );
 void *		bm_pop_mark( BMContext *, int );
 int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
-CNInstance *	bm_lookup( int privy, char *, BMContext *, CNEntity * );
+CNInstance *	bm_lookup( int privy, char *, BMContext * );
 CNInstance *	bm_register( BMContext *, char * );
 listItem *	bm_inform( BMContext *, listItem **, CNEntity * );
 CNInstance *	bm_context_inform( BMContext *, CNInstance *, CNEntity * );

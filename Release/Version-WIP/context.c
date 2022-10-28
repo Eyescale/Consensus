@@ -212,7 +212,6 @@ register_CB( char *p, listItem *exponent, void *user_data )
 	registryRegister( data->registry, p, instance );
 }
 
-
 //===========================================================================
 //	bm_context_flush / bm_flush_pipe
 //===========================================================================
@@ -227,7 +226,9 @@ bm_context_flush( BMContext *ctx )
 		next_i = i->next;
 		char *name = entry->name;
 		switch ( *name ) {
-		case '?': case '!': case '|':
+		case '?':
+		case '!':
+		case '|':
 			freeListItem((listItem **) &entry->value );
 			last_i = i;
 			break;
@@ -331,7 +332,9 @@ bm_context_lookup( BMContext *ctx, char *p )
 	Pair *entry = registryLookup( ctx->registry, p );
 	if (( entry ))
 		switch ( *p ) {
-		case '?': case '!': case '|': ;
+		case '?':
+		case '!':
+		case '|': ;
 			if ((entry->value))
 				return ((listItem*)entry->value)->ptr;
 			break;
@@ -377,96 +380,31 @@ ERR: ;
 //===========================================================================
 //	bm_lookup
 //===========================================================================
-static CNInstance * bm_x_lookup( CNEntity *, CNInstance * );
-static CNInstance * lookup_proxy( CNEntity *, CNInstance * );
-
 CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx, CNEntity *target )
+bm_lookup( int privy, char *p, BMContext *ctx )
 {
-	CNInstance *e;
 	switch ( *p ) {
 	case '.':
-		e = ( p[1]=='.' ? BMContextParent(ctx) : BMContextPerso(ctx) );
-		return bm_x_lookup( target, e );
+		return ( p[1]=='.' ?
+			BMContextParent(ctx) : BMContextPerso(ctx) );
 	case '%': // looking up %?, %!, %|, %% or just plain old %
 		switch ( p[1] ) {
-		case '?': return bm_x_lookup( target, bm_context_lookup(ctx,"?") );
-		case '!': return bm_x_lookup( target, bm_context_lookup(ctx,"!") );
-		case '|': return bm_x_lookup( target, bm_context_lookup(ctx,"|") );
-		case '%': return bm_x_lookup( target, BMContextSelf(ctx) ); }
+		case '?': return bm_context_lookup( ctx, "?" );
+		case '!': return bm_context_lookup( ctx, "!" );
+		case '|': return bm_context_lookup( ctx, "|" );
+		case '%': return BMContextSelf( ctx ); }
 		break;
 	case '\'': ; // looking up single character identifier instance
 		char_s q;
-		if ( charscan( p+1, &q ) ) {
-			if (( target )) return db_lookup( privy, q.s, BMThisDB(target) );
-			else return db_lookup( privy, q.s, BMContextDB(ctx) ); }
+		if ( charscan( p+1, &q ) )
+			return db_lookup( privy, q.s, BMContextDB(ctx) );
 		return NULL;
-	default:
-		if ( !is_separator(*p) && !target ) {
-			// looking up regular identifier instance
-			if (( e = bm_context_lookup( ctx, p ) ))
-				return e; } }
+	default: if ( is_separator(*p) ) break;
+		// looking up normal identifier instance
+		CNInstance *instance = bm_context_lookup( ctx, p );
+		if (( instance )) return instance; }
 
-	if (( target )) return db_lookup( privy, p, BMThisDB(target) );
-	else return db_lookup( privy, p, BMContextDB(ctx) );
-}
-CNInstance *
-bm_x_lookup( CNEntity *this, CNInstance *y )
-{
-	if ( !this || !y ) return y;
-#if 0
-	listItem *stack = NULL;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(y,ndx) )) {
-			if ( !CNSUB(x,ndx) )
-				goto FAIL;
-			add_item( &stack, ndx );
-			addItem( &stack, y );
-			addItem( &stack, x );
-			y = y->sub[ ndx ];
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-
-		if (( y->sub[ 0 ] )) {
-			// y is proxy==(( this, that ), NULL )
-			if ( !isProxy(x) || BMProxyThat(x)!=BMProxyThat(y) )
-				goto FAIL; }
-		else {
-			if (( x->sub[ 0 ] ))
-				goto FAIL;
-			char *p_x = db_identifier( x, db_x );
-			char *p_y = db_identifier( y, db_y );
-			if ( strcomp( p_x, p_y, 1 ) )
-				goto FAIL; }
-		for ( ; ; ) {
-			if ( !stack ) return 1;
-			x = popListItem( &stack );
-			y = popListItem( &stack );
-			if ( !pop_item( &stack ) )
-				{ ndx=1; break; }
-		} }
-FAIL:
-	freeListItem( &stack );
-#endif
-	return 0;
-}
-static CNInstance *
-lookup_proxy( CNEntity *this, CNEntity *that )
-{
-	if ( this==that ) {
-		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is only one ((NULL,this), . )
-			if ( !connection->sub[ 0 ] )
-				return connection->as_sub[ 0 ]->ptr; } }
-	else {
-		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is at most one ((this,~NULL), . )
-			if ( connection->sub[ 1 ]==that )
-				return connection->as_sub[ 0 ]->ptr; } }
-	return NULL;
+	return db_lookup( privy, p, BMContextDB(ctx) );
 }
 
 //===========================================================================
@@ -492,6 +430,8 @@ bm_register( BMContext *ctx, char *p )
 //===========================================================================
 //	bm_inform / bm_context_inform
 //===========================================================================
+static CNInstance * lookup_proxy( CNEntity *, CNInstance * );
+
 listItem *
 bm_inform( BMContext *ctx, listItem **instances, CNEntity *target )
 {
@@ -535,3 +475,21 @@ bm_context_inform( BMContext *ctx, CNInstance *e, CNEntity *target )
 				ndx=1; break; }
 		} }
 }
+static CNInstance *
+lookup_proxy( CNEntity *this, CNEntity *that )
+{
+	if ( this==that ) {
+		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
+			CNEntity *connection = i->ptr;
+			// Assumption: there is only one ((NULL,this), . )
+			if ( !connection->sub[ 0 ] )
+				return connection->as_sub[ 0 ]->ptr; } }
+	else {
+		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+			CNEntity *connection = i->ptr;
+			// Assumption: there is at most one ((this,~NULL), . )
+			if ( connection->sub[ 1 ]==that )
+				return connection->as_sub[ 0 ]->ptr; } }
+	return NULL;
+}
+

@@ -1,12 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. on_event_x -> on_proxy_feel==bm_query( type, expression, ctx, NULL, src )
-		. query.c	=> set CNEntity *src via user_data	[ DONE ]
-				=> x_match(), x_db_match()		[ DONE ]
-		. bm_lookup	=> take CNentity *src as argument	[ DONE ]
-				=> bm_x_lookup				[ WIP ]
-		. assignment	=> set CNDB / BMQueryThat(data)
-		. locate.c	=> do not enter sub_expression
 	. EENO Implementation
 		. parser.c, traverse.c, string_util.c:p_prune()
 			. handle '<'		[ DONE ]
@@ -17,19 +10,26 @@ TODO
 			. bm_proxy_still	[ DONE ]
 			. bm_check_active	[ DONE ]
 			. bm_scan_active	[ DONE ]
-			. bm_proxy_feel		[ DONE ]
+		. proxy.c [ NEW ]
+			. bm_proxy_feel		[ WIP ]
+				. x_match / db_x_match		[ DONE ]
+				. bm_proxy_feel_assignment
 		. EENO register variables
-			. update design/new-features-and-additions.txt [DONE]
+			. update design/new-features-and-additions.txt [ WIP ]
 			. implementation
-				.query.c: match(), x_match()
+				. proxy.c: x_match()
+				. query.c: match()
 					. Handle %? when %< is set - including special case: %(%?:...)
 					. Attention: bm_context_mark, when %< is set...
-				. context.c: bm_context_mark_x
-	. context.c
-		. create registry entry "" for Base Narrative Pin
-		  => optimize instantiate.c and query.c (as there is always a BMContextPerso())
+				. context.c: bm_context_mark / bm_context_mark_x ???
 	. instantiate.c / assignment.c
 		. handle entry==NULL prior to bm_conceive()
+	. context.c
+		. create registry entry "" for Base Narrative perso << could use ProxySelf ?
+		  => simplify instantiate.c and query.c (as there is always a BMContextPerso())
+	. traverse.c / traverse.h - NO recursion
+		. inline bm_traverse(), etc.
+		. #include traverse.c in traverse.h
 	. Testing
 		. 3_TM.multi/TM-head_tape.story
 	. Optimizations (low-hanging fruits)

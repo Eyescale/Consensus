@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "database.h"
 #include "locate.h"
-#include "narrative.h"
 #include "expression.h"
 
 // #define DEBUG
@@ -100,8 +99,7 @@ case_( sound_CB )
 	int target = bm_scour( p, PMARK );
 	if ( target&PMARK && target!=PMARK ) {
 		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
-		"dubious combination of query terms with %%!\n", p );
-	}
+		"dubious combination of query terms with %%!\n", p ); }
 	if ( !bm_feel( BM_CONDITION, p, ctx ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
@@ -196,14 +194,12 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 					if ( event==EOF ) goto RETURN;
 					else if ( event!='%' ) {
 						ungetc( event, stdin );
-						goto RETURN; }
-				}
+						goto RETURN; } }
 				else if ((args)) {
 					char *expression = args->ptr;
 					event = bm_input( fmt[1], expression, ctx );
 					if ( event==EOF ) goto RETURN;
-					args = args->next;
-				}
+					args = args->next; }
 				fmt+=2; break;
 			default:
 				delta = charscan( fmt, &q );
@@ -212,21 +208,14 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 					if ( event==EOF ) goto RETURN;
 					else if ( event!=q.value ) {
 						ungetc( event, stdin );
-						fmt += delta;
-					}
-				}
-				else fmt++;
-			}
-		}
-	}
+						fmt += delta; } }
+				else fmt++; } } }
 	else {
 		while (( args )) {
 			char *expression = args->ptr;
 			event = bm_input( DEFAULT_TYPE, expression, ctx );
 			if ( event == EOF ) break;
-			args = args->next;
-		}
-	}
+			args = args->next; } }
 RETURN:
 	if ( event==EOF ) {
 		while (( args )) {
@@ -234,9 +223,7 @@ RETURN:
 			asprintf( &expression, "(*,%s)", expression );
 			bm_release( expression, ctx );
 			free( expression );
-			args = args->next;
-		}
-	}
+			args = args->next; } }
 	return 0;
 }
 static int
@@ -258,16 +245,15 @@ bm_input( int type, char *expression, BMContext *ctx )
 		case '\\': asprintf( &input, "'\\\\'" ); break;
 		default:
 			if ( is_printable( event ) ) asprintf( &input, "'%c'", event );
-			else asprintf( &input, "'\\x%.2X'", event );
-		}
+			else asprintf( &input, "'\\x%.2X'", event ); }
 		break;
 	case '_':
 		input = bm_read( BM_INPUT, stdin );
 		if ( !input ) return EOF;
 		break;
 	default:
-		return 0;
-	}
+		return 0; }
+
 	asprintf( &expression, "((*,%s),%s)", expression, input );
 	free( input );
 	bm_instantiate( expression, ctx, NULL );
