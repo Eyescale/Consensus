@@ -3,9 +3,8 @@
 
 #include "query.h"
 
-//===========================================================================
-//	Interface with xp_verify
-//===========================================================================
+typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+
 typedef enum {
 	BM_INIT,
 	BM_BGN,

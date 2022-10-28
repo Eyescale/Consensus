@@ -868,8 +868,7 @@ cn_parser_getc( CNParser *data )
 		data->line += skipped[ 1 ];
 		data->column = skipped[ 0 ];
 	} else {
-		data->column += skipped[ 0 ];
-	}
+		data->column += skipped[ 0 ]; }
 	return event;
 }
 #define COMMENT		0
@@ -887,8 +886,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 		case '/':
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 2;
-				skipped[ 0 ]++;
-			}
+				skipped[ 0 ]++; }
 			else if ( mode[ COMMENT ] == 4 )
 				mode[ COMMENT ] = 0;
 			skipped[ 0 ]++;
@@ -897,24 +895,20 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 0;
 				output = '/';
-				*buffer = '\n';
-			}
+				*buffer = '\n'; }
 			else if ( mode[ COMMENT ] == 2 ) {
 				mode[ COMMENT ] = 0;
-				output = '\n';
-			}
+				output = '\n'; }
 			else {
 				if ( mode[ COMMENT ] == 4 )
 					mode[ COMMENT ] = 3;
 				skipped[ 0 ] = 0;
-				skipped[ 1 ]++;
-			}
+				skipped[ 1 ]++; }
 			break;
 		case '*':
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 3;
-				skipped[ 0 ]++;
-			}
+				skipped[ 0 ]++; }
 			else if ( mode[ COMMENT ] == 3 )
 				mode[ COMMENT ] = 4;
 			else if ( mode[ COMMENT ] == 4 )
@@ -925,60 +919,47 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			if ( mode[ COMMENT ] == 1 ) {
 				mode[ COMMENT ] = 0;
 				output = '/';
-				*buffer = event;
-			}
+				*buffer = event; }
 			else {
 				if ( mode[ COMMENT ] == 4 )
 					mode[ COMMENT ] = 3;
-				skipped[ 0 ]++;
-			}
-		}
-	}
+				skipped[ 0 ]++; } } }
 	else if ( mode[ BACKSLASH ] ) {
 		if ( mode[ BACKSLASH ] == 4 ) {
 			mode[ BACKSLASH ] = 0;
-			output = event;
-		}
+			output = event; }
 		else switch ( event ) {
 		case ' ':
 		case '\t':
 			if ( mode[ BACKSLASH ] == 1 ) {
 				mode[ BACKSLASH ] = 2;
-				skipped[ 0 ]++;
-			}
+				skipped[ 0 ]++; }
 			skipped[ 0 ]++;
 			break;
 		case '\\':
 			if ( mode[ BACKSLASH ] == 1 ) {
 				mode[ BACKSLASH ] = 4;
 				output = '\\';
-				*buffer = '\\';
-			}
+				*buffer = '\\'; }
 			else mode[ BACKSLASH ] = 1;
 			break;
 		case '\n':
 			if ( mode[ BACKSLASH ] == 3 ) {
 				mode[ BACKSLASH ] = 0;
-				output = '\n';
-			}
+				output = '\n'; }
 			else {
 				mode[ BACKSLASH ] = 3;
 				skipped[ 0 ] = 0;
-				skipped[ 1 ]++;
-			}
+				skipped[ 1 ]++; }
 			break;
 		default:
 			if ( mode[ BACKSLASH ] == 1 ) {
 				mode[ BACKSLASH ] = 4;
 				output = '\\';	
-				*buffer = event;
-			}
+				*buffer = event; }
 			else {
 				mode[ BACKSLASH ] = 0;
-				*buffer = event;
-			}
-		}
-	}
+				*buffer = event; } } }
 	else {
 		switch ( event ) {
 		case '\\':
@@ -997,8 +978,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			default:
 				mode[ QUOTE ] = 0;
 				mode[ BACKSLASH ] = 1;
-				output = event;
-			}
+				output = event; }
 			break;
 		case '"':
 			output = event;
@@ -1015,8 +995,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			default:
 				mode[ QUOTE ] = 0;
 				mode[ STRING ] = !mode[ STRING ];
-				break;
-			}
+				break; }
 			break;
 		case '\'':
 			output = event;
@@ -1033,8 +1012,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				mode[ QUOTE ] = -1;
 				break;
 			default:
-				mode[ QUOTE] = 0;
-			}
+				mode[ QUOTE] = 0; }
 			break;
 		case '/':
 			switch ( mode[ QUOTE ] ) {
@@ -1051,8 +1029,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 				break;
 			default: // mode[ STRING ] excluded
 				mode[ QUOTE ] = 0;
-				output = event;
-			}
+				output = event; }
 			break;
 		default:
 			output = event;
@@ -1068,15 +1045,11 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			case -4:
 				if (!( event == 'x' )) {
 					mode[ QUOTE ] = -1;
-					break;
-				}
+					break; }
 				// no break
 			default:
 				mode[ QUOTE ]++;
-				break;
-			}
-		}
-	}
+				break; } } }
 	return output;
 }
 

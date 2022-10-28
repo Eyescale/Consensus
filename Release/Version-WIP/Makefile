@@ -12,10 +12,10 @@ SRCS =	narrative.c \
 			db_op.c \
 			deternarize.c \
 			expression.c \
-				proxy.c \
+				query.c \
+				locate.c \
 			instantiate.c \
-			query.c \
-				locate.c
+			proxy.c
 LIB = libbmod.a
 
 TARGETS = $(LIB) B%

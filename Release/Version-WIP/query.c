@@ -13,6 +13,7 @@
 //	bm_query
 //===========================================================================
 static CNInstance * bm_query_assignment( BMQueryType, char *, BMQueryData * );
+static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB * );
 static XPTraverseCB bm_verify;
 
 CNInstance *
@@ -99,10 +100,10 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 			BM_DONE : BM_CONTINUE; }
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	xp_traverse
-//===========================================================================
-CNInstance *
+//---------------------------------------------------------------------------
+static CNInstance *
 xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB )
 /*
 	Traverses data->pivot's exponent invoking traverse_CB on every match
@@ -514,9 +515,9 @@ case_( wildcard_CB )
 	_break
 BMTraverseCBEnd
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	match
-//===========================================================================
+//---------------------------------------------------------------------------
 static int
 match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 /*

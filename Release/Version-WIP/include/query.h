@@ -35,8 +35,6 @@ typedef struct {
 	} stack;
 } BMQueryData;
 
-typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
-CNInstance *xp_traverse( char *, BMQueryData *, XPTraverseCB );
 int xp_verify( CNInstance *, char *, BMQueryData * );
 
 
