@@ -10,6 +10,7 @@ SRCS =	narrative.c \
 		context.c \
 		operation.c \
 			db_op.c \
+			traverse.c \
 			deternarize.c \
 			expression.c \
 				query.c \

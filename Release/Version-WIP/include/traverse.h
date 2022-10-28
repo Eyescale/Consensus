@@ -120,7 +120,9 @@ typedef enum {
 	BM_PRUNE_LITERAL,
 	BM_PRUNE_TERNARY,
 } BMCBTake;
+
 typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next );
+char * bm_traverse( char *, BMTraverseData *, int flags );
 
 #define BMTraverseCBSwitch( func ) \
 	static void func( void ) {
@@ -136,11 +138,6 @@ typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next
 #define BMTraverseCBEnd \
 	}
 
-//===========================================================================
-//	bm_traverse	- NO recursion
-//===========================================================================
-#include "traverse.c"
-#undef _CB
 
 
 #endif	// TRAVERSE_H

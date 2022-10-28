@@ -5,8 +5,6 @@
 #include "query_private.h"
 #include "locate.h"
 
-#include "bm_traverse.h"
-
 // #define DEBUG
 
 //===========================================================================

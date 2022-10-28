@@ -1,4 +1,7 @@
-#ifdef BM_TRAVERSE_H
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "traverse.h"
 
 #define BMTraverseError -1
 
@@ -7,7 +10,7 @@
 //===========================================================================
 static char * _traverse( char *, BMTraverseData *, int );
 
-static char *
+char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
 {
 	char *p = _traverse( expression, traverse_data, flags );
@@ -244,4 +247,3 @@ traverse_CB( BMCBName cb, BMTraverseData *traverse_data, char **p, int *f_ptr, i
 	else return BM_CONTINUE;
 }
 
-#endif	// BM_TRAVERSE_H

@@ -9,8 +9,6 @@
 #include "locate.h"
 #include "narrative.h"
 
-#include "bm_traverse.h"
-
 // #define DEBUG
 
 //===========================================================================

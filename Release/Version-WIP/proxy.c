@@ -7,8 +7,6 @@
 #include "query.h"
 #include "proxy.h"
 
-#include "bm_traverse.h"
-
 // #define DEBUG
 
 //===========================================================================
