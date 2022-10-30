@@ -200,13 +200,17 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 				found = bm_proxy_feel( proxy, BM_RELEASED, expression+1, ctx );
 				success = bm_context_mark_x( ctx, expression+1, found, marked );
 				if ( success ) goto RETURN; else continue;
-			case '.':
-				success = bm_proxy_still( proxy );
+			case '.': ;
+				CNCell *cell = (CNCell *) BMProxyThat( proxy );
+				BMContext *ctx = BMCellContext( cell );
+				success = db_still( BMContextDB(ctx) );
 				if ( success ) goto RETURN; else continue; }
 			break;
 		default:
 			if ( !strcmp( expression, "init" ) ) {
-				success = bm_proxy_in( proxy );
+				CNCell *cell = (CNCell *) BMProxyThat( proxy );
+				BMContext *ctx = BMCellContext( cell );
+				success = db_in( BMContextDB(ctx) );
 				if ( success ) goto RETURN; else continue; }
 
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );

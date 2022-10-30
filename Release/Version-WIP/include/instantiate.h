@@ -19,8 +19,7 @@ typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
-	BMContext *ctx;
-	CNEntity *carry;
+	BMContext *ctx, *carry;
 } BMInstantiateData;
 
 void bm_instantiate( char *expression, BMContext *, CNStory * );

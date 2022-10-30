@@ -1,5 +1,7 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. Transport CNDB in traversal data - pass ctx in TraverseCB
+		. No need for db_star
 	. EENO register variables
 		. implementation
 			. in context.c: bm_context_mark / bm_context_mark_x
@@ -80,6 +82,22 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Data Structures: changed
+		FROM
+			CNCell:[ entry:Pair, ctx:[ this:CNEntity:(CNDB,carry), registry ] ]
+
+		    where
+			BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
+			BMContextDB( ctx )	((CNDB *) ctx->this->sub[ 0 ] )
+			BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
+		TO
+			CNCell::CNEntity:( [ entry:Pair, carry:listItem ], registry:Registry )
+
+		    where
+			BMCellCarry( cell )	((listItem **) &cell->sub[ 0 ]->value )
+			BMContextDB( cell )	((CNDB *) registryLookup( cell->registry, "%" )->value )
+			BMContextId( cell )	((Pair *) registryLookup( cell->registry, "" )->value )
+
 	. updated doc design/new-features-and-additions.txt
 		. explained "sub" in Additions / EENO (Table)
 		. rules of assignment %? %! and EENO %<?> %<!> in Changes section

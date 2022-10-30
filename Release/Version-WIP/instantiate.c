@@ -80,7 +80,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		listItem **results = &data.results;
 		while (( instances = popListItem(results) ))
 			freeListItem( &instances );
-		bm_flush_pipe( ctx ); }
+		bm_context_pipe_flush( ctx ); }
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
@@ -102,21 +102,22 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 {
 	BMInstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	CNEntity *this = ctx->this;
+	CNEntity *this = BMContextThis( ctx );
 	// instantiate new cell
 	CNCell *cell = newCell( entry, this );
-	CNEntity *carry = data->carry = cell->ctx->this;
+	BMContext *cell_ctx = BMCellContext( cell );
 	// inform cell
+	data->carry = cell_ctx;
 	traverse_data->done = INFORMED|NEW;
 	p = bm_traverse( p, traverse_data, FIRST );
 	// carry cell
 	CNInstance *proxy = NULL;
-	addItem( BMContextCarry(ctx), cell );
+	addItem( BMCellCarry(this), cell );
 	if ( *p=='~' ) 
-		bm_context_finish( cell->ctx, 0 );
+		bm_context_finish( cell_ctx, 0 );
 	else {
-		bm_context_finish( cell->ctx, 1 );
-		proxy = db_proxy( this, carry, BMContextDB(ctx) );
+		bm_context_finish( cell_ctx, 1 );
+		proxy = db_proxy( this, cell, BMContextDB(ctx) );
 		bm_context_activate( ctx, proxy ); }
 	return proxy;
 }
@@ -204,7 +205,7 @@ case_( list_CB )
 	   start p ----------^               ^
 		     return p ---------------
 	*/
-	CNDB *db = ((data->carry) ? BMThisDB(data->carry) : BMContextDB(data->ctx));
+	CNDB *db = BMContextDB( (data->carry) ? data->carry : data->ctx );
 	data->sub[ 0 ] = bm_list( q, data->sub, db );
 	_prune( BM_PRUNE_LIST )
 case_( literal_CB )
@@ -212,7 +213,7 @@ case_( literal_CB )
 	   start p -----^             ^
 		return p -------------
 	*/
-	CNDB *db = ((data->carry) ? BMThisDB(data->carry) : BMContextDB(data->ctx));
+	CNDB *db = BMContextDB( (data->carry) ? data->carry : data->ctx );
 	CNInstance *e = bm_literal( q, db );
 	data->sub[ current ] = newItem( e );
 	(*q)++;
@@ -234,8 +235,8 @@ case_( decouple_CB )
 case_( close_CB )
 	listItem *instances;
 	BMContext *ctx = data->ctx;
-	CNEntity *carry = data->carry;
-	CNDB *db = ((carry) ? BMThisDB(carry) : BMContextDB(ctx));
+	BMContext *carry = data->carry;
+	CNDB *db = BMContextDB( (carry) ? carry : data->ctx );
 	if ( is_f( FIRST ) )
 		instances = data->sub[ 0 ];
 	else {
@@ -265,8 +266,8 @@ case_( wildcard_CB )
 	_break
 case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;
-	CNEntity *carry = data->carry;
-	CNDB *db = ((carry) ? BMThisDB(carry) : BMContextDB(ctx));
+	BMContext *carry = data->carry;
+	CNDB *db = BMContextDB( (carry) ? carry : data->ctx );
 	CNInstance *e, *perso = BMContextPerso( ctx );
 	if (( perso )) {
 		if ( !carry )
@@ -278,16 +279,16 @@ case_( dot_identifier_CB )
 	data->sub[ current ] = newItem( e );
 	_break
 case_( identifier_CB )
-	CNEntity *carry = data->carry;
+	BMContext *carry = data->carry;
 	if (( carry )) {
-		CNInstance *e = db_register( p, BMThisDB(carry) );
+		CNInstance *e = db_register( p, BMContextDB(carry) );
 		data->sub[ current ] = newItem( e ); }
 	else {
 		CNInstance *e = bm_register( data->ctx, p );
 		data->sub[ current ] = newItem( e ); }
 	_break
 case_( signal_CB )
-	CNDB *db = ((data->carry) ? BMThisDB(data->carry) : BMContextDB(data->ctx));
+	CNDB *db = BMContextDB( (data->carry) ? data->carry : data->ctx );
 	CNInstance *e = data->sub[ current ]->ptr;
 	db_signal( e, db );
 	_break

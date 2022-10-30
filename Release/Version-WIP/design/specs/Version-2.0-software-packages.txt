@@ -44,7 +44,7 @@ Description
 							bm_context_set
 							bm_context_check
 							bm_context_flush
-							bm_flush_pipe
+							bm_context_pipe_flush
 							bm_context_mark
 							bm_context_mark_x
 							bm_context_unmark

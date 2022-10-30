@@ -3,12 +3,9 @@
 
 #include "database.h"
 
-typedef struct {
-	CNInstance *this;
-	Registry *registry;
-} BMContext;
+typedef Registry BMContext;
 
-BMContext *	newContext( CNEntity *parent );
+BMContext *	newContext( CNEntity *cell, CNEntity *parent );
 void		freeContext( BMContext * );
 void		bm_context_finish( BMContext *ctx, int subscribe );
 void		bm_context_activate( BMContext *ctx, CNInstance *proxy );
@@ -17,7 +14,7 @@ void		bm_context_update( BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 void		bm_context_check( BMContext *ctx );
 void		bm_context_flush( BMContext * );
-void		bm_flush_pipe( BMContext * );
+void		bm_context_pipe_flush( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_mark_x( BMContext *, char *, CNInstance *, int *marked );
 void 		bm_context_unmark( BMContext *, int );
@@ -27,28 +24,26 @@ int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
 CNInstance *	bm_lookup( int privy, char *, BMContext * );
 CNInstance *	bm_register( BMContext *, char * );
-listItem *	bm_inform( BMContext *, listItem **, CNEntity * );
-CNInstance *	bm_context_inform( BMContext *, CNInstance *, CNEntity * );
+listItem *	bm_inform( BMContext *, listItem **, BMContext * );
+CNInstance *	bm_context_inform( BMContext *, CNInstance *, BMContext * );
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;
 	listItem *value;
 } ActiveRV;
 
-#define BMThisDB( this )	((CNDB *) ((CNEntity *) this )->sub[ 0 ] )
-
-#define BMContextDB( ctx )	BMThisDB( ctx->this )
-#define BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
-#define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx->registry, "@" )->value )
-#define BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
-#define BMContextSelf( ctx )	( BMContextId(ctx)->name )
-#define BMContextParent( ctx )	( BMContextId(ctx)->value )
-#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx->registry, "." )->value )
+#define BMContextId( ctx )	((Pair *) registryLookup( ctx, "" )->value )
+#define BMContextSelf( ctx )	((CNInstance *) BMContextId(ctx)->name )
+#define BMContextParent( ctx )	((CNInstance *) BMContextId(ctx)->value )
+#define BMContextDB( ctx )	((CNDB *) registryLookup( ctx, "%" )->value )
+#define BMContextPerso( ctx )	((CNInstance *) registryLookup( ctx, "." )->value )
+#define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx, "@" )->value )
 
 #define isProxy( e )		((e->sub[0]) && !e->sub[1])
 #define BMProxyThis( proxy )	((proxy)->sub[0]->sub[0])
 #define BMProxyThat( proxy )	((proxy)->sub[0]->sub[1])
-#define isProxySelf( proxy )	(!BMProxyThis(proxy))
+#define isProxySelf( proxy )	(BMProxyThis(proxy)==NULL)
 
+#define BMContextThis( ctx )	(BMProxyThat(BMContextSelf(ctx)))
 
 #endif	// CONTEXT_H

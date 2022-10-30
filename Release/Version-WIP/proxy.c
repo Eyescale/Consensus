@@ -3,6 +3,7 @@
 
 #include "string_util.h"
 #include "database.h"
+#include "program.h"
 #include "traverse.h"
 #include "query.h"
 #include "proxy.h"
@@ -101,7 +102,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
 #endif
-	CNDB *db_x = BMThisDB( BMProxyThat(proxy) );
+	CNCell *cell = (CNCell *) BMProxyThat( proxy );
+	CNDB *db_x = BMContextDB( BMCellContext(cell) );
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
 

@@ -552,7 +552,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		switch ( p[1] ) {
 		case '?': return ( y==bm_context_lookup( ctx, "?" ) );
 		case '!': return ( y==bm_context_lookup( ctx, "!" ) );
-		case '%': return ( isProxy(y) && BMProxyThat(y)==ctx->this ); }
+		case '%': return ( y==BMContextSelf(ctx) ); }
 		return (( y->sub[0] ) ? 0 :
 			( *db_identifier( y, BMContextDB(ctx) )=='%' )); }
 	else if ( !is_separator(*p) ) {

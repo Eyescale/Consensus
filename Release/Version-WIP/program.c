@@ -24,9 +24,13 @@ newProgram( CNStory *story, char *inipath )
 	if ( !cell ) {
 		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
 		return NULL; }
-	if (( inipath && !!bm_read( BM_LOAD, cell->ctx, inipath ) )) {
-		fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-		freeCell( cell ); return NULL; }
+	if (( inipath )) {
+		union { void *ptr; int value; } errnum;
+		BMContext *ctx = BMCellContext( cell );
+		errnum.ptr = bm_read( BM_LOAD, ctx, inipath );
+		if ( errnum.value ) {
+			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
+			freeCell( cell ); return NULL; } }
 	// threads->new is a list of lists
 	Pair *threads = newPair( NULL, newItem(newItem(cell)) );
 	return (CNProgram *) newPair( story, threads );
@@ -34,15 +38,22 @@ newProgram( CNStory *story, char *inipath )
 
 void
 freeProgram( CNProgram *program )
+/*
+	Note that in the normal course of execution both
+	program->threads->active and program->threads->new
+	should be NULL. Here we handle other cases as well
+*/
 {
 	if ( !program ) return;
 	CNCell *cell;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
-	while (( cell = popListItem(active) ))
-		freeCell( cell );
-	while (( cell = popListItem(new) ))
-		freeCell( cell );
+	while (( cell = popListItem(active) )) {
+		freeListItem( BMCellCarry(cell) );
+		freeCell( cell ); }
+	while (( cell = popListItem(new) )) {
+		freeListItem( BMCellCarry(cell) );
+		freeCell( cell ); }
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program );
 }
@@ -62,15 +73,16 @@ cnUpdate( CNProgram *program )
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		CNCell *cell = i->ptr;
-		BMContext *ctx = cell->ctx;
+		BMContext *ctx = BMCellContext( cell );
 		bm_context_update( ctx );
-		listItem *carry = *BMContextCarry( ctx );
+		listItem *carry = *BMCellCarry( cell );
 		if (( carry )) addItem( new, carry ); }
 	// activate new cells
 	for ( listItem *i; (i=popListItem(new)); )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
 			CNCell *cell = j->ptr;
-			bm_context_init( cell->ctx );
+			BMContext *ctx = BMCellContext( cell );
+			bm_context_init( ctx );
 			addItem( active, cell ); }
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: end\n" );
@@ -120,15 +132,40 @@ cnOperate( CNProgram *program )
 CNCell *
 newCell( Pair *entry, CNEntity *parent )
 {
-	BMContext *ctx = newContext( parent );
-	return (ctx) ? (CNCell *) newPair( entry, ctx ) : NULL;
+	CNCell *cell = cn_new( NULL, NULL );
+	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
+	cell->sub[ 1 ] = (CNEntity *) newContext( cell, parent );
+	return cell;
 }
 static void
 freeCell( CNCell *cell )
+/*
+	Assumption: *BMCellCarry(cell) is NULL
+*/
 {
 	if ( !cell ) return;
-	freeContext( cell->ctx );
-	freePair((Pair *) cell );
+	// free cell's nucleus
+	freePair((Pair *) cell->sub[ 0 ] );
+
+	/* prune CNDB proxies & release cell's input connections (cell,.)
+	   this includes parent connection & proxy if these were set
+	*/
+	CNEntity *connection;
+	listItem **connections = &cell->as_sub[ 0 ];
+	while (( connection = popListItem( connections ) )) {
+		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
+		cn_release( connection ); }
+
+	// free cell's context
+	freeContext((BMContext *) cell->sub[ 1 ] );
+
+	/* cn_release will nullify cell in subscribers' connections (.,cell)
+	   subscriber is responsible for removing dangling connections -
+	   see bm_context_check() in context.c
+	*/
+	cell->sub[ 0 ] = NULL;
+	cell->sub[ 1 ] = NULL;
+	cn_release( cell );
 }
 
 //===========================================================================
@@ -143,8 +180,8 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "bm_operate: bgn\n" );
 #endif
-	BMContext *ctx = cell->ctx;
-	freeListItem( BMContextCarry(ctx) );
+	freeListItem( BMCellCarry(cell) );
+	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
@@ -153,7 +190,7 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 	index[ 0 ] = newRegistry( IndexedByAddress );
 	index[ 1 ] = newRegistry( IndexedByAddress );
 
-	listItem *narratives = cell->entry->value;
+	listItem *narratives = BMCellEntry( cell )->value;
 	CNNarrative *base = narratives->ptr; // base narrative
 	registryRegister( index[ 1 ], base, newItem( NULL ) );
 	do {
