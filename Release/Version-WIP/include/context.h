@@ -46,4 +46,5 @@ typedef struct {
 
 #define BMContextThis( ctx )	(BMProxyThat(BMContextSelf(ctx)))
 
+
 #endif	// CONTEXT_H

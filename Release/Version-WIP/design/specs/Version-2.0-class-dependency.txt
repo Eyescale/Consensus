@@ -26,7 +26,7 @@ Overview
 				BMContextActive(ctx): registryLookup( ctx, "@" )->value
 
 Description
-	Visualizing the CNEntity cell in its entirety we have
+	Visualizing the CNCell entity in its entirety we have
 
 		this:CNCell:CNEntity:[
 			sub:contents:[
@@ -42,7 +42,8 @@ Description
 		. the cell's nucleus hosts the cell's CNStory entry (DNA) as well as
 		  its progeny (production)
 		. the cell's ctx hosts the parameters of the cell's production agent -
-		  otherwise known as the cell's DNA/RNA polymerase enzyme
+		  otherwise known as ribosome, and/or DNA/RNA polymerase enzyme
+		  (when it is inside the nucleus)
 		. the cell's connections to:( this, that ) are connections to cells 
 		  this cell potentially subscribes to
 		. the cell's connections from:( that, this ) are connections from cells

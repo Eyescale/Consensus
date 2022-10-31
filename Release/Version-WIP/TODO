@@ -1,6 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. update specs
 	. EENO register variables
 		. implementation
 			. in parser.c: support %< %<?> %<!> %<?:sub> %<!:sub>
