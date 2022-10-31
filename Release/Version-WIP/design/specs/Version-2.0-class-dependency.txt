@@ -26,7 +26,7 @@ Overview
 				BMContextActive(ctx): registryLookup( ctx, "@" )->value
 
 Description
-	If we visualize the CNEntity cell in its entirety we have
+	Visualizing the CNEntity cell in its entirety we have
 
 		this:CNCell:CNEntity:[
 			sub:contents:[
