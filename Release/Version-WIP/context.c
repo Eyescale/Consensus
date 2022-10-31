@@ -13,15 +13,16 @@
 BMContext *
 newContext( CNEntity *cell, CNEntity *parent )
 {
-	CNDB *db = newCNDB();
-	Pair *id = newPair( NULL, NULL );
-	id->name = db_proxy( NULL, cell, db );
-	if (( parent ))
-		id->value = db_proxy( cell, parent, db );
-	Pair *active = newPair( newPair(NULL,NULL), NULL );
 	Registry *ctx = newRegistry( IndexedByCharacter );
+	CNDB *db = newCNDB();
+	Pair *id = newPair(
+		db_proxy( NULL, cell, db ),
+		db_proxy( cell, parent, db ) );
+	Pair *active = newPair(
+		newPair( NULL, NULL ),
+		NULL );
 	registryRegister( ctx, "", id ); // aka. %% and .. (proxies)
-	registryRegister( ctx, "%", db ); // aka. %% and .. (proxies)
+	registryRegister( ctx, "%", db );
 	registryRegister( ctx, "@", active ); // active connections (proxies)
 	registryRegister( ctx, ".", NULL ); // sub-narrative instance
 	registryRegister( ctx, "?", NULL ); // aka. %?
@@ -33,7 +34,7 @@ newContext( CNEntity *cell, CNEntity *parent )
 void
 freeContext( BMContext *ctx )
 {
-	// flush active connections register
+	// free active connections register
 	ActiveRV *active = BMContextActive( ctx );
 	freeListItem( &active->buffer->activated );
 	freeListItem( &active->buffer->deactivated );
@@ -128,7 +129,7 @@ bm_context_update( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_set / bm_context_check
+//	bm_context_set / bm_context_declare / bm_context_check
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -158,6 +159,36 @@ register_CB( char *p, listItem *exponent, void *user_data )
 	while (( exp = pop_item( &xpn ) ))
 		instance = instance->sub[ exp & 1 ];
 	registryRegister( data->ctx, p, instance );
+}
+
+int
+bm_context_declare( BMContext *ctx, char *p )
+/*
+	register .locale(s)
+*/
+{
+	CNInstance *perso = BMContextPerso( ctx );
+	Pair *entry;
+	CNDB *db = BMContextDB( ctx );
+	while ( *p=='.' ) {
+		p++;
+		entry = registryLookup( ctx, p );
+		if (( entry )) goto ERR; // already registered
+		else {
+			CNInstance *x = db_register( p, db );
+			if (( perso )) x = db_instantiate( perso, x, db );
+			registryRegister( ctx, p, x ); }
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		while ( *p==' ' || *p=='\t' ) p++; }
+	return 1;
+ERR: ;
+	CNInstance *instance = entry->value;
+	if ( instance->sub[ 0 ]==perso ) {
+		fprintf( stderr, ">>>>> B%%: Error: LOCALE "
+			"multiple declarations: '.%s'\n", p ); }
+	else fprintf( stderr, ">>>>> B%%: Error: LOCALE name '.%s' "
+		"conflict with sub-narrative .arg\n", p );
+	return -1;
 }
 
 void
@@ -307,43 +338,10 @@ bm_context_lookup( BMContext *ctx, char *p )
 }
 
 //===========================================================================
-//	bm_context_register
-//===========================================================================
-int
-bm_context_register( BMContext *ctx, char *p )
-/*
-	register .locale(s)
-*/
-{
-	CNInstance *perso = BMContextPerso( ctx );
-	Pair *entry;
-	CNDB *db = BMContextDB( ctx );
-	while ( *p=='.' ) {
-		p++;
-		entry = registryLookup( ctx, p );
-		if (( entry )) goto ERR; // already registered
-		else {
-			CNInstance *x = db_register( p, db );
-			if (( perso )) x = db_instantiate( perso, x, db );
-			registryRegister( ctx, p, x ); }
-		p = p_prune( PRUNE_IDENTIFIER, p );
-		while ( *p==' ' || *p=='\t' ) p++; }
-	return 1;
-ERR: ;
-	CNInstance *instance = entry->value;
-	if ( instance->sub[ 0 ]==perso ) {
-		fprintf( stderr, ">>>>> B%%: Error: LOCALE "
-			"multiple declarations: '.%s'\n", p ); }
-	else fprintf( stderr, ">>>>> B%%: Error: LOCALE name '.%s' "
-		"conflict with sub-narrative .arg\n", p );
-	return -1;
-}
-
-//===========================================================================
 //	bm_lookup
 //===========================================================================
 CNInstance *
-bm_lookup( int privy, char *p, BMContext *ctx )
+bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 {
 	switch ( *p ) {
 	case '.':
@@ -359,34 +357,34 @@ bm_lookup( int privy, char *p, BMContext *ctx )
 	case '\'': ; // looking up single character identifier instance
 		char_s q;
 		if ( charscan( p+1, &q ) )
-			return db_lookup( privy, q.s, BMContextDB(ctx) );
+			return db_lookup( privy, q.s, db );
 		return NULL;
 	default: if ( is_separator(*p) ) break;
 		// looking up normal identifier instance
 		CNInstance *instance = bm_context_lookup( ctx, p );
 		if (( instance )) return instance; }
 
-	return db_lookup( privy, p, BMContextDB(ctx) );
+	return db_lookup( privy, p, db );
 }
 
 //===========================================================================
 //	bm_register
 //===========================================================================
 CNInstance *
-bm_register( BMContext *ctx, char *p )
+bm_register( BMContext *ctx, char *p, CNDB *db )
 {
 	if ( *p == '\'' ) {
 		// registering single character identifier instance
 		char_s q;
 		if ( charscan( p+1, &q ) ) {
-			return db_register( q.s, BMContextDB(ctx) ); }
+			return db_register( q.s, db ); }
 		return NULL; }
 	else if ( !is_separator(*p) ) {
 		// registering normal identifier instance
 		Pair *entry = registryLookup( ctx, p );
 		if (( entry )) return entry->value; }
 
-	return db_register( p, BMContextDB(ctx) );
+	return db_register( p, db );
 }
 
 //===========================================================================
@@ -395,19 +393,18 @@ bm_register( BMContext *ctx, char *p )
 static CNInstance * lookup_proxy( CNEntity *, CNInstance * );
 
 listItem *
-bm_inform( BMContext *src, listItem **instances, BMContext *dst )
+bm_inform( BMContext *src, CNDB *db, listItem **instances, BMContext *dst )
 {
 	listItem *results = NULL;
 	for ( CNInstance *e;( e = popListItem(instances) ); ) {
-		e = bm_context_inform( src, e, dst );
+		e = bm_context_inform( src, db, e, dst );
 		if (( e )) addItem( &results, e ); }
 	return results;
 }
 CNInstance *
-bm_context_inform( BMContext *src, CNInstance *e, BMContext *dst )
+bm_context_inform( BMContext *src, CNDB *db_src, CNInstance *e, BMContext *dst )
 {
 	if ( !e ) return NULL;
-	CNDB *db_src = BMContextDB( src );
 	CNDB *db_dst = BMContextDB( dst );
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance;

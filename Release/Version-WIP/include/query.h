@@ -18,9 +18,9 @@ typedef struct {
 	BMQueryCB *user_CB;
 	void *user_data;
 	BMContext *ctx;
+	CNDB *db;
 	Pair *pivot;
 	int privy;
-	CNInstance *star;
 	listItem *exponent;
 	int op, success;
 	CNInstance *instance;

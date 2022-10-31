@@ -12,6 +12,7 @@ void		bm_context_activate( BMContext *ctx, CNInstance *proxy );
 void		bm_context_init( BMContext *ctx );
 void		bm_context_update( BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
+int		bm_context_declare( BMContext *, char * );
 void		bm_context_check( BMContext *ctx );
 void		bm_context_flush( BMContext * );
 void		bm_context_pipe_flush( BMContext * );
@@ -20,12 +21,11 @@ int		bm_context_mark_x( BMContext *, char *, CNInstance *, int *marked );
 void 		bm_context_unmark( BMContext *, int );
 listItem *	bm_push_mark( BMContext *, int, void * );	
 void *		bm_pop_mark( BMContext *, int );
-int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
-CNInstance *	bm_lookup( int privy, char *, BMContext * );
-CNInstance *	bm_register( BMContext *, char * );
-listItem *	bm_inform( BMContext *, listItem **, BMContext * );
-CNInstance *	bm_context_inform( BMContext *, CNInstance *, BMContext * );
+CNInstance *	bm_lookup( int privy, char *, BMContext *, CNDB * );
+CNInstance *	bm_register( BMContext *, char *, CNDB *);
+listItem *	bm_inform( BMContext *, CNDB *, listItem **, BMContext * );
+CNInstance *	bm_context_inform( BMContext *, CNDB *, CNInstance *, BMContext * );
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;

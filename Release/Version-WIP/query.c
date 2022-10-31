@@ -32,7 +32,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	memset( &data, 0, sizeof(BMQueryData));
 	data.type = type;
 	data.ctx = ctx;
-	data.star = db_star( db );
+	data.db = db;
 	data.user_CB = user_CB;
 	data.user_data = user_data;
 	if ( *expression==':' )
@@ -45,7 +45,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	listItem *exponent = NULL;
 	char *p = bm_locate_pivot( expression, &exponent );
 	if (( p )) {
-		e = bm_lookup( privy, p, ctx );
+		e = bm_lookup( privy, p, ctx, db );
 		if ( !e ) {
 			freeListItem( &exponent );
 			return NULL; }
@@ -88,13 +88,11 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 			(data->user_CB) ?
 				data->user_CB( e, data->ctx, data->user_data ) :
 			BM_DONE : BM_CONTINUE;
-	case BM_INSTANTIATED: ;
-		db = BMContextDB( data->ctx );
-		return ( db_manifested(e,db) && xp_verify(e,expression,data)) ?
+	case BM_INSTANTIATED:
+		return ( db_manifested(e,data->db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE;
 	case BM_RELEASED:
-		db = BMContextDB( data->ctx );
-		return ( db_deprecated(e,db) && xp_verify(e,expression,data)) ?
+		return ( db_deprecated(e,data->db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE; }
 }
 
@@ -109,7 +107,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB )
 	Assumption: pivot->value is not deprecated - and neither are its subs
 */
 {
-	CNDB *db = BMContextDB( data->ctx );
+	CNDB *db = data->db;
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
 	CNInstance *e;
@@ -209,7 +207,7 @@ xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 */
 {
 
-	CNDB *db = BMContextDB( data->ctx );
+	CNDB *db = data->db;
 	int privy = data->privy;
 	char *p = expression;
 	if ( !strncmp( p, "?:", 2 ) )
@@ -394,7 +392,7 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 		if ( *p++=='*' ) {
 			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
 			CNInstance *y = CNSUB( x, 0 );
-			if ( !y || CNSUB(y,0)!=data->star ) {
+			if ( !y || y->sub[0]!=db_star(data->db) ) {
 				data->success = 0;
 				x = NULL; break; }
 			x = y->sub[ 1 ]; }
@@ -547,21 +545,21 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	else if ( *p=='.' )
 		return ( y==((p[1]=='.')?BMContextParent(ctx):BMContextPerso(ctx)) );
 	else if ( *p=='*' )
-		return ( y==data->star );
+		return ( y==db_star(data->db) );
 	else if ( *p=='%' ) {
 		switch ( p[1] ) {
 		case '?': return ( y==bm_context_lookup( ctx, "?" ) );
 		case '!': return ( y==bm_context_lookup( ctx, "!" ) );
 		case '%': return ( y==BMContextSelf(ctx) ); }
 		return (( y->sub[0] ) ? 0 :
-			( *db_identifier( y, BMContextDB(ctx) )=='%' )); }
+			( *db_identifier(y,data->db)=='%' )); }
 	else if ( !is_separator(*p) ) {
 		CNInstance *found = bm_context_lookup( ctx, p );
 		if (( found )) return ( y==found ); }
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {
-		char *identifier = db_identifier( y, BMContextDB(ctx) );
+		char *identifier = db_identifier( y, data->db );
 		char_s q;
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );
@@ -582,8 +580,8 @@ static CNInstance *
 bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 {
 	BMContext *ctx = data->ctx;
-	CNDB *db = BMContextDB( ctx );
-	CNInstance *star = data->star;
+	CNDB *db = data->db;
+	CNInstance *star = db_star( db );
 	CNInstance *success = NULL, *e;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
@@ -591,7 +589,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
 		if (( p )) {
-			e = bm_lookup( 0, p, ctx );
+			e = bm_lookup( 0, p, ctx, db );
 			if ( !e ) {
 				freeListItem( &exponent );
 				return NULL; }
@@ -626,7 +624,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
 		if (( p )) {
-			e = bm_lookup( 0, p, ctx );
+			e = bm_lookup( 0, p, ctx, db );
 			if ( !e ) {
 				freeListItem( &exponent );
 				return NULL; }
@@ -640,7 +638,7 @@ bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 		else {
 			p = bm_locate_pivot( value, &exponent );
 			if (( p )) {
-				e = bm_lookup( 0, p, ctx );
+				e = bm_lookup( 0, p, ctx, db );
 				if ( !e ) {
 					freeListItem( &exponent );
 					return NULL; }
@@ -686,8 +684,8 @@ bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
-	CNDB *db = BMContextDB( data->ctx );
-	CNInstance *star = data->star;
+	CNDB *db = data->db;
+	CNInstance *star = db_star( db );
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
 		if ( e->sub[0]!=star ) continue;
@@ -704,8 +702,8 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
-	CNDB *db = BMContextDB( data->ctx );
-	CNInstance *star = data->star;
+	CNDB *db = data->db;
+	CNInstance *star = db_star( db );
 	char *value = data->user_data;
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		CNInstance *f = i->ptr, *g; // f:(.,e)
@@ -724,8 +722,8 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 	if ( !xp_verify( e, value, data ) )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
-	CNDB *db = BMContextDB( data->ctx );
-	CNInstance *star = data->star;
+	CNDB *db = data->db;
+	CNInstance *star = db_star( db );
 	char *variable = data->user_data;
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)

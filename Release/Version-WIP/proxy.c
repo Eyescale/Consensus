@@ -70,13 +70,31 @@ bm_proxy_scan( char *expression, BMContext *ctx )
 	memset( &data, 0, sizeof(BMQueryData) );
 	data.type = BM_CONDITION;
 	data.ctx = ctx;
-	data.star = db_star( db );
+	data.db = db;
 
 	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
 		CNInstance *proxy = i->ptr;
 		if ( xp_verify( proxy, expression, &data ) )
 			addItem( &results, proxy ); }
 	return results;
+}
+
+//===========================================================================
+//	bm_proxy_still / bm_proxy_in
+//===========================================================================
+int
+bm_proxy_still( CNInstance *proxy )
+{
+	CNCell *cell = (CNCell *) BMProxyThat( proxy );
+	BMContext *ctx = BMCellContext( cell );
+	return db_still( BMContextDB(ctx) );
+}
+int
+bm_proxy_in( CNInstance *proxy )
+{
+	CNCell *cell = (CNCell *) BMProxyThat( proxy );
+	BMContext *ctx = BMCellContext( cell );
+	return db_in( BMContextDB(ctx) );
 }
 
 //===========================================================================
@@ -218,7 +236,7 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 {
 	switch ( *p ) {
 	case '*':
-		return ( !x->sub[0] && *db_identifier(x,db_x)=='*' );
+		return ( x==db_star(db_x) );
 	case '.': ;
 		return ( p[1]=='.' ) ?
 			db_x_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :

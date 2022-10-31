@@ -20,6 +20,7 @@ typedef struct {
 	listItem *sub[ 2 ];
 	listItem *results;
 	BMContext *ctx, *carry;
+	CNDB *db;
 } BMInstantiateData;
 
 void bm_instantiate( char *expression, BMContext *, CNStory * );

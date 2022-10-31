@@ -188,9 +188,8 @@ bm_input( int type, char *expression, BMContext *ctx )
 	switch ( type ) {
 	case 'c':
 		event = fgetc( stdin );
-		if ( event == EOF ) {
+		if ( event == EOF )
 			return EOF;
-		}
 		switch ( event ) {
 		case '\0': asprintf( &input, "'\\0'" ); break;
 		case '\t': asprintf( &input, "'\\t'" ); break;
@@ -246,26 +245,21 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 				else if ((args)) {
 					char *arg = args->ptr;
 					bm_output( fmt[1], arg, ctx );
-					args = args->next;
-				}
+					args = args->next; }
 				fmt+=2; break;
 			default:
 				delta = charscan( fmt, &q );
 				if ( delta ) {
 					printf( "%c", q.value );
-					fmt += delta;
-				}
+					fmt += delta; }
 				else fmt++;
-			}
-		}
-	}
+			} } }
 	else if ((args)) {
 		do {
 			char *arg = args->ptr;
 			bm_output( DEFAULT_TYPE, arg, ctx );
 			args = args->next;
-		} while ((args));
-	}
+		} while ((args)); }
 	else printf( "\n" );
 RETURN:
 	return 0;
@@ -287,13 +281,11 @@ bm_output( int type, char *arg, BMContext *ctx )
 			break;
 		default:
 			db_outputf( stdout, db, "%_", data.last );
-			break;
-		}
+			break; }
 	else {
 		printf( ", " );
 		db_outputf( stdout, db, "%_", data.last );
-		printf( " }" );
-	}
+		printf( " }" ); }
 }
 static BMCBTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
@@ -305,11 +297,9 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 			if ( data->type=='s' )
 				printf( "\\{ " );
 			else printf( "{ " );
-			data->first = 0;
-		}
+			data->first = 0; }
 		else printf( ", " );
-		db_outputf( stdout, db, "%_", data->last );
-	}
+		db_outputf( stdout, db, "%_", data->last ); }
 	data->last = e;
 	return BM_CONTINUE;
 }

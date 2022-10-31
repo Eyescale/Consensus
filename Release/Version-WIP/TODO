@@ -1,9 +1,9 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Transport CNDB in traversal data - pass ctx in TraverseCB
-		. No need for db_star
+	. update specs
 	. EENO register variables
 		. implementation
+			. in parser.c: support %< %<?> %<!> %<?:sub> %<!:sub>
 			. in context.c: bm_context_mark / bm_context_mark_x
 			. in query.c: adapt match()
 			. in proxy.c: adapt x_match()
@@ -82,6 +82,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Transport db in traversal data (instead of db_star)
 	. Data Structures: changed
 		FROM
 			CNCell:[ entry:Pair, ctx:[ this:CNEntity:(CNDB,carry), registry ] ]

@@ -71,7 +71,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNInstance *instance,
 			do_output( expression, ctx );
 			break;
 		case LOCALE:
-			bm_context_register( ctx, expression );
+			bm_context_declare( ctx, expression );
 			break; }
 
 		if (( deternarized )) free( expression );
@@ -185,7 +185,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	fprintf( stderr, "on_event_x bgn: %s\n", expression );
 #endif
 	CNInstance *found;
-	int success, negated=0;
+	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
@@ -199,29 +199,28 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			case '(':
 				found = bm_proxy_feel( proxy, BM_RELEASED, expression+1, ctx );
 				success = bm_context_mark_x( ctx, expression+1, found, marked );
-				if ( success ) goto RETURN; else continue;
+				break;
 			case '.': ;
-				CNCell *cell = (CNCell *) BMProxyThat( proxy );
-				BMContext *ctx = BMCellContext( cell );
-				success = db_still( BMContextDB(ctx) );
-				if ( success ) goto RETURN; else continue; }
+				success = bm_proxy_still( proxy );
+				break;
+			default:
+				found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
+				success = bm_context_mark_x( ctx, expression, found, marked ); }
 			break;
 		default:
-			if ( !strcmp( expression, "init" ) ) {
-				CNCell *cell = (CNCell *) BMProxyThat( proxy );
-				BMContext *ctx = BMCellContext( cell );
-				success = db_in( BMContextDB(ctx) );
-				if ( success ) goto RETURN; else continue; }
+			if ( !strcmp( expression, "init" ) )
+				success = bm_proxy_in( proxy );
+			else {
+				found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
+				success = bm_context_mark_x( ctx, expression, found, marked ); } }
 
-		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
-		success = bm_context_mark_x( ctx, expression, found, marked );
-		if ( success ) goto RETURN; } }
-RETURN:
+		if ( negated ? !success : success ) {
+			freeListItem( &candidates );
+			return 1; } }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
-	freeListItem( &candidates );
-	return ( negated ? !success : success );
+	return 0;
 }
 
 //===========================================================================

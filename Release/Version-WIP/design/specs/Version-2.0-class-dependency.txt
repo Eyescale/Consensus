@@ -7,35 +7,46 @@ Overview
 		CNProgram:[ story:CNStory, threads:[ active:{CNCell}, new:{CNCell} ] ]
 
 	where
-		CNStory:Registry(CNNarrativeEntry:[ name, narratives:{ CNNarrative } ])
+		CNStory:Registry(CNStoryEntry:[ name, narratives:{ CNNarrative } ])
 		where
 			CNNarrative:[ proto:char*, root:CNOccurrence ]
 			where
 				CNOccurrence:[ data:[ type, expression ], sub:{CNOccurrence} ]
 
 	and
-		CNCell:[ entry:CNNarrativeEntry, ctx:BMContext ]
+		CNCell::CNEntity( [ entry:CNStoryEntry, carry:{} ], ctx:BMContext ]
 		where
-			BMContext:[ this:CNEntity, registry:Registry(CNRegisterVariable:[ name, value ]) ]
+			BMContext:Registry(CNRegisterVariable:[ name, value ])
 			where
-				this->sub[ 0 ] = CNDB
+				BMContextId(ctx): registryLookup( ctx, "" )->value
+					BMContextSelf(ctx): BMContextId(ctx)->name
+					BMContextParent(ctx): BMContextId(ctx)->value
+				BMContextDB(ctx): registryLookup( ctx, "%" )->value
+				BMContextPerso(ctx): registryLookup( ctx, "." )->value
+				BMContextActive(ctx): registryLookup( ctx, "@" )->value
 
-	So essentially we have
+Description
+	If we visualize the CNEntity cell in its entirety we have
 
-		CNCell:[ CNNarrativeEntry, ctx:[ this:CNEntity( NULL, CNDB ), registry ] ]
+		this:CNCell:CNEntity:[
+			sub:contents:[
+				nucleus:[
+					entry,
+					carry ],
+				ctx ],
+			as_sub:connections:[
+				to,
+				from ] ]
 
 	where
-		CNCell's entry = cell-specific CNNarrativeEntry into parent CNProgram's story
-
-	Note here that a CNCell uniquely combines a CNNarrativeEntry - also known as type,
-	or class, or even DNA, as it describes the way the cell responds to events - with
-	a CNDB - where CNDB stands for Consensus Database - the latter being encapsulated
-	by the cell's "this" CNEntity, which is its interface to the outside world.
-
-	The cell's "this" CNEntity does not pertain to any known CNDB - other, conceptually,
-	than its parent CNProgram. It is nonetheless the crucial element that will allow us
-	to implement and support the inter-cell connection and communication mechanism
-	targeted by our Version-2.0 release.
+		. the cell's nucleus hosts the cell's CNStory entry (DNA) as well as
+		  its progeny (production)
+		. the cell's ctx hosts the parameters of the cell's production agent,
+		  otherwise known as the cell's DNA/RNA polymerase enzyme
+		. the cell's connections to:( this, that ) are connections to cells 
+		  this cell potentially subscribes to
+		. the cell's connections from:( that, this ) are connections from cells
+		  potentially subscribing to this cell
 
 See Also
 	design/specs/bm-PROXY-considerations

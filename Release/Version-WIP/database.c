@@ -92,6 +92,7 @@ db_register( char *p, CNDB *db )
 CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 {
+	if ( !that ) return NULL;
 	CNInstance *proxy;
 	if (( this )) {
 		proxy = cn_new( cn_new( this, that ), NULL );
