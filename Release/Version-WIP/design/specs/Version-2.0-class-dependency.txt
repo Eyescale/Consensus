@@ -41,7 +41,7 @@ Description
 	where
 		. the cell's nucleus hosts the cell's CNStory entry (DNA) as well as
 		  its progeny (production)
-		. the cell's ctx hosts the parameters of the cell's production agent,
+		. the cell's ctx hosts the parameters of the cell's production agent -
 		  otherwise known as the cell's DNA/RNA polymerase enzyme
 		. the cell's connections to:( this, that ) are connections to cells 
 		  this cell potentially subscribes to
