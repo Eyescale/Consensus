@@ -14,14 +14,14 @@ typedef struct {
 
 static BMTraversal bm_scour_traversal;
 
-#define BMDotIdentifierCB	sc_dot_expr_CB
-#define BMDotExpressionCB	sc_dot_expr_CB
-#define BMIdentifierCB		sc_identifier_CB
-#define BMCharacterCB		sc_character_CB
-#define BMModCharacterCB	sc_mod_character_CB
-#define BMStarCharacterCB	sc_star_character_CB
-#define BMDereferenceCB		sc_star_character_CB
-#define BMRegisterVariableCB	sc_register_variable_CB
+#define BMDotIdentifierCB	dot_expr_CB
+#define BMDotExpressionCB	dot_expr_CB
+#define BMIdentifierCB		identifier_CB
+#define BMCharacterCB		character_CB
+#define BMModCharacterCB	mod_character_CB
+#define BMStarCharacterCB	star_character_CB
+#define BMDereferenceCB		star_character_CB
+#define BMRegisterVariableCB	register_variable_CB
 
 int
 bm_scour( char *expression, int target )
@@ -48,31 +48,31 @@ bm_scour( char *expression, int target )
 #include "traversal.h"
 
 BMTraverseCBSwitch( bm_scour_traversal )
-case_( sc_dot_expr_CB )
+case_( dot_expr_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= PERSO;
 		if ( data->target & PERSO )
 			_return( 1 ) }
 	_break
-case_( sc_identifier_CB )
+case_( identifier_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= IDENTIFIER;
 		if ( data->target & IDENTIFIER )
 			_return( 1 ) }
 	_break
-case_( sc_character_CB )
+case_( character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= CHARACTER;
 	_break
-case_( sc_mod_character_CB )
+case_( mod_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= MOD;
 	_break
-case_( sc_star_character_CB )
+case_( star_character_CB )
 	if ( !is_f(NEGATED) )
 		data->candidate |= STAR;
 	_break
-case_( sc_register_variable_CB )
+case_( register_variable_CB )
 	if ( !is_f(NEGATED) ) {
 		int mark;
 		switch ( p[1] ) {
