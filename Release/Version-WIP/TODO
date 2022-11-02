@@ -67,6 +67,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Code Complete
 	. database.h: #define UNIFIED /*default*/
 	. context.c / context.h
 		. use BMContextSelf(ctx) as Base Narrative's Perso (instead of NULL).
