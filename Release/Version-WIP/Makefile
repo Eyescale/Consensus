@@ -9,12 +9,13 @@ SRCS =	narrative.c \
 		context.c \
 			database.c \
 			db_op.c \
+			locate_param.c \
 		operation.c \
-			traverse.c \
 			deternarize.c \
 			expression.c \
 				query.c \
 				locate.c \
+				scour.c \
 			instantiate.c \
 			proxy.c
 LIB = libbmod.a

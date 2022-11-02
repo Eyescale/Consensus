@@ -12,8 +12,6 @@ static void free_deternarized( listItem *sequence );
 	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
 static void s_scan( CNString *, listItem * );
 
-static BMTraverseCB
-	open_CB, ternary_operator_CB, filter_CB, close_CB;
 typedef int BMTernaryCB( char *, void * );
 typedef struct {
 	BMTernaryCB *user_CB;
@@ -23,10 +21,6 @@ typedef struct {
 	listItem *sequence;
 	Pair *segment;
 } DeternarizeData;
-
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		DeternarizeData *data = traverse_data->user_data; char *p = *q;
 
 
 #endif	// DETERNARIZE_PRIVATE_H

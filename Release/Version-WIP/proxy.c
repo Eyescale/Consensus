@@ -5,6 +5,7 @@
 #include "program.h"
 #include "traverse.h"
 #include "proxy.h"
+#include "proxy_traversal.h"
 
 // #define DEBUG
 
@@ -99,17 +100,30 @@ bm_proxy_in( CNInstance *proxy )
 //	bm_proxy_feel
 //===========================================================================
 static CNInstance * bm_proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
-static BMTraverseCB
-	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
 typedef struct {
 	BMContext *ctx;
 	struct { listItem *flags, *x; } stack;
 	CNDB *db_x;
 	CNInstance *x;
 } BMProxyFeelData;
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMProxyFeelData *data = traverse_data->user_data; char *p = *q;
+
+static BMTraversal bm_proxy_feel_traversal;
+
+#define BMTermCB		term_CB
+#define BMNotCB			verify_CB
+#define BMDereferenceCB		verify_CB
+#define BMSubExpressionCB	verify_CB
+#define BMDotExpressionCB	verify_CB
+#define BMDotIdentifierCB	verify_CB
+#define BMOpenCB		open_CB
+#define BMDecoupleCB		decouple_CB
+#define BMCloseCB		close_CB
+#define BMRegisterVariableCB	identifier_CB
+#define BMModCharacterCB	identifier_CB
+#define BMStarCharacterCB	identifier_CB
+//#define BMRegexCB		identifier_CB
+#define BMCharacterCB		identifier_CB
+#define BMIdentifierCB		identifier_CB
 
 CNInstance *
 bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
@@ -129,34 +143,16 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	data.db_x = db_x;
 
 	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
-
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMTermCB ]		= term_CB;
-	table[ BMNotCB ]		= verify_CB;
-	table[ BMDereferenceCB ]	= verify_CB;
-	table[ BMSubExpressionCB ]	= verify_CB;
-	table[ BMDotExpressionCB ]	= verify_CB;
-	table[ BMDotIdentifierCB ]	= verify_CB;
-	table[ BMOpenCB ]		= open_CB;
-	table[ BMDecoupleCB ]		= decouple_CB;
-	table[ BMCloseCB ]		= close_CB;
-	table[ BMRegisterVariableCB ]	= identifier_CB;
-	table[ BMModCharacterCB ]	= identifier_CB;
-	table[ BMStarCharacterCB ]	= identifier_CB;
-//	table[ BMRegexCB ]		= identifier_CB;
-	table[ BMCharacterCB ]		= identifier_CB;
-	table[ BMIdentifierCB ]		= identifier_CB;
-
+	traverse_data.done = 0;
 	if ( *expression==':' )
 		success = bm_proxy_feel_assignment( proxy, expression, &traverse_data );
 	else {
 		listItem *s = NULL;
 		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
 			data.x = e;
-			bm_traverse( expression, &traverse_data, FIRST );
+			bm_proxy_feel_traversal( expression, &traverse_data, FIRST );
 			if ( traverse_data.done==2 ) {
 				freeListItem( &data.stack.flags );
 				freeListItem( &data.stack.x );
@@ -174,6 +170,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //---------------------------------------------------------------------------
 //	bm_proxy_feel_traversal
 //---------------------------------------------------------------------------
+#include "traversal.h"
+
 static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 #define bm_proxy_verify( p, data ) \
@@ -429,7 +427,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
 			data->x = e->sub[ 0 ];
-			bm_traverse( expression, traverse_data, FIRST );
+			bm_proxy_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -449,7 +447,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
-			bm_traverse( expression, traverse_data, FIRST );
+			bm_proxy_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -457,7 +455,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 				continue; }
 			data->x = e->sub[ 1 ];
 			traverse_data->done = 0;
-			bm_traverse( value, traverse_data, FIRST );
+			bm_proxy_feel_traversal( value, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );

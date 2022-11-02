@@ -2,15 +2,18 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "query_private.h"
 #include "locate.h"
+#include "locate_param.h"
 #include "proxy.h"
+#include "query.h"
+#include "query_traversal.h"
 
 // #define DEBUG
 
 //===========================================================================
 //	bm_query
 //===========================================================================
+typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 static CNInstance * bm_query_assignment( BMQueryType, char *, BMQueryData * );
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB * );
 static XPTraverseCB bm_verify;
@@ -198,13 +201,37 @@ typedef struct {
 	listItem *i;
 } XPVerifyStack;
 static char *pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
+typedef enum {
+	BM_INIT,
+	BM_BGN,
+	BM_END
+} BMVerifyOp;
+
+static BMTraversal xp_verify_traversal;
+
+#define BMRegisterVariableCB	match_CB
+#define BMStarCharacterCB	match_CB
+#define BMModCharacterCB	match_CB
+#define BMCharacterCB		match_CB
+#define BMRegexCB		match_CB
+#define BMIdentifierCB		match_CB
+#define BMDotIdentifierCB	dot_identifier_CB
+#define BMDereferenceCB		dereference_CB
+#define BMSubExpressionCB	sub_expression_CB
+#define BMDotExpressionCB	dot_expression_CB
+#define BMOpenCB		open_CB
+#define BMFilterCB		filter_CB
+#define BMDecoupleCB		decouple_CB
+#define BMCloseCB		close_CB
+#define BMWildCardCB		wildcard_CB
 
 int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 /*
 	Assumption: expression is not ternarized
-	invokes bm_traverse on each [sub-]expression, i.e. on each expression
-	term starting with '*' or '%' - note that *var is same as %((*,var),?)
+	invokes xp_verify_traversal on each [sub-]expression, ie. on each
+	expression term starting with '*' or '%' - note that *var is same
+	as %((*,var),?)
 */
 {
 
@@ -228,26 +255,9 @@ fprintf( stderr, " ........{\n" );
 		flags = FIRST;
 
 	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = data;
 	traverse_data.stack = &data->stack.flags;
-
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMRegisterVariableCB ]	= match_CB;
-	table[ BMStarCharacterCB ]	= match_CB;
-	table[ BMModCharacterCB ]	= match_CB;
-	table[ BMCharacterCB ]		= match_CB;
-	table[ BMRegexCB ]		= match_CB;
-	table[ BMIdentifierCB ]		= match_CB;
-	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
-	table[ BMDereferenceCB ]	= dereference_CB;
-	table[ BMSubExpressionCB ]	= sub_expression_CB;
-	table[ BMDotExpressionCB ]	= dot_expression_CB;
-	table[ BMOpenCB ]		= open_CB;
-	table[ BMFilterCB ]		= filter_CB;
-	table[ BMDecoupleCB ]		= decouple_CB;
-	table[ BMCloseCB ]		= close_CB;
-	table[ BMWildCardCB ]		= wildcard_CB;
+	traverse_data.done = 0;
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -272,7 +282,7 @@ fprintf( stderr, " ........{\n" );
 		if (( x = op_set( op, data, x, &p, success ) )) {
 			//----------------------------------------------------------
 
-				p = bm_traverse( p, &traverse_data, flags );
+				p = xp_verify_traversal( p, &traverse_data, flags );
 
 			//----------------------------------------------------------
 			if (( data->mark_exp )) {
@@ -428,6 +438,8 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 //---------------------------------------------------------------------------
 //	xp_verify_traversal
 //---------------------------------------------------------------------------
+#include "traversal.h"
+
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
 
 BMTraverseCBSwitch( xp_verify_traversal )

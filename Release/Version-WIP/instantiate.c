@@ -3,6 +3,7 @@
 
 #include "traverse.h"
 #include "instantiate_private.h"
+#include "instantiate_traversal.h"
 #include "string_util.h"
 #include "database.h"
 #include "proxy.h"
@@ -12,10 +13,30 @@
 //===========================================================================
 static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
-static BMTraverseCB
-	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
-	open_CB, close_CB, decouple_CB, register_variable_CB, literal_CB, list_CB,
-	wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB, end_CB;
+
+static BMTraversal bm_instantiate_traversal;
+
+#define BMTermCB		term_CB
+#define BMNotCB			collect_CB
+#define BMDereferenceCB		collect_CB
+#define BMBgnSetCB		bgn_set_CB
+#define BMEndSetCB		end_set_CB
+#define BMBgnPipeCB		bgn_pipe_CB
+#define BMEndPipeCB		end_pipe_CB
+#define BMSubExpressionCB	collect_CB
+#define BMModCharacterCB	identifier_CB
+#define BMStarCharacterCB	identifier_CB
+#define BMRegisterVariableCB	register_variable_CB
+#define BMLiteralCB		literal_CB
+#define BMListCB		list_CB
+#define BMOpenCB		open_CB
+#define BMDecoupleCB		decouple_CB
+#define BMCloseCB		close_CB
+#define BMCharacterCB		identifier_CB
+#define BMWildCardCB		wildcard_CB
+#define BMDotIdentifierCB	dot_identifier_CB
+#define BMIdentifierCB		identifier_CB
+#define BMSignalCB		signal_CB
 
 void
 bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
@@ -29,32 +50,8 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	data.db = BMContextDB( ctx );
 
 	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
-
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMTermCB ]		= term_CB;
-	table[ BMNotCB ]		= collect_CB;
-	table[ BMDereferenceCB ]	= collect_CB;
-	table[ BMBgnSetCB ]		= bgn_set_CB;
-	table[ BMEndSetCB ]		= end_set_CB;
-	table[ BMBgnPipeCB ]		= bgn_pipe_CB;
-	table[ BMEndPipeCB ]		= end_pipe_CB;
-	table[ BMSubExpressionCB ]	= collect_CB;
-	table[ BMModCharacterCB ]	= identifier_CB;
-	table[ BMStarCharacterCB ]	= identifier_CB;
-	table[ BMRegisterVariableCB ]	= register_variable_CB;
-	table[ BMLiteralCB ]		= literal_CB;
-	table[ BMListCB ]		= list_CB;
-	table[ BMOpenCB ]		= open_CB;
-	table[ BMDecoupleCB ]		= decouple_CB;
-	table[ BMCloseCB ]		= close_CB;
-	table[ BMCharacterCB ]		= identifier_CB;
-	table[ BMWildCardCB ]		= wildcard_CB;
-	table[ BMDotIdentifierCB ]	= dot_identifier_CB;
-	table[ BMIdentifierCB ]		= identifier_CB;
-	table[ BMSignalCB ]		= signal_CB;
 
 	if ( *expression==':' )
 		bm_instantiate_assignment( expression, &traverse_data, story );
@@ -71,7 +68,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
-		bm_traverse( expression, &traverse_data, FIRST ); }
+		bm_instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
 		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantation\n"
@@ -111,7 +108,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	// inform cell
 	data->carry = cell_ctx;
 	traverse_data->done = INFORMED|NEW;
-	p = bm_traverse( p, traverse_data, FIRST );
+	p = bm_instantiate_traversal( p, traverse_data, FIRST );
 	// carry cell
 	CNInstance *proxy = NULL;
 	addItem( BMCellCarry(parent), cell );
@@ -127,6 +124,10 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 //---------------------------------------------------------------------------
 //	bm_instantiate_traversal
 //---------------------------------------------------------------------------
+#include "traversal.h"
+
+#define current ( is_f( FIRST ) ? 0 : 1 )
+
 BMTraverseCBSwitch( bm_instantiate_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
@@ -477,7 +478,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 
 	DBG_VOID( p )
 	traverse_data->done = INFORMED;
-	p = bm_traverse( p, traverse_data, FIRST );
+	p = bm_instantiate_traversal( p, traverse_data, FIRST );
 	if ( traverse_data->done==2 || !data->sub[ 0 ] )
 		return;
 	sub[ 0 ] = data->sub[ 0 ];
@@ -505,7 +506,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 	else {
 		DBG_VOID( p )
 		traverse_data->done = INFORMED;
-		p = bm_traverse( p, traverse_data, FIRST );
+		p = bm_instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 )
 			freeListItem( &sub[ 0 ] );
 		else {

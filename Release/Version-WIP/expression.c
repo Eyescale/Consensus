@@ -6,8 +6,9 @@
 #include "traverse.h"
 #include "expression.h"
 #include "instantiate.h"
-#include "locate.h"
+#include "scour.h"
 #include "narrative.h"
+#include "void_traversal.h"
 
 // #define DEBUG
 
@@ -51,12 +52,13 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //===========================================================================
 //	bm_void
 //===========================================================================
-static BMTraverseCB feel;
-static BMTraverseCB
-	feel_CB, sound_CB, touch_CB;
-#define case_( func ) \
-	} static BMCBTake func( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMContext *ctx = traverse_data->user_data; char *p = *q;
+static BMTraversal bm_void_traversal;
+
+#define BMTermCB		feel_CB
+#define BMNotCB			sound_CB
+#define BMDereferenceCB		sound_CB
+#define BMSubExpressionCB	sound_CB
+#define BMRegisterVariableCB	touch_CB
 
 int
 bm_void( char *expression, BMContext *ctx )
@@ -71,18 +73,11 @@ bm_void( char *expression, BMContext *ctx )
 	listItem *stack = NULL;
 
 	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = ctx;
 	traverse_data.stack = &stack;
 	traverse_data.done = INFORMED;
 
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMTermCB ]		= feel_CB;
-	table[ BMNotCB ]		= sound_CB;
-	table[ BMDereferenceCB ]	= sound_CB;
-	table[ BMSubExpressionCB ]	= sound_CB;
-	table[ BMRegisterVariableCB ]	= touch_CB;
-	bm_traverse( expression, &traverse_data, FIRST );
+	bm_void_traversal( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
 	return ( traverse_data.done==2 );
@@ -91,6 +86,8 @@ bm_void( char *expression, BMContext *ctx )
 //---------------------------------------------------------------------------
 //	bm_void_traversal
 //---------------------------------------------------------------------------
+#include "traversal.h"
+
 BMTraverseCBSwitch( bm_void_traversal )
 case_( feel_CB )
 	if is_f( FILTERED ) {

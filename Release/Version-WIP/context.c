@@ -3,7 +3,8 @@
 
 #include "string_util.h"
 #include "context.h"
-#include "locate.h"
+#include "scour.h"
+#include "locate_param.h"
 #include "proxy.h"
 
 //===========================================================================

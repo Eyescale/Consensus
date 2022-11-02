@@ -4,6 +4,7 @@
 #include "deternarize_private.h"
 #include "traverse.h"
 #include "expression.h"
+#include "deternarize_traversal.h"
 
 //===========================================================================
 //	bm_deternarize
@@ -30,29 +31,11 @@ bm_deternarize( char **expression, BMContext *ctx )
 	data.user_data = ctx;
 
 	BMTraverseData traverse_data;
-	memset( &traverse_data, 0, sizeof(traverse_data) );
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = TERNARY|INFORMED;
 
-	BMTraverseCB **table = (BMTraverseCB **) traverse_data.table;
-	table[ BMOpenCB ]		= open_CB;
-	table[ BMTernaryOperatorCB ]	= ternary_operator_CB;
-	table[ BMFilterCB ]		= filter_CB;
-	table[ BMCloseCB ]		= close_CB;
-
-	if ( *backup != ':' ) {
-		deternarize( backup, NULL, &traverse_data, backup );
-		if (( data.sequence )) {
-			// convert sequence to char *string
-			CNString *s = newString();
-			s_scan( s, data.sequence );
-			deternarized = StringFinish( s, 0 );
-			StringReset( s, CNStringMode );
-			freeString( s );
-			// release sequence
-			free_deternarized( data.sequence ); } }
-	else {
+	if ( *backup==':' ) {
 		char *p = backup + 1;
 		p = deternarize( p, &sequence[0], &traverse_data, backup );
 		data.sequence = NULL;
@@ -75,6 +58,17 @@ bm_deternarize( char **expression, BMContext *ctx )
 			free_deternarized( sequence[ 0 ] );
 			free_deternarized( sequence[ 1 ] );
 		} }
+	else {
+		deternarize( backup, NULL, &traverse_data, backup );
+		if (( data.sequence )) {
+			// convert sequence to char *string
+			CNString *s = newString();
+			s_scan( s, data.sequence );
+			deternarized = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			// release sequence
+			free_deternarized( data.sequence ); } }
 
 	return ( !!deternarized ? ((*expression=deternarized),backup) : NULL );
 }
@@ -82,13 +76,20 @@ bm_deternarize( char **expression, BMContext *ctx )
 //===========================================================================
 //	deternarize
 //===========================================================================
+static BMTraversal deternarize_traversal;
+
+#define BMOpenCB 		open_CB
+#define BMTernaryOperatorCB	ternary_operator_CB
+#define BMFilterCB		filter_CB
+#define BMCloseCB		close_CB
+
 static char *
 deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression )
 {
 	DeternarizeData *data = traverse_data->user_data;
 	data->segment = newPair( p, NULL );
 
-	p = bm_traverse( p, traverse_data, FIRST );
+	p = deternarize_traversal( p, traverse_data, FIRST );
 
 	if ((data->stack.sequence)||(data->stack.flags)) {
 		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: 0x%x %s, at %s\n",
@@ -115,6 +116,8 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 //---------------------------------------------------------------------------
 //	deternarize_traversal
 //---------------------------------------------------------------------------
+#include "traversal.h"
+
 static char *optimize( Pair *, char * );
 
 BMTraverseCBSwitch( deternarize_traversal )
