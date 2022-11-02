@@ -1,18 +1,7 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. EENO register variables
-		. implementation
-			. in parser.c: support %< %<?> %<!> %<?:sub> %<!:sub>
-			. in context.c: bm_context_mark / bm_context_mark_x
-			. in query.c: adapt match()
-			. in proxy.c: adapt x_match()
 	. Testing
 		. 3_TM.multi/TM-head_tape.story (to be added)
-	. context.c
-		. create registry entry "" for Base Narrative perso << could use ProxySelf ?
-		  => simplify instantiate.c and query.c (as there is always a BMContextPerso())
-	. Optimizations (low-hanging fruits only)
-		. minimize number of calls to BMContextDB(ctx) all over the code
 	. Pass design/story/{all}
 	. Release
 		. Examples-v2.0
@@ -26,13 +15,6 @@ TODO
 		. Additonal examples
 			. yak using new Cell design (and literals)
 			. interactive // TBD
-	. ISSUE: both instantiate.c:bm_conceive() and query.c:match_x() proceed on
-		the assumption that expression's identifiers are not locale(s).
-		This is the correct assumption. but we should introduce %identifier
-		to enable the use of locale(s) in such expressions.
-	. ISSUE: BMContextPin(ctx) returns NULL in case of Base Narrative. This is
-		correct, but the code would be lighter if we could have a unique
-		CNInstance to identify base narrative as well.
 ON-GOING
     Version-1.2 Documentation
 	     Release Documents
@@ -42,20 +24,24 @@ ON-GOING
 		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
-	. extend do : variable, value to allow arguments to be FILTERED
-		. issue is: in the simple case where we have
-			do : variable : value
-		  then we need to replace the second ':' with ','
-		  => post-process string (post-processing easy)
-	. Remodel occurrence->data->expression from char * to TBD
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
+	. both instantiate.c:bm_conceive() and query.c:match_x() assume that
+	  expression's identifiers are not locale(s), in respectively:
+
+		do !! Narrative( expression )
+		on expression < src
+
+	  This is the correct assumption. However we might want (TBD) to allow
+	  using %identifier to indicate locale(s) in such expressions.
+	. proper >>>> B%%: Error / Warning handling - vs. exit(-1) / repeat
 	. parser.c
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?
 		. integrate 'caught' in CNParserData => all flags
 	. do_input multiple args support
 		do < arg1, arg2, ..., argN > : "format" <
+	. Remodel occurrence->data->expression from char * to TBD (optimized)
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. code cleanup
 		. replace all the for ( ; ; ) with the model found
 	  	  in Base/Examples/6_BTreefy/btree.c
@@ -81,7 +67,23 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. database.h: #define UNIFIED /*default*/
+	. context.c / context.h
+		. use BMContextSelf(ctx) as Base Narrative's Perso (instead of NULL).
+		  Hence simplify instantiate.c and query.c and context.c:bm_declare()
+		  considering that BMContextPerso is never NULL
+	. parser.c: disallowed mark && is_f(LEVEL) in EENO src
+	. EENO register variable implementation
+		. in parser.c: support %< %<?> %<!> %<?:sub> %<!:sub>
+		. in traverse.c: handle as BMRegisterVariableCB
+		. in context.c: bm_context_mark_x(), bm_lookup_x()
+		. in proxy.c: adapt x_match() / eeno_match() /
+			bm_lookup_x() in context.c
+		. in query.c: adapt match() / eeno_match() in proxy.c
+		. in instantiate.c : invoke eeno_inform() in proxy.c
+		. in locate.c: handle target==EENO
 	. Transport db in traversal data (instead of db_star)
+		. minimizing number of calls to BMContextDB(ctx) all over the code
 	. Data Structures: changed
 		FROM
 			CNCell:[ entry:Pair, ctx:[ this:CNEntity:(CNDB,carry), registry ] ]

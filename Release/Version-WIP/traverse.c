@@ -88,15 +88,13 @@ _CB( BMBgnPipeCB )		f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;
 			case '*':
-				if ( !p[1] || strmatch( ":,)}|", p[1] ) ) {
-_CB( BMStarCharacterCB )		f_cls }
-				else {
+				if ( !is_separator(p[1]) || strmatch("*.%(",p[1]) ) {
 _CB( BMDereferenceCB )			f_clr( INFORMED ) }
+				else {
+_CB( BMStarCharacterCB )		f_cls }
 				p++; break;
 			case '%':
-				if ( strmatch( "?!|%", p[1] ) ) {
-_CB( BMRegisterVariableCB )		f_cls; p+=2; break; }
-				else if ( p[1]=='(' ) {
+				if ( p[1]=='(' ) {
 _CB( BMSubExpressionCB )		p++;
 					f_next = FIRST|SUB_EXPR|is_f(SET);
 					if (!(mode&INFORMED) && !p_single(p))
@@ -104,9 +102,13 @@ _CB( BMSubExpressionCB )		p++;
 _sCB( BMOpenCB )			f_push( stack )
 					f_reset( f_next, 0 )
 					p++; break; }
-				else if ( !p[1] || strmatch( ",:)}|", p[1] ) ) {
+				else if ( strmatch( "?!|%<", p[1] ) ) {
+_CB( BMRegisterVariableCB )		f_cls; p++;
+					if ( *p=='<' && strmatch( "?!", p[1] ) )
+						p = p_prune( PRUNE_TERM, p+1 );
+					p++; break; }
+				else {
 _CB( BMModCharacterCB )			f_cls; p++; break; }
-				else traverse_data->done = BMTraverseError;
 				break;
 			case '(':
 				if ( p[1]==':' ) {

@@ -4,6 +4,7 @@
 #include "string_util.h"
 #include "query_private.h"
 #include "locate.h"
+#include "proxy.h"
 
 // #define DEBUG
 
@@ -437,23 +438,17 @@ case_( match_CB )
 	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
 	_break
 case_( dot_identifier_CB )
-	if (( BMContextPerso( data->ctx ) )) {
-		xpn_add( &data->stack.exponent, AS_SUB, 0 );
-		switch ( match( data->instance, p, data->base, data ) ) {
-		case -1: data->success = 0; break;
-		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-		case  1:
-			xpn_set( data->stack.exponent, AS_SUB, 1 );
-			switch ( match( data->instance, p+1, data->base, data ) ) {
-			case -1: data->success = 0; break;
-			case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-			default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
-		popListItem( &data->stack.exponent ); }
-	else {
+	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0; break;
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case  1:
+		xpn_set( data->stack.exponent, AS_SUB, 1 );
 		switch ( match( data->instance, p+1, data->base, data ) ) {
 		case -1: data->success = 0; break;
 		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
+	popListItem( &data->stack.exponent );
 	_break
 case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
@@ -463,14 +458,13 @@ case_( sub_expression_CB )
 	if (( data->mark_exp )) _return( 1 )
 	_break
 case_( dot_expression_CB )
-	if (( BMContextPerso( data->ctx ) )) {
-		xpn_add( &data->stack.exponent, AS_SUB, 0 );
-		switch ( match( data->instance, p, data->base, data ) ) {
-		case -1: data->success = 0;
-			_prune( BM_PRUNE_TERM )
-		case  0: data->success = is_f( NEGATED ) ? 1 : 0;
-			_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
-		case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); } }
+	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0;
+		_prune( BM_PRUNE_TERM )
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
+		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
+	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
 	_break
 case_( open_CB )
 	if ( f_next & COUPLE )
@@ -494,8 +488,7 @@ case_( close_CB )
 	if ( data->stack.flags==data->OOS )
 		_return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
-	if ( is_f( DOT ) && (BMContextPerso(data->ctx)) )
-		popListItem( &data->stack.exponent );
+	if is_f( DOT ) popListItem( &data->stack.exponent );
 	if ( f_next & NEGATED ) data->success = !data->success;
 	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
 		traverse_data->done = 1; // after popping
@@ -542,20 +535,24 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		return !!lookupItem( v, y ); }
 	else if (( data->pivot ) && p==data->pivot->name )
 		return ( y==data->pivot->value );
-	else if ( *p=='.' )
-		return ( y==((p[1]=='.')?BMContextParent(ctx):BMContextPerso(ctx)) );
-	else if ( *p=='*' )
-		return ( y==db_star(data->db) );
-	else if ( *p=='%' ) {
-		switch ( p[1] ) {
-		case '?': return ( y==bm_context_lookup( ctx, "?" ) );
-		case '!': return ( y==bm_context_lookup( ctx, "!" ) );
-		case '%': return ( y==BMContextSelf(ctx) ); }
-		return (( y->sub[0] ) ? 0 :
-			( *db_identifier(y,data->db)=='%' )); }
-	else if ( !is_separator(*p) ) {
-		CNInstance *found = bm_context_lookup( ctx, p );
-		if (( found )) return ( y==found ); }
+	else switch ( *p ) {
+		case '.':
+			return ( p[1]=='.' ?
+				( y==BMContextParent(ctx) ) :
+				( y== BMContextPerso(ctx) ) );
+		case '*':
+			return ( y==db_star(data->db) );
+		case '%':
+			switch ( p[1] ) {
+			case '?': return ( y==bm_context_lookup( ctx, "?" ) );
+			case '!': return ( y==bm_context_lookup( ctx, "!" ) );
+			case '%': return ( y==BMContextSelf(ctx) );
+			case '<': return eeno_match( ctx, p, data->db, y ); }
+			return ( !y->sub[0] && *db_identifier(y,data->db)=='%' );
+		default:
+			if ( is_separator(*p) ) break;
+			CNInstance *found = bm_context_lookup( ctx, p );
+			if (( found )) return ( y==found ); }
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {

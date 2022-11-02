@@ -5,6 +5,8 @@
 	else in toto
 		do >"asd":< alpha,
 			beta >
+		do ( toto, %<!:(.,(?,.))> )
+		do ( titi, %<?> )
 		do ( *.( toto ), titi )
 		do @< %(?:(toto,titi))
 		do ~< { asdlkj, alsdkj }
@@ -12,7 +14,7 @@
 			baby, titi
 			tutu
 			) ~<
-		on toto < titi
+		on toto:. < ?:tata
 			do >"bingo\n"
 		do (:titi:)
 		do ( titi, (( toto, ... ):asdlkjasd:) )

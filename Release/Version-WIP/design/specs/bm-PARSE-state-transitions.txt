@@ -56,6 +56,8 @@ Consensus B% Version-1.2
 		*	expr
 		%	expr
 			%_	expr
+			%<	expr
+				%<.	expr
 		~	expr
 		:	expr
 			:_<

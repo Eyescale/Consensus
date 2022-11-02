@@ -3,11 +3,23 @@ Name
 
 Synopsis
     Changes
-
 	. The name of the Narrative pipe Register Variable was changed
 	  from %! in Version-1.x to %| in Version-2.0
 
-	. The rules of assignment are as follow:
+	. The following alternative variable assignment syntax is allowed
+
+		in/on/do : variable, value
+
+	  as this is how, as of Version-2.0, the assignment occurrence is
+	  represented internally, and how it will show in story output.
+
+	  Note however that neither variable nor value can be filtered
+	  so as to be consistent with the alternative (preferred) syntax
+
+		in/on/do : variable : value
+	  
+	. Concerning the Narrative %? and %! Register Variables, the rules
+	  of assignment are as follow:
 
 	  When the query signus ? is included in the variable part of
 	  the assignment occurrence, then the %? mark register variable
@@ -20,30 +32,6 @@ Synopsis
 	  variable hold the corresponding query result, if any, and the
 	  %! holds the instance corresponding to the variable part of
 	  the query result.
-
-	. The same rules apply to the %<?> and %<!> EENO register variables,
-	  where in addition the EENO register variable %< holds the proxy
-	  corresponding to the query result, if any.
-
-	  Note here that the occurrence expression
-
-		on : variable : value < ?
-
-	  will yield the following results, if any
-
-		%< 	matching source (proxy)
-		%<?>	matching variable
-		%<!>	matching value
-
-	  whereas the occurrence expression
-
-		on : variable : ? < .
-
-	  will yield the following results, if any
-
-		%< 	matching source (proxy)
-		%<?>	matching value
-		%<!>	matching variable
 
     Additions
 	    	Feature Name			Expression			Comment
@@ -165,9 +153,9 @@ Description
 	will be dereferenced within the narrative instance's own cell's CNDB
 	PRIOR to the query's being launched.
 
-	Such is the limitation imposed, by design, to the Consensus B%
-	inter-cell communication protocol, in that it allows only to query
-	manifested changes - and not one another's internal condition.
+	Such is the limitation imposed, by design, to the Consensus B% inter-
+	cell communication protocol, in that it allows only to query manifested
+	changes - and not one another's internal condition.
 
     5. EENO Register Variables
 
@@ -179,10 +167,35 @@ Description
 			in case of assignment expression - if marked
 		%<	to represent src = proxy to the corresponding connection
 
+	The rules of assignment described in the Changes section of this document
+	apply to the %<?> and %<!> Register Variables, where the additional EENO
+	Register Variable %< holds the proxy instance corresponding to the query
+	result, if any.
+
+	Note here that the occurrence expression
+
+		on : variable : value < ?
+
+	will yield the following results, if any
+
+		%< 	matching source (proxy)
+		%<?>	matching variable
+		%<!>	matching value
+
+	whereas the occurrence expression
+
+		on : variable : ? < .
+
+	will yield the following results, if any
+
+		%< 	matching source (proxy)
+		%<?>	matching value
+		%<!>	matching variable
+
     6. Narrative this Register Variable
 
 	The Narrative this Register Variable %% allows a proxy to the narrative's
-	current ctx->this CNInstance to be used for comparison - e.g.
+	current context's this CNInstance to be used for comparison - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection

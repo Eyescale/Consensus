@@ -276,7 +276,7 @@ A:CND_else_( B )
 		ons( " \t" )	do_( same )
 		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) 	s_take }
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
-		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" )	s_take }
+		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 		on_( '/' ) if ( !is_f(INFORMED) && !(*type&DO) ) {
 				do_( "/" )	s_take }
@@ -308,7 +308,9 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
 						f_set( TERNARY ) }
-			else if ( !is_f(INFORMED|MARKED|NEGATED) && (*type&(IN|ON)||is_f(SUB_EXPR)) ) {
+
+			else if ( !is_f(INFORMED|MARKED|NEGATED) && ( is_f(SUB_EXPR) ||
+				 ( *type&ON_X ? !is_f(LEVEL) : *type&(IN|ON) ) )) {
 				do_( same )	s_take
 						f_tag( stack, MARKED )
 						f_set( MARKED|INFORMED ) }
@@ -408,35 +410,78 @@ CND_ifn( mode==BM_STORY, C )
 		ons( " \t" )	do_( same )
 		on_( '.' )	do_( "expr" )	s_take
 						f_set( INFORMED )
-		ons( ":,)\n" )	do_( "expr" )	REENTER
-						f_set( INFORMED )
 		on_( '(' )	do_( "expr" )	REENTER
-		on_separator	; // err
+		on_separator	do_( "expr" )	REENTER
+						f_set( INFORMED )
 		on_other	do_( "term" )	s_take
 		end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
-		ons( ":,)}\n" )	do_( "expr" )	REENTER
+		on_( '*' )	do_( same )	s_take
+		ons( ".%(" )	do_( "expr" )	REENTER
+		ons( "~{" )	; //err
+		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
-		ons( "{~" )	; //err
-		on_other	do_( "expr" )	REENTER
+		on_other	do_( "term" )	s_take
 		end
 	in_( "%" ) bgn_
-		on_( '(' )	do_( "expr" )	s_take
+		on_( '(' )	do_( "expr" )	s_add( "%(" )
 						f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
 		ons( "?!|%" )
 			if (!( *type&EN && s_empty )) {
-				do_( "expr" )	s_take
+				do_( "expr" )	s_add( "%" )
+						s_take
 						f_set( INFORMED ) }
+		on_( '<' )
+			if (!( *type&EN && s_empty )) {
+				do_( "%<" )	s_add( "%<" )
+						f_push( stack )
+						f_reset( FIRST, 0 ) }
 		on_other
 			if (!( *type&EN && s_empty )) {
-				do_( "%_" )	REENTER }
+				do_( "%_" )	s_add( "%" )
+						REENTER }
 		end
 		in_( "%_" ) bgn_
 			ons( " \t" )	do_( same )
-			ons( ":,)\n" )	do_( "expr" )	REENTER
+			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
+			end
+		in_( "%<" ) bgn_
+			ons( " \t" )	do_( same )
+			ons( "?!" )	do_( "%<." )	s_take
+							f_set( INFORMED )
+			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			end
+		in_( "%<." ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '>' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
+					do_( "expr" )	s_take
+							f_pop( stack, 0 )
+							f_set( INFORMED ) }
+			on_( ':' ) if ( is_f(INFORMED) && !is_f(FILTERED) ) {
+					do_( same )	s_take
+							f_clr( INFORMED )
+							f_set( FILTERED ) }
+			on_( '(' ) if ( is_f(FILTERED) && !is_f(INFORMED) ) {
+					do_( same )	s_take
+							f_push( stack )
+							f_set( LEVEL|FIRST ) }
+			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+					do_( same )	s_take
+							f_set( INFORMED ) }
+			on_( '?' ) if ( is_f(LEVEL) && !is_f(INFORMED|MARKED) ) {
+					do_( same )	s_take
+							f_set( INFORMED|MARKED ) }
+			on_( ',' ) if ( are_f(LEVEL|FIRST|INFORMED) ) {
+					do_( same )	s_take
+							f_clr( FIRST|INFORMED ) }
+			on_( ')' ) if ( are_f(LEVEL|INFORMED) ) {
+					do_( same )	s_take
+							f_pop( stack, MARKED )
+							f_set( INFORMED ) }
 			end
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )

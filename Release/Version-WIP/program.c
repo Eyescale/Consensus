@@ -26,8 +26,7 @@ newProgram( CNStory *story, char *inipath )
 		return NULL; }
 	if (( inipath )) {
 		union { void *ptr; int value; } errnum;
-		BMContext *ctx = BMCellContext( cell );
-		errnum.ptr = bm_read( BM_LOAD, ctx, inipath );
+		errnum.ptr = bm_read( BM_LOAD, BMCellContext(cell), inipath );
 		if ( errnum.value ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			freeCell( cell ); return NULL; } }
@@ -73,16 +72,14 @@ cnUpdate( CNProgram *program )
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		CNCell *cell = i->ptr;
-		BMContext *ctx = BMCellContext( cell );
-		bm_context_update( ctx );
+		bm_context_update( BMCellContext(cell) );
 		listItem *carry = *BMCellCarry( cell );
 		if (( carry )) addItem( new, carry ); }
 	// activate new cells
 	for ( listItem *i; (i=popListItem(new)); )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
 			CNCell *cell = j->ptr;
-			BMContext *ctx = BMCellContext( cell );
-			bm_context_init( ctx );
+			bm_context_init( BMCellContext(cell) );
 			addItem( active, cell ); }
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: end\n" );

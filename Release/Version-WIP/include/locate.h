@@ -6,8 +6,9 @@
 typedef void BMLocateCB( char *, listItem *, void * );
 
 char *	bm_locate_pivot( char *, listItem ** );
-char *	bm_locate_mark( char *, listItem ** );
 char *	bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );
+#define bm_locate_mark( expr, xpn ) \
+	bm_locate_param( expr, xpn, NULL, NULL )
 
 #define AS_SUB  0
 #define SUB     2
@@ -30,6 +31,7 @@ void xpn_out( FILE *stream, listItem *xp );
 #define	MOD		128
 #define	STAR		256
 #define	SELF		512
+#define	EENO		1024
 
 int bm_scour( char *expression, int target );
 

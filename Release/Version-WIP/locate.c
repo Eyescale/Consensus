@@ -29,18 +29,19 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, EMARK|QMARK|PARENT|SELF );
+	int target = bm_scour( expression, EENO|QMARK|EMARK );
 	if ( target == 0 ) return NULL;
-	else target =	( target & EMARK ) ? EMARK :
+	else target =	( target & EENO ) ? EENO :
 			( target & QMARK ) ? QMARK :
+			( target & EMARK ) ? EMARK :
+			( target & PMARK ) ? PMARK :
 			( target & PARENT ) ? PARENT :
 			( target & SELF ) ? SELF :
 			( target & PERSO ) ? PERSO :
 			( target & IDENTIFIER ) ? IDENTIFIER :
 			( target & MOD ) ? MOD :
 			( target & CHARACTER ) ? CHARACTER :
-			( target & STAR ) ? STAR :
-			( target & PMARK ) ? PMARK : 0;
+			( target & STAR ) ? STAR : 0;
 
 	BMLocatePivotData data;
 	memset( &data, 0, sizeof(data) );
@@ -113,8 +114,9 @@ case_( star_character_CB )
 case_( register_variable_CB )
 	if ( !is_f(NEGATED) )
 		switch ( p[1] ) {
-		case '!': if ( data->target==EMARK ) _return( 2 ) else break;
+		case '<': if ( data->target==EENO ) _return( 2 ) else break;
 		case '?': if ( data->target==QMARK ) _return( 2 ) else break;
+		case '!': if ( data->target==EMARK ) _return( 2 ) else break;
 		case '|': if ( data->target==PMARK ) _return( 2 ) else break;
 		case '.': if ( data->target==PARENT ) _return( 2 ) else break;
 		case '%': if ( data->target==SELF ) _return( 2 ) else break; }
@@ -246,6 +248,7 @@ case_( sc_register_variable_CB )
 	if ( !is_f(NEGATED) ) {
 		int mark;
 		switch ( p[1] ) {
+		case '<': mark = EENO; break;
 		case '?': mark = QMARK; break;
 		case '!': mark = EMARK; break;
 		case '|': mark = PMARK; break;
@@ -256,15 +259,6 @@ case_( sc_register_variable_CB )
 			_return( 1 ) }
 	_break
 BMTraverseCBEnd
-
-//===========================================================================
-//	bm_locate_mark
-//===========================================================================
-char *
-bm_locate_mark( char *expression, listItem **exponent )
-{
-	return bm_locate_param( expression, exponent, NULL, NULL );
-}
 
 //===========================================================================
 //	bm_locate_param
@@ -328,12 +322,12 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 
 BMTraverseCBSwitch( bm_locate_param_traversal )
 case_( not_CB )
-	if (( data->param_CB )) {
-		_prune( BM_PRUNE_FILTER ) }
+	if (( data->param_CB ))
+		_prune( BM_PRUNE_FILTER )
 	else _break
 case_( deref_CB )
-	if (( data->param_CB )) {
-		_prune( BM_PRUNE_FILTER ) }
+	if (( data->param_CB ))
+		_prune( BM_PRUNE_FILTER )
 	listItem **exponent = data->exponent;
 	xpn_add( exponent, AS_SUB, 1 );
 	xpn_add( exponent, SUB, 0 );

@@ -71,7 +71,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNInstance *instance,
 			do_output( expression, ctx );
 			break;
 		case LOCALE:
-			bm_context_declare( ctx, expression );
+			bm_declare( ctx, expression );
 			break; }
 
 		if (( deternarized )) free( expression );
@@ -192,35 +192,39 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
 	listItem *candidates = bm_proxy_scan( src, ctx );
 
-	for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
-		switch ( *expression ) {
-		case '~':
-			switch ( expression[1] ) {
-			case '(':
-				found = bm_proxy_feel( proxy, BM_RELEASED, expression+1, ctx );
-				success = bm_context_mark_x( ctx, expression+1, found, marked );
-				break;
-			case '.': ;
+	switch ( *expression ) {
+	case '~':
+		switch ( expression[1] ) {
+		case '(':
+			expression++;
+			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+				found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
+				success = bm_context_mark_x( ctx, expression, src, found, proxy, marked );
+				if ( negated ? !success : success ) break; }
+			goto RETURN;
+		case '.': ;
+			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
 				success = bm_proxy_still( proxy );
-				break;
-			default:
-				found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
-				success = bm_context_mark_x( ctx, expression, found, marked ); }
-			break;
-		default:
-			if ( !strcmp( expression, "init" ) )
+				if ( negated ? !success : success ) break; }
+			goto RETURN; }
+		break;
+	default:
+		if ( !strcmp( expression, "init" ) ) {
+			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
 				success = bm_proxy_in( proxy );
-			else {
-				found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
-				success = bm_context_mark_x( ctx, expression, found, marked ); } }
+				if ( negated ? !success : success ) break; }
+			goto RETURN; } }
 
-		if ( negated ? !success : success ) {
-			freeListItem( &candidates );
-			return 1; } }
+	for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
+		success = bm_context_mark_x( ctx, expression, src, found, proxy, marked );
+		if ( negated ? !success : success ) break; }
+RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
-	return 0;
+	freeListItem( &candidates );
+	return ( negated ? !success : success );
 }
 
 //===========================================================================

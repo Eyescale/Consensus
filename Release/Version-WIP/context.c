@@ -4,8 +4,7 @@
 #include "string_util.h"
 #include "context.h"
 #include "locate.h"
-
-#define TEMPORARILY
+#include "proxy.h"
 
 //===========================================================================
 //	newContext / freeContext
@@ -28,6 +27,7 @@ newContext( CNEntity *cell, CNEntity *parent )
 	registryRegister( ctx, "?", NULL ); // aka. %?
 	registryRegister( ctx, "!", NULL ); // aka. %!
 	registryRegister( ctx, "|", NULL ); // aka. %|
+	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
 	return ctx;
 }
 
@@ -42,7 +42,7 @@ freeContext( BMContext *ctx )
 	freeListItem( &active->value );
 	freePair((Pair *) active );
 
-	// free context self & id register value
+	// free context self proxy & id register value
 	Pair *id = BMContextId( ctx );
 	CNInstance *self = id->name; // self is a proxy
 	CNEntity *connection = self->sub[ 0 ];
@@ -89,7 +89,7 @@ bm_context_activate( BMContext *ctx, CNInstance *proxy )
 //===========================================================================
 //	bm_context_init / bm_context_update
 //===========================================================================
-static void update_active( ActiveRV * );
+static inline void update_active( ActiveRV * );
 
 void
 bm_context_init( BMContext *ctx )
@@ -99,17 +99,6 @@ bm_context_init( BMContext *ctx )
 	update_active( BMContextActive(ctx) );
 	db_init( db );
 }
-static void
-update_active( ActiveRV *active )
-{
-	listItem **changes = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		removeIfThere( &active->value, e );
-	changes = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		addIfNotThere( &active->value, e );
-}
-
 void
 bm_context_update( BMContext *ctx )
 {
@@ -128,8 +117,19 @@ bm_context_update( BMContext *ctx )
 		else last_i = i; }
 }
 
+static inline void
+update_active( ActiveRV *active )
+{
+	listItem **changes = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		removeIfThere( &active->value, e );
+	changes = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		addIfNotThere( &active->value, e );
+}
+
 //===========================================================================
-//	bm_context_set / bm_context_declare / bm_context_check
+//	bm_context_set / bm_declare / bm_context_check
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -162,7 +162,7 @@ register_CB( char *p, listItem *exponent, void *user_data )
 }
 
 int
-bm_context_declare( BMContext *ctx, char *p )
+bm_declare( BMContext *ctx, char *p )
 /*
 	register .locale(s)
 */
@@ -173,26 +173,28 @@ bm_context_declare( BMContext *ctx, char *p )
 	while ( *p=='.' ) {
 		p++;
 		entry = registryLookup( ctx, p );
-		if (( entry )) goto ERR; // already registered
+		if (( entry )) { // already registered
+			CNInstance *instance = entry->value;
+			fprintf( stderr, ">>>>> B%%: Error: LOCALE " );
+			fprintf( stderr, ( instance->sub[ 0 ]==perso ?
+				"multiple declarations: '.%s'\n" :
+				"name %s conflict with sub-narrative .arg\n" ),
+				p );
+			exit( -1 ); }
 		else {
 			CNInstance *x = db_register( p, db );
-			if (( perso )) x = db_instantiate( perso, x, db );
+			x = db_instantiate( perso, x, db );
 			registryRegister( ctx, p, x ); }
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
 	return 1;
-ERR: ;
-	CNInstance *instance = entry->value;
-	if ( instance->sub[ 0 ]==perso ) {
-		fprintf( stderr, ">>>>> B%%: Error: LOCALE "
-			"multiple declarations: '.%s'\n", p ); }
-	else fprintf( stderr, ">>>>> B%%: Error: LOCALE name '.%s' "
-		"conflict with sub-narrative .arg\n", p );
-	return -1;
 }
 
 void
 bm_context_check( BMContext *ctx )
+/*
+	deactivate and deprecate dangling connections
+*/
 {
 	CNDB *db = BMContextDB( ctx );
 	ActiveRV *active = BMContextActive( ctx );
@@ -255,22 +257,22 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 			// we know x: ( *, e )
 			if (( bm_locate_mark( expression, &xpn ) )) {
 				*marked = QMARK|EMARK;
-				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) );
-				bm_push_mark( ctx, '!', NULL ); } }
+				bm_push_mark( ctx, "?", xsub(x->sub[1],&xpn) );
+				bm_push_mark( ctx, "!", NULL ); } }
 		else {
 			// we know x: (( *, e ), f )
 			if (( bm_locate_mark( value, &xpn ) )) {
 				*marked = EMARK|QMARK;
-				bm_push_mark( ctx, '!', x->sub[0]->sub[1] );
-				bm_push_mark( ctx, '?', xsub(x->sub[1],&xpn) ); }
+				bm_push_mark( ctx, "!", x->sub[0]->sub[1] );
+				bm_push_mark( ctx, "?", xsub(x->sub[1],&xpn) ); }
 			else if (( bm_locate_mark( expression, &xpn ) )) {
 				*marked = QMARK|EMARK;
-				bm_push_mark( ctx, '?', xsub(x->sub[0]->sub[1],&xpn) );
-				bm_push_mark( ctx, '!', x->sub[1] ); } } }
+				bm_push_mark( ctx, "?", xsub(x->sub[0]->sub[1],&xpn) );
+				bm_push_mark( ctx, "!", x->sub[1] ); } } }
 	else {
 		if (( bm_locate_mark( expression, &xpn ) )) {
 			*marked = QMARK;
-			bm_push_mark( ctx, '?', xsub(x,&xpn) ); } }
+			bm_push_mark( ctx, "?", xsub(x,&xpn) ); } }
 	return 1;
 }
 static inline CNInstance *
@@ -287,33 +289,79 @@ xsub( CNInstance *x, listItem **xpn )
 }
 
 int
-bm_context_mark_x( BMContext *ctx, char *expression, CNInstance *x, int *marked )
+bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, CNInstance *proxy, int *marked )
 {
 	if ( !x ) return 0;
+	listItem *xpn = NULL;
+	Pair *event = NULL;
+	if ( *expression==':' ) {
+		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
+		if ( !strncmp( value, "~.", 2 ) ) {
+			// we know x: ( *, . )
+			if (( bm_locate_mark( src, &xpn ) )) {
+				// freeListItem( &xpn ); // Assumption: unnecessary
+				event = newPair( NULL, x->sub[1] ); }
+			else if (( bm_locate_mark( expression, &xpn ) ))
+				event = newPair( x->sub[1], NULL ); }
+		else {
+			// we know x: (( *, . ), . )
+			if (( bm_locate_mark( src, &xpn ) )) {
+				// freeListItem( &xpn ); // Assumption: unnecessary
+				event = newPair( x->sub[0]->sub[1], x->sub[1] ); }
+			else if (( bm_locate_mark( value, &xpn ) ))
+				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] );
+			else if (( bm_locate_mark( expression, &xpn ) ))
+				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] );
+			} }
+	else {
+		if (( bm_locate_mark( src, &xpn ) )) {
+			// freeListItem( &xpn ); // Assumption: unnecessary
+			event = newPair( x, NULL ); }
+		else if (( bm_locate_mark( expression, &xpn ) ))
+			event = newPair( xsub(x,&xpn), NULL ); }
+
+	if (( event )) {
+		*marked = EENO;
+		bm_push_mark( ctx, "<", newPair(event,proxy) ); }
+
 	return 1;
 }
 
 void
 bm_context_unmark( BMContext *ctx, int marked )
 {
-	if ( marked&EMARK ) bm_pop_mark( ctx, '!' );
-	if ( marked&QMARK ) bm_pop_mark( ctx, '?' );
+	if ( marked&EENO )
+		bm_pop_mark( ctx, "<" );
+	else {
+		if ( marked&QMARK ) bm_pop_mark( ctx, "?" );
+		if ( marked&EMARK ) bm_pop_mark( ctx, "!" ); }
 }
 
 //===========================================================================
 //	bm_push_mark / bm_pop_mark
 //===========================================================================
 listItem *
-bm_push_mark( BMContext *ctx, int mark, void *e )
+bm_push_mark( BMContext *ctx, char *mark, void *value )
 {
-	Pair *entry = registryLookup( ctx, ((char_s) mark).s );
-	return ( entry ) ? addItem((listItem**)&entry->value, e ) : NULL;
+	Pair *entry = registryLookup( ctx, mark );
+	if (( entry ))
+		return addItem((listItem **) &entry->value, value );
+	return NULL;
 }
-void *
-bm_pop_mark( BMContext *ctx, int mark )
+void
+bm_pop_mark( BMContext *ctx, char *mark )
 {
-	Pair *entry = registryLookup( ctx, ((char_s) mark).s );
-	return ( entry ) ? popListItem((listItem**)&entry->value) : NULL;
+	Pair *entry = registryLookup( ctx, mark );
+	if (( entry ))
+		switch ( *mark ) {
+		case '<': ;
+			EEnoRV *eeno = entry->value;
+			if (( eeno )) {
+				freePair( eeno->event );
+				freePair((Pair *) eeno ); }
+			// no break
+		default:
+			popListItem((listItem**) &entry->value ); }
 }
 
 //===========================================================================
@@ -327,19 +375,21 @@ bm_context_lookup( BMContext *ctx, char *p )
 		switch ( *p ) {
 		case '?':
 		case '!':
-		case '|': ;
+		case '|':
+		case '<': ;
 			if ((entry->value))
 				return ((listItem*)entry->value)->ptr;
 			break;
 		default:
-			return entry->value;
-		}
+			return entry->value; }
 	return NULL;
 }
 
 //===========================================================================
-//	bm_lookup
+//	bm_lookup / bm_lookup_x
 //===========================================================================
+static inline CNInstance * lookup_proxy( CNEntity *, CNInstance * );
+
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 {
@@ -352,7 +402,8 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 		case '?': return bm_context_lookup( ctx, "?" );
 		case '!': return bm_context_lookup( ctx, "!" );
 		case '|': return bm_context_lookup( ctx, "|" );
-		case '%': return BMContextSelf( ctx ); }
+		case '%': return BMContextSelf( ctx );
+		case '<': return eeno_lookup( ctx, db, p ); }
 		break;
 	case '\'': ; // looking up single character identifier instance
 		char_s q;
@@ -365,6 +416,66 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 		if (( instance )) return instance; }
 
 	return db_lookup( privy, p, db );
+}
+
+
+CNInstance *
+bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
+{
+	if ( !x ) return NULL;
+	if ( db_dst==db_x ) return x;
+
+	struct { listItem *src, *dst; } stack = { NULL, NULL };
+	CNInstance *instance;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(x,ndx) )) {
+			add_item( &stack.src, ndx );
+			addItem( &stack.src, x );
+			x = x->sub[ ndx ];
+			ndx = 0; continue; }
+
+		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
+			CNEntity *this = BMContextThis( dst );
+			CNEntity *that = BMProxyThat( x );
+			instance = lookup_proxy( this, that ); }
+		else {
+			char *p = db_identifier( x, db_src );
+			instance = db_lookup( 0, p, db_dst ); }
+		if ( !instance ) break;
+		for ( ; ; ) {
+			if ( !stack.src ) return instance;
+			x = popListItem( &stack.src );
+			if (( ndx = pop_item( &stack.src ) )) {
+				CNInstance *f = popListItem( &stack.dst );
+				instance = cn_instance( f, instance, 0 ); }
+				if ( !instance ) goto FAIL;
+			else {
+				addItem( &stack.dst, instance );
+				ndx=1; break; }
+		} }
+FAIL:
+	freeListItem( &stack.src );
+	freeListItem( &stack.dst );
+	return NULL;
+}
+
+static inline CNInstance *
+lookup_proxy( CNEntity *this, CNEntity *that )
+{
+	if ( this==that ) {
+		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
+			CNEntity *connection = i->ptr;
+			// Assumption: there is only one ((NULL,this), . )
+			if ( !connection->sub[ 0 ] )
+				return connection->as_sub[ 0 ]->ptr; } }
+	else {
+		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+			CNEntity *connection = i->ptr;
+			// Assumption: there is at most one ((this,~NULL), . )
+			if ( connection->sub[ 1 ]==that )
+				return connection->as_sub[ 0 ]->ptr; } }
+	return NULL;
 }
 
 //===========================================================================
@@ -388,24 +499,25 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 }
 
 //===========================================================================
-//	bm_inform / bm_context_inform
+//	bm_inform / bm_inform_context
 //===========================================================================
-static CNInstance * lookup_proxy( CNEntity *, CNInstance * );
-
 listItem *
-bm_inform( BMContext *src, CNDB *db, listItem **instances, BMContext *dst )
+bm_inform( CNDB *db_src, listItem **instances, BMContext *dst )
 {
 	listItem *results = NULL;
 	for ( CNInstance *e;( e = popListItem(instances) ); ) {
-		e = bm_context_inform( src, db, e, dst );
+		e = bm_inform_context( db_src, e, dst );
 		if (( e )) addItem( &results, e ); }
 	return results;
 }
+
 CNInstance *
-bm_context_inform( BMContext *src, CNDB *db_src, CNInstance *e, BMContext *dst )
+bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 {
 	if ( !e ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
+	if ( db_dst==db_src ) return e;
+
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance;
 	int ndx = 0;
@@ -417,8 +529,8 @@ bm_context_inform( BMContext *src, CNDB *db_src, CNInstance *e, BMContext *dst )
 			ndx = 0; continue; }
 
 		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
-			CNEntity *that = BMProxyThat( e );
 			CNEntity *this = BMContextThis( dst );
+			CNEntity *that = BMProxyThat( e );
 			if (!( instance = lookup_proxy( this, that ) ))
 				instance = db_proxy( this, that, db_dst ); }
 		else {
@@ -428,28 +540,11 @@ bm_context_inform( BMContext *src, CNDB *db_src, CNInstance *e, BMContext *dst )
 			if ( !stack.src ) return instance;
 			e = popListItem( &stack.src );
 			if (( ndx = pop_item( &stack.src ) )) {
-				e = popListItem( &stack.dst );
-				instance = db_instantiate( e, instance, db_dst ); }
+				CNInstance *f = popListItem( &stack.dst );
+				instance = db_instantiate( f, instance, db_dst ); }
 			else {
 				addItem( &stack.dst, instance );
 				ndx=1; break; }
 		} }
-}
-static CNInstance *
-lookup_proxy( CNEntity *this, CNEntity *that )
-{
-	if ( this==that ) {
-		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is only one ((NULL,this), . )
-			if ( !connection->sub[ 0 ] )
-				return connection->as_sub[ 0 ]->ptr; } }
-	else {
-		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is at most one ((this,~NULL), . )
-			if ( connection->sub[ 1 ]==that )
-				return connection->as_sub[ 0 ]->ptr; } }
-	return NULL;
 }
 

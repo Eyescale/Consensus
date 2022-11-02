@@ -2,10 +2,8 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "database.h"
 #include "program.h"
 #include "traverse.h"
-#include "query.h"
 #include "proxy.h"
 
 // #define DEBUG
@@ -85,15 +83,15 @@ bm_proxy_scan( char *expression, BMContext *ctx )
 int
 bm_proxy_still( CNInstance *proxy )
 {
-	CNCell *cell = (CNCell *) BMProxyThat( proxy );
-	BMContext *ctx = BMCellContext( cell );
+	CNEntity *that = BMProxyThat( proxy );
+	BMContext *ctx = BMThisContext( that );
 	return db_still( BMContextDB(ctx) );
 }
 int
 bm_proxy_in( CNInstance *proxy )
 {
-	CNCell *cell = (CNCell *) BMProxyThat( proxy );
-	BMContext *ctx = BMCellContext( cell );
+	CNEntity *that = BMProxyThat( proxy );
+	BMContext *ctx = BMThisContext( that );
 	return db_in( BMContextDB(ctx) );
 }
 
@@ -120,8 +118,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
 #endif
-	CNCell *cell = (CNCell *) BMProxyThat( proxy );
-	CNDB *db_x = BMContextDB( BMCellContext(cell) );
+	CNEntity *that = BMProxyThat( proxy );
+	CNDB *db_x = BMContextDB( BMThisContext(that) );
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
 
@@ -176,7 +174,6 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //---------------------------------------------------------------------------
 //	bm_proxy_feel_traversal
 //---------------------------------------------------------------------------
-static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 #define bm_proxy_verify( p, data ) \
@@ -214,6 +211,7 @@ case_( identifier_CB )
 	_break
 BMTraverseCBEnd
 
+static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
@@ -237,24 +235,25 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 	switch ( *p ) {
 	case '*':
 		return ( x==db_star(db_x) );
-	case '.': ;
+	case '.':
 		return ( p[1]=='.' ) ?
 			db_x_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
 			db_x_match( db_x, x, CTX_DB, BMContextPerso(ctx) );
-	case '%': ;
+	case '%':
 		switch ( p[1] ) {
 		case '?': return db_x_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"?") );
 		case '!': return db_x_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
-		case '%': return db_x_match( db_x, x, CTX_DB, BMContextSelf(ctx) ); }
-		return ( !x->sub[0] && *db_identifier(x,db_x)=='%' );
-	default:
-		if ( !x->sub[0] ) {
-			char *identifier = db_identifier( x, db_x );
-			char_s q;
-			switch ( *p ) {
-			case '/': return !strcomp( p, identifier, 2 );
-			case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
-			default: return !strcomp( p, identifier, 1 ); } } }
+		case '%': return db_x_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
+		case '<': return eeno_match( ctx, p, db_x, x ); }
+		return ( !x->sub[0] && *db_identifier(x,db_x)=='%' ); }
+
+	if ( !x->sub[0] ) {
+		char *identifier = db_identifier( x, db_x );
+		char_s q;
+		switch ( *p ) {
+		case '/': return !strcomp( p, identifier, 2 );
+		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
+		default: return !strcomp( p, identifier, 1 ); } }
 
 	return 0; // not a base entity
 }
@@ -299,6 +298,100 @@ db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 FAIL:
 	freeListItem( &stack );
 	return 0;
+}
+
+//---------------------------------------------------------------------------
+//	eeno_match / eeno_inform / eeno_lookup
+//---------------------------------------------------------------------------
+typedef struct {
+	CNInstance *src;
+	CNInstance *result;
+} EEnoData;
+static inline int eeno_read( BMContext *, char *, EEnoData * );
+
+int
+eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
+/*
+	Note that when invoked by query.c:match() then
+		BMContextDB(ctx)==db_x
+*/
+{
+	EEnoData data;
+	switch ( eeno_read(ctx,p,&data) ) {
+	case 0: return 0;
+	case 1: return db_x_match( db_x, x, BMContextDB(ctx), data.src ); 
+	default: ;
+		CNEntity *that = BMProxyThat( data.src );
+		CNDB *db_y = BMContextDB( BMThisContext(that) );
+		return db_x_match( db_x, x, db_y, data.result ); }
+}
+CNInstance *
+eeno_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
+{
+	EEnoData data;
+	switch ( eeno_read(ctx,p,&data) ) {
+	case 0: return NULL;
+	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
+	default:
+		db = BMContextDB( dst );
+		return bm_inform_context( db, data.result, ((dst)?dst:ctx) ); }
+}
+CNInstance *
+eeno_lookup( BMContext *ctx, CNDB *db, char *p )
+{
+	EEnoData data;
+	switch ( eeno_read(ctx,p,&data) ) {
+	case 0: return NULL;
+	case 1: return data.src;
+	default: ;
+		CNEntity *that = BMProxyThat( data.src );
+		CNDB *db_x = BMContextDB( BMThisContext(that) );
+		return bm_lookup_x( db, data.result, ctx, db ); }
+}
+
+static inline int
+eeno_read( BMContext *ctx, char *p, EEnoData *data )
+{
+	EEnoRV *eeno = bm_context_lookup( ctx, "<" );
+	if ( !eeno ) return 0;
+	data->src = eeno->src;
+
+	p+=2; // skip leading "%<"
+	CNInstance *y;
+	switch ( *p++ ) {
+	case '?': y = eeno->event->name; break;
+	case '!': y = eeno->event->value; break;
+	default: return 1; }
+
+	if ( *p==':' ) {
+		listItem *stack = NULL;
+		CNInstance *sub = y;
+		int position = 0;
+		for ( p++; *p!='>'; p++ )
+			switch ( *p ) {
+			case '(':
+				addItem( &stack, sub );
+				add_item( &stack, position );
+				if ( !p_single(p) ) {
+					sub = CNSUB( sub, position );
+					if ( !sub ) {
+						freeListItem( &stack );
+						return 0; } }
+				position = 0;
+				break;
+			case '?': 
+				y = sub;
+				break;
+			case ',':
+				sub = ((CNInstance*)stack->ptr)->sub[ 1 ];
+				position = 1;
+				break;
+			case ')':
+				position = pop_item( &stack );
+				sub = popListItem( &stack );
+				break; } }
+	data->result = y;
+	return 2;
 }
 
 //===========================================================================

@@ -5,6 +5,7 @@
 #include "instantiate_private.h"
 #include "string_util.h"
 #include "database.h"
+#include "proxy.h"
 
 //===========================================================================
 //	bm_instantiate
@@ -139,7 +140,7 @@ case_( collect_CB )
 	if (( results )) {
 		BMContext *carry = data->carry;
 		data->sub[ current ] = ( (carry) ?
-			bm_inform( ctx, data->db, &results, carry ) :
+			bm_inform( data->db, &results, carry ) :
 			results );
 		_prune( BM_PRUNE_TERM ) }
 	else _return( 2 )
@@ -161,7 +162,7 @@ case_( end_set_CB )
 		data->sub[ 1 ] = instances; }
 	_break
 case_( bgn_pipe_CB )
-	bm_push_mark( data->ctx, '|', data->sub[ current ] );
+	bm_push_mark( data->ctx, "|", data->sub[ current ] );
 	addItem( &data->results, data->sub[ 0 ] );
 	if (!is_f(FIRST)) {
 		addItem( &data->results, data->sub[ 1 ] );
@@ -169,7 +170,7 @@ case_( bgn_pipe_CB )
 	data->sub[ 0 ] = NULL;
 	_break
 case_( end_pipe_CB )
-	bm_pop_mark( data->ctx, '|' );
+	bm_pop_mark( data->ctx, "|" );
 	freeListItem( &data->sub[ 0 ] );
 	if (!(f_next&FIRST))
 		data->sub[ 1 ] = popListItem( &data->results );
@@ -178,31 +179,26 @@ case_( end_pipe_CB )
 case_( register_variable_CB )
 	CNInstance *e = NULL;
 	switch ( p[1] ) {
-	case '?':
-	case '!':
-		e = bm_context_lookup( data->ctx, ((char_s)(int)p[1]).s );
-		if ( !e ) _return( 2 )
-		break;
 	case '|': ;
 		listItem *i = bm_context_lookup( data->ctx, "|" );
 		if ( !i ) _return( 2 )
-		else {
-			listItem **sub = &data->sub[ current ];
-			for ( ; i!=NULL; i=i->next )
-				addItem( sub, i->ptr );
-			_break }
-	case '.':
-		e = BMContextParent( data->ctx );
-		if ( !e ) _return( 2 )
-		break;
-	case '%':
-		e = BMContextSelf( data->ctx );
-		break; }
-
+		listItem **sub = &data->sub[ current ];
+		for ( ; i!=NULL; i=i->next )
+			addItem( sub, i->ptr );
+		_break
+	case '<':
+		e = eeno_inform( data->ctx, data->db, p, data->carry );
+		if ( !e ) _return( 2 );
+		data->sub[ current ] = newItem( e );
+		_break
+	case '?': e = bm_context_lookup( data->ctx, "?" ); break;
+	case '!': e = bm_context_lookup( data->ctx, "!" ); break;
+	case '.': e = BMContextParent( data->ctx ); break;
+	case '%': e = BMContextSelf( data->ctx ); break; }
 	if ( !e ) _return( 2 )
 	BMContext *carry = data->carry;
 	if (( carry ))
-		e = bm_context_inform( data->ctx, data->db, e, carry );
+		e = bm_inform_context( data->db, e, carry );
 	data->sub[ current ] = newItem( e );
 	_break
 case_( list_CB )
@@ -253,15 +249,14 @@ case_( close_CB )
 	if ( !instances ) _return( 2 )
 	if ( is_f(DOT) ) {
 		CNInstance *perso = BMContextPerso( ctx );
-		if (( perso )) {
-			if (( carry ))
-				perso = bm_context_inform( ctx, db, perso, carry );
-			data->sub[ 0 ] = newItem( perso );
-			data->sub[ 1 ] = instances;
-			listItem *localized = bm_couple( data->sub, db );
-			freeListItem( &data->sub[ 0 ] );
-			freeListItem( &data->sub[ 1 ] );
-			instances = localized; } }
+		if (( carry ))
+			perso = bm_inform_context( db, perso, carry );
+		data->sub[ 0 ] = newItem( perso );
+		data->sub[ 1 ] = instances;
+		listItem *localized = bm_couple( data->sub, db );
+		freeListItem( &data->sub[ 0 ] );
+		freeListItem( &data->sub[ 1 ] );
+		instances = localized; }
 	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
 	else {
@@ -276,13 +271,12 @@ case_( dot_identifier_CB )
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	CNInstance *e, *perso = BMContextPerso( ctx );
-	if (( perso )) {
-		if (( carry )) {
-			perso = bm_context_inform( ctx, db, perso, carry );
-			e = db_register( p+1, db ); }
-		else {
-			e = bm_register( ctx, p+1, db ); }
-		e = db_instantiate( perso, e, db ); }
+	if (( carry )) {
+		perso = bm_inform_context( db, perso, carry );
+		e = db_register( p+1, db ); }
+	else {
+		e = bm_register( ctx, p+1, db ); }
+	e = db_instantiate( perso, e, db );
 	data->sub[ current ] = newItem( e );
 	_break
 case_( identifier_CB )
@@ -501,7 +495,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 				if (( proxy )) db_assign( i->ptr, proxy, db );
 				else db_unassign( i->ptr, db ); } }
 		else {
-			fprintf( stderr, ">>>>> B%%: Error: Narrative class not found in expression\n"
+			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
 				"\t\tdo !! %s\n\t<<<<<\n", p );
 			exit( -1 ); } }
 	else if ( !strncmp( p, "~.", 2 ) ) {

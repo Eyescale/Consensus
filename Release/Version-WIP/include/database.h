@@ -33,6 +33,8 @@ CNInstance *	db_first( CNDB *, listItem ** );
 CNInstance *	db_next( CNDB *, CNInstance *, listItem ** );
 int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 
+#define UNIFIED
+
 #ifdef UNIFIED
 #define db_identifier( e, db )	((char *) e->sub[1] )
 #else
