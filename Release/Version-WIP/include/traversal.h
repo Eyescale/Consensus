@@ -220,35 +220,4 @@
 #include "traverse.c"
 
 
-#else	// TRAVERSAL_H
-
-#undef BMOpenCB
-#undef BMCloseCB
-#undef BMTermCB
-#undef BMNotCB
-#undef BMBgnSetCB
-#undef BMEndSetCB
-#undef BMBgnPipeCB
-#undef BMEndPipeCB
-#undef BMModCharacterCB
-#undef BMStarCharacterCB
-#undef BMRegisterVariableCB
-#undef BMTernaryOperatorCB
-#undef BMSubExpressionCB
-#undef BMDereferenceCB
-#undef BMLiteralCB
-#undef BMListCB
-#undef BMDecoupleCB
-#undef BMFilterCB
-#undef BMWildCardCB
-#undef BMDotExpressionCB
-#undef BMDotIdentifierCB
-#undef BMFormatCB
-#undef BMCharacterCB
-#undef BMRegexCB
-#undef BMIdentifierCB
-#undef BMSignalCB
-
-#undef case_
-
 #endif	// TRAVERSAL_H
