@@ -186,8 +186,7 @@ fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
 		else if (( f ) && ( f->as_sub[ 0 ] )) { // reassigned
 			db_remove( f->as_sub[0]->ptr, db );
 			db_remove( f, db ); }
-		else db_remove( g, db ); // possibly to-be-released
-		}
+		else db_remove( g, db ); } // possibly to-be-released
 #ifdef DEBUG
 fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 #endif
@@ -203,13 +202,11 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-			TRASH( x, parent )
-		}
+			TRASH( x, parent ) }
 		else { // just newborn
 			db_remove( g, db );
 			db_remove( f, db );
-			cn_new( nil, x );
-		} }
+			cn_new( nil, x ); } }
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 #endif
@@ -220,8 +217,7 @@ fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
 			g = f->as_sub[1]->ptr;
 			if ((next_i) && next_i->ptr==g )
 				next_i = next_i->next;
-			db_remove( g, db );
-		} }
+			db_remove( g, db ); } }
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. remove released entities\n" );
 #endif
@@ -231,8 +227,7 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 		if ( !f->as_sub[1] ) {
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
-			TRASH( x, parent )
-		} }
+			TRASH( x, parent ) } }
 	for ( int i=0; i<2; i++ )
 		while (( x = popListItem( &trash[i] ) ))
 			db_remove( x, db );
@@ -242,8 +237,7 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 	for ( listItem *i=nil->as_sub[ 1 ]; i!=NULL; i=i->next ) {
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) {
-			db_remove( f->as_sub[1]->ptr, db );
-		} }
+			db_remove( f->as_sub[1]->ptr, db ); } }
 #ifdef DEBUG
 fprintf( stderr, "--\n" );
 #endif

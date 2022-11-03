@@ -1,0 +1,12 @@
+:
+	on init
+		do : partner : !! Partner()
+	else on init < *partner
+		do >"hello, partner\n"
+	else on ~( *partner )
+		do exit
+
+: Partner
+	on init
+		do >"hi...\n"
+		do exit

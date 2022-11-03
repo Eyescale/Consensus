@@ -193,7 +193,7 @@ bm_read_init( CNParser *parser, BMParseData *data, BMReadMode mode, BMContext *c
 	case BM_STORY:
 		data->narrative = newNarrative();
 		data->occurrence = data->narrative->root;
-		data->story = newRegistry( IndexedByName );
+		data->story = newRegistry( IndexedByCharacter );
 		addItem( &data->stack.occurrences, data->occurrence );
 		break; }
 	bm_parse_init( data, parser, mode, "base", file );

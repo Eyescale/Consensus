@@ -204,6 +204,7 @@ db_unassign( CNInstance *x, CNDB *db )
 void
 db_deprecate( CNInstance *x, CNDB *db )
 /*
+	Assumption: x is deprecatable
 	deprecate (ie. set "to-be-released") x and all its ascendants,
 	proceeding top-down
 */

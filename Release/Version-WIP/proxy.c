@@ -18,8 +18,6 @@ void
 bm_proxy_op( char *expression, BMContext *ctx )
 {
 	if ( !expression || !(*expression)) return;
-
-	bm_context_check( ctx ); // remove dangling connections
 	char *p = expression;
 	BMQueryCB *op = ( *p=='@' ) ?
 		activate_CB: deactivate_CB;
@@ -61,10 +59,8 @@ bm_proxy_scan( char *expression, BMContext *ctx )
 {
 	if ( !expression || !(*expression)) return NULL;
 
-	bm_context_check( ctx ); // remove dangling connections
-	listItem *results = NULL;
-
 	CNDB *db = BMContextDB( ctx );
+	listItem *results = NULL;
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
 	data.type = BM_CONDITION;

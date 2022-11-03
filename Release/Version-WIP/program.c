@@ -10,7 +10,7 @@
 //===========================================================================
 //	newProgram / freeProgram
 //===========================================================================
-static void freeCell( CNCell *cell );
+static void releaseCell( CNCell *cell );
 
 CNProgram *
 newProgram( CNStory *story, char *inipath )
@@ -29,7 +29,7 @@ newProgram( CNStory *story, char *inipath )
 		errnum.ptr = bm_read( BM_LOAD, BMCellContext(cell), inipath );
 		if ( errnum.value ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-			freeCell( cell ); return NULL; } }
+			releaseCell( cell ); return NULL; } }
 	// threads->new is a list of lists
 	Pair *threads = newPair( NULL, newItem(newItem(cell)) );
 	return (CNProgram *) newPair( story, threads );
@@ -49,17 +49,63 @@ freeProgram( CNProgram *program )
 	listItem **new = &program->threads->new;
 	while (( cell = popListItem(active) )) {
 		freeListItem( BMCellCarry(cell) );
-		freeCell( cell ); }
+		releaseCell( cell ); }
 	while (( cell = popListItem(new) )) {
 		freeListItem( BMCellCarry(cell) );
-		freeCell( cell ); }
+		releaseCell( cell ); }
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program );
 }
 
 //===========================================================================
+//	newCell / releaseCell
+//===========================================================================
+CNCell *
+newCell( Pair *entry, CNEntity *parent )
+{
+	CNCell *cell = cn_new( NULL, NULL );
+	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
+	cell->sub[ 1 ] = (CNEntity *) newContext( cell, parent );
+	return cell;
+}
+static void
+releaseCell( CNCell *cell )
+/*
+	Assumption: *BMCellCarry(cell) is NULL
+*/
+{
+	if ( !cell ) return;
+
+	// free cell's nucleus
+	freePair((Pair *) cell->sub[ 0 ] );
+
+	/* prune CNDB proxies & release cell's input connections (cell,.)
+	   this includes parent connection & proxy if these were set
+	*/
+	CNEntity *connection;
+	listItem **connections = &cell->as_sub[ 0 ];
+	while (( connection = popListItem( connections ) )) {
+		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
+		cn_release( connection ); }
+
+	// free cell's context
+	freeContext((BMContext *) cell->sub[ 1 ] );
+
+	/* cn_release will nullify cell in subscribers' connections (.,cell)
+	   subscriber is responsible for removing dangling connections -
+	   see bm_context_update()
+	*/
+	cell->sub[ 0 ] = NULL;
+	cell->sub[ 1 ] = NULL;
+	cn_release( cell );
+}
+
+//===========================================================================
 //	cnUpdate
 //===========================================================================
+#define cellUpdate( cell ) bm_context_update( cell, BMCellContext(cell) )
+#define cellInit( cell ) bm_context_init( BMCellContext(cell) )
+
 void
 cnUpdate( CNProgram *program )
 {
@@ -72,14 +118,14 @@ cnUpdate( CNProgram *program )
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		CNCell *cell = i->ptr;
-		bm_context_update( BMCellContext(cell) );
+		cellUpdate( cell );
 		listItem *carry = *BMCellCarry( cell );
 		if (( carry )) addItem( new, carry ); }
 	// activate new cells
 	for ( listItem *i; (i=popListItem(new)); )
 		for ( listItem *j=i; j!=NULL; j=j->next ) {
 			CNCell *cell = j->ptr;
-			bm_context_init( BMCellContext(cell) );
+			cellInit( cell );
 			addItem( active, cell ); }
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: end\n" );
@@ -116,53 +162,11 @@ cnOperate( CNProgram *program )
 		} }
 	// release deactivated cells
 	while (( cell = popListItem(&released) ))
-		freeCell( cell );
+		releaseCell( cell );
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new));
-}
-
-//===========================================================================
-//	newCell / freeCell
-//===========================================================================
-CNCell *
-newCell( Pair *entry, CNEntity *parent )
-{
-	CNCell *cell = cn_new( NULL, NULL );
-	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
-	cell->sub[ 1 ] = (CNEntity *) newContext( cell, parent );
-	return cell;
-}
-static void
-freeCell( CNCell *cell )
-/*
-	Assumption: *BMCellCarry(cell) is NULL
-*/
-{
-	if ( !cell ) return;
-	// free cell's nucleus
-	freePair((Pair *) cell->sub[ 0 ] );
-
-	/* prune CNDB proxies & release cell's input connections (cell,.)
-	   this includes parent connection & proxy if these were set
-	*/
-	CNEntity *connection;
-	listItem **connections = &cell->as_sub[ 0 ];
-	while (( connection = popListItem( connections ) )) {
-		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		cn_release( connection ); }
-
-	// free cell's context
-	freeContext((BMContext *) cell->sub[ 1 ] );
-
-	/* cn_release will nullify cell in subscribers' connections (.,cell)
-	   subscriber is responsible for removing dangling connections -
-	   see bm_context_check() in context.c
-	*/
-	cell->sub[ 0 ] = NULL;
-	cell->sub[ 1 ] = NULL;
-	cn_release( cell );
 }
 
 //===========================================================================

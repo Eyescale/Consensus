@@ -107,8 +107,9 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	BMContext *cell_ctx = BMCellContext( cell );
 	// inform cell
 	data->carry = cell_ctx;
-	traverse_data->done = INFORMED|NEW;
-	p = bm_instantiate_traversal( p, traverse_data, FIRST );
+	if ( strncmp(p,"()",2) ) {
+		traverse_data->done = INFORMED|NEW;
+		p = bm_instantiate_traversal( p, traverse_data, FIRST ); }
 	// carry cell
 	CNInstance *proxy = NULL;
 	addItem( BMCellCarry(parent), cell );

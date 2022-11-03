@@ -55,8 +55,7 @@ freeContext( BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	freeCNDB( db );
 
-	/* free context register & variable registry - now
-	   all flushed out
+	/* free context - now presumably all flushed out
 	*/
 	freeRegistry( ctx, NULL );
 }
@@ -90,23 +89,44 @@ bm_context_activate( BMContext *ctx, CNInstance *proxy )
 //===========================================================================
 //	bm_context_init / bm_context_update
 //===========================================================================
-static inline void update_active( ActiveRV * );
+static inline void update_active( BMContext *, int check, CNDB * );
 
 void
 bm_context_init( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db, NULL ); // integrate cell's init conditions
-	update_active( BMContextActive(ctx) );
+	update_active( ctx, 0, db );
 	db_init( db );
 }
 void
-bm_context_update( BMContext *ctx )
+bm_context_update( CNEntity *this, BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
+	// deprecate dangling connections
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		if ( connection->sub[ 1 ]==NULL ) {
+			CNInstance *proxy = connection->as_sub[0]->ptr;
+			if ( db_deprecatable( proxy, db ) )
+				db_deprecate( proxy, db ); } }
 	db_update( db, BMContextParent(ctx) );
+	update_active( ctx, 1, db );
+}
+static inline void
+update_active( BMContext *ctx, int check, CNDB *db )
+{
 	ActiveRV *active = BMContextActive( ctx );
-	update_active( active );
+
+	listItem **current = &active->value;
+	listItem **changes = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		removeIfThere( current, e );
+	changes = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		addIfNotThere( current, e );
+
+	if ( !check ) return;
 
 	// deactivate connections whose proxies were deprecated
 	listItem **entries = &active->value;
@@ -118,19 +138,8 @@ bm_context_update( BMContext *ctx )
 		else last_i = i; }
 }
 
-static inline void
-update_active( ActiveRV *active )
-{
-	listItem **changes = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		removeIfThere( &active->value, e );
-	changes = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		addIfNotThere( &active->value, e );
-}
-
 //===========================================================================
-//	bm_context_set / bm_declare / bm_context_check
+//	bm_context_set / bm_declare
 //===========================================================================
 typedef struct {
 	CNInstance *instance;
@@ -191,25 +200,6 @@ bm_declare( BMContext *ctx, char *p )
 	return 1;
 }
 
-void
-bm_context_check( BMContext *ctx )
-/*
-	deactivate and deprecate dangling connections
-*/
-{
-	CNDB *db = BMContextDB( ctx );
-	ActiveRV *active = BMContextActive( ctx );
-	listItem **entries = &active->value;
-	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
-		next_i = i->next;
-		CNInstance *proxy = i->ptr;
-		CNEntity *connection = proxy->sub[ 0 ];
-		if ( !connection->sub[ 1 ] ) {
-			clipListItem( entries, i, last_i, next_i );
-			db_deprecate( proxy, db ); }
-		else last_i = i; }
-}
-
 //===========================================================================
 //	bm_context_flush / bm_context_pipe_flush
 //===========================================================================
@@ -223,6 +213,13 @@ bm_context_flush( BMContext *ctx )
 		next_i = i->next;
 		char *name = entry->name;
 		switch ( *name ) {
+		case '<': ;
+			EEnoRV *eeno;
+			while (( eeno = popListItem((listItem**)&entry->value) )) {
+				freePair( eeno->event );
+				freePair((Pair *) eeno ); }
+			last_i = i;
+			break;
 		case '?':
 		case '!':
 		case '|':
@@ -353,14 +350,15 @@ void
 bm_pop_mark( BMContext *ctx, char *mark )
 {
 	Pair *entry = registryLookup( ctx, mark );
+	EEnoRV *eeno;
 	if (( entry ))
 		switch ( *mark ) {
-		case '<': ;
-			EEnoRV *eeno = entry->value;
+		case '<':
+			eeno = popListItem((listItem **) &entry->value );
 			if (( eeno )) {
 				freePair( eeno->event );
 				freePair((Pair *) eeno ); }
-			// no break
+			break;
 		default:
 			popListItem((listItem**) &entry->value ); }
 }
@@ -468,7 +466,7 @@ lookup_proxy( CNEntity *this, CNEntity *that )
 		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
 			CNEntity *connection = i->ptr;
 			// Assumption: there is only one ((NULL,this), . )
-			if ( !connection->sub[ 0 ] )
+			if ( connection->sub[ 0 ]==NULL )
 				return connection->as_sub[ 0 ]->ptr; } }
 	else {
 		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
