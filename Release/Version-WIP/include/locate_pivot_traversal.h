@@ -1,5 +1,5 @@
-#ifndef LOCATE_TRAVERSAL_H
-#define LOCATE_TRAVERSAL_H
+#ifndef LOCATE_PIVOT_TRAVERSAL_H
+#define LOCATE_PIVOT_TRAVERSAL_H
 
 static BMTraverseCB
 	dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
@@ -10,4 +10,4 @@ static BMTraverseCB
 		BMLocatePivotData *data = traverse_data->user_data; char *p = *q;
 
 
-#endif	// LOCATE_TRAVERSAL_H
+#endif	// LOCATE_PIVOT_TRAVERSAL_H

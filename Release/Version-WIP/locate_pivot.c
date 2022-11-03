@@ -2,9 +2,9 @@
 #include <stdlib.h>
 
 #include "traverse.h"
-#include "locate.h"
 #include "locate_param.h"
-#include "locate_traversal.h"
+#include "locate_pivot.h"
+#include "locate_pivot_traversal.h"
 #include "scour.h"
 
 //===========================================================================

@@ -14,7 +14,7 @@ SRCS =	narrative.c \
 			deternarize.c \
 			expression.c \
 				query.c \
-				locate.c \
+				locate_pivot.c \
 				scour.c \
 			instantiate.c \
 			proxy.c

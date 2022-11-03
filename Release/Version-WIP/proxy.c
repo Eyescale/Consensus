@@ -287,8 +287,7 @@ db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 			x = popListItem( &stack );
 			y = popListItem( &stack );
 			if ( !pop_item( &stack ) )
-				{ ndx=1; break; }
-		} }
+				{ ndx=1; break; } } }
 FAIL:
 	freeListItem( &stack );
 	return 0;

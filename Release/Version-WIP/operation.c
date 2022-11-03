@@ -106,7 +106,7 @@ RETURN:
 static int
 in_condition( char *expression, BMContext *ctx, int *marked )
 /*
-	Assumption: *marked = 0 to begin with
+	Assumption: *marked==0 to begin with
 */
 {
 #ifdef DEBUG
@@ -137,7 +137,7 @@ RETURN:
 static int
 on_event( char *expression, BMContext *ctx, int *marked )
 /*
-	Assumption: *marked = 0 to begin with
+	Assumption: *marked==0 to begin with
 */
 {
 #ifdef DEBUG
@@ -182,7 +182,7 @@ RETURN:
 static int
 on_event_x( char *expression, BMContext *ctx, int *marked )
 /*
-	Assumption: *marked = 0 to begin with
+	Assumption: *marked==0 to begin with
 */
 {
 #ifdef DEBUG
@@ -301,8 +301,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 				do p++; while ( !is_separator(*p) );
 				if ( *p==':' ) continue;
 				StringAppend( s, '.' ); }
-			StringAppend( s, *p );
-		}
+			StringAppend( s, *p ); }
 		StringAppend( s, ':' );
 		for ( char *p=expression; *p; p++ )
 			StringAppend( s, *p );
@@ -312,8 +311,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 		data.entry = NULL;
 		bm_query( BM_CONDITION, q, ctx, enable_CB, &data );
 		// reset
-		StringReset( s, CNStringAll );
-	}
+		StringReset( s, CNStringAll ); }
 	freeString( s );
 	return 1;
 }
@@ -324,8 +322,7 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	Pair *entry;
 	if (!( entry = data->entry )) {
 		entry = registryRegister( data->subs, data->narrative, NULL );
-		data->entry = entry;
-	}
+		data->entry = entry; }
 	addIfNotThere((listItem **) &entry->value, e );
 	return BM_CONTINUE;
 }
@@ -381,7 +378,7 @@ do_input( char *expression, BMContext *ctx )
 static int
 do_output( char *expression, BMContext *ctx )
 /*
-	Assuming expression is one the following forms
+	Assuming expression is in one the following forms
 		> fmt
 		> fmt : expression
 		> fmt : < expression1, expression2, ... >

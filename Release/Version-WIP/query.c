@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "locate.h"
 #include "locate_param.h"
+#include "locate_pivot.h"
 #include "proxy.h"
 #include "query.h"
 #include "query_traversal.h"

@@ -1,5 +1,5 @@
-#ifndef LOCATE_H
-#define LOCATE_H
+#ifndef LOCATE_PIVOT_H
+#define LOCATE_PIVOT_H
 
 #include "list.h"
 
@@ -13,4 +13,4 @@ void xpn_set( listItem *xp, int as_sub, int position );
 void xpn_out( FILE *stream, listItem *xp );
 
 
-#endif	// LOCATE_H
+#endif	// LOCATE_PIVOT_H

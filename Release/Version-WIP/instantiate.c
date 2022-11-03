@@ -388,8 +388,7 @@ bm_list( char **position, listItem **sub, CNDB *db )
 {
 	if ( !sub[0] ) {
 		*position = p_prune( PRUNE_LIST, *position );
-		return NULL;
-	}
+		return NULL; }
 	listItem *results = NULL;
 	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
 	CNInstance *star = db_star( db );

@@ -1,0 +1,16 @@
+:
+	on init
+		do : partner : !! Partner()
+
+	else on ? < *partner
+		do > "heard %_\n": %<?>
+//		do > "heard something\n"
+
+	else on exit < *partner
+		do exit
+
+: Partner
+	on init
+		do toto
+	else
+		do exit

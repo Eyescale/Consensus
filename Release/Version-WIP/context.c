@@ -275,19 +275,6 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 			bm_push_mark( ctx, "?", xsub(x,&xpn) ); } }
 	return 1;
 }
-static inline CNInstance *
-xsub( CNInstance *x, listItem **xpn )
-/*
-	Assumption: x.xpn exists by construction
-*/
-{
-	int exp;
-	reorderListItem( xpn );
-	while (( exp = pop_item( xpn ) ))
-		x = x->sub[ exp & 1 ];
-	return x;
-}
-
 int
 bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, CNInstance *proxy, int *marked )
 {
@@ -316,8 +303,8 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 		if (( bm_locate_mark( src, &xpn ) )) {
 			// freeListItem( &xpn ); // Assumption: unnecessary
 			event = newPair( x, NULL ); }
-		else if ( !!x && ( bm_locate_mark( expression, &xpn ) ))
-			event = newPair( xsub(x,&xpn), NULL ); }
+		else if ( !!x && ( bm_locate_mark( expression, &xpn ) )) {
+			event = newPair( xsub(x,&xpn), NULL ); } }
 
 	if (( event )) {
 		*marked = EENO;
@@ -325,6 +312,19 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 
 	return 1;
 }
+static inline CNInstance *
+xsub( CNInstance *x, listItem **xpn )
+/*
+	Assumption: x.xpn exists by construction
+*/
+{
+	int exp;
+	reorderListItem( xpn );
+	while (( exp = pop_item( xpn ) ))
+		x = x->sub[ exp & 1 ];
+	return x;
+}
+
 
 void
 bm_context_unmark( BMContext *ctx, int marked )
