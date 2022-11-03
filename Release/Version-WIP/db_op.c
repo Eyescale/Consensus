@@ -26,31 +26,25 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 		f = cn_instance( e, nil, 1 );
 		if (( f )) {
 			// case to-be-released, possibly manifested (cannot be to-be-manifested)
-			if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
+			if (( f->as_sub[ 1 ] )) // can only be ( nil, f )
 				break; // already to-be-released, possibly manifested
-			}
 			// case newborn, possibly manifested (reassigned)
 			else if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
 				if ( op == DB_SIGNAL_OP ) {
 					// remove (( e, nil ), nil )
-					db_remove( f->as_sub[0]->ptr, db );
-				}
+					db_remove( f->as_sub[0]->ptr, db ); }
 				else if (( g = cn_instance( nil, e, 0 ) )) {
 					// remove (( e, nil ), nil ) only
-					db_remove( f->as_sub[0]->ptr, db );
-				}
+					db_remove( f->as_sub[0]->ptr, db ); }
 				// create ( nil, ( e, nil )) (to be released)
-				cn_new( nil, f );
-			}
+				cn_new( nil, f ); }
 			// case released, possibly to-be-manifested (rehabilitated)
 			else if (( g = cn_instance( nil, e, 0 ) )) {
 				// remove ( nil, ( nil, e )) and ( nil, e )
 				db_remove( g->as_sub[1]->ptr, db );
 				// remove ( nil, e )
-				db_remove( g, db );
-			}
-			// else already released
-		}
+				db_remove( g, db ); }
+			/* else already released */ }
 		else {
 			/* neither released, nor newborn, nor to-be-released
 			   possibly manifested or to-be-manifested
@@ -59,10 +53,8 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			if (( g ) && ( g->as_sub[ 1 ] )) {
 				// remove ( nil, ( nil, e )) and ( nil, e )
 				db_remove( g->as_sub[1]->ptr, db );
-				db_remove( g, db );
-			}
-			cn_new( nil, cn_new( e, nil ) );
-		}
+				db_remove( g, db ); }
+			cn_new( nil, cn_new( e, nil ) ); }
 		break;
 	case DB_REASSIGN_OP:
 	case DB_REHABILITATE_OP:
@@ -72,21 +64,17 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			if (( f->as_sub[ 1 ] )) { // can only be ( nil, f )
 				// remove ( nil, ( e, nil )) and ( e, nil )
 				db_remove( f->as_sub[1]->ptr, db );
-				db_remove( f, db );
-			}
+				db_remove( f, db ); }
 			// case newborn, possibly manifested (reassigned)
-			else if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
+			else if (( f->as_sub[ 0 ] )) // can only be ( f, nil )
 				; // leave as-is
-			}
 			// case released, possibly to-be-manifested (rehabilitated)
 			else if (( cn_instance( nil, e, 0 ) ))
 				; // already to-be-manifested
 			else {
 				// create ( nil, ( nil, e )) (to be manifested)
-				cn_new( nil, cn_new( nil, e ) );
-			}
-		}
-		else if ( op == DB_REHABILITATE_OP )
+				cn_new( nil, cn_new( nil, e ) ); } }
+		else if ( op==DB_REHABILITATE_OP )
 			break;
 		else {
 			/* neither released, nor newborn, nor to-be-released
@@ -96,17 +84,12 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			if (( g )) {
 				if (!( g->as_sub[ 1 ] )) {
 					// manifested - create newborn (reassigned)
-					cn_new( cn_new( e, nil ), nil );
-				}
-				else ; // already to-be-manifested
-			}
+					cn_new( cn_new( e, nil ), nil ); }
+				/* else already to-be-manifested */ }
 			else {
 				// create ( nil, ( nil, e )) (to be manifested)
-				cn_new( nil, cn_new( nil, e ) );
-			}
-		}
-		break;
-	}
+				cn_new( nil, cn_new( nil, e ) ); } }
+		break; }
 	return 0;
 }
 
@@ -126,8 +109,7 @@ db_remove( CNInstance *e, CNDB *db )
 				   this->as_sub[ 0 ] and from that->as_sub[ 1 ]
 				*/
 				cn_release( e ); // remove proxy
-				cn_release( connection ); }
-		} }
+				cn_release( connection ); } } }
 	else {
 #ifdef UNIFIED
 		e->sub[1] = NULL;
@@ -146,8 +128,7 @@ db_remove( CNInstance *e, CNDB *db )
 				freePair( entry );
 				freeItem( i );
 				break; }
-			else last_i = i;
-		} }
+			else last_i = i; } }
 }
 
 //===========================================================================
@@ -268,8 +249,8 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
 			continue;
 		addItem( stack, i );
-		return e;
-	}
+		return e; }
+
 	return NULL;
 }
 
@@ -326,7 +307,7 @@ db_to_be_manifested( CNInstance *e, CNDB *db )
 }
 
 //===========================================================================
-//	db_deprecatable / db_deprecated
+//	db_deprecatable / db_deprecated / db_manifested
 //===========================================================================
 int
 db_deprecatable( CNInstance *e, CNDB *db )

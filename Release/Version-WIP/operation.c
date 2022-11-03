@@ -209,7 +209,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			goto RETURN; }
 		break;
 	default:
-		if ( !strcomp( expression, "init", 1 ) ) {
+		if ( !strncmp( expression, "init<", 5 ) ) {
 			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
 				success = bm_proxy_in( proxy );
 				if ( negated ? !success : success ) break; }

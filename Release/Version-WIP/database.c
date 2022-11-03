@@ -92,17 +92,10 @@ db_register( char *p, CNDB *db )
 CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 {
-	if ( !that ) return NULL;
-	CNInstance *proxy;
-	if (( this )) {
+	CNInstance *proxy = NULL;
+	if (( that )) {
 		proxy = cn_new( cn_new( this, that ), NULL );
-		db_op( DB_MANIFEST_OP, proxy, db ); }
-	else {
-		// register self pseudo-connection and proxy
-		CNEntity *self = cn_new( NULL, NULL );
-		self->sub[ 1 ] = that;
-		proxy = cn_new( NULL, NULL );
-		proxy->sub[ 0 ] = self; }
+		if (( this )) db_op( DB_MANIFEST_OP, proxy, db ); }
 	return proxy;
 }
 
@@ -241,15 +234,6 @@ db_deprecate( CNInstance *x, CNDB *db )
 		} }
 RETURN:
 	freeItem( i );
-}
-
-//===========================================================================
-//	db_signal
-//===========================================================================
-void
-db_signal( CNInstance *x, CNDB *db )
-{
-	db_op( DB_SIGNAL_OP, x, db );
 }
 
 //===========================================================================

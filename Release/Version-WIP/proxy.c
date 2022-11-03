@@ -89,7 +89,7 @@ bm_proxy_in( CNInstance *proxy )
 {
 	CNEntity *that = BMProxyThat( proxy );
 	BMContext *ctx = BMThisContext( that );
-	return db_in( BMContextDB(ctx) );
+	return db_manifested( BMContextSelf(ctx), BMContextDB(ctx) );
 }
 
 //===========================================================================

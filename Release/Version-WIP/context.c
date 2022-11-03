@@ -96,6 +96,7 @@ bm_context_init( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
 	db_update( db, NULL ); // integrate cell's init conditions
+	db_manifest( BMContextSelf(ctx), db );
 	update_active( ctx, 0, db );
 	db_init( db );
 }
