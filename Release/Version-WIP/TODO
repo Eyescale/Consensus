@@ -1,5 +1,9 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. remove all the 
+		if ( !expression || !(*expression)) return NULL;
+	  e.g. in query.c -- unnecessary
+
 	. Testing
 		. 3_TM.multi/TM-head_tape.story (to be added)
 	. Pass design/story/{all}

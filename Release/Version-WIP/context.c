@@ -89,47 +89,28 @@ bm_context_activate( BMContext *ctx, CNInstance *proxy )
 //===========================================================================
 //	bm_context_init / bm_context_update
 //===========================================================================
-static inline void update_active( BMContext *, int check, CNDB * );
+static inline void update_active( ActiveRV * );
 
 void
 bm_context_init( BMContext *ctx )
 {
 	CNDB *db = BMContextDB( ctx );
-	db_update( db, NULL ); // integrate cell's init conditions
+	// integrate cell's init conditions
+	db_update( db, NULL );
+	// activate parent connection, if there is
+	update_active( BMContextActive(ctx) );
+	// in case someone (parent) listens
 	db_manifest( BMContextSelf(ctx), db );
-	update_active( ctx, 0, db );
 	db_init( db );
 }
 void
 bm_context_update( CNEntity *this, BMContext *ctx )
 {
-	CNDB *db = BMContextDB( ctx );
-	// deprecate dangling connections
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		if ( connection->sub[ 1 ]==NULL ) {
-			CNInstance *proxy = connection->as_sub[0]->ptr;
-			if ( db_deprecatable( proxy, db ) )
-				db_deprecate( proxy, db ); } }
-	db_update( db, BMContextParent(ctx) );
-	update_active( ctx, 1, db );
-}
-static inline void
-update_active( BMContext *ctx, int check, CNDB *db )
-{
+	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
-
-	listItem **current = &active->value;
-	listItem **changes = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		removeIfThere( current, e );
-	changes = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		addIfNotThere( current, e );
-
-	if ( !check ) return;
-
-	// deactivate connections whose proxies were deprecated
+	update_active( active );
+	// deactivate released connections
+	CNDB *db = BMContextDB( ctx );
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
 		CNInstance *e = i->ptr;
@@ -137,6 +118,26 @@ update_active( BMContext *ctx, int check, CNDB *db )
 		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
+	// deprecate dangling connections
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		if ( connection->sub[ 1 ]==NULL ) {
+			CNInstance *proxy = connection->as_sub[0]->ptr;
+			if ( db_deprecatable( proxy, db ) )
+				db_deprecate( proxy, db ); } }
+	// invoke db_update - turning deprecated into released...
+	db_update( db, BMContextParent(ctx) );
+}
+static inline void
+update_active( ActiveRV *active )
+{
+	listItem **current = &active->value;
+	listItem **changes = &active->buffer->deactivated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		removeIfThere( current, e );
+	changes = &active->buffer->activated;
+	for ( CNInstance *e;( e = popListItem(changes) ); )
+		addIfNotThere( current, e );
 }
 
 //===========================================================================
@@ -290,7 +291,7 @@ xsub( CNInstance *x, listItem **xpn )
 int
 bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, CNInstance *proxy, int *marked )
 {
-	if ( !x ) return 0;
+	if ( !proxy ) return 0;
 	listItem *xpn = NULL;
 	Pair *event = NULL;
 	if ( *expression==':' ) {
@@ -310,13 +311,12 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 			else if (( bm_locate_mark( value, &xpn ) ))
 				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] );
 			else if (( bm_locate_mark( expression, &xpn ) ))
-				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] );
-			} }
+				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } }
 	else {
 		if (( bm_locate_mark( src, &xpn ) )) {
 			// freeListItem( &xpn ); // Assumption: unnecessary
 			event = newPair( x, NULL ); }
-		else if (( bm_locate_mark( expression, &xpn ) ))
+		else if ( !!x && ( bm_locate_mark( expression, &xpn ) ))
 			event = newPair( xsub(x,&xpn), NULL ); }
 
 	if (( event )) {

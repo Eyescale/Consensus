@@ -52,7 +52,7 @@ deactivate_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //	bm_proxy_scan
 //===========================================================================
 listItem *
-bm_proxy_scan( char *expression, BMContext *ctx )
+bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 /*
 	return all context's active connections (proxies) matching expression
 */
@@ -63,10 +63,10 @@ bm_proxy_scan( char *expression, BMContext *ctx )
 	listItem *results = NULL;
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
-	data.type = BM_CONDITION;
+	data.type = type;
+	data.privy = ( type==BM_RELEASED ? 1 : 0 );
 	data.ctx = ctx;
 	data.db = db;
-
 	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
 		CNInstance *proxy = i->ptr;
 		if ( xp_verify( proxy, expression, &data ) )

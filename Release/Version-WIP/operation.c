@@ -112,20 +112,22 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "in condition bgn: %s\n", expression );
 #endif
-	CNInstance *found;
-	int success, negated=0;
+	CNInstance *found=NULL;
+	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
 	if ( !strcmp( expression, "~." ) )
-		{ success=0; goto RETURN; }
+		goto RETURN;
 
 	found = bm_feel( BM_CONDITION, expression, ctx );
-	success = bm_context_mark( ctx, expression, found, marked );
+	if (( found )) success = 1;
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
+	if ( success && !negated )
+		bm_context_mark( ctx, expression, found, marked );
 	return ( negated ? !success : success );
 }
 
@@ -141,8 +143,8 @@ on_event( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
-	CNInstance *found;
-	int success, negated=0;
+	CNInstance *found=NULL;
+	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
 
@@ -152,7 +154,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		case '(':
 			expression++;
 			found = bm_feel( BM_RELEASED, expression, ctx );
-			success = bm_context_mark( ctx, expression, found, marked );
+			if (( found )) success = 1;
 			goto RETURN;
 		case '.':
 			success = db_still( BMContextDB(ctx) );
@@ -164,11 +166,13 @@ on_event( char *expression, BMContext *ctx, int *marked )
 			goto RETURN; } }
 
 	found = bm_feel( BM_INSTANTIATED, expression, ctx );
-	success = bm_context_mark( ctx, expression, found, marked );
+	if (( found )) success = 1;
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
+	if ( success && !negated)
+		bm_context_mark( ctx, expression, found, marked );
 	return ( negated ? !success : success );
 }
 
@@ -184,46 +188,55 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x bgn: %s\n", expression );
 #endif
-	CNInstance *found;
+	CNInstance *found=NULL, *proxy=NULL;
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
+	char *src;
 
-	char *src = p_prune( PRUNE_TERM, expression ) + 1;
-	listItem *candidates = bm_proxy_scan( src, ctx );
+	// special case
+	if ( !strncmp( expression, "exit<", 5 ) ) {
+		src = expression + 5;
+		listItem *candidates = bm_proxy_scan( BM_RELEASED, src, ctx );
+		while (( proxy = popListItem(&candidates) )) {
+			success = ( BMProxyThat(proxy)==NULL );
+			if ( success ) break; }
+		goto RETURN; }
 
+	src = p_prune( PRUNE_TERM, expression ) + 1;
+	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
 	switch ( *expression ) {
 	case '~':
 		switch ( expression[1] ) {
 		case '(':
 			expression++;
-			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+			while (( proxy = popListItem(&candidates) )) {
 				found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
-				success = bm_context_mark_x( ctx, expression, src, found, proxy, marked );
-				if ( negated ? !success : success ) break; }
+				if (( found )) { success=1; break; } }
 			goto RETURN;
 		case '.': ;
-			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+			while (( proxy = popListItem(&candidates) )) {
 				success = bm_proxy_still( proxy );
-				if ( negated ? !success : success ) break; }
+				if ( success ) break; }
 			goto RETURN; }
 		break;
 	default:
 		if ( !strncmp( expression, "init<", 5 ) ) {
-			for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+			while (( proxy = popListItem(&candidates) )) {
 				success = bm_proxy_in( proxy );
-				if ( negated ? !success : success ) break; }
+				if ( success ) break; }
 			goto RETURN; } }
 
-	for ( CNInstance *proxy;( proxy = popListItem(&candidates) ); ) {
+	while (( proxy = popListItem(&candidates) )) {
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
-		success = bm_context_mark_x( ctx, expression, src, found, proxy, marked );
-		if ( negated ? !success : success ) break; }
+		if (( found )) { success=1; break; } }
 RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
 	freeListItem( &candidates );
+	if ( success && !negated )
+		bm_context_mark_x( ctx, expression, src, found, proxy, marked );
 	return ( negated ? !success : success );
 }
 

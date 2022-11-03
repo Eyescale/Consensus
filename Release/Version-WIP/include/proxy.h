@@ -5,7 +5,7 @@
 #include "query.h"
 
 void		bm_proxy_op( char *expression, BMContext * );
-listItem *	bm_proxy_scan( char *, BMContext * );
+listItem *	bm_proxy_scan( BMQueryType, char *, BMContext * );
 int 		bm_proxy_still( CNInstance * );
 int		bm_proxy_in( CNInstance * );
 CNInstance *	bm_proxy_feel( CNInstance *, BMQueryType, char *, BMContext * );
