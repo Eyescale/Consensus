@@ -85,18 +85,19 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 int
 bm_proxy_still( CNInstance *proxy )
 {
-	CNEntity *that = BMProxyThat( proxy );
-	BMContext *ctx = BMThisContext( that );
+	CNEntity *cell = BMProxyThat( proxy );
+	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	return db_still( db );
 }
 int
 bm_proxy_in( CNInstance *proxy )
 {
-	CNEntity *that = BMProxyThat( proxy );
-	BMContext *ctx = BMThisContext( that );
+	CNEntity *cell = BMProxyThat( proxy );
+	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	return db_manifested( BMContextSelf(ctx), db );
+	CNInstance *self = BMContextSelf( ctx );
+	return db_manifested( self, db );
 }
 int
 bm_proxy_out( CNInstance *proxy )
@@ -141,8 +142,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
 #endif
-	CNEntity *that = BMProxyThat( proxy );
-	CNDB *db_x = BMContextDB( BMThisContext(that) );
+	CNEntity *cell = BMProxyThat( proxy );
+	CNDB *db_x = BMContextDB( BMCellContext(cell) );
 	if ( db_in(db_x) ) return NULL;
 
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
@@ -332,8 +333,8 @@ eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 	case 0: return 0;
 	case 1: return db_x_match( db_x, x, BMContextDB(ctx), data.src ); 
 	default: ;
-		CNEntity *that = BMProxyThat( data.src );
-		CNDB *db_y = BMContextDB( BMThisContext(that) );
+		CNEntity *cell = BMProxyThat( data.src );
+		CNDB *db_y = BMContextDB( BMCellContext(cell) );
 		return db_x_match( db_x, x, db_y, data.result ); }
 }
 CNInstance *
@@ -355,8 +356,8 @@ eeno_lookup( BMContext *ctx, CNDB *db, char *p )
 	case 0: return NULL;
 	case 1: return data.src;
 	default: ;
-		CNEntity *that = BMProxyThat( data.src );
-		CNDB *db_x = BMContextDB( BMThisContext(that) );
+		CNEntity *cell = BMProxyThat( data.src );
+		CNDB *db_x = BMContextDB( BMCellContext(cell) );
 		return bm_lookup_x( db_x, data.result, ctx, db ); }
 }
 int
@@ -370,8 +371,8 @@ eeno_output( BMContext *ctx, int type, char *p )
 			( type=='s' ? "%s" : "%_" ), data.src );
 		break;
 	default: ;
-		CNEntity *that = BMProxyThat( data.src );
-		db_outputf( stdout, BMContextDB( BMThisContext(that) ),
+		CNEntity *cell = BMProxyThat( data.src );
+		db_outputf( stdout, BMContextDB( BMCellContext(cell) ),
 			( type=='s' ? "%s" : "%_" ), data.result ); }
 	return 0;
 }

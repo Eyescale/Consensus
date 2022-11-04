@@ -101,7 +101,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 {
 	BMInstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	CNEntity *parent = BMContextThis( ctx );
+	CNEntity *parent = BMContextCell( ctx );
 	// instantiate new cell
 	CNCell *cell = newCell( entry, parent );
 	BMContext *cell_ctx = BMCellContext( cell );

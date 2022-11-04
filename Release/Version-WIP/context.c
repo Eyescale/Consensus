@@ -437,7 +437,7 @@ bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 			ndx = 0; continue; }
 
 		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
-			CNEntity *this = BMContextThis( dst );
+			CNEntity *this = BMContextCell( dst );
 			CNEntity *that = BMProxyThat( x );
 			instance = lookup_proxy( this, that ); }
 		else {
@@ -530,7 +530,7 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 			ndx = 0; continue; }
 
 		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
-			CNEntity *this = BMContextThis( dst );
+			CNEntity *this = BMContextCell( dst );
 			CNEntity *that = BMProxyThat( e );
 			if (!( instance = lookup_proxy( this, that ) ))
 				instance = db_proxy( this, that, db_dst ); }
