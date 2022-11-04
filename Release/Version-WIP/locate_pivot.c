@@ -17,7 +17,7 @@ typedef struct {
 	struct { listItem *flags, *level, *premark; } stack;
 } BMLocatePivotData;
 
-static BMTraversal bm_locate_traversal;
+static BMTraversal locate_pivot_traversal;
 
 #define BMDotIdentifierCB	dot_identifier_CB
 #define BMIdentifierCB		identifier_CB
@@ -65,7 +65,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 
-	char *p = bm_locate_traversal( expression, &traverse_data, FIRST );
+	char *p = locate_pivot_traversal( expression, &traverse_data, FIRST );
 
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
@@ -76,14 +76,14 @@ bm_locate_pivot( char *expression, listItem **exponent )
 }
 
 //---------------------------------------------------------------------------
-//	bm_locate_pivot_traversal
+//	locate_pivot_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
 #define pop_exponent( exponent, level ) \
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 
-BMTraverseCBSwitch( bm_locate_traversal )
+BMTraverseCBSwitch( locate_pivot_traversal )
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==PERSO ) {
@@ -175,35 +175,4 @@ case_( close_CB )
 		if ((tag)) pop_exponent( data->exponent, tag ); }
 	_break;
 BMTraverseCBEnd
-
-//===========================================================================
-//	xpn_add, xpn_set
-//===========================================================================
-void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
-}
-void
-xpn_set( listItem *xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	xp->ptr = icast.ptr;
-}
-
-//===========================================================================
-//	xpn_out
-//===========================================================================
-void
-xpn_out( FILE *stream, listItem *xp )
-{
-	union { int value; void *ptr; } icast;
-	while ( xp ) {
-		icast.ptr = xp->ptr;
-		fprintf( stream, "%d", icast.value );
-		xp = xp->next; }
-}
 

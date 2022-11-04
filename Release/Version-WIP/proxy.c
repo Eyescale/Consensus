@@ -16,11 +16,16 @@ static BMQueryCB activate_CB, deactivate_CB;
 
 void
 bm_proxy_op( char *expression, BMContext *ctx )
+/*
+	perform
+		do @< expression
+		do ~< expression
+	operations
+*/
 {
 	if ( !expression || !(*expression)) return;
 	char *p = expression;
-	BMQueryCB *op = ( *p=='@' ) ?
-		activate_CB: deactivate_CB;
+	BMQueryCB *op = ( *p=='@' ) ? activate_CB: deactivate_CB;
 	p += 2;
 	if ( *p!='{' )
 		bm_query( BM_CONDITION, p, ctx, op, NULL );
@@ -69,13 +74,13 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	data.db = db;
 	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
 		CNInstance *proxy = i->ptr;
-		if ( xp_verify( proxy, expression, &data ) )
+		if ( bm_verify( proxy, expression, &data ) )
 			addItem( &results, proxy ); }
 	return results;
 }
 
 //===========================================================================
-//	bm_proxy_still / bm_proxy_in
+//	bm_proxy_still / bm_proxy_in / bm_proxy_out
 //===========================================================================
 int
 bm_proxy_still( CNInstance *proxy )
@@ -91,6 +96,17 @@ bm_proxy_in( CNInstance *proxy )
 	BMContext *ctx = BMThisContext( that );
 	return db_manifested( BMContextSelf(ctx), BMContextDB(ctx) );
 }
+int
+bm_proxy_out( CNInstance *proxy )
+{
+#if 0
+	CNEntity *that = BMProxyThat( proxy );
+	BMContext *ctx = BMThisContext( that );
+	return db_manifested( BMContextSelf(ctx), BMContextDB(ctx) );
+#else
+	return BMCellOut( BMProxyThat(proxy) );
+#endif
+}
 
 //===========================================================================
 //	bm_proxy_feel
@@ -103,7 +119,7 @@ typedef struct {
 	CNInstance *x;
 } BMProxyFeelData;
 
-static BMTraversal bm_proxy_feel_traversal;
+static BMTraversal proxy_feel_traversal;
 
 #define BMTermCB		term_CB
 #define BMNotCB			verify_CB
@@ -130,6 +146,8 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #endif
 	CNEntity *that = BMProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMThisContext(that) );
+	if ( db_in(db_x) ) return NULL;
+
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
 
@@ -148,7 +166,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 		listItem *s = NULL;
 		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
 			data.x = e;
-			bm_proxy_feel_traversal( expression, &traverse_data, FIRST );
+			proxy_feel_traversal( expression, &traverse_data, FIRST );
 			if ( traverse_data.done==2 ) {
 				freeListItem( &data.stack.flags );
 				freeListItem( &data.stack.x );
@@ -164,7 +182,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 }
 
 //---------------------------------------------------------------------------
-//	bm_proxy_feel_traversal
+//	proxy_feel_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
@@ -173,14 +191,16 @@ static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 #define bm_proxy_verify( p, data ) \
 	bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data )
 
-BMTraverseCBSwitch( bm_proxy_feel_traversal )
+BMTraverseCBSwitch( proxy_feel_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
+fprintf( stderr, "IN THERE: %s\n", p );
 		if ( !bm_proxy_verify( p, data ) )
 			_return( 2 )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( verify_CB )
+fprintf( stderr, "IN THERE 2: %s\n", p );
 	if ( !bm_proxy_verify( p, data ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
@@ -200,6 +220,7 @@ case_( close_CB )
 		data->x = popListItem( &data->stack.x );
 	_break
 case_( identifier_CB )
+fprintf( stderr, "IN THERE 3: %s\n", p );
 	if ( !x_match( data->db_x, data->x, p, data->ctx ) )
 		_return( 2 )
 	_break
@@ -339,7 +360,23 @@ eeno_lookup( BMContext *ctx, CNDB *db, char *p )
 	default: ;
 		CNEntity *that = BMProxyThat( data.src );
 		CNDB *db_x = BMContextDB( BMThisContext(that) );
-		return bm_lookup_x( db, data.result, ctx, db ); }
+		return bm_lookup_x( db_x, data.result, ctx, db ); }
+}
+int
+eeno_output( BMContext *ctx, int type, char *p )
+{
+	EEnoData data;
+	switch ( eeno_read(ctx,p,&data) ) {
+	case 0: break;
+	case 1:
+		db_outputf( stdout, BMContextDB( ctx ),
+			( type=='s' ? "%s" : "%_" ), data.src );
+		break;
+	default: ;
+		CNEntity *that = BMProxyThat( data.src );
+		db_outputf( stdout, BMContextDB( BMThisContext(that) ),
+			( type=='s' ? "%s" : "%_" ), data.result ); }
+	return 0;
 }
 
 static inline int
@@ -422,7 +459,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
 			data->x = e->sub[ 0 ];
-			bm_proxy_feel_traversal( expression, traverse_data, FIRST );
+			proxy_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -442,7 +479,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
-			bm_proxy_feel_traversal( expression, traverse_data, FIRST );
+			proxy_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -450,7 +487,7 @@ bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *t
 				continue; }
 			data->x = e->sub[ 1 ];
 			traverse_data->done = 0;
-			bm_proxy_feel_traversal( value, traverse_data, FIRST );
+			proxy_feel_traversal( value, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );

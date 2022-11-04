@@ -14,7 +14,7 @@
 static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
 
-static BMTraversal bm_instantiate_traversal;
+static BMTraversal instantiate_traversal;
 
 #define BMTermCB		term_CB
 #define BMNotCB			collect_CB
@@ -68,7 +68,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
-		bm_instantiate_traversal( expression, &traverse_data, FIRST ); }
+		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
 		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantation\n"
@@ -109,7 +109,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	data->carry = cell_ctx;
 	if ( strncmp(p,"()",2) ) {
 		traverse_data->done = INFORMED|NEW;
-		p = bm_instantiate_traversal( p, traverse_data, FIRST ); }
+		p = instantiate_traversal( p, traverse_data, FIRST ); }
 	// carry cell
 	CNInstance *proxy = NULL;
 	addItem( BMCellCarry(parent), cell );
@@ -123,13 +123,13 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 }
 
 //---------------------------------------------------------------------------
-//	bm_instantiate_traversal
+//	instantiate_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
 #define current ( is_f( FIRST ) ? 0 : 1 )
 
-BMTraverseCBSwitch( bm_instantiate_traversal )
+BMTraverseCBSwitch( instantiate_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
 		if (!( data->sub[current] = bm_scan(p,data->ctx) ))
@@ -478,7 +478,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 
 	DBG_VOID( p )
 	traverse_data->done = INFORMED;
-	p = bm_instantiate_traversal( p, traverse_data, FIRST );
+	p = instantiate_traversal( p, traverse_data, FIRST );
 	if ( traverse_data->done==2 || !data->sub[ 0 ] )
 		return;
 	sub[ 0 ] = data->sub[ 0 ];
@@ -506,7 +506,7 @@ bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNSt
 	else {
 		DBG_VOID( p )
 		traverse_data->done = INFORMED;
-		p = bm_instantiate_traversal( p, traverse_data, FIRST );
+		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 )
 			freeListItem( &sub[ 0 ] );
 		else {

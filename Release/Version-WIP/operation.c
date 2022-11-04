@@ -194,15 +194,6 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 		{ negated=1; expression += 3; }
 	char *src;
 
-	// special case
-	if ( !strncmp( expression, "exit<", 5 ) ) {
-		src = expression + 5;
-		listItem *candidates = bm_proxy_scan( BM_RELEASED, src, ctx );
-		while (( proxy = popListItem(&candidates) )) {
-			success = ( BMProxyThat(proxy)==NULL );
-			if ( success ) break; }
-		goto RETURN; }
-
 	src = p_prune( PRUNE_TERM, expression ) + 1;
 	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
 	switch ( *expression ) {
@@ -224,6 +215,11 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 		if ( !strncmp( expression, "init<", 5 ) ) {
 			while (( proxy = popListItem(&candidates) )) {
 				success = bm_proxy_in( proxy );
+				if ( success ) break; }
+			goto RETURN; }
+		else if ( !strncmp( expression, "exit<", 5 ) ) {
+			while (( proxy = popListItem(&candidates) )) {
+				success = bm_proxy_out( proxy );
 				if ( success ) break; }
 			goto RETURN; } }
 

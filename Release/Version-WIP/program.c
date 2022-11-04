@@ -71,7 +71,7 @@ newCell( Pair *entry, CNEntity *parent )
 static void
 releaseCell( CNCell *cell )
 /*
-	Assumption: *BMCellCarry(cell) is NULL
+	Assumption: *BMCellCarry(cell)==cell
 */
 {
 	if ( !cell ) return;
@@ -115,18 +115,24 @@ cnUpdate( CNProgram *program )
 	if ( !program ) return;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
+	listItem *carry, *out = NULL;
+	CNCell *cell;
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
-		CNCell *cell = i->ptr;
-		cellUpdate( cell );
-		listItem *carry = *BMCellCarry( cell );
-		if (( carry )) addItem( new, carry ); }
+		cell = i->ptr;
+		if (( carry = *BMCellCarry(cell) )) {
+			addItem( new, carry ); // PG-13 ahead
+			*BMCellCarry(cell) = NULL; }
+		if ( !!cellUpdate(cell) )
+			addItem( &out, cell ); }
 	// activate new cells
-	for ( listItem *i; (i=popListItem(new)); )
-		for ( listItem *j=i; j!=NULL; j=j->next ) {
-			CNCell *cell = j->ptr;
+	while (( carry = popListItem(new) )) {
+		while (( cell = popListItem(&carry) )) {
 			cellInit( cell );
-			addItem( active, cell ); }
+			addItem( active, cell ); } }
+	// mark exiting cells
+	while (( cell = popListItem(&out) ))
+		*BMCellCarry( cell ) = (void *) cell;
 #ifdef DEBUG
 	fprintf( stderr, "cnUpdate: end\n" );
 #endif
@@ -158,8 +164,8 @@ cnOperate( CNProgram *program )
 			last_i = i;
 		else {
 			addItem( &released, cell );
-			clipListItem( active, i, last_i, next_i );
-		} }
+			clipListItem( active, i, last_i, next_i ); } }
+
 	// release deactivated cells
 	while (( cell = popListItem(&released) ))
 		releaseCell( cell );
@@ -181,7 +187,6 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "bm_operate: bgn\n" );
 #endif
-	freeListItem( BMCellCarry(cell) );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;

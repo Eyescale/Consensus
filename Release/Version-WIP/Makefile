@@ -13,10 +13,10 @@ SRCS =	narrative.c \
 		operation.c \
 			deternarize.c \
 			expression.c \
-				query.c \
-				locate_pivot.c \
-				scour.c \
 			instantiate.c \
+			query.c \
+				locate_pivot.c \
+					scour.c \
 			proxy.c
 LIB = libbmod.a
 

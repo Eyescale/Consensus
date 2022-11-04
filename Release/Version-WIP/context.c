@@ -103,7 +103,7 @@ bm_context_init( BMContext *ctx )
 	db_manifest( BMContextSelf(ctx), db );
 	db_init( db );
 }
-void
+int
 bm_context_update( CNEntity *this, BMContext *ctx )
 {
 	// activate / deactivate connections according to user request
@@ -125,8 +125,9 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 			CNInstance *proxy = connection->as_sub[0]->ptr;
 			if ( db_deprecatable( proxy, db ) )
 				db_deprecate( proxy, db ); } }
-	// invoke db_update - turning deprecated into released...
+	// invoke db_update - turning deprecated into released
 	db_update( db, BMContextParent(ctx) );
+	return db_out( db );
 }
 static inline void
 update_active( ActiveRV *active )

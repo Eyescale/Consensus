@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "traverse.h"
-#include "locate_pivot.h"
 #include "locate_param.h"
 #include "locate_param_traversal.h"
 
@@ -17,7 +16,7 @@ typedef struct {
 	struct { listItem *flags, *level; } stack;
 } BMLocateParamData;
 
-static BMTraversal bm_locate_param_traversal;
+static BMTraversal locate_param_traversal;
 
 #define BMNotCB			not_CB
 #define BMDereferenceCB		deref_CB
@@ -52,7 +51,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 
-	char *p = bm_locate_param_traversal( expression, &traverse_data, FIRST );
+	char *p = locate_param_traversal( expression, &traverse_data, FIRST );
 
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
@@ -66,14 +65,14 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 }
 
 //---------------------------------------------------------------------------
-//	bm_locate_param_traversal
+//	locate_param_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
 #define pop_exponent( exponent, level ) \
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 
-BMTraverseCBSwitch( bm_locate_param_traversal )
+BMTraverseCBSwitch( locate_param_traversal )
 case_( not_CB )
 	if (( data->param_CB ))
 		_prune( BM_PRUNE_FILTER )

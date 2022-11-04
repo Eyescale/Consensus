@@ -16,7 +16,7 @@
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 static CNInstance * bm_query_assignment( BMQueryType, char *, BMQueryData * );
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB * );
-static XPTraverseCB bm_verify;
+static int xp_verify( CNInstance *, char *, BMQueryData * );
 
 CNInstance *
 bm_query( BMQueryType type, char *expression, BMContext *ctx,
@@ -82,7 +82,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	return success;
 }
 
-static int
+int
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
 	CNDB *db;
@@ -207,7 +207,7 @@ typedef enum {
 	BM_END
 } BMVerifyOp;
 
-static BMTraversal xp_verify_traversal;
+static BMTraversal verify_traversal;
 
 #define BMRegisterVariableCB	match_CB
 #define BMStarCharacterCB	match_CB
@@ -225,11 +225,11 @@ static BMTraversal xp_verify_traversal;
 #define BMCloseCB		close_CB
 #define BMWildCardCB		wildcard_CB
 
-int
+static int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 /*
 	Assumption: expression is not ternarized
-	invokes xp_verify_traversal on each [sub-]expression, ie. on each
+	invokes verify_traversal on each [sub-]expression, ie. on each
 	expression term starting with '*' or '%' - note that *var is same
 	as %((*,var),?)
 */
@@ -282,7 +282,7 @@ fprintf( stderr, " ........{\n" );
 		if (( x = op_set( op, data, x, &p, success ) )) {
 			//----------------------------------------------------------
 
-				p = xp_verify_traversal( p, &traverse_data, flags );
+				p = verify_traversal( p, &traverse_data, flags );
 
 			//----------------------------------------------------------
 			if (( data->mark_exp )) {
@@ -436,13 +436,13 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 }
 
 //---------------------------------------------------------------------------
-//	xp_verify_traversal
+//	verify_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
 
-BMTraverseCBSwitch( xp_verify_traversal )
+BMTraverseCBSwitch( verify_traversal )
 case_( match_CB )
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case -1: data->success = 0; break;

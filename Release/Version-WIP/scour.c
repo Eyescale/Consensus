@@ -12,7 +12,7 @@ typedef struct {
 	int candidate, target;
 } BMScourData;
 
-static BMTraversal bm_scour_traversal;
+static BMTraversal scour_traversal;
 
 #define BMDotIdentifierCB	dot_expr_CB
 #define BMDotExpressionCB	dot_expr_CB
@@ -36,18 +36,18 @@ bm_scour( char *expression, int target )
 	traverse_data.stack = &stack;
 	traverse_data.done = INFORMED;
 
-	char *p = bm_scour_traversal( expression, &traverse_data, FIRST );
+	char *p = scour_traversal( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
 	return data.candidate;
 }
 
 //---------------------------------------------------------------------------
-//	bm_scour_traversal
+//	scour_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
-BMTraverseCBSwitch( bm_scour_traversal )
+BMTraverseCBSwitch( scour_traversal )
 case_( dot_expr_CB )
 	if ( !is_f(NEGATED) ) {
 		data->candidate |= PERSO;

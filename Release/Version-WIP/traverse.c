@@ -42,7 +42,11 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 				p++; break;
 			case '<':
 				if ( is_f(INFORMED) ) // EENO
+#ifdef BMTernaryOperatorCB
 					f_clr( NEGATED|FILTERED|INFORMED )
+#else
+					{ traverse_data->done=1; break; }
+#endif
 				p++; break;
 			case '!':
 				p = p_prune( PRUNE_IDENTIFIER, p+2 );
@@ -100,7 +104,8 @@ CB_ModCharacterCB			f_cls; p++; break; }
 				break;
 			case '(':
 				if ( p[1]==':' ) {
-CB_LiteralCB				f_set( INFORMED ) }
+CB_LiteralCB				f_set( INFORMED )
+					break; }
 				else {
 					f_next = FIRST|LEVEL|is_f(SET|SUB_EXPR|MARKED);
 					if (!(mode&INFORMED) && !p_single(p))
@@ -108,19 +113,21 @@ CB_LiteralCB				f_set( INFORMED ) }
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
 					p++;
-CB_TermCB				}
-				break;
+CB_TermCB				break; }
 			case ':':
 				if ( p[1]=='<' ) {
+					f_clr( NEGATED|FILTERED|INFORMED )
 					f_set( VECTOR );
-					p+=2; break; }
+					p+=2;
+CB_TermCB				break; }
 				else {
-CB_FilterCB			f_cls; p++; break; }
+CB_FilterCB				f_clr( NEGATED|INFORMED )
+					p++; break; }
 			case ',':
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
 					{ traverse_data->done=1; break; }
 CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
-				f_clr( FILTERED|INFORMED )
+				f_clr( NEGATED|FILTERED|INFORMED )
 				p++;
 CB_TermCB			break;
 			case ')':

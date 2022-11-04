@@ -3,8 +3,7 @@
 		do : partner : !! Partner()
 	else on init < *partner
 		do >"hello, partner\n"
-#	else on ~( *partner )
-	else on exit < *partner
+	else on ~( *partner )
 		do exit
 	else do >"... "
 

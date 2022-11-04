@@ -8,6 +8,7 @@
 #include "instantiate.h"
 #include "scour.h"
 #include "narrative.h"
+#include "proxy.h"
 #include "void_traversal.h"
 
 // #define DEBUG
@@ -52,7 +53,7 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //===========================================================================
 //	bm_void
 //===========================================================================
-static BMTraversal bm_void_traversal;
+static BMTraversal void_traversal;
 
 #define BMTermCB		feel_CB
 #define BMNotCB			sound_CB
@@ -77,18 +78,18 @@ bm_void( char *expression, BMContext *ctx )
 	traverse_data.stack = &stack;
 	traverse_data.done = INFORMED;
 
-	bm_void_traversal( expression, &traverse_data, FIRST );
+	void_traversal( expression, &traverse_data, FIRST );
 
 	freeListItem( &stack );
 	return ( traverse_data.done==2 );
 }
 
 //---------------------------------------------------------------------------
-//	bm_void_traversal
+//	void_traversal
 //---------------------------------------------------------------------------
 #include "traversal.h"
 
-BMTraverseCBSwitch( bm_void_traversal )
+BMTraverseCBSwitch( void_traversal )
 case_( feel_CB )
 	if is_f( FILTERED ) {
 		if ( !bm_feel( BM_CONDITION, p, ctx ) )
@@ -214,7 +215,7 @@ bm_input( int type, char *expression, BMContext *ctx )
 //===========================================================================
 //	bm_outputf
 //===========================================================================
-static void bm_output( int type, char *expression, BMContext *);
+static int bm_output( int type, char *expression, BMContext *);
 static BMQueryCB output_CB;
 typedef struct {
 	int type;
@@ -261,13 +262,17 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 RETURN:
 	return 0;
 }
-static void
+static int
 bm_output( int type, char *arg, BMContext *ctx )
 /*
 	outputs arg-expression's results
 	note that we rely on bm_query to eliminate doublons
 */
 {
+	// Special case: EEnoRV as-is
+	if ( !strncmp( arg, "%<", 2 ) )
+		return eeno_output( ctx, type, arg );
+
 	OutputData data = { type, 1, NULL };
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
 	CNDB *db = BMContextDB( ctx );
@@ -283,6 +288,8 @@ bm_output( int type, char *arg, BMContext *ctx )
 		printf( ", " );
 		db_outputf( stdout, db, "%_", data.last );
 		printf( " }" ); }
+
+	return 0;
 }
 static BMCBTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )

@@ -10,7 +10,7 @@ void		freeContext( BMContext * );
 void		bm_context_finish( BMContext *ctx, int subscribe );
 void		bm_context_activate( BMContext *ctx, CNInstance *proxy );
 void		bm_context_init( BMContext *ctx );
-void		bm_context_update( CNEntity *this, BMContext *ctx );
+int		bm_context_update( CNEntity *this, BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 int		bm_declare( BMContext *, char * );
 void		bm_context_flush( BMContext * );
