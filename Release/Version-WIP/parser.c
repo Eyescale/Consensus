@@ -290,7 +290,7 @@ A:CND_else_( B )
 			else if ( *type&OUTPUT && !is_f(INFORMED|SET|LEVEL|SUB_EXPR|NEGATED|FILTERED) ) {
 				do_( same )	s_take
 						f_set( SET ) }
-		on_( '>' ) if ( s_empty && *type&DO ) {
+		on_( '>' ) if ( *type&DO && s_empty ) {
 				do_( ">" )	s_take
 						*type = (*type&ELSE)|OUTPUT; }
 			else if ( *type&OUTPUT && are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
@@ -488,9 +488,12 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
-		on_( '(' )	do_( "expr" )	REENTER
+		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
+				do_( "expr" )	REENTER
+						s_add( "~" ) }
+			else {	do_( "expr" )	REENTER
 						s_add( "~" )
-			   if ( !s_empty ) {	f_set( NEGATED ) }
+						f_set( NEGATED ) }
 		on_( '<' ) if ( s_empty && *type&DO ) {
 				do_( "expr" )	s_add( "~<" )
 						f_set( VECTOR ) }
@@ -840,7 +843,7 @@ else {
 	case ErrSpace:
 		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
 	case ErrInstantiationFiltered:
-		fprintf( stderr, "Error: %s: l%dc%d: instantiation must be unfiltered\n", src, l, c  ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: base instantiation must be unfiltered\n", src, l, c  ); break;
 	case ErrUnexpectedCR:
 		fprintf( stderr, "Error: %s: l%dc%d: statement incomplete\n", src, l, c  ); break;
 	case ErrIndentation:

@@ -40,7 +40,8 @@ freeProgram( CNProgram *program )
 /*
 	Note that in the normal course of execution both
 	program->threads->active and program->threads->new
-	should be NULL. Here we support other cases as well
+	should be NULL.
+	Here we make provision to support other cases as well
 */
 {
 	if ( !program ) return;
@@ -224,33 +225,35 @@ relieve_CB( Registry *warden, Pair *entry )
 static void
 enlist( Registry *index, Registry *subs, Registry *warden )
 /*
-	enlist subs:%{[ narrative, instance:%{} ]} into index of same type,
+	enlist subs:{[ narrative, instances:{} ]} into index of same type,
 	under warden supervision: we rely on registryRegister() to return
 	the found entry if there is one, and on addIfNotThere() to return
-	NULL is there is none.
+	the enlisted item if there was none.
 */
 {
-#define s_place( s, index, narrative ) \
-	if (!( s )) { \
+#define under( index, narrative, instances ) \
+	if (!( instances )) { \
 		Pair *entry = registryRegister( index, narrative, NULL ); \
-		s = (listItem **) &entry->value; }
+		instances = (listItem **) &entry->value; }
 
+	Pair *sub, *found;
+	CNInstance *instance;
 	listItem **narratives = (listItem **) &subs->entries;
-	for ( Pair *sub;( sub = popListItem(narratives) ); freePair(sub) ) {
+	while (( sub = popListItem(narratives) )) {
 		CNNarrative *narrative = sub->name;
-		listItem **selection = NULL;
- 		Pair *found = registryLookup( warden, narrative );
-		if (!( found )) {
-			registryRegister( warden, narrative, sub->value );
-			s_place( selection, index, narrative );
-			for ( listItem *i=sub->value; i!=NULL; i=i->next )
-				addItem( selection, i->ptr ); }
-		else {
+		listItem **instances = NULL;
+ 		if (( found = registryLookup( warden, narrative ) )) {
 			listItem **enlisted = (listItem **) &found->value;
 			listItem **candidates = (listItem **) &sub->value;
-			for ( CNInstance *instance;( instance = popListItem(candidates) ); ) {
+			while (( instance = popListItem(candidates) )) {
 				if (( addIfNotThere( enlisted, instance ) )) {
-					s_place( selection, index, narrative );
-					addItem( selection, instance ); } } } }
+					under( index, narrative, instances );
+					addItem( instances, instance ); } } }
+		else {
+			registryRegister( warden, narrative, sub->value );
+			under( index, narrative, instances );
+			for ( listItem *i=sub->value; i!=NULL; i=i->next )
+				addItem( instances, i->ptr ); }
+		freePair( sub ); }
 }
 
