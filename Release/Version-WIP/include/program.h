@@ -24,6 +24,6 @@ CNCell *newCell( Pair *, CNEntity * );
 #define BMCellEntry( cell )	((Pair *) ((Pair *) cell->sub[0])->name )
 #define BMCellCarry( cell )	((listItem **) &((Pair *)cell->sub[0])->value )
 #define BMCellContext( cell )	((BMContext *)(cell)->sub[ 1 ])
-#define BMCellOut( cell )	( (cell) && cell==(void*)BMCellCarry(cell) )
+#define BMCellOut( cell )	((cell) && ( cell==(CNCell *) *BMCellCarry(cell) ))
 
 #endif	// PROGRAM_H

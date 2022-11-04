@@ -87,25 +87,22 @@ bm_proxy_still( CNInstance *proxy )
 {
 	CNEntity *that = BMProxyThat( proxy );
 	BMContext *ctx = BMThisContext( that );
-	return db_still( BMContextDB(ctx) );
+	CNDB *db = BMContextDB( ctx );
+	return db_still( db );
 }
 int
 bm_proxy_in( CNInstance *proxy )
 {
 	CNEntity *that = BMProxyThat( proxy );
 	BMContext *ctx = BMThisContext( that );
-	return db_manifested( BMContextSelf(ctx), BMContextDB(ctx) );
+	CNDB *db = BMContextDB( ctx );
+	return db_manifested( BMContextSelf(ctx), db );
 }
 int
 bm_proxy_out( CNInstance *proxy )
 {
-#if 0
-	CNEntity *that = BMProxyThat( proxy );
-	BMContext *ctx = BMThisContext( that );
-	return db_manifested( BMContextSelf(ctx), BMContextDB(ctx) );
-#else
-	return BMCellOut( BMProxyThat(proxy) );
-#endif
+	CNEntity *cell = BMProxyThat( proxy );
+	return BMCellOut( cell );
 }
 
 //===========================================================================
