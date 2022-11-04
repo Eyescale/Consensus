@@ -270,7 +270,7 @@ bm_output( int type, char *arg, BMContext *ctx )
 */
 {
 	// Special case: EEnoRV as-is
-	if ( !strncmp( arg, "%<", 2 ) )
+	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
 		return eeno_output( ctx, type, arg );
 
 	OutputData data = { type, 1, NULL };

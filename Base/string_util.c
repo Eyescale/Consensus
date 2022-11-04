@@ -288,6 +288,7 @@ charscan( char *p, char_s *q )
 //	p_prune, p_ternary, p_single, p_filtered
 //---------------------------------------------------------------------------
 static char *prune_ternary( char * );
+static char *prune_mod( char * );
 static char *prune_literal( char * );
 static char *prune_list( char * );
 static char *prune_format( char * );
@@ -348,8 +349,12 @@ p_prune( PruneType type, char *p )
 			case '/':
 				p = prune_identifier( p );
 				informed = 1; break;
-			case '*':
 			case '%':
+				if ( p[1]=='(' )
+					{ p++; break; }
+				p = prune_mod( p );
+				informed = 1; break;
+			case '*':
 				if ( p[1]=='?' ) p++;
 				// no break
 			default:
@@ -427,8 +432,12 @@ prune_ternary( char *p )
 		case '/':
 			p = prune_identifier( p );
 			informed = 1; break;
-		case '*':
 		case '%':
+			if ( p[1]=='(' )
+				{ p++; break; }
+			p = prune_mod( p );
+			informed = 1; break;
+		case '*':
 			if ( p[1]=='?' ) p++;
 			// no break
 		default:
@@ -437,6 +446,32 @@ prune_ternary( char *p )
 RETURN:
 	if (( candidate )) return candidate;
 	else return p;
+}
+static char *
+prune_mod( char *p )
+/*
+	Assumption: p[1]!='('
+*/
+{
+	switch ( p[1] ) {
+	case '?':
+	case '!':
+	case '|':
+	case '%':
+		p+=2; break;
+	case '<':
+		p+=2;
+		switch ( *p ) {
+		case '?':
+		case '!':
+			// return past closing '>'
+			if ( p[1]==':' )
+				p = prune_level( p+3, 1 ); 
+			p+=2; }
+		break;
+	default:
+		do p++; while ( !is_separator(*p) ); }
+	return p;
 }
 static char *
 prune_literal( char *p )
@@ -587,15 +622,14 @@ prune_level( char *p, int level )
 				;
 			else if ( p[2]!='.' ) {
 				p+=2; break; }
+			else if ( !level ) {
+				p+=3; break; }
 			else {
-				if ( !level ) {
-					p+=3; break; }
-				else {
-					// returns on closing ')'
-					p = prune_list( p );
-					level--;
-					if ( !level ) return p;
-					else break; } }
+				// returns on closing ')'
+				p = prune_list( p );
+				level--;
+				if ( !level ) return p;
+				else break; }
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) ); } }
