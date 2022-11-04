@@ -352,6 +352,7 @@ B:CND_endif
 							f_push( stack )
 							f_clr( LEVEL )
 							f_set( SET ) } }
+			else fprintf( stderr, "BINGO: %d!\n", flags );
 		on_( '}' ) if ( are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( is_f(VECTOR) && !(*type&OUTPUT) ) {
 					do_( same )	s_take
@@ -377,6 +378,7 @@ B:CND_endif
 CND_ifn( mode==BM_STORY, C )
 	in_( "!" ) bgn_
 		on_( '!' )	do_( "!!" )	s_take
+						f_clr( ASSIGN|FILTERED )
 						f_set( NEW )
 		end
 		in_( "!!" ) bgn_

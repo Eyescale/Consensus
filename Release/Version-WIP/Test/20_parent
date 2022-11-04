@@ -1,14 +1,16 @@
 :
 	on init
-		do : child : !! Partner()
+		do : child : !! Partner( hello, world )
 	else on init < *child
 		do toto
 	else on toto
+		do titi
+	else on titi
 		do exit
 
 : Partner
 	on init
-		do > "child: init\n"
+		do > "child: init - %_\n" : .
 	else on ? < ..
 		do > "child: << %_\n": %<?>
 	else on exit < ..

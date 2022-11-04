@@ -38,7 +38,7 @@ B%: $(LIB) main.c ../../Base/libcn.a
 $(LIB): $(OBJDIR) $(OBJS) 
 	ar -rcvus $(LIB) $(OBJS)
 
-$(OBJS): $(OBJDIR)/%.o: %.c
+$(OBJS): $(OBJDIR)/%.o:%.c traverse.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 $(OBJDIR):

@@ -33,6 +33,7 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 	union { int value; void *ptr; } icast;
 	char *p = expression;
 
+
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
 			case '>':
@@ -54,8 +55,7 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 			case '@':
 			case '~':
 				if ( p[1]=='<' ) {
-					if ( mode&NEW ){ traverse_data->done=1; break; }
-					else { p+=2; break; } }
+					p+=2; break; }
 CB_NotCB			if is_f( NEGATED ) f_clr( NEGATED )	
 				else f_set( NEGATED )
 				p++; break;
@@ -106,6 +106,9 @@ CB_ModCharacterCB			f_cls; p++; break; }
 				if ( p[1]==':' ) {
 CB_LiteralCB				f_set( INFORMED )
 					break; }
+				else if ( mode&NEW && p==expression ) {
+					p++; // skip opening '('
+CB_TermCB				break; }
 				else {
 					f_next = FIRST|LEVEL|is_f(SET|SUB_EXPR|MARKED);
 					if (!(mode&INFORMED) && !p_single(p))
@@ -118,25 +121,26 @@ CB_TermCB				break; }
 				if ( p[1]=='<' ) {
 					f_clr( NEGATED|FILTERED|INFORMED )
 					f_set( VECTOR );
-					p+=2;
-CB_TermCB				break; }
+					p+=2; break; }
 				else {
 CB_FilterCB				f_clr( NEGATED|INFORMED )
 					p++; break; }
 			case ',':
-				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) && !(mode&NEW))
 					{ traverse_data->done=1; break; }
 CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( NEGATED|FILTERED|INFORMED )
 				p++;
 CB_TermCB			break;
 			case ')':
-				if ( is_f(PIPED) && !is_f(LEVEL|SUB_EXPR) ) {
+				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					if ((*stack)) {
 						icast.ptr = (*stack)->ptr;
 						f_next = icast.value; }
 CB_EndPipeCB				f_pop( stack, 0 ) }
-				if ( !is_f(LEVEL|SUB_EXPR) ) { traverse_data->done=1; break; }
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
+					if ( mode&NEW ) p++;
+					traverse_data->done=1; break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value; }
