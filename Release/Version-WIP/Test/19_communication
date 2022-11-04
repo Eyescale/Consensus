@@ -1,26 +1,28 @@
 :
 	on init
+		do > "parent: init\n"
 		do : partner : !! Partner()
 	else on init < *partner
 		do > "parent: caught init\n"
 	else on ? < *partner
 		do > "parent: caught %_\n": %<?>
 	else on exit < *partner
-		do > "parent: caught exit\n"
+		do > "\nparent: caught exit\n"
 	else on ~( *partner )
+		do > "\nparent: exit\n"
 		do exit
 	else
 		do >"parent: ...\n"
 
 : Partner
 	on init
-		do > "child: init\n"
+		do > "\n\tchild: init\n"
 	else on titi
 		do exit
-		do > "child: >> exit\n"
+		do > "\n\tchild: >> exit\n"
 	else on toto
 		do titi
-		do > "child: >> titi\n"
+		do > "\n\tchild: >> titi\n"
 	else
 		do toto
-		do > "child: >> toto\n"
+		do > "\n\tchild: >> toto\n"
