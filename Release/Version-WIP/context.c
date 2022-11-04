@@ -106,18 +106,10 @@ bm_context_init( BMContext *ctx )
 int
 bm_context_update( CNEntity *this, BMContext *ctx )
 {
+	CNDB *db = BMContextDB( ctx );
 	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
-	// deactivate released connections
-	CNDB *db = BMContextDB( ctx );
-	listItem **entries = &active->value;
-	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
-		CNInstance *e = i->ptr;
-		next_i = i->next;
-		if ( db_deprecated( e, db ) )
-			clipListItem( entries, i, last_i, next_i );
-		else last_i = i; }
 	// deprecate dangling connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
@@ -127,6 +119,14 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 				db_deprecate( proxy, db ); } }
 	// invoke db_update - turning deprecated into released
 	db_update( db, BMContextParent(ctx) );
+	// deactivate released connections
+	listItem **entries = &active->value;
+	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
+		CNInstance *e = i->ptr;
+		next_i = i->next;
+		if ( db_deprecated( e, db ) )
+			clipListItem( entries, i, last_i, next_i );
+		else last_i = i; }
 	return db_out( db );
 }
 static inline void

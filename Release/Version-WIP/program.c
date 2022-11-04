@@ -40,7 +40,7 @@ freeProgram( CNProgram *program )
 /*
 	Note that in the normal course of execution both
 	program->threads->active and program->threads->new
-	should be NULL. Here we handle other cases as well
+	should be NULL. Here we support other cases as well
 */
 {
 	if ( !program ) return;
@@ -70,9 +70,6 @@ newCell( Pair *entry, CNEntity *parent )
 }
 static void
 releaseCell( CNCell *cell )
-/*
-	Assumption: *BMCellCarry(cell)==cell
-*/
 {
 	if ( !cell ) return;
 
@@ -121,15 +118,15 @@ cnUpdate( CNProgram *program )
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		cell = i->ptr;
 		if (( carry = *BMCellCarry(cell) )) {
-			addItem( new, carry ); // PG-13 ahead
-			*BMCellCarry(cell) = NULL; }
+			*BMCellCarry( cell ) = NULL;
+			addItem( new, carry ); }
 		if ( !!cellUpdate(cell) )
 			addItem( &out, cell ); }
 	// activate new cells
-	while (( carry = popListItem(new) )) {
+	while (( carry = popListItem(new) ))
 		while (( cell = popListItem(&carry) )) {
 			cellInit( cell );
-			addItem( active, cell ); } }
+			addItem( active, cell ); }
 	// mark exiting cells
 	while (( cell = popListItem(&out) ))
 		*BMCellCarry( cell ) = (void *) cell;
@@ -160,12 +157,10 @@ cnOperate( CNProgram *program )
 	for ( listItem *i=*active; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		cell = i->ptr;
-		if ( cellOperate( cell, new, story ) )
-			last_i = i;
-		else {
+		if ( !cellOperate( cell, new, story ) ) {
 			addItem( &released, cell );
-			clipListItem( active, i, last_i, next_i ); } }
-
+			clipListItem( active, i, last_i, next_i ); }
+		else last_i = i; }
 	// release deactivated cells
 	while (( cell = popListItem(&released) ))
 		releaseCell( cell );
@@ -256,7 +251,6 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 			for ( CNInstance *instance;( instance = popListItem(candidates) ); ) {
 				if (( addIfNotThere( enlisted, instance ) )) {
 					s_place( selection, index, narrative );
-					addItem( selection, instance );
-		} } } }
+					addItem( selection, instance ); } } } }
 }
 

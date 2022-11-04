@@ -222,7 +222,6 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 				success = bm_proxy_out( proxy );
 				if ( success ) break; }
 			goto RETURN; } }
-
 	while (( proxy = popListItem(&candidates) )) {
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
 		if (( found )) { success=1; break; } }

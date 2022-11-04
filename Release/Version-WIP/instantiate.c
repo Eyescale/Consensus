@@ -101,23 +101,23 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 {
 	BMInstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	CNEntity *parent = BMContextCell( ctx );
+	CNEntity *cell = BMContextCell( ctx );
 	// instantiate new cell
-	CNCell *cell = newCell( entry, parent );
-	BMContext *cell_ctx = BMCellContext( cell );
+	CNCell *new = newCell( entry, cell );
+	BMContext *new_ctx = BMCellContext( new );
 	// inform cell
-	data->carry = cell_ctx;
 	if ( strncmp(p,"()",2) ) {
+		data->carry = new_ctx;
 		traverse_data->done = INFORMED|NEW;
 		p = instantiate_traversal( p, traverse_data, FIRST ); }
 	// carry cell
 	CNInstance *proxy = NULL;
-	addItem( BMCellCarry(parent), cell );
+	addItem( BMCellCarry(cell), new );
 	if ( *p=='~' ) 
-		bm_context_finish( cell_ctx, 0 );
+		bm_context_finish( new_ctx, 0 );
 	else {
-		bm_context_finish( cell_ctx, 1 );
-		proxy = db_proxy( parent, cell, data->db );
+		bm_context_finish( new_ctx, 1 );
+		proxy = db_proxy( cell, new, data->db );
 		bm_context_activate( ctx, proxy ); }
 	return proxy;
 }

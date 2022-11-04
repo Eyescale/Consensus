@@ -1,18 +1,18 @@
 :
 	on init
 		do > "parent: init\n"
-		do : partner : !! Partner()
-	else on init < *partner
-		do > "parent: caught init\n"
-	else on ? < *partner
-		do > "parent: caught %_\n": %<?>
-	else on exit < *partner
-		do > "\nparent: caught exit\n"
-	else on ~( *partner )
+		do : child : !! Partner()
+	else on init < *child
+		do > "parent: << init\n"
+	else on ? < *child
+		do > "parent: << %_\n": %<?>
+	else on exit < *child
+		do > "\nparent: << exit\n"
+	else on ~( *child )
 		do > "\nparent: exit\n"
 		do exit
 	else
-		do >"parent: ...\n"
+		do >"parent: idle\n"
 
 : Partner
 	on init
