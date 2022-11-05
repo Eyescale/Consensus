@@ -5,7 +5,6 @@
 #include "program.h"
 #include "traverse.h"
 #include "proxy.h"
-#include "proxy_traversal.h"
 
 // #define DEBUG
 
@@ -109,31 +108,16 @@ bm_proxy_out( CNInstance *proxy )
 //===========================================================================
 //	bm_proxy_feel
 //===========================================================================
-static CNInstance * bm_proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
+#include "proxy_traversal.h"
+
+static CNInstance *
+	bm_proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
 	struct { listItem *flags, *x; } stack;
 	CNDB *db_x;
 	CNInstance *x;
-} BMProxyFeelData;
-
-static BMTraversal proxy_feel_traversal;
-
-#define BMTermCB		term_CB
-#define BMNotCB			verify_CB
-#define BMDereferenceCB		verify_CB
-#define BMSubExpressionCB	verify_CB
-#define BMDotExpressionCB	verify_CB
-#define BMDotIdentifierCB	verify_CB
-#define BMOpenCB		open_CB
-#define BMDecoupleCB		decouple_CB
-#define BMCloseCB		close_CB
-#define BMRegisterVariableCB	identifier_CB
-#define BMModCharacterCB	identifier_CB
-#define BMStarCharacterCB	identifier_CB
-//#define BMRegexCB		identifier_CB
-#define BMCharacterCB		identifier_CB
-#define BMIdentifierCB		identifier_CB
+} ProxyFeelData;
 
 CNInstance *
 bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
@@ -149,7 +133,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
 
-	BMProxyFeelData data;
+	ProxyFeelData data;
 	memset( &data, 0, sizeof(data) );
 	data.ctx = ctx;
 	data.db_x = db_x;
@@ -182,8 +166,6 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //---------------------------------------------------------------------------
 //	proxy_feel_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 #define bm_proxy_verify( p, data ) \
@@ -228,7 +210,7 @@ static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	BMProxyFeelData *data = user_data;
+	ProxyFeelData *data = user_data;
 	if ( db_x_match( data->db_x, data->x, BMContextDB(ctx), e ) )
 		return BM_DONE;
 	return BM_CONTINUE;
@@ -428,7 +410,7 @@ eeno_read( BMContext *ctx, char *p, EEnoData *data )
 static CNInstance *
 bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
 {
-	BMProxyFeelData *data = traverse_data->user_data;
+	ProxyFeelData *data = traverse_data->user_data;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
 	CNDB *db_x = data->db_x;

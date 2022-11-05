@@ -4,8 +4,8 @@
 //===========================================================================
 //	macros
 //===========================================================================
-#define BMTraverseCBSwitch( func ) \
-	static char *func( char *expression, BMTraverseData *traverse_data, int flags ) { \
+#define BMTraverseCBSwitch( _traversal ) \
+	static char *_traversal( char *expression, BMTraverseData *traverse_data, int flags ) { \
 		return bm_traverse( expression, traverse_data, flags );
 #define _prune( take ) \
 		return take;

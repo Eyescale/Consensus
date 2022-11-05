@@ -3,30 +3,20 @@
 
 #include "traverse.h"
 #include "scour.h"
-#include "scour_traversal.h"
 
 //===========================================================================
 //	bm_scour
 //===========================================================================
+#include "scour_traversal.h"
+
 typedef struct {
 	int candidate, target;
-} BMScourData;
-
-static BMTraversal scour_traversal;
-
-#define BMDotIdentifierCB	dot_expr_CB
-#define BMDotExpressionCB	dot_expr_CB
-#define BMIdentifierCB		identifier_CB
-#define BMCharacterCB		character_CB
-#define BMModCharacterCB	mod_character_CB
-#define BMStarCharacterCB	star_character_CB
-#define BMDereferenceCB		star_character_CB
-#define BMRegisterVariableCB	register_variable_CB
+} ScourData;
 
 int
 bm_scour( char *expression, int target )
 {
-	BMScourData data;
+	ScourData data;
 	data.candidate = 0;
 	data.target = target;
 	listItem *stack = NULL;
@@ -45,8 +35,6 @@ bm_scour( char *expression, int target )
 //---------------------------------------------------------------------------
 //	scour_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 BMTraverseCBSwitch( scour_traversal )
 case_( dot_expr_CB )
 	if ( !is_f(NEGATED) ) {

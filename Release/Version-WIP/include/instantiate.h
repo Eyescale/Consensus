@@ -15,14 +15,6 @@
 #define	DBG_VOID( p )
 #endif
 
-typedef struct {
-	struct { listItem *flags; } stack;
-	listItem *sub[ 2 ];
-	listItem *results;
-	BMContext *ctx, *carry;
-	CNDB *db;
-} BMInstantiateData;
-
 void bm_instantiate( char *expression, BMContext *, CNStory * );
 
 

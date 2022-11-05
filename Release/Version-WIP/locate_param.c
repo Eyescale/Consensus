@@ -3,31 +3,19 @@
 
 #include "traverse.h"
 #include "locate_param.h"
-#include "locate_param_traversal.h"
 
 //===========================================================================
 //	bm_locate_param
 //===========================================================================
+#include "locate_param_traversal.h"
+
 typedef struct {
 	listItem **exponent;
 	BMLocateCB *param_CB;
 	void *user_data;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
-} BMLocateParamData;
-
-static BMTraversal locate_param_traversal;
-
-#define BMNotCB			not_CB
-#define BMDereferenceCB		deref_CB
-#define BMSubExpressionCB	sub_expr_CB
-#define BMDotExpressionCB	dot_push_CB
-#define BMOpenCB		push_CB
-#define BMFilterCB		sift_CB
-#define BMDecoupleCB		sep_CB
-#define BMCloseCB		pop_CB
-#define BMWildCardCB		wildcard_CB
-#define BMDotIdentifierCB	parameter_CB
+} LocateParamData;
 
 char *
 bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, void *user_data )
@@ -40,7 +28,7 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 	Note also that the caller is expected to reorder the list of exponents
 */
 {
-	BMLocateParamData data;
+	LocateParamData data;
 	memset( &data, 0, sizeof(data) );
 	data.exponent = exponent;
 	data.param_CB = param_CB;
@@ -67,8 +55,6 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 //---------------------------------------------------------------------------
 //	locate_param_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 #define pop_exponent( exponent, level ) \
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 

@@ -4,34 +4,19 @@
 #include "traverse.h"
 #include "locate_param.h"
 #include "locate_pivot.h"
-#include "locate_pivot_traversal.h"
 #include "scour.h"
 
 //===========================================================================
 //	bm_locate_pivot
 //===========================================================================
+#include "locate_pivot_traversal.h"
+
 typedef struct {
 	int target;
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;
-} BMLocatePivotData;
-
-static BMTraversal locate_pivot_traversal;
-
-#define BMDotIdentifierCB	dot_identifier_CB
-#define BMIdentifierCB		identifier_CB
-#define BMCharacterCB		character_CB
-#define BMModCharacterCB	mod_character_CB
-#define BMStarCharacterCB	star_character_CB
-#define BMRegisterVariableCB	register_variable_CB
-#define BMDereferenceCB		dereference_CB
-#define BMSubExpressionCB	sub_expression_CB
-#define BMDotExpressionCB	dot_expression_CB
-#define BMOpenCB		open_CB
-#define BMFilterCB		filter_CB
-#define BMDecoupleCB		decouple_CB
-#define BMCloseCB		close_CB
+} LocatePivotData;
 
 char *
 bm_locate_pivot( char *expression, listItem **exponent )
@@ -55,7 +40,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 			( target & CHARACTER ) ? CHARACTER :
 			( target & STAR ) ? STAR : 0;
 
-	BMLocatePivotData data;
+	LocatePivotData data;
 	memset( &data, 0, sizeof(data) );
 	data.target = target;
 	data.exponent = exponent;
@@ -78,8 +63,6 @@ bm_locate_pivot( char *expression, listItem **exponent )
 //---------------------------------------------------------------------------
 //	locate_pivot_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 #define pop_exponent( exponent, level ) \
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 

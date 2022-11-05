@@ -9,7 +9,6 @@
 #include "scour.h"
 #include "narrative.h"
 #include "proxy.h"
-#include "void_traversal.h"
 
 // #define DEBUG
 
@@ -53,13 +52,7 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //===========================================================================
 //	bm_void
 //===========================================================================
-static BMTraversal void_traversal;
-
-#define BMTermCB		feel_CB
-#define BMNotCB			sound_CB
-#define BMDereferenceCB		sound_CB
-#define BMSubExpressionCB	sound_CB
-#define BMRegisterVariableCB	touch_CB
+#include "void_traversal.h"
 
 int
 bm_void( char *expression, BMContext *ctx )
@@ -87,8 +80,6 @@ bm_void( char *expression, BMContext *ctx )
 //---------------------------------------------------------------------------
 //	void_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 BMTraverseCBSwitch( void_traversal )
 case_( feel_CB )
 	if is_f( FILTERED ) {

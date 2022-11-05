@@ -6,7 +6,6 @@
 #include "locate_pivot.h"
 #include "proxy.h"
 #include "query.h"
-#include "query_traversal.h"
 
 // #define DEBUG
 
@@ -191,7 +190,10 @@ RETURN:
 //===========================================================================
 //	xp_verify
 //===========================================================================
-static CNInstance * op_set( int, BMQueryData *, CNInstance *, char **, int );
+#include "verify_traversal.h"
+
+typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
+static CNInstance * op_set( BMVerifyOp, BMQueryData *, CNInstance *, char **, int );
 typedef struct {
 	listItem *mark_exp;
 	listItem *flags;
@@ -200,30 +202,7 @@ typedef struct {
 	listItem *p;
 	listItem *i;
 } XPVerifyStack;
-static char *pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
-typedef enum {
-	BM_INIT,
-	BM_BGN,
-	BM_END
-} BMVerifyOp;
-
-static BMTraversal verify_traversal;
-
-#define BMRegisterVariableCB	match_CB
-#define BMStarCharacterCB	match_CB
-#define BMModCharacterCB	match_CB
-#define BMCharacterCB		match_CB
-#define BMRegexCB		match_CB
-#define BMIdentifierCB		match_CB
-#define BMDotIdentifierCB	dot_identifier_CB
-#define BMDereferenceCB		dereference_CB
-#define BMSubExpressionCB	sub_expression_CB
-#define BMDotExpressionCB	dot_expression_CB
-#define BMOpenCB		open_CB
-#define BMFilterCB		filter_CB
-#define BMDecoupleCB		decouple_CB
-#define BMCloseCB		close_CB
-#define BMWildCardCB		wildcard_CB
+static char * pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
 
 static int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
@@ -250,9 +229,8 @@ fprintf( stderr, " ........{\n" );
 	listItem *exponent = NULL,
 		*mark_exp = NULL,
 		*i = newItem( x ), *j;
-	int	op = BM_INIT,
-		success = 0,
-		flags = FIRST;
+	int success=0, flags=FIRST;
+	BMVerifyOp op = BM_INIT;
 
 	BMTraverseData traverse_data;
 	traverse_data.user_data = data;
@@ -394,7 +372,7 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 }
 
 static CNInstance *
-op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
+op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 {
 	if ( !x ) return NULL;
 	char *p = *q;
@@ -438,8 +416,6 @@ op_set( int op, BMQueryData *data, CNInstance *x, char **q, int success )
 //---------------------------------------------------------------------------
 //	verify_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
-
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
 
 BMTraverseCBSwitch( verify_traversal )

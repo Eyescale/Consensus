@@ -2,8 +2,7 @@
 #include <stdlib.h>
 
 #include "traverse.h"
-#include "instantiate_private.h"
-#include "instantiate_traversal.h"
+#include "instantiate.h"
 #include "string_util.h"
 #include "database.h"
 #include "proxy.h"
@@ -11,32 +10,17 @@
 //===========================================================================
 //	bm_instantiate
 //===========================================================================
+#include "instantiate_traversal.h"
+
 static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
 static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
-
-static BMTraversal instantiate_traversal;
-
-#define BMTermCB		term_CB
-#define BMNotCB			collect_CB
-#define BMDereferenceCB		collect_CB
-#define BMBgnSetCB		bgn_set_CB
-#define BMEndSetCB		end_set_CB
-#define BMBgnPipeCB		bgn_pipe_CB
-#define BMEndPipeCB		end_pipe_CB
-#define BMSubExpressionCB	collect_CB
-#define BMModCharacterCB	identifier_CB
-#define BMStarCharacterCB	identifier_CB
-#define BMRegisterVariableCB	register_variable_CB
-#define BMLiteralCB		literal_CB
-#define BMListCB		list_CB
-#define BMOpenCB		open_CB
-#define BMDecoupleCB		decouple_CB
-#define BMCloseCB		close_CB
-#define BMCharacterCB		identifier_CB
-#define BMWildCardCB		wildcard_CB
-#define BMDotIdentifierCB	dot_identifier_CB
-#define BMIdentifierCB		identifier_CB
-#define BMSignalCB		signal_CB
+typedef struct {
+	struct { listItem *flags; } stack;
+	listItem *sub[ 2 ];
+	listItem *results;
+	BMContext *ctx, *carry;
+	CNDB *db;
+} InstantiateData;
 
 void
 bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
@@ -44,7 +28,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
 #endif
-	BMInstantiateData data;
+	InstantiateData data;
 	memset( &data, 0, sizeof(data) );
 	data.ctx = ctx;
 	data.db = BMContextDB( ctx );
@@ -99,7 +83,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	Assumption: *p=='('
 */
 {
-	BMInstantiateData *data = traverse_data->user_data;
+	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
 	CNEntity *cell = BMContextCell( ctx );
 	// instantiate new cell
@@ -125,7 +109,9 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 //---------------------------------------------------------------------------
 //	instantiate_traversal
 //---------------------------------------------------------------------------
-#include "traversal.h"
+static listItem *bm_couple( listItem *sub[2], CNDB * );
+static CNInstance *bm_literal( char **, CNDB * );
+static listItem *bm_list( char **, listItem **, CNDB * );
 
 #define current ( is_f( FIRST ) ? 0 : 1 )
 
@@ -472,7 +458,7 @@ static listItem * bm_assign( listItem *sub[2], BMContext *ctx );
 static void
 bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
 {
-	BMInstantiateData *data = traverse_data->user_data;
+	InstantiateData *data = traverse_data->user_data;
 	char *p = expression + 1; // skip leading ':'
 	listItem *sub[ 2 ];
 
