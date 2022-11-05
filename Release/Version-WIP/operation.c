@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "program.h"
+#include "cell.h"
 #include "operation.h"
 #include "expression.h"
 #include "instantiate.h"
@@ -196,6 +196,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
 	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
 	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
+
 	switch ( *expression ) {
 	case '~':
 		switch ( expression[1] ) {

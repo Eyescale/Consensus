@@ -2,9 +2,10 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "program.h"
 #include "traverse.h"
 #include "proxy.h"
+#include "cell.h"
+#include "eeno.h"
 
 // #define DEBUG
 
@@ -110,8 +111,7 @@ bm_proxy_out( CNInstance *proxy )
 //===========================================================================
 #include "proxy_traversal.h"
 
-static CNInstance *
-	bm_proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
+static CNInstance * proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
 	struct { listItem *flags, *x; } stack;
@@ -143,7 +143,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 	if ( *expression==':' )
-		success = bm_proxy_feel_assignment( proxy, expression, &traverse_data );
+		success = proxy_feel_assignment( proxy, expression, &traverse_data );
 	else {
 		listItem *s = NULL;
 		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
@@ -203,7 +203,6 @@ case_( identifier_CB )
 	_break
 BMTraverseCBEnd
 
-static inline int db_x_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
@@ -214,7 +213,7 @@ proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 }
 
 //---------------------------------------------------------------------------
-//	x_match / db_x_match
+//	x_match
 //---------------------------------------------------------------------------
 #define CTX_DB	BMContextDB(ctx)
 
@@ -249,163 +248,12 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 
 	return 0; // not a base entity
 }
-static inline int
-db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
-/*
-	Assumption: x!=NULL
-	Note that we use y to lead the traversal - but works either way
-*/
-{
-	if ( !y ) return 0;
-	listItem *stack = NULL;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(y,ndx) )) {
-			if ( !CNSUB(x,ndx) )
-				goto FAIL;
-			add_item( &stack, ndx );
-			addItem( &stack, y );
-			addItem( &stack, x );
-			y = y->sub[ ndx ];
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-
-		if (( y->sub[ 0 ] )) {
-			if ( !isProxy(x) || BMProxyThat(x)!=BMProxyThat(y) )
-				goto FAIL; }
-		else {
-			if (( x->sub[ 0 ] ))
-				goto FAIL;
-			char *p_x = db_identifier( x, db_x );
-			char *p_y = db_identifier( y, db_y );
-			if ( strcomp( p_x, p_y, 1 ) )
-				goto FAIL; }
-		for ( ; ; ) {
-			if ( !stack ) return 1;
-			x = popListItem( &stack );
-			y = popListItem( &stack );
-			if ( !pop_item( &stack ) )
-				{ ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack );
-	return 0;
-}
 
 //===========================================================================
-//	eeno_match / eeno_inform / eeno_lookup
-//===========================================================================
-typedef struct {
-	CNInstance *src;
-	CNInstance *result;
-} EEnoData;
-static inline int eeno_read( BMContext *, char *, EEnoData * );
-
-int
-eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
-/*
-	Note that when invoked by query.c:match() then
-		BMContextDB(ctx)==db_x
-*/
-{
-	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
-	case 0: return 0;
-	case 1: return db_x_match( db_x, x, BMContextDB(ctx), data.src ); 
-	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
-		CNDB *db_y = BMContextDB( BMCellContext(cell) );
-		return db_x_match( db_x, x, db_y, data.result ); }
-}
-CNInstance *
-eeno_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
-{
-	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
-	case 0: return NULL;
-	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
-	default:
-		db = BMContextDB( dst );
-		return bm_inform_context( db, data.result, ((dst)?dst:ctx) ); }
-}
-CNInstance *
-eeno_lookup( BMContext *ctx, CNDB *db, char *p )
-{
-	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
-	case 0: return NULL;
-	case 1: return data.src;
-	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
-		CNDB *db_x = BMContextDB( BMCellContext(cell) );
-		return bm_lookup_x( db_x, data.result, ctx, db ); }
-}
-int
-eeno_output( BMContext *ctx, int type, char *p )
-{
-	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
-	case 0: break;
-	case 1:
-		db_outputf( stdout, BMContextDB( ctx ),
-			( type=='s' ? "%s" : "%_" ), data.src );
-		break;
-	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
-		db_outputf( stdout, BMContextDB( BMCellContext(cell) ),
-			( type=='s' ? "%s" : "%_" ), data.result ); }
-	return 0;
-}
-
-static inline int
-eeno_read( BMContext *ctx, char *p, EEnoData *data )
-{
-	EEnoRV *eeno = bm_context_lookup( ctx, "<" );
-	if ( !eeno ) return 0;
-	data->src = eeno->src;
-
-	p+=2; // skip leading "%<"
-	CNInstance *y;
-	switch ( *p++ ) {
-	case '?': y = eeno->event->name; break;
-	case '!': y = eeno->event->value; break;
-	default: return 1; }
-
-	if ( *p==':' ) {
-		listItem *stack = NULL;
-		CNInstance *sub = y;
-		int position = 0;
-		for ( p++; *p!='>'; p++ )
-			switch ( *p ) {
-			case '(':
-				addItem( &stack, sub );
-				add_item( &stack, position );
-				if ( !p_single(p) ) {
-					sub = CNSUB( sub, position );
-					if ( !sub ) {
-						freeListItem( &stack );
-						return 0; } }
-				position = 0;
-				break;
-			case '?': 
-				y = sub;
-				break;
-			case ',':
-				sub = ((CNInstance*)stack->ptr)->sub[ 1 ];
-				position = 1;
-				break;
-			case ')':
-				position = pop_item( &stack );
-				sub = popListItem( &stack );
-				break; } }
-	data->result = y;
-	return 2;
-}
-
-//===========================================================================
-//	bm_proxy_feel_assignment
+//	proxy_feel_assignment
 //===========================================================================
 static CNInstance *
-bm_proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
+proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
 {
 	ProxyFeelData *data = traverse_data->user_data;
 	expression++; // skip leading ':'

@@ -3,15 +3,13 @@
 
 #include "traverse.h"
 #include "program.h"
-#include "operation.h"
+#include "cell.h"
 
 // #define DEBUG
 
 //===========================================================================
 //	newProgram / freeProgram
 //===========================================================================
-static void releaseCell( CNCell *cell );
-
 CNProgram *
 newProgram( CNStory *story, char *inipath )
 {
@@ -59,51 +57,8 @@ freeProgram( CNProgram *program )
 }
 
 //===========================================================================
-//	newCell / releaseCell
-//===========================================================================
-CNCell *
-newCell( Pair *entry, CNEntity *parent )
-{
-	CNCell *cell = cn_new( NULL, NULL );
-	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
-	cell->sub[ 1 ] = (CNEntity *) newContext( cell, parent );
-	return cell;
-}
-static void
-releaseCell( CNCell *cell )
-{
-	if ( !cell ) return;
-
-	// free cell's nucleus
-	freePair((Pair *) cell->sub[ 0 ] );
-
-	/* prune CNDB proxies & release cell's input connections (cell,.)
-	   this includes parent connection & proxy if these were set
-	*/
-	CNEntity *connection;
-	listItem **connections = &cell->as_sub[ 0 ];
-	while (( connection = popListItem( connections ) )) {
-		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		cn_release( connection ); }
-
-	// free cell's context
-	freeContext((BMContext *) cell->sub[ 1 ] );
-
-	/* cn_release will nullify cell in subscribers' connections (.,cell)
-	   subscriber is responsible for removing dangling connections -
-	   see bm_context_update()
-	*/
-	cell->sub[ 0 ] = NULL;
-	cell->sub[ 1 ] = NULL;
-	cn_release( cell );
-}
-
-//===========================================================================
 //	cnUpdate
 //===========================================================================
-#define cellUpdate( cell ) bm_context_update( cell, BMCellContext(cell) )
-#define cellInit( cell ) bm_context_init( BMCellContext(cell) )
-
 void
 cnUpdate( CNProgram *program )
 {
@@ -126,8 +81,8 @@ cnUpdate( CNProgram *program )
 	// activate new cells
 	while (( carry = popListItem(new) ))
 		while (( cell = popListItem(&carry) )) {
-			cellInit( cell );
-			addItem( active, cell ); }
+			addItem( active, cell );
+			cellInit( cell ); }
 	// mark exiting cells
 	while (( cell = popListItem(&out) ))
 		*BMCellCarry( cell ) = (void *) cell;
@@ -139,8 +94,6 @@ cnUpdate( CNProgram *program )
 //===========================================================================
 //	cnOperate
 //===========================================================================
-static int cellOperate( CNCell *cell, listItem **new, CNStory *story );
-
 int
 cnOperate( CNProgram *program )
 {
@@ -169,91 +122,5 @@ cnOperate( CNProgram *program )
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new));
-}
-
-//===========================================================================
-//	cellOperate
-//===========================================================================
-static void enlist( Registry *subs, Registry *index, Registry *warden );
-static void relieve_CB( Registry *, Pair *entry );
-
-static int
-cellOperate( CNCell *cell, listItem **new, CNStory *story )
-{
-#ifdef DEBUG
-	fprintf( stderr, "bm_operate: bgn\n" );
-#endif
-	BMContext *ctx = BMCellContext( cell );
-	CNDB *db = BMContextDB( ctx );
-	if ( db_out(db) ) return 0;
-
-	Registry *warden, *index[ 2 ], *swap;
-	warden = newRegistry( IndexedByAddress );
-	index[ 0 ] = newRegistry( IndexedByAddress );
-	index[ 1 ] = newRegistry( IndexedByAddress );
-
-	listItem *narratives = BMCellEntry( cell )->value;
-	CNNarrative *base = narratives->ptr; // base narrative
-	registryRegister( index[ 1 ], base, newItem( NULL ) );
-	do {
-		swap = index[ 0 ];
-		index[ 0 ] = index[ 1 ];
-		index[ 1 ] = swap;
-		listItem **active = &index[ 0 ]->entries; // narratives to be operated
-		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
-			CNNarrative *narrative = entry->name;
-			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
-				CNInstance *instance = popListItem( instances );
-				Registry *subs = newRegistry( IndexedByAddress );
-				bm_operate( narrative, ctx, instance, subs, narratives, story );
-				enlist( index[ 1 ], subs, warden );
-				freeRegistry( subs, NULL ); } }
-	} while (( index[ 1 ]->entries ));
-	freeRegistry( warden, relieve_CB );
-	freeRegistry( index[ 0 ], NULL );
-	freeRegistry( index[ 1 ], NULL );
-#ifdef DEBUG
-	fprintf( stderr, "bm_operate: end\n" );
-#endif
-	return 1;
-}
-static void
-relieve_CB( Registry *warden, Pair *entry )
-{
-	freeListItem((listItem **) &entry->value );
-}
-static void
-enlist( Registry *index, Registry *subs, Registry *warden )
-/*
-	enlist subs:{[ narrative, instances:{} ]} into index of same type,
-	under warden supervision: we rely on registryRegister() to return
-	the found entry if there is one, and on addIfNotThere() to return
-	the enlisted item if there was none.
-*/
-{
-#define under( index, narrative, instances ) \
-	if (!( instances )) { \
-		Pair *entry = registryRegister( index, narrative, NULL ); \
-		instances = (listItem **) &entry->value; }
-
-	Pair *sub, *found;
-	CNInstance *instance;
-	listItem **narratives = (listItem **) &subs->entries;
-	while (( sub = popListItem(narratives) )) {
-		CNNarrative *narrative = sub->name;
-		listItem **instances = NULL;
- 		if (( found = registryLookup( warden, narrative ) )) {
-			listItem **enlisted = (listItem **) &found->value;
-			listItem **candidates = (listItem **) &sub->value;
-			while (( instance = popListItem(candidates) )) {
-				if (( addIfNotThere( enlisted, instance ) )) {
-					under( index, narrative, instances );
-					addItem( instances, instance ); } } }
-		else {
-			registryRegister( warden, narrative, sub->value );
-			under( index, narrative, instances );
-			for ( listItem *i=sub->value; i!=NULL; i=i->next )
-				addItem( instances, i->ptr ); }
-		freePair( sub ); }
 }
 

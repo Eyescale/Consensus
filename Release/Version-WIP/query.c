@@ -13,7 +13,7 @@
 //	bm_query
 //===========================================================================
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
-static CNInstance * bm_query_assignment( BMQueryType, char *, BMQueryData * );
+static CNInstance * query_assignment( BMQueryType, char *, BMQueryData * );
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB * );
 static int xp_verify( CNInstance *, char *, BMQueryData * );
 
@@ -39,7 +39,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	data.user_CB = user_CB;
 	data.user_data = user_data;
 	if ( *expression==':' )
-		return bm_query_assignment( type, expression, &data );
+		return query_assignment( type, expression, &data );
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY: %s\n", expression );
 #endif
@@ -555,14 +555,14 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 }
 
 //===========================================================================
-//	bm_query_assignment
+//	query_assignment
 //===========================================================================
 static inline CNInstance * assignment( CNInstance *e, CNDB *db );
 static XPTraverseCB
 	bm_verify_unassigned, bm_verify_variable, bm_verify_value;
 
 static CNInstance *
-bm_query_assignment( BMQueryType type, char *expression, BMQueryData *data )
+query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 {
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;

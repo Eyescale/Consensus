@@ -2,13 +2,12 @@
 #define LIST_H
 
 #include <string.h>
+#include "pair.h"
 
-typedef struct _listItem
-{
+typedef struct _listItem {
 	void *ptr;
 	struct _listItem *next;
-}
-listItem;
+} listItem;
 
 listItem *newItem( void *ptr );
 void freeItem( listItem *item );
@@ -31,5 +30,6 @@ int reorderListItem( listItem **item );
 
 listItem *add_item( listItem **list, int value );
 int pop_item( listItem **list );
+
 
 #endif	// LIST_H

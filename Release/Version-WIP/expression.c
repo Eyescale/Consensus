@@ -96,16 +96,17 @@ case_( sound_CB )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
 case_( touch_CB )
+	int nope = 0;
 	switch ( p[1] ) {
-	case '.':
-		if ( !BMContextParent( ctx ) )
-			_return( 2 )
-		break;
 	case '?':
 	case '!':
-		if ( !bm_context_lookup( ctx, ((char_s)(int)p[1]).s ) )
-			_return( 2 )
+		nope = !bm_context_lookup( ctx, ((char_s)(int)p[1]).s );
+		break;
+	case '<':
+		nope = !eeno_lookup( ctx, BMContextDB(ctx), p );
 		break; }
+	if ( nope )
+		_return( 2 )
 	_break
 BMTraverseCBEnd
 

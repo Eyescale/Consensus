@@ -518,7 +518,6 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 	if ( !e ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
 	if ( db_dst==db_src ) return e;
-
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance;
 	int ndx = 0;
@@ -545,7 +544,6 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 				instance = db_instantiate( f, instance, db_dst ); }
 			else {
 				addItem( &stack.dst, instance );
-				ndx=1; break; }
-		} }
+				ndx=1; break; } } }
 }
 

@@ -6,6 +6,7 @@ SHELL = /bin/sh
 SRCS =	narrative.c \
 		parser.c \
 	program.c \
+		cell.c \
 		context.c \
 			database.c \
 			db_op.c \
@@ -14,6 +15,7 @@ SRCS =	narrative.c \
 			deternarize.c \
 			expression.c \
 			instantiate.c \
+				eeno.c \
 			query.c \
 				locate_pivot.c \
 					scour.c \

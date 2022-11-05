@@ -1,18 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
-#include "instantiate.h"
 #include "string_util.h"
 #include "database.h"
+#include "traverse.h"
+#include "instantiate.h"
 #include "proxy.h"
+#include "cell.h"
 
 //===========================================================================
 //	bm_instantiate
 //===========================================================================
 #include "instantiate_traversal.h"
 
-static void bm_instantiate_assignment( char *, BMTraverseData *, CNStory * );
+static void instantiate_assignment( char *, BMTraverseData *, CNStory * );
 static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
 typedef struct {
 	struct { listItem *flags; } stack;
@@ -38,7 +39,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	traverse_data.stack = &data.stack.flags;
 
 	if ( *expression==':' )
-		bm_instantiate_assignment( expression, &traverse_data, story );
+		instantiate_assignment( expression, &traverse_data, story );
 	else if ( *expression=='!' ) {
 		char *p = expression + 2; // skip '!!'
 		Pair *entry = registryLookup( story, p );
@@ -451,12 +452,12 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 }
 
 //===========================================================================
-//	bm_instantiate_assignment
+//	instantiate_assignment
 //===========================================================================
 static listItem * bm_assign( listItem *sub[2], BMContext *ctx );
 
 static void
-bm_instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
+instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
 {
 	InstantiateData *data = traverse_data->user_data;
 	char *p = expression + 1; // skip leading ':'
