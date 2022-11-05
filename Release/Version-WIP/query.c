@@ -29,7 +29,6 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 	first entity for which user callback returns BM_DONE.
 */
 {
-	if ( !expression || !(*expression)) return NULL;
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData));

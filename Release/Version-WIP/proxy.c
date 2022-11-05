@@ -23,7 +23,6 @@ bm_proxy_op( char *expression, BMContext *ctx )
 	operations
 */
 {
-	if ( !expression || !(*expression)) return;
 	char *p = expression;
 	BMQueryCB *op = ( *p=='@' ) ? activate_CB: deactivate_CB;
 	p += 2;
@@ -62,7 +61,6 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	return all context's active connections (proxies) matching expression
 */
 {
-	if ( !expression || !(*expression)) return NULL;
 
 	CNDB *db = BMContextDB( ctx );
 	listItem *results = NULL;
@@ -122,7 +120,6 @@ typedef struct {
 CNInstance *
 bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
 {
-	if ( !expression || !(*expression)) return NULL;
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
 #endif
