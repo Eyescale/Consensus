@@ -296,10 +296,10 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 			if (( bm_locate_mark( src, &xpn ) )) {
 				// freeListItem( &xpn ); // Assumption: unnecessary
 				event = newPair( x->sub[0]->sub[1], x->sub[1] ); }
-			else if (( bm_locate_mark( value, &xpn ) ))
-				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] );
-			else if (( bm_locate_mark( expression, &xpn ) ))
-				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } }
+			else if (( bm_locate_mark( value, &xpn ) )) {
+				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] ); }
+			else if (( bm_locate_mark( expression, &xpn ) )) {
+				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } } }
 	else {
 		if (( bm_locate_mark( src, &xpn ) )) {
 			// freeListItem( &xpn ); // Assumption: unnecessary

@@ -6,8 +6,8 @@
 #include "traverse.h"
 #include "expression.h"
 #include "instantiate.h"
-#include "scour.h"
 #include "narrative.h"
+#include "scour.h"
 #include "proxy.h"
 
 // #define DEBUG

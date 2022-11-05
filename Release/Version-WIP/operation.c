@@ -192,9 +192,9 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression += 3; }
-	char *src;
 
-	src = p_prune( PRUNE_TERM, expression ) + 1;
+	char *src = p_prune( PRUNE_TERM, expression ) + 1;
+	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
 	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
 	switch ( *expression ) {
 	case '~':
@@ -222,6 +222,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 				success = bm_proxy_out( proxy );
 				if ( success ) break; }
 			goto RETURN; } }
+
 	while (( proxy = popListItem(&candidates) )) {
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
 		if (( found )) { success=1; break; } }

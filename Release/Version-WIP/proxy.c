@@ -174,13 +174,11 @@ static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 BMTraverseCBSwitch( proxy_feel_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
-fprintf( stderr, "IN THERE: %s\n", p );
 		if ( !bm_proxy_verify( p, data ) )
 			_return( 2 )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( verify_CB )
-fprintf( stderr, "IN THERE 2: %s\n", p );
 	if ( !bm_proxy_verify( p, data ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
@@ -200,7 +198,6 @@ case_( close_CB )
 		data->x = popListItem( &data->stack.x );
 	_break
 case_( identifier_CB )
-fprintf( stderr, "IN THERE 3: %s\n", p );
 	if ( !x_match( data->db_x, data->x, p, data->ctx ) )
 		_return( 2 )
 	_break
@@ -294,9 +291,9 @@ FAIL:
 	return 0;
 }
 
-//---------------------------------------------------------------------------
+//===========================================================================
 //	eeno_match / eeno_inform / eeno_lookup
-//---------------------------------------------------------------------------
+//===========================================================================
 typedef struct {
 	CNInstance *src;
 	CNInstance *result;

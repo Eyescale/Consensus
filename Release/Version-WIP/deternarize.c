@@ -227,7 +227,7 @@ BMTraverseCBEnd
 static char *
 optimize( Pair *segment, char *p )
 /*
-	remove ternary expression's enclosing parentheses if possible
+	remove ternary expression's result's enclosing parentheses if possible
 */
 {
 	segment = segment->name;

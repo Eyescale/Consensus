@@ -418,7 +418,6 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
 		if (( e->sub[ 0 ] )) {
-fprintf( stderr, "BINGO\n" );
 			fprintf( stream, "@@@" ); } // proxy
 		else {
 			char *p = db_identifier( e, db );
