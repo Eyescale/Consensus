@@ -20,7 +20,13 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 //	data
 //===========================================================================
+#define isProxy( e )		((e->sub[0]) && !e->sub[1])
+#define isProxySelf( proxy )	(DBProxyThis(proxy)==NULL)
+#define DBProxyThis( proxy )	((CNEntity*) (proxy)->sub[0]->sub[0])
+#define DBProxyThat( proxy )	((CNEntity*) (proxy)->sub[0]->sub[1])
+
 CNInstance *	db_register( char *identifier, CNDB * );
+int		db_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
 CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );

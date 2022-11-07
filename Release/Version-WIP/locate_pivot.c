@@ -26,9 +26,9 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	exponent (in reverse order).
 */
 {
-	int target = bm_scour( expression, EENO|QMARK|EMARK );
+	int target = bm_scour( expression, EENOK|QMARK|EMARK );
 	if ( target == 0 ) return NULL;
-	else target =	( target & EENO ) ? EENO :
+	else target =	( target & EENOK ) ? EENOK :
 			( target & QMARK ) ? QMARK :
 			( target & EMARK ) ? EMARK :
 			( target & PMARK ) ? PMARK :
@@ -97,7 +97,7 @@ case_( star_character_CB )
 case_( register_variable_CB )
 	if ( !is_f(NEGATED) )
 		switch ( p[1] ) {
-		case '<': if ( data->target==EENO ) _return( 2 ) else break;
+		case '<': if ( data->target==EENOK ) _return( 2 ) else break;
 		case '?': if ( data->target==QMARK ) _return( 2 ) else break;
 		case '!': if ( data->target==EMARK ) _return( 2 ) else break;
 		case '|': if ( data->target==PMARK ) _return( 2 ) else break;

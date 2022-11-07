@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "traverse.h"
 #include "cell.h"
 #include "eeno.h"
 
@@ -11,6 +12,10 @@
 typedef struct {
 	CNInstance *src;
 	CNInstance *result;
+	struct { listItem *instance, *flags; } stack;
+	CNInstance *instance;
+	int success;
+	CNDB *db;
 } EEnoData;
 static inline int eeno_read( BMContext *, char *, EEnoData * );
 
@@ -20,14 +25,14 @@ eeno_output( BMContext *ctx, int type, char *p )
 	EEnoData data;
 	switch ( eeno_read(ctx,p,&data) ) {
 	case 0: break;
-	case 1:
-		db_outputf( stdout, BMContextDB( ctx ),
-			( type=='s' ? "%s" : "%_" ), data.src );
+	case 1: ;
+		CNDB *db = BMContextDB( ctx );
+		db_outputf( stdout, db, (type=='s'?"%s":"%_"), data.src );
 		break;
 	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
-		db_outputf( stdout, BMContextDB( BMCellContext(cell) ),
-			( type=='s' ? "%s" : "%_" ), data.result ); }
+		CNEntity *cell = DBProxyThat( data.src );
+		CNDB *db_x = BMContextDB( BMCellContext(cell) );
+		db_outputf( stdout, db_x, (type=='s'?"%s":"%_"), data.result ); }
 	return 0;
 }
 CNInstance *
@@ -38,7 +43,7 @@ eeno_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 	case 0: return NULL;
 	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
 	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
+		CNEntity *cell = DBProxyThat( data.src );
 		CNDB *db_x = BMContextDB( BMCellContext(cell) );
 		return bm_inform_context( db_x, data.result, ((dst)?dst:ctx) ); }
 }
@@ -50,7 +55,8 @@ eeno_lookup( BMContext *ctx, CNDB *db, char *p )
 	case 0: return NULL;
 	case 1: return data.src;
 	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
+		if ( !db ) return data.result;
+		CNEntity *cell = DBProxyThat( data.src );
 		CNDB *db_x = BMContextDB( BMCellContext(cell) );
 		return bm_lookup_x( db_x, data.result, ctx, db ); }
 }
@@ -64,16 +70,18 @@ eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 	EEnoData data;
 	switch ( eeno_read(ctx,p,&data) ) {
 	case 0: return 0;
-	case 1: return db_x_match( db_x, x, BMContextDB(ctx), data.src ); 
+	case 1: return db_match( db_x, x, BMContextDB(ctx), data.src ); 
 	default: ;
-		CNEntity *cell = BMProxyThat( data.src );
+		CNEntity *cell = DBProxyThat( data.src );
 		CNDB *db_y = BMContextDB( BMCellContext(cell) );
-		return db_x_match( db_x, x, db_y, data.result ); }
+		return db_match( db_x, x, db_y, data.result ); }
 }
 
 //---------------------------------------------------------------------------
 //	eeno_read
 //---------------------------------------------------------------------------
+#include "eeno_traversal.h"
+
 static inline int
 eeno_read( BMContext *ctx, char *p, EEnoData *data )
 {
@@ -88,80 +96,71 @@ eeno_read( BMContext *ctx, char *p, EEnoData *data )
 	case '!': y = eeno->event->value; break;
 	default: return 1; }
 
-	if ( *p==':' ) {
-		listItem *stack = NULL;
-		CNInstance *sub = y;
-		int position = 0;
-		for ( p++; *p!='>'; p++ ) {
-			switch ( *p ) {
-			case '(':
-				add_item( &stack, position );
-				addItem( &stack, sub );
-				if ( !p_single(p) ) {
-					sub = CNSUB( sub, position );
-					if ( !sub ) {
-						freeListItem( &stack );
-						return 0; } }
-				position = 0;
-				break;
-			case '?': 
-				y = sub;
-				break;
-			case ',':
-				sub = ((CNInstance*)stack->ptr)->sub[ 1 ];
-				position = 1;
-				break;
-			case ')':
-				sub = popListItem( &stack );
-				position = pop_item( &stack );
-				break; } } }
-	data->result = y;
-	return 2;
+	if ( *p++==':' ) {
+		CNEntity *cell = DBProxyThat( data->src );
+		data->db = BMContextDB( BMCellContext(cell) );
+		data->result = y;
+		data->instance = y;
+		data->stack.flags = NULL;
+		data->stack.instance = NULL;
+
+		BMTraverseData traverse_data;
+		traverse_data.user_data = data;
+		traverse_data.stack = &data->stack.flags;
+		traverse_data.done = 0;
+
+		eeno_traversal( p, &traverse_data, FIRST );
+
+		return ( data->success ? 2 : 0 ); }
+	else {
+		data->result = y;
+		return 2; }
 }
 
-//===========================================================================
-//	db_x_match
-//===========================================================================
-int
-db_x_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
-/*
-	Assumption: x!=NULL
-	Note that we use y to lead the traversal - but works either way
-*/
-{
-	if ( !y ) return 0;
-	if ( db_x==db_y ) return ( x==y );
-	listItem *stack = NULL;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(y,ndx) )) {
-			if ( !CNSUB(x,ndx) )
-				goto FAIL;
-			add_item( &stack, ndx );
-			addItem( &stack, y );
-			addItem( &stack, x );
-			y = y->sub[ ndx ];
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-
-		if (( y->sub[ 0 ] )) {
-			if ( !isProxy(x) || BMProxyThat(x)!=BMProxyThat(y) )
-				goto FAIL; }
+//---------------------------------------------------------------------------
+//	eeno_traversal
+//---------------------------------------------------------------------------
+BMTraverseCBSwitch( eeno_traversal )
+case_( identifier_CB )
+	CNInstance *x = data->instance;
+	int success = 0;
+	if ( !x->sub[0] ) {
+		char *identifier = db_identifier( x, data->db );
+		char_s q;
+		switch ( *p ) {
+		case '/': success = !strcomp( p, identifier, 2 ); break;
+		case '\'': success = charscan(p+1,&q) && !strcomp( q.s, identifier, 1 ); break;
+		default: success = !strcomp( p, identifier, 1 ); } }
+	data->success = is_f( NEGATED ) ? !success : success;
+	_break
+case_( open_CB )
+	if ( f_next & COUPLE ) {
+		CNInstance *x = data->instance;
+		x = CNSUB( x, is_f(FIRST)?0:1 );
+		data->success = is_f( NEGATED ) ? !x : !!x;
+		if ( !data->success )
+			_prune( BM_PRUNE_TERM )
 		else {
-			if (( x->sub[ 0 ] ))
-				goto FAIL;
-			char *p_x = db_identifier( x, db_x );
-			char *p_y = db_identifier( y, db_y );
-			if ( strcomp( p_x, p_y, 1 ) )
-				goto FAIL; }
-		for ( ; ; ) {
-			if ( !stack ) return 1;
-			x = popListItem( &stack );
-			y = popListItem( &stack );
-			if ( !pop_item( &stack ) )
-				{ ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack );
-	return 0;
-}
-
+			addItem( &data->stack.instance, data->instance );
+			data->instance = x; } }
+	_break
+case_( decouple_CB )
+	if ( !data->success )
+		_prune( BM_PRUNE_TERM )
+	else {
+		listItem *stack = data->stack.instance;
+		data->instance = ((CNInstance*)stack->ptr)->sub[ 1 ];
+		_break }
+case_( close_CB )
+	if ( is_f(COUPLE) )
+		data->instance = popListItem( &data->stack.instance );
+	if ( f_next & NEGATED ) data->success = !data->success;
+	_break
+case_( wildcard_CB )
+	if ( *p=='?' )
+		data->result = data->instance;
+	data->success = !is_f( NEGATED );
+	_break
+case_( end_CB )
+	_return( 1 )
+BMTraverseCBEnd

@@ -10,70 +10,35 @@
 // #define DEBUG
 
 //===========================================================================
-//	bm_proxy_op
-//===========================================================================
-static BMQueryCB activate_CB, deactivate_CB;
-
-void
-bm_proxy_op( char *expression, BMContext *ctx )
-/*
-	perform
-		do @< expression
-		do ~< expression
-	operations
-*/
-{
-	char *p = expression;
-	BMQueryCB *op = ( *p=='@' ) ? activate_CB: deactivate_CB;
-	p += 2;
-	if ( *p!='{' )
-		bm_query( BM_CONDITION, p, ctx, op, NULL );
-	else do {
-		p++; bm_query( BM_CONDITION, p, ctx, op, NULL );
-		p = p_prune( PRUNE_TERM, p );
-	} while ( *p!='}' );
-}
-static BMCBTake
-activate_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	if ( !isProxy(e) || isProxySelf(e) )
-		return BM_CONTINUE;
-	ActiveRV *active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->activated, e );
-	return BM_CONTINUE;
-}
-static BMCBTake
-deactivate_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	if ( !isProxy(e) || isProxySelf(e) )
-		return BM_CONTINUE;
-	ActiveRV *active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->deactivated, e );
-	return BM_CONTINUE;
-}
-
-//===========================================================================
 //	bm_proxy_scan
 //===========================================================================
+static void proxy_verify( CNInstance *, char *, BMQueryData *, listItem ** );
+
 listItem *
 bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 /*
 	return all context's active connections (proxies) matching expression
 */
 {
-
 	CNDB *db = BMContextDB( ctx );
-	listItem *results = NULL;
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
 	data.type = type;
 	data.privy = ( type==BM_RELEASED ? 1 : 0 );
 	data.ctx = ctx;
 	data.db = db;
-	for ( listItem *i=BMContextActive(ctx)->value; i!=NULL; i=i->next ) {
+	listItem *results = NULL;
+	ActiveRV *active = BMContextActive( ctx );
+	for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 		CNInstance *proxy = i->ptr;
-		if ( bm_verify( proxy, expression, &data ) )
-			addItem( &results, proxy ); }
+		if ( *expression=='{' ) {
+			for ( char *p=expression+1; *p!='}'; p++ ) {
+				if ( bm_verify( proxy, expression, &data )==BM_DONE ) {
+					addIfNotThere( &results, proxy );
+					break; }
+				p = p_prune( PRUNE_TERM, p ); } }
+		else if ( bm_verify( proxy, expression, &data )==BM_DONE )
+			addIfNotThere( &results, proxy ); }
 	return results;
 }
 
@@ -83,7 +48,7 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 int
 bm_proxy_still( CNInstance *proxy )
 {
-	CNEntity *cell = BMProxyThat( proxy );
+	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	return db_still( db );
@@ -91,7 +56,7 @@ bm_proxy_still( CNInstance *proxy )
 int
 bm_proxy_in( CNInstance *proxy )
 {
-	CNEntity *cell = BMProxyThat( proxy );
+	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *self = BMContextSelf( ctx );
@@ -100,7 +65,7 @@ bm_proxy_in( CNInstance *proxy )
 int
 bm_proxy_out( CNInstance *proxy )
 {
-	CNEntity *cell = BMProxyThat( proxy );
+	CNEntity *cell = DBProxyThat( proxy );
 	return ((cell) && *BMCellCarry(cell)==(void *)cell );
 }
 
@@ -123,7 +88,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #ifdef DEBUG
 	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
 #endif
-	CNEntity *cell = BMProxyThat( proxy );
+	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
 	if ( db_in(db_x) ) return NULL;
 
@@ -165,18 +130,18 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //---------------------------------------------------------------------------
 static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
-#define bm_proxy_verify( p, data ) \
+#define proxy_verify( p, data ) \
 	bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data )
 
 BMTraverseCBSwitch( proxy_feel_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
-		if ( !bm_proxy_verify( p, data ) )
+		if ( !proxy_verify( p, data ) )
 			_return( 2 )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( verify_CB )
-	if ( !bm_proxy_verify( p, data ) )
+	if ( !proxy_verify( p, data ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
 case_( open_CB )
@@ -204,7 +169,7 @@ static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	ProxyFeelData *data = user_data;
-	if ( db_x_match( data->db_x, data->x, BMContextDB(ctx), e ) )
+	if ( db_match( data->db_x, data->x, BMContextDB(ctx), e ) )
 		return BM_DONE;
 	return BM_CONTINUE;
 }
@@ -225,13 +190,13 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 		return ( x==db_star(db_x) );
 	case '.':
 		return ( p[1]=='.' ) ?
-			db_x_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
-			db_x_match( db_x, x, CTX_DB, BMContextPerso(ctx) );
+			db_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
+			db_match( db_x, x, CTX_DB, BMContextPerso(ctx) );
 	case '%':
 		switch ( p[1] ) {
-		case '?': return db_x_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"?") );
-		case '!': return db_x_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
-		case '%': return db_x_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
+		case '?': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"?") );
+		case '!': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
+		case '%': return db_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
 		case '<': return eeno_match( ctx, p, db_x, x ); }
 		return ( !x->sub[0] && *db_identifier(x,db_x)=='%' ); }
 

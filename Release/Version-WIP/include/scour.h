@@ -13,7 +13,7 @@ int bm_scour( char *expression, int target );
 #define	MOD		128
 #define	STAR		256
 #define	SELF		512
-#define	EENO		1024
+#define	EENOK		1024
 
 
 #endif	// SCOUR_H

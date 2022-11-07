@@ -4,7 +4,6 @@
 #include "context.h"
 #include "query.h"
 
-void		bm_proxy_op( char *expression, BMContext * );
 listItem *	bm_proxy_scan( BMQueryType, char *, BMContext * );
 int 		bm_proxy_still( CNInstance * );
 int		bm_proxy_in( CNInstance * );
@@ -14,7 +13,6 @@ int		eeno_match( BMContext *, char *, CNDB *, CNInstance * );
 CNInstance *	eeno_inform( BMContext *, CNDB *, char *, BMContext * );
 CNInstance *	eeno_lookup( BMContext *, CNDB *, char * );
 int		eeno_output( BMContext *, int type, char * );
-
 
 
 #endif	// PROXY_H

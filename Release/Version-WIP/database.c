@@ -87,6 +87,52 @@ db_register( char *p, CNDB *db )
 }
 
 //===========================================================================
+//	db_match
+//===========================================================================
+int
+db_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
+/*
+	Assumption: x!=NULL
+	Note that we use y to lead the traversal - but works either way
+*/
+{
+	if ( !y ) return 0;
+	if ( db_x==db_y ) return ( x==y );
+	listItem *stack = NULL;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(y,ndx) )) {
+			if ( !CNSUB(x,ndx) )
+				goto FAIL;
+			add_item( &stack, ndx );
+			addItem( &stack, y );
+			addItem( &stack, x );
+			y = y->sub[ ndx ];
+			x = x->sub[ ndx ];
+			ndx = 0; continue; }
+
+		if (( y->sub[ 0 ] )) {
+			if ( !isProxy(x) || DBProxyThat(x)!=DBProxyThat(y) )
+				goto FAIL; }
+		else {
+			if (( x->sub[ 0 ] ))
+				goto FAIL;
+			char *p_x = db_identifier( x, db_x );
+			char *p_y = db_identifier( y, db_y );
+			if ( strcomp( p_x, p_y, 1 ) )
+				goto FAIL; }
+		for ( ; ; ) {
+			if ( !stack ) return 1;
+			x = popListItem( &stack );
+			y = popListItem( &stack );
+			if ( !pop_item( &stack ) )
+				{ ndx=1; break; } } }
+FAIL:
+	freeListItem( &stack );
+	return 0;
+}
+
+//===========================================================================
 //	db_proxy
 //===========================================================================
 CNInstance *

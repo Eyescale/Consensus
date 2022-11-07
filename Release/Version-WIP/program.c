@@ -66,18 +66,18 @@ cnUpdate( CNProgram *program )
 	fprintf( stderr, "cnUpdate: bgn\n" );
 #endif
 	if ( !program ) return;
+	CNCell *cell;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
 	listItem *carry, *out = NULL;
-	CNCell *cell;
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		cell = i->ptr;
+		int over = cellUpdate( cell );
 		if (( carry = *BMCellCarry(cell) )) {
 			*BMCellCarry( cell ) = NULL;
 			addItem( new, carry ); }
-		if ( !!cellUpdate(cell) )
-			addItem( &out, cell ); }
+		if ( over ) addItem( &out, cell ); }
 	// activate new cells
 	while (( carry = popListItem(new) ))
 		while (( cell = popListItem(&carry) )) {

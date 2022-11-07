@@ -91,10 +91,9 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	CNCell *new = newCell( entry, cell );
 	BMContext *new_ctx = BMCellContext( new );
 	// inform cell
-	if ( strncmp(p,"()",2) ) {
-		data->carry = new_ctx;
-		traverse_data->done = INFORMED|NEW;
-		p = instantiate_traversal( p, traverse_data, FIRST ); }
+	data->carry = new_ctx;
+	traverse_data->done = INFORMED|NEW;
+	p = instantiate_traversal( p, traverse_data, FIRST );
 	// carry cell
 	CNInstance *proxy = NULL;
 	addItem( BMCellCarry(cell), new );
@@ -251,6 +250,16 @@ case_( close_CB )
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
+	_break
+case_( active_CB )
+	ActiveRV *active = BMContextActive( data->ctx );
+	listItem **buffer = ( *p=='@' ) ?
+		&active->buffer->activated :
+		&active->buffer->deactivated;
+	for ( listItem *i=data->sub[0]; i!=NULL; i=i->next ) {
+		CNInstance *e = i->ptr;
+		if ( isProxy(e) && !isProxySelf(e) )
+			addIfNotThere( buffer, e ); }
 	_break
 case_( wildcard_CB )
 	data->sub[ current ] = newItem( NULL );
@@ -454,56 +463,12 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 //===========================================================================
 //	instantiate_assignment
 //===========================================================================
-static listItem * bm_assign( listItem *sub[2], BMContext *ctx );
+#define bm_assign( sub, ctx ) \
+	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
+		db_assign( i->ptr, j->ptr, db );
 
 static void
 instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
-{
-	InstantiateData *data = traverse_data->user_data;
-	char *p = expression + 1; // skip leading ':'
-	listItem *sub[ 2 ];
-
-	DBG_VOID( p )
-	traverse_data->done = INFORMED;
-	p = instantiate_traversal( p, traverse_data, FIRST );
-	if ( traverse_data->done==2 || !data->sub[ 0 ] )
-		return;
-	sub[ 0 ] = data->sub[ 0 ];
-	data->sub[ 0 ] = NULL;
-	p++; // move past ',' - aka. ':'
-
-	if ( *p=='!' ) {
-		p += 2; // skip '!!'
-		CNDB *db = BMContextDB( data->ctx );
-		Pair *entry = registryLookup( story, p );
-		if (( entry )) {
-			char *q = p = p_prune( PRUNE_IDENTIFIER, p );
-			for ( listItem *i=sub[0]; i!=NULL; i=i->next, p=q ) {
-				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
-				if (( proxy )) db_assign( i->ptr, proxy, db );
-				else db_unassign( i->ptr, db ); } }
-		else {
-			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-				"\t\tdo !! %s\n\t<<<<<\n", p );
-			exit( -1 ); } }
-	else if ( !strncmp( p, "~.", 2 ) ) {
-		sub[ 1 ] = NULL;
-		data->sub[ 0 ] = bm_assign( sub, data->ctx );
-		freeListItem( &sub[ 0 ] ); }
-	else {
-		DBG_VOID( p )
-		traverse_data->done = INFORMED;
-		p = instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 )
-			freeListItem( &sub[ 0 ] );
-		else {
-			sub[ 1 ] = data->sub[ 0 ];
-			data->sub[ 0 ] = bm_assign( sub, data->ctx );
-			freeListItem( &sub[ 0 ] );
-			freeListItem( &sub[ 1 ] ); } }
-}
-static listItem *
-bm_assign( listItem *sub[2], BMContext *ctx )
 /*
 	Note that the number of assignments actually performed is
 		INF( cardinal(sub[0]), cardinal(sub[1]) )
@@ -511,14 +476,52 @@ bm_assign( listItem *sub[2], BMContext *ctx )
 		case sub[1]==NULL excepted
 */
 {
-	CNDB *db = BMContextDB( ctx );
-	listItem *results = NULL;
-	if ( !sub[1] )
-		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
-			addItem( &results, db_unassign( i->ptr, db ) );
-	else
-		for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next )
-			addItem( &results, db_assign( i->ptr, j->ptr, db ) );
-	return results;
-}
+	InstantiateData *data = traverse_data->user_data;
+	CNDB *db = BMContextDB( data->ctx );
+	char *p = expression + 1; // skip leading ':'
+	listItem *sub[ 2 ];
+	CNInstance *e;
 
+	DBG_VOID( p )
+	traverse_data->done = INFORMED;
+	p = instantiate_traversal( p, traverse_data, FIRST );
+	if ( traverse_data->done==2 || !data->sub[ 0 ] )
+		return;
+
+	sub[ 0 ] = data->sub[ 0 ];
+	data->sub[ 0 ] = NULL;
+	p++; // move past ',' - aka. ':'
+	switch ( *p ) {
+	case '!':
+		p += 2; // skip '!!'
+		Pair *entry = registryLookup( story, p );
+		if (( entry )) {
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			while (( e = popListItem( &sub[0] ) )) {
+				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
+				if (( proxy )) db_assign( e, proxy, db );
+				else db_unassign( e, db ); } }
+		else {
+			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+				"\t\tdo !! %s\n\t<<<<<\n", p );
+			exit( -1 ); }
+		break;
+	case '~':
+		if ( p[1]=='.' ) {
+			while (( e = popListItem( &sub[0] ) ))
+				db_unassign( e, db );
+			break; }
+		// no break
+	default:
+		DBG_VOID( p )
+		traverse_data->done = INFORMED;
+		p = instantiate_traversal( p, traverse_data, FIRST );
+		if ( traverse_data->done==2 )
+			freeListItem( &sub[ 0 ] );
+		else {
+			sub[ 1 ] = data->sub[ 0 ];
+			data->sub[ 0 ] = NULL;
+			bm_assign( sub, db );
+			freeListItem( &sub[ 0 ] );
+			freeListItem( &sub[ 1 ] ); } }
+}

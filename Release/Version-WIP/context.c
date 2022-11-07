@@ -132,13 +132,14 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 static inline void
 update_active( ActiveRV *active )
 {
+	CNInstance *proxy;
 	listItem **current = &active->value;
-	listItem **changes = &active->buffer->deactivated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		removeIfThere( current, e );
-	changes = &active->buffer->activated;
-	for ( CNInstance *e;( e = popListItem(changes) ); )
-		addIfNotThere( current, e );
+	listItem **buffer = &active->buffer->deactivated;
+	while (( proxy = popListItem(buffer) ))
+		removeIfThere( current, proxy );
+	buffer = &active->buffer->activated;
+	while (( proxy = popListItem(buffer) ))
+		addIfNotThere( current, proxy );
 }
 
 //===========================================================================
@@ -438,7 +439,7 @@ bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 
 		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
 			CNEntity *this = BMContextCell( dst );
-			CNEntity *that = BMProxyThat( x );
+			CNEntity *that = DBProxyThat( x );
 			instance = lookup_proxy( this, that ); }
 		else {
 			char *p = db_identifier( x, db_src );
@@ -530,7 +531,7 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 
 		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
 			CNEntity *this = BMContextCell( dst );
-			CNEntity *that = BMProxyThat( e );
+			CNEntity *that = DBProxyThat( e );
 			if (!( instance = lookup_proxy( this, that ) ))
 				instance = db_proxy( this, that, db_dst ); }
 		else {

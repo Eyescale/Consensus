@@ -5,7 +5,7 @@
 	else in toto
 		do >"asd":< alpha,
 			beta >
-		do ( toto, %<!:(.,(?,.))> )
+		do ( toto, %<!:(.,~(?,toto))> )
 		do ( titi, %<?> )
 		do ( *.( toto ), titi )
 		do @< %(?:(toto,titi))

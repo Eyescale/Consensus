@@ -25,6 +25,7 @@
 #define LISTABLE	(1<<16)
 #define NEW		(1<<17)
 #define VECTOR		(1<<18)
+#define EENO		(1<<19)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

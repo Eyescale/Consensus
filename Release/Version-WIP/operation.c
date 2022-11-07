@@ -252,13 +252,8 @@ do_action( char *expression, BMContext *ctx, CNStory *story )
 		case '(':
 			bm_release( expression+1, ctx );
 			break;
-		case '<':
-			bm_proxy_op( expression, ctx );
+		case '.':
 			break; }
-		goto RETURN;
-	case '@':
-		if ( expression[1]=='<' )
-			bm_proxy_op( expression, ctx );
 		goto RETURN;
 	default:
 		if ( !strcmp( expression, "exit" ) ) {

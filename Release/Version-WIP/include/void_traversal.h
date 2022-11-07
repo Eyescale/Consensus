@@ -6,13 +6,13 @@
 		BMContext *ctx = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	feel_CB, sound_CB, touch_CB;
+	term_CB, dereference_CB, register_variable_CB;
 
-#define BMTermCB		feel_CB
-#define BMNotCB			sound_CB
-#define BMDereferenceCB		sound_CB
-#define BMSubExpressionCB	sound_CB
-#define BMRegisterVariableCB	touch_CB
+#define BMTermCB		term_CB
+#define BMNotCB			dereference_CB
+#define BMDereferenceCB		dereference_CB
+#define BMSubExpressionCB	dereference_CB
+#define BMRegisterVariableCB	register_variable_CB
 
 #include "traversal.h"
 

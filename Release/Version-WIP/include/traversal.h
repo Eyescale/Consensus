@@ -28,7 +28,9 @@
 /*
 	BMOpenCB
 	BMCloseCB
+	BMEEnoEndCB
 	BMTermCB
+	BMActiveCB
 	BMNotCB
 	BMBgnSetCB
 	BMEndSetCB
@@ -67,12 +69,24 @@
 #define CB_CloseCB
 #endif
 
+#ifdef BMEEnoEndCB
+#define CB_EEnoEndCB	_CB( BMEEnoEndCB )
+#else
+#define CB_EEnoEndCB
+#endif
+
 #ifdef BMTermCB
 #define CB_TermCB \
 	if ( p_filtered(p) ) f_set( FILTERED ) \
 	_CB( BMTermCB )
 #else
 #define CB_TermCB
+#endif
+
+#ifdef BMActiveCB
+#define CB_ActiveCB	_CB( BMActiveCB )
+#else
+#define CB_ActiveCB
 #endif
 
 #ifdef BMNotCB

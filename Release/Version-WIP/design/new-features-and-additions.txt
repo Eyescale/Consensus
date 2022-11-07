@@ -44,11 +44,11 @@ Synopsis
 					do : handle : !! Narrative ( ... ) @<
 					do : handle : !! Narrative ( ... ) ~<
 
-	Subscribe			do @< expression
-					do : handle : @< expression
+	Subscribe			do expression @<
+					do : handle : expression @<
 
-	Unsubscribe			do ~< expression
-					do : handle : ~< expression
+	Unsubscribe			do expression ~<
+					do : handle : expression ~<
 
 	External Event Narrative	on event < src
 	Occurrence (EENO)
@@ -201,7 +201,7 @@ Description
 			// one of my sources just registered a new connection
 			in %<?>: %%
 				// that connection is me
-			else in %<?>
+			else in %<?>: .
 				// already subscribed
 			else
 				// subscribe to my source's new connection

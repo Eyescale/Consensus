@@ -1,5 +1,5 @@
-#ifndef QUERY_TRAVERSAL_H
-#define QUERY_TRAVERSAL_H
+#ifndef VERIFY_TRAVERSAL_H
+#define VERIFY_TRAVERSAL_H
 
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -30,4 +30,4 @@ static BMTraverseCB
 static BMTraversal verify_traversal;
 
 
-#endif	// QUERY_TRAVERSAL_H
+#endif	// VERIFY_TRAVERSAL_H

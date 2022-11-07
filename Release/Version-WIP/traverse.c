@@ -33,6 +33,10 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 	union { int value; void *ptr; } icast;
 	char *p = expression;
 
+	// invoke BMTermCB - if it is set - first thing
+	do {
+		if ( mode&NEW ) p++; // skip opening '('
+CB_TermCB	} while ( 0 );
 
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
@@ -40,7 +44,7 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 				if ( is_f(VECTOR) ) {
 					f_clr( VECTOR )
 					f_cls }
-				p++; break;
+CB_EEnoEndCB			p++; break;
 			case '<':
 				if ( is_f(INFORMED) ) // EENO
 #ifdef BMTernaryOperatorCB
@@ -53,9 +57,11 @@ _traverse( char *expression, BMTraverseData *traverse_data, int flags )
 				p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				break;
 			case '@':
+				// Assumption: p[1]=='<'
+CB_ActiveCB			p+=2; break;
 			case '~':
 				if ( p[1]=='<' ) {
-					p+=2; break; }
+CB_ActiveCB				p+=2; break; }
 CB_NotCB			if is_f( NEGATED ) f_clr( NEGATED )	
 				else f_set( NEGATED )
 				p++; break;
@@ -106,9 +112,6 @@ CB_ModCharacterCB			f_cls; p++; break; }
 				if ( p[1]==':' ) {
 CB_LiteralCB				f_set( INFORMED )
 					break; }
-				else if ( mode&NEW && p==expression ) {
-					p++; // skip opening '('
-CB_TermCB				break; }
 				else {
 					f_next = FIRST|LEVEL|is_f(SET|SUB_EXPR|MARKED);
 					if (!(mode&INFORMED) && !p_single(p))

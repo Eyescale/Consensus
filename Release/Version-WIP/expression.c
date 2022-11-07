@@ -13,6 +13,21 @@
 // #define DEBUG
 
 //===========================================================================
+//	bm_feel
+//===========================================================================
+CNInstance *
+bm_feel( BMQueryType type, char *expression, BMContext *ctx )
+{
+	switch ( type ) {
+	case 'BM_CONDITION': // special case: EEnoRV as-is
+		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) )
+			return eeno_lookup( ctx, NULL, expression );
+		// no break
+	default:
+		return bm_query( type, expression, ctx, NULL, NULL ); }
+}
+
+//===========================================================================
 //	bm_scan
 //===========================================================================
 static BMQueryCB scan_CB;
@@ -81,13 +96,13 @@ bm_void( char *expression, BMContext *ctx )
 //	void_traversal
 //---------------------------------------------------------------------------
 BMTraverseCBSwitch( void_traversal )
-case_( feel_CB )
+case_( term_CB )
 	if is_f( FILTERED ) {
 		if ( !bm_feel( BM_CONDITION, p, ctx ) )
 			_return( 2 )
 		_prune( BM_PRUNE_TERM ) }
 	_break
-case_( sound_CB )
+case_( dereference_CB )
 	int target = bm_scour( p, PMARK );
 	if ( target&PMARK && target!=PMARK ) {
 		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
@@ -95,16 +110,11 @@ case_( sound_CB )
 	if ( !bm_feel( BM_CONDITION, p, ctx ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )
-case_( touch_CB )
+case_( register_variable_CB )
 	int nope = 0;
 	switch ( p[1] ) {
-	case '?':
-	case '!':
-		nope = !bm_context_lookup( ctx, ((char_s)(int)p[1]).s );
-		break;
-	case '<':
-		nope = !eeno_lookup( ctx, BMContextDB(ctx), p );
-		break; }
+	case '?': nope = !bm_context_lookup( ctx, "?" ); break;
+	case '!': nope = !bm_context_lookup( ctx, "!" ); break; }
 	if ( nope )
 		_return( 2 )
 	_break

@@ -64,7 +64,7 @@ case_( register_variable_CB )
 	if ( !is_f(NEGATED) ) {
 		int mark;
 		switch ( p[1] ) {
-		case '<': mark = EENO; break;
+		case '<': mark = EENOK; break;
 		case '?': mark = QMARK; break;
 		case '!': mark = EMARK; break;
 		case '|': mark = PMARK; break;

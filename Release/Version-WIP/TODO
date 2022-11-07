@@ -24,6 +24,12 @@ ON-GOING
 		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
+	. Other EEnoRV as-is
+		on ~( %<_> )
+		on %<_> < .
+		do !! Narrative(
+			%<_>
+			)
 	. both instantiate.c:bm_conceive() and query.c:match_x() assume that
 	  expression's identifiers are not locale(s), in respectively:
 
@@ -67,6 +73,8 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. implemented support for
+		on event < { src1, src2, ... } // one level only
 	. Code Complete
 	. database.h: #define UNIFIED /*default*/
 	. context.c / context.h

@@ -4,8 +4,7 @@
 #include "context.h"
 #include "query.h"
 
-#define bm_feel( type, expression, ctx ) \
-		bm_query( type, expression, ctx, NULL, NULL )
+CNInstance *	bm_feel( BMQueryType, char *, BMContext * );
 listItem *	bm_scan( char *, BMContext * );
 void		bm_release( char *expression, BMContext * );
 int		bm_void( char *, BMContext * );

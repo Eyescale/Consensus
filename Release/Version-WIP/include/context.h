@@ -43,12 +43,7 @@ typedef struct {
 #define BMContextDB( ctx )	((CNDB *) registryLookup( ctx, "%" )->value )
 #define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx, "@" )->value )
 
-#define isProxy( e )		((e->sub[0]) && !e->sub[1])
-#define BMProxyThis( proxy )	((CNEntity*) (proxy)->sub[0]->sub[0])
-#define BMProxyThat( proxy )	((CNEntity*) (proxy)->sub[0]->sub[1])
-#define isProxySelf( proxy )	(BMProxyThis(proxy)==NULL)
-
-#define BMContextCell( ctx )	(BMProxyThat(BMContextSelf(ctx)))
+#define BMContextCell( ctx )	(DBProxyThat(BMContextSelf(ctx)))
 
 inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	CNInstance *perso = registryLookup( ctx, "." )->value;

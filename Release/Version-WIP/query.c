@@ -85,16 +85,16 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
 	CNDB *db;
 	switch ( data->type ) {
-	case BM_CONDITION:
-		return xp_verify( e, expression, data ) ?
-			(data->user_CB) ?
-				data->user_CB( e, data->ctx, data->user_data ) :
-			BM_DONE : BM_CONTINUE;
 	case BM_INSTANTIATED:
 		return ( db_manifested(e,data->db) && xp_verify(e,expression,data)) ?
 			BM_DONE : BM_CONTINUE;
 	case BM_RELEASED:
 		return ( db_deprecated(e,data->db) && xp_verify(e,expression,data)) ?
+			BM_DONE : BM_CONTINUE;
+	default:
+		return xp_verify( e, expression, data ) ?
+			(data->user_CB) ?
+				data->user_CB( e, data->ctx, data->user_data ) :
 			BM_DONE : BM_CONTINUE; }
 }
 
