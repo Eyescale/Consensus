@@ -19,7 +19,7 @@ CNInstance *
 bm_feel( BMQueryType type, char *expression, BMContext *ctx )
 {
 	switch ( type ) {
-	case 'BM_CONDITION': // special case: EEnoRV as-is
+	case BM_CONDITION: // special case: EEnoRV as-is
 		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) )
 			return eeno_lookup( ctx, NULL, expression );
 		// no break
