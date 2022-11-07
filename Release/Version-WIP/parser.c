@@ -486,7 +486,7 @@ CND_ifn( mode==BM_STORY, C )
 						s_add( "~" ) }
 			else {	do_( "expr" )	REENTER
 						s_add( "~" )
-						f_set( NEGATED ) }
+						f_set( NEGATED ) } // object is to prevent MARK
 		ons( "{}?" )	; //err
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
