@@ -155,7 +155,8 @@ db_update( CNDB *db, CNInstance *parent )
 */
 {
 	CNInstance *nil = db->nil;
-	nil->sub[ 0 ] = NULL; // remove init condition
+	if ( nil->sub[0]==nil ) // remove init condition
+		nil->sub[ 0 ] = NULL;
 
 	CNInstance *f, *g, *x;
 	listItem *trash[ 2 ] = { NULL, NULL };

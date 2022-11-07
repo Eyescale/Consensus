@@ -162,8 +162,8 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		break;
 	default:
 		if ( !strcmp( expression, "init" ) ) {
-			success = db_in( BMContextDB(ctx) );
-			goto RETURN; } }
+			CNDB *db = BMContextDB( ctx );
+			success = db_in(db); goto RETURN; } }
 
 	found = bm_feel( BM_INSTANTIATED, expression, ctx );
 	if (( found )) success = 1;
@@ -257,8 +257,8 @@ do_action( char *expression, BMContext *ctx, CNStory *story )
 		goto RETURN;
 	default:
 		if ( !strcmp( expression, "exit" ) ) {
-			db_exit( BMContextDB(ctx) );
-			goto RETURN; } }
+			CNDB *db = BMContextDB( ctx );
+			db_exit( db ); goto RETURN; } }
 
 	bm_instantiate( expression, ctx, story );
 RETURN:

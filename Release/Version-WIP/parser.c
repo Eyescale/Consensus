@@ -652,7 +652,7 @@ C:CND_endif
 		ons( " \t" )	do_( same )
 		ons( "})>" )	do_( "expr" )	REENTER
 		on_( '.' ) if ( is_f(LISTABLE) ) {
-				do_( ",." ) }
+				do_( ",." ) 	s_add( "," ) }
 			else {	do_( "expr" )	REENTER
 						s_add( "," )
 						f_clr( INFORMED ) }

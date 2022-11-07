@@ -320,6 +320,7 @@ xsub( CNInstance *x, listItem **xpn )
 	Assumption: x.xpn exists by construction
 */
 {
+	if ( !*xpn ) return x;
 	int exp;
 	reorderListItem( xpn );
 	while (( exp = pop_item( xpn ) ))

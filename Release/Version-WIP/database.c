@@ -38,7 +38,10 @@ freeCNDB( CNDB *db )
 */
 {
 	if ( db == NULL ) return;
-	cn_prune( db->nil );
+	CNInstance *nil = db->nil;
+	nil->sub[ 0 ] = NULL;
+	nil->sub[ 1 ] = NULL;
+	cn_prune( nil );
 	freeRegistry( db->index, free_CB );
 	freePair((Pair *) db );
 }
