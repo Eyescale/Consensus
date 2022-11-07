@@ -18,12 +18,11 @@
 			(( init, ... ):0 0 0 A0 0 0 0 0 0 0 0:)
 			((*,head), *head )
 			) @<
-	else
-		on exit < .
-			do exit
-		else on : state : ? < *tape
-			do : state : %<?>
-			do exit
+	else on exit < .
+		do exit
+	else on : state : ? < *tape
+		do : state : %<?>
+		do exit
 
 : Head
 	in ?: *state
