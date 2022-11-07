@@ -5,11 +5,11 @@
 	else in toto
 		do >"asd":< alpha,
 			beta >
-		do ( toto, %<!:(.,~(?,toto))> )
+		do ( toto, %<!:(.,~(.,toto))> )
 		do ( titi, %<?> )
 		do ( *.( toto ), titi )
-		do @< %(?:(toto,titi))
-		do ~< { asdlkj, alsdkj }
+		do %(?:(toto,titi)) @<
+		do { asdlkj, alsdkj } ~<
 		do : toto : !! world (
 			baby, titi
 			tutu

@@ -309,7 +309,7 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 			event = newPair( xsub(x,&xpn), NULL ); } }
 
 	if (( event )) {
-		*marked = EENO;
+		*marked = EENOK;
 		bm_push_mark( ctx, "<", newPair(event,proxy) ); }
 
 	return 1;
@@ -331,7 +331,7 @@ xsub( CNInstance *x, listItem **xpn )
 void
 bm_context_unmark( BMContext *ctx, int marked )
 {
-	if ( marked&EENO )
+	if ( marked&EENOK )
 		bm_pop_mark( ctx, "<" );
 	else {
 		if ( marked&QMARK ) bm_pop_mark( ctx, "?" );

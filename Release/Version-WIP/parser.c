@@ -240,25 +240,25 @@ EXPR_BGN:CND_endif
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
-		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|SET|NEW) ) {
+		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|SET|NEW|EENOV|VECTOR) &&
+				( !is_f(ASSIGN) || is_f(FILTERED) ) ) {
 				do_( "expr_" )	REENTER }
-			else if ( is_f(SET|NEW) ) { // allow \nl inside { } resp. ( )
+			else if ( is_f(SET|NEW|VECTOR) ) { // allow \nl inside resp. {} () <>
 				do_( "_^" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
 				; // err
 			else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) ) {
-				if ( *type&DO && is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
-					do_( "," )	s_take
-							f_clr( FIRST|INFORMED|FILTERED ) }
+				if ( is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
+					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|FILTERED ) } }
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED) ) {
 				do_( same )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
-			else if ( is_f(SET|NEW) && !is_f(LEVEL|SUB_EXPR) ) {
+			else if ( is_f(SET|NEW|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( "," ) }
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
@@ -273,25 +273,28 @@ CND_if_( mode==BM_STORY, A )
 						f_set( INFORMED ) }
 A:CND_else_( B )
 		ons( " \t" )	do_( same )
-		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
-		on_( '.' ) if ( are_f(EENO|LEVEL) && !is_f(INFORMED) ) {
+		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
+				do_( "@" )	s_take }
+		on_( '~' ) if ( *type&DO && is_f(INFORMED) ) {
+				do_( "@" )	s_take }
+			else if ( !is_f(INFORMED) ) {
+				do_( "~" ) }
+		on_( '.' ) if ( are_f(EENOV|LEVEL) && !is_f(INFORMED) ) {
 				do_( same ) 	s_take
 						f_set( INFORMED ) }
-			else if ( !is_f(INFORMED|EENO) ) {
+			else if ( !is_f(INFORMED|EENOV) ) {
 				do_( "." ) 	s_take }
-		on_( '*' ) if ( is_f(EENO) && !is_f(INFORMED) ) {
+		on_( '*' ) if ( is_f(EENOV) && !is_f(INFORMED) ) {
 				do_( same ) 	s_take }
 			else if ( !is_f(INFORMED) ) {
 				do_( "*" )	s_take }
-		on_( '%' ) if ( is_f(EENO) && !is_f(INFORMED) ) {
+		on_( '%' ) if ( is_f(EENOV) && !is_f(INFORMED) ) {
 				do_( same ) 	s_take }
 			else if ( !is_f(INFORMED) ) {
 				do_( "%" ) }
-		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENO) ) ) {
+		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENOV) ) ) {
 				do_( "/" )	s_take }
-		on_( '@' ) if ( s_empty && *type&DO ) {
-				do_( "@" )	s_take }
-		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|EENO) )
+		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|EENOV) )
 				; // err
 			else if ( *type&ON && is_f(INFORMED) && (is_f(ASSIGN)?is_f(FILTERED):is_f(FIRST)) ) {
 				do_( same )	s_take
@@ -300,17 +303,17 @@ A:CND_else_( B )
 						f_set(FIRST) }
 			else if ( *type&OUTPUT && !is_f(NEGATED|INFORMED|FILTERED) ) {
 				do_( same )	s_take
-						f_set( SET ) }
+						f_set( VECTOR ) }
 		on_( '>' ) if ( *type&DO && s_empty ) {
 				do_( ">" )	s_take
 						*type = (*type&ELSE)|OUTPUT; }
-			else if ( are_f(EENO|INFORMED) && !is_f(LEVEL) ) {
+			else if ( are_f(EENOV|INFORMED) && !is_f(LEVEL) ) {
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED ) }
-			else if ( *type&OUTPUT && are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR|EENO) ) {
+			else if ( *type&OUTPUT && are_f(INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
 				do_( same )	s_take
-						f_clr( SET )
+						f_clr( VECTOR )
 						f_set( COMPOUND ) }
 		on_( '!' ) if ( *type&DO && ( s_empty || (are_f(ASSIGN|FILTERED) &&
 				!is_f(INFORMED|LEVEL|SUB_EXPR|SET|NEGATED)) ) ) {
@@ -319,14 +322,14 @@ A:CND_else_( B )
 				do_( "(_?" )	s_take
 						f_push( stack )
 						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND|EENO) ) {
+			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND|EENOV) ) {
 				do_( "(_?" )	s_take
 						f_clr( INFORMED|FILTERED )
 						f_set( TERNARY ) }
-			else if ( are_f(EENO|LEVEL) && !is_f(INFORMED|MARKED|NEGATED|FILTERED) ) {
+			else if ( are_f(EENOV|LEVEL) && !is_f(INFORMED|MARKED|NEGATED|FILTERED) ) {
 				do_( "%<?" )	s_take
 						f_set( MARKED|INFORMED ) }
-			else if ( !is_f(INFORMED|MARKED|NEGATED|EENO) && ( is_f(SUB_EXPR) ||
+			else if ( !is_f(INFORMED|MARKED|NEGATED|EENOV) && ( is_f(SUB_EXPR) ||
 				 ( *type&ON_X ? !is_f(LEVEL) : *type&(IN|ON) ) )) {
 				do_( same )	s_take
 						f_tag( stack, MARKED )
@@ -334,7 +337,7 @@ A:CND_else_( B )
 		on_( ':' ) if ( s_empty ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
-			else if ( is_f(EENO) || !is_f(INFORMED) )
+			else if ( is_f(EENOV) || !is_f(INFORMED) )
 				; // err
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( !is_f(FILTERED) ) {
@@ -353,7 +356,7 @@ A:CND_else_( B )
 					do_( ":" )	s_take
 							f_clr( INFORMED )
 							f_set( FILTERED ) }
-		on_( ')' ) if ( is_f(EENO) ) {
+		on_( ')' ) if ( is_f(EENOV) ) {
 				if ( are_f(LEVEL|INFORMED) ) {
 					do_( same )	s_take
 							f_pop( stack, MARKED )
@@ -364,13 +367,15 @@ A:CND_else_( B )
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
 			else if ( is_f(NEW) && !is_f(LEVEL|SUB_EXPR) ) {
-					do_( ")" )	s_take }
+					do_( same )	s_take
+							f_clr( NEW )
+							f_set( INFORMED|COMPOUND ) }
 B:CND_endif
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
-		on_( '{' ) if ( is_f(INFORMED|SUB_EXPR|NEGATED|FILTERED|EENO) )
+		on_( '{' ) if ( is_f(INFORMED|SUB_EXPR|NEGATED|FILTERED|VECTOR|EENOV) )
 				; // err
-			else if ( *type&DO && !is_f(ASSIGN) && !are_f(VECTOR|SET) ) {
+			else if ( *type&DO && !is_f(ASSIGN) ) {
 				do_( same )	s_take
 						f_push( stack )
 						f_clr( LEVEL )
@@ -380,7 +385,7 @@ B:CND_endif
 						f_set( SET ) }
 		on_( '}' ) if ( !are_f(INFORMED|SET) || is_f(LEVEL|SUB_EXPR) )
 				; // err
-			else if ( *type&ON_X || ( is_f(VECTOR) && !(*type&OUTPUT) ) ) {
+			else if ( *type&ON_X ) {
 				do_( same )	s_take
 						f_clr( SET )
 						f_set( COMPOUND ) }
@@ -422,18 +427,6 @@ CND_ifn( mode==BM_STORY, C )
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_take
 			end
-	in_( ")" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "expr_" )	REENTER
-		ons( "~@" )	do_( ")." )	s_take
-		end
-		in_( ")." ) bgn_
-			on_( '<' )	do_( ").<" )	s_take
-			end
-			in_( ").<" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '\n' )	do_( "expr_" )	REENTER
-				end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '.' )	do_( "expr" )	s_take
@@ -474,7 +467,7 @@ CND_ifn( mode==BM_STORY, C )
 			ons( " \t" )	do_( same )
 			ons( "?!" )	do_( "%<?" )	s_take
 							f_push( stack )
-							f_reset( EENO|INFORMED|FIRST, 0 )
+							f_reset( EENOV|INFORMED|FIRST, 0 )
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
 			end
@@ -488,9 +481,6 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
-		on_( '<' ) if ( s_empty && *type&DO ) {
-				do_( "expr" )	s_add( "~<" )
-						f_set( VECTOR ) }
 		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
@@ -502,9 +492,12 @@ CND_ifn( mode==BM_STORY, C )
 						s_add( "~" )
 		end
 	in_( "@" ) bgn_
-		on_( '<' )	do_( "expr" )	s_take
-						f_set( VECTOR )
+		on_( '<' )	do_( "@<" )	s_take
 		end
+		in_( "@<" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "expr" )	REENTER
+			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( ":~" )
@@ -596,12 +589,11 @@ CND_ifn( mode==BM_STORY, C )
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' )	do_( ">:" )	s_take
-						f_set( VECTOR )
 		on_( '\"' )	do_( ">\"" )	s_take
 		end
 		in_( ">:" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr_" )	REENTER
+			on_( '\n' )	do_( "expr" )	REENTER
 							f_set( INFORMED )
 			on_other	do_( "expr" )	REENTER
 			end
@@ -618,15 +610,14 @@ CND_ifn( mode==BM_STORY, C )
 		in_( ">_" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( ':' )	do_( "expr" )	s_take
-							f_set( VECTOR )
-			on_( '\n' )	do_( "expr_" )	REENTER
+			on_( '\n' )	do_( "expr" )	REENTER
 							f_set( INFORMED )
 			end
 C:CND_endif
-	in_( "_^" ) bgn_	// \nl allowed inside { }
+	in_( "_^" ) bgn_	// \nl allowed inside {} () <>
 		ons( " \t\n" )	do_( same )
 		on_( '#' )	do_( "_#" )
-		ons( "})" )	do_( "expr" )	REENTER
+		ons( "})>" )	do_( "expr" )	REENTER
 		on_( ',' )	; // err
 		on_other // allow newline to act as comma
 			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
@@ -648,7 +639,7 @@ C:CND_endif
 						f_push( stack )
 						f_clr( SET|TERNARY )
 				if ( *type&DO && is_f(CLEAN) ) {
-						f_set( FIRST|LEVEL|LISTABLE|CLEAN ) }
+						f_set( FIRST|LEVEL|LISTABLE ) }
 				else {		f_set( FIRST|LEVEL|CLEAN ) }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
@@ -659,40 +650,41 @@ C:CND_endif
 		end
 	in_( "," ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '}' )	do_( "expr" )	REENTER
-		on_( ')' ) if ( is_f(NEW) && !is_f(LEVEL|SUB_EXPR|SET) ) {
-				do_( "expr" )	REENTER }
-		on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) ) {
+		ons( "})>" )	do_( "expr" )	REENTER
+		on_( '.' ) if ( is_f(LISTABLE) ) {
 				do_( ",." ) }
 			else {	do_( "expr" )	REENTER
 						s_add( "," )
 						f_clr( INFORMED ) }
-		on_other if ( is_f(LEVEL|SUB_EXPR) ) {
-				do_( "expr" )	REENTER }
-			else {	do_( "expr" )	REENTER
+		on_other	do_( "expr" )	REENTER
 						s_add( "," )
-						f_clr( INFORMED ) }
+						f_clr( INFORMED )
 		end
 		in_( ",." ) bgn_
 			on_( '.' )	do_( ",.." )	s_add( ".." )
 			on_other
-if ( mode==BM_STORY ) {			do_( "." )	REENTER }
+if ( mode==BM_STORY ) {			do_( "." )	REENTER
+							s_add( "." ) }
 else 					; // err
 			end
-			in_( ",.." ) bgn_
-				on_( '.' )	do_( ",..." )	s_take
-				end
-			in_( ",..." ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ')' )	do_( ",...)" )	s_take
-								f_pop( stack, 0 )
-				end
-			in_( ",...)" ) bgn_
-				on_( ':' )	do_( "(:" )	s_take
-				end
+		in_( ",.." ) bgn_
+			on_( '.' )	do_( ",..." )	s_take
+			on_other
+if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
+							f_set( INFORMED ) }
+else					; // err
+			end
+		in_( ",..." ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ')' )	do_( ",...)" )	s_take
+							f_pop( stack, 0 )
+			end
+		in_( ",...)" ) bgn_
+			on_( ':' )	do_( "(:" )	s_take
+			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|EENO) ) {
+		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|EENOV) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
 D:CND_endif
@@ -765,8 +757,7 @@ _CB( ExpressionTake, mode, data );
 		bgn_
 			on_any
 if ( mode==BM_INPUT ) {		do_( "" ) }
-else if ( !is_f(ASSIGN) || is_f(FILTERED) ) {
-				do_( "base" )	f_reset( FIRST, 0 );
+else {				do_( "base" )	f_reset( FIRST, 0 );
 						TAB_CURRENT = 0;
 						data->opt = 0;
 	if ( mode==BM_STORY ) {			*type = 0; } }
