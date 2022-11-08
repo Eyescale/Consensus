@@ -16,7 +16,6 @@
 #			(( init, * ), A )
 			(( init, ... ):0 0 0 A0 0 0 0 0 0 0 0:)
 			) @<
-	else
 		do exit // just like that
 
 : Head
