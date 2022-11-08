@@ -138,11 +138,10 @@ case_( open_CB )
 		CNInstance *x = data->instance;
 		x = CNSUB( x, is_f(FIRST)?0:1 );
 		data->success = is_f( NEGATED ) ? !x : !!x;
-		if ( !data->success )
-			_prune( BM_PRUNE_TERM )
-		else {
+		if ( data->success ) {
 			addItem( &data->stack.instance, data->instance );
-			data->instance = x; } }
+			data->instance = x; }
+		else _prune( BM_PRUNE_TERM ) }
 	_break
 case_( decouple_CB )
 	if ( !data->success )

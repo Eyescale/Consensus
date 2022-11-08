@@ -134,19 +134,11 @@ db_remove( CNInstance *e, CNDB *db )
 //===========================================================================
 //	db_update
 //===========================================================================
-#if 1
 #define TRASH( x, parent ) \
 	if (( x->sub[0] )) { \
 		if (( x->sub[1] )) addItem( &trash[0], x ); \
 		else if ( x!=parent ) addItem( &trash[1], x ); } \
 	else addItem( &trash[1], x );
-#else
-#define TRASH( x, parent ) \
-	if (( x->sub[0] )) { \
-		if (( x->sub[1] )) addItem( &trash[0], x ); \
-		else addItem( &trash[1], x ); } \
-	else addItem( &trash[1], x );
-#endif
 
 void
 db_update( CNDB *db, CNInstance *parent )
@@ -155,8 +147,8 @@ db_update( CNDB *db, CNInstance *parent )
 */
 {
 	CNInstance *nil = db->nil;
-	if ( nil->sub[0]==nil ) // remove init condition
-		nil->sub[ 0 ] = NULL;
+	if ( !nil->sub[0] ) // remove init condition
+		nil->sub[ 0 ] = nil->sub[ 1 ];
 
 	CNInstance *f, *g, *x;
 	listItem *trash[ 2 ] = { NULL, NULL };

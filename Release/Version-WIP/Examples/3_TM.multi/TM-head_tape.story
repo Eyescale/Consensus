@@ -11,18 +11,13 @@
 				(C,(1,(1,(LEFT,A))))
 				} )
 			) @< // subscribing [default]
-	else on init < *head
 		do : tape : !! Tape (
 			((*,BLANK), 0 )
 #			(( init, * ), A )
 			(( init, ... ):0 0 0 A0 0 0 0 0 0 0 0:)
-			((*,head), *head )
 			) @<
-	else on exit < .
-		do exit
-	else on : state : ? < *tape
-		do : state : %<?>
-		do exit
+	else
+		do exit // just like that
 
 : Head
 	in ?: *state
@@ -39,15 +34,17 @@
 	else
 		on : tape : ? < ..
 			do : tape : %<?> @<
-		else on : state : ? < ..
+		else on : state : ? < *tape
 			do : state : %<?>
 		else on exit < *tape
 			do exit
 
 : Tape
 	on init
+		on : head : ? < .. // assumed concurrent
+			do : head : %<?> @<
+		do : current : (TAPE,TAPE) // instantiate origin
 		do : record : %(( init, * ), . )
-		do : current : (TAPE,TAPE) // instantiate TAPE origin
 	else in ( init )
 		in ?: %(*record:(.,?))
 			do : record : ( %(*record,.) ?: ~. )
@@ -60,9 +57,8 @@
 				do : start : *current
 		else in ?: *start
 			do { '|', ' ' }	// needed for reporting
-			do ~( init )
-			do *head @<
 			do : current : %?
+			do ~( init )
 		else
 			do >"Error: tape: start not set\n"
 			do exit

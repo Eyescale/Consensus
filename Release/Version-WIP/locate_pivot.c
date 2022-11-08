@@ -27,7 +27,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 */
 {
 	int target = bm_scour( expression, EENOK|QMARK|EMARK );
-	if ( target == 0 ) return NULL;
+	if ( target==0 ) return NULL;
 	else target =	( target & EENOK ) ? EENOK :
 			( target & QMARK ) ? QMARK :
 			( target & EMARK ) ? EMARK :
@@ -55,8 +55,8 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	if ( data.stack.flags ) {
 		freeListItem( &data.stack.flags );
 		freeListItem( &data.stack.level );
-		freeListItem( &data.stack.premark );
-	}
+		freeListItem( &data.stack.premark ); }
+
 	return ( traverse_data.done==2 ? p : NULL );
 }
 
