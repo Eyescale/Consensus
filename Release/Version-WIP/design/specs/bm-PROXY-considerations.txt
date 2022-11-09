@@ -3,18 +3,19 @@ Synopsis
 
 Overview
 	We have
-		CNCell:[ entry, ctx:[ this:CNEntity, registry ] ]
+		CNCell:CNEntity:( [ entry, carry ], ctx:Registry )
 
 	where
-		. this->sub[ 0 ] is the cell's CNDB
-		. this->sub[ 1 ] contains the cell's offspring - that is:
+		. cell->ctx->lookupEntry( "%" ) is the cell's CNDB
+		. this->sub[ 0 ]-> sub[ 1 ] contains the cell's offspring,
+		  that is:
 		  cells which this cell produced upon NEW (!!) narrative
 		  occurrences - ready to hatch: see program.c:cnUpdate()
 		. this->as_sub[ 0 ] contains the list of cell's connections
 
 Definitions
 	. A cell connection is a CNEntity in the form ( this, that ) where
-	  this and that are two cell->ctx->this CNEntity
+	  this and that are two CNCell entities
 
 	. A CNDB proxy is a CNInstance - that is: a CNEntity pertaining to
 	  a Consensus CNDB - in the form
@@ -22,14 +23,14 @@ Definitions
 		(( this, that ), NULL )
 
 	  where
-	  	this and that are two cell->ctx->this CNEntity
+	  	this and that are two CNCell entities
 
 	. CNDB proxies are treated as CNDB Base Entities, owing to the fact
 	  that one of their subs is NULL.
 	  They are unnamed, and will show in output results as @@@
 	  In general, releasing a CNDB proxy entity will release the underlying
 	  connection - see below exceptions in the cases of the Narrative
-	  parent (..) and self (%%) Register Variables
+	  parent .. and self %% Register Variables
 
 	. The active @ RegistryEntry contains the cell's active connections,
 	  that is: the list of CNDB proxies to be used in EENO
@@ -46,8 +47,8 @@ Narrative parent Register Variable ..
     Caveats
 	. The Narrative parent Register Variable .. supports all regular proxy
 	  usages (assignment, activation, deactivation, etc.)
-	. do ~< .. or any expression to that effect deactivates the connection
-	. do @< .. or any expression to that effect [re]activates the connection
+	. do .. ~< or any expression to that effect deactivates the connection
+	. do .. @< or any expression to that effect [re]activates the connection
 	. do ~( .. ) or any expression to that effect will deprecate the proxy
 	  entity ((this,parent),NULL) and therefore all its ascendants. It will
 	  also deactivate the underlying (this,parent) connection. However:
@@ -85,8 +86,8 @@ Narrative self Register Variable %%
     Caveats
 	. When used for comparison - cf. query.c:match() - %% simply means
 	  that the tested entity should verify ((.,this),NULL)
-	. do @< %% or any expression to that effect does nothing
-	. do ~< %% or any expression to that effect does nothing
+	. do %% @< or any expression to that effect does nothing
+	. do %% ~< or any expression to that effect does nothing
 	. do ~( %% ) or any expression to that effect will deprecate the proxy
 	  entity ((NULL,this),NULL) and therefore all its ascendants. However:
 	    1. The entity itself will not be released
