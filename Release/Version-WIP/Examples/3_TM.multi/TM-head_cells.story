@@ -80,14 +80,14 @@
 					do : current : %?
 					do : shift : ~.
 					do *head ~<
-				else on ~( ready ) < *RIGHT
+				else on ~( signal ) < *RIGHT
 					do ready~
 		else
 			do >"Error: cell: no head\n"
 			do exit
 	else in : current : ~.
 		in ?: *RIGHT
-			on ~( ready ) < %?
+			on ~( signal ) < %?
 				do exit
 		else do exit
 	else on : current : ?
@@ -99,9 +99,7 @@
 			do rollcall~
 		else on ~( rollcall )
 			do > "%s %s%s":<(first?'|':), (*value?:*BLANK), (*RIGHT?' ':'\n')>
-			do ( *RIGHT ? callout~ : ready~ )
-		else on ~( ready ) < *RIGHT
-			do ready~
+			do ( *RIGHT ? callout~ : signal~ )
 		else on : next : %% < .
 			do : current : %%
 		else on exit < . // alt. { *LEFT, *RIGHT }
