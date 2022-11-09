@@ -6,12 +6,13 @@ Overview
 		CNCell:CNEntity:( [ entry, carry ], ctx:Registry )
 
 	where
-		. cell->ctx->lookupEntry( "%" )->value is the cell's CNDB
-		. this->sub[ 0 ]-> sub[ 1 ] contains the cell's offspring,
+		. cell->sub[ 1 ]->lookupEntry( "%" )->value holds the
+		  cell's CNDB
+		. cell->sub[ 0 ]->sub[ 1 ] contains the cell's offspring,
 		  that is:
 		  cells which this cell produced upon NEW (!!) narrative
 		  occurrences - ready to hatch: see program.c:cnUpdate()
-		. this->as_sub[ 0 ] contains the list of cell's connections
+		. cell->as_sub[ 0 ] contains the list of cell's connections
 
 Definitions
 	. A cell connection is a CNEntity in the form ( this, that ) where
