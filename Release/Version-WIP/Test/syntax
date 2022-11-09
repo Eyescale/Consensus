@@ -1,6 +1,7 @@
 
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
+		do :<
 		do exit
 	else in toto
 		do >"asd":< alpha,

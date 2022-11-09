@@ -33,7 +33,7 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 		CNInstance *proxy = i->ptr;
 		if ( *expression=='{' ) {
 			for ( char *p=expression+1; *p!='}'; p++ ) {
-				if ( bm_verify( proxy, expression, &data )==BM_DONE ) {
+				if ( bm_verify( proxy, p, &data )==BM_DONE ) {
 					addIfNotThere( &results, proxy );
 					break; }
 				p = p_prune( PRUNE_TERM, p ); } }

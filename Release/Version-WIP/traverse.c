@@ -190,7 +190,7 @@ CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 			default:
 				if ( is_separator(*p) ) traverse_data->done = BMTraverseError;
 				else {
-CB_IdentifierCB				p = p_prune( PRUNE_FILTER, p );
+CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' ) {
 CB_SignalCB					p++; }
 					f_cls; break;

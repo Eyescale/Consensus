@@ -271,7 +271,7 @@ case_( dot_identifier_CB )
 	CNInstance *e, *perso = BMContextPerso( ctx );
 	if (( carry )) {
 		perso = bm_inform_context( db, perso, carry );
-		e = db_register( p+1, db ); }
+		e = bm_register( NULL, p+1, db ); }
 	else {
 		e = bm_register( ctx, p+1, db ); }
 	e = db_instantiate( perso, e, db );
@@ -281,7 +281,7 @@ case_( identifier_CB )
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	if (( carry )) {
-		CNInstance *e = db_register( p, db );
+		CNInstance *e = bm_register( NULL, p, db );
 		data->sub[ current ] = newItem( e ); }
 	else {
 		CNInstance *e = bm_register( data->ctx, p, db );

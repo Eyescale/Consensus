@@ -302,7 +302,7 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 			else if (( bm_locate_mark( expression, &xpn ) )) {
 				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } } }
 	else {
-		if (( bm_locate_mark( src, &xpn ) )) {
+		if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
 			// freeListItem( &xpn ); // Assumption: unnecessary
 			event = newPair( x, NULL ); }
 		else if ( !!x && ( bm_locate_mark( expression, &xpn ) )) {
@@ -493,7 +493,7 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 		if ( charscan( p+1, &q ) ) {
 			return db_register( q.s, db ); }
 		return NULL; }
-	else if ( !is_separator(*p) ) {
+	else if ( (ctx) && !is_separator(*p) ) {
 		// registering normal identifier instance
 		Pair *entry = registryLookup( ctx, p );
 		if (( entry )) return entry->value; }

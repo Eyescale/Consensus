@@ -336,6 +336,9 @@ do_input( char *expression, BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
+	if ( !strcmp(expression,":<") )
+		return getchar();
+
 	// extract fmt and args:{ expression(s) }
 	char *p=expression, *q=p_prune( PRUNE_FILTER, p );
 	for ( ; *q==':'; q=p_prune( PRUNE_FILTER, p ) )

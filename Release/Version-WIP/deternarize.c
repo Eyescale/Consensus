@@ -78,7 +78,6 @@ bm_deternarize( char **expression, BMContext *ctx )
 			freeString( s );
 			// release sequence
 			free_deternarized( data.sequence ); } }
-
 	return ( !!deternarized ? ((*expression=deternarized),backup) : NULL );
 }
 

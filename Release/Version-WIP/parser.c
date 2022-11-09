@@ -301,6 +301,9 @@ A:CND_else_( B )
 						*type = (*type&ELSE)|ON_X;
 						f_clr( ASSIGN|INFORMED|NEGATED|FILTERED )
 						f_set(FIRST) }
+			else if ( is_f(ASSIGN) && !is_f(INFORMED|FILTERED) ) {
+				do_( ":_<" )	s_take
+						f_clr(ASSIGN) }
 			else if ( *type&OUTPUT && !is_f(NEGATED|INFORMED|FILTERED) ) {
 				do_( same )	s_take
 						f_set( VECTOR ) }
@@ -330,7 +333,7 @@ A:CND_else_( B )
 				do_( "%<?" )	s_take
 						f_set( MARKED|INFORMED ) }
 			else if ( !is_f(INFORMED|MARKED|NEGATED|EENOV) && ( is_f(SUB_EXPR) ||
-				 ( *type&ON_X ? !is_f(LEVEL) : *type&(IN|ON) ) )) {
+				 ( *type&ON_X ? !is_f(LEVEL|SET) : *type&(IN|ON) ) )) {
 				do_( same )	s_take
 						f_tag( stack, MARKED )
 						f_set( MARKED|INFORMED ) }
@@ -684,7 +687,9 @@ else					; // err
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN|EENOV) ) {
+		on_( '~' ) if ( *type&DO && ( is_f(LEVEL) ?
+				is_f(TERNARY) && !(*stack)->next :
+				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED ) }
 D:CND_endif
