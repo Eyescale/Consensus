@@ -6,7 +6,7 @@ Overview
 		CNCell:CNEntity:( [ entry, carry ], ctx:Registry )
 
 	where
-		. cell->ctx->lookupEntry( "%" ) is the cell's CNDB
+		. cell->ctx->lookupEntry( "%" )->value is the cell's CNDB
 		. this->sub[ 0 ]-> sub[ 1 ] contains the cell's offspring,
 		  that is:
 		  cells which this cell produced upon NEW (!!) narrative
