@@ -93,15 +93,15 @@
 	else on : current : ?
 		do : next : *%?
 	else
-		on ~( ready ) < *RIGHT
-			do ready~
-		else on ~( signal ) < *RIGHT
+		on ~( signal ) < *RIGHT
 			do ( *LEFT ? signal~ : rollcall~ )
 		else on ~( callout ) < *LEFT
 			do rollcall~
 		else on ~( rollcall )
 			do > "%s %s%s":<(first?'|':), (*value?:*BLANK), (*RIGHT?' ':'\n')>
 			do ( *RIGHT ? callout~ : ready~ )
+		else on ~( ready ) < *RIGHT
+			do ready~
 		else on : next : %% < .
 			do : current : %%
 		else on exit < . // alt. { *LEFT, *RIGHT }
