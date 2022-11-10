@@ -53,7 +53,7 @@
 		do : current : %%
 	else in : current : %%
 		on : current : .
-			do ( *LEFT ? sync~ : rollcall~ )
+			do ( *LEFT ? signal~ : rollcall~ )
 		else on ~( callout ) < *LEFT
 			do rollcall~
 		else on ~( rollcall )
@@ -80,26 +80,26 @@
 					do : current : %?
 					do : shift : ~.
 					do *head ~<
-				else on ~( sync ) < *RIGHT
+				else on ~( signal ) < *RIGHT
 					do ready~
 		else
 			do >"Error: cell: no head\n"
 			do exit
 	else in : current : ~.
 		in ?: *RIGHT
-			on ~( sync ) < %?
+			on ~( signal ) < %?
 				do exit
 		else do exit
 	else on : current : ?
 		do : next : *%?
 	else
-		on ~( sync ) < *RIGHT
-			do ( *LEFT ? sync~ : rollcall~ )
+		on ~( signal ) < *RIGHT
+			do ( *LEFT ? signal~ : rollcall~ )
 		else on ~( callout ) < *LEFT
 			do rollcall~
 		else on ~( rollcall )
 			do > "%s %s%s":<(first?'|':), (*value?:*BLANK), (*RIGHT?' ':'\n')>
-			do ( *RIGHT ? callout~ : sync~ )
+			do ( *RIGHT ? callout~ : signal~ )
 		else on : next : %% < .
 			do : current : %%
 		else on exit < . // alt. { *LEFT, *RIGHT }
