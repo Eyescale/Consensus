@@ -1,18 +1,15 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Testing
-		. 3_TM.multi/TM-head_tape.story (to be added)
-	. Pass design/story/{all}
-	. Release
-		. Examples-v2.0
+	. Update docs
+	. Release Version-2.0
+		. Examples
 			. 0_TuringMachine
 			. 1_Schematize
 			. 2_TM.single
 			. 3_TM.multi
 				. TM-head_tape.story
-				. TM-head_tape_cell.story
-				. TM-head_cell_reporter.story << to be written
-		. Additonal examples
+				. TM-head_cell.story
+		. Additonal examples (?)
 			. yak using new Cell design (and literals)
 			. interactive // TBD
 ON-GOING
@@ -27,9 +24,7 @@ NICE TO HAVE
 	. Other EEnoRV as-is
 		on ~( %<_> )
 		on %<_> < .
-		do !! Narrative(
-			%<_>
-			)
+		do !! Narrative( %<_> )
 	. both instantiate.c:bm_conceive() and query.c:match_x() assume that
 	  expression's identifiers are not locale(s), in respectively:
 
@@ -38,19 +33,20 @@ NICE TO HAVE
 
 	  This is the correct assumption. However we might want (TBD) to allow
 	  using %identifier to indicate locale(s) in such expressions.
-	. proper >>>> B%%: Error / Warning handling - vs. exit(-1) / repeat
+	. proper >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
 	. parser.c
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?
 		. integrate 'caught' in CNParserData => all flags
-	. do_input multiple args support
+	. support multiple args in do input
 		do < arg1, arg2, ..., argN > : "format" <
-	. Remodel occurrence->data->expression from char * to TBD (optimized)
 	. Design document: formalize the internal data structures, e.g.
 		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
 	. code cleanup
 		. replace all the for ( ; ; ) with the model found
 	  	  in Base/Examples/6_BTreefy/btree.c
+	. optimization
+		. Remodel occurrence->data->expression from char * to TBD
 	. bm_void() - should bm_instantiate() verify expression?
 		. Pros: instantiate all or nothing
 		. Cons: performances
@@ -73,6 +69,9 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Testing - implemented
+		. Examples/3_TM.multi/TM-head_tape.story
+		. Examples/3_TM.multi/TM-head_cell.story
 	. implemented support for
 		on event < { src1, src2, ... } // one level only
 	. Code Complete
