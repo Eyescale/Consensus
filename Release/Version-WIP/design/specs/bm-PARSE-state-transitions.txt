@@ -51,16 +51,28 @@ Consensus B% Version-1.2
 				_expr
 			cmd_	_expr
 		_expr	expr
-	expr	.	expr
+	expr	expr_	base
+			""
+		_^	expr
+			_#	expr
+		(	(:
+			expr
+		,	expr
+			,.	.
+				,..	expr
+					,...	,...)	(:
+		@	@<	expr
+		~	expr
+		.	expr
 			term
 		*	expr
+			term
 		%	expr
-			%_	expr
 			%<	expr
-				%<.	expr
-		~	expr
+				%<?	expr
+		(_?_:	expr
 		:	expr
-			:_<
+			:_<	expr
 			/
 			:~	:
 				~
@@ -74,17 +86,11 @@ Consensus B% Version-1.2
 					/[\\x	/[\\x_	/[
 		(_?	expr
 			(_?:	expr
-		(_?_:	expr
 		>	>:	expr
 			>\"	>\"\\	>\"
-				>_	:
-					expr
-		(	(:
-			expr
-		,	expr
-			,.	.
-				,..	,...	,...)	(:
+				>_	expr
 		term	expr
+			term~	expr
 		char	char_	expr
 			char\\	char_	expr
 				char\\x	char\\x_ char_ expr
@@ -95,10 +101,4 @@ Consensus B% Version-1.2
 			(::	(:
 				expr
 		|	expr
-		_^	_#
-			expr
-		_#	expr
-		expr_
-	expr_	base
-		""
 

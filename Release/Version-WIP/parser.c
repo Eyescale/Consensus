@@ -292,6 +292,28 @@ A:CND_else_( B )
 				do_( same ) 	s_take }
 			else if ( !is_f(INFORMED) ) {
 				do_( "%" ) }
+		on_( ':' ) if ( s_empty ) {
+				do_( same )	s_take
+						f_set( ASSIGN ) }
+			else if ( is_f(EENOV) || !is_f(INFORMED) )
+				; // err
+			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
+				if ( !is_f(FILTERED) ) {
+					do_( same )	s_add( "," )
+							f_clr( INFORMED )
+							f_set( FILTERED ) } }
+			else if ( is_f(TERNARY) ) {
+				if ( !is_f(FILTERED) ) {
+					do_( "(_?_:" )	s_take
+							f_clr( INFORMED )
+							f_set( FILTERED ) }
+				else if ( !is_f(FIRST) ) {
+					do_( same )	REENTER
+							f_pop( stack, 0 ) } }
+			else if ( !is_f(COMPOUND) ) {
+					do_( ":" )	s_take
+							f_clr( INFORMED )
+							f_set( FILTERED ) }
 		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENOV) ) ) {
 				do_( "/" )	s_take }
 		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|EENOV) )
@@ -337,28 +359,6 @@ A:CND_else_( B )
 				do_( same )	s_take
 						f_tag( stack, MARKED )
 						f_set( MARKED|INFORMED ) }
-		on_( ':' ) if ( s_empty ) {
-				do_( same )	s_take
-						f_set( ASSIGN ) }
-			else if ( is_f(EENOV) || !is_f(INFORMED) )
-				; // err
-			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
-				if ( !is_f(FILTERED) ) {
-					do_( same )	s_add( "," )
-							f_clr( INFORMED )
-							f_set( FILTERED ) } }
-			else if ( is_f(TERNARY) ) {
-				if ( !is_f(FILTERED) ) {
-					do_( "(_?_:" )	s_take
-							f_clr( INFORMED )
-							f_set( FILTERED ) }
-				else if ( !is_f(FIRST) ) {
-					do_( same )	REENTER
-							f_pop( stack, 0 ) } }
-			else if ( !is_f(COMPOUND) ) {
-					do_( ":" )	s_take
-							f_clr( INFORMED )
-							f_set( FILTERED ) }
 		on_( ')' ) if ( is_f(EENOV) ) {
 				if ( are_f(LEVEL|INFORMED) ) {
 					do_( same )	s_take
@@ -430,6 +430,26 @@ CND_ifn( mode==BM_STORY, C )
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_take
 			end
+	in_( "@" ) bgn_
+		on_( '<' )	do_( "@<" )	s_take
+		end
+		in_( "@<" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "expr" )	REENTER
+			end
+	in_( "~" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '~' )	do_( "expr" )
+		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
+				do_( "expr" )	REENTER
+						s_add( "~" ) }
+			else {	do_( "expr" )	REENTER
+						s_add( "~" )
+						f_set( NEGATED ) } // object is to prevent MARK
+		ons( "{}?" )	; //err
+		on_other	do_( "expr" )	REENTER
+						s_add( "~" )
+		end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '.' )	do_( "expr" )	s_take
@@ -481,30 +501,10 @@ CND_ifn( mode==BM_STORY, C )
 							f_set( FILTERED )
 			ons( ",)>" )	do_( "expr" )	REENTER
 			end
-	in_( "~" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '~' )	do_( "expr" )
-		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
-				do_( "expr" )	REENTER
-						s_add( "~" ) }
-			else {	do_( "expr" )	REENTER
-						s_add( "~" )
-						f_set( NEGATED ) } // object is to prevent MARK
-		ons( "{}?" )	; //err
-		on_other	do_( "expr" )	REENTER
-						s_add( "~" )
-		end
-	in_( "@" ) bgn_
-		on_( '<' )	do_( "@<" )	s_take
-		end
-		in_( "@<" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr" )	REENTER
-			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '~' )	do_( ":~" )
 		on_( '/' ) 	do_( "/" )	s_take
+		on_( '~' )	do_( ":~" )
 		on_( '<' ) if ( !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( ":_<" )	s_take }
 		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
@@ -534,12 +534,12 @@ CND_ifn( mode==BM_STORY, C )
 				ons( " \t" )	do_( same )
 				on_( '<' )	do_( ":_<" )	s_take
 				end
-			in_( ":_<" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '\n' )	do_( "expr" )	REENTER
-								*type = (*type&ELSE)|INPUT;
-								f_set( INFORMED )
-				end
+		in_( ":_<" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "expr" )	REENTER
+							*type = (*type&ELSE)|INPUT;
+							f_set( INFORMED )
+			end
 	in_( "/" ) bgn_
 		on_( '/' )	do_( "expr" )	s_take
 						f_set( INFORMED )
@@ -759,6 +759,19 @@ D:CND_endif
 		ons( "({" )	do_( "expr" )	REENTER
 						f_set( COMPOUND )
 		end
+	//----------------------------------------------------------------------
+	// bm_parse:	Expression End
+	//----------------------------------------------------------------------
+	in_( "expr_" )
+_CB( ExpressionTake, mode, data );
+		bgn_
+			on_any
+if ( mode==BM_INPUT ) {		do_( "" ) }
+else {				do_( "base" )	f_reset( FIRST, 0 );
+						TAB_CURRENT = 0;
+						data->opt = 0;
+	if ( mode==BM_STORY ) {			*type = 0; } }
+			end
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
