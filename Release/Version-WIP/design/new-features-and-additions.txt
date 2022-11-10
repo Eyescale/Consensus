@@ -6,7 +6,7 @@ Synopsis
 	. The name of the Narrative pipe Register Variable was changed
 	  from %! in Version-1.x to %| in Version-2.0
 
-	. The following alternative variable assignment syntax is allowed
+	. The following variable assignment syntax is allowed
 
 		in/on/do : variable, value
 
@@ -29,11 +29,14 @@ Synopsis
 
 	  Conversely, when the query signus ? is included in the value
 	  part of the assignment occurrence, then the %? mark register
-	  variable hold the corresponding query result, if any, and the
+	  variable holds the corresponding query result, if any, and
 	  %! holds the instance corresponding to the variable part of
 	  the query result.
 
     Additions
+	The following features were added to Version-1.2 features - modulo
+	changes listed above
+
 	    	Feature Name			Expression			Comment
 
 	Instantiate			do !! Narrative ( ... )
@@ -50,15 +53,20 @@ Synopsis
 	Unsubscribe			do expression ~<
 					do : handle : expression ~<
 
+	Pause				do :<				useful for debugging
+
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
 	EENO Register Variables		%<
 					%<?>
 					%<!>
-					%<?:sub>			sub is a valid expression whose terms
-					%<!:sub>			are restricted to the wildcard signus .
-									and a single optional query signus ?
+					%<?:sub>			sub is a B% valid expression whose terms
+					%<!:sub>			are a combination of
+									 . B% valid identifiers
+									 . the wildcard signus .
+									 . a single optional query signus ?
+									 . the negation signus ~
 	this Register Variable		%%
 
 	parent Register Variable	..
@@ -126,7 +134,11 @@ Description
 
 	Same as above, with unsubscribe from instead of subscribe to.
 
-    4. External Event Narrative Occurrence (EENO)
+    4. Pause
+
+	Execution will resume upon the User's pressing any key on the keyboard
+
+    5. External Event Narrative Occurrence (EENO)
 
 	External Event Narrative Occurrences (EENO) are occurrences in the form
 
@@ -151,15 +163,15 @@ Description
 		.. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
 
 	will be dereferenced within the narrative instance's own cell's CNDB
-	PRIOR to the query's being launched.
+	PRIOR to the query's being launched
 
 	Such is the limitation imposed, by design, to the Consensus B% inter-
 	cell communication protocol, in that it allows only to query manifested
 	changes - and not one another's internal condition.
 
-    5. EENO Register Variables
+    6. EENO Register Variables
 
-	The EENO Register Variables %<(?) and %<(!) allow subsequent references
+	The EENO Register Variables %<?> and %<!> allow subsequent references
 	to the EENO query results to be made by the narrative, using
 
 		%<?>	to represent event = first match
@@ -192,7 +204,21 @@ Description
 		%<?>	matching value
 		%<!>	matching variable
 
-    6. Narrative this Register Variable
+	Note that when found in occurrences the EENOV register variables %<?> %<!>
+	will be dereferenced inside the local CNDB prior to the occurrence query
+	being launched, with the following exceptions:
+
+		in %<?:sub>	// as-is
+		in %<!:sub>	// as-is
+
+	where the sub expression is evaluated directly in the source CNDB, and
+
+		do expression
+
+	where the %<?> and %<!> expression terms, if any are present as-is (that
+	is: unfiltered etc.) will be converted locally, modulo instantiation.
+
+    7. Narrative this Register Variable
 
 	The Narrative this Register Variable %% allows a proxy to the narrative's
 	current context's this CNInstance to be used for comparison - e.g.
@@ -207,7 +233,7 @@ Description
 				// subscribe to my source's new connection
 				do @< %<?>
 
-    7. Narrative parent Register Variable
+    8. Narrative parent Register Variable
 
 	Likewise the Narrative parent Register Variable .. references a proxy to
 	the narrative's parent cell - provided parent did not unsubscribe upon
