@@ -688,15 +688,20 @@ else					; // err
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
 		on_( '~' ) if ( *type&DO && ( is_f(LEVEL) ?
-				is_f(TERNARY) && !(*stack)->next :
+				is_f(TERNARY) && f_signal_authorize(stack) :
 				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
-				do_( "expr" )	s_take
-						f_set( INFORMED ) }
+				do_( "term~" )	s_take }
 D:CND_endif
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other	do_( same )	s_take
 		end
+		in_( "term~" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '?' )	; // err
+			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			end
 	in_( "char" ) bgn_
 		on_( '\\' )	do_( "char\\" )	s_take
 		on_printable	do_( "char_" )	s_take

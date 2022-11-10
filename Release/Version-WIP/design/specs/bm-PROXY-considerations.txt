@@ -3,19 +3,21 @@ Synopsis
 
 Overview
 	We have
-		CNCell:CNEntity:( [ entry, carry ], ctx:Registry )
+		CNCell:CNEntity:( nucleus:[ entry, carry ], ctx:Registry )
 
 	where
-		. cell->sub[ 1 ]->lookupEntry( "%" )->value holds the
-		  cell's CNDB
-		. cell->sub[ 0 ]->sub[ 1 ] contains the cell's offspring,
-		  that is:
-		  cells which this cell produced upon NEW (!!) narrative
+		. cell->nucleus->entry holds the cell's CNStory entry
+		. cell->nucleus->carry holds the cell's progeny, that is:
+		  cells which this cell produced upon new (!!) narrative
 		  occurrences - ready to hatch: see program.c:cnUpdate()
-		. cell->as_sub[ 0 ] contains the list of cell's connections
+		. cell->ctx->lookupEntry( "%" )->value holds the cell's CNDB
+		. cell->as_sub[ 0 ] holds the list of this cell's connections
+		  to:( this, that )
+		. cell->as_sub[ 1 ] holds the list of this cell's subscribers
+		  from:( that, this )
 
 Definitions
-	. A cell connection is a CNEntity in the form ( this, that ) where
+	. A CNCell connection is a CNEntity in the form ( this, that ) where
 	  this and that are two CNCell entities
 
 	. A CNDB proxy is a CNInstance - that is: a CNEntity pertaining to
@@ -26,15 +28,16 @@ Definitions
 	  where
 	  	this and that are two CNCell entities
 
-	. CNDB proxies are treated as CNDB Base Entities, owing to the fact
-	  that one of their subs is NULL.
-	  They are unnamed, and will show in output results as @@@
-	  In general, releasing a CNDB proxy entity will release the underlying
-	  connection - see below exceptions in the cases of the Narrative
-	  parent .. and self %% Register Variables
+	. CNDB proxies are treated as CNDB Base Entities, due to the fact that
+	  one of their subs is NULL.
+	  These are unnamed, and will show in output results as @@@
 
 	. The active @ RegistryEntry contains the cell's active connections,
 	  that is: the list of CNDB proxies to be used in EENO
+
+	  In general, releasing a CNDB proxy entity will release the underlying
+	  connection - see below exceptions in the cases of the Narrative
+	  parent .. and self %% Register Variables
 
 	  Note that %@ will not be made public in this release (Version-2.0)
 

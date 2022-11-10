@@ -43,10 +43,10 @@
 	add_item( stack, flags );
 #define	f_pop( stack, save ) \
 	flags = pop_item( stack )|(flags&(save));
-#define f_tag( stack, flag ) \
-	traverse_tag( flags, stack, flag );
 #define f_cls \
 	f_clr(NEGATED) f_set(INFORMED)
+#define f_tag( stack, flag ) \
+	traverse_tag( flags, stack, flag );
 
 inline void
 traverse_tag( int flags, listItem **stack, int flag )
@@ -60,17 +60,28 @@ traverse_tag( int flags, listItem **stack, int flag )
 			flags = icast.value;
 			icast.value |= MARKED;
 			i->ptr = icast.ptr;
-			if (!( icast.value & LEVEL )) break;
-		}
+			if (!( icast.value & LEVEL )) break; }
 		break;
 	case COMPOUND:
 		for ( listItem *i=*stack; i!=NULL; i=i->next ) {
 			icast.ptr = i->ptr;
 			icast.value |= COMPOUND;
-			i->ptr = icast.ptr;
-		}
-		break;
-	}
+			i->ptr = icast.ptr; }
+		break; }
+}
+
+inline int
+f_signal_authorize( listItem **stack )
+/*
+	Assumption: TERNARY is set all the way
+*/
+{
+	union { void *ptr; int value; } icast;
+	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
+		icast.ptr = i->ptr;
+		int flags = icast.value;
+		if is_f( FIRST ) return !(i->next); }
+	return 1;
 }
 
 //===========================================================================
