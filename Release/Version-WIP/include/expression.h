@@ -11,6 +11,5 @@ int		bm_void( char *, BMContext * );
 int		bm_inputf( char *format, listItem *args, BMContext * );
 int		bm_outputf( char *format, listItem *args, BMContext * );
 
-char *		bm_deternarize( char **expression, BMContext * );
 
 #endif	// EXPRESSION_H

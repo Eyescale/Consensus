@@ -4,10 +4,10 @@
 #include "string_util.h"
 #include "traverse.h"
 #include "cell.h"
-#include "eeno.h"
+#include "eenov.h"
 
 //===========================================================================
-//	eeno_output / eeno_inform / eeno_lookup / eeno_match
+//	eenov_output / eenov_inform / eenov_lookup / eenov_match
 //===========================================================================
 typedef struct {
 	CNInstance *src;
@@ -17,13 +17,13 @@ typedef struct {
 	int success;
 	CNDB *db;
 } EEnoData;
-static inline int eeno_read( BMContext *, char *, EEnoData * );
+static inline int eenov_read( BMContext *, char *, EEnoData * );
 
 int
-eeno_output( BMContext *ctx, int type, char *p )
+eenov_output( BMContext *ctx, int type, char *p )
 {
 	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
+	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: break;
 	case 1: ;
 		CNDB *db = BMContextDB( ctx );
@@ -36,10 +36,10 @@ eeno_output( BMContext *ctx, int type, char *p )
 	return 0;
 }
 CNInstance *
-eeno_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
+eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 {
 	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
+	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return NULL;
 	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
 	default: ;
@@ -48,10 +48,10 @@ eeno_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 		return bm_inform_context( db_x, data.result, ((dst)?dst:ctx) ); }
 }
 CNInstance *
-eeno_lookup( BMContext *ctx, CNDB *db, char *p )
+eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 {
 	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
+	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return NULL;
 	case 1: return data.src;
 	default: ;
@@ -61,14 +61,14 @@ eeno_lookup( BMContext *ctx, CNDB *db, char *p )
 		return bm_lookup_x( db_x, data.result, ctx, db ); }
 }
 int
-eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
+eenov_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 /*
 	Note that when invoked by query.c:match() then
 		BMContextDB(ctx)==db_x
 */
 {
 	EEnoData data;
-	switch ( eeno_read(ctx,p,&data) ) {
+	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return 0;
 	case 1: return db_match( db_x, x, BMContextDB(ctx), data.src ); 
 	default: ;
@@ -78,22 +78,22 @@ eeno_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 }
 
 //---------------------------------------------------------------------------
-//	eeno_read
+//	eenov_read
 //---------------------------------------------------------------------------
-#include "eeno_traversal.h"
+#include "eenov_traversal.h"
 
 static inline int
-eeno_read( BMContext *ctx, char *p, EEnoData *data )
+eenov_read( BMContext *ctx, char *p, EEnoData *data )
 {
-	EEnoRV *eeno = bm_context_lookup( ctx, "<" );
-	if ( !eeno ) return 0;
-	data->src = eeno->src;
+	EEnoRV *eenov = bm_context_lookup( ctx, "<" );
+	if ( !eenov ) return 0;
+	data->src = eenov->src;
 
 	p+=2; // skip leading "%<"
 	CNInstance *y;
 	switch ( *p++ ) {
-	case '?': y = eeno->event->name; break;
-	case '!': y = eeno->event->value; break;
+	case '?': y = eenov->event->name; break;
+	case '!': y = eenov->event->value; break;
 	default: return 1; }
 
 	if ( *p++==':' ) {
@@ -109,7 +109,7 @@ eeno_read( BMContext *ctx, char *p, EEnoData *data )
 		traverse_data.stack = &data->stack.flags;
 		traverse_data.done = 0;
 
-		eeno_traversal( p, &traverse_data, FIRST );
+		eenov_traversal( p, &traverse_data, FIRST );
 
 		return ( data->success ? 2 : 0 ); }
 	else {
@@ -118,9 +118,9 @@ eeno_read( BMContext *ctx, char *p, EEnoData *data )
 }
 
 //---------------------------------------------------------------------------
-//	eeno_traversal
+//	eenov_traversal
 //---------------------------------------------------------------------------
-BMTraverseCBSwitch( eeno_traversal )
+BMTraverseCBSwitch( eenov_traversal )
 case_( identifier_CB )
 	CNInstance *x = data->instance;
 	int success = 0;

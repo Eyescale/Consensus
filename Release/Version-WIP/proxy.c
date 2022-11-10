@@ -5,7 +5,7 @@
 #include "traverse.h"
 #include "proxy.h"
 #include "cell.h"
-#include "eeno.h"
+#include "eenov.h"
 
 // #define DEBUG
 
@@ -197,7 +197,7 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 		case '?': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"?") );
 		case '!': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
 		case '%': return db_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
-		case '<': return eeno_match( ctx, p, db_x, x ); }
+		case '<': return eenov_match( ctx, p, db_x, x ); }
 		return ( !x->sub[0] && *db_identifier(x,db_x)=='%' ); }
 
 	if ( !x->sub[0] ) {

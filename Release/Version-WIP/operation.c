@@ -4,6 +4,7 @@
 #include "string_util.h"
 #include "cell.h"
 #include "operation.h"
+#include "deternarize.h"
 #include "expression.h"
 #include "instantiate.h"
 #include "proxy.h"

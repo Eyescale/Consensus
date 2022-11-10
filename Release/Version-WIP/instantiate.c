@@ -5,8 +5,20 @@
 #include "database.h"
 #include "traverse.h"
 #include "instantiate.h"
+#include "eenov.h"
 #include "proxy.h"
 #include "cell.h"
+
+// #define DEBUG
+
+#ifdef DEBUG
+#define DBG_VOID( p ) \
+	if ( bm_void( p, ctx ) ) { \
+		fprintf( stderr, ">>>>> B%%: bm_instantiate(): VOID: %s\n", p ); \
+		exit( -1 ); }
+#else
+#define	DBG_VOID( p )
+#endif
 
 //===========================================================================
 //	bm_instantiate
@@ -175,7 +187,7 @@ case_( register_variable_CB )
 			addItem( sub, i->ptr );
 		_break
 	case '<':
-		e = eeno_inform( data->ctx, data->db, p, data->carry );
+		e = eenov_inform( data->ctx, data->db, p, data->carry );
 		if ( !e ) _return( 2 );
 		data->sub[ current ] = newItem( e );
 		_break

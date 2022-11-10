@@ -14,8 +14,8 @@ typedef struct {
 
 CNProgram *newProgram( CNStory *, char *inipath );
 void	freeProgram( CNProgram * );
-int	cnOperate( CNProgram * );
 void	cnUpdate( CNProgram * );
+int	cnOperate( CNProgram * );
 
 
 #endif	// PROGRAM_H

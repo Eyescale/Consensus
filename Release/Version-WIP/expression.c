@@ -9,6 +9,7 @@
 #include "narrative.h"
 #include "scour.h"
 #include "proxy.h"
+#include "eenov.h"
 
 // #define DEBUG
 
@@ -21,7 +22,7 @@ bm_feel( BMQueryType type, char *expression, BMContext *ctx )
 	switch ( type ) {
 	case BM_CONDITION: // special case: EEnoRV as-is
 		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) )
-			return eeno_lookup( ctx, NULL, expression );
+			return eenov_lookup( ctx, NULL, expression );
 		// no break
 	default:
 		return bm_query( type, expression, ctx, NULL, NULL ); }
@@ -273,7 +274,7 @@ bm_output( int type, char *arg, BMContext *ctx )
 {
 	// Special case: EEnoRV as-is
 	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
-		return eeno_output( ctx, type, arg );
+		return eenov_output( ctx, type, arg );
 
 	OutputData data = { type, 1, NULL };
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );

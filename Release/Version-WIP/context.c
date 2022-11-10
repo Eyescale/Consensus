@@ -6,6 +6,7 @@
 #include "scour.h"
 #include "locate_param.h"
 #include "proxy.h"
+#include "eenov.h"
 
 //===========================================================================
 //	newContext / freeContext
@@ -406,7 +407,7 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 		case '!': return bm_context_lookup( ctx, "!" );
 		case '|': return bm_context_lookup( ctx, "|" );
 		case '%': return BMContextSelf( ctx );
-		case '<': return eeno_lookup( ctx, db, p ); }
+		case '<': return eenov_lookup( ctx, db, p ); }
 		break;
 	case '\'': ; // looking up single character identifier instance
 		char_s q;

@@ -1,5 +1,5 @@
-#ifndef EENO_TRAVERSAL_H
-#define EENO_TRAVERSAL_H
+#ifndef EENOV_TRAVERSAL_H
+#define EENOV_TRAVERSAL_H
 
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -21,7 +21,7 @@ static BMTraverseCB
 
 #include "traversal.h"
 
-static BMTraversal eeno_traversal;
+static BMTraversal eenov_traversal;
 
 
-#endif	// EENO_TRAVERSAL_H
+#endif	// EENOV_TRAVERSAL_H

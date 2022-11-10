@@ -13,10 +13,10 @@ SRCS =	narrative.c \
 			locate_param.c \
 		operation.c \
 			deternarize.c \
-			expression.c \
 			instantiate.c \
-				eeno.c \
-			query.c \
+				eenov.c \
+			expression.c \
+				query.c \
 				locate_pivot.c \
 					scour.c \
 			proxy.c

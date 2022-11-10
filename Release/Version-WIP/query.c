@@ -6,6 +6,7 @@
 #include "locate_pivot.h"
 #include "proxy.h"
 #include "query.h"
+#include "eenov.h"
 
 // #define DEBUG
 
@@ -534,7 +535,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 			case '?': return ( y==bm_context_lookup( ctx, "?" ) );
 			case '!': return ( y==bm_context_lookup( ctx, "!" ) );
 			case '%': return ( y==BMContextSelf(ctx) );
-			case '<': return eeno_match( ctx, p, data->db, y ); }
+			case '<': return eenov_match( ctx, p, data->db, y ); }
 			return ( !y->sub[0] && *db_identifier(y,data->db)=='%' );
 		default:
 			if ( is_separator(*p) ) break;

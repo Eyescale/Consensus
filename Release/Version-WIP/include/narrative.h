@@ -32,7 +32,6 @@ typedef enum {
 	BM_INPUT,
 	BM_STORY,
 } BMReadMode;
-void *	bm_read( BMReadMode, ... );
 
 typedef struct {
 	struct {
@@ -55,6 +54,7 @@ typedef Registry CNStory;
 CNStory *	readStory( char *path );
 void		freeStory( CNStory * );
 int		cnStoryOutput( FILE *, CNStory * );
+void *		bm_read( BMReadMode, ... );
 
 
 #endif	// NARRATIVE_H
