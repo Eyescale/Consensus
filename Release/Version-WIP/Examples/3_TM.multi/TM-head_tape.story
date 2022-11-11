@@ -28,7 +28,7 @@
 				do : shift : %(%?:(.,(?,.)))
 				do : state : %(%?:(.,(.,?)))
 			else
-				do >"Error: head: unable to reference ( state, symbol )\n"
+				do >"Error: head: unable to dereference ( state, symbol )\n"
 				do exit
 	else
 		on : tape : ? < ..

@@ -16,13 +16,13 @@ typedef struct {
 	CNInstance *instance;
 	int success;
 	CNDB *db;
-} EEnoData;
-static inline int eenov_read( BMContext *, char *, EEnoData * );
+} EEnovData;
+static inline int eenov_read( BMContext *, char *, EEnovData * );
 
 int
 eenov_output( BMContext *ctx, int type, char *p )
 {
-	EEnoData data;
+	EEnovData data;
 	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: break;
 	case 1: ;
@@ -38,7 +38,7 @@ eenov_output( BMContext *ctx, int type, char *p )
 CNInstance *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 {
-	EEnoData data;
+	EEnovData data;
 	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return NULL;
 	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
@@ -50,7 +50,7 @@ eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 CNInstance *
 eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 {
-	EEnoData data;
+	EEnovData data;
 	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return NULL;
 	case 1: return data.src;
@@ -67,7 +67,7 @@ eenov_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 		BMContextDB(ctx)==db_x
 */
 {
-	EEnoData data;
+	EEnovData data;
 	switch ( eenov_read(ctx,p,&data) ) {
 	case 0: return 0;
 	case 1: return db_match( db_x, x, BMContextDB(ctx), data.src ); 
@@ -83,7 +83,7 @@ eenov_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 #include "eenov_traversal.h"
 
 static inline int
-eenov_read( BMContext *ctx, char *p, EEnoData *data )
+eenov_read( BMContext *ctx, char *p, EEnovData *data )
 {
 	EEnoRV *eenov = bm_context_lookup( ctx, "<" );
 	if ( !eenov ) return 0;

@@ -1,30 +1,13 @@
 #ifdef TRAVERSAL_H
 
-#define BMTraverseError -1
-
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
-static inline char * _traverse( char *, BMTraverseData *, int );
+static inline BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
+	char **, int *, int );
 
 static inline char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
-{
-	char *p = _traverse( expression, traverse_data, flags );
-	switch ( traverse_data->done ) {
-	case BMTraverseError:
-		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
-			"in expression: %s, at %s\n", expression, p ); }
-	return p;
-}
-
-//===========================================================================
-//	_traverse
-//===========================================================================
-static inline BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, char **, int *, int );
-
-static inline char *
-_traverse( char *expression, BMTraverseData *traverse_data, int flags )
 {
 	int f_next, mode = traverse_data->done;
 	traverse_data->done = 0;
@@ -41,12 +24,15 @@ CB_TermCB	} while ( 0 );
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
 			case '>':
-				if ( is_f(VECTOR) ) {
+				if is_f( EENOV ) {
+CB_EEnovEndCB				f_clr( EENOV )
+					f_cls }
+				else if is_f( VECTOR ) {
 					f_clr( VECTOR )
 					f_cls }
-CB_EEnoEndCB			p++; break;
+				p++; break;
 			case '<':
-				if ( is_f(INFORMED) ) // EENO
+				if is_f( INFORMED ) // EENO
 #ifdef BMTernaryOperatorCB
 					f_clr( NEGATED|FILTERED|INFORMED )
 #else
@@ -100,11 +86,14 @@ CB_SubExpressionCB			p++;
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
 					p++; break; }
+				else if ( p[1]=='<' ) {
+CB_RegisterVariableCB			f_cls; p+=2;
+					if ( strmatch( "?!", *p ) ) {
+						f_set( EENOV )
+						p = p_prune( PRUNE_TERM, p ); }
+					break; }
 				else if ( strmatch( "?!|%<", p[1] ) ) {
-CB_RegisterVariableCB			f_cls; p++;
-					if ( *p=='<' && strmatch( "?!", p[1] ) )
-						p = p_prune( PRUNE_TERM, p+1 );
-					p++; break; }
+CB_RegisterVariableCB			f_cls; p+=2; break; }
 				else {
 CB_ModCharacterCB			f_cls; p++; break; }
 				break;
@@ -193,8 +182,11 @@ CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' ) {
 CB_SignalCB					p++; }
-					f_cls; break;
-			} } }
+					f_cls; break; } } }
+	switch ( traverse_data->done ) {
+	case BMTraverseError:
+		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
+			"in expression: %s, at %s\n", expression, p ); }
 	traverse_data->flags = flags;
 	traverse_data->p = p;
 	return p;

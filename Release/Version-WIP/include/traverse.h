@@ -85,8 +85,9 @@ f_signal_authorize( listItem **stack )
 }
 
 //===========================================================================
-//	traverse callbacks
+//	bm_traverse callbacks
 //===========================================================================
+#define BMTraverseError -1
 typedef struct {
 	void *user_data;
 	listItem **stack;
