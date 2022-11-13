@@ -162,8 +162,8 @@
 			do (((schema, %((Rule,%(%?:((.,?),.))),(Schema,?:~'\0'))), %(%?:(.,?))), %? )
 		else in .DONE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
-				in ~.: .(((schema,.),.),.)
-					do .FAIL // all successor schemas failed
+				in .(((schema,.),.),.)
+				else do .FAIL // all successor schemas failed
 		else in .READY
 			on : record : .
 				do ~( .READY ) // expecting TAKE from rule schemas
