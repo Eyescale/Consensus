@@ -114,9 +114,9 @@
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first ']' schema frame
-			in ~.: *s: ((.,(']',*f)),.)
-				in *f:( ., ?:~EOF ):~(record,*)
-					do >"%s":%?
+			in *s: ((.,(']',*f)),.)
+			else in *f:( ., ?:~EOF ):~(record,*)
+				do >"%s":%?
 			// move on to next frame
 			in ?: ( *f, . )
 				do : f : %?
@@ -188,7 +188,7 @@
 			in ( %(r,?), ((.,%(s,?)),.) )
 			else in ((.,%(s,?)), r ): ~s
 			else do .FAIL // defunct
-		on r: %(((.,'\0'),.), ? ) // right-recursion case
+		on (((.,'\0'),.), r ) // right-recursion case
 			in ((.,start), r ): ~s
 				do .FAIL // defunct
 	else in .READY
