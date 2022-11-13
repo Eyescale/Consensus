@@ -146,18 +146,14 @@
 			in start: ( '[', ? )
 				do : event : %(%?:(.,?))
 	else on .FAIL
-		in (((schema,.),.), r ): ~%(?,FAIL)
+		in r: %( (((schema,.),.), ? ): ~%(?,FAIL) )
 			do ~( s )
-		else in ?: (((schema,.),.), r )
-			in %?: s // not a MUST, but avoids race condition
-				do ~( r ) // all feeder schemas failed
+		else do ~( r ) // all feeder schemas failed
 
-	else in r: ~((.,base),.): ~%( ?, (((schema,.),.),.))
-		in ?: (((schema,.),.), r )
-			in %?: s // not a MUST, but avoids race condition
-				do ~( r ) // all subscribers failed
+	else in r: ~%( ?, (((schema,.),.),.)): ~((.,base),.)
+		do ~( r ) // all subscribers failed
 
-	else in ( ?:((rule,.),.), s ) // pending on rule
+	else in .( ?, s ) // s pending on rule
 		in .DONE
 			on ~( .(((schema,.),.),.) ) // successor schema failed
 				in .(((schema,.),.),.)
@@ -179,8 +175,8 @@
 			else in s: ~%(?,CYCLIC): %( ?, (((schema,.),.),.))
 				do .DONE // all non-cyclic rule schemas complete
 			else do .FAIL // either cyclic (done) or has no successor
-	else on ~( ((rule,.),.), s )
-		do .FAIL // feeder rule failed
+	else on ~( ., s )
+		do .FAIL // feeder rule failed (cannot be predecessor schema here)
 
 	else in .DONE /* chill - so long as
 		   r's subscriber schema, or, to allow left-recursion, this schema,
@@ -192,7 +188,7 @@
 			in ( %(r,?), ((.,%(s,?)),.) )
 			else in ((.,%(s,?)), r ): ~s
 			else do .FAIL // defunct
-		on (((.,'\0'),.), r ) // right-recursion case
+		on r: %(((.,'\0'),.), ? ) // right-recursion case
 			in ((.,start), r ): ~s
 				do .FAIL // defunct
 	else in .READY
@@ -208,11 +204,11 @@
 					in (( %?, % ), '\0' ) // FORK on null-schema
 						do .(((schema, %(*p:(.,?))), ('[',*record)), r )
 					in ?:((rule,%?), ('[',*record)) // rule already instantiated
-						do ( %?, s )
+						do .( %?, s )
 						do .CYCLIC
 					else do ( ((rule,%?), ('[',*record)) | {
 						(((schema, %((%?,%),?:~'\0')), %(%|:(.,?))), %| ),
-						( %|, s ) } )
+						.( %|, s ) } )
 				else in (( %?, % ), '\0' )
 					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
@@ -256,11 +252,11 @@
 				in (( %?, % ), '\0' ) // FORK on null-schema
 					do .(((schema, %(*p:(.,?))), (']',*record)), r )
 				in ?: ((rule,%?), (']',*record)) // rule already instantiated
-					do ( %?, s )
+					do .( %?, s )
 					do .CYCLIC
 				else do ( ((rule,%?), (']',*record)) | {
 					(((schema, %((%?,%),?:~'\0')), %(%|:(.,?))), %| ),
-					( %|, s ) } )
+					.( %|, s ) } )
 			else in (( %?, % ), '\0' )
 				do : p : %(*p:(.,?))
 			else
