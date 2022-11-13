@@ -25,7 +25,7 @@ newContext( CNEntity *cell, CNEntity *parent )
 	registryRegister( ctx, "", id ); // aka. %% and .. (proxies)
 	registryRegister( ctx, "%", db );
 	registryRegister( ctx, "@", active ); // active connections (proxies)
-	registryRegister( ctx, ".", NULL ); // sub-narrative instance
+	registryRegister( ctx, ".", NULL ); // aka. perso
 	registryRegister( ctx, "?", NULL ); // aka. %?
 	registryRegister( ctx, "!", NULL ); // aka. %!
 	registryRegister( ctx, "|", NULL ); // aka. %|
@@ -230,6 +230,9 @@ bm_context_flush( BMContext *ctx )
 		case '|':
 			freeListItem((listItem **) &entry->value );
 			last_i = i;
+			break;
+		case '.':
+			entry->value = NULL;
 			break;
 		default:
 			if ( !is_separator( *name ) ) {
