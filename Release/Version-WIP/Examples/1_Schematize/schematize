@@ -17,8 +17,7 @@
 		on ( INPUT ) // start base rule instance - feeding base
 			do ( ((rule,base), (']',(record,*))) | {
 				(((schema, %((base,%),?:~'\0')), %((.,?):%|)), %| ),
-				( %|, base )
-			} )
+				( %|, base ) } )
 		else in ?: %( ?:((rule,.),.), base )
 			in ( %?, READY )
 				on ( %?, READY )
@@ -255,6 +254,8 @@
 			do .( ']', *record ) // TAKE consumed
 		else in ?: %((?,.):*position):( %, . )
 			in %?: ( %, %((?,%),~'\0'))
+				in %?: ( %, %((?,%),'\0')) // FORK on null-schema
+					do .(((schema, %((.,?):*position)), (']',*record)), r )
 				in ?: ((rule,%((.,?):%?)), (']',*record)) // rule already instantiated
 					do ( %?, this )
 					do .CYCLIC
