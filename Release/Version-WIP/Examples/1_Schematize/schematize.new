@@ -1,6 +1,6 @@
 /*
-	Usage: ./B% -f Scheme/file schematize < input
-	---------------------------------------------
+	Usage: ./B% -f Scheme/file schematize.new < input
+	-------------------------------------------------
 */
 	on init
 		// base rule definition must exist and have non-null schema
@@ -17,8 +17,8 @@
 		on ( INPUT ) // start base rule instance - feeding base
 			do ( ((rule,base), (']',(record,*))) | {
 				(((schema, %((base,%),?:~'\0')), %(%|:(.,?))), %| ),
-				( %|, base ) } )
-		else in ( ?:((rule,.),.), base )
+				.( %|, base ) } )
+		else in .( ?, base )
 			in ( %?, READY )
 				on ( %?, READY )
 					in : carry : ?
@@ -40,7 +40,7 @@
 				in (((schema,.),.),%?): ~%(?,DONE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, DONE ) // all feeder schemas complete
-		else on ~( ((rule,.),.), base ) // FAIL
+		else on ~( ., base ) // FAIL
 			in : record : ~((record,*),.) // not first input
 				do : record : %(*record:(?,.))
 				do : carry : %(*record:(.,?))
@@ -64,7 +64,7 @@
 			// test if r has other feeders starting at s's starting (flag,frame)
 			in (((schema,.),%(*s:((.,?),.))), %? ): ~*s
 				do >" *** Error: Yak: rule '%_': multiple interpretations ***\n": %(%?:((.,?),.))
-				do ~( *, s )
+				do : s : ~.
 			in ((((schema,.),.),.), *s ) // s has predecessor: r popped
 			else in %?:((.,base),.) // base rule pushed: no output
 			else // output r begin
@@ -138,8 +138,8 @@
 	.p .event
 	on ( s )
 		// schema has predecessor AND is in null position
-		in s: %((((schema,.),.),.), ?:(((.,'\0'),.),.))
-			do .( start ) // TAKE
+		in ( position:'\0' ? ((((schema,.),.),.), s ) :)
+			do .( start ) // TAKE as-is
 		else
 			do : p : position
 			in start: ( '[', ? )
@@ -147,21 +147,22 @@
 	else on .FAIL
 		in (((schema,.),.), r ): ~%(?,FAIL)
 			do ~( s )
-		else do ~( r ) // all feeder schemas failed
+		else do ~( r ) // all r feeder schemas failed
 
-	else in r:~%( ?, base ):~%( ?, (((schema,.),.),.))
-		do ~( r ) // all subscribers failed
+	else in ~.: ( (r,base) ?: ( r, (((schema,.),.),.)) )
+		do ~( r ) // all r subscribers failed
 
 	else in .( ?, s ) // s pending on rule
 		in .DONE
-			on ~( .(((schema,.),.),.) ) // successor schema failed
-				in .(((schema,.),.),.)
+			on ~( s, (((schema,.),.),.) ) // successor schema failed
+				in ( s, (((schema,.),.),.) )
 				else do .FAIL // all successor schemas failed
 		else in .READY
 			on : record : .
 				do ~( .READY ) // expecting TAKE from rule schemas
 		else on ~.
 			in .CYCLIC
+				do > "Warning: Yak: deadlock - on rule '%_'\n": %(r:((.,?),.))
 				do .FAIL
 		else
 			on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
@@ -171,7 +172,7 @@
 			in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE)
 				in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
 				else do .READY // all non-cyclic rule schemas ready
-			else in s: ~%(?,CYCLIC): %( ?, (((schema,.),.),.))
+			else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
 				do .DONE // all non-cyclic rule schemas complete
 			else do .FAIL // either cyclic (done) or has no successor
 	else on ~( ., s )

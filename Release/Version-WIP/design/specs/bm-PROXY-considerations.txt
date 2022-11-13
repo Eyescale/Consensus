@@ -64,7 +64,7 @@ Narrative self Register Variable %%
 	Let us consider the following Use Case
 
 		on : variable : ? < *src
-			do : variable : %?
+			do : variable : %<?>
 
 	Since proxies can be assigned to variables, the current cell may end up
 	having to assign a proxy to itself to its own variable.

@@ -13,13 +13,13 @@
 			do exit
 
 	else in INPUT
-		%(((schema,.),.),.)
+		%( . )
 		on ( INPUT ) // start base rule instance - feeding base
-			do (((rule,base), (']',(record,*))), base )
-		else in ( ?:((rule,.),.), base )
-			on %? // instantiate base schemas
-				do (((schema, %((Rule,base),(Schema,?:~'\0'))), %(%?:(.,?))), %? )
-			else in ( %?, READY )
+			do (((rule,base), (']',*record)) | {
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+				.( %|, base ) } )
+		else in .( ?, base )
+			in ( %?, READY )
 				on ( %?, READY )
 					in : carry : ?
 						do : input : %?
@@ -40,10 +40,10 @@
 				in (((schema,.),.),%?): ~%(?,DONE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, DONE ) // all feeder schemas complete
-		else on ~( ((rule,.),.), base ) // FAIL
+		else on ~( ., base ) // FAIL
 			in : record : ~((record,*),.) // not first input
-				do : record : %((?,.):*record)
-				do : carry : %((.,?):*record)
+				do : record : %(*record:(?,.))
+				do : carry : %(*record:(.,?))
 			do ~( INPUT )
 	else on ~( INPUT )
 		in : input : ~.
@@ -77,7 +77,7 @@
 
 		else in ( ?:((rule,.),(']',*f)):~*r, *s ) // s has rule starting this frame - pushing
 			// set s to the feeder starting at r's starting (']',frame)
-			in *f: ~( record, * ) // output last schema frame
+			in *f: ~(record,*) // output last schema frame
 				do >"%s": %(*f:(.,?))
 			do : r : %?
 			do : s : %(((schema,.),%(%?:(.,?))), %? )
@@ -108,15 +108,15 @@
 					// right-recursive case: completes on failing next frame
 					in ( *f, ?:~EOF )
 						do : carry : %?
-				else in *f: ( ., ?:~EOF )
+				else in *f:( ., ?:~EOF )
 					// completed unconsumed - cannot be first input
 					do : carry : %?
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first ']' schema frame
-			in ~.: *s: ((.,(']',*f)),.)
-				in *f:( ., ?:~EOF ):~(record,*)
-					do >"%s":%?
+			in *s: ((.,(']',*f)),.)
+			else in *f:( ., ?:~EOF ):~(record,*)
+				do >"%s":%?
 			// move on to next frame
 			in ?: ( *f, . )
 				do : f : %?
@@ -130,16 +130,16 @@
 
 	else on ~( record )
 		// we do not want base rule to catch this frame
-		do : record : ( record, * )
+		do : record : (record,*)
 		do : input : ~.
 		do INPUT
 
 
-.s: ((( schema, .position ), .start ), .r:((rule,.),.))
+.s: ((( schema, .position ), .start ), .r )
 	.p .event
 	on ( s )
 		// schema has predecessor AND is in null position
-		in s: %((((schema,.),.),.), ?:(((.,'\0'),.),.))
+		in ( position:'\0' ? ((((schema,.),.),.), s ) :)
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
@@ -148,27 +148,22 @@
 	else on .FAIL
 		in (((schema,.),.), r ): ~%(?,FAIL)
 			do ~( s )
-		else in ?: (((schema,.),.), r )
-			in %?: s // not a MUST, but avoids race condition
-				do ~( r ) // all feeder schemas failed
+		else do ~( r ) // all r feeder schemas failed
 
-	else in r: ~((.,base),.): ~%( ?, (((schema,.),.),.))
-		in ?: (((schema,.),.), r )
-			in %?: s // not a MUST, but avoids race condition
-				do ~( r ) // all subscribers failed
+	else in ~.: ( (r,base) ?: ( r, (((schema,.),.),.)) )
+		do ~( r ) // all r subscribers failed
 
-	else in ( ?:((rule,.),.), s ) // pending on rule
-		on %? // instantiate rule schemas
-			do (((schema, %((Rule,%(%?:((.,?),.))),(Schema,?:~'\0'))), %(%?:(.,?))), %? )
-		else in .DONE
-			on ~( .(((schema,.),.),.) ) // successor schema failed
-				in .(((schema,.),.),.)
+	else in .( ?, s ) // s pending on rule
+		in .DONE
+			on ~( s, (((schema,.),.),.) ) // successor schema failed
+				in ( s, (((schema,.),.),.) )
 				else do .FAIL // all successor schemas failed
 		else in .READY
 			on : record : .
 				do ~( .READY ) // expecting TAKE from rule schemas
 		else on ~.
 			in .CYCLIC
+				do > "Warning: Yak: deadlock - on rule '%_'\n": %(r:((.,?),.))
 				do .FAIL
 		else
 			on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
@@ -178,11 +173,11 @@
 			in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE)
 				in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
 				else do .READY // all non-cyclic rule schemas ready
-			else in s: %( ?, (((schema,.),.),.)): ~%(?,CYCLIC)
+			else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
 				do .DONE // all non-cyclic rule schemas complete
 			else do .FAIL // either cyclic (done) or has no successor
-	else on ~( ((rule,.),.), s )
-		do .FAIL // feeder rule failed
+	else on ~( ., s )
+		do .FAIL // feeder rule failed (cannot be predecessor schema here)
 
 	else in .DONE /* chill - so long as
 		   r's subscriber schema, or, to allow left-recursion, this schema,
@@ -210,9 +205,11 @@
 					in ((Rule,%?),(Schema,'\0')) // FORK on null-schema
 						do .(((schema, %(*p:(.,?))), ('[',*record)), r )
 					in ?:((rule,%?), ('[',*record)) // rule already instantiated
-						do ( %?, s )
+						do .( %?, s )
 						do .CYCLIC
-					else do (((rule,%?), ('[',*record)), s )
+					else do (((rule,%?), (']',*record)) | {
+						(((schema, %((Rule,%?),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+						.( %|, s ) } )
 				else in ((Rule,%?),(Schema,'\0'))
 					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
@@ -255,14 +252,16 @@
 			in ((Rule,%?),(Schema,~'\0'))
 				in ((Rule,%?),(Schema,'\0')) // FORK on null-schema
 					do .(((schema, %(*p:(.,?))), (']',*record)), r )
-				in ?:((rule,%?), (']',*record)) // rule already instantiated
-					do ( %?, s )
+				in ?: ((rule,%?), (']',*record)) // rule already instantiated
+					do .( %?, s )
 					do .CYCLIC
-				else do (((rule,%?), (']',*record)), s )
+				else do (((rule,%?), (']',*record)) | {
+					(((schema, %((Rule,%?),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+					.( %|, s ) } )
 			else in %?: %((Rule,?),(Schema,'\0'))
 				do : p : %(*p:(.,?))
 			else
-				do >"Error: Yak: rule '%_' not found or invalid\n": %((.,?):%?)
+				do >"Error: Yak: rule '%_' not found or invalid\n": %?
 				do .FAIL
 		else do .READY
 	else on .( /[[\]]/, . )

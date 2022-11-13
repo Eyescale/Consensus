@@ -4,6 +4,7 @@
 		do :<
 		do exit
 	else in toto
+		do .identifier~
 		do ( titi ? ~toto : tata ? ~titi :)
 		do >"asd":< alpha,
 			beta >
