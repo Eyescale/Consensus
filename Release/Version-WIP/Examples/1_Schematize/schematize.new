@@ -193,7 +193,7 @@
 			else in ((.,%(s,?)), r ): ~s
 			else do .EXIT // defunct
 		on (((.,'\0'),.), r ) // right-recursion case
-			in ((.,%(s:((.,?),.))), r ): ~s
+			in ((.,start), r ): ~s
 				do .EXIT // defunct
 	else in .READY
 		on : record : ?

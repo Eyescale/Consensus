@@ -137,7 +137,6 @@
 
 .s: ((( schema, .position ), .start ), .r:((rule,.),.))
 	.p .event
-
 	on ( s )
 		in s: %((((schema,.),.),.), ?:(((.,'\0'),.),.))
 			// schema has predecessor AND is in null position
