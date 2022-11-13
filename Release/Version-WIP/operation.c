@@ -295,9 +295,10 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 				if ( *p==':' ) continue;
 				StringAppend( s, '.' ); }
 			StringAppend( s, *p ); }
-		StringAppend( s, ':' );
-		for ( char *p=expression; *p; p++ )
-			StringAppend( s, *p );
+		if ( strcmp(expression,"%(.)") ) {
+			StringAppend( s, ':' );
+			for ( char *p=expression; *p; p++ )
+				StringAppend( s, *p ); }
 		char *q = StringFinish( s, 0 );
 		// launch query
 		data.narrative = narrative;

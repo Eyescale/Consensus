@@ -1,5 +1,15 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. Examples/4_Yak
+		. yak using new Cell design (and literals) and optimized
+		  cf. latest schematize.new (to be deprecated)
+		. build easily traversable sequence
+		. use B% Grammar as example
+	. change input logics, so that EOF <=> do : input : ~.
+		. reimplement do_input using instantiate_assignment()
+		. update examples to new input logics
+	. finalize .identifier and .( ) handling inside !!Narrative( )
+	. support !!expression( ) and not just !!identifier( )
 	. Update docs
 	. Release Version-2.0
 		. Examples

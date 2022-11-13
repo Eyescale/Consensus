@@ -10,7 +10,7 @@
 //===========================================================================
 #ifdef U_CACHE
 
-#define U_CACHE_SIZE 1500
+#define U_CACHE_SIZE 15000
 // static int UCount = 0;
 
 inline void *

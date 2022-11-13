@@ -13,7 +13,7 @@
 			do exit
 
 	else in INPUT
-		%(((schema,.),.),.)
+		%( . )
 		on ( INPUT ) // start base rule instance - feeding base
 			do ( ((rule,base), (']',(record,*))) | {
 				(((schema, %((base,%),?:~'\0')), %(%|:(.,?))), %| ),
@@ -134,8 +134,7 @@
 		do : input : ~.
 		do INPUT
 
-
-.s: ((( schema, .position ), .start ), .r:((rule,.),.))
+.s: ((( schema, .position ), .start ), .r )
 	.p .event
 	on ( s )
 		// schema has predecessor AND is in null position
@@ -146,11 +145,11 @@
 			in start: ( '[', ? )
 				do : event : %(%?:(.,?))
 	else on .FAIL
-		in r: %( (((schema,.),.), ? ): ~%(?,FAIL) )
+		in (((schema,.),.), r ): ~%(?,FAIL)
 			do ~( s )
 		else do ~( r ) // all feeder schemas failed
 
-	else in r: ~%( ?, (((schema,.),.),.)): ~((.,base),.)
+	else in r:~%( ?, base ):~%( ?, (((schema,.),.),.))
 		do ~( r ) // all subscribers failed
 
 	else in .( ?, s ) // s pending on rule
