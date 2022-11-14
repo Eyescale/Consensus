@@ -338,31 +338,33 @@ do_input( char *expression, BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	if ( db_out(db) ) return 0;
 
-	if ( !strcmp(expression,":<") )
-		return getchar();
-
-	// extract fmt and args:{ expression(s) }
-	char *p=expression, *q=p_prune( PRUNE_FILTER, p );
-	for ( ; *q==':'; q=p_prune( PRUNE_FILTER, p ) )
-		p = q+1;
-	char *fmt = ( *p=='"' ? p : "" );
-	q = p-1;
-
-	CNString *s = newString();
-	for ( p=expression; p!=q; p++ )
-		StringAppend( s, *p );
-	p = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-
-	listItem *args = newItem( p );
+	// extract fmt and args:< expression(s) >
+	listItem *args = NULL;
+	char *p = expression, *fmt;
+	switch ( *p ) {
+	case ':':
+		return ( p[1]=='<' ? getchar() : -1 );
+	case '<':
+		// VECTOR - not yet supported
+		return -1;
+	default: ;
+		CNString *s = newString();
+		char *q = p_prune( PRUNE_FILTER, p );
+		for ( ; p!=q; p++ )
+			StringAppend( s, *p );
+		p = StringFinish( s, 0 );
+		StringReset( s, CNStringMode );
+		freeString( s );
+		q++;
+		args = newItem( p );
+		fmt = ( *q=='"' ? q : "" ); }
 
 	// invoke bm_inputf()
 	int retval = bm_inputf( fmt, args, ctx ) ;
 
 	// cleanup
-	while (( p = popListItem( &args ) ))
-		free( p );
+	if (( p )) free( p );
+	freeListItem( &args );
 #ifdef DEBUG
 	fprintf( stderr, "do_input end\n" );
 #endif

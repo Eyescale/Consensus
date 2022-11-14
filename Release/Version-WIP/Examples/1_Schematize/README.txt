@@ -1,5 +1,8 @@
 Name
-	Consensus/Release/Version-1.2/Examples/1_Schematize
+	Consensus/Release/Version-2.0/Examples/1_Schematize
+
+	UPDATE from Version-1.2:
+	. adapted to new input logics, whereby EOF causes : input : ~.
 
 Usage
 	../../B% -f yak.ini yak.story

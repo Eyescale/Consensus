@@ -34,6 +34,7 @@ typedef struct {
 	BMContext *ctx, *carry;
 	CNDB *db;
 } InstantiateData;
+static void cleanup( InstantiateData *, BMContext * );
 
 void
 bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
@@ -70,21 +71,26 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	if ( traverse_data.done==2 ) {
 		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantation\n"
                         "\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data.p );
-		freeListItem( &data.stack.flags );
-		freeListItem( &data.sub[ 1 ] );
-		listItem *instances;
-		listItem **results = &data.results;
-		while (( instances = popListItem(results) ))
-			freeListItem( &instances );
-		bm_context_pipe_flush( ctx ); }
+		cleanup( &data, ctx ); }
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
 		if ( traverse_data.done==2 ) fprintf( stderr, "***INCOMPLETE***\n" );
-		else db_outputf( stderr, BMContextDB(ctx), "first=%_\n", data.sub[0]->ptr ); }
+		else db_outputf( stderr, data.db, "first=%_\n", data.sub[0]->ptr ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
 	freeListItem( &data.sub[ 0 ] );
+}
+static void
+cleanup( InstantiateData *data, BMContext *ctx )
+{
+	freeListItem( &data->stack.flags );
+	freeListItem( &data->sub[ 1 ] );
+	listItem *instances;
+	listItem **results = &data->results;
+	while (( instances = popListItem(results) ))
+		freeListItem( &instances );
+	bm_context_pipe_flush( ctx );
 }
 
 //---------------------------------------------------------------------------
@@ -475,7 +481,7 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 //===========================================================================
 //	instantiate_assignment
 //===========================================================================
-#define bm_assign( sub, ctx ) \
+#define bm_assign( sub, db ) \
 	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
 		db_assign( i->ptr, j->ptr, db );
 
@@ -489,7 +495,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 */
 {
 	InstantiateData *data = traverse_data->user_data;
-	CNDB *db = BMContextDB( data->ctx );
+	CNDB *db = data->db;
 	char *p = expression + 1; // skip leading ':'
 	listItem *sub[ 2 ];
 	CNInstance *e;
@@ -528,7 +534,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		DBG_VOID( p )
 		traverse_data->done = INFORMED;
 		p = instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 )
+		if ( traverse_data->done==2 || !data->sub[ 0 ] )
 			freeListItem( &sub[ 0 ] );
 		else {
 			sub[ 1 ] = data->sub[ 0 ];
@@ -537,3 +543,66 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 			freeListItem( &sub[ 0 ] );
 			freeListItem( &sub[ 1 ] ); } }
 }
+
+//===========================================================================
+//	bm_instantiate_input
+//===========================================================================
+void
+bm_instantiate_input( char *expression, char *input, BMContext *ctx )
+/*
+	Note that the number of assignments actually performed is
+		INF( cardinal(sub[0]), cardinal(sub[1]) )
+	And that nothing is done with the excess, if there is -
+		case sub[1]==NULL excepted
+*/
+{
+#ifdef DEBUG
+	fprintf( stderr, "bm_instantiate_input: arg=%s, input=%s ........{\n",
+		expression, ((input)?input:"EOF") );
+#endif
+	listItem *sub[ 2 ];
+	CNDB *db = BMContextDB( ctx );
+
+	InstantiateData data;
+	memset( &data, 0, sizeof(data) );
+	data.ctx = ctx;
+	data.db = db;
+
+	BMTraverseData traverse_data;
+	traverse_data.user_data = &data;
+	traverse_data.stack = &data.stack.flags;
+
+	DBG_VOID( expression )
+	traverse_data.done = INFORMED;
+	char *p = instantiate_traversal( expression, &traverse_data, FIRST );
+	if ( traverse_data.done==2 || !data.sub[ 0 ] )
+		goto FAIL;
+
+	sub[ 0 ] = data.sub[ 0 ];
+	data.sub[ 0 ] = NULL;
+	if ( input==NULL ) {
+		CNInstance *e;
+		while (( e = popListItem( &sub[0] ) ))
+			db_unassign( e, db );
+		return; }
+
+	DBG_VOID( input )
+	traverse_data.done = INFORMED;
+	p = instantiate_traversal( input, &traverse_data, FIRST );
+	if ( traverse_data.done==2 || !data.sub[ 0 ] )
+		freeListItem( &sub[ 0 ] );
+	else {
+		sub[ 1 ] = data.sub[ 0 ];
+		bm_assign( sub, db );
+		freeListItem( &sub[ 0 ] );
+		freeListItem( &sub[ 1 ] );
+		return; }
+FAIL:
+	if ( traverse_data.done==2 ) {
+		fprintf( stderr, ">>>>> B%%: Warning: unable to complete input instantiation\n"
+			"\t<<<<< arg=%s, input=%s, failed on '%s'\n", expression,
+			((input)?input:"EOF"), traverse_data.p );
+		cleanup( &data, ctx ); }
+	freeListItem( &data.sub[ 0 ] );
+}
+

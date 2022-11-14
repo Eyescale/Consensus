@@ -6,7 +6,6 @@
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
 			do : record : (record,*)
-			do : input : ~.	// required to catch EOF first frame
 			do INPUT
 		else
 			do >"Error: Yak: base rule not found or invalid\n"
@@ -28,7 +27,7 @@
 				else on : input : ?
 					// could do some preprocessing here
 					do : record : (*record,%?)
-				else on ~( *, input )
+				else on : input : ~.
 					do : record : (*record,EOF)
 				else on : record : .
 					do ~( %?, READY )
@@ -46,7 +45,7 @@
 				do : carry : %(*record:(.,?))
 			do ~( INPUT )
 	else on ~( INPUT )
-		in : input : ~.
+		in ~.: input
 			do >"(nop)\n"
 			do exit
 		else
@@ -129,9 +128,9 @@
 		else do exit
 
 	else on ~( record )
-		// we do not want base rule to catch this frame
+		// reset: we do not want base rule to catch this frame
 		do : record : (record,*)
-		do : input : ~.
+		do ~( input )
 		do INPUT
 
 

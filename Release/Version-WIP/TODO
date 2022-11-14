@@ -1,14 +1,10 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. Examples/4_Yak
-		. yak using new Cell design (and literals) and optimized
-		  cf. latest schematize.new (to be deprecated)
+		. yak using literals and optimized like schematize.new
 		. build easily traversable sequence
 		. use B% Grammar as example
-	. change input logics, so that EOF <=> do : input : ~.
-		. reimplement do_input using instantiate_assignment()
-		. update examples to new input logics
-	. finalize .identifier and .( ) handling inside !!Narrative( )
+	. revise .identifier and .( ) handling logics inside !!Narrative( )
 	. support !!expression( ) and not just !!identifier( )
 	. Update docs
 	. Release Version-2.0
@@ -79,6 +75,9 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. changed input logics, so that EOF <=> do : input : ~.
+		. reimplement do_input using instantiate_assignment()
+		. update examples to new input logics
 	. Testing - implemented
 		. Examples/3_TM.multi/TM-head_tape.story
 		. Examples/3_TM.multi/TM-head_cell.story

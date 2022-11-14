@@ -3,7 +3,6 @@
 	.carry
 	on init
 		do ( Schema, (h,(e,(l,(l,(o,(',',(' ',(w,(o,(r,(l,(d,'\0')))))))))))) )
-		do ( *, input )	// required to catch EOF first frame
 		do ((*,record), (record,*))
 		do INPUT
 	else in INPUT
@@ -22,12 +21,12 @@
 					else do input:"%c"<
 				else on ((*,input), . )
 					do ((*,record), (*record,*input))
-				else on ~( *, input )
+				else on : input : ~.
 					do ((*,record), (*record,EOF))
 		else // all schemas failed
 			do ~( INPUT )
 	else on ~( INPUT )
-		in (*,input): ~%(?,.) // nop
+		in ~.: input
 			do exit
 		else in ( schema, . ): %( ?, (COMPLETE,']'))
 		else in *record: ~((record,*), . ) // not first input
@@ -57,7 +56,7 @@
 		else
 			do ~( record )
 			do ~( schema, . )
-			do ~( (*,input), . )
+			do ~( input )
 	else on ~( record )
 		do ((*,record), (record,*))
 		do INPUT

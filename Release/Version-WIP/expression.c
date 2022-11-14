@@ -124,7 +124,7 @@ BMTraverseCBEnd
 //===========================================================================
 //	bm_inputf
 //===========================================================================
-static int bm_input( int type, char *expression, BMContext * );
+static int bm_input( int type, char *arg, BMContext * );
 
 #define DEFAULT_TYPE '_'
 
@@ -151,8 +151,8 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 						ungetc( event, stdin );
 						goto RETURN; } }
 				else if ((args)) {
-					char *expression = args->ptr;
-					event = bm_input( fmt[1], expression, ctx );
+					char *arg = args->ptr;
+					event = bm_input( fmt[1], arg, ctx );
 					if ( event==EOF ) goto RETURN;
 					args = args->next; }
 				fmt+=2; break;
@@ -167,25 +167,23 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 				else fmt++; } } }
 	else {
 		while (( args )) {
-			char *expression = args->ptr;
-			event = bm_input( DEFAULT_TYPE, expression, ctx );
-			if ( event == EOF ) break;
-			args = args->next; } }
+			char *arg = args->ptr;
+			event = bm_input( DEFAULT_TYPE, arg, ctx );
+			if ( event==EOF ) break;
+			else args = args->next; } }
 RETURN:
 	if ( event==EOF ) {
 		while (( args )) {
-			char *expression = args->ptr;
-			asprintf( &expression, "(*,%s)", expression );
-			bm_release( expression, ctx );
-			free( expression );
+			char *arg = args->ptr;
+			bm_instantiate_input( arg, NULL, ctx );
 			args = args->next; } }
 	return 0;
 }
 static int
-bm_input( int type, char *expression, BMContext *ctx )
+bm_input( int type, char *arg, BMContext *ctx )
 {
-	char *input;
-	int event;
+	char *input = NULL;
+	int event = 0;
 	switch ( type ) {
 	case 'c':
 		event = fgetc( stdin );
@@ -208,10 +206,9 @@ bm_input( int type, char *expression, BMContext *ctx )
 	default:
 		return 0; }
 
-	asprintf( &expression, "((*,%s),%s)", expression, input );
+	bm_instantiate_input( arg, input, ctx );
 	free( input );
-	bm_instantiate( expression, ctx, NULL );
-	free( expression );
+
 	return 0;
 }
 

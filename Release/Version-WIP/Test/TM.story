@@ -63,16 +63,15 @@ else in *phase: INPUT
 					do (( *, START ), (START,*BLANK))
 					do (( *, (head,position)), (START,*BLANK))
 					do (( *, phase ), RUN )
-	else in ( *, input )
-		do input: <
-	else
+	else on : input : ~.
 		do >"Error: File Format: unexpected EOF\n"
 		do exit
+	else do input: <
 
 else in *phase: DATA_PREP
 	on ((*,p), . )
 		do (( *, (TAPE,*p)), %((.,?):*p))
-		in (*p,.)
+		in ( *p, . )
 			do (( *, (RIGHT,*p)), %(*p,.))
 			do (( *, (LEFT,%(*p,.))), *p )
 	else in ( *p, . )
@@ -141,7 +140,7 @@ else in *phase: OUTPUT
 		else do >"%s": %((.,?):*BLANK)
 		do >" "
 		do ~( *, state )
-	else in *( RIGHT, *p )
+	else in ( RIGHT, *p )
 		do (( *, p ), *(RIGHT,*p))
 	else
 		do >:
@@ -156,20 +155,3 @@ else in *phase: OUTPUT
         not shown here: *state
 */
 
-/*
-: Toto
-on init
-	%(hello,(.,world))
-	do .that
-else
-	do >"hello\n"
-	do exit
-
-// :( hello, .local:( titi, world ))
-.rule : ((( schema, .start ), ( ., .frame )), .r:((rule,.),.))
-// : ( .flag, .frame )
-	.position .event
-	do .( hello, .(.(toto,.titi)) )	// comment
-	on (this)
-		do ~(this)
-*/

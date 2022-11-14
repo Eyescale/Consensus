@@ -63,11 +63,10 @@ else in *phase: INPUT
 					do (( *, START ), (START,*BLANK))
 					do (( *, (head,position)), (START,*BLANK))
 					do (( *, phase ), RUN )
-	else in ( *, input )
-		do input: <
-	else
+	else on : input : ~.
 		do >"Error: File Format: unexpected EOF\n"
 		do exit
+	else do input: <
 
 else in *phase: DATA_PREP
 	on ((*,p), . )

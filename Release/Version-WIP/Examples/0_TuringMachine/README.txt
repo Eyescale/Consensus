@@ -1,6 +1,9 @@
 Name
 	Consensus/Release/Version-1.2/Examples/0_TuringMachine/TM.story
 
+	UPDATE from Version-1.2:
+	. adapted to new input logics, whereby EOF causes : input : ~.
+
 Usage
 	../../B% TM.story < Turing.Machine
 
