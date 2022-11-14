@@ -176,7 +176,7 @@
 			else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
 				do .DONE // all non-cyclic rule schemas complete
 			else do .FAIL // either cyclic (done) or has no successor
-	else on ~( ., s )
+	else on ~( .(.,s) )
 		do .FAIL // feeder rule failed (cannot be predecessor schema here)
 
 	else in .DONE /* chill - so long as
