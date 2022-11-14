@@ -18,7 +18,6 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
 
 	// invoke BMTermCB - if it is set - first thing
 	do {
-		if ( mode&NEW ) p++; // skip opening '('
 CB_TermCB	} while ( 0 );
 
 	while ( *p && !traverse_data->done ) {
@@ -118,7 +117,7 @@ CB_TermCB				break; }
 CB_FilterCB				f_clr( NEGATED|INFORMED )
 					p++; break; }
 			case ',':
-				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) && !(mode&NEW))
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
 					{ traverse_data->done=1; break; }
 CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( NEGATED|FILTERED|INFORMED )
@@ -130,9 +129,8 @@ CB_TermCB			break;
 						icast.ptr = (*stack)->ptr;
 						f_next = icast.value; }
 CB_EndPipeCB				f_pop( stack, 0 ) }
-				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
-					if ( mode&NEW ) p++;
-					traverse_data->done=1; break; }
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
+					{ traverse_data->done=1; break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value; }

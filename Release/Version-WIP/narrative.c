@@ -308,7 +308,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 				fprintf( stream, "in " );
 			else if ( type&(ON|ON_X) )
 				fprintf( stream, "on " );
-			else if ( type&(DO|INPUT|OUTPUT|NEW) )
+			else if ( type&(DO|INPUT|OUTPUT) )
 				fprintf( stream, "do " );
 			fprintf( stream, "%s\n", expression ); }
 

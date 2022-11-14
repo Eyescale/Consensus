@@ -1,13 +1,9 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. improve error handling in bm_instantiate()
-		. bm_conceive(): expressions should be parsed one by one
-		. bm_instantiate_input(): should it yell on no result?
 	. Examples/4_Yak
 		. [ DONE ] yak using literals and optimized like schematize.new
 		. [ WIP ] build easily traversable sequence
 		. [ WIP ] use B% Grammar as example
-	. support !!expression( ) and not just !!identifier( )
 	. Update docs
 	. Release Version-2.0
 		. Examples
@@ -29,19 +25,12 @@ ON-GOING
 		. NOTE: everything is Pair, starting from [address,value]
 
 NICE TO HAVE
+	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
 		on %<_> < .
 		do !! Narrative( %<_> )
-	. both instantiate.c:bm_conceive() and query.c:match_x() assume that
-	  expression's identifiers are not locale(s), in respectively:
-
-		do !! Narrative( expression )
-		on expression < src
-
-	  This is the correct assumption. However we might want (TBD) to allow
-	  using %identifier to indicate locale(s) in such expressions.
-	. proper >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
+	. improve >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
 	. parser.c
 		. more & better error messages
 		. extract bm_parser_report from parser.c => error.c ?
@@ -77,6 +66,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. bm_conceive(): expressions are parsed one by one
 	. corrected implementation of
 
 		do !! Narrative( .identifier )

@@ -240,10 +240,10 @@ EXPR_BGN:CND_endif
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
-		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|SET|NEW|EENOV|VECTOR) &&
+		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|SET|CARRY|EENOV|VECTOR) &&
 				( !is_f(ASSIGN) || is_f(FILTERED) ) ) {
 				do_( "expr_" )	REENTER }
-			else if ( is_f(SET|NEW|VECTOR) ) { // allow \nl inside resp. {} () <>
+			else if ( is_f(SET|CARRY|VECTOR) ) { // allow \nl inside resp. {} () <>
 				do_( "_^" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
@@ -258,7 +258,7 @@ EXPR_BGN:CND_endif
 				do_( same )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
-			else if ( is_f(SET|NEW|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
+			else if ( is_f(SET|CARRY|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( "," ) }
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
@@ -369,9 +369,9 @@ A:CND_else_( B )
 				if ( is_f(TERNARY) ) {	while (!is_f(FIRST)) f_pop( stack, 0 ) }
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
-			else if ( is_f(NEW) && !is_f(LEVEL|SUB_EXPR) ) {
+			else if ( is_f(CARRY) && !is_f(LEVEL|SUB_EXPR) ) {
 					do_( same )	s_take
-							f_clr( NEW )
+							f_clr( CARRY )
 							f_set( INFORMED|COMPOUND ) }
 B:CND_endif
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
@@ -422,13 +422,15 @@ CND_ifn( mode==BM_STORY, C )
 			end
 		in_( "!!$" ) bgn_
 			ons( " \t" )	do_( "!!$_" )
-			on_( '(' )	do_( "expr" )	s_take
+			on_( '(' )	do_( "!!$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end
 		in_( "!!$_" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_take
+							f_clr( NEW )
+							f_set( CARRY )
 			end
 	in_( "@" ) bgn_
 		on_( '<' )	do_( "@<" )	s_take
@@ -688,7 +690,7 @@ else					; // err
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && !are_f(NEW|DOT) && ( is_f(LEVEL) ?
+		on_( '~' ) if ( *type&DO && !are_f(CARRY|DOT) && ( is_f(LEVEL) ?
 				is_f(TERNARY) && f_signal_authorize(stack) :
 				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
 				do_( "term~" )	s_take }

@@ -24,8 +24,9 @@
 #define CLEAN		(1<<15)
 #define LISTABLE	(1<<16)
 #define NEW		(1<<17)
-#define VECTOR		(1<<18)
-#define EENOV		(1<<19)
+#define CARRY		(1<<18)
+#define VECTOR		(1<<19)
+#define EENOV		(1<<20)
 
 #define are_f( b ) \
 	((flags&(b))==(b))
