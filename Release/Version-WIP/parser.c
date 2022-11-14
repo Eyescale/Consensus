@@ -458,6 +458,7 @@ CND_ifn( mode==BM_STORY, C )
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other	do_( "term" )	s_take
+						f_set( DOT )
 		end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
@@ -687,12 +688,13 @@ else					; // err
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && ( is_f(LEVEL) ?
+		on_( '~' ) if ( *type&DO && !are_f(NEW|DOT) && ( is_f(LEVEL) ?
 				is_f(TERNARY) && f_signal_authorize(stack) :
 				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
 				do_( "term~" )	s_take }
 D:CND_endif
 		on_separator	do_( "expr" )	REENTER
+						f_clr( DOT )
 						f_set( INFORMED )
 		on_other	do_( same )	s_take
 		end
@@ -700,6 +702,7 @@ D:CND_endif
 			ons( " \t" )	do_( same )
 			on_( '?' )	; // err
 			on_other	do_( "expr" )	REENTER
+							f_clr( DOT )
 							f_set( INFORMED )
 			end
 	in_( "char" ) bgn_

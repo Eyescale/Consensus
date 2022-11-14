@@ -490,6 +490,9 @@ lookup_proxy( CNEntity *this, CNEntity *that )
 //===========================================================================
 CNInstance *
 bm_register( BMContext *ctx, char *p, CNDB *db )
+/*
+	Special case: ctx==NULL => p assumed identifier
+*/
 {
 	if ( *p == '\'' ) {
 		// registering single character identifier instance

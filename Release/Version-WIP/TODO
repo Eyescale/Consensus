@@ -1,10 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. improve error handling in bm_instantiate()
+		. bm_conceive(): expressions should be parsed one by one
+		. bm_instantiate_input(): should it yell on no result?
 	. Examples/4_Yak
 		. yak using literals and optimized like schematize.new
 		. build easily traversable sequence
 		. use B% Grammar as example
-	. revise .identifier and .( ) handling logics inside !!Narrative( )
 	. support !!expression( ) and not just !!identifier( )
 	. Update docs
 	. Release Version-2.0
@@ -75,6 +77,20 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. corrected implementation of
+
+		do !! Narrative( .identifier )
+		do !! Narrative( .( expression ) )
+
+	  as
+		The '.' here indicates that only the expression's result->sub[1]
+		should be translated into carry's context, e.g.
+
+		.identifier - if it exists - will therefore translate as
+		"identifier" unless it is a sub-narrative's argument, in which
+		case the corresponding sub of the sub-narrative instance will
+		be translated into carry's context
+
 	. changed input logics, so that EOF <=> do : input : ~.
 		. reimplement do_input using instantiate_assignment()
 		. update examples to new input logics

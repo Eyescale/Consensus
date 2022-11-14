@@ -14,7 +14,7 @@
 		do %(?:(toto,titi)) @<
 		do { asdlkj, alsdkj } ~<
 		do : toto : !! world (
-			baby, titi
+			baby, .titi
 			tutu
 			) ~<
 		on toto:. < ?:tata

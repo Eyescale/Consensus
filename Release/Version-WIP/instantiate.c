@@ -136,13 +136,17 @@ static listItem *bm_list( char **, listItem **, CNDB * );
 BMTraverseCBSwitch( instantiate_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
-		if (!( data->sub[current] = bm_scan(p,data->ctx) ))
-			_return( 2 )
-		_prune( BM_PRUNE_TERM ) }
+		listItem *results = bm_scan( p, data->ctx );
+		if (( results )) {
+			BMContext *carry = data->carry;
+			data->sub[ current ] = ( (carry) ?
+				bm_inform( data->db, &results, carry ) :
+				results );
+			_prune( BM_PRUNE_TERM ) }
+		else _return( 2 ) }
 	_break
 case_( collect_CB )
-	BMContext *ctx = data->ctx;
-	listItem *results = bm_scan( p, ctx );
+	listItem *results = bm_scan( p, data->ctx );
 	if (( results )) {
 		BMContext *carry = data->carry;
 		data->sub[ current ] = ( (carry) ?
@@ -227,6 +231,17 @@ case_( literal_CB )
 	data->sub[ current ] = newItem( e );
 	(*q)++;
 	_prune( BM_PRUNE_LITERAL )
+case_( dot_expression_CB )
+	BMContext *carry = data->carry;
+	if (( carry )) {
+		listItem *results = bm_scan( p, data->ctx );
+		if ( !results ) _return( 2 )
+		else {
+			for ( listItem *i=results; i!=NULL; i=i->next )
+				i->ptr = ((CNInstance *) i->ptr )->sub[ 1 ];
+			data->sub[ current ] = bm_inform( data->db, &results, carry );
+			_prune( BM_PRUNE_TERM ) } }
+	_break
 case_( open_CB )
 	if ( f_next & DOT )
 		_break
@@ -254,9 +269,8 @@ case_( close_CB )
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( !instances ) _return( 2 )
 	if ( is_f(DOT) ) {
+		// dot_expression_CB took care of case carry
 		CNInstance *perso = BMContextPerso( ctx );
-		if (( carry ))
-			perso = bm_inform_context( db, perso, carry );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
 		listItem *localized = bm_couple( data->sub, db );
@@ -286,13 +300,15 @@ case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
-	CNInstance *e, *perso = BMContextPerso( ctx );
+	CNInstance *e;
 	if (( carry )) {
-		perso = bm_inform_context( db, perso, carry );
-		e = bm_register( NULL, p+1, db ); }
+		if (( e = bm_context_lookup( ctx, p+1 ) ))
+			e = bm_inform_context( db, e, carry );
+		else _return( 2 ) }
 	else {
-		e = bm_register( ctx, p+1, db ); }
-	e = db_instantiate( perso, e, db );
+		CNInstance *perso = BMContextPerso( ctx );
+		e = bm_register( ctx, p+1, db );
+		e = db_instantiate( perso, e, db ); }
 	data->sub[ current ] = newItem( e );
 	_break
 case_( identifier_CB )
