@@ -4,9 +4,9 @@ TODO
 		. bm_conceive(): expressions should be parsed one by one
 		. bm_instantiate_input(): should it yell on no result?
 	. Examples/4_Yak
-		. yak using literals and optimized like schematize.new
-		. build easily traversable sequence
-		. use B% Grammar as example
+		. [ DONE ] yak using literals and optimized like schematize.new
+		. [ WIP ] build easily traversable sequence
+		. [ WIP ] use B% Grammar as example
 	. support !!expression( ) and not just !!identifier( )
 	. Update docs
 	. Release Version-2.0
@@ -90,6 +90,10 @@ DONE
 		"identifier" unless it is a sub-narrative's argument, in which
 		case the corresponding sub of the sub-narrative instance will
 		be translated into carry's context
+
+	  Note that .identifier~ is not supported in carry context
+	  It is however supported in normal context, in which case not identifier
+	  but the ( perso, identifier ) is deprecated
 
 	. changed input logics, so that EOF <=> do : input : ~.
 		. reimplement do_input using instantiate_assignment()
