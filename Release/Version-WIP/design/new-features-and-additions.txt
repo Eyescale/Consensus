@@ -4,9 +4,10 @@ Name
 Synopsis
     Changes
 	See Changes section below
+
     Additions
-	The following features were added to Version-1.2 features - modulo
-	changes listed above
+	The following features were added to the latest Version-1.2 features - module
+	changes mentioned in the Changes section below
 
 	    	Feature Name			Expression			Comment
 
