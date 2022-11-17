@@ -258,8 +258,11 @@ EXPR_BGN:CND_endif
 				do_( same )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
-			else if ( is_f(SET|CARRY|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
-				do_( "," ) }
+			else if ( !is_f(LEVEL|SUB_EXPR) ) {
+				if ( is_f(SET|CARRY|VECTOR) ) {
+					do_( "," ) }
+				else if ( *type&DO ) {
+					do_( ":" ) } }
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER }
@@ -311,8 +314,7 @@ A:CND_else_( B )
 					do_( same )	REENTER
 							f_pop( stack, 0 ) } }
 			else if ( !is_f(COMPOUND) ) {
-					do_( ":" )	s_take
-							f_clr( INFORMED )
+					do_( ":" )	f_clr( INFORMED )
 							f_set( FILTERED ) }
 		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENOV) ) ) {
 				do_( "/" )	s_take }
@@ -323,7 +325,7 @@ A:CND_else_( B )
 						*type = (*type&ELSE)|ON_X;
 						f_clr( ASSIGN|INFORMED|NEGATED|FILTERED )
 						f_set(FIRST) }
-			else if ( is_f(ASSIGN) && !is_f(INFORMED|FILTERED) ) {
+			else if ( *type&DO && ( is_f(ASSIGN) ? !is_f(INFORMED|FILTERED) : is_f(INFORMED) ) ) {
 				do_( ":_<" )	s_take
 						f_clr(ASSIGN) }
 			else if ( *type&OUTPUT && !is_f(NEGATED|INFORMED|FILTERED) ) {
@@ -506,22 +508,23 @@ CND_ifn( mode==BM_STORY, C )
 			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '/' ) 	do_( "/" )	s_take
 		on_( '~' )	do_( ":~" )
+		on_( '/' ) 	do_( "/" )	s_add( ":/" )
 		on_( '<' ) if ( !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( ":_<" )	s_take }
 		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
-				do_( ":\"" )	s_take }
-		on_( ')' ) if ( are_f(TERNARY|FILTERED) ) {
-				do_( "expr" )	REENTER
-						f_set( INFORMED ) }
-			else {	do_( "expr" )	REENTER }
+				do_( ":\"" )	s_add( ",\"" ) }
+		on_( ')' )	do_( "expr" )	REENTER
+						s_add( ":" )
+		if are_f( TERNARY|FILTERED ) {	f_set( INFORMED ) }
 		on_other	do_( "expr" )	REENTER
+						s_add( ":" )
 		end
 		in_( ":~" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '~' )	do_( ":" )
 			on_other	do_( "~" )	REENTER
+							s_add( ":" )
 			end
 		in_( ":\"" ) bgn_
 			on_( '\t' )	do_( same )	s_add( "\\t" )

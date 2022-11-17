@@ -1,7 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. support syntax - as internal representation:
-		do input, format <
 	. do_enable: without building string?
 	. Examples/4_Yak
 		. [ DONE ] yak using literals and optimized like schematize.new
@@ -74,9 +72,16 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
-	. CHANGED idle logics, from "on ~." meaning idle event, to
-		on ~.	always fails
-		on ~.:. means idle event
+	. input syntax & internal representations
+		do input:<	=>	do input<	internally
+		do input:"fmt"<	=>	do input,"fmt"<	internally
+	  AND both internal representations are also supported externally
+	. CHANGED idle logics, from "on ~." meaning idle event, to active
+		. on . means on { ( . ) OR ~( . ) OR init OR exit }
+		. allowing %% as src of EENO when explicitely mentioned
+		  examples (was: idle):
+			on ~.: .
+			on ~.: . < { ., %% }
 	  updated examples
 	. bm_conceive(): expressions are parsed one by one
 	. corrected implementation of

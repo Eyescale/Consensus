@@ -330,9 +330,11 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 static int
 do_input( char *expression, BMContext *ctx )
 /*
-	Assuming expression is in the form e.g.
-		args : fmt <
-	reads input from stdin according to fmt
+	Assuming expression is in one of the following forms
+		:<
+		arg <
+		arg, fmt <
+	reads input from stdin and assign arg according to fmt
 */
 {
 #ifdef DEBUG
@@ -351,13 +353,7 @@ do_input( char *expression, BMContext *ctx )
 		// VECTOR - not yet supported
 		return -1;
 	default: ;
-		char *q = p_prune( PRUNE_FILTER, p );
-		CNString *s = newString();
-		do StringAppend( s, *p++ ); while ( p!=q );
-		p = StringFinish( s, 0 );
-		StringReset( s, CNStringMode );
-		freeString( s );
-		q++;
+		char *q = p_prune( PRUNE_TERM, p ) + 1;
 		args = newItem( p );
 		fmt = ( *q=='"' ? q : "" ); }
 
@@ -365,7 +361,6 @@ do_input( char *expression, BMContext *ctx )
 	int retval = bm_inputf( fmt, args, ctx ) ;
 
 	// cleanup
-	if (( p )) free( p );
 	freeListItem( &args );
 #ifdef DEBUG
 	fprintf( stderr, "do_input end\n" );
