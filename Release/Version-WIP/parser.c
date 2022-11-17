@@ -656,6 +656,8 @@ C:CND_endif
 		end
 	in_( "," ) bgn_
 		ons( " \t" )	do_( same )
+		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) {
+				do_( "_^" ) } // allow \nl inside {} () <> as comma
 		ons( "})>" )	do_( "expr" )	REENTER
 		on_( '.' ) if ( is_f(LISTABLE) ) {
 				do_( ",." ) 	s_add( "," ) }

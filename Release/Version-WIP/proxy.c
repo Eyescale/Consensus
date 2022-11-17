@@ -20,6 +20,17 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	return all context's active connections (proxies) matching expression
 */
 {
+	listItem *results = NULL;
+	if ( !strncmp( expression, "%%", 2 ) ) {
+		CNInstance *proxy = BMContextSelf(ctx);
+		results = newItem( proxy );
+		return results; }
+	else if ( *expression=='{' ) {
+		for ( char *p=expression+1; *p!='}'; p++ ) {
+			if ( !strncmp(p,"%%",2) ) {
+				CNInstance *proxy = BMContextSelf(ctx);
+				results = newItem( proxy );
+				break; } } }
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
@@ -27,12 +38,12 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	data.privy = ( type==BM_RELEASED ? 1 : 0 );
 	data.ctx = ctx;
 	data.db = db;
-	listItem *results = NULL;
 	ActiveRV *active = BMContextActive( ctx );
 	for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 		CNInstance *proxy = i->ptr;
 		if ( *expression=='{' ) {
 			for ( char *p=expression+1; *p!='}'; p++ ) {
+				if ( !strncmp(p,"%%",2) ) continue;
 				if ( bm_verify( proxy, p, &data )==BM_DONE ) {
 					addIfNotThere( &results, proxy );
 					break; }
@@ -43,15 +54,15 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_proxy_still / bm_proxy_in / bm_proxy_out
+//	bm_proxy_active / bm_proxy_in / bm_proxy_out
 //===========================================================================
 int
-bm_proxy_still( CNInstance *proxy )
+bm_proxy_active( CNInstance *proxy )
 {
 	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	return db_still( db );
+	return DBActive( db );
 }
 int
 bm_proxy_in( CNInstance *proxy )
@@ -90,7 +101,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
-	if ( db_in(db_x) ) return NULL;
+	if ( DBInitOn(db_x) ) return NULL;
 
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
@@ -187,7 +198,7 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 {
 	switch ( *p ) {
 	case '*':
-		return ( x==db_star(db_x) );
+		return ( x==DBStar(db_x) );
 	case '.':
 		return ( p[1]=='.' ) ?
 			db_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
@@ -222,7 +233,7 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
 	CNDB *db_x = data->db_x;
 	CNInstance *success = NULL, *e;
-	CNInstance *star = db_star( db_x );
+	CNInstance *star = DBStar( db_x );
 	if ( !strncmp( value, "~.", 2 ) ) {
 		/* we want to find x:(*,variable) in manifested log, so that
 		   	. ( x, . ) is not manifested as well
@@ -238,14 +249,14 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 			CNInstance *f = CNSUB( e, 0 );
 			if ( !f ) continue;
 			else if ( f==star ) {
-				if ( !removeIfThere( &warden, f ) )
-					addItem( &candidates, f ); }
+				if ( !removeIfThere( &warden, e ) )
+					addItem( &candidates, e ); }
 			else if ( f->sub[ 0 ]==star ) {
 				if ( !removeIfThere( &candidates, f ) )
 					addItem( &warden, f ); } }
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
-			data->x = e->sub[ 0 ];
+			data->x = e->sub[ 1 ];
 			proxy_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );

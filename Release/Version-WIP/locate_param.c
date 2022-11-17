@@ -62,8 +62,8 @@ BMTraverseCBSwitch( locate_param_traversal )
 case_( not_CB )
 	if (( data->param_CB ))
 		_prune( BM_PRUNE_FILTER )
-	else _break
-case_( deref_CB )
+	_break
+case_( dereference_CB )
 	if (( data->param_CB ))
 		_prune( BM_PRUNE_FILTER )
 	listItem **exponent = data->exponent;
@@ -71,25 +71,25 @@ case_( deref_CB )
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
 	_break
-case_( sub_expr_CB )
+case_( sub_expression_CB )
 	_prune( BM_PRUNE_FILTER )
-case_( dot_push_CB )
+case_( dot_expression_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	_break
-case_( push_CB )
+case_( open_CB )
 	if ( f_next & COUPLE )
 		xpn_add( data->exponent, SUB, 0 );
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
 	_break
-case_( sift_CB )
+case_( filter_CB )
 	pop_exponent( data->exponent, data->level );
 	_break
-case_( sep_CB )
+case_( decouple_CB )
 	pop_exponent( data->exponent, data->level );
 	xpn_set( *data->exponent, SUB, 1 );
 	_break
-case_( pop_CB )
+case_( close_CB )
 	pop_exponent( data->exponent, data->level );
 	if is_f( COUPLE )
 		popListItem( data->exponent );
@@ -98,9 +98,10 @@ case_( pop_CB )
 	data->level = popListItem( &data->stack.level );
 	_break;
 case_( wildcard_CB )
-	if ( *p=='?' && !data->param_CB ) _return( 2 )
-	else _break
-case_( parameter_CB )
+	if ( *p=='?' && !data->param_CB )
+		_return( 2 )
+	_break
+case_( dot_identifier_CB )
 	if (( data->param_CB ))
 	 	data->param_CB( p+1, *data->exponent, data->user_data );
 	_break

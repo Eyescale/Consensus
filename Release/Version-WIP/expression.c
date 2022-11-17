@@ -175,7 +175,7 @@ RETURN:
 	if ( event==EOF ) {
 		while (( args )) {
 			char *arg = args->ptr;
-			bm_instantiate_input( arg, NULL, ctx );
+			bm_instantiate_input( NULL, arg, ctx );
 			args = args->next; } }
 	return 0;
 }
@@ -206,7 +206,7 @@ bm_input( int type, char *arg, BMContext *ctx )
 	default:
 		return 0; }
 
-	bm_instantiate_input( arg, input, ctx );
+	bm_instantiate_input( input, arg, ctx );
 	free( input );
 
 	return 0;

@@ -100,18 +100,18 @@ db_remove( CNInstance *e, CNDB *db )
 		if (( e->sub[ 1 ] ))
 			cn_release( e );
 		else {
-			// e is proxy:( connection, NULL )
+			/* e is proxy:( connection:(this,that), NULL )
+			   where this==NULL denotes current cell's Self proxy
+			   cn_release( connection ) will remove connection
+			   from this->as_sub[ 0 ] and from that->as_sub[ 1 ]
+			*/
 			CNEntity *connection = e->sub[ 0 ];
-			// do not release ((NULL,.),NULL) which is Self (proxy)
 			if (( connection->sub[ 0 ] )) {
-				/* We have connection:( this, that )
-				   cn_release() will remove connection from
-				   this->as_sub[ 0 ] and from that->as_sub[ 1 ]
-				*/
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
 	else {
 #ifdef UNIFIED
+		// Assumption: e->sub[1] is not NULL
 		e->sub[1] = NULL;
 #endif
 		cn_release( e );
@@ -210,6 +210,8 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
 			TRASH( x, parent ) } }
+
+	// empty trash
 	for ( int i=0; i<2; i++ )
 		while (( x = popListItem( &trash[i] ) ))
 			db_remove( x, db );
@@ -274,6 +276,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 */
 {
 	CNInstance *nil = db->nil;
+//	db_outputf( stderr, db, "db_private: testing: %_\n", e );
 	if ( e->sub[0]==nil || e->sub[1]==nil )
 		return 1;
 	if ( privy == 2 ) return 0;

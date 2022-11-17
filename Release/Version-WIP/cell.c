@@ -21,31 +21,40 @@ newCell( Pair *entry, CNEntity *parent )
 
 void
 releaseCell( CNCell *cell )
+/*
+	. prune CNDB proxies & release cell's input connections (cell,.)
+	  this includes Parent connection & associated proxy if set
+	. nullify cell in subscribers' connections (.,cell)
+	  removing cell's Self proxy ((NULL,cell),NULL) on the way
+	. free cell itself - nucleus and ctx
+	Assumptions:
+	. connection->as_sub[ 0 ]==singleton=={ proxy }
+	. connection->as_sub[ 1 ]==NULL
+	. subscriber is responsible for handling dangling connections
+	  see bm_context_update()
+*/
 {
 	if ( !cell ) return;
 
-	// free cell's nucleus
-	freePair((Pair *) cell->sub[ 0 ] );
-
-	/* prune CNDB proxies & release cell's input connections (cell,.)
-	   this includes parent connection & proxy if these were set
-	*/
 	CNEntity *connection;
 	listItem **connections = &cell->as_sub[ 0 ];
 	while (( connection = popListItem( connections ) )) {
 		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		cn_release( connection ); }
+		CNEntity *that = connection->sub[ 1 ];
+		if (( that )) removeItem( &that->as_sub[1], connection );
+		cn_free( connection ); }
 
-	// free cell's context
+	connections = &cell->as_sub[ 1 ];
+	while (( connection = popListItem( connections ) )) {
+		if (( connection->sub[ 0 ] ))
+			connection->sub[ 1 ] = NULL; 
+		else {	// remove cell's Self proxy
+			cn_prune( connection->as_sub[0]->ptr );
+			cn_free( connection ); } }
+
+	freePair((Pair *) cell->sub[ 0 ] );
 	freeContext((BMContext *) cell->sub[ 1 ] );
-
-	/* cn_release will nullify cell in subscribers' connections (.,cell)
-	   subscriber is responsible for removing dangling connections -
-	   see bm_context_update()
-	*/
-	cell->sub[ 0 ] = NULL;
-	cell->sub[ 1 ] = NULL;
-	cn_release( cell );
+	cn_free( cell );
 }
 
 //===========================================================================
@@ -58,11 +67,11 @@ int
 cellOperate( CNCell *cell, listItem **new, CNStory *story )
 {
 #ifdef DEBUG
-	fprintf( stderr, "bm_operate: bgn\n" );
+	fprintf( stderr, "cellOperate: bgn\n" );
 #endif
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	if ( db_out(db) ) return 0;
+	if ( DBExitOn(db) ) return 0;
 
 	Registry *warden, *index[ 2 ], *swap;
 	warden = newRegistry( IndexedByAddress );
@@ -82,7 +91,7 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
 				CNInstance *instance = popListItem( instances );
 				Registry *subs = newRegistry( IndexedByAddress );
-				bm_operate( narrative, ctx, instance, subs, narratives, story );
+				bm_operate( narrative, instance, ctx, subs, narratives, story );
 				enlist( index[ 1 ], subs, warden );
 				freeRegistry( subs, NULL ); } }
 	} while (( index[ 1 ]->entries ));
@@ -90,7 +99,7 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
 #ifdef DEBUG
-	fprintf( stderr, "bm_operate: end\n" );
+	fprintf( stderr, "cellOperate: end\n" );
 #endif
 	return 1;
 }
@@ -103,7 +112,7 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 	the enlisted item if there was none, and NULL otherwise.
 */
 {
-#define under( index, narrative, instances ) \
+#define Under( index, narrative, instances ) \
 	if (!( instances )) { \
 		Pair *entry = registryRegister( index, narrative, NULL ); \
 		instances = (listItem **) &entry->value; }
@@ -119,11 +128,11 @@ enlist( Registry *index, Registry *subs, Registry *warden )
 			listItem **candidates = (listItem **) &sub->value;
 			while (( instance = popListItem(candidates) )) {
 				if (( addIfNotThere( enlisted, instance ) )) {
-					under( index, narrative, instances )
+					Under( index, narrative, instances )
 					addItem( instances, instance ); } } }
 		else {
 			registryRegister( warden, narrative, sub->value );
-			under( index, narrative, instances )
+			Under( index, narrative, instances )
 			for ( listItem *i=sub->value; i!=NULL; i=i->next )
 				addItem( instances, i->ptr ); }
 		freePair( sub ); }

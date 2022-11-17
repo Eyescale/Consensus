@@ -21,22 +21,24 @@ int db_deprecatable( CNInstance *, CNDB * );
 int db_deprecated( CNInstance *, CNDB * );
 int db_manifested( CNInstance *, CNDB * );
 
-//---------------------------------------------------------------------------
-//	db_star / db_still / db_init / db_exit / db_in / db_out
-//---------------------------------------------------------------------------
-#define	db_init( db ) \
+inline void db_init( CNDB *db )
 	{ db->nil->sub[ 0 ] = NULL; }
-#define	db_exit( db ) \
+inline void db_exit( CNDB *db )
 	{ db->nil->sub[ 0 ] = db->nil; }
-#define db_signal( x, db ) \
+inline void db_signal( CNInstance *x, CNDB *db )
 	{ db_op( DB_SIGNAL_OP, x, db ); }
-#define db_manifest( x, db ) \
+inline void db_manifest( CNInstance *x, CNDB *db )
 	{ db_op( DB_MANIFEST_OP, x, db ); }
+inline CNInstance * DBStar( CNDB *db )
+	{ return db->nil->sub[ 1 ]; }
+inline int DBInitOn( CNDB *db )
+	{ return !db->nil->sub[ 0 ]; }
+inline int DBExitOn( CNDB *db )
+	{ return ( db->nil->sub[ 0 ]==db->nil ); }
 
-#define db_star( db )	( db->nil->sub[ 1 ] )
-#define	db_still( db )	( !db->nil->as_sub[ 0 ] && !db->nil->as_sub[ 1 ] )
-#define	db_in( db )	( !db->nil->sub[ 0 ] )
-#define	db_out( db )	( db->nil->sub[ 0 ]==db->nil )
+inline int DBActive( CNDB *db ) {
+	listItem **as_sub = db->nil->as_sub;
+	return ((as_sub[ 0 ]) || (as_sub[ 1 ]) || DBInitOn(db) || DBExitOn(db)); }
 
 
 #endif // DB_OP_H

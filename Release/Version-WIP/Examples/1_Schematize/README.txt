@@ -3,6 +3,10 @@ Name
 
 	UPDATE from Version-1.2:
 	. adapted to new input logics, whereby EOF causes : input : ~.
+	. adapted to new idle logics, whereby
+		on ~.	always fails
+		on ~.:.	means idle event - whereby
+	  neither release nor instantiation occurred during the last frame
 
 Usage
 	../../B% -f yak.ini yak.story

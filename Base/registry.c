@@ -27,8 +27,7 @@ freeRegistry( Registry *registry, freeRegistryCB callback )
 		Pair *entry = i->ptr;
 		if (( callback )) callback( registry, entry );
 		else if ( type == IndexedByName ) free( entry->name );
-		freePair( entry );
-	}
+		freePair( entry ); }
 	freeListItem( &registry->entries );
 	freePair((Pair *) registry );
 }
@@ -42,8 +41,7 @@ newRegistryEntry( RegistryType type, void *name, void *value )
 			icast.value = *(int *) name;
 			break;
 		default:
-			icast.ptr = name;
-	}
+			icast.ptr = name; }
 	return newPair( icast.ptr, value );
 }
 Pair *
@@ -55,8 +53,7 @@ registryRegister( Registry *registry, void *name, void *value )
 	case IndexedByCharacter:
 		if ( name == NULL ) return NULL;
 	default:
-		break;
-	}
+		break; }
 
 	Pair *r;
         listItem *i, *last_i=NULL;
@@ -65,26 +62,21 @@ registryRegister( Registry *registry, void *name, void *value )
 		int comparison = compare( type, r, name );
                 if ( comparison < 0 ) {
                         last_i = i;
-                        continue;
-                }
+                        continue; }
                 if ( comparison == 0 ) {
 #ifdef DEBUG
 			fprintf( stderr, "registryRegister: Warning: entry already registered\n" );
 #endif
-                        return r;
-                }
-                break;
-        }
+                        return r; }
+                break; }
         r = newRegistryEntry( type, name, value );
 	listItem *j = newItem( r );
         if (( last_i )) {
                 last_i->next = j;
-                j->next = i;
-        }
+                j->next = i; }
         else {
 		j->next = registry->entries;
-		registry->entries = j;
-	}
+		registry->entries = j; }
 	return r;
 }
 void
@@ -100,12 +92,9 @@ registryDeregister( Registry *registry, void *name, ... )
 			int comparison;
 			comparison = compare( type, r, name );
 			if ( comparison > 0 ) return;
-			else if ( !comparison ) {
+			else if ( !comparison )
 				goto CLIP;
-			}
-			else last_i = i;
-		}
-        }
+			else last_i = i; } }
 	else {
 		va_list ap;
 		va_start( ap, name );
@@ -114,12 +103,9 @@ registryDeregister( Registry *registry, void *name, ... )
 		for ( i=registry->entries; i!=NULL; i=next_i ) {
 			r = i->ptr;
 			next_i = i->next;
-			if ( r->value == value ) {
+			if ( r->value == value )
 				goto CLIP;
-			}
-			else last_i = i;
-		}
-	}
+			else last_i = i; } }
 	return;
 CLIP:
 	if (( last_i )) last_i->next = next_i;
@@ -136,9 +122,7 @@ registryLookup( Registry *registry, void *name, ... )
 			Pair *r = i->ptr;
 			int comparison = compare( type, r, name );
 			if ( comparison > 0 ) return NULL;
-			else if ( !comparison ) return r;
-		}
-	}
+			else if ( !comparison ) return r; } }
 	else {
 		va_list ap;
 		va_start( ap, name );
@@ -146,9 +130,7 @@ registryLookup( Registry *registry, void *name, ... )
 		va_end( ap );
 	        for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 			Pair *r = i->ptr;
-			if ( r->value == value ) return r;
-        	}
-	}
+			if ( r->value == value ) return r; } }
         return NULL;
 }
 Registry *
@@ -176,8 +158,7 @@ registryDuplicate( Registry *registry )
 
 		listItem *jnext = newItem( r );
 		jlast->next = jnext;
-		jlast = jnext;
-	}
+		jlast = jnext; }
 	return copy;
 }
 
@@ -197,7 +178,6 @@ compare( RegistryType type, Pair *entry, void *name )
 		icast.ptr = entry->name;
 		return ( icast.value - *(int *) name );
 	case IndexedByAddress:
-		return ( (uintptr_t) entry->name - (uintptr_t) name );
-	}
+		return ( (uintptr_t) entry->name - (uintptr_t) name ); }
 }
 

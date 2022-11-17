@@ -127,8 +127,7 @@ catListItem( listItem *list1, listItem *list2 )
 	if ( list2 != NULL ) {
 		listItem *j = list1;
 		while ( j->next != NULL ) j=j->next;
-		j->next = list2;
-	}
+		j->next = list2; }
 	return list1;
 }
 void *
@@ -161,8 +160,7 @@ reorderListItem( listItem **list )
 	for ( i = *list; i!=NULL; i=next_i, count++ ) {
 		next_i = i->next;
 		i->next = last_i;
-		last_i = i;
-	}
+		last_i = i; }
 	*list = last_i;
 	return count;
 }

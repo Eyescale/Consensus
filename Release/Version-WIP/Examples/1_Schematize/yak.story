@@ -166,7 +166,7 @@
 		else in .READY
 			on ((*,record), . )
 				do ~( .READY ) // expecting TAKE from rule schemas
-		else on ~.
+		else on ~.:.
 			in .CYCLIC
 				do .EXIT
 		else

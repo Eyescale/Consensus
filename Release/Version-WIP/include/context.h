@@ -13,7 +13,7 @@ void		bm_context_init( BMContext *ctx );
 int		bm_context_update( CNEntity *this, BMContext *ctx );
 void 		bm_context_set( BMContext *, char *, CNInstance * );
 int		bm_declare( BMContext *, char * );
-void		bm_context_flush( BMContext * );
+void		bm_context_clear( BMContext * );
 void		bm_context_pipe_flush( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_mark_x( BMContext *, char *, char *, CNInstance *, CNInstance *, int * );

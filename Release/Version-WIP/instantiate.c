@@ -61,8 +61,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 			bm_conceive( entry, p, &traverse_data ); }
 		else {
 			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-				"\t\tdo !! %s\n\t<<<<<\n", p );
-			exit( -1 ); } }
+				"\tdo !! %s <<<<<\n", p ); } }
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
@@ -130,6 +129,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 		bm_context_finish( carry, 1 );
 		proxy = db_proxy( cell, new, data->db );
 		bm_context_activate( ctx, proxy ); }
+	traverse_data->done = 1;
 	return proxy;
 }
 
@@ -200,26 +200,29 @@ case_( register_variable_CB )
 	switch ( p[1] ) {
 	case '|': ;
 		listItem *i = bm_context_lookup( data->ctx, "|" );
-		if ( !i ) _return( 2 )
-		listItem **sub = &data->sub[ current ];
-		for ( ; i!=NULL; i=i->next )
-			addItem( sub, i->ptr );
-		_break
+		if (( i )) {
+			listItem **sub = &data->sub[ current ];
+			for ( ; i!=NULL; i=i->next )
+				addItem( sub, i->ptr );
+			_break }
+		_return( 2 )
 	case '<':
 		e = eenov_inform( data->ctx, data->db, p, data->carry );
-		if ( !e ) _return( 2 );
-		data->sub[ current ] = newItem( e );
-		_break
+		if (( e )) {
+			data->sub[ current ] = newItem( e );
+			_break }
+		_return( 2 )
 	case '?': e = bm_context_lookup( data->ctx, "?" ); break;
 	case '!': e = bm_context_lookup( data->ctx, "!" ); break;
 	case '.': e = BMContextParent( data->ctx ); break;
 	case '%': e = BMContextSelf( data->ctx ); break; }
-	if ( !e ) _return( 2 )
-	BMContext *carry = data->carry;
-	if (( carry ))
-		e = bm_inform_context( data->db, e, carry );
-	data->sub[ current ] = newItem( e );
-	_break
+	if (( e )) {
+		BMContext *carry = data->carry;
+		if (( carry ))
+			e = bm_inform_context( data->db, e, carry );
+		data->sub[ current ] = newItem( e );
+		_break }
+	_return( 2 )
 case_( list_CB )
 	/*	((expression,...):_sequence_:)
 	   start p ----------^               ^
@@ -244,12 +247,12 @@ case_( dot_expression_CB )
 	BMContext *carry = data->carry;
 	if (( carry )) {
 		listItem *results = bm_scan( p, data->ctx );
-		if ( !results ) _return( 2 )
-		else {
+		if (( results )) {
 			for ( listItem *i=results; i!=NULL; i=i->next )
 				i->ptr = ((CNInstance *) i->ptr )->sub[ 1 ];
 			data->sub[ current ] = bm_inform( data->db, &results, carry );
-			_prune( BM_PRUNE_TERM ) } }
+			_prune( BM_PRUNE_TERM ) }
+		else _return( 2 ) }
 	_break
 case_( open_CB )
 	if ( f_next & DOT )
@@ -278,7 +281,7 @@ case_( close_CB )
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( !instances ) _return( 2 )
 	if ( is_f(DOT) ) {
-		// dot_expression_CB took care of case carry
+		// case carry here handled in dot_expression_CB
 		CNInstance *perso = BMContextPerso( ctx );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
@@ -308,7 +311,7 @@ case_( wildcard_CB )
 case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;
 	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
+	CNDB *db = data->db;
 	CNInstance *e;
 	if (( carry )) {
 		if (( e = bm_context_lookup( ctx, p+1 ) ))
@@ -430,7 +433,7 @@ bm_list( char **position, listItem **sub, CNDB *db )
 		return NULL; }
 	listItem *results = NULL;
 	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	CNInstance *e;
 	char *q = *position + 5; // start past "...):"
 	char *p;
@@ -546,34 +549,33 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 				else db_unassign( e, db ); } }
 		else {
 			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-				"\t\tdo !! %s\n\t<<<<<\n", p );
-			exit( -1 ); }
-		break;
+				"\tdo !! %s <<<<<\n", p );
+			freeListItem( &sub[ 0 ] ); }
+		return;
 	case '~':
 		if ( p[1]=='.' ) {
 			while (( e = popListItem( &sub[0] ) ))
 				db_unassign( e, db );
-			break; }
-		// no break
-	default:
-		DBG_VOID( p )
-		traverse_data->done = INFORMED;
-		p = instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 || !data->sub[ 0 ] )
-			freeListItem( &sub[ 0 ] );
-		else {
-			sub[ 1 ] = data->sub[ 0 ];
-			data->sub[ 0 ] = NULL;
-			bm_assign( sub, db );
-			freeListItem( &sub[ 0 ] );
-			freeListItem( &sub[ 1 ] ); } }
+			return; } }
+
+	DBG_VOID( p )
+	traverse_data->done = INFORMED;
+	p = instantiate_traversal( p, traverse_data, FIRST );
+	if ( traverse_data->done==2 || !data->sub[ 0 ] )
+		freeListItem( &sub[ 0 ] );
+	else {
+		sub[ 1 ] = data->sub[ 0 ];
+		data->sub[ 0 ] = NULL;
+		bm_assign( sub, db );
+		freeListItem( &sub[ 0 ] );
+		freeListItem( &sub[ 1 ] ); }
 }
 
 //===========================================================================
 //	bm_instantiate_input
 //===========================================================================
 void
-bm_instantiate_input( char *arg, char *input, BMContext *ctx )
+bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 /*
 	Note that the number of assignments actually performed is
 		INF( cardinal(sub[0]), cardinal(sub[1]) )
@@ -582,8 +584,8 @@ bm_instantiate_input( char *arg, char *input, BMContext *ctx )
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "bm_instantiate_input: arg=%s, input=%s ........{\n",
-		arg, ( (input) ? input : "EOF" ) );
+	fprintf( stderr, "bm_instantiate_input: %s, arg=%s ........{\n",
+		( (input) ? input : "EOF" ), arg );
 #endif
 	listItem *sub[ 2 ];
 	CNDB *db = BMContextDB( ctx );

@@ -25,7 +25,7 @@ static int do_output( char *, BMContext * );
 #define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
 
 void
-bm_operate( CNNarrative *narrative, BMContext *ctx, CNInstance *instance,
+bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	Registry *subs, listItem *narratives, CNStory *story )
 {
 #ifdef DEBUG
@@ -95,7 +95,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNInstance *instance,
 			else goto RETURN; } }
 RETURN:
 	freeItem( i );
-	bm_context_flush( ctx );
+	bm_context_clear( ctx );
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
@@ -147,7 +147,12 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	CNInstance *found=NULL;
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
-		{ negated=1; expression += 3; }
+		{ negated = 1; expression += 3; }
+
+	if ( !strcmp(expression,".") ) {
+		CNDB *db = BMContextDB( ctx );
+		success = DBActive( db );
+		goto RETURN; }
 
 	switch ( *expression ) {
 	case '~':
@@ -156,24 +161,21 @@ on_event( char *expression, BMContext *ctx, int *marked )
 			expression++;
 			found = bm_feel( BM_RELEASED, expression, ctx );
 			if (( found )) success = 1;
-			goto RETURN;
-		case '.':
-			success = db_still( BMContextDB(ctx) );
 			goto RETURN; }
 		break;
 	default:
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
-			success = db_in(db); goto RETURN; } }
+			success = DBInitOn(db); goto RETURN; } }
 
 	found = bm_feel( BM_INSTANTIATED, expression, ctx );
 	if (( found )) success = 1;
 RETURN:
+	if ( success && !negated)
+		bm_context_mark( ctx, expression, found, marked );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
-	if ( success && !negated)
-		bm_context_mark( ctx, expression, found, marked );
 	return ( negated ? !success : success );
 }
 
@@ -198,6 +200,12 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
 	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
 
+	if ( !strncmp(expression,".<",2) ) {
+		while (( proxy = popListItem(&candidates) )) {
+			success = bm_proxy_active( proxy );
+			if ( success ) break; }
+		goto RETURN; }
+
 	switch ( *expression ) {
 	case '~':
 		switch ( expression[1] ) {
@@ -206,11 +214,6 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			while (( proxy = popListItem(&candidates) )) {
 				found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
 				if (( found )) { success=1; break; } }
-			goto RETURN;
-		case '.': ;
-			while (( proxy = popListItem(&candidates) )) {
-				success = bm_proxy_still( proxy );
-				if ( success ) break; }
 			goto RETURN; }
 		break;
 	default:
@@ -229,12 +232,12 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
 		if (( found )) { success=1; break; } }
 RETURN:
-#ifdef DEBUG
-	fprintf( stderr, "on_event_x end\n" );
-#endif
 	freeListItem( &candidates );
 	if ( success && !negated )
 		bm_context_mark_x( ctx, expression, src, found, proxy, marked );
+#ifdef DEBUG
+	fprintf( stderr, "on_event_x end\n" );
+#endif
 	return ( negated ? !success : success );
 }
 
@@ -336,7 +339,7 @@ do_input( char *expression, BMContext *ctx )
 	fprintf( stderr, "do_input bgn: %s\n", expression );
 #endif
 	CNDB *db = BMContextDB( ctx );
-	if ( db_out(db) ) return 0;
+	if ( DBExitOn(db) ) return 0;
 
 	// extract fmt and args:< expression(s) >
 	listItem *args = NULL;
@@ -348,10 +351,9 @@ do_input( char *expression, BMContext *ctx )
 		// VECTOR - not yet supported
 		return -1;
 	default: ;
-		CNString *s = newString();
 		char *q = p_prune( PRUNE_FILTER, p );
-		for ( ; p!=q; p++ )
-			StringAppend( s, *p );
+		CNString *s = newString();
+		do StringAppend( s, *p++ ); while ( p!=q );
 		p = StringFinish( s, 0 );
 		StringReset( s, CNStringMode );
 		freeString( s );
@@ -399,8 +401,10 @@ do_output( char *expression, BMContext *ctx )
 	if ( *p==':' ) {
 		p++;
 		if ( *p=='<' ) {
-			do { p++; addItem( &args, p ); }
-			while ( *(p=p_prune( PRUNE_TERM, p ))==',' );
+			do {	p++;
+				addItem( &args, p );
+				p = p_prune( PRUNE_TERM, p );
+			} while ( *p!='>' );
 			reorderListItem( &args ); }
 		else if ( *p )
 			addItem( &args, p ); }

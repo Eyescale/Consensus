@@ -21,7 +21,7 @@ newCNDB( void )
 #endif
 	CNInstance *nil = cn_new( NULL, NULL );
 	CNDB *db = (CNDB *) newPair( nil, index );
-	// optimize db_star( db )
+	// optimize DBStar( db )
 	nil->sub[ 1 ] = db_register( "*", db );
 	return db;
 }
@@ -167,7 +167,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL;
-	if ( e->sub[ 0 ]==db_star(db) ) {
+	if ( e->sub[ 0 ]==DBStar(db) ) {
 		/* Assignment case - as we have e:( *, . )
 		*/
 		// ward off concurrent reassignment case
@@ -209,7 +209,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 CNInstance *
 db_assign( CNInstance *variable, CNInstance *value, CNDB *db )
 {
-	variable = db_instantiate( db_star(db), variable, db );
+	variable = db_instantiate( DBStar(db), variable, db );
 	return db_instantiate( variable, value, db );
 }
 
@@ -223,7 +223,7 @@ db_unassign( CNInstance *x, CNDB *db )
 	otherwise instantiate (*,x)
 */
 {
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	CNInstance *e;
 	for ( listItem *i=x->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr;
@@ -251,7 +251,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 	proceeding top-down
 */
 {
-	if ( !x || x==db_star(db) )
+	if ( !x || x==DBStar(db) )
 		return;
 
 	listItem * stack = NULL,
@@ -279,8 +279,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 				ndx = pop_item( &stack );
 				i = popListItem( &stack );
 				if ( ndx ) x = i->ptr; }
-			else goto RETURN;
-		} }
+			else goto RETURN; } }
 RETURN:
 	freeItem( i );
 }

@@ -240,9 +240,10 @@ fprintf( stderr, " ........{\n" );
 		x = i->ptr;
 		if (( exponent )) {
 			int exp = (int) exponent->ptr;
-			if ( exp & 2 ) {
-				for ( j = x->as_sub[ exp & 1 ]; j!=NULL; j=j->next )
-					if ( !db_private( privy, j->ptr, db ) ) break;
+			if ( exp&2 ) {
+				for ( j=x->as_sub[ exp&1 ]; j!=NULL; j=j->next )
+					if ( !db_private( privy, j->ptr, db ) )
+						break;
 				if (( j )) {
 					addItem( &stack.as_sub, i );
 					addItem( &stack.as_sub, exponent );
@@ -381,7 +382,7 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		if ( *p++=='*' ) {
 			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
 			CNInstance *y = CNSUB( x, 0 );
-			if ( !y || y->sub[0]!=db_star(data->db) ) {
+			if ( !y || y->sub[0]!=DBStar(data->db) ) {
 				data->success = 0;
 				x = NULL; break; }
 			x = y->sub[ 1 ]; }
@@ -443,7 +444,8 @@ case_( dereference_CB )
 	_return( 1 )
 case_( sub_expression_CB )
 	bm_locate_mark( p+1, &data->mark_exp );
-	if (( data->mark_exp )) _return( 1 )
+	if (( data->mark_exp ))
+		_return( 1 )
 	_break
 case_( dot_expression_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
@@ -529,7 +531,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 				( y==BMContextParent(ctx) ) :
 				( y== BMContextPerso(ctx) ) );
 		case '*':
-			return ( y==db_star(data->db) );
+			return ( y==DBStar(data->db) );
 		case '%':
 			switch ( p[1] ) {
 			case '?': return ( y==bm_context_lookup( ctx, "?" ) );
@@ -566,7 +568,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 {
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	CNInstance *success = NULL, *e;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
@@ -670,7 +672,7 @@ bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = data->db;
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)
 		if ( e->sub[0]!=star ) continue;
@@ -688,7 +690,7 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = data->db;
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	char *value = data->user_data;
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		CNInstance *f = i->ptr, *g; // f:(.,e)
@@ -708,7 +710,7 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 		return BM_CONTINUE;
 	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = data->db;
-	CNInstance *star = db_star( db );
+	CNInstance *star = DBStar( db );
 	char *variable = data->user_data;
 	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr; // e:(.,e)

@@ -22,7 +22,7 @@ newContext( CNEntity *cell, CNEntity *parent )
 	Pair *active = newPair(
 		newPair( NULL, NULL ),
 		NULL );
-	registryRegister( ctx, "", id ); // aka. %% and .. (proxies)
+	registryRegister( ctx, "", id ); // aka. %% and ..
 	registryRegister( ctx, "%", db );
 	registryRegister( ctx, "@", active ); // active connections (proxies)
 	registryRegister( ctx, ".", NULL ); // aka. perso
@@ -35,6 +35,12 @@ newContext( CNEntity *cell, CNEntity *parent )
 
 void
 freeContext( BMContext *ctx )
+/*
+	Assumptions - cf releaseCell()
+		. CNDB is free from any proxy attachment
+		. id Self and Parent proxies have been released
+		. ctx registry all flushed out
+*/
 {
 	// free active connections register
 	ActiveRV *active = BMContextActive( ctx );
@@ -44,20 +50,13 @@ freeContext( BMContext *ctx )
 	freeListItem( &active->value );
 	freePair((Pair *) active );
 
-	// free context self proxy & id register value
+	// free context id register value
 	Pair *id = BMContextId( ctx );
-	CNInstance *self = id->name; // self is a proxy
-	CNEntity *connection = self->sub[ 0 ];
-	cn_prune( self ); // remove proxy
-	cn_release( connection );
 	freePair( id );
 
-	// free CNDB now that it is free from any proxy attachment
+	// free CNDB & context registry
 	CNDB *db = BMContextDB( ctx );
 	freeCNDB( db );
-
-	/* free context - now presumably all flushed out
-	*/
 	freeRegistry( ctx, NULL );
 }
 
@@ -114,10 +113,10 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	// deprecate dangling connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
-		if ( connection->sub[ 1 ]==NULL ) {
-			CNInstance *proxy = connection->as_sub[0]->ptr;
-			if ( db_deprecatable( proxy, db ) )
-				db_deprecate( proxy, db ); } }
+		if (( connection->sub[ 1 ] )) continue;
+		CNInstance *proxy = connection->as_sub[0]->ptr;
+		if ( db_deprecatable( proxy, db ) )
+			db_deprecate( proxy, db ); }
 	// invoke db_update - turning deprecated into released
 	db_update( db, BMContextParent(ctx) );
 	// deactivate released connections
@@ -128,7 +127,7 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
-	return db_out( db );
+	return DBExitOn( db );
 }
 static inline void
 update_active( ActiveRV *active )
@@ -206,39 +205,40 @@ bm_declare( BMContext *ctx, char *p )
 }
 
 //===========================================================================
-//	bm_context_flush / bm_context_pipe_flush
+//	bm_context_clear / bm_context_pipe_flush
 //===========================================================================
 void
-bm_context_flush( BMContext *ctx )
+bm_context_clear( BMContext *ctx )
 {
+	listItem **stack;
 	listItem **entries = &ctx->entries;
 	listItem *last_i = NULL, *next_i;
 	for ( listItem *i=*entries; i!=NULL; i=next_i ) {
 		Pair *entry = i->ptr;
 		next_i = i->next;
 		char *name = entry->name;
-		switch ( *name ) {
-		case '<': ;
+		if ( is_separator( *name ) ) {
 			EEnoRV *eeno;
-			while (( eeno = popListItem((listItem**)&entry->value) )) {
-				freePair( eeno->event );
-				freePair((Pair *) eeno ); }
-			last_i = i;
-			break;
-		case '?':
-		case '!':
-		case '|':
-			freeListItem((listItem **) &entry->value );
-			last_i = i;
-			break;
-		case '.':
-			entry->value = NULL;
-			break;
-		default:
-			if ( !is_separator( *name ) ) {
-				clipListItem( entries, i, last_i, next_i );
-				freePair( entry ); }
-			else last_i = i; } }
+			switch ( *name ) {
+			case '<':
+				stack = (listItem **) &entry->value;
+				while (( eeno = popListItem( stack ) )) {
+					freePair( eeno->event );
+					freePair((Pair *) eeno ); }
+				break;
+			case '?':
+			case '!':
+			case '|':
+				stack = (listItem **) &entry->value;
+				freeListItem( stack );
+				break;
+			case '.':
+				entry->value = NULL;
+				break; }
+			last_i = i; }
+		else {
+			clipListItem( entries, i, last_i, next_i );
+			freePair( entry ); } }
 }
 void
 bm_context_pipe_flush( BMContext *ctx )
@@ -295,7 +295,7 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, C
 				// freeListItem( &xpn ); // Assumption: unnecessary
 				event = newPair( NULL, x->sub[1] ); }
 			else if (( bm_locate_mark( expression, &xpn ) ))
-				event = newPair( x->sub[1], NULL ); }
+				event = newPair( xsub(x->sub[1],&xpn), NULL ); }
 		else {
 			// we know x: (( *, . ), . )
 			if (( bm_locate_mark( src, &xpn ) )) {

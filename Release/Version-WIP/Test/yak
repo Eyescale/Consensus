@@ -142,8 +142,8 @@
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
-			in start: ( '[', ? )
-				do : event : %(%?:(.,?))
+			in start: ( '[', (.,?) )
+				do : event : %?
 	else on .FAIL
 		in (((schema,.),.), r ): ~%(?,FAIL)
 			do ~( s )
@@ -192,9 +192,9 @@
 			in ((.,start), r ): ~s
 				do .FAIL // defunct
 	else in .READY
-		on : record : ?
+		on : record : (.,?)
 			do ~( .READY )
-			do : event : %(%?:(.,?))
+			do : event : %?
 	else on : event : .
 		in : p : '\0'
 			do .( '[', *record ) // TAKE unconsumed

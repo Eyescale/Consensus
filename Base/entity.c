@@ -31,16 +31,13 @@ cn_instance( CNEntity *e, CNEntity *f, const int pivot )
 		for ( listItem *i=f->as_sub[ 1 ]; i!=NULL; i=i->next ) {
 			CNEntity *instance = i->ptr;
 			if ( instance->sub[ 0 ] == e )
-				return instance;
-		}
+				return instance; }
 		break;
 	default:
 		for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 			CNEntity *instance = i->ptr;
 			if ( instance->sub[ 1 ] == f )
-				return instance;
-		}
-	}
+				return instance; } }
 	return NULL;
 }
 
@@ -76,22 +73,17 @@ cn_prune( CNEntity *e )
 		if (( j )) {
 			addItem( &stack, i );
 			i = j; e = i->ptr;
-			continue;
-		}
+			continue; }
 		for ( ; ; ) {
 			cn_free( e );
 			if (( i->next )) {
 				i = i->next;
 				e = i->ptr;
-				break;
-			}
+				break; }
 			else if (( stack )) {
 				i = popListItem( &stack );
-				e = i->ptr;
-			}
-			else goto RETURN;
-		}
-	}
+				e = i->ptr; }
+			else goto RETURN; } }
 RETURN:
 	freeItem( i );
 }
@@ -117,12 +109,11 @@ cn_release( CNEntity *e )
 	*/
 	for ( listItem *j=e->as_sub[ 0 ]; j!=NULL; j=j->next ) {
 		CNEntity *instance = j->ptr;
-		instance->sub[ 0 ] = NULL;
-	}
+		instance->sub[ 0 ] = NULL; }
+
 	for ( listItem *j=e->as_sub[ 1 ]; j!=NULL; j=j->next ) {
 		CNEntity *instance = j->ptr;
-		instance->sub[ 1 ] = NULL;
-	}
+		instance->sub[ 1 ] = NULL; }
 	/* 3. free e
 	*/
 	cn_free( e );

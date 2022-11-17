@@ -59,8 +59,7 @@ StringFinish( CNString *string, int trim )
 #endif
 	if ( string->mode == CNStringBytes ) {
 		string->data = l2s((listItem **) &string->data, trim );
-		string->mode = CNStringText;
-	}
+		string->mode = CNStringText; }
 	return string->data;
 }
 char *
@@ -78,8 +77,7 @@ l2s( listItem **list, int trim )
 		icast.ptr = i->ptr;
 		if ((char) icast.value == '\n' ) {
 			backup = i;
-			*list = i->next;
-		}	
+			*list = i->next; }	
 		for ( i = *list; i!=NULL; i=next_i ) {
 			icast.ptr = i->ptr;
 			switch ( icast.value ) {
@@ -90,21 +88,15 @@ l2s( listItem **list, int trim )
 					icast.ptr = next_i->ptr;
 					if ( icast.value == '\\' ) {
 						next_i = NULL;
-						break;
-					}
-				}
+						break; } }
 				freeItem( i );
 				*list = next_i;
 				break;
 			default:
-				next_i = NULL;
-			}
-		}
+				next_i = NULL; } }
 		if ( backup ) {
 			backup->next = *list;
-			*list = backup;
-		}
-	}
+			*list = backup; } }
 
 	count = reorderListItem( list );
 
@@ -121,18 +113,14 @@ l2s( listItem **list, int trim )
 				*list = next_i;
 				break;
 			default:
-				next_i = NULL;
-			}
-		}
-	}
+				next_i = NULL; } } }
 
 	// allocate & inform string
 	char *str = (char *) malloc( count + 1 );
 	char *ptr = str;
 	for ( i = *list; i!=NULL; i=i->next ) {
 		icast.ptr = i->ptr;
-		*ptr++ = (char) icast.value;
-	}
+		*ptr++ = (char) icast.value; }
 	*ptr = 0;
 	freeListItem( list );
 	return str;
@@ -154,9 +142,7 @@ StringReset( CNString *string, int target )
 			free( string->data );
 			string->data = NULL;
 			string->mode = CNStringBytes;
-			break;
-		}
-	}
+			break; } }
 }
 int
 StringInformed( CNString *string )
@@ -173,8 +159,7 @@ StringAt( CNString *string )
 			icast.ptr = ((listItem *) string->data )->ptr;
 			return icast.value;
 		case CNStringText:
-			return *(char *)string->data;
-		}
+			return *(char *)string->data; }
 	return 0;
 }
 int
@@ -192,8 +177,7 @@ StringDiffer( CNString *string, char *cmp )
 	for ( j=strlen(cmp), cmp+=j-1; j-- && (i); i=i->next ) {
 		icast.ptr = i->ptr;
 		int comparison = icast.value - *cmp--;
-		if ( comparison ) return comparison;
-	}
+		if ( comparison ) return comparison; }
 	return 0;
 }
 
@@ -276,12 +260,10 @@ charscan( char *p, char_s *q )
 		case '\\': q->value = '\\'; return 2;
 		case '\'': q->value = '\''; return 2;
 		case '"': q->value = '"'; return 2;
-		default: return 0;
-		}
+		default: return 0; }
 		break;
 	default:
-		q->value = p[0]; return 1;
-	}
+		q->value = p[0]; return 1; }
 }
 
 //---------------------------------------------------------------------------
@@ -708,23 +690,19 @@ strcomp( char *p, char *q, int cmptype )
 	case 0:	// both p and q are null-terminated
 		for ( ; *p; p++, q++ ) {
 			if ( *p == *q ) continue;
-			return *(const unsigned char*)p - *(const unsigned char*)q;
-		}
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
 		return - *(const unsigned char*)q;
 	case 1:	// both p and q are separator-terminated
 		if ( is_separator(*p) ) {
 			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
-			return *(const unsigned char*)p - *(const unsigned char*)q;
-		}
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
 		else if ( is_separator(*q) ) {
-			return *(const unsigned char*)p;
-		}
+			return *(const unsigned char*)p; }
 		else for ( ; !is_separator(*p); p++, q++ ) {
 			if ( *p == *q ) continue;
 			return is_separator(*q) ?
 				*(const unsigned char*)p :
-				*(const unsigned char*)p - *(const unsigned char*)q;
-		}
+				*(const unsigned char*)p - *(const unsigned char*)q; }
 		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
 	case 2:; // p is a regex, q is null-terminated
 		char *r = p+1; // skip the leading '/'
@@ -734,17 +712,13 @@ strcomp( char *p, char *q, int cmptype )
 		for ( ; *q; q++, rxnext(p,&r) ) {
 			if (( comparison = RXCMP( r, *q ) )) {
 				if ( equivocal(p,r) ) return -1;
-				else return comparison;
-			}
-		}
+				else return comparison; } }
 		if (( comparison = RXCMP( r, *q ) )) {
 			if ( equivocal(p,r) ) return -1;
-			else return comparison;
-		}
+			else return comparison; }
 		return 0;
 	default:
-		return 1;
-	}
+		return 1; }
 }
 int
 rxcmp( char *r, int event )
@@ -766,8 +740,7 @@ rxcmp( char *r, int event )
 				else { range[0]=r[1]; r+=2; }
 				break;
 			default:
-				range[0] = *r++;
-		   	}
+				range[0] = *r++; }
 			if ( *r == '-' ) {
 				r++;
 				switch ( *r ) {
@@ -781,22 +754,18 @@ rxcmp( char *r, int event )
 					range[1] = *r++;
 			   	}
 				if ( event>=range[0] && event<=range[1] )
-					return ( not ? -1 : 0 );
-			}
-			else if ( event==range[0] ) return ( not ? -1 : 0 );
-		}
+					return ( not ? -1 : 0 ); }
+			else if ( event==range[0] ) return ( not ? -1 : 0 ); }
 		return ( not ? 0 : -1 ); // no match
 	case '\\':
 		switch ( r[1] ) {
 		case 'd': return is_digit(event) ? 0 : -1;
 		case 'l': return is_letter(event) ? 0 : -1;
-		case 'h': return is_xdigit(event) ? 0 : -1;
-		}
+		case 'h': return is_xdigit(event) ? 0 : -1; }
 		return event - ( charscan(r,&q) ?
 			*(const unsigned char*)q.s : *(const unsigned char*)(r+1) );
 	default:
-		return event - *(const unsigned char*)r;
-	}
+		return event - *(const unsigned char*)r; }
 }
 static int
 equivocal( char *regex, char *p )
@@ -810,9 +779,7 @@ equivocal( char *regex, char *p )
 		case 'd':
 		case 'h':
 		case 'l':
-			return 1;
-		}
-	}
+			return 1; } }
 	char *r = regex+1; // skip the leading '/'
 	while ( r != p ) {
 		switch ( *r ) {
@@ -829,9 +796,7 @@ equivocal( char *regex, char *p )
 			r += ( r[1]=='x' ? 4 : 2 );
 			break;
 		default:
-			r++;
-		}
-	}
+			r++; } }
 	return 0;
 }
 static int
@@ -854,10 +819,8 @@ rxnext( char *regex, char **p )
 			r += ( r[1]=='x' ? 4 : 2 );
 			break;
 		default:
-			r++;
-		}
-	}
-	while ( bracket );
+			r++; }
+	} while ( bracket );
 	*p = r;
 	return 1;
 }
@@ -894,8 +857,7 @@ strmatch( char *s, int event )
 {
 	if ( *s ) {
 		do { if ( event == *s++ ) return 1; } while ( *s );
-		return 0;
-	}
+		return 0; }
 	return event ? 0 : 1;
 }
 
@@ -916,15 +878,13 @@ strskip( char *fmt, char *str )
 					str++;
 					break;
 				default:
-					done = 1;
-				}
+					done = 1; }
 			break;
 		case '.': // skip identifier: { [A-Za-z0-9_] }
 			for ( int done=0; *str && !done; ) {
 				if ( !is_separator( *str ) )
 					str++;
-				else done = 1;
-			}
+				else done = 1; }
 			break;
 		case '\\': // to allow the above in the format
 			fmt++;
@@ -947,20 +907,15 @@ strskip( char *fmt, char *str )
 						return NULL;
 					break;
 				default: if ( *str++ != *fmt )
-						return NULL;
-				}
-				break;
-			}
+						return NULL; }
+				break; }
 			break;
 		default: // must match
 			switch ( *str ) {
 			case '\0':
 				return NULL;
 			default: if ( *str++ != *fmt )
-				return NULL;
-			}
-		}
-	}
+				return NULL; } } }
 	return str;
 }
 
@@ -970,19 +925,20 @@ strskip( char *fmt, char *str )
 char *
 strxchange( char *expression, char *identifier, char *value )
 {
-	int i, pos, m = strlen( value ), n = strlen( identifier ), maxpos = strlen( expression ) - n;
-	char *ptr1=expression, *ptr2, *ptr3, *ptr4;
+	int	i, pos,
+		m = strlen( value ),
+		n = strlen( identifier ),
+		maxpos = strlen( expression ) - n;
+	char *	ptr1 = expression, *ptr2, *ptr3, *ptr4;
 
 	CNString *result = newString();
-	for ( pos=0; ( pos < maxpos ) && *ptr1; )
-	{
+	for ( pos=0; ( pos < maxpos ) && *ptr1; ) {
 		pos++;
 		if ( *ptr1 != '%' ) {
 			if ( result->data != NULL )
 				StringAppend( result, *ptr1 );
 			ptr1++;
-			continue;
-		}
+			continue; }
 		ptr1++;
 
 		int found = 1;
@@ -990,44 +946,34 @@ strxchange( char *expression, char *identifier, char *value )
 		for ( i=0; (i<n) && found; i++ ) {
 			// output( Debug, "\ncomparing %c %c\n", ptr1[i], *ptr2 );
 			if ( ptr1[ i ] != *ptr2++ )
-				found = 0;
-		}
+				found = 0; }
 		if ( !found ) {
 			if ( result->data != NULL )
 				StringAppend( result, '%' );
-			continue;
-		}
+			continue; }
 
 		if ( pos == 1 ) {
 			ptr4 = value;
 			StringStart( result, *ptr4++ );
 			for ( i=1; i<m; i++ )
-				StringAppend( result, *ptr4++ );
-		}
+				StringAppend( result, *ptr4++ ); }
 		else {
 			if ( result->data == NULL ) {
 				ptr3 = expression;
 				StringStart( result, *ptr3++ );
 				for ( i=2; i<pos; i++ )
-					StringAppend( result, *ptr3++ );
-			}
+					StringAppend( result, *ptr3++ ); }
 			ptr4 = value;
 			for ( i=0; i<m; i++ ) {
-				StringAppend( result, *ptr4++ );
-			}
-		}
-		pos += n; ptr1 += n;
-	}
+				StringAppend( result, *ptr4++ ); } }
+		pos += n; ptr1 += n; }
 
 	char *retval;
-	if ( result->data != NULL )
-	{
+	if ( result->data != NULL ) {
 		n = strlen( expression );
 		for ( ; pos<n; pos++ ) {
-			StringAppend( result, *ptr1++ );
-		}
-		char *retval = StringFinish( result, 0 );
-	}
+			StringAppend( result, *ptr1++ ); }
+		retval = StringFinish( result, 0 ); }
 	else retval = expression;
 
 	freeString( result );

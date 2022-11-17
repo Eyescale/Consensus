@@ -135,134 +135,138 @@
 
 
 .s: ((( schema, .position ), .start ), .r )
-	.p .event
+	.p
 	on ( s )
 		// schema has predecessor AND is in null position
 		in ( position:'\0' ? ((((schema,.),.),.), s ) :)
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
-			in start: ( '[', ? )
-				do : event : %(%?:(.,?))
-	else on .FAIL
-		in (((schema,.),.), r ): ~%(?,FAIL)
+			do : s : !! Take( ((*,p), .position ),
+				( start:('[',.) ? ((*,event), %(start:(.,(.,?)))) :) )
+	else on .EXIT
+		in (((schema,.),.), r ): ~%(?,EXIT)
 			do ~( s )
 		else do ~( r ) // all r feeder schemas failed
-
+	else on ~( .(.,s) )
+		do .EXIT // feeder rule failed
 	else in ~.: ( (r,base) ?: ( r, (((schema,.),.),.)) )
 		do ~( r ) // all r subscribers failed
-
-	else in .( ?, s ) // s pending on rule
-		in .DONE
+	else in .DONE
+		in .( ?, s ) // s has successor schema
 			on ~( s, (((schema,.),.),.) ) // successor schema failed
 				in ( s, (((schema,.),.),.) )
-				else do .FAIL // all successor schemas failed
-		else in .READY
+				else do .EXIT // all successor schemas failed
+		else	/* chill - so long as
+			r's subscriber schema, or, to allow left-recursion, this schema,
+			has a successor starting at this schema's finishing (flag,frame)
+			AND (right-recursion case) no later completion event occurs with
+			a sibling schema starting at the same (flag,frame) */
+			on ~( %(r,?), ((.,%(s,?)),.) )
+				in ( %(r,?), ((.,%(s,?)),.) )
+				else in ((.,%(s,?)), r ): ~s
+				else do .EXIT // defunct
+			on (((.,'\0'),.), r ) // right-recursion case
+				in ((.,start), r ): ~s
+					do .EXIT // defunct
+	else on .( /[[\]]/, . )
+		do .DONE
+	else
+		in .READY
 			on : record : .
-				do ~( .READY ) // expecting TAKE from rule schemas
-		else on ~.
-			in .CYCLIC
-				do > "Warning: Yak: deadlock - on rule '%_'\n": %(r:((.,?),.))
-				do .FAIL
+				do ~( .READY )
+		else in .( ?, s ) // s pending on rule
+			on ~.: . < { %%, . }
+				in .CYCLIC
+					do > "Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
+					do .EXIT
+			else	// expecting TAKE from rule schemas
+				on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
+					do .(((schema, %(*p:(.,?))), %? ), r )
+				on ((.,%?), ?:('[',.)) // TAKE: launch successor schema
+					do .(((schema, %(*p:(.,?))), %? ), r )
+				in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE)
+					in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
+					else do .READY // all non-cyclic rule schemas ready
+				else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
+					do .DONE // all non-cyclic rule schemas complete
+				else do .EXIT // either cyclic (done) or has no successor
 		else
-			on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
-				do .(((schema, %(*p:(.,?))), %? ), r )
-			on ((.,%?), ?:('[',.)) // TAKE: launch successor schema
-				do .(((schema, %(*p:(.,?))), %? ), r )
-			in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE)
-				in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
-				else do .READY // all non-cyclic rule schemas ready
-			else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
-				do .DONE // all non-cyclic rule schemas complete
-			else do .FAIL // either cyclic (done) or has no successor
-	else on ~( .(.,s) )
-		do .FAIL // feeder rule failed (cannot be predecessor schema here)
-
-	else in .DONE /* chill - so long as
-		   r's subscriber schema, or, to allow left-recursion, this schema,
-		   has a successor starting at this schema's finishing (flag,frame)
-		   AND (right-recursion case) no later completion event occurs with
-		   a sibling schema starting at the same (flag,frame)
-		*/
-		on ~( %(r,?), ((.,%(s,?)),.) )
-			in ( %(r,?), ((.,%(s,?)),.) )
-			else in ((.,%(s,?)), r ): ~s
-			else do .FAIL // defunct
-		on (((.,'\0'),.), r ) // right-recursion case
-			in ((.,start), r ): ~s
-				do .FAIL // defunct
-	else in .READY
-		on : record : ?
-			do ~( .READY )
-			do : event : %(%?:(.,?))
-	else on : event : .
-		in : p : '\0'
-			do .( '[', *record ) // TAKE unconsumed
-		else in : p : (?,.) // expected @ current, not terminating position
-			in %?: ( %, ? )
-				in ((Rule,%?),(Schema,~'\0'))
-					in ((Rule,%?),(Schema,'\0')) // FORK on null-schema
-						do .(((schema, %(*p:(.,?))), ('[',*record)), r )
-					in ?:((rule,%?), ('[',*record)) // rule already instantiated
+			on : ( TAKE, ? ) : ~. < *s
+				do .( %<?>, *record ) // TAKE, consumed or unconsumed
+			else on : ( TAKE, ? ) : . < *s
+				in ((Rule,%<!>),(Schema,~'\0'))
+					in ((Rule,%<!>),(Schema,'\0')) // FORK on null-schema
+						do .(((schema, %(*p:(.,?))), (%<?>,*record)), r )
+					in ?: ((rule,%<!>), (%<?>,*record)) // rule already instantiated
 						do .( %?, s )
 						do .CYCLIC
-					else do (((rule,%?), (']',*record)) | {
-						(((schema, %((Rule,%?),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+					else do (((rule,%<!>), (%<?>,*record)) | {
+						(((schema, %((Rule,%<!>),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 						.( %|, s ) } )
-				else in ((Rule,%?),(Schema,'\0'))
+				else in ((Rule,%<!>),(Schema,'\0')) // moving on
 					do : p : %(*p:(.,?))
-					do : event : *event // REENTER
+					do : s : !! Take( ((*,p),%(*p:(.,?))),
+						( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 				else
 					do >"Error: Yak: rule '%_' not found or invalid\n": %?
-					do .FAIL
+					do .EXIT
+			else on ~( SAME ) < *s
+				do .READY
+			else on READY < *s
+				do : p : %(*p:(.,?))
+				do .READY
+			else on exit < *s // FAIL
+				do .EXIT
+
+: Take
+	in READY
+		on : record : ?  < ..
+			do : event : %<?:(.,?)>
+			do ~( READY )
+	else on : event : .
+		in : p : '\0'
+			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed
+		else in : p : (?,.) // expected @ current, not terminating position
+			in %?: ( %, ? )
+				do : ( TAKE, '[' ) : %?
 			else in %?: ( '\\', ? )
 				in %?: w
 					in : event : /[A-Za-z0-9_]/
-						do .CHECK
-						do .READY
-					else in .CHECK
-						do ~( .CHECK )
+						do check
+						do SAME~
+					else in check
+						do ~( check )
 						do : p : %(*p:(.,?))
 						do : event : *event // REENTER
-					else do .FAIL
+					else do exit // FAIL
 				else in %?: 0
 					in : event : '\0'
 						do : p : %(*p:(.,?))
-					else do .FAIL
+					else do exit // FAIL
 				else in : event : %?
 					do : p : %(*p:(.,?))
-				else do .FAIL
+				else do exit // FAIL
 			else in %?: ' '
 				in : event : /[ \t]/
-					do .READY
+					do SAME~
 				else
 					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
 			else in : event : %?
 				do : p : %(*p:(.,?))
-			else do .FAIL
+			else do exit // FAIL
 		else // *p is a base entity (singleton) other than '\0'
 			do >"Error: Yak: %_-terminated schema not supported\n": *p
-			do .FAIL
+			do exit // FAIL
+	else on ~( SAME )
+		do READY
 	else on : p : ?
 		in %?: '\0'
-			do .( ']', *record ) // TAKE consumed
-		else in %?: (( %, ? ), . )
-			in ((Rule,%?),(Schema,~'\0'))
-				in ((Rule,%?),(Schema,'\0')) // FORK on null-schema
-					do .(((schema, %(*p:(.,?))), (']',*record)), r )
-				in ?: ((rule,%?), (']',*record)) // rule already instantiated
-					do .( %?, s )
-					do .CYCLIC
-				else do (((rule,%?), (']',*record)) | {
-					(((schema, %((Rule,%?),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
-					.( %|, s ) } )
-			else in %?: %((Rule,?),(Schema,'\0'))
-				do : p : %(*p:(.,?))
-			else
-				do >"Error: Yak: rule '%_' not found or invalid\n": %?
-				do .FAIL
-		else do .READY
-	else on .( /[[\]]/, . )
-		do .DONE
+			do : ( TAKE, ']' ): ~. // TAKE, event consumed
+		else in	%?: (( %, ? ), . )
+			do : ( TAKE, ']' ): %?
+		else do READY
+	else on ( TAKE, . )
+		do exit
 

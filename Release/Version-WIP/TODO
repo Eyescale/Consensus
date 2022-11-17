@@ -1,9 +1,17 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. support syntax - as internal representation:
+		do input, format <
+	. do_enable: without building string?
 	. Examples/4_Yak
 		. [ DONE ] yak using literals and optimized like schematize.new
+		. [ DONE ] extracted cell intake process
 		. [ WIP ] build easily traversable sequence
 		. [ WIP ] use B% Grammar as example
+	. Update Specs:
+		. on . means active <=> on ( . ) OR ~( . ) OR init OR exit
+		. allowing %% as src of EENO when explicitely mentioned
+		  example:	on ~.: . < { ., %% } // idle
 	. Update docs
 	. Release Version-2.0
 		. Examples
@@ -66,6 +74,10 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. CHANGED idle logics, from "on ~." meaning idle event, to
+		on ~.	always fails
+		on ~.:. means idle event
+	  updated examples
 	. bm_conceive(): expressions are parsed one by one
 	. corrected implementation of
 
@@ -85,7 +97,7 @@ DONE
 	  It is however supported in normal context, in which case not identifier
 	  but the ( perso, identifier ) is deprecated
 
-	. changed input logics, so that EOF <=> do : input : ~.
+	. CHANGED input logics, so that EOF <=> do : input : ~.
 		. reimplement do_input using instantiate_assignment()
 		. update examples to new input logics
 	. Testing - implemented
