@@ -6,8 +6,8 @@ Synopsis
 	See Changes section below
 
     Additions
-	The following features were added to the latest Version-1.2 features - module
-	changes mentioned in the Changes section below
+	The following features were added to the latest Version-1.2 features - modulo
+	the changes mentioned in the Changes section below
 
 	    	Feature Name			Expression			Comment
 
