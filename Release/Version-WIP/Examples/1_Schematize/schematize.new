@@ -212,17 +212,17 @@
 					do .EXIT
 			else on ~( SAME ) < *s
 				do .READY
-			else on READY < *s
+			else on NEXT < *s
 				do : p : %(*p:(.,?))
 				do .READY
 			else on exit < *s // FAIL
 				do .EXIT
 
 : Take
-	in READY
+	in NEXT
 		on : record : ?  < ..
 			do : event : %<?:(.,?)>
-			do ~( READY )
+			do ~( NEXT )
 	else on : event : .
 		in : p : '\0'
 			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed
@@ -259,13 +259,13 @@
 			do >"Error: Yak: %_-terminated schema not supported\n": *p
 			do exit // FAIL
 	else on ~( SAME )
-		do READY
+		do NEXT
 	else on : p : ?
 		in %?: '\0'
 			do : ( TAKE, ']' ): ~. // TAKE, event consumed
 		else in	%?: (( %, ? ), . )
 			do : ( TAKE, ']' ): %?
-		else do READY
+		else do NEXT
 	else on ( TAKE, . )
 		do exit
 
