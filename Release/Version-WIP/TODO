@@ -1,15 +1,10 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. do_enable: without building string?
 	. Examples/4_Yak
 		. [ DONE ] yak using literals and optimized like schematize.new
 		. [ DONE ] extracted cell intake process
 		. [ WIP ] build easily traversable sequence
 		. [ WIP ] use B% Grammar as example
-	. Update Specs:
-		. on . means active <=> on ( . ) OR ~( . ) OR init OR exit
-		. allowing %% as src of EENO when explicitely mentioned
-		  example:	on ~.: . < { ., %% } // idle
 	. Update docs
 	. Release Version-2.0
 		. Examples
@@ -20,7 +15,6 @@ TODO
 				. TM-head_tape.story
 				. TM-head_cell.story
 		. Additonal examples (?)
-			. yak using new Cell design (and literals)
 			. interactive // TBD
 ON-GOING
     Version-1.2 Documentation
@@ -50,6 +44,7 @@ NICE TO HAVE
 	  	  in Base/Examples/6_BTreefy/btree.c
 	. optimization
 		. Remodel occurrence->data->expression from char * to TBD
+		. do_enable: without building string?
 	. bm_void() - should bm_instantiate() verify expression?
 		. Pros: instantiate all or nothing
 		. Cons: performances
@@ -72,6 +67,10 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. updated specs
+		. on . means active <=> on ( . ) OR ~( . ) OR init OR exit
+		. allowing %% as src of EENO when explicitely mentioned
+		  example:	on ~.: . < { ., %% } // idle
 	. input syntax & internal representations
 		do input:<	=>	do input<	internally
 		do input:"fmt"<	=>	do input,"fmt"<	internally
