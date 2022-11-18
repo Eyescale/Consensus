@@ -190,8 +190,7 @@ Feature Description
 
 	The rules of assignment described in the Changes section of this document
 	apply to the %<?> and %<!> Register Variables, where the additional EENO
-	Register Variable %< holds the proxy instance corresponding to the query
-	result, if any.
+	Register Variable %< holds the proxy instance to the EENO source.
 
 	Note here that the occurrence expression
 
@@ -213,24 +212,27 @@ Feature Description
 		%<?>	matching value
 		%<!>	matching variable
 
-	Note that when found in occurrences the EENOV register variables %<?> %<!>
+	Note that when found in occurrences the EENO register variables %<?> %<!>
 	will be dereferenced inside the local CNDB prior to the occurrence query
 	being launched, with the following exceptions:
 
-		in %<?:sub>	// as-is
-		in %<!:sub>	// as-is
+		in %<?:sub>		// as-is
+		in %<!:sub>		// as-is
+
+		do > "fmt" : %<?:sub>	// as-is
+		do > "fmt" : %<!:sub>	// as-is
 
 	where the sub expression is evaluated directly in the source CNDB, and
 
 		do expression
 
-	where the %<?> and %<!> expression terms, if any are present as-is (that
-	is: unfiltered etc.) will be converted locally, modulo instantiation.
+	where the %<?:sub> and %<!:sub> terms, if any are present "as-is" - that
+	is: unfiltered etc. - will be converted locally, modulo instantiation.
 
     6. Narrative parent Register Variable ..
 
 	The Narrative parent Register Variable .. allows a proxy to the narrative's
-	parent ( narrative, instance ) to be used - e.g.
+	parent connection to be used - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
@@ -252,7 +254,8 @@ Changes & Extensions
 	1. Narrative pipe Register Variable %|
 	2. Variable assignment alternative syntax : variable, value
 	3. Input alternative syntax do : input, format <
-	4. Process idle event deprecated - active event introduced
+	4. Process active event introduced - idle event deprecated
+	5. Signal event occurrences
 
     1. Narrative pipe Register Variable
 
@@ -311,15 +314,15 @@ Changes & Extensions
        on : input : ~. event occurrence, as opposed to ~( *, input ) in
        Version-1.x, which required ( *, input ) to be pre-instantiated.
 
-    4. Process idle event deprecated - active event introduced
+    4. Process active event introduced - idle event deprecated
 
        B% Version-2.0 allows to check process activity during the last frame
        via the following syntax
 
-		on .	covering ( . ), ~( . ), init and exit events altogether
+		on . // covering ( . ), ~( . ), init and exit events altogether
 
-       The on ~. occurrence which was used in Version-1.x to check process
-       inactivity over the last frame now systematically fails, replaced by
+       The on ~. occurrence which, in Version-1.x, was used to check process
+       inactivity over the last frame, now systematically fails, replaced by
        such occurrences as
 
 		on ~.: .
@@ -329,4 +332,16 @@ Changes & Extensions
        Note the possibility to use %% as EENO source when it is explicitely
        mentioned - the underlying "connection" remaining un-activable.
 
+    5. Signal event occurrences
+
+       B% Version-2.0 allows the following alternative syntax to be used
+
+		on signal~
+		on signal~ < src	// EENO
+
+       to test signal events - which are release events associated with CNDB
+       base entities. See example usage in
+
+		Examples/1_Schematize/yak.new
+		Examples/3_TM.multi/TM-head_cell.story
 

@@ -1,20 +1,19 @@
 TODO
-    Version-1.2 Documentation
-	     Release Documents
+	Documentation
 		. Update Version-1.1 Programming Guide -> Version-1.x
 		  Note: instantiation may do half a job - as bm_void() not invoked
 
 DONE
 	. finalized README.txt - including all relevant new Features and Additions
 	. traverse.c / bm_traverse() implementation
-    Version-1.1 -> Version-1.2 [ BETA ]
-	. Branched Version-1.2 on github
-	. Version-1.2 Engineering Complete
-	     Examples
-		. 0_TuringMaching
-		. 1_Schematize
-		. 2_TuringMachine.single
-			=> Pass design/story/single-thread.story
+i	. Version-1.1 -> Version-1.2 [ BETA ]
+		. Branched Version-1.2 on github
+		. Version-1.2 Engineering Complete
+		     Examples
+			. 0_TuringMaching
+			. 1_Schematize
+			. 2_TM.single
+				=> Pass design/story/single-thread.story
 	. deprecated db_is_empty(db), added db_star(db) (db is never empty!)
 	. disentangled bm_read <-> bm_parse / CNParser interface
 	. Internal Specifications

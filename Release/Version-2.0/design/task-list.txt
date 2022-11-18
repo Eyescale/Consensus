@@ -1,58 +1,8 @@
-See Also: design/new-features-and-additions.txt
 TODO
 	. Documentation
-		1. write Consensus B% Version-2.0 Programming Guide
-			. Reminder: instantiation may do half a job, as
-			  we do not pre-check with bm_void
-		2. update Consensus B% Version-1.x programming guide to
-		  include Version-1.2 features - as Addendum (?)
-	. Announcement - with Next Step: Version-2.1 (now Version-WIP)
-		. building up on 1_Schematize/yak.new example
-	. Release/Version-2.1/Examples/4_Yak
-		. supporting B% Grammar as example
-		. with interactive traversal
-
-NICE TO HAVE
-	. extend do !!identifier( ) to support do !!expression( )
-	. Other EEnoRV as-is
-		on ~( %<_> )
-		on %<_> < .
-		do !! Narrative( %<_> )
-	. improve >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
-	. parser.c
-		. more & better error messages
-		. extract bm_parser_report from parser.c => error.c ?
-		. integrate 'caught' in CNParserData => all flags
-	. support multiple args in do input
-		do < arg1, arg2, ..., argN > : "format" <
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
-	. code cleanup
-		. replace all the for ( ; ; ) with the model found
-	  	  in Base/Examples/6_BTreefy/btree.c
-	. optimization
-		. Remodel occurrence->data->expression from char * to TBD
-		. do_enable: without building string?
-	. bm_void() - should bm_instantiate() verify expression?
-		. Pros: instantiate all or nothing
-		. Cons: performances
-		. Alternative:
-		  1. propose special execution mode (like Debug)
-		  2. special do - e.g. do$ - where bm_void() is enforced
-	  Current status & Decision
-		. bm_instantiate() does not invoke bm_void()
-		  => bm_instantiate() may do half a job (user responsibility)
-	. allow more to be done in INI files (e.g. assignment) ?
-		. Now the whole bm_instantiate() syntax is accessible
-		. and I will need new capabilities for Cell constructor
-	. per proto:expression <<< where proto can be '?' or narrative-type proto
-		. PER/ELSE_PER
-		. also DO_PER, e.g.
-			do per ?:expression
-				: var : %?
-		  => only ONE occurrence->data->expression?
-	. multi-threading (pthreads)
-	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
+		. write Consensus B% Version-2.0 Programming Guide
+		  Reminder: instantiation may do half a job, as
+		 	 we do not pre-check with bm_void
 
 DONE
 	. finalized Version-2.0 Engineering documents
