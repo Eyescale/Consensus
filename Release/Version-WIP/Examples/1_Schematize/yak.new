@@ -1,10 +1,10 @@
 /*
-	Usage: ./B% -f Scheme/file schematize.new < input
-	-------------------------------------------------
+	Usage: ./B% -f Schemes/yak.ini yak.story < input
+	------------------------------------------------
 */
 	on init
 		// base rule definition must exist and have non-null schema
-		in (( base, % ), ~'\0' )
+		in (( Rule, base ), ( Schema, ~'\0' ))
 			do : record : (record,*)
 			do INPUT
 		else
@@ -14,8 +14,8 @@
 	else in INPUT
 		%( . )
 		on ( INPUT ) // start base rule instance - feeding base
-			do ( ((rule,base), (']',(record,*))) | {
-				(((schema, %((base,%),?:~'\0')), %(%|:(.,?))), %| ),
+			do (((rule,base), (']',*record)) | {
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
 			in ( %?, READY )
@@ -133,16 +133,17 @@
 		do ~( input )
 		do INPUT
 
+
 .s: ((( schema, .position ), .start ), .r )
-	.p .event
+	.p
 	on ( s )
 		// schema has predecessor AND is in null position
 		in ( position:'\0' ? ((((schema,.),.),.), s ) :)
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
-			in start: ( '[', ? )
-				do : event : %(%?:(.,?))
+			do : s : !! Take( ((*,p), .position ),
+				( start:('[',.) ? ((*,event), %(start:(.,(.,?)))) :) )
 	else on .EXIT
 		in (((schema,.),.), r ): ~%(?,EXIT)
 			do ~( s )
@@ -172,11 +173,10 @@
 		do .DONE
 	else
 		in .READY
-			on : record : ?
-				do : event : %(%?:(.,?))
+			on : record : .
 				do ~( .READY )
 		else in .( ?, s ) // s pending on rule
-			on ~.: .
+			on ~.: . < { %%, . }
 				in .CYCLIC
 					do > "Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 					do .EXIT
@@ -191,72 +191,82 @@
 				else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
 					do .DONE // all non-cyclic rule schemas complete
 				else do .EXIT // either cyclic (done) or has no successor
-		else on : event : .
-			in : p : '\0'
-				do .( '[', *record ) // TAKE unconsumed
-			else in : p : (?,.) // expected @ current, not terminating position
-				in %?: ( %, ? )
-					in (( %?, % ), ~'\0' )
-						in (( %?, % ), '\0' ) // FORK on null-schema
-							do .(((schema, %(*p:(.,?))), ('[',*record)), r )
-						in ?:((rule,%?), ('[',*record)) // rule already instantiated
-							do .( %?, s )
-							do .CYCLIC
-						else do ( ((rule,%?), ('[',*record)) | {
-							(((schema, %((%?,%),?:~'\0')), %(%|:(.,?))), %| ),
-							.( %|, s ) } )
-					else in (( %?, % ), '\0' )
-						do : p : %(*p:(.,?))
-						do : event : *event // REENTER
-					else
-						do >"Error: Yak: rule '%_' not found or invalid\n": %?
-						do .EXIT
-				else in %?: ( '\\', ? )
-					in %?: w
-						in : event : /[A-Za-z0-9_]/
-							do .CHECK
-							do .READY
-						else in .CHECK
-							do ~( .CHECK )
-							do : p : %(*p:(.,?))
-							do : event : *event // REENTER
-						else do .EXIT
-					else in %?: 0
-						in : event : '\0'
-							do : p : %(*p:(.,?))
-						else do .EXIT
-					else in : event : %?
-						do : p : %(*p:(.,?))
-					else do .EXIT
-				else in %?: ' '
-					in : event : /[ \t]/
-						do .READY
-					else
-						do : p : %(*p:(.,?))
-						do : event : *event // REENTER
-				else in : event : %?
-					do : p : %(*p:(.,?))
-				else do .EXIT
-			else // *p is a base entity (singleton) other than '\0'
-				do >"Error: Yak: %_-terminated schema not supported\n": *p
-				do .EXIT
-		else on : p : ?
-			in %?: '\0'
-				do .( ']', *record ) // TAKE consumed
-			else in %?: (( %, ? ), . )
-				in (( %?, % ), ~'\0' )
-					in (( %?, % ), '\0' ) // FORK on null-schema
-						do .(((schema, %(*p:(.,?))), (']',*record)), r )
-					in ?: ((rule,%?), (']',*record)) // rule already instantiated
+		else
+			on : ( TAKE, ? ) : ~. < *s
+				do .( %<?>, *record ) // TAKE, consumed or unconsumed
+			else on : ( TAKE, ? ) : . < *s
+				in ((Rule,%<!>),(Schema,~'\0'))
+					in ((Rule,%<!>),(Schema,'\0')) // FORK on null-schema
+						do .(((schema, %(*p:(.,?))), (%<?>,*record)), r )
+					in ?: ((rule,%<!>), (%<?>,*record)) // rule already instantiated
 						do .( %?, s )
 						do .CYCLIC
-					else do ( ((rule,%?), (']',*record)) | {
-						(((schema, %((%?,%),?:~'\0')), %(%|:(.,?))), %| ),
+					else do (((rule,%<!>), (%<?>,*record)) | {
+						(((schema, %((Rule,%<!>),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 						.( %|, s ) } )
-				else in (( %?, % ), '\0' )
+				else in ((Rule,%<!>),(Schema,'\0')) // moving on
 					do : p : %(*p:(.,?))
+					do : s : !! Take( ((*,p),%(*p:(.,?))),
+						( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 				else
-					do >"Error: Yak: rule '%_' not found or invalid\n": %?
+					do >"Error: Yak: rule '%_' not found or invalid\n": %<!>
 					do .EXIT
-			else do .READY
+			else on ~( SAME ) < *s
+				do .READY
+			else on NEXT < *s
+				do : p : %(*p:(.,?))
+				do .READY
+			else on exit < *s // FAIL
+				do .EXIT
+
+: Take
+	in NEXT
+		on : record : ?  < ..
+			do : event : %<?:(.,?)>
+			do ~( NEXT )
+	else on : event : .
+		in : p : '\0'
+			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed
+		else in : p : (?,.) // expected @ current, not terminating position
+			in %?: ( %, ? )
+				do : ( TAKE, '[' ) : %?
+			else in %?: ( '\\', ? )
+				in %?: w
+					in : event : /[A-Za-z0-9_]/
+						do check
+						do SAME~
+					else in check
+						do ~( check )
+						do : p : %(*p:(.,?))
+						do : event : *event // REENTER
+					else do exit // FAIL
+				else in %?: 0
+					in : event : '\0'
+						do : p : %(*p:(.,?))
+					else do exit // FAIL
+				else in : event : %?
+					do : p : %(*p:(.,?))
+				else do exit // FAIL
+			else in %?: ' '
+				in : event : /[ \t]/
+					do SAME~
+				else
+					do : p : %(*p:(.,?))
+					do : event : *event // REENTER
+			else in : event : %?
+				do : p : %(*p:(.,?))
+			else do exit // FAIL
+		else // *p is a base entity (singleton) other than '\0'
+			do >"Error: Yak: %_-terminated schema not supported\n": *p
+			do exit // FAIL
+	else on ~( SAME )
+		do NEXT
+	else on : p : ?
+		in %?: '\0'
+			do : ( TAKE, ']' ): ~. // TAKE, event consumed
+		else in	%?: (( %, ? ), . )
+			do : ( TAKE, ']' ): %?
+		else do NEXT
+	else on ( TAKE, . )
+		do exit
 
