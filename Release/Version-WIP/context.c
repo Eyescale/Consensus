@@ -447,7 +447,7 @@ bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 			CNEntity *that = DBProxyThat( x );
 			instance = lookup_proxy( this, that ); }
 		else {
-			char *p = db_identifier( x, db_src );
+			char *p = DBIdentifier( x, db_x );
 			instance = db_lookup( 0, p, db_dst ); }
 		if ( !instance ) break;
 		for ( ; ; ) {
@@ -543,7 +543,7 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 			if (!( instance = lookup_proxy( this, that ) ))
 				instance = db_proxy( this, that, db_dst ); }
 		else {
-			char *p = db_identifier( e, db_src );
+			char *p = DBIdentifier( e, db_src );
 			instance = db_register( p, db_dst ); }
 		for ( ; ; ) {
 			if ( !stack.src ) return instance;

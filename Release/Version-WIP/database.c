@@ -120,8 +120,8 @@ db_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
 		else {
 			if (( x->sub[ 0 ] ))
 				goto FAIL;
-			char *p_x = db_identifier( x, db_x );
-			char *p_y = db_identifier( y, db_y );
+			char *p_x = DBIdentifier( x, db_x );
+			char *p_y = DBIdentifier( y, db_y );
 			if ( strcomp( p_x, p_y, 1 ) )
 				goto FAIL; }
 		for ( ; ; ) {
@@ -303,11 +303,11 @@ db_lookup( int privy, char *p, CNDB *db )
 }
 
 //===========================================================================
-//	db_identifier
+//	DBIdentifier
 //===========================================================================
 #ifndef UNIFIED
 char *
-db_identifier( CNInstance *e, CNDB *db )
+DBIdentifier( CNInstance *e, CNDB *db )
 /*
 	Assumption: e->sub[0]==e->sub[1]==NULL
 */
@@ -318,48 +318,8 @@ db_identifier( CNInstance *e, CNDB *db )
 #endif	// UNIFIED
 
 //===========================================================================
-//	db_first, db_next, db_traverse
+//	db_traverse, DBFirst, DBNext
 //===========================================================================
-CNInstance *
-db_first( CNDB *db, listItem **stack )
-{
-	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
-		Pair *entry = i->ptr;
-		CNInstance *e = entry->value;
-		if ( !db_private( 0, e, db ) ) {
-			addItem( stack, i );
-			return e;
-		}
-	}
-	return NULL;
-}
-CNInstance *
-db_next( CNDB *db, CNInstance *e, listItem **stack )
-{
-	if ( e == NULL ) return NULL;
-	if (( e->as_sub[ 0 ] )) {
-		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-			e = i->ptr;
-			if ( !db_private( 0, e, db ) ) {
-				addItem( stack, i );
-				return e; } } }
-	listItem *i = popListItem( stack );
-	for ( ; ; ) {
-		if (( i->next )) {
-			i = i->next;
-			if (( *stack ))
-				e = i->ptr;
-			else {
-				// e in db->index
-				Pair *entry = i->ptr;
-				e = entry->value; }
-			if ( !db_private( 0, e, db ) ) {
-				addItem( stack, i );
-				return e; } }
-		else if (( *stack ))
-			i = popListItem( stack );
-		else return NULL; }
-}
 int
 db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 /*
@@ -401,6 +361,46 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 				break; }
 			else i = NULL; } }
 	return 0;
+}
+CNInstance *
+DBFirst( CNDB *db, listItem **stack )
+{
+	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		CNInstance *e = entry->value;
+		if ( !db_private( 0, e, db ) ) {
+			addItem( stack, i );
+			return e;
+		}
+	}
+	return NULL;
+}
+CNInstance *
+DBNext( CNDB *db, CNInstance *e, listItem **stack )
+{
+	if ( e == NULL ) return NULL;
+	if (( e->as_sub[ 0 ] )) {
+		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+			e = i->ptr;
+			if ( !db_private( 0, e, db ) ) {
+				addItem( stack, i );
+				return e; } } }
+	listItem *i = popListItem( stack );
+	for ( ; ; ) {
+		if (( i->next )) {
+			i = i->next;
+			if (( *stack ))
+				e = i->ptr;
+			else {
+				// e in db->index
+				Pair *entry = i->ptr;
+				e = entry->value; }
+			if ( !db_private( 0, e, db ) ) {
+				addItem( stack, i );
+				return e; } }
+		else if (( *stack ))
+			i = popListItem( stack );
+		else return NULL; }
 }
 
 //===========================================================================
@@ -450,7 +450,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 		if (( e->sub[ 0 ] ) && ( e->sub[ 1 ] ))
 			fprintf( stream, "\\" );
 		else if ( !e->sub[0] ) {
-			fprintf( stream, "%s", db_identifier(e,db) );
+			fprintf( stream, "%s", DBIdentifier(e,db) );
 			return 0; }
 		else {
 			fprintf( stream, "@@@" ); // proxy
@@ -468,7 +468,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 		if (( e->sub[ 0 ] )) {
 			fprintf( stream, "@@@" ); } // proxy
 		else {
-			char *p = db_identifier( e, db );
+			char *p = DBIdentifier( e, db );
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
 			else {

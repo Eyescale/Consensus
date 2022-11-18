@@ -37,17 +37,22 @@ typedef struct {
 	CNInstance *src;
 } EEnoRV;
 
-#define BMContextId( ctx )	((Pair *) registryLookup( ctx, "" )->value )
-#define BMContextSelf( ctx )	((CNInstance *) BMContextId(ctx)->name )
-#define BMContextParent( ctx )	((CNInstance *) BMContextId(ctx)->value )
-#define BMContextDB( ctx )	((CNDB *) registryLookup( ctx, "%" )->value )
-#define BMContextActive( ctx )	((ActiveRV *) registryLookup( ctx, "@" )->value )
-
-#define BMContextCell( ctx )	(DBProxyThat(BMContextSelf(ctx)))
-
+inline Pair * BMContextId( BMContext *ctx )
+	{ return (Pair *) registryLookup( ctx, "" )->value; }
+inline CNInstance * BMContextSelf( BMContext *ctx )
+	{ return (CNInstance *) BMContextId( ctx )->name; }
+inline CNInstance * BMContextParent( BMContext *ctx )
+	{ return (CNInstance *) BMContextId( ctx )->value; }
+inline CNDB * BMContextDB( BMContext *ctx )
+	{ return (CNDB *) registryLookup( ctx, "%" )->value; }
+inline ActiveRV * BMContextActive( BMContext *ctx )
+	{ return (ActiveRV *) registryLookup( ctx, "@" )->value; }
 inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	CNInstance *perso = registryLookup( ctx, "." )->value;
 	return ( !perso ? BMContextSelf(ctx) : perso ); }
+
+inline CNEntity * BMContextCell( BMContext *ctx )
+	{ return DBProxyThat( BMContextSelf(ctx) ); }
 
 
 #endif	// CONTEXT_H

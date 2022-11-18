@@ -354,17 +354,17 @@ bm_couple( listItem *sub[2], CNDB *db )
 	if ( sub[0]->ptr == NULL ) {
 		if ( sub[1]->ptr == NULL ) {
 			listItem *t = NULL;
-			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
-			for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
+			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
+			for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
 				addIfNotThere( &results, db_instantiate(e,f,db) ); }
 		else {
-			for ( CNInstance *e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
+			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
 				addIfNotThere( &results, db_instantiate(e,j->ptr,db) ); } }
 	else if ( sub[1]->ptr == NULL ) {
 		listItem *t = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
-		for ( CNInstance *f=db_first(db,&t); f!=NULL; f=db_next(db,f,&t) )
+		for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
 			addIfNotThere( &results, db_instantiate(i->ptr,f,db) ); }
 	else {
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )

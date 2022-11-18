@@ -16,9 +16,9 @@ SRCS =	narrative.c \
 			instantiate.c \
 				eenov.c \
 			expression.c \
+				scour.c \
 				query.c \
-				locate_pivot.c \
-					scour.c \
+					locate_pivot.c \
 			proxy.c
 LIB = libbmod.a
 

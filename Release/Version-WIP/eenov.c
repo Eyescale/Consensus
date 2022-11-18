@@ -125,7 +125,7 @@ case_( identifier_CB )
 	CNInstance *x = data->instance;
 	int success = 0;
 	if ( !x->sub[0] ) {
-		char *identifier = db_identifier( x, data->db );
+		char *identifier = DBIdentifier( x, data->db );
 		char_s q;
 		switch ( *p ) {
 		case '/': success = !strcomp( p, identifier, 2 ); break;

@@ -18,12 +18,12 @@ Overview
 		where
 			BMContext:Registry(CNRegisterVariable:[ name, value ])
 			where
-				BMContextId(ctx): registryLookup( ctx, "" )->value
-					BMContextSelf(ctx): BMContextId(ctx)->name
-					BMContextParent(ctx): BMContextId(ctx)->value
-				BMContextDB(ctx): registryLookup( ctx, "%" )->value
-				BMContextPerso(ctx): registryLookup( ctx, "." )->value
-				BMContextActive(ctx): registryLookup( ctx, "@" )->value
+				BMContextId( ctx ): registryLookup( ctx, "" )->value
+					BMContextSelf( ctx ): BMContextId( ctx )->name
+					BMContextParent( ctx ): BMContextId( ctx )->value
+				BMContextDB( ctx ): registryLookup( ctx, "%" )->value
+				BMContextPerso( ctx ): registryLookup( ctx, "." )->value
+				BMContextActive( ctx ): registryLookup( ctx, "@" )->value
 
 Description
 	Visualizing the CNCell entity in its entirety we have
@@ -50,7 +50,7 @@ Description
 		  potentially subscribing to this cell
 
 See Also
-	design/specs/bm-PROXY-considerations
+	design/specs/bm-PROXY-considerations.txt
 	design/specs/Version-2.0-software-packages.txt
 	design/new-features-and-additions.txt
 

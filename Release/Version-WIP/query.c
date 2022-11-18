@@ -62,7 +62,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 		listItem *s = NULL;
 		switch ( type ) {
 		case BM_CONDITION:
-			for ( e=db_first(db,&s); e!=NULL; e=db_next(db,e,&s) )
+			for ( e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 				if ( bm_verify( e, expression, &data )==BM_DONE ) {
 					freeListItem( &s );
 					success = e;
@@ -538,7 +538,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 			case '!': return ( y==bm_context_lookup( ctx, "!" ) );
 			case '%': return ( y==BMContextSelf(ctx) );
 			case '<': return eenov_match( ctx, p, data->db, y ); }
-			return ( !y->sub[0] && *db_identifier(y,data->db)=='%' );
+			return ( !y->sub[0] && *DBIdentifier(y,data->db)=='%' );
 		default:
 			if ( is_separator(*p) ) break;
 			CNInstance *found = bm_context_lookup( ctx, p );
@@ -546,7 +546,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 
 	// not found in data->ctx
 	if ( !y->sub[0] ) {
-		char *identifier = db_identifier( y, data->db );
+		char *identifier = DBIdentifier( y, data->db );
 		char_s q;
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );

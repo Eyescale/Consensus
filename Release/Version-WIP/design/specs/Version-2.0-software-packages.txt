@@ -17,9 +17,9 @@ Contents
 	2.3.3.			instantiate.c
 	2.3.3.1.			eenov.c
 	2.3.4.			expression.c
-	2.3.4.1.			query.c
-	2.3.4.2.			locate_pivot.c
-	2.3.4.2.1.				scour.c
+	2.3.4.1.			scour.c
+	2.3.4.2.			query.c
+	2.3.4.2.1.				locate_pivot.c
 	2.3.5.			proxy.c
 
 Description
@@ -40,12 +40,12 @@ Description
 							cnOperate
 	2.1.		cell.c				newCell
 							releaseCell
-							cellInit
-							cellUpdate
-							cellOperate
 							BMCellEntry
 							BMCellCarry
 							BMCellContext
+							cellInit
+							cellUpdate
+							cellOperate
 	2.2.		context.c			newContext
 							freeContext
 							bm_context_finish
@@ -54,7 +54,7 @@ Description
 							bm_context_update
 							bm_context_set
 							bm_declare
-							bm_context_flush
+							bm_context_clear
 							bm_context_pipe_flush
 							bm_context_mark
 							bm_context_mark_x
@@ -72,12 +72,23 @@ Description
 							BMContextParent
 							BMContextDB
 							BMContextActive
-							BMContextCell
 							BMContextPerso
-	2.2.1.			database.c		newCNDB
+							BMContextCell
+	2.2.1.			database.c		db_...	// data management
+							newCNDB
 							freeCNDB
-							db_...	// data management
+							DBFirst
+							DBNext
+							DBIdentifier
+							isProxy
+							DBProxyThis
+							DBProxyThat
+							isProxySelf
 	2.2.2.			db_op.c			db_...	// nil operations
+							DBStar
+							DBInitOn
+							DBExitOn
+							DBActive
 	2.2.3.			locate-param.c		bm_locate_param
 							bm_locate_mark
 	2.3.		operation.c			bm_operate
@@ -97,12 +108,12 @@ Description
 							bm_void
 							bm_inputf
 							bm_outputf
-	2.3.4.1.			query.c		bm_query
+	2.3.4.1.			scour.c		bm_scour
+	2.3.4.2.			query.c		bm_query
 							bm_verify
-	2.3.4.2.			locate_pivot.c	bm_locate_pivot
-	2.3.4.2.1				scour.c	bm_scour
+	2.3.4.2.1.			 locate_pivot.c	bm_locate_pivot
 	2.3.5.			proxy.c			bm_proxy_scan
-							bm_proxy_still
+							bm_proxy_active
 							bm_proxy_in
 							bm_proxy_out
 							bm_proxy_feel

@@ -209,10 +209,10 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 		case '!': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
 		case '%': return db_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
 		case '<': return eenov_match( ctx, p, db_x, x ); }
-		return ( !x->sub[0] && *db_identifier(x,db_x)=='%' ); }
+		return ( !x->sub[0] && *DBIdentifier(x,db_x)=='%' ); }
 
 	if ( !x->sub[0] ) {
-		char *identifier = db_identifier( x, db_x );
+		char *identifier = DBIdentifier( x, db_x );
 		char_s q;
 		switch ( *p ) {
 		case '/': return !strcomp( p, identifier, 2 );
