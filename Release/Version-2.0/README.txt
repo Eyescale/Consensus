@@ -241,7 +241,7 @@ Feature Description
 			else in %<?>: %%
 				// that connection is me
 			else in %<?>: .
-				// already subscribed
+				// already registered
 			else
 				// subscribe to my source's new connection
 				do %<?> @<
