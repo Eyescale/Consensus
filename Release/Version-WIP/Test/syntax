@@ -31,6 +31,7 @@
 		do :~ titi : ~( tutu, tata )
 		do ( { tata, toto }, titi )
 		do ~.	// nop
+	else on signal~
 	else in ( titi ?: tata )
 	else in ( expr1 ? expr2 ? expr3 :: expr4 )
 	else on ~.:((*,titi),toto)

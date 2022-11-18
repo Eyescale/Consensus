@@ -166,7 +166,14 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	default:
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
-			success = DBInitOn(db); goto RETURN; } }
+			success = DBInitOn(db); goto RETURN; }
+		else if ( !is_separator( *expression ) ) {
+			char *p = expression + 1;
+			do p++; while ( !is_separator(*p) );
+			if ( *p=='~' ) {
+				found = bm_feel( BM_RELEASED, expression, ctx );
+				if (( found )) success = 1;
+				goto RETURN; } } }
 
 	found = bm_feel( BM_INSTANTIATED, expression, ctx );
 	if (( found )) success = 1;
@@ -226,7 +233,15 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			while (( proxy = popListItem(&candidates) )) {
 				success = bm_proxy_out( proxy );
 				if ( success ) break; }
-			goto RETURN; } }
+			goto RETURN; }
+		else if ( !is_separator( *expression ) ) {
+			char *p = expression + 1;
+			do p++; while ( !is_separator(*p) );
+			if ( *p=='~' ) {
+				while (( proxy = popListItem(&candidates) )) {
+					found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
+					if (( found )) { success = 1; break; } }
+				goto RETURN; } } }
 
 	while (( proxy = popListItem(&candidates) )) {
 		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
