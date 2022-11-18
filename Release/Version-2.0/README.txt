@@ -62,11 +62,11 @@ Contents		[ SECTION TO BE COMPLETED ]
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	EENO Register Variables		%<?:sub>			sub is a B% valid expression combining
-					%<!:sub>			  . B% valid identifiers
-					%<?>				  . the wildcard signus 
-					%<!>				  . a single optional query signus ?
-					%<				  . the negation signus ~
+	EENO Register Variables		%<?:sub>		sub is a B% valid expression combining
+					%<!:sub>		  . B% valid identifiers
+					%<?>			  . the wildcard signus 
+					%<!>			  . a single optional query signus ?
+					%<			  . the negation signus ~
 
 	parent Register Variable	..
 
