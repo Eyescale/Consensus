@@ -1,32 +1,18 @@
 See Also: design/new-features-and-additions.txt
 TODO
-    	. Finalize Version-1.2
-		. Engineering docs - specs, Release Notes, README.txt, etc.
-		. Update Consensus B% Version-1.1 programming guide with
-		  Version-1.2 feature description - as Addendum (?)
-	. Version-2.0 Packaging
-		. [ DONE ] Create Eyescale/Consensus/Release/Version-2.0 repository
-		. Engineering docs - specs, Release Notes, README.txt, etc.
-			. [ TODO ] README.txt
-		. Examples
-			. 0_TuringMachine
-			. 1_Schematize - additions:
-				. schematize.new -- using Version-2.0 features
-				. yak.new -- using Version-2.0 features, and
-				  including cell's intake process extraction
-			. 2_TM.single
-			. 3_TM.multi
-				. TM-head_tape.story
-				. TM-head_cell.story
-	. Version-2.0 Documentation
-		. Consensus B% Version-2.0 Programming Guide
+	. Documentation - in order:
+		. finalize Version-1.2 & Version-2.0 Engineering documents
+			. specs, README.txt, etc.
+		. write Consensus B% Version-2.0 Programming Guide
 			. Reminder: instantiation may do half a job, as
 			  we do not pre-check with bm_void
-	. Version-2.0 Release Announcement
+		. update Consensus B% Version-1.1 programming guide - with
+		  Version-1.2 feature description - as Addendum (?)
+	. Announcement - not to forget
 		. Next Step: Version-2.1 (currently Version-WIP)
 			. Release/Version-2.1/Examples/4_Yak
 				. building up on 1_Schematize/yak.new example
-				. support B% Grammar as example
+				. supporting B% Grammar as example
 				. with interactive traversal
 
 NICE TO HAVE
@@ -72,6 +58,19 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. Version-2.0 Packaging
+		. Create Eyescale/Consensus/Release/Version-2.0 repository
+		. Engineering docs - specs, Release Notes, README.txt, etc.
+		. Examples
+			. 0_TuringMachine
+			. 1_Schematize - additions:
+				. schematize.new -- using Version-2.0 features
+				. yak.new -- using Version-2.0 features, and
+				  including cell's intake process extraction
+			. 2_TM.single
+			. 3_TM.multi
+				. TM-head_tape.story
+				. TM-head_cell.story
 	. updated design/new-features-and-additions.txt
 		. cf. Change section at the end
 	. deprecated db_still() -> introduced db_active(), so that
