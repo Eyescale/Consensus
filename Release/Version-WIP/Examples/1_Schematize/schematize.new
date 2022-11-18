@@ -208,7 +208,7 @@
 					do : s : !! Take( ((*,p),%(*p:(.,?))),
 						( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 				else
-					do >"Error: Yak: rule '%_' not found or invalid\n": %?
+					do >"Error: Yak: rule '%_' not found or invalid\n": %<!>
 					do .EXIT
 			else on ~( SAME ) < *s
 				do .READY

@@ -1,28 +1,33 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Examples/4_Yak
-		. [ DONE ] yak using literals and optimized like schematize.new
-		. [ DONE ] extracted cell intake process
-		. [ WIP ] build easily traversable sequence
-		. [ WIP ] use B% Grammar as example
-	. Update docs
-	. Release Version-2.0
+    	. Finalize Version-1.2
+		. Engineering docs - specs, Release Notes, README.txt, etc.
+		. Update Consensus B% Version-1.1 programming guide with
+		  Version-1.2 feature description - as Addendum (?)
+	. Version-2.0 Packaging
+		. Create Eyescale/Consensus/Release/Version-2.0 repository
+		. Engineering docs - specs, Release Notes, README.txt, etc.
 		. Examples
 			. 0_TuringMachine
 			. 1_Schematize
+				. schematize.new added, using Version-2.0 features
 			. 2_TM.single
 			. 3_TM.multi
 				. TM-head_tape.story
 				. TM-head_cell.story
-		. Additonal examples (?)
-			. interactive // TBD
-ON-GOING
-    Version-1.2 Documentation
-	     Release Documents
-		. instantiation may do half a job - since we do not pre-check with bm_void()
-		. feature-list.txt / Release Notes / README.txt, etc.
-	     Announce / Version-2.0
-		. NOTE: everything is Pair, starting from [address,value]
+			. 4_Yak
+				. yak.story created, using literals and pipe optimization
+				. cell's intake process extracted
+	. Version-2.0 Documentation
+		. Consensus B% Version-2.0 Programming Guide
+			. Reminder: instantiation may do half a job, as
+			  we do not pre-check with bm_void
+	. Version-2.0 Release Announcement
+		. Next Step => Version-2.1
+			. further Examples/4_Yak development
+				. build easily traversable sequence
+				. support B% Grammar as example
+				. interactive
 
 NICE TO HAVE
 	. extend do !!identifier( ) to support do !!expression( )
@@ -67,7 +72,9 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
-	. updated specs
+	. updated design/new-features-and-additions.txt
+		. cf. Change section at the end
+	. deprecated db_still() -> introduced db_active(), so that
 		. on . means active <=> on ( . ) OR ~( . ) OR init OR exit
 		. allowing %% as src of EENO when explicitely mentioned
 		  example:	on ~.: . < { ., %% } // idle
