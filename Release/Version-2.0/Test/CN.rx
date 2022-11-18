@@ -1,0 +1,11 @@
+
+	on init
+		do titi
+		do toto
+	else in .
+		do >"%_\n": /t.t./
+		do ~( . )
+	else on ~.
+		do exit
+	else
+		do >"coucou\n"

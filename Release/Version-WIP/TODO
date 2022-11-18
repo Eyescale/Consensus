@@ -5,8 +5,9 @@ TODO
 		. Update Consensus B% Version-1.1 programming guide with
 		  Version-1.2 feature description - as Addendum (?)
 	. Version-2.0 Packaging
-		. Create Eyescale/Consensus/Release/Version-2.0 repository
+		. [ DONE ] Create Eyescale/Consensus/Release/Version-2.0 repository
 		. Engineering docs - specs, Release Notes, README.txt, etc.
+			. [ TODO ] README.txt
 		. Examples
 			. 0_TuringMachine
 			. 1_Schematize - additions:
@@ -25,9 +26,8 @@ TODO
 		. Next Step: Version-2.1 (currently Version-WIP)
 			. Release/Version-2.1/Examples/4_Yak
 				. building up on 1_Schematize/yak.new example
-				. create easily traversable sequence
 				. support B% Grammar as example
-				. interactive
+				. with interactive traversal
 
 NICE TO HAVE
 	. extend do !!identifier( ) to support do !!expression( )

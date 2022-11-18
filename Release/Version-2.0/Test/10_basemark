@@ -1,0 +1,9 @@
+
+	on init
+		do : variable : value
+	else on : variable : .
+		do : variable : ~.
+	else on ~((*,variable), ? )
+		do >"%_\n": %?
+		do exit
+

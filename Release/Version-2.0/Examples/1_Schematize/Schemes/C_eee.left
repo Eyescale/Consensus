@@ -1,0 +1,13 @@
+#	Yak scheme definition file:
+#		((identifier,%), (a,(b,...((%,id),...(z,'\0')))) )
+#		((base,%), ((%,identifier),'\0') )
+#	Assumed to be used in conjunction with schematize, as in
+#		./%B -f Schemes/file schematize < input
+
+
+	((eee,%), {
+		(e,'\0'),
+		((%,eee),(e,'\0'))	#left-recursive
+	})
+	((g,%), ((%,eee), ('.','\0')) )
+	((base,%), ((%,g),'\0') )

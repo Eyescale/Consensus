@@ -1,0 +1,28 @@
+:
+	on init
+		do > "parent: init\n"
+		do : child : !! Partner()
+	else on init < *child
+		do > "parent: << init\n"
+	else on ? < *child
+		do > "parent: << %_\n": %<?>
+	else on exit < *child
+		do > "\nparent: << exit\n"
+	else on ~( *child )
+		do > "\nparent: exit\n"
+		do exit
+	else
+		do >"parent: idle\n"
+
+: Partner
+	on init
+		do > "\n\tchild: init\n"
+	else on titi
+		do exit
+		do > "\n\tchild: >> exit\n"
+	else on toto
+		do titi
+		do > "\n\tchild: >> titi\n"
+	else
+		do toto
+		do > "\n\tchild: >> toto\n"

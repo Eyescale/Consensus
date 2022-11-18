@@ -1,0 +1,16 @@
+
+	on init
+#		do ((*,event), a )
+#		do ((*,event), ':' )
+#		do ((*,event), EOF )
+		do ((*,event), ' ' )
+	else
+		in *event: /[ \t]/
+			do >"space\n"
+		in *event: /[A-Za-z0-9_]/
+			do >"LETTER\n"
+		else
+			do >"NO LETTER\n"
+		in *event: /EOF/
+			do >"EOF\n"
+		do exit

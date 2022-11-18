@@ -1,0 +1,9 @@
+	on init
+		do : variable, value
+	else on : ?, .
+		do >"variable=%_\n": %?
+		do >"value=%_\n": %!
+		do : variable, ~.
+	else on : ?, ~.
+		do >"%_\n": %?
+		do exit

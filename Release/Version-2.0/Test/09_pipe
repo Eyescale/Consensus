@@ -1,0 +1,13 @@
+
+	on init
+		do (( toto, % ), titi )
+	else on ( toto )
+		in ?: %( ?, % )
+			do ( ((rule,%?), (']',(record,*))) | {
+				(((schema, %((%?,%),?:~'\0')), %((.,?):%|)), %| ),
+				( %|, this )
+			} )
+	else
+		do >"%_\n": ~%(?,.):~%(.,?)
+		do exit
+

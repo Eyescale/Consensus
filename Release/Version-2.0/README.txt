@@ -1,17 +1,50 @@
 Name
-	Consensus B% Version-2.0 File Format Interface - New Features
+	Consensus Programming Language (B%) version 2.0	[ BETA ]
 
-Synopsis
-    Changes
-	See Changes section below
+Usage
+	./B% program.story
+	./B% -p program.story
+	./B% -f file.ini program.story
 
-    Additions
-	The following features were added to the latest Version-1.2 features - modulo
+Description
+	The objective of this release was to substantiate all the prototypes
+	located in its ./design/story sub-directory, and ultimately to support
+	concurrent execution of multiple ( narrative, CNDB ) instances, from
+	a single story.
+
+	The first of these prototypes - named single-thread.story - featuring
+	a simplified Turing Machine example implementation, was delivered as
+	part of the Consensus/Release/Version-1.2 - the original version is
+	still supported, and can be found under the Examples/0_TuringMachine
+	sub-directory of this release, whereas the newer version can be found
+	under the Examples/2_TM.single sub-directory of this release.
+
+	The functional examples derived from the two other prototypes can now
+	be found under the Examples/3_TM.multi sub-directory of this release,
+	as
+		TM-head_tape.story
+		TM-head_cell.story
+
+	The difference between these examples is that the latter's execution
+	model does not rely on a global memory addressing scheme.
+
+	Each individual cell is an actor of its own in the Turing Machine story,
+	its execution relying on proper communication and synchronization with
+	its peers -- this, after all, being the whole point motivating the
+	Consensus development effort, overall.
+
+	None of these examples uses an ini file, so that all the information
+	pertaining to their executions are visible from one source - namely
+	the example story.
+
+Contents		[ SECTION TO BE COMPLETED ]
+    New Features
+	The following features were added to the Version-1.2 additions - modulo
 	the changes mentioned in the Changes section below
 
 	    	Feature Name			Expression			Comment
 
-	Instantiate			do !! Narrative ( ... )
+	New operator !!			do !! Narrative ( ... )		!! stands for Bang-bang
 					do !! Narrative ( ... ) @<
 					do !! Narrative ( ... ) ~<
 
@@ -19,10 +52,9 @@ Synopsis
 					do : handle : !! Narrative ( ... ) @<
 					do : handle : !! Narrative ( ... ) ~<
 
-	Subscribe			do expression @<
+	Subscribe / Unsubscribe		do expression @<
+					do expression ~<
 					do : handle : expression @<
-
-	Unsubscribe			do expression ~<
 					do : handle : expression ~<
 
 	Pause				do :<				useful for debugging
@@ -30,21 +62,18 @@ Synopsis
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	EENO Register Variables		%<
-					%<?>
-					%<!>
-					%<?:sub>			sub is a B% valid expression whose terms
-					%<!:sub>			are a combination of
-									 . B% valid identifiers
-									 . the wildcard signus .
-									 . a single optional query signus ?
-									 . the negation signus ~
-	this Register Variable		%%
+	EENO Register Variables		%<?:sub>			sub is a B% valid expression combining
+					%<!:sub>			  . B% valid identifiers
+					%<?>				  . the wildcard signus 
+					%<!>				  . a single optional query signus ?
+					%<				  . the negation signus ~
 
 	parent Register Variable	..
 
+	self Register Variable		%%
+
 Description
-    1. Instantiate
+    1. New operator !!
 
 	CNCell instances are created upon either one of the following parent
 	cell's narrative operations:
@@ -100,7 +129,8 @@ Description
 	that it is passed a proxy instance of a connection to that cell by one
 	of its connections - or by its parent, at instantiation.
 
-	See example usage in the Narrative this Register Variable section below.
+	See example usage in the Narrative parent Register Variable paragraph
+	below.
 
     3. Unsubscribe
 
@@ -190,85 +220,98 @@ Description
 	where the %<?> and %<!> expression terms, if any are present as-is (that
 	is: unfiltered etc.) will be converted locally, modulo instantiation.
 
-    7. Narrative this Register Variable
+    7. Narrative parent Register Variable ..
 
-	The Narrative this Register Variable %% allows a proxy to the narrative's
-	current context's this CNInstance to be used for comparison - e.g.
+	The Narrative parent Register Variable .. allows a proxy to the narrative's
+	parent ( narrative, instance ) to be used - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
-			in %<?>: %%
-				// that connection is me
+			in %<?>: ..
+				// that connection is my parent
 			else in %<?>: .
 				// already subscribed
 			else
 				// subscribe to my source's new connection
 				do @< %<?>
 
-    8. Narrative parent Register Variable
+    8. Narrative self Register Variable %%
 
-	Likewise the Narrative parent Register Variable .. references a proxy to
-	the narrative's parent cell - provided parent did not unsubscribe upon
-	instantiation.
+	Likewise the Narrative self Register Variable %% allows a proxy to
+	the current ( narrative, instance ) to be used.
 
 Changes
-	. The name of the Narrative pipe Register Variable was changed
-	  from
+		1. Narrative pipe Register Variable %|
+		2. Variable assignment alternative syntax : variable, value
+		3. Input alternative syntax do : input, format <
+		4. Process idle event deprecated - process active event
+		   introduced
+
+	1. Narrative pipe Register Variable
+
+	   The name of the Narrative pipe Register Variable was changed
+	   from
 			%! in Version-1.x
-	  to
+	   to
 			%| in Version-2.0
 
-	. B% Version-2.0 allows the following input syntax to be used
+	2. Variable assignment alternative syntax : variable, value
 
-			do :<
+	   The following variable assignment syntax is allowed
+		in/on/do : variable, value
+
+	   as this is how, as of Version-2.0, the assignment occurrence is
+	   represented internally, and how it will show in story output.
+
+	   Note however that neither variable nor value can be filtered
+	   so as to be consistent with the alternative (preferred) syntax
+		in/on/do : variable : value
+	  
+	 . Concerning the Narrative %? and %! Register Variables, the rules
+	   of assignment are as follow:
+
+	   When the query signus ? is included in the variable part of
+	   the assignment occurrence, then the %? mark register variable
+	   holds the corresponding query result, if any, and the %!
+	   register variable holds the instance corresponding to the value
+	   part of the query result.
+
+	   Conversely, when the query signus ? is included in the value
+	   part of the assignment occurrence, then the %? mark register
+	   variable holds the corresponding query result, if any, and
+	   %! holds the instance corresponding to the variable part of
+	   the query result.
+
+	3. Input alternative syntax do : input, format <
+
+	   B% Version-2.0 allows the following input syntax to be used
+
+			do : <
 			do input <
 			do input, "fmt" <
 
-	  as this is how, as of Version-2.0, input occurrences are represented
-	  internally, and how they will show in story output.
+	   as this is how, as of Version-2.0, input occurrences are represented
+	   internally, and how they will show in story output.
 
-	  Note that the Version-1.x syntax
+	   Note that the Version-1.x syntax
 
-			do input:<
+			do input: <
 			do input: "fmt" <
 
-	  is still externally supported, and that input EOF now manifests as
-	  the on : input : ~. event occurrence, as opposed to ~( *, input ) in
-	  Version-1.x, which required ( *, input ) to be pre-instantiated.
+	   is still externally supported, and that input EOF now manifests as
+	   on : input : ~. event occurrence, as opposed to ~( *, input ) in
+	   Version-1.x, which required ( *, input ) to be pre-instantiated.
 
-	. The following variable assignment syntax is allowed
-		in/on/do : variable, value
+	4. Process idle event deprecated - process active event introduced
 
-	  as this is how, as of Version-2.0, the assignment occurrence is
-	  represented internally, and how it will show in story output.
-
-	  Note however that neither variable nor value can be filtered
-	  so as to be consistent with the alternative (preferred) syntax
-		in/on/do : variable : value
-	  
-	. Concerning the Narrative %? and %! Register Variables, the rules
-	  of assignment are as follow:
-
-	  When the query signus ? is included in the variable part of
-	  the assignment occurrence, then the %? mark register variable
-	  holds the corresponding query result, if any, and the %!
-	  register variable holds the instance corresponding to the value
-	  part of the query result.
-
-	  Conversely, when the query signus ? is included in the value
-	  part of the assignment occurrence, then the %? mark register
-	  variable holds the corresponding query result, if any, and
-	  %! holds the instance corresponding to the variable part of
-	  the query result.
-
-	. B% Version-2.0 allows to check process activity during the last frame
-	  via the following syntax
+	   B% Version-2.0 allows to check process activity during the last frame
+	   via the following syntax
 
 		on .	covering ( . ), ~( . ), init and exit events altogether
 
-	  The on ~. occurrence which was used in Version-1.x to check process
-	  _inactivity_ over the last frame now systematically fails, replaced by
-	  such occurrences as
+	   The on ~. occurrence which was used in Version-1.x to check process
+	   inactivity over the last frame now systematically fails, replaced by
+	   such occurrences as
 
 		on ~.: .
 		on ~.: . < proxy
