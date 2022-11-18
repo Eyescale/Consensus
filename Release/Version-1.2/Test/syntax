@@ -29,3 +29,6 @@
 		else do toto~
 	else
 		do exit
+
+.toto: ( alpha, .beta )
+	do > "hello, world\n"

@@ -109,6 +109,8 @@ db_remove( CNInstance *e, CNDB *db )
 			if (( connection->sub[ 0 ] )) {
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
+	else if ( e==DBStar(db) )
+		return;
 	else {
 #ifdef UNIFIED
 		// Assumption: e->sub[1] is not NULL

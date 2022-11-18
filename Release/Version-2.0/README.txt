@@ -37,10 +37,11 @@ Description
 	pertaining to their executions are visible from one source - namely
 	the example story.
 
-Contents		[ SECTION TO BE COMPLETED ]
-    New Features
-	The following features were added to the Version-1.2 additions - modulo
-	the changes mentioned in the Changes section below
+New Features
+
+	The following features were added to the Version-1.2 feature list -
+	modulo the changes mentioned in the Changes section below
+
 
 	    	Feature Name			Expression			Comment
 
@@ -72,7 +73,16 @@ Contents		[ SECTION TO BE COMPLETED ]
 
 	self Register Variable		%%
 
-Description
+Feature Description
+
+	1. New operator !!
+	2. Subscribe / Unsubscribe
+	3. Pause
+	4. External Event Narrative Occurrence (EENO)
+	5. EENO Register Variables
+	6. Narrative parent Register Variable ..
+	7. Narrative self Register Variable %%
+
     1. New operator !!
 
 	CNCell instances are created upon either one of the following parent
@@ -119,28 +129,25 @@ Description
 	instance created but with nothing to show for it - not even via
 	on ~((*,handle),?) ... It is, however, manifested.
 
-    2. Subscribe
+    2. Subscribe / Unsubscribe
 
-	CNCell instantiation involves instantiating connections, which can be
-	handled and stored as proxies within a cell's CNDB.
+	CNCell instantiation involves instantiating connections, which can
+	be handled and stored as proxies within a cell's CNDB.
 
-	Proxies can also be communicated from one cell to another, thereby
-	allowing a cell to subscribe to another, unrelated cell, provided only
-	that it is passed a proxy instance of a connection to that cell by one
-	of its connections - or by its parent, at instantiation.
+	Proxies can also be communicated from one cell to another, allowing 
+	a cell to subscribe to [resp. unsubscribe from] another, unrelated
+	cell, provided only that it is passed a proxy instance of a connection
+	to that cell by one of its connections - or possibly by its parent,
+	at instantiation.
 
 	See example usage in the Narrative parent Register Variable paragraph
 	below.
 
-    3. Unsubscribe
-
-	Same as above, with unsubscribe from instead of subscribe to.
-
-    4. Pause
+    3. Pause
 
 	Execution will resume upon the User's pressing any key on the keyboard
 
-    5. External Event Narrative Occurrence (EENO)
+    4. External Event Narrative Occurrence (EENO)
 
 	External Event Narrative Occurrences (EENO) are occurrences in the form
 
@@ -171,7 +178,7 @@ Description
 	cell communication protocol, in that it allows only to query manifested
 	changes - and not one another's internal condition.
 
-    6. EENO Register Variables
+    5. EENO Register Variables
 
 	The EENO Register Variables %<?> and %<!> allow subsequent references
 	to the EENO query results to be made by the narrative, using
@@ -220,7 +227,7 @@ Description
 	where the %<?> and %<!> expression terms, if any are present as-is (that
 	is: unfiltered etc.) will be converted locally, modulo instantiation.
 
-    7. Narrative parent Register Variable ..
+    6. Narrative parent Register Variable ..
 
 	The Narrative parent Register Variable .. allows a proxy to the narrative's
 	parent ( narrative, instance ) to be used - e.g.
@@ -235,89 +242,91 @@ Description
 				// subscribe to my source's new connection
 				do @< %<?>
 
-    8. Narrative self Register Variable %%
+    7. Narrative self Register Variable %%
 
 	Likewise the Narrative self Register Variable %% allows a proxy to
 	the current ( narrative, instance ) to be used.
 
-Changes
-		1. Narrative pipe Register Variable %|
-		2. Variable assignment alternative syntax : variable, value
-		3. Input alternative syntax do : input, format <
-		4. Process idle event deprecated - process active event
-		   introduced
+Changes & Extensions
 
-	1. Narrative pipe Register Variable
-
-	   The name of the Narrative pipe Register Variable was changed
-	   from
-			%! in Version-1.x
-	   to
-			%| in Version-2.0
-
+	1. Narrative pipe Register Variable %|
 	2. Variable assignment alternative syntax : variable, value
+	3. Input alternative syntax do : input, format <
+	4. Process idle event deprecated - active event introduced
 
-	   The following variable assignment syntax is allowed
+    1. Narrative pipe Register Variable
+
+       The name of the Narrative pipe Register Variable was changed
+       from
+		%! in Version-1.x
+       to
+		%| in Version-2.0
+
+    2. Variable assignment alternative syntax : variable, value
+
+       The following variable assignment syntax is allowed
+
 		in/on/do : variable, value
 
-	   as this is how, as of Version-2.0, the assignment occurrence is
-	   represented internally, and how it will show in story output.
+       as this is how, as of Version-2.0, the assignment occurrence is
+       represented internally, and how it will show in story output.
 
-	   Note however that neither variable nor value can be filtered
-	   so as to be consistent with the alternative (preferred) syntax
+       Note however that neither variable nor value can be filtered
+       so as to be consistent with the alternative (preferred) syntax
+
 		in/on/do : variable : value
 	  
-	 . Concerning the Narrative %? and %! Register Variables, the rules
-	   of assignment are as follow:
+       . Concerning the Narrative %? and %! Register Variables, the rules
+         of assignment are as follow:
 
-	   When the query signus ? is included in the variable part of
-	   the assignment occurrence, then the %? mark register variable
-	   holds the corresponding query result, if any, and the %!
-	   register variable holds the instance corresponding to the value
-	   part of the query result.
+	 When the query signus ? is included in the variable part of
+	 the assignment occurrence, then the %? mark register variable
+	 holds the corresponding query result, if any, and the %!
+	 register variable holds the instance corresponding to the value
+	 part of the query result.
 
-	   Conversely, when the query signus ? is included in the value
-	   part of the assignment occurrence, then the %? mark register
-	   variable holds the corresponding query result, if any, and
-	   %! holds the instance corresponding to the variable part of
-	   the query result.
+	 Conversely, when the query signus ? is included in the value
+	 part of the assignment occurrence, then the %? mark register
+	 variable holds the corresponding query result, if any, and
+	 %! holds the instance corresponding to the variable part of
+	 the query result.
 
-	3. Input alternative syntax do : input, format <
+    3. Input alternative syntax do : input, format <
 
-	   B% Version-2.0 allows the following input syntax to be used
+       B% Version-2.0 allows the following input syntax to be used
 
-			do : <
-			do input <
-			do input, "fmt" <
+		do : <
+		do input <
+		do input, "fmt" <
 
-	   as this is how, as of Version-2.0, input occurrences are represented
-	   internally, and how they will show in story output.
+       as this is how, as of Version-2.0, input occurrences are represented
+       internally, and how they will show in story output.
 
-	   Note that the Version-1.x syntax
+       Note that the Version-1.x syntax
 
-			do input: <
-			do input: "fmt" <
+		do input: <
+		do input: "fmt" <
 
-	   is still externally supported, and that input EOF now manifests as
-	   on : input : ~. event occurrence, as opposed to ~( *, input ) in
-	   Version-1.x, which required ( *, input ) to be pre-instantiated.
+       is still externally supported, and that input EOF now manifests as
+       on : input : ~. event occurrence, as opposed to ~( *, input ) in
+       Version-1.x, which required ( *, input ) to be pre-instantiated.
 
-	4. Process idle event deprecated - process active event introduced
+    4. Process idle event deprecated - active event introduced
 
-	   B% Version-2.0 allows to check process activity during the last frame
-	   via the following syntax
+       B% Version-2.0 allows to check process activity during the last frame
+       via the following syntax
 
 		on .	covering ( . ), ~( . ), init and exit events altogether
 
-	   The on ~. occurrence which was used in Version-1.x to check process
-	   inactivity over the last frame now systematically fails, replaced by
-	   such occurrences as
+       The on ~. occurrence which was used in Version-1.x to check process
+       inactivity over the last frame now systematically fails, replaced by
+       such occurrences as
 
 		on ~.: .
 		on ~.: . < proxy
 		on ~.: . < { %%, proxy }
 
-	  Note the possibility to use %% as EENO source when it is explicitely
-	  mentioned - the underlying "connection" remaining un-activable.
+       Note the possibility to use %% as EENO source when it is explicitely
+       mentioned - the underlying "connection" remaining un-activable.
 
 

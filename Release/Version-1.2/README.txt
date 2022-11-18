@@ -1,5 +1,5 @@
 Name
-	Consensus Programming Language (B%) version 1.2	[ BETA ]
+	Consensus Programming Language (B%) version 1.2
 
 Usage
 	./B% program.story
@@ -33,46 +33,133 @@ Description
 	to supporting the TM.single story example, prior to moving on to our
 	targeted major feature development - now happening in Version-WIP.
 
-Contents
-    Version-1.2 File Format extensions
+New Features
+
+	The following features were added to the Version-1.1 feature list -
+        modulo the changes mentioned in the Changes section below
+
 
 	      Feature Name	      Syntax				Description
 
-	  assignment operator	in/on/do : variable : value	(( *, variable ), value ) instantiated
+	assignment operator	in/on/do : variable : value	(( *, variable ), value ) instantiated
 	  			in/on/do : variable : ~.	(( *, variable ), value ) released if it was
 								instantiated, and ( *, variable ) manifested
 
-	  list		      (( expr, ... ):_sequence_:)	instantiates ((((( expr, * ), a ), b ), ... ), z )
-				       ^-------- ellipsis	            star --------^
-								where
-									_sequence_ is as per B% literal
-
-	  ternary operator    ( ... expr ? expr : expr ... )	the first sub-expression (which we call guard)
+	ternary operator    ( ... expr ? expr : expr ... )	the first sub-expression (which we call guard)
 								is evaluated independently of its level in the
-								overall expression
+								overall expression - see more information in
+								./design/specs/bm-TERNARY-implementation.txt
 
-	  negative		in ~.: expression		passes if expression fails
+	contrary operator	in ~.: expression		passes if expression fails
 				on ~.: expression		passes if no event matches expression
 				do ~.: expression		nop
 
-	  signal		do identifier~			releases identifier base entity upon creation
+	list		      (( expr, ... ):_sequence_:)	instantiates ((((( expr, * ), a ), b ), ... ), z )
+				       ^-------- ellipsis	            star --------^
+								  where
+									_sequence_ is as per B% literal
 
+	signal			do identifier~			releases base entity named identifier upon creation
 
-    Other Changes and Additions [ SECTION TO BE COMPLETED ]
+Changes & Extensions
 
-	      Feature Name				Description
+	1. Base mark
+	2. Star
+	3. Sub-narrative definition
+	4. Input handling integration
+	5. Concurrent reassignment unauthorized
 
-	  Base mark		The position of the query signum ? is no longer restricted.
-				For instance the following narrative - distributed as Test/10_basemark
+    1. Base mark
 
-					on init
-						do : variable : value
-					else on : variable : .
-						do : variable : ~.
-					else on ~((*,variable), ? )
-						do >"%_\n": %?
-						do exit
+	The position of the query signum ? indicative of the Narrative query
+	Register Variable %? is no longer restricted to leading the occurrence.
 
-				outputs the variable's previous value - here "value" - provided that value
-				itself has not been released.
+	For instance the following narrative - distributed as Test/10_basemark
+
+		on init
+			do : variable : value
+		else on : variable : .
+			do : variable : ~.
+		else on ~((*,variable), ? )
+			do >"%_\n": %?
+			do exit
+
+	outputs the previous variable's value - here "value" - provided that
+		value itself has not been released.
+
+    2. Star
+
+	The CNDB star * base entity is now created at CNDB creation time.
+	It can be released and thereby release all star-associated relationship
+	instances - including variable-value associations - but it can no longer
+	be removed.
+
+    3. Sub-narrative definition
+
+	Sub-narratives can now be defined as follow
+
+		.identifier: ( expression )	// starting new line
+
+	where
+		identifier anywhere in the sub-narrative's body will reference
+		the sub-narrative instance, instead of the default "this" as per
+		Version-1.1 sub-narrative definition syntax - still supported:
+
+		: ( expression )		// starting new line
+
+    4. Input handling integration	
+
+	.ini file, external input, and general instantiation are now sharing
+	the same code base. As a consequence, all capabilities previously
+	available only through external input (e.g. creation of B% literals)
+	are now generically available.
+
+	The contrary is of course far from being true, e.g. no reference is
+	allowed via external input to existing CNDB contents, and assignment
+	operations are only supported externally via ((*,variable),value)
+
+    5. Concurrent reassignment unauthorized
+
+	Assigning the same variable twice in the course of the same frame will
+	fail, causing a Warning to be printed out to stderr.
+
+Others
+	The Consensus code base is now organized as follow:
+
+		./Consensus/Base
+			source code for libcn.a
+			Examples/
+				0_System/
+				1_Yak/
+				2_Converter/
+				3_Segmentize/
+				4_StateMachine/
+				5_Ternarize/
+				6_BTreefy/
+		./Consensus/Release
+			Version-1.0/
+				source code for libbmod.a
+				main.c for B% executable
+				Examples/
+					0_TuringMachine/
+				Test/
+			Version-1.1/
+				source code for libbmod.a
+				main.c for B% executable
+				Examples/
+					0_TuringMachine/
+					1_Schematize/
+				Test/
+			Version-1.2/
+				source code for libbmod.a
+				main.c for B% executable
+				Examples/
+					0_TuringMachine/
+					1_Schematize/
+					2_TM-single/
+				Test/
+
+	Note that, as of Version-1.2, we generate and use the static
+	object libraries libcn.a and libbmod.a as opposed to dynamic
+	shared object libraries.
 

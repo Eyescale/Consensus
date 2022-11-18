@@ -1,11 +1,11 @@
 TODO
     Version-1.2 Documentation
 	     Release Documents
-		. README.txt
-		. Programming Guide
+		. Update Version-1.1 Programming Guide -> Version-1.x
 		  Note: instantiation may do half a job - as bm_void() not invoked
 
 DONE
+	. finalized README.txt - including all relevant new Features and Additions
 	. traverse.c / bm_traverse() implementation
     Version-1.1 -> Version-1.2 [ BETA ]
 	. Branched Version-1.2 on github

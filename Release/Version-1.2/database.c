@@ -212,8 +212,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 	proceeding top-down
 */
 {
-	if ( x==NULL || x==db_star(db) )
-		return;
+	if ( x==NULL ) return;
 
 	listItem * stack = NULL,
 		 * i = newItem( x ),

@@ -283,3 +283,4 @@ bm_register( BMContext *ctx, char *p )
 	}
 	return db_register( p, BMContextDB(ctx), 1 );
 }
+

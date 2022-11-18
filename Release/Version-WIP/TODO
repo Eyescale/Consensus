@@ -1,19 +1,18 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. finalize Version-2.0 Engineering documents
+		. specs, README.txt, etc.
 	. Documentation - in order:
-		. finalize Version-1.2 & Version-2.0 Engineering documents
-			. specs, README.txt, etc.
 		. write Consensus B% Version-2.0 Programming Guide
 			. Reminder: instantiation may do half a job, as
 			  we do not pre-check with bm_void
-		. update Consensus B% Version-1.1 programming guide - with
-i			. Version-1.2 feature description - as Addendum (?)
-	. Announcement - not to forget
-		. Next Step: Version-2.1 (currently Version-WIP)
-			. Release/Version-2.1/Examples/4_Yak
-				. building up on 1_Schematize/yak.new example
-				. supporting B% Grammar as example
-				. with interactive traversal
+		. update Consensus B% Version-1.x programming guide to
+		  include Version-1.2 features - as Addendum (?)
+	. Announcement - with Next Step: Version-2.1 (now Version-WIP)
+		. building up on 1_Schematize/yak.new example
+	. Release/Version-2.1/Examples/4_Yak
+		. supporting B% Grammar as example
+		. with interactive traversal
 
 NICE TO HAVE
 	. extend do !!identifier( ) to support do !!expression( )
@@ -58,6 +57,8 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 DONE
+	. finalized Version-1.2 Engineering documents
+		. specs, README.txt, etc.
 	. Version-2.0 Packaging
 		. Create Eyescale/Consensus/Release/Version-2.0 repository
 		. Engineering docs - specs, Release Notes, README.txt, etc.

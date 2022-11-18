@@ -115,8 +115,10 @@ db_remove( CNInstance *e, CNDB *db )
 {
 	if (( e->sub[0] )) {
 		cn_release( e );
+		return; }
+	else if ( e==db_star(db) )
 		return;
-	}
+
 #ifdef UNIFIED
 	e->sub[1] = NULL;
 #endif
