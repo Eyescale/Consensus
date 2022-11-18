@@ -7,7 +7,7 @@ TODO
 			. Reminder: instantiation may do half a job, as
 			  we do not pre-check with bm_void
 		. update Consensus B% Version-1.1 programming guide - with
-		  Version-1.2 feature description - as Addendum (?)
+i			. Version-1.2 feature description - as Addendum (?)
 	. Announcement - not to forget
 		. Next Step: Version-2.1 (currently Version-WIP)
 			. Release/Version-2.1/Examples/4_Yak
