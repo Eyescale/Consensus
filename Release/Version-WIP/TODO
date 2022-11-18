@@ -1,5 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. I should allow %@ to be used - spec?
 	. Documentation
 		1. write Consensus B% Version-2.0 Programming Guide
 			. Reminder: instantiation may do half a job, as

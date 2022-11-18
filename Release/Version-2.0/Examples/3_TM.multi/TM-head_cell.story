@@ -67,6 +67,7 @@
 				do : value : %<?>
 				on : shift : ? < %< // assumed concurrent
 					do : shift : %<?>
+					do *head ~<
 			else on exit < %?
 				do > "%s%s":<(*value?:*BLANK), (*RIGHT?' ':'\n')>
 				do ( *RIGHT ? callout~ :)
@@ -79,7 +80,6 @@
 							((*,head), *head ) )
 					do : current : %?
 					do : shift : ~.
-					do *head ~<
 				else on signal~ < *RIGHT
 					do ready~
 		else
