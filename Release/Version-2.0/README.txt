@@ -238,11 +238,13 @@ Feature Description
 			// one of my sources just registered a new connection
 			in %<?>: ..
 				// that connection is my parent
+			else in %<?>: %%
+				// that connection is me
 			else in %<?>: .
 				// already subscribed
 			else
 				// subscribe to my source's new connection
-				do @< %<?>
+				do %<?> @<
 
     7. Narrative self Register Variable %%
 
