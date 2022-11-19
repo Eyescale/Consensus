@@ -30,7 +30,7 @@
 	BMCloseCB
 	BMEEnovEndCB
 	BMTermCB
-	BMActiveCB
+	BMActivateCB
 	BMNotCB
 	BMBgnSetCB
 	BMEndSetCB
@@ -83,10 +83,10 @@
 #define CB_TermCB
 #endif
 
-#ifdef BMActiveCB
-#define CB_ActiveCB	_CB( BMActiveCB )
+#ifdef BMActivateCB
+#define CB_ActivateCB	_CB( BMActivateCB )
 #else
-#define CB_ActiveCB
+#define CB_ActivateCB
 #endif
 
 #ifdef BMNotCB

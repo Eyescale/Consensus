@@ -16,7 +16,7 @@ int		bm_declare( BMContext *, char * );
 void		bm_context_clear( BMContext * );
 void		bm_context_pipe_flush( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
-int		bm_context_mark_x( BMContext *, char *, char *, CNInstance *, CNInstance *, int * );
+int		bm_context_mark_x( BMContext *, char *, char *, Pair *, int * );
 void 		bm_context_unmark( BMContext *, int );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );

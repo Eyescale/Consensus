@@ -282,12 +282,17 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 	return 1;
 }
 int
-bm_context_mark_x( BMContext *ctx, char *expression, char *src, CNInstance *x, CNInstance *proxy, int *marked )
+bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int *marked )
 {
-	if ( !proxy ) return 0;
+	CNInstance *x = found->name;
+	CNInstance *proxy = found->value;
 	listItem *xpn = NULL;
 	Pair *event = NULL;
-	if ( *expression==':' ) {
+	if ( !expression ) {
+		if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
+			// freeListItem( &xpn ); // Assumption: unnecessary
+			event = newPair( x, NULL ); } }
+	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
 		if ( !strncmp( value, "~.", 2 ) ) {
 			// we know x: ( *, . )

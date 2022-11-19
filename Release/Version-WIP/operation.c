@@ -146,49 +146,55 @@ on_event( char *expression, BMContext *ctx, int *marked )
 #endif
 	CNInstance *found=NULL;
 	int success=0, negated=0;
-	if ( !strncmp( expression, "~.:", 3 ) )
-		{ negated = 1; expression += 3; }
+	if ( !strncmp(expression,"~.:",3) )
+		{ negated=1; expression+=3; }
 
-	if ( !strcmp(expression,".") ) {
-		CNDB *db = BMContextDB( ctx );
-		success = DBActive( db );
-		goto RETURN; }
-
-	switch ( *expression ) {
-	case '~':
-		switch ( expression[1] ) {
-		case '(':
-			expression++;
-			found = bm_feel( BM_RELEASED, expression, ctx );
-			if (( found )) success = 1;
-			goto RETURN; }
-		break;
-	default:
+	if ( !is_separator(*expression) ) {
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
-			success = DBInitOn(db); goto RETURN; }
-		else if ( !is_separator( *expression ) ) {
+			success = DBInitOn(db); }
+		else {
 			char *p = expression + 1;
 			do p++; while ( !is_separator(*p) );
-			if ( *p=='~' ) {
+			switch ( *p ) {
+			case ':':
+				found = bm_feel( BM_INSTANTIATED, expression, ctx );
+				if (( found )) { expression=p+1; success=2; }
+				break;
+			case '~':
 				found = bm_feel( BM_RELEASED, expression, ctx );
 				if (( found )) success = 1;
-				goto RETURN; } } }
+				break;
+			default:
+				found = bm_feel( BM_INSTANTIATED, expression, ctx );
+				if (( found )) success = 1; } } }
+	else if ( !strcmp( expression, "." ) ) {
+		CNDB *db = BMContextDB( ctx );
+		success = DBActive( db ); }
+	else if ( !strncmp(expression,"~(",2) ) {
+		expression++;
+		found = bm_feel( BM_RELEASED, expression, ctx );
+		if (( found )) success = 2; }
+	else {
+		found = bm_feel( BM_INSTANTIATED, expression, ctx );
+		if (( found )) success = 2; }
 
-	found = bm_feel( BM_INSTANTIATED, expression, ctx );
-	if (( found )) success = 1;
-RETURN:
-	if ( success && !negated)
-		bm_context_mark( ctx, expression, found, marked );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
-	return ( negated ? !success : success );
+	if ( negated ) return !success;
+	else if ( success==2 )
+		bm_context_mark( ctx, expression, found, marked );
+	return success;
 }
 
 //===========================================================================
 //	on_event_x
 //===========================================================================
+typedef int ProxyTest( CNInstance *proxy );
+static inline Pair * proxy_feel( BMQueryType, char *, listItem **, BMContext * );
+static inline Pair * proxy_test( ProxyTest *, listItem ** );
+
 static int
 on_event_x( char *expression, BMContext *ctx, int *marked )
 /*
@@ -198,62 +204,80 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x bgn: %s\n", expression );
 #endif
-	CNInstance *found=NULL, *proxy=NULL;
-	int success=0, negated=0;
-	if ( !strncmp( expression, "~.:", 3 ) )
-		{ negated=1; expression += 3; }
+	Pair *found = NULL;
+	CNInstance *proxy;
+	int success = 0, negated = 0;
+	if ( !strncmp(expression,"~.:",3) )
+		{ negated=1; expression+=3; }
 
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
 	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
-	listItem *candidates = bm_proxy_scan( BM_CONDITION, src, ctx );
+	listItem *proxies = bm_proxy_scan( BM_CONDITION, src, ctx );
 
-	if ( !strncmp(expression,".<",2) ) {
-		while (( proxy = popListItem(&candidates) )) {
-			success = bm_proxy_active( proxy );
-			if ( success ) break; }
-		goto RETURN; }
-
-	switch ( *expression ) {
-	case '~':
-		switch ( expression[1] ) {
-		case '(':
-			expression++;
-			while (( proxy = popListItem(&candidates) )) {
-				found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
-				if (( found )) { success=1; break; } }
-			goto RETURN; }
-		break;
-	default:
+	if ( !proxies )
+		return 0;
+	else if ( !is_separator( *expression ) ) {
 		if ( !strncmp( expression, "init<", 5 ) ) {
-			while (( proxy = popListItem(&candidates) )) {
-				success = bm_proxy_in( proxy );
-				if ( success ) break; }
-			goto RETURN; }
+			found = proxy_test( bm_proxy_in, &proxies );
+			if (( found )) success = 1; }
 		else if ( !strncmp( expression, "exit<", 5 ) ) {
-			while (( proxy = popListItem(&candidates) )) {
-				success = bm_proxy_out( proxy );
-				if ( success ) break; }
-			goto RETURN; }
-		else if ( !is_separator( *expression ) ) {
+			found = proxy_test( bm_proxy_out, &proxies );
+			if (( found )) success = 1; }
+		else {
 			char *p = expression + 1;
 			do p++; while ( !is_separator(*p) );
-			if ( *p=='~' ) {
-				while (( proxy = popListItem(&candidates) )) {
-					found = bm_proxy_feel( proxy, BM_RELEASED, expression, ctx );
-					if (( found )) { success = 1; break; } }
-				goto RETURN; } } }
-
-	while (( proxy = popListItem(&candidates) )) {
-		found = bm_proxy_feel( proxy, BM_INSTANTIATED, expression, ctx );
-		if (( found )) { success=1; break; } }
-RETURN:
-	freeListItem( &candidates );
-	if ( success && !negated )
-		bm_context_mark_x( ctx, expression, src, found, proxy, marked );
+			switch ( *p ) {
+			case ':':
+				found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
+				if (( found )) { expression=p+1; success=2; }
+				break;
+			case '~':
+				found = proxy_feel( BM_RELEASED, expression, &proxies, ctx );
+				if (( found )) { found->name=NULL; success=1; }
+				break;
+			default:
+				found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
+				if (( found )) success = 1; } } }
+	else if ( !strncmp(expression,".<",2) ) {
+		found = proxy_test( bm_proxy_active, &proxies );
+		if (( found )) success = 1; }
+	else if ( !strncmp(expression,"~(",2) ) {
+		expression++;
+		found = proxy_feel( BM_RELEASED, expression, &proxies, ctx );
+		if (( found )) success = 2; }
+	else {
+		found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
+		if (( found )) success = 2; }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
-	return ( negated ? !success : success );
+	freeListItem( &proxies );
+	if ( negated )
+		success = !success;
+	else switch ( success ) {
+		case 1: bm_context_mark_x( ctx, NULL, src, found, marked ); break;
+		case 2: bm_context_mark_x( ctx, expression, src, found, marked ); }
+	if (( found )) freePair( found );
+	return success;
+}
+
+static inline Pair *
+proxy_feel( BMQueryType type, char *p, listItem **proxies, BMContext *ctx )
+{
+	CNInstance *proxy, *found;
+	while (( proxy = popListItem(proxies) )) {
+		found = bm_proxy_feel( proxy, type, p, ctx );
+		if (( found )) return newPair( found, proxy ); }
+	return NULL;
+}
+static inline Pair *
+proxy_test( ProxyTest *test, listItem **proxies )
+{
+	CNInstance *proxy;
+	while (( proxy = popListItem(proxies) ))
+		if ( test( proxy ) )
+			return newPair( NULL, proxy );
+	return NULL;
 }
 
 //===========================================================================

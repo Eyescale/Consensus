@@ -295,7 +295,7 @@ case_( close_CB )
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
 	_break
-case_( active_CB )
+case_( activate_CB )
 	ActiveRV *active = BMContextActive( data->ctx );
 	listItem **buffer = ( *p=='@' ) ?
 		&active->buffer->activated :

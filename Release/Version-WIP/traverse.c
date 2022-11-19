@@ -43,12 +43,12 @@ CB_EEnovEndCB				f_clr( EENOV )
 				break;
 			case '@':
 				// Assumption: p[1]=='<' && p[2]=='\0'
-CB_ActiveCB			p+=2; break;
+CB_ActivateCB			p+=2; break;
 			case '~':
 				if ( p[1]=='<' ) {
 					switch ( p[2] ) {
 					case '\0':
-CB_ActiveCB				default:
+CB_ActivateCB				default:
 						p+=2; }
 					break; }
 CB_NotCB			if is_f( NEGATED ) f_clr( NEGATED )	
