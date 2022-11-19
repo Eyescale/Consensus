@@ -161,12 +161,10 @@ on_event( char *expression, BMContext *ctx, int *marked )
 				found = bm_feel( BM_INSTANTIATED, expression, ctx );
 				if (( found )) { expression=p+1; success=2; }
 				break;
-			case '~':
-				found = bm_feel( BM_RELEASED, expression, ctx );
-				if (( found )) success = 1;
-				break;
 			default:
-				found = bm_feel( BM_INSTANTIATED, expression, ctx );
+				found = ( *p=='~' ) ?
+					bm_feel( BM_RELEASED, expression, ctx ) :
+					bm_feel( BM_INSTANTIATED, expression, ctx );
 				if (( found )) success = 1; } } }
 	else if ( !strcmp( expression, "." ) ) {
 		CNDB *db = BMContextDB( ctx );
@@ -231,12 +229,10 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 				found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
 				if (( found )) { expression=p+1; success=2; }
 				break;
-			case '~':
-				found = proxy_feel( BM_RELEASED, expression, &proxies, ctx );
-				if (( found )) { found->name=NULL; success=1; }
-				break;
 			default:
-				found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
+				found = ( *p=='~' ) ?
+					proxy_feel( BM_RELEASED, expression, &proxies, ctx ) :
+					proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
 				if (( found )) success = 1; } } }
 	else if ( !strncmp(expression,".<",2) ) {
 		found = proxy_test( bm_proxy_active, &proxies );
