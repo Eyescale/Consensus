@@ -1,19 +1,25 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. I should allow %@ to be used - spec?
+	. Release/Version-WIP/Examples/4_Yak
+		. supporting B% Grammar as example
+		. with interactive traversal
+
+WIP
 	. Documentation
 		1. write Consensus B% Version-2.0 Programming Guide
 			. Reminder: instantiation may do half a job, as
 			  we do not pre-check with bm_void
 		2. update Consensus B% Version-1.x programming guide to
 		  include Version-1.2 features - as Addendum (?)
-	. Announcement - with Next Step: Version-2.1 (now Version-WIP)
-		. building up on 1_Schematize/yak.new example
-	. Release/Version-2.1/Examples/4_Yak
-		. supporting B% Grammar as example
-		. with interactive traversal
+	. Version-2.0 Announcement
+		. Next Step: Version-2.1 (now Version-WIP)
+		  building up on 1_Schematize/yak.new example
+
+DONE
+	. Branched Version-2.0
 
 NICE TO HAVE
+	. allow %@ to be used - spec?
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
@@ -43,9 +49,6 @@ NICE TO HAVE
 	  Current status & Decision
 		. bm_instantiate() does not invoke bm_void()
 		  => bm_instantiate() may do half a job (user responsibility)
-	. allow more to be done in INI files (e.g. assignment) ?
-		. Now the whole bm_instantiate() syntax is accessible
-		. and I will need new capabilities for Cell constructor
 	. per proto:expression <<< where proto can be '?' or narrative-type proto
 		. PER/ELSE_PER
 		. also DO_PER, e.g.
@@ -54,165 +57,4 @@ NICE TO HAVE
 		  => only ONE occurrence->data->expression?
 	. multi-threading (pthreads)
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
-
-DONE
-	. finalized Version-2.0 Engineering documents
-		. specs, README.txt, etc.
-	. Implemented support for signal event occurrences
-		on signal~
-		on signal~ < src
-	. finalized Version-1.2 Engineering documents
-		. specs, README.txt, etc.
-	. Version-2.0 Packaging
-		. Created Eyescale/Consensus/Release/Version-2.0 repository
-		. Engineering docs - specs, Release Notes, README.txt, etc.
-		. Examples
-			. 0_TuringMachine
-			. 1_Schematize - additions:
-				. schematize.new -- using Version-2.0 features
-				. yak.new -- using Version-2.0 features, and
-				  including cell's intake process extraction
-			. 2_TM.single
-			. 3_TM.multi
-				. TM-head_tape.story
-				. TM-head_cell.story
-	. updated design/new-features-and-additions.txt
-		. cf. Change section at the end
-	. deprecated db_still() -> introduced db_active(), so that
-		. on . means active <=> on ( . ) OR ~( . ) OR init OR exit
-		. allowing %% as src of EENO when explicitely mentioned
-		  example:	on ~.: . < { ., %% } // idle
-	. input syntax & internal representations
-		do input:<	=>	do input<	internally
-		do input:"fmt"<	=>	do input,"fmt"<	internally
-	  AND both internal representations are also supported externally
-	. CHANGED idle logics, from "on ~." meaning idle event, to active
-		. on . means on { ( . ) OR ~( . ) OR init OR exit }
-		. allowing %% as src of EENO when explicitely mentioned
-		  examples (was: idle):
-			on ~.: .
-			on ~.: . < { ., %% }
-	  updated examples
-	. bm_conceive(): expressions are parsed one by one
-	. corrected implementation of
-
-		do !! Narrative( .identifier )
-		do !! Narrative( .( expression ) )
-
-	  as
-		The '.' here indicates that only the expression's result->sub[1]
-		should be translated into carry's context, e.g.
-
-		.identifier - if it exists - will therefore translate as
-		"identifier" unless it is a sub-narrative's argument, in which
-		case the corresponding sub of the sub-narrative instance will
-		be translated into carry's context
-
-	  Note that .identifier~ is not supported in carry context
-	  It is however supported in normal context, in which case not identifier
-	  but the ( perso, identifier ) is deprecated
-
-	. CHANGED input logics, so that EOF <=> do : input : ~.
-		. reimplement do_input using instantiate_assignment()
-		. update examples to new input logics
-	. Testing - implemented
-		. Examples/3_TM.multi/TM-head_tape.story
-		. Examples/3_TM.multi/TM-head_cell.story
-	. implemented support for
-		on event < { src1, src2, ... } // one level only
-	. Code Complete
-	. database.h: #define UNIFIED /*default*/
-	. context.c / context.h
-		. use BMContextSelf(ctx) as Base Narrative's Perso (instead of NULL).
-		  Hence simplify instantiate.c and query.c and context.c:bm_declare()
-		  considering that BMContextPerso is never NULL
-	. parser.c: disallowed mark && is_f(LEVEL) in EENO src
-	. EENO register variable implementation
-		. in parser.c: support %< %<?> %<!> %<?:sub> %<!:sub>
-		. in traverse.c: handle as BMRegisterVariableCB
-		. in context.c: bm_context_mark_x(), bm_lookup_x()
-		. in proxy.c: adapt x_match() / eeno_match() /
-			bm_lookup_x() in context.c
-		. in query.c: adapt match() / eeno_match() in proxy.c
-		. in instantiate.c : invoke eeno_inform() in proxy.c
-		. in locate.c: handle target==EENO
-	. Transport db in traversal data (instead of db_star)
-		. minimizing number of calls to BMContextDB(ctx) all over the code
-	. Data Structures: changed
-		FROM
-			CNCell:[ entry:Pair, ctx:[ this:CNEntity:(CNDB,carry), registry ] ]
-
-		    where
-			BMContextCarry( ctx )	((listItem **) &ctx->this->sub[1])
-			BMContextDB( ctx )	((CNDB *) ctx->this->sub[ 0 ] )
-			BMContextId( ctx )	((Pair *) registryLookup( ctx->registry, "%" )->value )
-		TO
-			CNCell::CNEntity:( [ entry:Pair, carry:listItem ], registry:Registry )
-
-		    where
-			BMCellCarry( cell )	((listItem **) &cell->sub[ 0 ]->value )
-			BMContextDB( cell )	((CNDB *) registryLookup( cell->registry, "%" )->value )
-			BMContextId( cell )	((Pair *) registryLookup( cell->registry, "" )->value )
-
-	. updated doc design/new-features-and-additions.txt
-		. explained "sub" in Additions / EENO (Table)
-		. rules of assignment %? %! and EENO %<?> %<!> in Changes section
-	. instantiate.c / assignment.c
-		. case narrative entry == NULL prior to bm_conceive()
-		  	scream and exit(-1)
-	. EENO Implementation
-		. parser.c, traverse.c, string_util.c:p_prune()
-			. handle '<'		[ DONE ]
-		. operation.c
-			. on_event_from		[ DONE ]
-		. expression.c
-			. bm_proxy_in		[ DONE ]
-			. bm_proxy_still	[ DONE ]
-			. bm_check_active	[ DONE ]
-			. bm_scan_active	[ DONE ]
-		. proxy.c [ NEW ]
-			. bm_proxy_feel		[ DONE ]
-				. x_match / db_x_match		[ DONE ]
-				. bm_proxy_feel_assignment	[ CONE ]
-	. traverse.c / traverse.h - NO recursion
-		. declare bm_traverse() as static and include traverse.c in traverse.h
-	. db_op.h
-		. inlined db_init / db_in / db_star / etc.
-	. deprecated bm_context_fetch() -> BMContextPin() [may be NULL]
-	. instantiate.c apply data->carry when set
-	. parser.c: File Format support for %% and .. Register Variables
-	. Bufferized active @ register so that activation/deactivation changes
-	  are applied at the end of the frame - and not during.
-	. Implementation support for Narrative parent .. and self %% R. V.
-	  Challenge: as CNDB entities, we must allow these variables to be
-	  deprecated - and thereby deprecate all their ascendants - without
-	  them being released. This required adapting db_update() - now taking
-	  argument 'parent' - and db_remove() to not remove said proxies.
-	. support CNDB proxy
-		. See design/specs/bm-PROXY-considerations.txt
-		. implementation: database.c, db_op.c, context.c
-		. activation / deactivation
-		. output @@@ in case of proxy
-	. parser.c: support do @< expression / do ~< expression
-		. implementation - see expression.c: bm_proxy_op()
-	. multi-variable output => improved TM-single.story
-	. cell exit conditions => freeContext()
-		. prune proxies prior to freeing CNDB
-		. flush active Register Variable @
-	. operation.c
-		. implemented bm_proxy_op() for do @<... and do ~<...
-		  => invokes bm_activate() / bm_deactivate() as BMQueryCB
-	. instantiate.c
-		. on no-completion: pop & flush pipe all the way
-		. support cell instantiation (!!)
-	. renamed ESUB(e,ndx) into CNSUB(e,ndx), where
-		#define CNSUB(e,ndx) \
-			( e->sub[!ndx] ? e->sub[ndx] : NULL )
-		. now in Base/include/entity.h (was in query.h)
-	. db_register() always manifests
-	. changed Pipe Register Variable name from %! to %|
-	. parser.c
-		. cell instantiation syntax (!!)
-	. rewrote Base/Examples/6_BTreefy
-	. extract btreefy from ../../Base to ../../Base/Examples/
 

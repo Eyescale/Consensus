@@ -1,15 +1,16 @@
 Name
 	Consensus/Release/Version-2.0/Examples/1_Schematize
 
-	UPDATE from Version-1.2:
+	UPDATE Version-2.0:
 	. adapted to new input logics, whereby EOF causes : input : ~.
-	. adapted to new idle logics, whereby
-		on ~.	always fails
-		on ~.:.	means idle event - whereby
-	  neither release nor instantiation occurred during the last frame
+	. adapted to new active logics, whereby
+		on ~.		// always fails
+		on ~.:.		// means idle event
+	. created schematize.new using Version-2.0 features
+	. created yak.new with extracted cell's intake process
 
 Usage
-	../../B% -f yak.ini yak.story
+	../../B% -f Schemes/yak.ini yak.story
 	../../B% -f Schemes/file schematize
 	../../B% hello_world.story
 

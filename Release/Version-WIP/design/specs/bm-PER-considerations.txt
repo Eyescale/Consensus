@@ -1,0 +1,20 @@
+
+	In order to support
+
+		per proto:expression
+			in/on/do narrative
+
+	I must push/pop the context variables declared in "proto"
+	on top of current ctx->registry, and pop them appropriately.
+
+	Currently we have BMContext:[ this:CNInstance*, registry:Registry* ]
+	What we want is to separate BMContext into
+		context:[ this, registry:[ mark:Registry*, variable:{} ] ]
+	    Where
+		. context->registry->mark would hold entries for "?" "!" "%" as it does now.
+		. context->registry->variable would become a stack of variable registries.
+
+
+	Now to execute per proto:expression without making operate() recursive,
+	I must list the "proto:expression" query results beforehand, and then
+	loop over them.

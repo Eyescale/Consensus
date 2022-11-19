@@ -1,7 +1,7 @@
 Name
-	Consensus/Release/Version-1.2/Examples/0_TuringMachine/TM.story
+	Consensus/Release/Version-2.0/Examples/0_TuringMachine/TM.story
 
-	UPDATE from Version-1.2:
+	UPDATE Version-2.0:
 	. adapted to new input logics, whereby EOF causes : input : ~.
 
 Usage
