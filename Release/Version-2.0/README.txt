@@ -100,19 +100,6 @@ Feature Description
 		do : handle : !! Narrative ( ... ) @<
 		do : handle : !! Narrative ( ... ) ~<
 
-	The instantiated cell's init condition are specified within the
-	parentheses - in lieu of the ellipsis symbol - as a list of comma-
-	and/or newline- separated expressions. Referencing terms, such as
-
-		register variable
-		expression:filter
-		%( expression )
-		*expression
-
-	are allowed in these expressions. These will be dereferenced within
-	the parent cell's CNDB prior to the resulting expression's being
-	replicated into the new cell's CNDB.
-
 	The second occurrence within each of these subsets is equivalent to
 	the first (default) occurrence, whereby both parent and instantiated
 	cells subscribe to each other upon instantiation. This enables them
@@ -132,6 +119,43 @@ Feature Description
 	connection upon instantiation, which leaves the (*,handle) relationship
 	instance created but with nothing to show for it - not even via
 	on ~((*,handle),?) ... It is, however, manifested.
+
+	The instantiated cell's init condition are specified within the
+	parentheses - in lieu of the ellipsis symbol - as a list of comma-
+	and/or newline- separated expressions. Referencing terms, namely
+
+		register variable
+		expression:filter
+		%( expression )
+		*expression
+		*identifier
+		.identifier
+		~identifier
+		*( expression )
+		%( expression )
+		.( expression )
+		~( expression )
+		expression:filter
+
+	as well as either one of the following register variable names
+
+		%% .. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
+
+	are allowed in these expressions. They will be dereferenced within
+	the parent cell's CNDB prior to the resulting expression's being
+	replicated into the new cell's CNDB.
+
+	.identifier and .( expression ) are also dereferenced, so that the
+	the corresponding identifier resp. expression is replicated into the
+	new cell's CNDB if it is associated with the current narrative perso.
+
+	Note that the main use case for .identifier is to pass the value of
+	a sub-narrative's argument (declared as .identifier in the narrative
+	definition) to a cell instantiated in the sub-narrative's context.
+
+	Otherwise, that is, when they are neither constitutive of referencing
+	terms nor dotted, identifiers in cell's init conditions are replicated
+	literally.
 
     2. Subscribe / Unsubscribe
 
@@ -173,7 +197,7 @@ Feature Description
 
 	as well as either one of the following register variable names
 
-		.. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
+		%% .. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
 
 	will be dereferenced within the narrative instance's own cell's CNDB
 	PRIOR to the query's being launched
@@ -274,6 +298,7 @@ Changes & Extensions
 	2. Variable assignment alternative syntax : variable, value
 	3. Input alternative syntax do : input, format <
 	4. Process active event introduced - idle event deprecated
+	5. Base narrative perso
 
     1. Narrative pipe Register Variable
 
@@ -349,4 +374,38 @@ Changes & Extensions
 
        Note the possibility to use %% as EENO source when it is explicitely
        mentioned - the underlying "connection" remaining un-activable.
+
+    5. Base narrative perso
+
+       We use the name perso to denote the narrative instance which is used
+       to localize entities and relationship instances to the current cell's
+       sub-narrative context, so that
+
+		do .identifier
+		do .( expression )
+
+	actually perform the following instantiation(s)
+
+		do ( perso, identifier )
+		do ( perso, ( expression ) )
+
+	and so that variables which were declared as locale
+
+		.variable	// declaration
+
+	are actually dereferenced as ( perso, variable )
+
+	The purpose of this functionality is, on the one hand, to facilitate
+	the reading and writing of sub-narratives, and on the other hand to
+	optimize performances - as the sub-narrative instance is directly
+	accessible from the context registry.
+
+	Version-1.1 made the functionality available even in Base narrative
+	context by instantiating a CNDB base entity named "this".
+
+	In Version-2.0, we use the Self proxy instance to perform the same
+	function - so that, for instance, do ~( %% ) will effectively release
+	all relationship instances localized from the base narrative, while
+	the Self proxy instance itself cannot be removed.
+
 

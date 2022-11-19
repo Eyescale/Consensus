@@ -1,6 +1,6 @@
 /*
-	Usage: ./B% -f Schemes/yak.ini yak.story < input
-	------------------------------------------------
+	Usage: ./B% -f Schemes/yak.ini yak.new < input
+	----------------------------------------------
 */
 	on init
 		// base rule definition must exist and have non-null schema
@@ -211,7 +211,7 @@
 				else
 					do >"Error: Yak: rule '%_' not found or invalid\n": %<!>
 					do .EXIT
-			else on ~( SAME ) < *s
+			else on MORE~ < *s
 				do .READY
 			else on NEXT < *s
 				do : p : %(*p:(.,?))
@@ -234,7 +234,7 @@
 				in %?: w
 					in : event : /[A-Za-z0-9_]/
 						do check
-						do SAME~
+						do MORE~
 					else in check
 						do ~( check )
 						do : p : %(*p:(.,?))
@@ -249,7 +249,7 @@
 				else do exit // FAIL
 			else in %?: ' '
 				in : event : /[ \t]/
-					do SAME~
+					do MORE~
 				else
 					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
@@ -259,7 +259,7 @@
 		else // *p is a base entity (singleton) other than '\0'
 			do >"Error: Yak: %_-terminated schema not supported\n": *p
 			do exit // FAIL
-	else on ~( SAME )
+	else on MORE~
 		do NEXT
 	else on : p : ?
 		in %?: '\0'
