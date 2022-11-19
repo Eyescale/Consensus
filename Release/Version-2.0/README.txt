@@ -86,28 +86,28 @@ Changes & Extensions
 
     1. Narrative pipe Register Variable
 
-       The name of the Narrative pipe Register Variable was changed
-       from
+	The name of the Narrative pipe Register Variable was changed
+	from
 		%! in Version-1.1
-       to
+	to
 		%| in Version-2.0
 
     2. Variable assignment alternative syntax : variable, value
 
-       The following variable assignment syntax is allowed
+	The following variable assignment syntax is allowed
 
 		in/on/do : variable, value
 
-       as this is how, as of Version-2.0, the assignment occurrence is
-       represented internally, and how it will show in story output.
+	as this is how, as of Version-2.0, the assignment occurrence is
+	represented internally, and how it will show in story output.
 
-       Note however that neither variable nor value can be filtered
-       so as to be consistent with the alternative (preferred) syntax
+	Note however that neither variable nor value can be filtered
+	so as to be consistent with the alternative (preferred) syntax
 
 		in/on/do : variable : value
 	  
-       . Concerning the Narrative %? and %! Register Variables, the rules
-         of assignment are as follow:
+	. Concerning the Narrative %? and %! Register Variables, the rules
+	  of assignment are as follow:
 
 	 When the query signus ? is included in the variable part of
 	 the assignment occurrence, then the %? mark register variable
@@ -123,47 +123,47 @@ Changes & Extensions
 
     3. Input alternative syntax do : input, format <
 
-       B% Version-2.0 allows the following input syntax to be used
+	B% Version-2.0 allows the following input syntax to be used
 
 		do : <
 		do input <
 		do input, "fmt" <
 
-       as this is how, as of Version-2.0, input occurrences are represented
-       internally, and how they will show in story output.
+	as this is how, as of Version-2.0, input occurrences are represented
+	internally, and how they will show in story output.
 
-       Note that the Version-1.x syntax
+	Note that the Version-1.x syntax
 
 		do input: <
 		do input: "fmt" <
 
-       is still externally supported, and that input EOF now manifests as
-       on : input : ~. event occurrence, as opposed to ~( *, input ) in
-       Version-1.x, which required ( *, input ) to be pre-instantiated.
+	is still externally supported, and that input EOF now manifests as
+	on : input : ~. event occurrence, as opposed to ~( *, input ) in
+	Version-1.x, which required ( *, input ) to be pre-instantiated.
 
     4. Process active event introduced - idle event deprecated
 
-       B% Version-2.0 allows to check process activity during the last frame
-       via the following syntax
+	B% Version-2.0 allows to check process activity during the last frame
+	via the following syntax
 
 		on . // covering ( . ), ~( . ), init and exit altogether
 
-       The on ~. occurrence which, in Version-1.x, was used to check process
-       inactivity over the last frame, now systematically fails, replaced by
-       such occurrences as
+	The on ~. occurrence which, in Version-1.x, was used to check process
+	inactivity over the last frame, now systematically fails, replaced by
+	such occurrences as
 
 		on ~.: .
 		on ~.: . < proxy
 		on ~.: . < { %%, proxy }
 
-       Note the possibility to use %% as EENO source when it is explicitely
-       mentioned - the underlying "connection" remaining un-activable.
+	Note the possibility to use %% as EENO source when it is explicitely
+	mentioned - the underlying "connection" remaining un-activable.
 
     5. Base narrative perso
 
-       We use the name perso to denote the narrative instance which is used
-       to localize entities and relationship instances to the current cell's
-       sub-narrative context, so that
+	We use the name perso to denote the narrative instance which is used
+	to localize entities and relationship instances to the current cell's
+	sub-narrative context, so that
 
 		do .identifier
 		do .( expression )
@@ -205,8 +205,8 @@ New Feature Description
 
     1. New operator !!
 
-       CNCell instances are created upon either one of the following parent
-       cell's narrative occurrences:
+	CNCell instances are created upon either one of the following parent
+	cell's narrative occurrences:
 
 		do !! Narrative ( ... )
 		do !! Narrative ( ... ) @<
@@ -216,29 +216,29 @@ New Feature Description
 		do : handle : !! Narrative ( ... ) @<
 		do : handle : !! Narrative ( ... ) ~<
 
-       The second occurrence within each of these subsets is equivalent to
-       the first (default) occurrence, whereby both parent and instantiated
-       cells subscribe to each other upon instantiation. This enables them
-       to track each other's events (a.k.a. changes) via Narrative EENO.
+	The second occurrence within each of these subsets is equivalent to
+	the first (default) occurrence, whereby both parent and instantiated
+	cells subscribe to each other upon instantiation. This enables them
+	to track each other's events (a.k.a. changes) via Narrative EENO.
 
-       In addition to creating a CNCell instance, the second subset of
-       above-listed occurrences allows a proxy of the instantiated connection
-       to be assigned to a local CNDB handle - expression - if the connection
-       was instantiated.
+	In addition to creating a CNCell instance, the second subset of
+	above-listed occurrences allows a proxy of the instantiated connection
+	to be assigned to a local CNDB handle - expression - if the connection
+	was instantiated.
 
-       The last occurrence within both subsets denotes an occurrence where
-       parent unsubscribes upon instantiation from its instantiated cell,
-       after which neither parent nor child are able to track each other's
-       changes - until potentially future explicit connection.
+	The last occurrence within both subsets denotes an occurrence where
+	parent unsubscribes upon instantiation from its instantiated cell,
+	after which neither parent nor child are able to track each other's
+	changes - until potentially future explicit connection.
 
-       The very last occurrence in the above list releases and unassigns the
-       connection upon instantiation, which leaves the (*,handle) relationship
-       instance created but with nothing to show for it - not even via
-       on ~((*,handle),?) ... It is, however, manifested.
+	The very last occurrence in the above list releases and unassigns the
+	connection upon instantiation, which leaves the (*,handle) relationship
+	instance created but with nothing to show for it - not even via
+	on ~((*,handle),?) ... It is, however, manifested.
 
-       The instantiated cell's init condition are specified within the
-       parentheses - in lieu of the ellipsis symbol - as a list of comma-
-       and/or newline- separated expressions. Referencing terms, namely
+	The instantiated cell's init condition are specified within the
+	parentheses - in lieu of the ellipsis symbol - as a list of comma-
+	and/or newline- separated expressions. Referencing terms, namely
 
 		*identifier
 		.identifier
@@ -249,54 +249,54 @@ New Feature Description
 		~( expression )
 		expression:filter
 
-       as well as either one of the following register variable names
+	as well as either one of the following register variable names
 
 		%% .. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
 
-       are allowed in these expressions. They will be dereferenced within
-       the parent cell's CNDB and the resulting parent CNDB entities will
-       be replicated into the new cell's CNDB.
+	are allowed in these expressions. They will be dereferenced within
+	the parent cell's CNDB and the resulting parent CNDB entities will
+	be replicated into the new cell's CNDB.
 
-       .identifier and .( expression ) are also dereferenced, so that the
-       the corresponding identifier resp. expression is replicated into the
-       new cell's CNDB if it is associated with the current narrative perso.
+	.identifier and .( expression ) are also dereferenced, so that the
+	the corresponding identifier resp. expression is replicated into the
+	new cell's CNDB if it is associated with the current narrative perso.
 
-       Note that the main use case for .identifier is to pass the value of
-       a sub-narrative's argument (declared as .identifier in the narrative
-       definition) to a cell instantiated in the sub-narrative's context.
+	Note that the main use case for .identifier is to pass the value of
+	a sub-narrative's argument (declared as .identifier in the narrative
+	definition) to a cell instantiated in the sub-narrative's context.
 
-       Otherwise, that is, when they are neither constitutive of referencing
-       terms nor dotted, identifiers in cell's init conditions are replicated
-       literally.
+	Otherwise, that is, when they are neither constitutive of referencing
+	terms nor dotted, identifiers in cell's init conditions are replicated
+	literally.
 
     2. Subscribe / Unsubscribe
 
-       CNCell instantiation involves instantiating connections, which can
-       be handled and stored as proxies within a cell's CNDB.
+	CNCell instantiation involves instantiating connections, which can
+	be handled and stored as proxies within a cell's CNDB.
 
-       Proxies can also be communicated from one cell to another, allowing 
-       a cell to subscribe to [resp. unsubscribe from] another, unrelated
-       cell, provided only that it is passed a proxy instance of a connection
-       to that cell by one of its connections - or possibly by its parent,
-       at instantiation.
+	Proxies can also be communicated from one cell to another, allowing 
+	a cell to subscribe to [resp. unsubscribe from] another, unrelated
+	cell, provided only that it is passed a proxy instance of a connection
+	to that cell by one of its connections - or possibly by its parent,
+	at instantiation.
 
-       See example usage in the Narrative parent Register Variable paragraph
-       below.
+	See example usage in the Narrative parent Register Variable paragraph
+	below.
 
     3. Pause
 
-       Execution will resume upon the User's pressing any key on the keyboard
+	Execution will resume upon the User's pressing any key on the keyboard
 
     4. External Event Narrative Occurrence (EENO)
 
-       External Event Narrative Occurrences (EENO) are occurrences in the form
+	External Event Narrative Occurrences (EENO) are occurrences in the form
 
 			on event < src
 
 		where
 			event and src are expressions
 
-       Any referencing term found in the EENO event and src expressions, namely
+	Any referencing term found in the EENO event and src expressions, namely
 
 		*identifier
 		.identifier
@@ -307,67 +307,67 @@ New Feature Description
 		~( expression )
 		expression:filter
 
-       as well as either one of the following register variable names
+	as well as either one of the following register variable names
 
 		%% .. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
 
-       will be dereferenced within the narrative instance's own cell's CNDB
-       PRIOR to the query's being launched
+	will be dereferenced within the narrative instance's own cell's CNDB
+	PRIOR to the query's being launched
 
-       Such is the limitation imposed, by design, to the Consensus B% inter-
-       cell communication protocol, that it allows only to query manifested
-       changes - and not one another's internal conditions.
+	Such is the limitation imposed, by design, to the Consensus B% inter-
+	cell communication protocol, that it allows only to query manifested
+	changes - and not one another's internal conditions.
 
     5. Signal event occurrence
 
-       B% Version-2.0 allows the following alternative syntax to be used
+	B% Version-2.0 allows the following alternative syntax to be used
 
 		on identifier~
 		on identifier~ < src	// EENO
 
-       to test signal events - which are release events associated with CNDB
-       base entities. See example usage in
+	to test signal events - which are release events associated with CNDB
+	base entities. See example usage in
 
 		Examples/1_Schematize/yak.new
 		Examples/3_TM.multi/TM-head_cell.story
 
     6. EENO Register Variables
 
-       The EENO Register Variables %<?> and %<!> allow subsequent references
-       to the EENO query results to be made by the narrative, using
+	The EENO Register Variables %<?> and %<!> allow subsequent references
+	to the EENO query results to be made by the narrative, using
 
 		%<?>	to represent event = first match
 		%<!>	to represent the complementary match (variable or value)
 			in case of assignment expression - if marked
 		%<	to represent src = proxy to the corresponding connection
 
-       The rules of assignment described in the Changes section of this document
-       apply to the %<?> and %<!> Register Variables, where the additional EENO
-       Register Variable %< holds the proxy instance to the EENO source.
+	The rules of assignment described in the Changes section of this document
+	apply to the %<?> and %<!> Register Variables, where the additional EENO
+	Register Variable %< holds the proxy instance to the EENO source.
 
-       Note here that the occurrence expression
+	Note here that the occurrence expression
 
 		on : variable : value < ?
 
-       will yield the following results, if any
+	will yield the following results, if any
 
 		%< 	matching source (proxy)
 		%<?>	matching variable
 		%<!>	matching value
 
-       whereas the occurrence expression
+	whereas the occurrence expression
 
 		on : variable : ? < .
 
-       will yield the following results, if any
+	will yield the following results, if any
 
 		%< 	matching source (proxy)
 		%<?>	matching value
 		%<!>	matching variable
 
-       Note that when found in occurrences the EENO register variables %<?> %<!>
-       will be dereferenced inside the local CNDB prior to the occurrence query
-       being launched, with the following exceptions:
+	Note that when found in occurrences the EENO register variables %<?> %<!>
+	will be dereferenced inside the local CNDB prior to the occurrence query
+	being launched, with the following exceptions:
 
 		in %<?:sub>		// as-is
 		in %<!:sub>		// as-is
@@ -375,17 +375,17 @@ New Feature Description
 		do > "fmt" : %<?:sub>	// as-is
 		do > "fmt" : %<!:sub>	// as-is
 
-       where the sub expression is evaluated directly in the source CNDB, and
+	where the sub expression is evaluated directly in the source CNDB, and
 
 		do expression
 
-       where the %<?:sub> and %<!:sub> terms, if any are present "as-is" - that
-       is: unfiltered etc. - will be converted locally, modulo instantiation.
+	where the %<?:sub> and %<!:sub> terms, if any are present "as-is" - that
+	is: unfiltered etc. - will be converted locally, modulo instantiation.
 
     7. Narrative parent Register Variable ..
 
-       The Narrative parent Register Variable .. allows a proxy to the narrative's
-       parent connection to be used - e.g.
+	The Narrative parent Register Variable .. allows a proxy to the narrative's
+	parent connection to be used - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
@@ -401,6 +401,6 @@ New Feature Description
 
     8. Narrative self Register Variable %%
 
-       Likewise the Narrative self Register Variable %% allows a proxy to
-       the current cell to be used.
+	Likewise the Narrative self Register Variable %% allows a proxy to
+	the current cell to be used.
 
