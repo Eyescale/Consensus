@@ -113,23 +113,24 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "in condition bgn: %s\n", expression );
 #endif
-	CNInstance *found=NULL;
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
-		{ negated=1; expression += 3; }
+		{ negated=1; expression+=3; }
 
 	if ( !strcmp( expression, "~." ) )
-		goto RETURN;
+		return negated;
 
-	found = bm_feel( BM_CONDITION, expression, ctx );
-	if (( found )) success = 1;
-RETURN:
+	CNInstance *found = bm_feel( BM_CONDITION, expression, ctx );
+
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
-	if ( success && !negated )
-		bm_context_mark( ctx, expression, found, marked );
-	return ( negated ? !success : success );
+	if ( negated )
+		success = !found;
+	else if (( found )) {
+		success = 1;
+		bm_context_mark( ctx, expression, found, marked ); }
+	return success;
 }
 
 //===========================================================================
@@ -144,11 +145,11 @@ on_event( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
-	CNInstance *found=NULL;
 	int success=0, negated=0;
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
 
+	CNInstance *found = NULL;
 	if ( !is_separator(*expression) ) {
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
@@ -202,19 +203,17 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x bgn: %s\n", expression );
 #endif
-	Pair *found = NULL;
-	CNInstance *proxy;
-	int success = 0, negated = 0;
+	int success=0, negated=0;
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
 
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
 	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
 	listItem *proxies = bm_proxy_scan( BM_CONDITION, src, ctx );
+	if ( !proxies ) return 0;
 
-	if ( !proxies )
-		return 0;
-	else if ( !is_separator( *expression ) ) {
+	Pair *found = NULL;
+	if ( !is_separator( *expression ) ) {
 		if ( !strncmp( expression, "init<", 5 ) ) {
 			found = proxy_test( bm_proxy_in, &proxies );
 			if (( found )) success = 1; }
@@ -285,22 +284,12 @@ do_action( char *expression, BMContext *ctx, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "do_action: do %s\n", expression );
 #endif
-	switch ( *expression ) {
-	case '~':
-		switch ( expression[1] ) {
-		case '(':
-			bm_release( expression+1, ctx );
-			break;
-		case '.':
-			break; }
-		goto RETURN;
-	default:
-		if ( !strcmp( expression, "exit" ) ) {
-			CNDB *db = BMContextDB( ctx );
-			db_exit( db ); goto RETURN; } }
-
-	bm_instantiate( expression, ctx, story );
-RETURN:
+	if ( !strncmp(expression,"~(",2) )
+		bm_release( expression+1, ctx );
+	else if ( !strcmp( expression, "exit" ) )
+		db_exit( BMContextDB(ctx) );
+	else if ( strcmp( expression, "~." ) )
+		bm_instantiate( expression, ctx, story );
 #ifdef DEBUG
 	fprintf( stderr, "do_action end\n" );
 #endif
