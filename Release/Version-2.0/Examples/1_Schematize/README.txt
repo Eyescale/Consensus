@@ -4,14 +4,13 @@ Name
 	UPDATE Version-2.0:
 	. adapted to new input logics, whereby EOF causes : input : ~.
 	. adapted to new active logics, whereby
-		on ~.	always fails
-		on ~.:.	means idle event - that is:
-	  neither release nor instantiation occurred during the last frame
-	. created schematize.new and yak.new using Version-2.0 features and,
-	  in the case of yak.new, with extracted cell's intake process
+		on ~.		// always fails
+		on ~.:.		// means idle event
+	. created schematize.new using Version-2.0 features
+	. created yak.new with extracted cell's intake process
 
 Usage
-	../../B% -f yak.ini yak.story
+	../../B% -f Schemes/yak.ini yak.story
 	../../B% -f Schemes/file schematize
 	../../B% hello_world.story
 
