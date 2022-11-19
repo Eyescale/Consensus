@@ -402,5 +402,5 @@ New Feature Description
     8. Narrative self Register Variable %%
 
        Likewise the Narrative self Register Variable %% allows a proxy to
-       the current ( narrative, instance ) to be used.
+       the current cell to be used.
 
