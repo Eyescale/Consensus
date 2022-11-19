@@ -42,11 +42,15 @@ CB_EEnovEndCB				f_clr( EENOV )
 				p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				break;
 			case '@':
-				// Assumption: p[1]=='<'
+				// Assumption: p[1]=='<' && p[2]=='\0'
 CB_ActiveCB			p+=2; break;
 			case '~':
 				if ( p[1]=='<' ) {
-CB_ActiveCB				p+=2; break; }
+					switch ( p[2] ) {
+					case '\0':
+CB_ActiveCB				default:
+						p+=2; }
+					break; }
 CB_NotCB			if is_f( NEGATED ) f_clr( NEGATED )	
 				else f_set( NEGATED )
 				p++; break;

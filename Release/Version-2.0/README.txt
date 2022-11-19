@@ -63,6 +63,9 @@ New Features
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
+	Signal Event Ocurrence		on identifier~ < src
+					on identifier~
+
 	EENO Register Variables		%<?:sub>		sub is a B% valid expression combining
 					%<!:sub>		  . B% valid identifiers
 					%<?>			  . the wildcard signus 
@@ -79,9 +82,10 @@ Feature Description
 	2. Subscribe / Unsubscribe
 	3. Pause
 	4. External Event Narrative Occurrence (EENO)
-	5. EENO Register Variables
-	6. Narrative parent Register Variable ..
-	7. Narrative self Register Variable %%
+	5. Signal Event Occurrence
+	6. EENO Register Variables
+	7. Narrative parent Register Variable ..
+	8. Narrative self Register Variable %%
 
     1. New operator !!
 
@@ -178,7 +182,20 @@ Feature Description
 	cell communication protocol, in that it allows only to query manifested
 	changes - and not one another's internal condition.
 
-    5. EENO Register Variables
+    5. Signal event occurrence
+
+       B% Version-2.0 allows the following alternative syntax to be used
+
+		on identifier~
+		on identifier~ < src	// EENO
+
+       to test signal events - which are release events associated with CNDB
+       base entities. See example usage in
+
+		Examples/1_Schematize/yak.new
+		Examples/3_TM.multi/TM-head_cell.story
+
+    6. EENO Register Variables
 
 	The EENO Register Variables %<?> and %<!> allow subsequent references
 	to the EENO query results to be made by the narrative, using
@@ -229,7 +246,7 @@ Feature Description
 	where the %<?:sub> and %<!:sub> terms, if any are present "as-is" - that
 	is: unfiltered etc. - will be converted locally, modulo instantiation.
 
-    6. Narrative parent Register Variable ..
+    7. Narrative parent Register Variable ..
 
 	The Narrative parent Register Variable .. allows a proxy to the narrative's
 	parent connection to be used - e.g.
@@ -246,7 +263,7 @@ Feature Description
 				// subscribe to my source's new connection
 				do %<?> @<
 
-    7. Narrative self Register Variable %%
+    8. Narrative self Register Variable %%
 
 	Likewise the Narrative self Register Variable %% allows a proxy to
 	the current ( narrative, instance ) to be used.
@@ -257,13 +274,12 @@ Changes & Extensions
 	2. Variable assignment alternative syntax : variable, value
 	3. Input alternative syntax do : input, format <
 	4. Process active event introduced - idle event deprecated
-	5. Signal event occurrences
 
     1. Narrative pipe Register Variable
 
        The name of the Narrative pipe Register Variable was changed
        from
-		%! in Version-1.x
+		%! in Version-1.1
        to
 		%| in Version-2.0
 
@@ -321,7 +337,7 @@ Changes & Extensions
        B% Version-2.0 allows to check process activity during the last frame
        via the following syntax
 
-		on . // covering ( . ), ~( . ), init and exit events altogether
+		on . // covering ( . ), ~( . ), init and exit altogether
 
        The on ~. occurrence which, in Version-1.x, was used to check process
        inactivity over the last frame, now systematically fails, replaced by
@@ -333,17 +349,4 @@ Changes & Extensions
 
        Note the possibility to use %% as EENO source when it is explicitely
        mentioned - the underlying "connection" remaining un-activable.
-
-    5. Signal event occurrences
-
-       B% Version-2.0 allows the following alternative syntax to be used
-
-		on signal~
-		on signal~ < src	// EENO
-
-       to test signal events - which are release events associated with CNDB
-       base entities. See example usage in
-
-		Examples/1_Schematize/yak.new
-		Examples/3_TM.multi/TM-head_cell.story
 
