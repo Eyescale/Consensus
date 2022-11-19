@@ -117,19 +117,17 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression+=3; }
 
-	if ( !strcmp( expression, "~." ) )
-		return negated;
-
-	CNInstance *found = bm_feel( BM_CONDITION, expression, ctx );
+	CNInstance *found;
+	if ( strcmp( expression, "~." ) ) {
+		found = bm_feel( BM_CONDITION, expression, ctx );
+		if (( found )) success = 1; }
 
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
-	if ( negated )
-		success = !found;
-	else if (( found )) {
-		success = 1;
-		bm_context_mark( ctx, expression, found, marked ); }
+	if ( negated ) return !success;
+	else if ( success )
+		bm_context_mark( ctx, expression, found, marked );
 	return success;
 }
 
@@ -153,7 +151,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	if ( !is_separator(*expression) ) {
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
-			success = DBInitOn(db); }
+			success = DBInitOn( db ); }
 		else {
 			char *p = expression + 1;
 			do p++; while ( !is_separator(*p) );
