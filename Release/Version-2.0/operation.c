@@ -153,7 +153,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 			CNDB *db = BMContextDB( ctx );
 			success = DBInitOn( db ); }
 		else {
-			char *p = expression + 1;
+			char *p = expression;
 			do p++; while ( !is_separator(*p) );
 			switch ( *p ) {
 			case ':':
@@ -219,7 +219,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			found = proxy_test( bm_proxy_out, &proxies );
 			if (( found )) success = 1; }
 		else {
-			char *p = expression + 1;
+			char *p = expression;
 			do p++; while ( !is_separator(*p) );
 			switch ( *p ) {
 			case ':':

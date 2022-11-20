@@ -72,9 +72,9 @@ New Features
 					%<!>			  . a single optional query signus ?
 					%<			  . the negation signus ~
 
-	parent Register Variable	..
-
 	self Register Variable		%%
+
+	parent Register Variable	..
 
 Changes & Extensions
 
@@ -200,8 +200,8 @@ New Feature Description
 	4. External Event Narrative Occurrence (EENO)
 	5. Signal Event Occurrence
 	6. EENO Register Variables
-	7. Narrative parent Register Variable ..
-	8. Narrative self Register Variable %%
+	7. Narrative self Register Variable %%
+	8. Narrative parent Register Variable ..
 
     1. New operator !!
 
@@ -258,8 +258,8 @@ New Feature Description
 	be replicated into the new cell's CNDB.
 
 	.identifier and .( expression ) are also dereferenced, so that the
-	the corresponding identifier resp. expression is replicated into the
-	new cell's CNDB if it is associated with the current narrative perso.
+	corresponding identifier resp. expression is replicated into the new
+	cell's CNDB if it is associated with the current narrative perso.
 
 	Note that the main use case for .identifier is to pass the value of
 	a sub-narrative's argument (declared as .identifier in the narrative
@@ -312,7 +312,7 @@ New Feature Description
 		%% .. %? %! %| %< %<?> %<!> %<?:sub> %<!:sub>
 
 	will be dereferenced within the narrative instance's own cell's CNDB
-	PRIOR to the query's being launched
+	PRIOR to the occurrence query being launched.
 
 	Such is the limitation imposed, by design, to the Consensus B% inter-
 	cell communication protocol, that it allows only to query manifested
@@ -365,33 +365,36 @@ New Feature Description
 		%<?>	matching value
 		%<!>	matching variable
 
-	Note that when found in occurrences the EENO register variables %<?> %<!>
-	will be dereferenced inside the local CNDB prior to the occurrence query
-	being launched, with the following exceptions:
+	And that when found on their own in occurrences the EENO register
+	variables will be dereferenced inside the local CNDB prior to the
+	occurrence query being launched, with the following exceptions:
 
+	   1.	in %<?>			// as-is
+		in %<!>			// as-is
 		in %<?:sub>		// as-is
 		in %<!:sub>		// as-is
 
+		where the expression is evaluated as it is,
+
+	   2.	do > "fmt" : %<?>	// as-is
+		do > "fmt" : %<!>	// as-is
 		do > "fmt" : %<?:sub>	// as-is
 		do > "fmt" : %<!:sub>	// as-is
 
-	where the sub expression is evaluated directly in the source CNDB, and
+		where the expression is printed out as it is,
 
-		do expression
+	   3.	do expression
 
-	where the %<?:sub> and %<!:sub> terms, if any are present "as-is" - that
-	is: unfiltered etc. - will be converted locally, modulo instantiation.
+		where expression will be substantiated into the local CNDB.
 
-    7. Narrative parent Register Variable ..
+    7. Narrative self Register Variable %%
 
-	The Narrative parent Register Variable .. allows a proxy to the narrative's
-	parent connection to be used - e.g.
+	The Narrative self Register Variable %% allows allows to reference
+	the executing cell in narratives - e.g.
 
 		on : connection : ? < .
 			// one of my sources just registered a new connection
-			in %<?>: ..
-				// that connection is my parent
-			else in %<?>: %%
+			in %<?>: %%
 				// that connection is me
 			else in %<?>: .
 				// already registered
@@ -399,8 +402,8 @@ New Feature Description
 				// subscribe to my source's new connection
 				do %<?> @<
 
-    8. Narrative self Register Variable %%
+    8. Narrative parent Register Variable ..
 
-	Likewise the Narrative self Register Variable %% allows a proxy to
-	the current cell to be used.
+	Likewise the Narrative parent Register Variable .. allows a proxy to
+	the narrative's parent connection to be used.
 

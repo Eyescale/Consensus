@@ -147,13 +147,13 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
 
-	CNInstance *found = NULL;
+	CNInstance *found;
 	if ( !is_separator(*expression) ) {
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
 			success = DBInitOn( db ); }
 		else {
-			char *p = expression + 1;
+			char *p = expression;
 			do p++; while ( !is_separator(*p) );
 			switch ( *p ) {
 			case ':':
@@ -219,7 +219,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 			found = proxy_test( bm_proxy_out, &proxies );
 			if (( found )) success = 1; }
 		else {
-			char *p = expression + 1;
+			char *p = expression;
 			do p++; while ( !is_separator(*p) );
 			switch ( *p ) {
 			case ':':
