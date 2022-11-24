@@ -16,7 +16,6 @@
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 static CNInstance * query_assignment( BMQueryType, char *, BMQueryData * );
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB * );
-static int xp_verify( CNInstance *, char *, BMQueryData * );
 
 CNInstance *
 bm_query( BMQueryType type, char *expression, BMContext *ctx,
@@ -125,8 +124,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB )
 	CNInstance *success = NULL;
 #ifdef DEBUG
 fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
-db_output( stderr, "", e, db );
-fprintf( stderr, ", exponent=" );
+db_outputf( stderr, db, "%_, exponent=", e );
 xpn_out( stderr, exponent );
 fprintf( stderr, "\n" );
 #endif
@@ -137,7 +135,7 @@ fprintf( stderr, "\n" );
 		e = i->ptr;
 		if (( exponent )) {
 			exp = (int) exponent->ptr;
-			if ( exp & 2 ) {
+			if ( exp & SUB ) {
 				e = CNSUB( e, exp&1 );
 				if (( e )) {
 					addItem ( &stack, i );
@@ -172,7 +170,7 @@ fprintf( stderr, "\n" );
 			else if (( stack )) {
 				exponent = popListItem( &stack );
 				exp = (int) exponent->ptr;
-				if ( exp & 2 ) freeItem( i );
+				if ( exp & SUB ) freeItem( i );
 				i = popListItem( &stack ); }
 			else goto RETURN; } }
 RETURN:
@@ -180,7 +178,7 @@ RETURN:
 	while (( stack )) {
 		exponent = popListItem( &stack );
 		exp = (int) exponent->ptr;
-		if ( exp & 2 ) freeItem( i );
+		if ( exp & SUB ) freeItem( i );
 		i = popListItem( &stack ); }
 	if ( strncmp( pivot->name, "%|", 2 ) )
 		freeItem( i );
@@ -204,7 +202,7 @@ typedef struct {
 } XPVerifyStack;
 static char * pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
 
-static int
+int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 /*
 	Assumption: expression is not ternarized
@@ -220,9 +218,8 @@ xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 	if ( !strncmp( p, "?:", 2 ) )
 		p += 2;
 #ifdef DEBUG
-fprintf( stderr, "xp_verify: %s / candidate=", p );
-db_output( stderr, "", x, db );
-fprintf( stderr, " ........{\n" );
+fprintf( stderr, "xp_verify: %s / ", p );
+db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 #endif
 	XPVerifyStack stack;
 	memset( &stack, 0, sizeof(stack) );
@@ -240,7 +237,7 @@ fprintf( stderr, " ........{\n" );
 		x = i->ptr;
 		if (( exponent )) {
 			int exp = (int) exponent->ptr;
-			if ( exp&2 ) {
+			if ( exp & SUB ) {
 				for ( j=x->as_sub[ exp&1 ]; j!=NULL; j=j->next )
 					if ( !db_private( privy, j->ptr, db ) )
 						break;
@@ -323,7 +320,7 @@ fprintf( stderr, " ........{\n" );
 				else if (( stack.as_sub )) {
 					exponent = popListItem( &stack.as_sub );
 					int exp = (int) exponent->ptr;
-					if (!( exp & 2 )) freeItem( i );
+					if (!( exp & SUB )) freeItem( i );
 					i = popListItem( &stack.as_sub ); }
 				else {
 					// move on past sub-expression
@@ -361,7 +358,7 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 	while (( stack->as_sub )) {
 		listItem *xpn = popListItem( &stack->as_sub );
 		int exp = (int) xpn->ptr;
-		if (!( exp & 2 )) freeItem( j );
+		if (!( exp & SUB )) freeItem( j );
 		j = popListItem( &stack->as_sub ); }
 	freeItem( j );
 	freeListItem( mark_exp );
@@ -382,10 +379,11 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		if ( *p++=='*' ) {
 			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
 			CNInstance *y = CNSUB( x, 0 );
-			if ( !y || y->sub[0]!=DBStar(data->db) ) {
+			if ( y && y->sub[0]==DBStar(data->db) )
+				x = y->sub[ 1 ];
+			else {
 				data->success = 0;
-				x = NULL; break; }
-			x = y->sub[ 1 ]; }
+				x = NULL; break; } }
 		// no break
 	default:
 #ifdef DEBUG
@@ -397,7 +395,7 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		fprintf( stderr, "'%s'\n", p );
 #endif
 		/* we cannot use exponent to track scope, as no exponent is
-		   pushed in case of "single" expressions - e.g. %((.,?):%?)
+		   pushed in case of "single" expressions - e.g. %(%?:(.,?))
 		*/
 		if ( op==BM_END ) {
 			data->base = popListItem( &data->stack.base );
@@ -605,8 +603,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 						freeListItem( &s );
 						success = e; // return (*,.)
 						break; } }
-				break;
-			} } }
+				break; } } }
 	else {
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
@@ -658,8 +655,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 							freeListItem( &s );
 							success = e; // return ((*,.),.)
 							break; } }
-					break;
-			} } } }
+					break; } } } }
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY_ASSIGNMENT: success=%d\n", !!success );
 #endif

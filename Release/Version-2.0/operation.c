@@ -122,12 +122,12 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 		found = bm_feel( BM_CONDITION, expression, ctx );
 		if (( found )) success = 1; }
 
+	if ( negated ) success = !success;
+	else if ( success )
+		bm_context_mark( ctx, expression, found, marked );
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
-	if ( negated ) return !success;
-	else if ( success )
-		bm_context_mark( ctx, expression, found, marked );
 	return success;
 }
 
@@ -147,7 +147,7 @@ on_event( char *expression, BMContext *ctx, int *marked )
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
 
-	CNInstance *found = NULL;
+	CNInstance *found;
 	if ( !is_separator(*expression) ) {
 		if ( !strcmp( expression, "init" ) ) {
 			CNDB *db = BMContextDB( ctx );
@@ -176,12 +176,12 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		found = bm_feel( BM_INSTANTIATED, expression, ctx );
 		if (( found )) success = 2; }
 
+	if ( negated ) success = !success;
+	else if ( success==2 )
+		bm_context_mark( ctx, expression, found, marked );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
-	if ( negated ) return !success;
-	else if ( success==2 )
-		bm_context_mark( ctx, expression, found, marked );
 	return success;
 }
 
@@ -241,16 +241,16 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	else {
 		found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
-#ifdef DEBUG
-	fprintf( stderr, "on_event_x end\n" );
-#endif
+
 	freeListItem( &proxies );
-	if ( negated )
-		success = !success;
+	if ( negated ) success = !success;
 	else switch ( success ) {
 		case 1: bm_context_mark_x( ctx, NULL, src, found, marked ); break;
 		case 2: bm_context_mark_x( ctx, expression, src, found, marked ); }
 	if (( found )) freePair( found );
+#ifdef DEBUG
+	fprintf( stderr, "on_event_x end\n" );
+#endif
 	return success;
 }
 
@@ -318,7 +318,7 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 			if ( *p=='.' ) {
 				do p++; while ( !is_separator(*p) );
 				if ( *p==':' ) continue;
-				StringAppend( s, '.' ); }
+				else StringAppend( s, '.' ); }
 			StringAppend( s, *p ); }
 		if ( strcmp(expression,"%(.)") ) {
 			StringAppend( s, ':' );
@@ -337,8 +337,8 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 static BMCBTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	EnableData *data = user_data;
 	Pair *entry;
+	EnableData *data = user_data;
 	if (!( entry = data->entry )) {
 		entry = registryRegister( data->subs, data->narrative, NULL );
 		data->entry = entry; }

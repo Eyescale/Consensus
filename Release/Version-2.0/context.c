@@ -61,7 +61,7 @@ freeContext( BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_context_finish / bm_activate
+//	bm_context_finish / bm_context_activate
 //===========================================================================
 void
 bm_context_finish( BMContext *ctx, int subscribe )
@@ -106,6 +106,9 @@ bm_context_init( BMContext *ctx )
 int
 bm_context_update( CNEntity *this, BMContext *ctx )
 {
+#ifdef DEBUG
+	fprintf( stderr, "bm_context_update: bgn\n" );
+#endif
 	CNDB *db = BMContextDB( ctx );
 	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
@@ -127,6 +130,9 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
+#ifdef DEBUG
+	fprintf( stderr, "bm_context_update: end\n" );
+#endif
 	return DBExitOn( db );
 }
 static inline void
@@ -154,12 +160,15 @@ static BMLocateCB register_CB;
 void
 bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
 {
-	if ( !instance ) return;
-	Pair *entry = registryLookup( ctx, "." );
-	entry->value = instance;
-	listItem *xpn = NULL;
-	RegisterData data = { instance, ctx };
-	bm_locate_param( proto, &xpn, register_CB, &data );
+	if (( instance )) {
+		Pair *entry = registryLookup( ctx, "." );
+		entry->value = instance;
+		listItem *xpn = NULL;
+		RegisterData data = { instance, ctx };
+		bm_locate_param( proto, &xpn, register_CB, &data ); }
+	else {
+		Pair *entry = registryLookup( ctx, "." );
+		entry->value = BMContextSelf( ctx ); }
 }
 static void
 register_CB( char *p, listItem *exponent, void *user_data )
@@ -217,7 +226,10 @@ bm_context_clear( BMContext *ctx )
 		Pair *entry = i->ptr;
 		next_i = i->next;
 		char *name = entry->name;
-		if ( is_separator( *name ) ) {
+		if ( !is_separator( *name ) ) {
+			clipListItem( entries, i, last_i, next_i );
+			freePair( entry ); }
+		else {
 			EEnoRV *eeno;
 			switch ( *name ) {
 			case '<':
@@ -235,10 +247,7 @@ bm_context_clear( BMContext *ctx )
 			case '.':
 				entry->value = NULL;
 				break; }
-			last_i = i; }
-		else {
-			clipListItem( entries, i, last_i, next_i );
-			freePair( entry ); } }
+			last_i = i; } }
 }
 void
 bm_context_pipe_flush( BMContext *ctx )
@@ -400,7 +409,7 @@ bm_context_lookup( BMContext *ctx, char *p )
 //===========================================================================
 //	bm_lookup / bm_lookup_x
 //===========================================================================
-static inline CNInstance * lookup_proxy( CNEntity *, CNInstance * );
+static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 
 CNInstance *
 bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
@@ -430,7 +439,6 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 	return db_lookup( privy, p, db );
 }
 
-
 CNInstance *
 bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 {
@@ -446,11 +454,9 @@ bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 			addItem( &stack.src, x );
 			x = x->sub[ ndx ];
 			ndx = 0; continue; }
-
 		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
-			CNEntity *this = BMContextCell( dst );
 			CNEntity *that = DBProxyThat( x );
-			instance = lookup_proxy( this, that ); }
+			instance = proxy_that( that, dst, db_dst, 0 ); }
 		else {
 			char *p = DBIdentifier( x, db_x );
 			instance = db_lookup( 0, p, db_dst ); }
@@ -464,8 +470,7 @@ bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
 				if ( !instance ) goto FAIL;
 			else {
 				addItem( &stack.dst, instance );
-				ndx=1; break; }
-		} }
+				ndx=1; break; } } }
 FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
@@ -473,21 +478,25 @@ FAIL:
 }
 
 static inline CNInstance *
-lookup_proxy( CNEntity *this, CNEntity *that )
+proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
+/*
+	look for proxy: (( this, that ), NULL ) where
+		this = BMContextCell( ctx )
+*/
 {
-	if ( this==that ) {
-		for ( listItem *i=this->as_sub[1]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is only one ((NULL,this), . )
-			if ( connection->sub[ 0 ]==NULL )
-				return connection->as_sub[ 0 ]->ptr; } }
-	else {
-		for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-			CNEntity *connection = i->ptr;
-			// Assumption: there is at most one ((this,~NULL), . )
-			if ( connection->sub[ 1 ]==that )
-				return connection->as_sub[ 0 ]->ptr; } }
-	return NULL;
+	if ( !that ) return NULL;
+
+	CNEntity *this = BMContextCell( ctx );
+	if ( this==that )
+		return BMContextSelf( ctx );
+
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		// Assumption: there is at most one ((this,~NULL), . )
+		if ( connection->sub[ 1 ]==that )
+			return connection->as_sub[ 0 ]->ptr; }
+
+	return ( inform ? db_proxy(this,that,db) : NULL );
 }
 
 //===========================================================================
@@ -541,23 +550,26 @@ bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
 			addItem( &stack.src, e );
 			e = e->sub[ ndx ];
 			ndx = 0; continue; }
-
 		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
-			CNEntity *this = BMContextCell( dst );
 			CNEntity *that = DBProxyThat( e );
-			if (!( instance = lookup_proxy( this, that ) ))
-				instance = db_proxy( this, that, db_dst ); }
+			instance = proxy_that( that, dst, db_dst, 1 ); }
 		else {
 			char *p = DBIdentifier( e, db_src );
 			instance = db_register( p, db_dst ); }
+		if ( !instance ) break;
 		for ( ; ; ) {
 			if ( !stack.src ) return instance;
 			e = popListItem( &stack.src );
 			if (( ndx = pop_item( &stack.src ) )) {
 				CNInstance *f = popListItem( &stack.dst );
-				instance = db_instantiate( f, instance, db_dst ); }
+				instance = db_instantiate( f, instance, db_dst );
+				if ( !instance ) goto FAIL; }
 			else {
 				addItem( &stack.dst, instance );
 				ndx=1; break; } } }
+FAIL:
+	freeListItem( &stack.src );
+	freeListItem( &stack.dst );
+	return NULL;
 }
 

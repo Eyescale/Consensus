@@ -7,3 +7,4 @@
 	}))
 	(( Rule, g ), ( Schema, (:%eee.:)) )
 	(( Rule, base ), ( Schema, (:%g:)) )
+#	(( Rule, base ), ( Schema, (:%eee:)) )

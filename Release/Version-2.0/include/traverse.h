@@ -3,6 +3,9 @@
 
 #include "string_util.h"
 
+#define AS_SUB  0
+#define SUB     2
+
 //===========================================================================
 //	traversal flags
 //===========================================================================
@@ -112,9 +115,6 @@ typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next
 //===========================================================================
 //	utilities
 //===========================================================================
-#define AS_SUB  0
-#define SUB     2
-
 static inline void
 xpn_add( listItem **xp, int as_sub, int position )
 {

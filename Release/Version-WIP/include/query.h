@@ -36,6 +36,8 @@ typedef struct {
 } BMQueryData;
 
 int bm_verify( CNInstance *, char *, BMQueryData * );
+int xp_verify( CNInstance *, char *, BMQueryData * );
+
 
 
 

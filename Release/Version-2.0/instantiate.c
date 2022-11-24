@@ -109,7 +109,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	BMContext *carry = BMCellContext( new );
 	// inform cell
 	data->carry = carry;
-	p++;
+	p++; // skipping '('
 	if ( *p==')' ) p++;
 	else do {
 		char *q = p;
@@ -334,10 +334,9 @@ case_( identifier_CB )
 		data->sub[ current ] = newItem( e ); }
 	_break
 case_( signal_CB )
-	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	CNInstance *e = data->sub[ current ]->ptr;
-	db_signal( e, db );
+	BMContext *carry = data->carry;
+	db_signal( e, ((carry) ? BMContextDB(carry) : data->db ));
 	_break
 BMTraverseCBEnd
 

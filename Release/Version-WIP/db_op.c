@@ -109,6 +109,8 @@ db_remove( CNInstance *e, CNDB *db )
 			if (( connection->sub[ 0 ] )) {
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
+	else if ( e==DBStar(db) )
+		return;
 	else {
 #ifdef UNIFIED
 		// Assumption: e->sub[1] is not NULL
@@ -184,7 +186,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-			TRASH( x, parent ) }
+			if ( x!=parent ) db_remove( x, db ); }
 		else { // just newborn
 			db_remove( g, db );
 			db_remove( f, db );
@@ -210,11 +212,11 @@ fprintf( stderr, "db_update: 4. remove released entities\n" );
 			x = f->sub[0]; // released candidate
 			db_remove( f, db );
 			TRASH( x, parent ) } }
-
 	// empty trash
 	for ( int i=0; i<2; i++ )
 		while (( x = popListItem( &trash[i] ) ))
 			db_remove( x, db );
+
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 #endif
@@ -276,7 +278,6 @@ db_private( int privy, CNInstance *e, CNDB *db )
 */
 {
 	CNInstance *nil = db->nil;
-//	db_outputf( stderr, db, "db_private: testing: %_\n", e );
 	if ( e->sub[0]==nil || e->sub[1]==nil )
 		return 1;
 	if ( privy == 2 ) return 0;
@@ -286,8 +287,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 			return !!f->as_sub[ 0 ]; // newborn
 		if ( f->as_sub[ 0 ] ) // newborn or reassigned
 			return !cn_instance( nil, e, 0 );
-		return !privy; // released
-	}
+		return !privy; } // released
 	return 0;
 }
 
@@ -297,7 +297,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 int
 db_to_be_manifested( CNInstance *e, CNDB *db )
 /*
-	called by db_deprecate()
+	called by db_instantiate() in case of assignment
 	returns 1 if e is either newborn or to-be-manifested
 	returns 0 otherwise.
 	Assumption: we don't have e:(.,nil) or e:(nil,.)

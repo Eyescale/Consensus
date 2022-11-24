@@ -32,11 +32,10 @@
 				else on : record : .
 					do ~( %?, READY )
 			else in ( %?, DONE )
-				on ~(((schema,.),.),.)
-				else on ~((rule,.),.)
-				else do ~( INPUT )
-			else in (((schema,.),.),%?): ~%(?,DONE)
-				in (((schema,.),.),%?): ~%(?,DONE): ~%(?,READY)
+				on ~.: . < { ., %% }
+					do ~( INPUT )
+			else in (.,%?): ~%(?,DONE)
+				in (.,%?): ~%(?,DONE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, DONE ) // all feeder schemas complete
 		else on ~( ., base ) // FAIL
@@ -61,41 +60,41 @@
 
 		else on : r : ? // r pushed or popped
 			// test if r has other feeders starting at s's starting (flag,frame)
-			in (((schema,.),%(*s:((.,?),.))), %? ): ~*s
+			in ( (.,%(*s:((.,?),.))), %? ): ~*s
 				do >" *** Error: Yak: rule '%_': multiple interpretations ***\n": %(%?:((.,?),.))
 				do : s : ~.
-			in ((((schema,.),.),.), *s ) // s has predecessor: r popped
+			in *s: %((.,*r), ? ) // s has predecessor: r popped
 			else in %?:((.,base),.) // base rule pushed: no output
 			else // output r begin
 				do >"%%%_:{": %(%?:((.,?),.))
 
-		else in ( ?:((rule,.),('[',*f)):~*r, *s ) // s has rule starting this frame - pushing
+		else in ( ?:(.,('[',*f)):~*r, *s ) // s has rule starting this frame - pushing
 			// set s to the feeder starting at r's starting ('[',frame)
 			do : r : %?
-			do : s : %(((schema,.),%(%?:(.,?))), %? )
+			do : s : %((.,%(%?:(.,?))),%?)
 
-		else in ( ?:((rule,.),(']',*f)):~*r, *s ) // s has rule starting this frame - pushing
+		else in ( ?:(.,(']',*f)):~*r, *s ) // s has rule starting this frame - pushing
 			// set s to the feeder starting at r's starting (']',frame)
 			in *f: ~(record,*) // output last schema frame
 				do >"%s": %(*f:(.,?))
 			do : r : %?
-			do : s : %(((schema,.),%(%?:(.,?))), %? )
+			do : s : %((.,%(%?:(.,?))),%?)
 
-		else in ( *s, (.,*f)) // this frame is s's last frame
+		else in ( *s, ?:(.,*f)) // this frame is s's last frame
 			// cyclic case: test if other feeder starting at s's finishing (flag,frame)
-			in ?: (((schema,.), %(*s,?)), *r ): ~*s
-				in ( *s:~(((schema,'\0'),.),.), (']',.))
+			in ?: ( (.,%?), *r ): ~*s
+				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s": %(*f:(.,?))
 				do : s : %?
 			else in *r: ~%( ?, base ) // popping
 				// output finishing event, which here cannot be initial frame
-				in ( *s:~(((schema,'\0'),.),.), (']',.))
+				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s}":%(*f:(.,?))
 				else do >"}"
 				/* set s to the successor of the schema which the current r
 				   fed and which started at finishing (flag,frame) = %(*s,?)
 				*/
-				in ( %(*r,?:(((schema,.),.),.)), ?:(((schema,.),%(*s,?)),.) )
+				in ( %(*r,?), ?:((.,%?),.) )
 					do : s : %?
 					do : r : %(%?:(.,?))
 				else // if no such successor, then we must have (*r,base)
@@ -103,7 +102,7 @@
 						subscriber has no successor ***\n": %(*r:((.,?),.))
 					do : s : ~.
 			else // back to base, where s must be successor null-schema
-				in (*s,(']',.)) // this frame was consumed
+				in %?:(']',.) // this frame was consumed
 					// right-recursive case: completes on failing next frame
 					in ( *f, ?:~EOF )
 						do : carry : %?
@@ -113,8 +112,7 @@
 				do ~( OUTPUT )
 		else
 			// output event, unless *f is a first ']' schema frame
-			in *s: ((.,(']',*f)),.)
-			else in *f:( ., ?:~EOF ):~(record,*)
+			in *f:( ., ?:~EOF ):~(record,*):~%(*s:((.,(']',?)),.))
 				do >"%s":%?
 			// move on to next frame
 			in ?: ( *f, . )
@@ -125,6 +123,7 @@
 		// and schema instances - all in ONE Consensus cycle
 		in : record : ~(.,EOF)
 			do ~( record )
+			do ~( %% )
 		else do exit
 
 	else on ~( record )
@@ -137,36 +136,38 @@
 .s: ((( schema, .position ), .start ), .r )
 	.p
 	on ( s )
-		// schema has predecessor AND is in null position
-		in ( position:'\0' ? ((((schema,.),.),.), s ) :)
+		// schema is in null position AND has predecessor
+		in ( position:'\0' ? (s:%((.,r),?)) :)
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
 			do : s : !! Take( ((*,p), .position ),
 				( start:('[',.) ? ((*,event), %(start:(.,(.,?)))) :) )
 	else on .EXIT
-		in (((schema,.),.), r ): ~%(?,EXIT)
-			do ~( s )
-		else do ~( r ) // all r feeder schemas failed
-	else on ~( .(.,s) )
+		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
+			do ~( %(s:(?,.)) )
+		do ( (.,r):~%(?,EXIT) ? ~(s) : ~(r) ) // all r feeder schemas failed
+	else on ~(.( ., s )) 
 		do .EXIT // feeder rule failed
-	else in ~.: ( (r,base) ?: ( r, (((schema,.),.),.)) )
+	else in ~.: ( (r,base) ?: (r,.) )
 		do ~( r ) // all r subscribers failed
+		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
+			do ~( %(s:(?,.)) )
 	else in .DONE
 		in .( ?, s ) // s has successor schema
-			on ~( s, (((schema,.),.),.) ) // successor schema failed
-				in ( s, (((schema,.),.),.) )
+			on ~(.( . )) // successor schema failed
+				in .(((schema,.),.),.)
 				else do .EXIT // all successor schemas failed
 		else	/* chill - so long as
 			r's subscriber schema, or, to allow left-recursion, this schema,
 			has a successor starting at this schema's finishing (flag,frame)
 			AND (right-recursion case) no later completion event occurs with
 			a sibling schema starting at the same (flag,frame) */
-			on ~( %(r,?), ((.,%(s,?)),.) )
+			on ~( %(r,?), . )
 				in ( %(r,?), ((.,%(s,?)),.) )
-				else in ((.,%(s,?)), r ): ~s
-				else do .EXIT // defunct
-			on (((.,'\0'),.), r ) // right-recursion case
+				else in ~.: ((.,%(s,?)), r ): ~s
+					do .EXIT // defunct
+			on ( ((.,'\0'),.), r ) // completion guaranteed
 				in ((.,start), r ): ~s
 					do .EXIT // defunct
 	else on .( /[[\]]/, . )
@@ -185,12 +186,12 @@
 					do .(((schema, %(*p:(.,?))), %? ), r )
 				on ((.,%?), ?:('[',.)) // TAKE: launch successor schema
 					do .(((schema, %(*p:(.,?))), %? ), r )
-				in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE)
-					in (((schema,.),.), %? ): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
+				// sync based on rule schemas
+				in (.,%?): ~%(?,CYCLIC): ~%(?,DONE)
+					in (.,%?): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
 					else do .READY // all non-cyclic rule schemas ready
-				else in ( s:~%(?,CYCLIC), (((schema,.),.),.) )
-					do .DONE // all non-cyclic rule schemas complete
-				else do .EXIT // either cyclic (done) or has no successor
+				else // all non-cyclic rule schemas complete
+					do ( .CYCLIC ? .EXIT : .(((schema,.),.),.) ? .DONE : .EXIT )
 		else
 			on : ( TAKE, ? ) : ~. < *s
 				do .( %<?>, *record ) // TAKE, consumed or unconsumed
@@ -224,6 +225,8 @@
 		on : record : ?  < ..
 			do : event : %<?:(.,?)>
 			do ~( NEXT )
+		else on ~((*,.), %% ) < ..
+			do exit
 	else on : event : .
 		in : p : '\0'
 			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed

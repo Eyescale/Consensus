@@ -13,6 +13,19 @@
 //	bm_proxy_scan
 //===========================================================================
 static void proxy_verify( CNInstance *, char *, BMQueryData *, listItem ** );
+// #define TYPED
+
+#ifdef TYPED
+#define VERIFY( e, p, data ) \
+	bm_verify( e, p, data )==BM_DONE
+#define TYPESET( type ) \
+	data.type = type; \
+	data.privy = ( type==BM_RELEASED ? 1 : 0 );
+#else
+#define VERIFY( e, p, data ) \
+	xp_verify( e, p, data )
+#define TYPESET( type )
+#endif
 
 listItem *
 bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
@@ -20,36 +33,52 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	return all context's active connections (proxies) matching expression
 */
 {
+#ifdef DEBUG
+	fprintf( stderr, "bm_proxy_scan: bgn - %s\n", expression );
+#endif
 	listItem *results = NULL;
+	// Special case: expression is or includes %%
 	if ( !strncmp( expression, "%%", 2 ) ) {
 		CNInstance *proxy = BMContextSelf(ctx);
 		results = newItem( proxy );
 		return results; }
 	else if ( *expression=='{' ) {
-		for ( char *p=expression+1; *p!='}'; p++ ) {
-			if ( !strncmp(p,"%%",2) ) {
+		char *p = expression;
+		do {	p++;
+			if ( !strncmp( p, "%%", 2 ) ) {
 				CNInstance *proxy = BMContextSelf(ctx);
 				results = newItem( proxy );
-				break; } } }
+				break; }
+			p = p_prune( PRUNE_TERM, p ); }
+		while ( *p!='}' ); }
+	// General case
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
-	data.type = type;
-	data.privy = ( type==BM_RELEASED ? 1 : 0 );
+	TYPESET( type );
 	data.ctx = ctx;
 	data.db = db;
 	ActiveRV *active = BMContextActive( ctx );
-	for ( listItem *i=active->value; i!=NULL; i=i->next ) {
-		CNInstance *proxy = i->ptr;
-		if ( *expression=='{' ) {
-			for ( char *p=expression+1; *p!='}'; p++ ) {
-				if ( !strncmp(p,"%%",2) ) continue;
-				if ( bm_verify( proxy, p, &data )==BM_DONE ) {
+	if ( *expression=='{' ) {
+		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
+			CNInstance *proxy = i->ptr;
+			char *p = expression;
+			do {	p++;
+				if ( !strncmp( p, "%%", 2 ) )
+					{ p+=2; continue; }
+				if ( VERIFY( proxy, p, &data ) ) {
 					addIfNotThere( &results, proxy );
 					break; }
-				p = p_prune( PRUNE_TERM, p ); } }
-		else if ( bm_verify( proxy, expression, &data )==BM_DONE )
-			addIfNotThere( &results, proxy ); }
+				p = p_prune( PRUNE_TERM, p ); }
+			while ( *p!='}' ); } }
+	else {
+		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
+			CNInstance *proxy = i->ptr;
+			if ( VERIFY( proxy, expression, &data ) )
+				addIfNotThere( &results, proxy ); } }
+#ifdef DEBUG
+	fprintf( stderr, "bm_proxy_scan: end\n" );
+#endif
 	return results;
 }
 
@@ -97,7 +126,7 @@ CNInstance *
 bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
 {
 #ifdef DEBUG
-	fprintf( stderr, "BM_PROXY_FEEL: %s\n", expression );
+	fprintf( stderr, "bm_proxy_feel: %s\n", expression );
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
@@ -131,7 +160,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 				success = e;
 				break; } } }
 #ifdef DEBUG
-	fprintf( stderr, "BM_PROXY_FEEL: success=%d\n", !!success );
+	fprintf( stderr, "bm_proxy_feel: success=%d\n", !!success );
 #endif
 	return success;
 }
@@ -158,10 +187,10 @@ case_( verify_CB )
 case_( open_CB )
 	if ( f_next & COUPLE ) {
 		CNInstance *x = data->x;
-		if ( !CNSUB(x,0) )
-			_return( 2 )
-		addItem( &data->stack.x, x );
-		data->x = x->sub[ 0 ]; }
+		if (( CNSUB( x, 0 ) )) {
+			addItem( &data->stack.x, x );
+			data->x = x->sub[ 0 ]; }
+		else _return( 2 ) }
 	_break
 case_( decouple_CB )
 	data->x = ((CNInstance *) data->stack.x->ptr )->sub[ 1 ];
@@ -263,7 +292,7 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 				freeListItem( &data->stack.x );
 				traverse_data->done = 0; }
 			else {
-				freeListItem( &s );
+				freeListItem( &candidates );
 				success = e; // return (*,.)
 				break; } } }
 	else {

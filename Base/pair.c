@@ -4,6 +4,7 @@
 #include "pair.h"
 
 #define U_CACHE
+// #define U_COUNT
 
 //===========================================================================
 //	allocation functions
@@ -11,7 +12,9 @@
 #ifdef U_CACHE
 
 #define U_CACHE_SIZE 15000
-// static int UCount = 0;
+#ifdef U_COUNT
+static int UCount = 0;
+#endif
 
 inline void *
 allocate( void ***Cache )
@@ -20,14 +23,14 @@ allocate( void ***Cache )
 	if (( cache ))
         	this = cache;
 	else {
-//		fprintf( stderr, "B%%: allocate: %d\n", UCount++ );
+#ifdef U_COUNT
+		fprintf( stderr, "B%%: allocate: %d\n", UCount++ );
+#endif
 		this = malloc( U_CACHE_SIZE * 2 * sizeof(void*) );
 		this[ 1 ] = NULL;
 		for ( int i=U_CACHE_SIZE-1; (i--); ) {
 			this += 2;
-			this[ 1 ] = this-2;
-		}
-	}
+			this[ 1 ] = this-2; } }
  	*Cache = this[ 1 ];
 	return this;
 }
@@ -43,13 +46,14 @@ recycle( void **item, void ***Cache )
 inline void *
 allocate( void ***cache )
 {
-	return malloc(2*sizeof(void*));
+	return calloc(1,2*sizeof(void*));
+//	return malloc(2*sizeof(void*));
 }
 inline void
 recycle( void **item, void ***Cache )
 {
 	if (( item )) free((void *) item );
-//	else fprintf( stderr, "***** Warning: recycle(): NULL\n" );
+	else fprintf( stderr, "***** Warning: recycle(): NULL\n" );
 }
 
 #endif	// U_CACHE

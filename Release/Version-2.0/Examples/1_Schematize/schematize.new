@@ -165,7 +165,7 @@
 				in ( %(r,?), ((.,%(s,?)),.) )
 				else in ((.,%(s,?)), r ): ~s
 				else do .EXIT // defunct
-			on (((.,'\0'),.), r ) // right-recursion case
+			on (((.,'\0'),.), r ) // completion guaranteed
 				in ((.,start), r ): ~s
 					do .EXIT // defunct
 	else on .( /[[\]]/, . )

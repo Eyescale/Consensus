@@ -193,7 +193,7 @@
 			in ( %(r,?), ((.,%(this,?)),.) )
 			else in ((.,%(this,?)), r ): ~this
 			else do .EXIT // defunct
-		on (((.,'\0'),.), r ) // right-recursion case
+		on (((.,'\0'),.), r ) // completion guaranteed
 			in ((.,%(this:((.,?),.))), r ): ~this
 				do .EXIT // defunct
 	else in .READY

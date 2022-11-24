@@ -751,8 +751,7 @@ rxcmp( char *r, int event )
 					else { range[1]=r[1]; r+=2; }
 					break;
 				default:
-					range[1] = *r++;
-			   	}
+					range[1] = *r++; }
 				if ( event>=range[0] && event<=range[1] )
 					return ( not ? -1 : 0 ); }
 			else if ( event==range[0] ) return ( not ? -1 : 0 ); }

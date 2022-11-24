@@ -38,18 +38,17 @@ typedef struct {
 } EEnoRV;
 
 inline Pair * BMContextId( BMContext *ctx )
-	{ return (Pair *) registryLookup( ctx, "" )->value; }
+	{ return registryLookup( ctx, "" )->value; }
 inline CNInstance * BMContextSelf( BMContext *ctx )
-	{ return (CNInstance *) BMContextId( ctx )->name; }
+	{ return BMContextId( ctx )->name; }
 inline CNInstance * BMContextParent( BMContext *ctx )
-	{ return (CNInstance *) BMContextId( ctx )->value; }
+	{ return BMContextId( ctx )->value; }
 inline CNDB * BMContextDB( BMContext *ctx )
-	{ return (CNDB *) registryLookup( ctx, "%" )->value; }
+	{ return registryLookup( ctx, "%" )->value; }
 inline ActiveRV * BMContextActive( BMContext *ctx )
-	{ return (ActiveRV *) registryLookup( ctx, "@" )->value; }
-inline CNInstance * BMContextPerso( BMContext *ctx ) {
-	CNInstance *perso = registryLookup( ctx, "." )->value;
-	return ( !perso ? BMContextSelf(ctx) : perso ); }
+	{ return registryLookup( ctx, "@" )->value; }
+inline CNInstance * BMContextPerso( BMContext *ctx )
+	{ return registryLookup( ctx, "." )->value; }
 
 inline CNEntity * BMContextCell( BMContext *ctx )
 	{ return DBProxyThat( BMContextSelf(ctx) ); }
