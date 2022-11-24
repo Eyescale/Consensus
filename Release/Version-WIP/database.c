@@ -266,7 +266,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 			addItem( &stack, i );
 			add_item( &stack, ndx );
 			ndx=0; i=j; continue; }
-#if 1
+
 		if ( ndx ) db_op( DB_DEPRECATE_OP, x, db );
 		else { ndx=1; continue; }
 		for ( ; ; ) {
@@ -280,21 +280,6 @@ db_deprecate( CNInstance *x, CNDB *db )
 				if ( ndx ) db_op( DB_DEPRECATE_OP, i->ptr, db );
 				else { ndx=1; break; } }
 			else goto RETURN; } }
-#else
-		for ( ; ; ) {
-			if ( ndx==0 ) { ndx=1; break; }
-			if (( x )) db_op( DB_DEPRECATE_OP, x, db );
-			if (( i->next )) {
-				i = i->next;
-				if ( db_deprecatable( i->ptr, db ) )
-					{ ndx=0; break; }
-				else x = NULL; }
-			else if (( stack )) {
-				ndx = pop_item( &stack );
-				i = popListItem( &stack );
-				if ( ndx ) x = i->ptr; }
-			else goto RETURN; } }
-#endif
 RETURN:
 	freeItem( i );
 }
