@@ -5,6 +5,9 @@ TODO
 		 	 we do not pre-check with bm_void
 
 DONE
+	. BUGFIX - db_op.c/db_update()
+		. Do NOT bufferize - aka. TRASH - newborn/to-be-released, but
+		  invoke db_remove(x,db) right away
 	. finalized Version-2.0 Engineering documents
 		. specs, README.txt, etc.
 	. Implemented support for signal event occurrences

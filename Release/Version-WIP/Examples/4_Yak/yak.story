@@ -164,8 +164,8 @@
 			AND (right-recursion case) no later completion event occurs with
 			a sibling schema starting at the same (flag,frame) */
 			on ~( %(r,?), . )
-				in ( %(r,?), ((.,%(s,?)),.) )
-				else in ~.: ((.,%(s,?)), r ): ~s
+				in ( %(r,?), ((.,%(.(?))),.) )
+				else in ~.: ((.,%(.(?))), r ): ~s
 					do .EXIT // defunct
 			on ( ((.,'\0'),.), r ) // completion guaranteed
 				in ((.,start), r ): ~s
