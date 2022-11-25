@@ -156,8 +156,8 @@
 		do ~( r )
 	else in .DONE
 		in .( ?, s ) // s has successor schema
-			on ~( .(.,r) ) // successor schema failed
-				in ~.: ( .(.,r) ) // all successor schemas failed
+			on ~( .(.) ) // successor schema failed
+				in ~.: .( ., r ) // all successor schemas failed
 					do .EXIT
 		else	/* chill - so long as
 			r's subscriber schema, or, to allow left-recursion, this schema,
