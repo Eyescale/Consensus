@@ -64,7 +64,6 @@
 				do >" *** Error: Yak: rule '%_': multiple interpretations ***\n": %(%?:((.,?),.))
 				do : s : ~.
 			in *s: %((.,*r), ? ) // s has predecessor: r popped
-			else in %?:((.,base),.) // base rule pushed: no output
 			else // output r begin
 				do >"%%%_:{": %(%?:((.,?),.))
 
@@ -86,30 +85,31 @@
 				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s": %(*f:(.,?))
 				do : s : %?
-			else in *r: ~%( ?, base ) // popping
+			else
 				// output finishing event, which here cannot be initial frame
 				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s}":%(*f:(.,?))
 				else do >"}"
-				/* set s to the successor of the schema which the current r
-				   fed and which started at finishing (flag,frame) = %(*s,?)
-				*/
-				in ( %(*r,?), ?:((.,%?),.) )
-					do : s : %?
-					do : r : %(%?:(.,?))
-				else // if no such successor, then we must have (*r,base)
-					do >" *** Error: Yak: rule '%_': \
-						subscriber has no successor ***\n": %(*r:((.,?),.))
-					do : s : ~.
-			else // back to base, where s must be successor null-schema
-				in %?:(']',.) // this frame was consumed
-					// right-recursive case: completes on failing next frame
-					in ( *f, ?:~EOF )
+				in *r: ~%( ?, base ) // popping
+					/* set s to the successor of the schema which the current r
+					   fed and which started at finishing (flag,frame) = %(*s,?)
+					*/
+					in ( %(*r,?), ?:((.,%?),.) )
+						do : s : %?
+						do : r : %(%?:(.,?))
+					else // if no such successor, then we must have (*r,base)
+						do >" *** Error: Yak: rule '%_': \
+							subscriber has no successor ***\n": %(*r:((.,?),.))
+						do : s : ~.
+				else // back to base, where s must be successor null-schema
+					in %?:(']',.) // this frame was consumed
+						// right-recursive case: completes on failing next frame
+						in ( *f, ?:~EOF )
+							do : carry : %?
+					else in *f:( ., ?:~EOF )
+						// completed unconsumed - cannot be first input
 						do : carry : %?
-				else in *f:( ., ?:~EOF )
-					// completed unconsumed - cannot be first input
-					do : carry : %?
-				do ~( OUTPUT )
+					do ~( OUTPUT )
 		else
 			// output event, unless *f is a first ']' schema frame
 			in *f:( ., ?:~EOF ):~(record,*):~%(*s:((.,(']',?)),.))
@@ -137,7 +137,7 @@
 	.p
 	on ( s )
 		// schema is in null position AND has predecessor
-		in ( position:'\0' ? (s:%((.,r),?)) :)
+		in ( position:'\0' ? ((.,r), s ) :)
 			do .( start ) // TAKE as-is
 		else
 			do : p : position
@@ -146,18 +146,20 @@
 	else on .EXIT
 		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
 			do ~( %(s:(?,.)) )
-		do ( (.,r):~%(?,EXIT) ? ~(s) : ~(r) ) // all r feeder schemas failed
-	else on ~(.( ., s )) 
-		do .EXIT // feeder rule failed
-	else in ~.: ( (r,base) ?: (r,.) )
-		do ~( r ) // all r subscribers failed
+		else do ~( s )
+		in ~.: ( ., r ): ~%(?,EXIT) // all r feeder schemas failed
+			do ~( r )
+	else on ~( .(.,s) ) // feeder rule failed
+		do .EXIT
+	else in ~.: ( (r,base) ?: (r,.) ) // all r subscribers failed
 		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
 			do ~( %(s:(?,.)) )
+		do ~( r )
 	else in .DONE
 		in .( ?, s ) // s has successor schema
-			on ~(.( . )) // successor schema failed
-				in .(((schema,.),.),.)
-				else do .EXIT // all successor schemas failed
+			on ~( .(.) ) // successor schema failed
+				in ~.: .(.,r) // all successor schemas failed
+					do .EXIT
 		else	/* chill - so long as
 			r's subscriber schema, or, to allow left-recursion, this schema,
 			has a successor starting at this schema's finishing (flag,frame)
@@ -191,7 +193,7 @@
 					in (.,%?): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
 					else do .READY // all non-cyclic rule schemas ready
 				else // all non-cyclic rule schemas complete
-					do ( .CYCLIC ? .EXIT : .(((schema,.),.),.) ? .DONE : .EXIT )
+					do ( .CYCLIC ? .EXIT : .(.,r) ? .DONE : .EXIT )
 		else
 			on : ( TAKE, ? ) : ~. < *s
 				do .( %<?>, *record ) // TAKE, consumed or unconsumed
