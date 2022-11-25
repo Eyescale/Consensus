@@ -785,19 +785,6 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	if ( mode==BM_STORY ) {			*type = 0; } }
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression End
-	//----------------------------------------------------------------------
-	in_( "expr_" )
-_CB( ExpressionTake, mode, data );
-		bgn_
-			on_any
-if ( mode==BM_INPUT ) {		do_( "" ) }
-else {				do_( "base" )	f_reset( FIRST, 0 );
-						TAB_CURRENT = 0;
-						data->opt = 0;
-	if ( mode==BM_STORY ) {			*type = 0; } }
-			end
-	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------
 	BMParseDefault
