@@ -339,7 +339,8 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
-		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent\n" );
+		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent %d %d\n",
+			(int)data->stack.flags, (int)data->stack.exponent );
 		exit( -1 ); }
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
@@ -446,14 +447,19 @@ case_( sub_expression_CB )
 		_return( 1 )
 	_break
 case_( dot_expression_CB )
-	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	listItem **stack = &data->stack.exponent;
+	xpn_add( stack, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
-	case -1: data->success = 0;
+	case 0: if is_f( NEGATED ) {
+			data->success=1; popListItem( stack );
+			_prune( BM_PRUNE_FILTER ) }
+		// no break
+	case -1:
+		data->success=0; popListItem( stack );
 		_prune( BM_PRUNE_TERM )
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
-		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
-	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
-	_break
+	default:
+		xpn_set( *stack, AS_SUB, 1 );
+		_break }
 case_( open_CB )
 	if ( f_next & COUPLE )
 		xpn_add( &data->stack.exponent, AS_SUB, 0 );

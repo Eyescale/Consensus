@@ -123,7 +123,6 @@
 		// and schema instances - all in ONE Consensus cycle
 		in : record : ~(.,EOF)
 			do ~( record )
-			do ~( %% )
 		else do exit
 
 	else on ~( record )
@@ -157,8 +156,8 @@
 		do ~( r )
 	else in .DONE
 		in .( ?, s ) // s has successor schema
-			on ~( .(.) ) // successor schema failed
-				in ~.: .(.,r) // all successor schemas failed
+			on ~( .(.,r) ) // successor schema failed
+				in ~.: ( .(.,r) ) // all successor schemas failed
 					do .EXIT
 		else	/* chill - so long as
 			r's subscriber schema, or, to allow left-recursion, this schema,
@@ -223,12 +222,12 @@
 				do .EXIT
 
 : Take
-	in NEXT
+	on ~((*,.), %% ) < ..
+		do exit
+	else in NEXT
 		on : record : ?  < ..
 			do : event : %<?:(.,?)>
 			do ~( NEXT )
-		else on ~((*,.), %% ) < ..
-			do exit
 	else on : event : .
 		in : p : '\0'
 			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed
@@ -274,4 +273,5 @@
 		else do NEXT
 	else on ( TAKE, . )
 		do exit
+
 

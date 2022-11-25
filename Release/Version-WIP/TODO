@@ -20,7 +20,6 @@ DONE
 
 NICE TO HAVE
 	. allow %@ to be used - spec?
-	. support .%( expression ) as an alternative to %(.( expression ))
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
