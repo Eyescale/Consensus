@@ -146,7 +146,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( g, db );
 			// remove ( x, nil ) and x
 			db_remove( f, db );
-			TRASH( x );
+			db_remove( x, db );
 		}
 		else {
 			// remove (( x, nil ), nil ) and ( x, nil )
