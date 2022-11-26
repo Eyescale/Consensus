@@ -492,8 +492,10 @@ case_( dot_expression_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case -1: data->success = 0;
+		popListItem( &data->stack.exponent );
 		_prune( BM_PRUNE_TERM )
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0;
+		popListItem( &data->stack.exponent );
 		_prune( data->success ? BM_PRUNE_FILTER : BM_PRUNE_TERM )
 	case  1: xpn_set( data->stack.exponent, AS_SUB, 1 ); }
 	_break

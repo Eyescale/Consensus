@@ -201,7 +201,7 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			db_remove( f->as_sub[1]->ptr, db );
 			db_remove( g, db );
 			db_remove( f, db );
-			TRASH( x );
+			db_remove( x, db );
 		}
 		else { // just newborn
 			db_remove( g, db );
