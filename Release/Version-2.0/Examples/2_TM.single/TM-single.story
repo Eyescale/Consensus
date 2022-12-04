@@ -41,7 +41,7 @@
 		else on : symbol : ?
 			in *state : *HALT
 				do exit
-			else in ?: %( TUPLE, (*state,(%?, ? )))
+			else in ( TUPLE, (*state,(%?, ? )))
 				do : write : %(%?:(?,.))
 				do : shift : %(%?:(.,(?,.)))
 				do : state : %(%?:(.,(.,?)))
