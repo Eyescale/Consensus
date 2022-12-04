@@ -21,7 +21,7 @@
 			do > "%s": %?
 			in %? : *HALT
 				do exit
-			else in ?: %( TUPLE, (%?,(%<?>, ? )))
+			else in ( TUPLE, (%?,(%<?>, ? )))
 				do : symbol : %(%?:(?,.))
 				do : shift : %(%?:(.,(?,.)))
 				do : state : %(%?:(.,(.,?)))

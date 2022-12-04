@@ -14,7 +14,7 @@
 		do : tape : !! Tape (
 			((*,BLANK), 0 )
 #			(( init, * ), A )
-			(( init, ... ):0 0 0 A0 0 0 0 0 0 0 0:)
+			(( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
 			) @<
 		do exit // just like that
 
@@ -23,7 +23,7 @@
 		on : symbol : ? < *tape
 			in %? : *HALT
 				do exit
-			else in ?: %( TUPLE, (%?,(%<?>, ? )))
+			else in ( TUPLE, (%?,(%<?>, ? )))
 				do : symbol : %(%?:(?,.))
 				do : shift : %(%?:(.,(?,.)))
 				do : state : %(%?:(.,(.,?)))
@@ -45,8 +45,7 @@
 		do : current : (TAPE,TAPE) // instantiate origin
 		do : record : %(( init, * ), . )
 	else in ( init )
-		in ?: %(*record:(.,?))
-			do : record : ( %(*record,.) ?: ~. )
+		in *record:(.,?)
 			in %?: /[01]/
 				do : *current : %?
 			else in %?: ' '
@@ -54,6 +53,7 @@
 			else
 				do : state : %?
 				do : start : *current
+			do : record : ( %(*record,.) ?: ~. )
 		else in ?: *start
 			do { '|', ' ' }	// needed for reporting
 			do : current : %?
