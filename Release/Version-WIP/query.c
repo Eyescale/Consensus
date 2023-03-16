@@ -522,7 +522,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	else if ( p == NULL ) // wildcard
 		return 1;
 
-	// name-value-based testing: note that %! MUST come first
+	// name-value-based testing: note that %| MUST come first
 	BMContext *ctx = data->ctx;
 	if ( !strncmp( p, "%|", 2 ) ) {
 		listItem *v = bm_context_lookup( ctx, "|" );
@@ -533,7 +533,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		case '.':
 			return ( p[1]=='.' ?
 				( y==BMContextParent(ctx) ) :
-				( y== BMContextPerso(ctx) ) );
+				( y==BMContextPerso(ctx) ) );
 		case '*':
 			return ( y==DBStar(data->db) );
 		case '%':
@@ -667,22 +667,32 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 #endif
 	return success;
 }
+
 static int
 bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
-	int manifest = ( data->type==BM_INSTANTIATED );
 	CNDB *db = data->db;
 	CNInstance *star = DBStar( db );
-	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
-		e = i->ptr; // e:(.,e)
-		if ( e->sub[0]!=star ) continue;
-		if ( manifest && !db_manifested(e,db) )
-			continue;
-		if ( assignment(e,db) ) continue;
-		data->instance = e; // return (*,e)
-		return BM_DONE; }
+	switch ( data->type ) {
+	case BM_INSTANTIATED:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *f = i->ptr; // f:(.,e)
+			if ( f->sub[0]!=star ) continue;
+			if ( !db_manifested(f,db) ) continue;
+			if ( assignment(f,db) ) continue;
+			data->instance = f; // return (*,e)
+			return BM_DONE; }
+		break;
+	default:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *f = i->ptr; // f:(.,e)
+			if ( f->sub[0]!=star ) continue;
+			if ( assignment(f,db) ) continue;
+			data->instance = f; // return (*,e)
+			return BM_DONE; } }
+
 	return BM_CONTINUE;
 }
 static int
@@ -690,19 +700,29 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
-	int manifest = ( data->type==BM_INSTANTIATED );
+	char *value = data->user_data;
 	CNDB *db = data->db;
 	CNInstance *star = DBStar( db );
-	char *value = data->user_data;
-	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
-		CNInstance *f = i->ptr, *g; // f:(.,e)
-		if ( f->sub[0]!=star || !(g=assignment(f,db)) )
-			continue;
-		if ( manifest && !db_manifested(g,db) )
-			continue;
-		if ( xp_verify( g->sub[1], value, data ) ) {
-			data->instance = g; // return ((*,e),.)
-			return BM_DONE; } }
+	switch ( data->type ) {
+	case BM_INSTANTIATED:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *f = i->ptr; // f:(.,e)
+			if ( f->sub[0]!=star ) continue;
+			CNInstance *g = assignment(f,db);
+			if ( !g || !db_manifested(g,db) ) continue;
+			if ( xp_verify( g->sub[1], value, data ) ) {
+				data->instance = g; // return ((*,e),.)
+				return BM_DONE; } }
+		break;
+	default:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *f = i->ptr; // f:(.,e)
+			if ( f->sub[0]!=star ) continue;
+			CNInstance *g = assignment(f,db);
+			if ( !g ) continue;
+			if ( xp_verify( g->sub[1], value, data ) ) {
+				data->instance = g; // return ((*,e),.)
+				return BM_DONE; } } }
 	return BM_CONTINUE;
 }
 static int
@@ -710,24 +730,38 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 {
 	if ( !xp_verify( e, value, data ) )
 		return BM_CONTINUE;
-	int manifest = ( data->type==BM_INSTANTIATED );
+	char *variable = data->user_data;
 	CNDB *db = data->db;
 	CNInstance *star = DBStar( db );
-	char *variable = data->user_data;
-	for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
-		e = i->ptr; // e:(.,e)
-		if ( e->sub[0]->sub[0]!=star || db_private(0,e,db) )
-			continue;
-		if ( manifest && !db_manifested(e,db) )
-			continue;
-		CNInstance *f = e->sub[ 0 ]; // e:(f:(*,.),e)
-		if ( xp_verify( f->sub[1], variable, data ) ) {
-			data->instance = e; // return ((*,.),e)
-			return BM_DONE; } }
+	switch ( data->type ) {
+	case BM_INSTANTIATED:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *g = i->ptr; // g:(.,e)
+			if ( g->sub[0]->sub[0]!=star || !db_manifested(g,db) )
+				continue;
+			// Assumption: cannot be manifested AND private
+			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
+			if ( xp_verify( f->sub[1], variable, data ) ) {
+				data->instance = g; // return ((*,.),e)
+				return BM_DONE; } }
+		break;
+	default:
+		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
+			CNInstance *g = i->ptr; // g:(.,e)
+			if ( g->sub[0]->sub[0]!=star || db_private(0,g,db) )
+				continue;
+			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
+			if ( xp_verify( f->sub[1], variable, data ) ) {
+				data->instance = g; // return ((*,.),e)
+				return BM_DONE; } } }
 	return BM_CONTINUE;
 }
 static inline CNInstance *
 assignment( CNInstance *e, CNDB *db )
+/*
+	Assumption: e:( *, . )
+	returns first ( e, . )
+*/
 {
 	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
 		if ( !db_private( 0, j->ptr, db ) )

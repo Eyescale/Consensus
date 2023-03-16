@@ -6,7 +6,7 @@ TODO
 DONE
 	. finalized README.txt - including all relevant new Features and Additions
 	. traverse.c / bm_traverse() implementation
-i	. Version-1.1 -> Version-1.2 [ BETA ]
+	. Version-1.1 -> Version-1.2 [ BETA ]
 		. Branched Version-1.2 on github
 		. Version-1.2 Engineering Complete
 		     Examples

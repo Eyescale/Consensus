@@ -304,9 +304,9 @@ db_to_be_manifested( CNInstance *e, CNDB *db )
 */
 {
 	CNInstance *nil = db->nil, *f = cn_instance( e, nil, 1 );
-	if ( !!f && (f->as_sub[0] ) ) return 1; // newborn
+	if (( f ) && (f->as_sub[0] ) ) return 1; // newborn
 	f = cn_instance( nil, e, 0 );
-	if ( !!f && (f->as_sub[1] ) ) return 1; // to-be-manifested
+	if (( f ) && (f->as_sub[1] ) ) return 1; // to-be-manifested
 	return 0;
 }
 
@@ -340,6 +340,6 @@ db_manifested( CNInstance *e, CNDB *db )
 {
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( nil, e, 0 );
-	return (( f ) && !f->as_sub[0] );
+	return (( f ) && !f->as_sub[1] );
 }
 

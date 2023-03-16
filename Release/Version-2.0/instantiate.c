@@ -423,7 +423,7 @@ bm_list( char **position, listItem **sub, CNDB *db )
 		 return *position ---------------
 	where
 		_sequence_ = ab...yz
-	converts into (((((expression,*),a),b)...,y)z)
+	converts into (((((expression,*),a),b)...,y),z)
 	  inserting star -------------^
 */
 {

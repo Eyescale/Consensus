@@ -389,7 +389,7 @@ New Feature Description
 
     7. Narrative self Register Variable %%
 
-	The Narrative self Register Variable %% allows allows to reference
+	The Narrative self Register Variable %% allows to reference
 	the executing cell in narratives - e.g.
 
 		on : connection : ? < .

@@ -14,7 +14,7 @@ Overview
 				CNOccurrence:[ data:[ type, expression ], sub:{CNOccurrence} ]
 
 	and
-		CNCell::CNEntity( [ entry:CNStoryEntry, carry:{} ], ctx:BMContext ]
+		CNCell::CNEntity( [ entry:CNStoryEntry, carry:{} ], ctx:BMContext )
 		where
 			BMContext:Registry(CNRegisterVariable:[ name, value ])
 			where
