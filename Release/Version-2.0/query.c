@@ -380,7 +380,7 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		if ( *p++=='*' ) {
 			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
 			CNInstance *y = CNSUB( x, 0 );
-			if ( y && y->sub[0]==DBStar(data->db) )
+			if ( y && DBStarMatch( y->sub[0], data->db ) )
 				x = y->sub[ 1 ];
 			else {
 				data->success = 0;
@@ -535,7 +535,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 				( y==BMContextParent(ctx) ) :
 				( y==BMContextPerso(ctx) ) );
 		case '*':
-			return ( y==DBStar(data->db) );
+			return DBStarMatch( y, data->db );
 		case '%':
 			switch ( p[1] ) {
 			case '?': return ( y==bm_context_lookup( ctx, "?" ) );
@@ -572,10 +572,12 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 {
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
-	CNInstance *star = DBStar( db );
-	CNInstance *success = NULL, *e;
+	CNInstance *star = db_lookup( 0, "*", db );
+	if ( !star ) return NULL;
+	data->star = star;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
+	CNInstance *success = NULL, *e;
 	if ( !strncmp( value, "~.", 2 ) ) {
 		listItem *exponent = NULL;
 		char *p = bm_locate_pivot( expression, &exponent );
@@ -674,7 +676,7 @@ bm_verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 	if ( !xp_verify( e, variable, data ) )
 		return BM_CONTINUE;
 	CNDB *db = data->db;
-	CNInstance *star = DBStar( db );
+	CNInstance *star = data->star;
 	switch ( data->type ) {
 	case BM_INSTANTIATED:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
@@ -702,7 +704,7 @@ bm_verify_value( CNInstance *e, char *variable, BMQueryData *data )
 		return BM_CONTINUE;
 	char *value = data->user_data;
 	CNDB *db = data->db;
-	CNInstance *star = DBStar( db );
+	CNInstance *star = data->star;
 	switch ( data->type ) {
 	case BM_INSTANTIATED:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
@@ -732,7 +734,7 @@ bm_verify_variable( CNInstance *e, char *value, BMQueryData *data )
 		return BM_CONTINUE;
 	char *variable = data->user_data;
 	CNDB *db = data->db;
-	CNInstance *star = DBStar( db );
+	CNInstance *star = data->star;
 	switch ( data->type ) {
 	case BM_INSTANTIATED:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {

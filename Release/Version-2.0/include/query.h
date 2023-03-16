@@ -23,6 +23,7 @@ typedef struct {
 	int privy;
 	listItem *exponent;
 	int op, success;
+	CNInstance *star;
 	CNInstance *instance;
 	listItem *mark_exp;
 	listItem *base;

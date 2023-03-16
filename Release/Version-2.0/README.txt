@@ -83,6 +83,7 @@ Changes & Extensions
 	3. Input alternative syntax do : input, format <
 	4. Process active event introduced - idle event deprecated
 	5. Base narrative perso
+	6. Star (UNHACKED)
 
     1. Narrative pipe Register Variable
 
@@ -191,6 +192,12 @@ Changes & Extensions
 	the same function - so that, for instance, do ~( %% ) will effectively
 	release all relationship instances localized from the base narrative,
 	whereas the Self proxy instance itself cannot be removed.
+
+    6. Star (UNHACKED)
+
+	The CNDB star * base entity is no longer created at CNDB creation time,
+	nor is its address stored in db->nil->sub[1] - this was introduced in
+	Version-1.2 in order to optimize assignment operations
 
 New Feature Description
 

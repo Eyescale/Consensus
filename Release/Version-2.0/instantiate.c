@@ -432,7 +432,7 @@ bm_list( char **position, listItem **sub, CNDB *db )
 		return NULL; }
 	listItem *results = NULL;
 	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
-	CNInstance *star = DBStar( db );
+	CNInstance *star = db_register( "*", db );
 	CNInstance *e;
 	char *q = *position + 5; // start past "...):"
 	char *p;
@@ -440,16 +440,10 @@ bm_list( char **position, listItem **sub, CNDB *db )
 		CNInstance *f = star;
 		e = db_instantiate( e, f, db );
 		p = q;
-		for ( ; ; ) {
-			switch ( *p ) {
-			case ':':
-				if ( p[1]==')' ) goto BREAK;
-				// no break
-			default:
-				p = sequence_step( p, work_instance, db );
-				f = work_instance[ 2 ]; }
+		while ( strncmp( p, ":)", 2 ) ) {
+			p = sequence_step( p, work_instance, db );
+			f = work_instance[ 2 ];
 			if (( f )) e = db_instantiate( e, f, db ); }
-BREAK:
 		addItem( &results, e ); }
 	*position = p+1;
 	return results;

@@ -227,7 +227,7 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 {
 	switch ( *p ) {
 	case '*':
-		return ( x==DBStar(db_x) );
+		return DBStarMatch( x, db_x );
 	case '.':
 		return ( p[1]=='.' ) ?
 			db_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
@@ -258,11 +258,12 @@ static CNInstance *
 proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
 {
 	ProxyFeelData *data = traverse_data->user_data;
+	CNDB *db_x = data->db_x;
+	CNInstance *star = db_lookup( 2, "*", db_x );
+	if ( !star ) return NULL;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
-	CNDB *db_x = data->db_x;
 	CNInstance *success = NULL, *e;
-	CNInstance *star = DBStar( db_x );
 	if ( !strncmp( value, "~.", 2 ) ) {
 		/* we want to find x:(*,variable) in manifested log, so that
 		   	. ( x, . ) is not manifested as well

@@ -109,8 +109,6 @@ db_remove( CNInstance *e, CNDB *db )
 			if (( connection->sub[ 0 ] )) {
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
-	else if ( e==DBStar(db) )
-		return;
 	else {
 #ifdef UNIFIED
 		// Assumption: e->sub[1] is not NULL
@@ -149,8 +147,8 @@ db_update( CNDB *db, CNInstance *parent )
 */
 {
 	CNInstance *nil = db->nil;
-	if ( !nil->sub[0] ) // remove init condition
-		nil->sub[ 0 ] = nil->sub[ 1 ];
+	if (( nil->sub[0] )) // remove init condition
+		nil->sub[ 0 ] = NULL;
 
 	CNInstance *f, *g, *x;
 	listItem *trash[ 2 ] = { NULL, NULL };
@@ -272,7 +270,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	. if privy==1 - traversing db_log( released, ... )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
-	. if privy==2 - traversing %|
+	. if privy==2 - traversing %| or in proxy_feel_assignment()
 		returns 1 if e:( ., nil ) or e:( nil, . )
 		returns 0 otherwise
 */

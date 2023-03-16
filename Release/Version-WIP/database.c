@@ -14,15 +14,14 @@
 CNDB *
 newCNDB( void )
 {
+	CNInstance *nil = cn_new( NULL, NULL );
 #ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
 #else
 	Registry *index = newRegistry( IndexedByCharacter );
 #endif
-	CNInstance *nil = cn_new( NULL, NULL );
 	CNDB *db = (CNDB *) newPair( nil, index );
-	// optimize DBStar( db )
-	nil->sub[ 1 ] = db_register( "*", db );
+	db_init( db );
 	return db;
 }
 
@@ -167,19 +166,19 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL;
-	if ( e->sub[ 0 ]==DBStar(db) ) {
+	if ( DBStarMatch( e->sub[0], db ) ) {
 		/* Assignment case - as we have e:( *, . )
 		*/
 		// ward off concurrent reassignment case
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
 			if ( db_to_be_manifested( candidate, db ) ) {
+				if ( candidate->sub[ 1 ]==f )
+					return candidate;
 				db_outputf( stderr, db,
 					"B%%::Warning: ((*,%_),%_) -> %_ concurrent reassignment unauthorized\n",
 					e->sub[1], candidate->sub[1], f );
-				if ( candidate->sub[ 1 ]==f )
-					return candidate;
-				else return NULL; } }
+				return NULL; } }
 		// perform assignment
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *candidate = i->ptr;
@@ -209,7 +208,8 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 CNInstance *
 db_assign( CNInstance *variable, CNInstance *value, CNDB *db )
 {
-	variable = db_instantiate( DBStar(db), variable, db );
+	CNInstance *star = db_register( "*", db );
+	variable = db_instantiate( star, variable, db );
 	return db_instantiate( variable, value, db );
 }
 
@@ -223,7 +223,7 @@ db_unassign( CNInstance *x, CNDB *db )
 	otherwise instantiate (*,x)
 */
 {
-	CNInstance *star = DBStar( db );
+	CNInstance *star = db_register( "*", db );
 	CNInstance *e;
 	for ( listItem *i=x->as_sub[1]; i!=NULL; i=i->next ) {
 		e = i->ptr;
@@ -314,6 +314,13 @@ DBIdentifier( CNInstance *e, CNDB *db )
 {
 	Pair *entry = registryLookup( db->index, NULL, e );
 	return ( entry ) ? entry->name : NULL;
+}
+int DBStarMatch( CNInstance *e, CNDB *db )
+{
+	if ( (e) && !e->sub[0] ) {
+		char *identifier = DBIdentifier(e,db);
+		if (( identifier )) return *identifier=='*'; }
+	return 0;
 }
 #endif	// UNIFIED
 
@@ -446,26 +453,31 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 */
 {
 	if ( e == NULL ) return 0;
+	CNInstance *nil = db->nil;
 	if ( type=='s' ) {
-		if (( e->sub[ 0 ] ) && ( e->sub[ 1 ] ))
+		if (( CNSUB(e,0) ))
 			fprintf( stream, "\\" );
-		else if ( !e->sub[0] ) {
-			fprintf( stream, "%s", DBIdentifier(e,db) );
-			return 0; }
 		else {
-			fprintf( stream, "@@@" ); // proxy
+			if ( e==nil )
+				fprintf( stream, "\(nil)" );
+			else if (( e->sub[0] ))
+				fprintf( stream, "@@@" ); // proxy
+			else
+				fprintf( stream, "%s", DBIdentifier(e,db) );
 			return 0; } }
 
 	listItem *stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {
-		if (( CNSUB(e,ndx) )) {
+		if ( e==nil )
+			fprintf( stream, "(nil)" );
+		else if (( CNSUB(e,ndx) )) {
 			fprintf( stream, ndx==0 ? "(" : "," );
 			add_item( &stack, ndx );
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
-		if (( e->sub[ 0 ] )) {
+		else if (( e->sub[ 0 ] )) {
 			fprintf( stream, "@@@" ); } // proxy
 		else {
 			char *p = DBIdentifier( e, db );

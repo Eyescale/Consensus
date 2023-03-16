@@ -36,8 +36,11 @@ CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 #ifdef UNIFIED
 inline char * DBIdentifier( CNInstance *e, CNDB *db )
 	{ return (char *) e->sub[ 1 ]; }
+inline int DBStarMatch( CNInstance *e, CNDB *db )
+	{ return ((e) && !(e->sub[0]) && *(char*)e->sub[1]=='*' ); }
 #else
 char * DBIdentifier( CNInstance *, CNDB * );
+int DBStarMatch( CNInstance *e, CNDB *db );
 #endif
 
 inline int isProxy( CNInstance *e )

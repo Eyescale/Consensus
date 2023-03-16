@@ -109,8 +109,6 @@ db_remove( CNInstance *e, CNDB *db )
 			if (( connection->sub[ 0 ] )) {
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
-	else if ( e==DBStar(db) )
-		return;
 	else {
 #ifdef UNIFIED
 		// Assumption: e->sub[1] is not NULL
@@ -149,8 +147,8 @@ db_update( CNDB *db, CNInstance *parent )
 */
 {
 	CNInstance *nil = db->nil;
-	if ( !nil->sub[0] ) // remove init condition
-		nil->sub[ 0 ] = nil->sub[ 1 ];
+	if (( nil->sub[0] )) // remove init condition
+		nil->sub[ 0 ] = NULL;
 
 	CNInstance *f, *g, *x;
 	listItem *trash[ 2 ] = { NULL, NULL };
@@ -272,7 +270,7 @@ db_private( int privy, CNInstance *e, CNDB *db )
 	. if privy==1 - traversing db_log( released, ... )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
-	. if privy==2 - traversing %|
+	. if privy==2 - traversing %| or in proxy_feel_assignment()
 		returns 1 if e:( ., nil ) or e:( nil, . )
 		returns 0 otherwise
 */
@@ -304,9 +302,9 @@ db_to_be_manifested( CNInstance *e, CNDB *db )
 */
 {
 	CNInstance *nil = db->nil, *f = cn_instance( e, nil, 1 );
-	if ( !!f && (f->as_sub[0] ) ) return 1; // newborn
+	if (( f ) && (f->as_sub[0] ) ) return 1; // newborn
 	f = cn_instance( nil, e, 0 );
-	if ( !!f && (f->as_sub[1] ) ) return 1; // to-be-manifested
+	if (( f ) && (f->as_sub[1] ) ) return 1; // to-be-manifested
 	return 0;
 }
 
@@ -340,6 +338,6 @@ db_manifested( CNInstance *e, CNDB *db )
 {
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( nil, e, 0 );
-	return (( f ) && !f->as_sub[0] );
+	return (( f ) && !f->as_sub[1] );
 }
 

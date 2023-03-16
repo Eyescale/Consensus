@@ -22,19 +22,17 @@ int db_deprecated( CNInstance *, CNDB * );
 int db_manifested( CNInstance *, CNDB * );
 
 inline void db_init( CNDB *db )
-	{ db->nil->sub[ 0 ] = NULL; }
-inline void db_exit( CNDB *db )
 	{ db->nil->sub[ 0 ] = db->nil; }
+inline void db_exit( CNDB *db )
+	{ db->nil->sub[ 1 ] = db->nil; }
+inline int DBInitOn( CNDB *db )
+	{ return !!db->nil->sub[ 0 ]; }
+inline int DBExitOn( CNDB *db )
+	{ return !!db->nil->sub[ 1 ]; }
 inline void db_signal( CNInstance *x, CNDB *db )
 	{ db_op( DB_SIGNAL_OP, x, db ); }
 inline void db_manifest( CNInstance *x, CNDB *db )
 	{ db_op( DB_MANIFEST_OP, x, db ); }
-inline CNInstance * DBStar( CNDB *db )
-	{ return db->nil->sub[ 1 ]; }
-inline int DBInitOn( CNDB *db )
-	{ return !db->nil->sub[ 0 ]; }
-inline int DBExitOn( CNDB *db )
-	{ return ( db->nil->sub[ 0 ]==db->nil ); }
 
 inline int DBActive( CNDB *db ) {
 	listItem **as_sub = db->nil->as_sub;
