@@ -369,7 +369,7 @@ do_output( char *expression, BMContext *ctx )
 	switch ( *expression ) {
 	case '"':
 		format = expression;
-		expression = p_prune( PRUNE_FORMAT, format );
+		expression = p_prune( PRUNE_FILTER, format );
 		if ( *expression ) expression++; // skipping ':'
 		break;
 	case ':':

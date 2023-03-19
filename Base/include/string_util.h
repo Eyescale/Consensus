@@ -25,8 +25,10 @@ typedef enum {
 	PRUNE_FILTER,
 	PRUNE_LITERAL,
 	PRUNE_LIST,
+#if 0
 	PRUNE_FORMAT,
 	PRUNE_CHARACTER,
+#endif
 	PRUNE_IDENTIFIER
 } PruneType;
 char *	p_prune( PruneType type, char * );

@@ -44,6 +44,7 @@
 	else on ((*,input), . )
 		do >"read: %s\n": *input
 		do titi~
+	else in %<?:~'\0'>
 	else in ( *, input )
 		in alpha
 		else do toto~

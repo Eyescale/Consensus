@@ -459,7 +459,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			fprintf( stream, "\\" );
 		else {
 			if ( e==nil )
-				fprintf( stream, "\(nil)" );
+				fprintf( stream, "\\(nil)" );
 			else if (( e->sub[0] ))
 				fprintf( stream, "@@@" ); // proxy
 			else
