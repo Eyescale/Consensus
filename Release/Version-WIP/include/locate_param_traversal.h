@@ -1,6 +1,7 @@
 #ifndef LOCATE_PARAM_TRAVERSAL_H
 #define LOCATE_PARAM_TRAVERSAL_H
 
+static BMTraversal locate_param_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		LocateParamData *data = traverse_data->user_data; char *p = *q;
@@ -21,8 +22,6 @@ static BMTraverseCB
 #define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"
-
-static BMTraversal locate_param_traversal;
 
 
 #endif	// LOCATE_PARAM_TRAVERSAL_H

@@ -282,19 +282,24 @@ A:CND_else_( B )
 				do_( "@" )	s_take }
 			else if ( !is_f(INFORMED) ) {
 				do_( "~" ) }
-		on_( '.' ) if ( are_f(EENOV|LEVEL) && !is_f(INFORMED) ) {
+		on_( '.' ) if ( is_f(INFORMED) )
+				; // err
+			else if ( is_f(EENOV) ) {
 				do_( same ) 	s_take
 						f_set( INFORMED ) }
-			else if ( !is_f(INFORMED|EENOV) ) {
-				do_( "." ) 	s_take }
-		on_( '*' ) if ( is_f(EENOV) && !is_f(INFORMED) ) {
-				do_( same ) 	s_take }
-			else if ( !is_f(INFORMED) ) {
-				do_( "*" )	s_take }
-		on_( '%' ) if ( is_f(EENOV) && !is_f(INFORMED) ) {
-				do_( same ) 	s_take }
-			else if ( !is_f(INFORMED) ) {
-				do_( "%" ) }
+			else {	do_( "." ) 	s_take }
+		on_( '*' ) if ( is_f(INFORMED) )
+				; // err
+			else if ( is_f(EENOV) ) {
+				do_( same ) 	s_take
+						f_set( INFORMED ) }
+			else {	do_( "*" )	s_take }
+		on_( '%' ) if ( is_f(INFORMED) )
+				; // err
+			else if ( is_f(EENOV) ) {
+				do_( same ) 	s_take
+						f_set( INFORMED ) }
+			else {	do_( "%" ) }
 		on_( ':' ) if ( s_empty ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
@@ -345,22 +350,23 @@ A:CND_else_( B )
 		on_( '!' ) if ( *type&DO && ( s_empty || (are_f(ASSIGN|FILTERED) &&
 				!is_f(INFORMED|LEVEL|SUB_EXPR|SET|NEGATED)) ) ) {
 				do_( "!" )	s_take }
-		on_( '?' ) if ( are_f(TERNARY|INFORMED) ) {
-				do_( "(_?" )	s_take
-						f_push( stack )
-						f_clr( FIRST|INFORMED|FILTERED ) }
-			else if ( are_f(FIRST|INFORMED) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND|EENOV) ) {
-				do_( "(_?" )	s_take
-						f_clr( INFORMED|FILTERED )
-						f_set( TERNARY ) }
-			else if ( are_f(EENOV|LEVEL) && !is_f(INFORMED|MARKED|NEGATED|FILTERED) ) {
-				do_( "%<?" )	s_take
-						f_set( MARKED|INFORMED ) }
-			else if ( !is_f(INFORMED|MARKED|NEGATED|EENOV) && ( is_f(SUB_EXPR) ||
-				 ( *type&ON_X ? !is_f(LEVEL|SET) : *type&(IN|ON) ) )) {
-				do_( same )	s_take
-						f_tag( stack, MARKED )
-						f_set( MARKED|INFORMED ) }
+		on_( '?' ) if ( is_f(INFORMED) ) {
+				if ( is_f(TERNARY) ) {
+					do_( "(_?" )	s_take
+							f_push( stack )
+							f_clr( FIRST|INFORMED|FILTERED ) }
+				else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND|EENOV) ) {
+					do_( "(_?" )	s_take
+							f_clr( INFORMED|FILTERED )
+							f_set( TERNARY ) } }
+			else if ( !is_f(MARKED|NEGATED) ) {
+				if ( is_f(EENOV) ) {
+					do_( same )	s_take
+							f_set( MARKED|INFORMED ) }
+				else if ( is_f(SUB_EXPR) || ( *type&ON_X ? !is_f(LEVEL|SET) : *type&(IN|ON) ) ) {
+					do_( same )	s_take
+							f_tag( stack, MARKED )
+							f_set( MARKED|INFORMED ) } }
 		on_( ')' ) if ( is_f(EENOV) ) {
 				if ( are_f(LEVEL|INFORMED) ) {
 					do_( same )	s_take
@@ -501,10 +507,9 @@ CND_ifn( mode==BM_STORY, C )
 			end
 		in_( "%<?" ) bgn_
 			ons( " \t" )	do_( same )
+			on_( '>' )	do_( "expr" )	REENTER
 			on_( ':' )	do_( "expr" )	s_take
 							f_clr( INFORMED )
-							f_set( FILTERED )
-			ons( ",)>" )	do_( "expr" )	REENTER
 			end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
@@ -800,7 +805,6 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
-		in_( "sibling" )	errnum = ErrIndentation; column=TAB_BASE;
 		in_( ":_" ) 		errnum = ErrInputScheme;
 		in_( ":_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;

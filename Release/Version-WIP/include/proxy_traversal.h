@@ -1,6 +1,7 @@
 #ifndef PROXY_TRAVERSAL_H
 #define PROXY_TRAVERSAL_H
 
+static BMTraversal proxy_feel_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		ProxyFeelData *data = traverse_data->user_data; char *p = *q;
@@ -25,8 +26,6 @@ static BMTraverseCB
 #define BMIdentifierCB		identifier_CB
 
 #include "traversal.h"
-
-static BMTraversal proxy_feel_traversal;
 
 
 #endif	// PROXY_TRAVERSAL_H

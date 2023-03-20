@@ -47,5 +47,7 @@
 	else in ( *, input )
 		in alpha
 		else do toto~
+	else in %<?:~'\0'>
+		do : p : %<?:((?,.),.)>
 	else
 		do exit

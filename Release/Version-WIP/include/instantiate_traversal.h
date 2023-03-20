@@ -1,6 +1,7 @@
 #ifndef INSTANTIATE_TRAVERSAL_H
 #define	INSTANTIATE_TRAVERSAL_H
 
+static BMTraversal instantiate_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		InstantiateData *data = traverse_data->user_data; char *p = *q;
@@ -36,8 +37,6 @@ static BMTraverseCB
 #define BMSignalCB		signal_CB
 
 #include "traversal.h"
-
-static BMTraversal instantiate_traversal;
 
 
 #endif	// INSTANTIATE_TRAVERSAL_H

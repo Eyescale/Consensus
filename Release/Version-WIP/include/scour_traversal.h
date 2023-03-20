@@ -1,6 +1,7 @@
 #ifndef SCOUR_TRAVERSAL_H
 #define SCOUR_TRAVERSAL_H
 
+static BMTraversal scour_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		ScourData *data = traverse_data->user_data; char *p = *q;
@@ -19,8 +20,6 @@ static BMTraverseCB
 #define BMRegisterVariableCB	register_variable_CB
 
 #include "traversal.h"
-
-static BMTraversal scour_traversal;
 
 
 #endif // SCOUR_TRAVERSAL_H

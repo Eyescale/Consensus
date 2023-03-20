@@ -1,6 +1,7 @@
 #ifndef EENOV_TRAVERSAL_H
 #define EENOV_TRAVERSAL_H
 
+static BMTraversal eenov_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		EEnovData *data = traverse_data->user_data; char *p = *q;
@@ -20,8 +21,6 @@ static BMTraverseCB
 #define BMEEnovEndCB		end_CB
 
 #include "traversal.h"
-
-static BMTraversal eenov_traversal;
 
 
 #endif	// EENOV_TRAVERSAL_H
