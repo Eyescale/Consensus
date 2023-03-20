@@ -1,4 +1,14 @@
 :
+/*
+	Uses pre-instantiated literal - aka. dial - e.g.
+		(:0123456789:)	==	0 --+---v
+					    1 --+---v
+						2 --+---v
+						    3 --+---v
+							... +---v
+							    9 --+--\0
+	to compute the sum Z of the two numbers X and Y
+*/
 	on init
 		do : dial : !! Dial((:0123456789:))
 //		do : p : ((X,...):123:)	// no carry
@@ -50,14 +60,7 @@
 
 : Dial
 /*
-	Uses pre-instantiated literal - aka. dial - e.g.
-		(:0123456789:)	==	0 --+---v
-					    1 --+---v
-						2 --+---v
-						    3 --+---v
-							... +---v
-							    9 --+--\0
-	to compute p + q + carry
+	compute p + q + carry (digits) on demand
 */
 	on : %% : ? < ..
 		do : p : %<?:((?,.),.)>		// base
