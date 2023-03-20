@@ -402,9 +402,6 @@ prune_ternary( char *p )
 						goto RETURN; } }
 			informed = 0;
 			p++; break;
-		case '"':
-			p = prune_format( p );
-			informed = 1; break;
 		case '\'':
 			p = prune_character( p );
 			informed = 1; break;
@@ -446,9 +443,6 @@ prune_level( char *p, int level )
 			level--;
 			if ( !level ) return p+1;
 			p++; break;
-		case '"':
-			p = prune_format( p );
-			break;
 		case '\'':
 			p = prune_character( p );
 			break;
