@@ -220,6 +220,15 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 		return BM_DONE;
 
 	case BM_PRUNE_TERM:
+#ifdef BMTernaryOperatorCB
+		/* Special case: deternarize()
+		   BMDecoupleCB is undefined in this case
+		   BMFilterCB must invoke p_prune on *p
+		*/
+		if ( cb==BMTernaryOperatorCB ) {
+			*f_ptr |= TERNARY;
+			*p = p_prune( PRUNE_TERM, *p+1 ); }
+#else
 #ifdef BMDecoupleCB
 		if ( cb==BMDecoupleCB )
 			*p = p_prune( PRUNE_TERM, *p+1 );
@@ -230,11 +239,6 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 			*p = p_prune( PRUNE_TERM, *p+1 );
 		else
 #endif
-#ifdef BMTernaryOperatorCB
-		if ( cb==BMTernaryOperatorCB ) {
-			*f_ptr |= TERNARY;
-			*p = p_prune( PRUNE_TERM, *p+1 ); }
-		else
 #endif
 		*p = p_prune( PRUNE_TERM, *p );
 		return BM_DONE;

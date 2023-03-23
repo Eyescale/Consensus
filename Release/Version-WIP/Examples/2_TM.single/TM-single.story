@@ -26,7 +26,6 @@
 				do : state : %?
 				do : start : *current
 		else 
-			do { '|', ' ' }	// needed for reporting
 			do : current : *start
 			do ~( init )
 	else

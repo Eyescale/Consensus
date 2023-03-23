@@ -231,7 +231,11 @@ case_( list_CB )
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	data->sub[ 0 ] = bm_list( q, data->sub, db );
+#if 0
 	_prune( BM_PRUNE_LIST )
+#else
+	_break
+#endif
 case_( literal_CB )
 	/*		(:_sequence_:)
 	   start p -----^             ^
@@ -242,7 +246,11 @@ case_( literal_CB )
 	CNInstance *e = bm_literal( q, db );
 	data->sub[ current ] = newItem( e );
 	(*q)++;
+#if 0
 	_prune( BM_PRUNE_LITERAL )
+#else
+	_break
+#endif
 case_( dot_expression_CB )
 	BMContext *carry = data->carry;
 	if (( carry )) {

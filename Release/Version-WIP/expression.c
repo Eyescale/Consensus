@@ -269,9 +269,14 @@ bm_output( int type, char *arg, BMContext *ctx )
 	note that we rely on bm_query to eliminate doublons
 */
 {
-	// Special case: EEnoRV as-is
+	// special case: EEnoRV as-is
 	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
 		return eenov_output( ctx, type, arg );
+	else if ( *arg=='\'' && type=='s' ) {
+		char_s q;
+		if ( charscan( arg+1, &q ) )
+			fprintf( stdout, "%c", q.value );
+		return 0; }
 
 	OutputData data = { type, 1, NULL };
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );

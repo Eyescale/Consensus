@@ -103,10 +103,7 @@ typedef enum {
 	BM_CONTINUE = 0,
 	BM_DONE,
 	BM_PRUNE_FILTER,
-	BM_PRUNE_TERM,
-	BM_PRUNE_LIST,
-	BM_PRUNE_LITERAL,
-	BM_PRUNE_TERNARY,
+	BM_PRUNE_TERM
 } BMCBTake;
 
 typedef char *BMTraversal( char *, BMTraverseData *, int );

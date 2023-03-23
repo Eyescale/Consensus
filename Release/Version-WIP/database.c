@@ -447,7 +447,7 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
 static int
 outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 /*
-	type is either 's' or '_', the only difference being that,
+	type is either 's' or '_', the main difference being that,
 	in the former case, we insert a backslash at the start of
 	non-base entity expressions
 */

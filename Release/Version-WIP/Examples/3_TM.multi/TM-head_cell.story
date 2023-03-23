@@ -41,7 +41,6 @@
 
 : Cell
 	on init
-		do { '|', ' ', '\n' } // for reporting
 		on : head : ? < ..
 			do : head : %<?>
 			do first
