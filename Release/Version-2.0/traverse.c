@@ -3,10 +3,10 @@
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
-static inline BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
+static BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
 	char **, int *, int );
 
-static inline char *
+static char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
 {
 	int f_next, mode = traverse_data->done;
@@ -241,10 +241,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 #endif
 #endif
 		*p = p_prune( PRUNE_TERM, *p );
-		return BM_DONE;
-
-	default:
-		return BM_CONTINUE; }
+		return BM_DONE; }
 }
 
 

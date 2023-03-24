@@ -147,7 +147,7 @@ case_( ternary_operator_CB )
 		data->sequence = NULL;
 		// proceed to alternative, i.e. ':'
 		p = *q = p_prune( PRUNE_TERNARY, p );
-		if ( p[1]==')' || p[1]==':' ) {
+		if ( p[1]==')' )
 			// ~. is our current candidate
 			data->segment = NULL;
 			// proceed to ")"

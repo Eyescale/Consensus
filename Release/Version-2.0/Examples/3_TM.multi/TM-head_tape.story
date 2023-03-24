@@ -55,7 +55,6 @@
 				do : start : *current
 			do : record : ( %(*record,.) ?: ~. )
 		else in ?: *start
-			do { '|', ' ' }	// needed for reporting
 			do : current : %?
 			do ~( init )
 		else

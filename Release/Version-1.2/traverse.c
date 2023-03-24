@@ -243,17 +243,26 @@ traverse_CB( BMCBName cb, BMTraverseData *traverse_data, char **p, int *f_ptr, i
 				*p = p_prune( PRUNE_FILTER, *p ); }
 			return BM_DONE;
 		case BM_PRUNE_TERM:
-			switch ( cb ) {
-			case BMDecoupleCB:
-			case BMFilterCB:
-				*p = p_prune( PRUNE_TERM, *p+1 );
-				break;
-			case BMTernaryOperatorCB:
-				*f_ptr |= TERNARY;
-				*p = p_prune( PRUNE_TERM, *p+1 );
-				break;
-			default:
-				*p = p_prune( PRUNE_TERM, *p ); }
+			if ( table[BMTernaryOperatorCB] ) /*
+				Special case: deternarize()
+				BMDecoupleCB is undefined in this case
+				BMFilterCB must invoke p_prune on *p
+				*/
+				switch ( cb ) {
+				case BMTernaryOperatorCB:
+					*f_ptr |= TERNARY;
+					*p = p_prune( PRUNE_TERM, *p+1 );
+					break;
+				default:
+					*p = p_prune( PRUNE_TERM, *p ); }
+			else
+				switch ( cb ) {
+				case BMDecoupleCB:
+				case BMFilterCB:
+					*p = p_prune( PRUNE_TERM, *p+1 );
+					break;
+				default:
+					*p = p_prune( PRUNE_TERM, *p ); }
 			return BM_DONE;
 		default:
 			return BM_CONTINUE; } }

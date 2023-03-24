@@ -1,5 +1,11 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. Version-2.0 README.txt - document output changes
+		. multiple output format supported - with vector
+			e.g. do >"%s%s":<*alpha,*beta>
+		. format %s allows single quote to be used without
+		  requiring the corresponding SCE to be instantiating
+			e.g do >"%s\n":'h'	// will work
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal

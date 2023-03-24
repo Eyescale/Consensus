@@ -1,6 +1,7 @@
 #ifndef VERIFY_TRAVERSAL_H
 #define VERIFY_TRAVERSAL_H
 
+static BMTraversal verify_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 		BMQueryData *data = traverse_data->user_data; char *p = *q;
@@ -26,8 +27,6 @@ static BMTraverseCB
 #define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"
-
-static BMTraversal verify_traversal;
 
 
 #endif	// VERIFY_TRAVERSAL_H
