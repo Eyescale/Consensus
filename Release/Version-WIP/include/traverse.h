@@ -127,6 +127,11 @@ xpn_set( listItem *xp, int as_sub, int position )
 	xp->ptr = icast.ptr;
 }
 static inline void
+xpn_pop( listItem **xp, listItem *level )
+{
+	while ( *xp!=level ) popListItem( xp );
+}
+static inline void
 xpn_out( FILE *stream, listItem *xp )
 {
 	union { int value; void *ptr; } icast;

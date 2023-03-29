@@ -2,51 +2,60 @@
 #include <stdlib.h>
 
 #include "traverse.h"
-#include "locate_param.h"
+#include "locate_mark.h"
 
 //===========================================================================
-//	bm_locate_param
+//	bm_locate_mark
 //===========================================================================
-#include "locate_param_traversal.h"
+#include "locate_mark_traversal.h"
 
 typedef struct {
 	listItem **exponent;
-	BMLocateCB *param_CB;
-	void *user_data;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
-} LocateParamData;
+} LocateMarkData;
 
-void
-bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, void *user_data )
+char *
+bm_locate_mark( char *expression, listItem **exponent )
 /*
-	invokes param_CB on each .param found in expression
-	Note that we do not enter negated, starred or %(...) expressions
+	returns first '?' found in expression, together with exponent
+	Assumption: negated mark is ruled out at expression creation time
+	Note that we do not enter %(...) sub-expressions
 	Note also that the caller is expected to reorder the list of exponents
 */
 {
-	LocateParamData data;
+	LocateMarkData data;
 	memset( &data, 0, sizeof(data) );
 	data.exponent = exponent;
-	data.param_CB = param_CB;
-	data.user_data = user_data;
 
 	BMTraverseData traverse_data;
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 
-	char *p = locate_param_traversal( expression, &traverse_data, FIRST );
+	char *p = locate_mark_traversal( expression, &traverse_data, FIRST );
 
-	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
+	freeListItem( &data.stack.flags );
+	switch ( traverse_data.done ) {
+	case 2:
+		return p;
+	default:
+		freeListItem( exponent );
+		return NULL; }
 }
 
 //---------------------------------------------------------------------------
-//	locate_param_traversal
+//	locate_mark_traversal
 //---------------------------------------------------------------------------
 
-BMTraverseCBSwitch( locate_param_traversal )
+BMTraverseCBSwitch( locate_mark_traversal )
+case_( dereference_CB )
+	listItem **exponent = data->exponent;
+	xpn_add( exponent, AS_SUB, 1 );
+	xpn_add( exponent, SUB, 0 );
+	xpn_add( exponent, SUB, 1 );
+	_break
 case_( sub_expression_CB )
 	_prune( BM_PRUNE_FILTER )
 case_( dot_expression_CB )
@@ -73,8 +82,9 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	_break;
-case_( dot_identifier_CB )
-	 data->param_CB( p+1, *data->exponent, data->user_data );
+case_( wildcard_CB )
+	if ( *p=='?' )
+		_return( 2 )
 	_break
 BMTraverseCBEnd
 

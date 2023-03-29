@@ -4,6 +4,7 @@
 #include "string_util.h"
 #include "context.h"
 #include "scour.h"
+#include "locate_mark.h"
 #include "locate_param.h"
 #include "proxy.h"
 #include "eenov.h"

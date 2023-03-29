@@ -452,7 +452,8 @@ prune_level( char *p, int level )
 		case '.':
 			if ( p[1]=='.' ) {
 				if ( p[2]=='.' ) {
-					if ( level ) { // SHOULD be 2
+					// level should be at least 2
+					if ( level && !strncmp( p+3, "):", 2 ) ) {
 						p = prune_list( p );
 						level--; // here *p==')'
 						if ( !level ) return p; }

@@ -11,12 +11,12 @@ SRCS =	narrative.c \
 			database.c \
 			db_op.c \
 			locate_param.c \
+			locate_mark.c \
 		operation.c \
 			deternarize.c \
 			instantiate.c \
 				eenov.c \
 			expression.c \
-				scour.c \
 				query.c \
 					locate_pivot.c \
 			proxy.c
@@ -29,7 +29,7 @@ OBJDIR = .ofiles
 OBJS = $(SRCS:%.c=$(OBJDIR)/%.o)
 INCLUDES = -I. -I./include -I../../Base/include
 #CFLAGS = -DDEBUG -DNULL_TERMINATED
-CFLAGS = -O2
+CFLAGS = -O2 -DLIST_EXP
 
 all:$(TARGETS)
 

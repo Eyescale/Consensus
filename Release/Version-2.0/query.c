@@ -200,6 +200,8 @@ typedef struct {
 	listItem *p;
 	listItem *i;
 } XPVerifyStack;
+static inline CNInstance * xsub( CNInstance *, listItem *, listItem * );
+static inline char * prune( char *, int );
 static char * pop_stack( XPVerifyStack *, listItem **i, listItem **mark, int *not );
 
 int
@@ -211,7 +213,6 @@ xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 	as %((*,var),?)
 */
 {
-
 	CNDB *db = data->db;
 	int privy = data->privy;
 	char *p = expression;
@@ -262,38 +263,37 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 
 			//----------------------------------------------------------
 			if (( data->mark_exp )) {
+				flags = traverse_data.flags;
 				listItem *base = data->base;
 				addItem( &data->stack.base, base );
 				addItem( &data->stack.scope, data->stack.flags );
-				listItem *sub_exp = NULL;
-				for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
-					addItem( &sub_exp, i->ptr );
-				while (( x ) && (sub_exp)) {
-					int exp = pop_item( &sub_exp );
-					x = CNSUB( x, exp&1 ); }
-				flags = traverse_data.flags;
-				// backup context
-				addItem( &stack.mark_exp, mark_exp );
-				add_item( &stack.flags, flags );
-				addItem( &stack.sub, stack.as_sub );
-				addItem( &stack.i, i );
-				addItem( &stack.p, p );
-				// setup new sub context
-				f_clr( NEGATED )
-				mark_exp = data->mark_exp;
-				stack.as_sub = NULL;
-				i = newItem( x );
-				if (( x )) {
+				if (( x = xsub( x, data->stack.exponent, base ) )) {
 #ifdef DEBUG
 					fprintf( stderr, "xp_verify: starting SUB, at '%s'\n", p );
 #endif
+					// backup context
+					add_item( &stack.flags, flags );
+					addItem( &stack.mark_exp, mark_exp );
+					addItem( &stack.sub, stack.as_sub );
+					addItem( &stack.i, i );
+					addItem( &stack.p, p );
+					// setup new sub context
+					f_clr( NEGATED )
+					mark_exp = data->mark_exp;
+					stack.as_sub = NULL;
+					i = newItem( x );
 					exponent = mark_exp;
+					// traverse sub-expression
 					op = BM_BGN;
 					success = 0;
 					continue; }
 				else {
-					freeListItem( &sub_exp );
-					success = 0; } }
+					// move on past sub-expression
+					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
+					p = prune( p, success );
+					exponent = NULL;
+					op = BM_END;
+					continue; } }
 			else {
 #ifdef DEBUG
 				fprintf( stderr, "xp_verify: returning %d, at '%s'\n", data->success, p );
@@ -307,9 +307,8 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				pop_stack( &stack, &i, &mark_exp, &flags );
 				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ) }
 				exponent = NULL;
-				op = BM_END;
-				continue; }
-			for ( ; ; ) {
+				op = BM_END; }
+			else for ( ; ; ) {
 				if (( i->next )) {
 					i = i->next;
 					if ( !db_private( privy, i->ptr, db ) ) {
@@ -323,18 +322,13 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					if (!( exp & SUB )) freeItem( i );
 					i = popListItem( &stack.as_sub ); }
 				else {
-					// move on past sub-expression
+					// restore context & move on past sub-expression
 					char *start_p = pop_stack( &stack, &i, &mark_exp, &flags );
 					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
-					if ( x == NULL ) {
-						p = success ?
-							p_prune( PRUNE_FILTER, start_p+1 ) :
-							p_prune( PRUNE_TERM, start_p+1 );
-						if ( *p==':' ) p++; }
+					if ( x == NULL ) { p = prune( start_p, success ); }
 					exponent = NULL;
 					op = BM_END;
-					break; }
-			} }
+					break; } } }
 		else break; }
 	freeItem( i );
 #ifdef DEBUG
@@ -352,6 +346,27 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	return success;
 }
 
+static inline CNInstance *
+xsub( CNInstance *x, listItem *xpn, listItem *base )
+{
+	listItem *sub_exp = NULL;
+	for ( listItem *i=xpn; i!=base; i=i->next )
+		addItem( &sub_exp, i->ptr );
+	while (( x ) && (sub_exp)) {
+		int exp = pop_item( &sub_exp );
+		x = CNSUB( x, exp&1 ); }
+	freeListItem( &sub_exp );
+	return x;
+}
+static inline char *
+prune( char *p, int success )
+{
+	p = success ?
+		p_prune( PRUNE_FILTER, p+1 ) :
+		p_prune( PRUNE_TERM, p+1 );
+	if ( *p==':' ) p++;
+	return p;
+}
 static char *
 pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 {
@@ -369,7 +384,6 @@ pop_stack( XPVerifyStack *stack, listItem **i, listItem **mark_exp, int *flags )
 	*flags = pop_item( &stack->flags );
 	return (char *) popListItem( &stack->p );
 }
-
 static CNInstance *
 op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 {

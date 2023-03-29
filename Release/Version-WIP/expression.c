@@ -7,7 +7,6 @@
 #include "expression.h"
 #include "instantiate.h"
 #include "narrative.h"
-#include "scour.h"
 #include "proxy.h"
 #include "eenov.h"
 
@@ -104,10 +103,6 @@ case_( term_CB )
 		_prune( BM_PRUNE_TERM ) }
 	_break
 case_( dereference_CB )
-	int target = bm_scour( p, PMARK );
-	if ( target&PMARK && target!=PMARK ) {
-		fprintf( stderr, ">>>>> B%%:: Warning: bm_void, at '%s' - "
-		"dubious combination of query terms with %%!\n", p ); }
 	if ( !bm_feel( BM_CONDITION, p, ctx ) )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM )

@@ -252,6 +252,10 @@ EXPR_BGN:CND_endif
 			else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) ) {
 				if ( is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
 					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
+#ifdef LIST_EXP
+				else if ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) {
+					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
+#endif
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|FILTERED ) } }
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED) ) {
@@ -672,31 +676,76 @@ C:CND_endif
 			else {	do_( "expr" )	REENTER
 						s_add( "," )
 						f_clr( INFORMED ) }
+#ifdef LIST_EXP
+		on_( '?' ) if ( is_f(SUB_EXPR) ) {
+				do_( ",?" )	s_add( "," ) }
+			else {	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+#endif
 		on_other	do_( "expr" )	REENTER
 						s_add( "," )
 						f_clr( INFORMED )
 		end
+#ifdef LIST_EXP
+		in_( ",?" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ':' )	do_( ",?:" )
+			on_other	do_( "expr" )	REENTER
+							s_add( "?" )
+							f_tag( stack, MARKED )
+							f_set( MARKED|INFORMED )
+			end
+		in_( ",?:" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '.' )	do_( ",?:." )
+			on_other	do_( "expr" )	REENTER
+							s_add( "?:" )
+							f_tag( stack, MARKED )
+							f_set( MARKED )
+			end
+		in_( ",?:." ) bgn_
+			on_( '.' )	do_( ",?:.." )
+			on_other	do_( "." )	REENTER
+							s_add( "?:." )
+							f_tag( stack, MARKED )
+							f_set( MARKED )
+			end
+		in_( ",?:.." ) bgn_
+			on_( '.' )	do_( ",?:..." )
+			on_other	do_( "expr" )	REENTER
+							s_add( "?:.." )
+							f_tag( stack, MARKED )
+							f_set( MARKED|INFORMED )
+			end
+		in_( ",?:..." ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ')' )	do_( "expr" )	REENTER
+							s_add( "?:..." )
+							f_set( INFORMED )
+			end
+#endif
 		in_( ",." ) bgn_
-			on_( '.' )	do_( ",.." )	s_add( ".." )
+			on_( '.' )	do_( ",.." )
 			on_other
 if ( mode==BM_STORY ) {			do_( "." )	REENTER
 							s_add( "." ) }
 else 					; // err
 			end
 		in_( ",.." ) bgn_
-			on_( '.' )	do_( ",..." )	s_take
+			on_( '.' )	do_( ",..." )
 			on_other
 if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
+							s_add( ".." )
 							f_set( INFORMED ) }
 else					; // err
 			end
 		in_( ",..." ) bgn_
 			ons( " \t" )	do_( same )
-			on_( ')' )	do_( ",...)" )	s_take
-							f_pop( stack, 0 )
+			on_( ')' )	do_( ",...)" )	f_pop( stack, 0 )
 			end
 		in_( ",...)" ) bgn_
-			on_( ':' )	do_( "(:" )	s_take
+			on_( ':' )	do_( "(:" )	s_add( "...):" )
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )

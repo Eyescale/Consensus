@@ -4,9 +4,7 @@
 #include "list.h"
 
 typedef void BMLocateCB( char *, listItem *, void * );
-char *	bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );
-#define bm_locate_mark( expr, xpn ) \
-	bm_locate_param( expr, xpn, NULL, NULL )
+void bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );
 
 
 #endif	// LOCATE_PARAM_H

@@ -146,7 +146,9 @@ CB_CloseCB			f_pop( stack, 0 );
 CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED )
 					f_set( TERNARY ) }
 				else {
-CB_WildCardCB				f_cls }
+CB_WildCardCB				if ( !strncmp( p+1, ":...", 4 ) )
+						p+=4;
+					f_cls }
 				p++; break;
 			case '.':
 				if ( p[1]=='(' ) {

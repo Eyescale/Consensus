@@ -7,11 +7,11 @@ static BMTraversal locate_param_traversal;
 		LocateParamData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	not_CB, dereference_CB, sub_expression_CB, dot_expression_CB, dot_identifier_CB,
-	open_CB, filter_CB, decouple_CB, close_CB, wildcard_CB;
+	dereference_CB, sub_expression_CB, dot_expression_CB, dot_identifier_CB,
+	open_CB, filter_CB, decouple_CB, close_CB;
 
-#define BMNotCB			not_CB
-#define BMDereferenceCB		dereference_CB
+#define BMNotCB			sub_expression_CB
+#define BMDereferenceCB		sub_expression_CB
 #define BMSubExpressionCB	sub_expression_CB
 #define BMDotExpressionCB	dot_expression_CB
 #define BMDotIdentifierCB	dot_identifier_CB
@@ -19,7 +19,6 @@ static BMTraverseCB
 #define BMFilterCB		filter_CB
 #define BMDecoupleCB		decouple_CB
 #define BMCloseCB		close_CB
-#define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"
 
