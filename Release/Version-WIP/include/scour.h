@@ -12,6 +12,7 @@
 #define	MOD		(1<<8)
 #define CHARACTER	(1<<9)
 #define	STAR		(1<<10)
+#define	EXPR		(1<<11)
 
 
 #endif	// SCOUR_H

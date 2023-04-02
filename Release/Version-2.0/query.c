@@ -128,13 +128,12 @@ db_outputf( stderr, db, "%_, exponent=", e );
 xpn_out( stderr, exponent );
 fprintf( stderr, "\n" );
 #endif
-	int exp;
 	listItem *trail = NULL;
 	listItem *stack = NULL;
 	for ( ; ; ) {
 		e = i->ptr;
 		if (( exponent )) {
-			exp = (int) exponent->ptr;
+			int exp = (int) exponent->ptr;
 			if ( exp & SUB ) {
 				e = CNSUB( e, exp&1 );
 				if (( e )) {
@@ -142,26 +141,23 @@ fprintf( stderr, "\n" );
 					addItem( &stack, exponent );
 					exponent = exponent->next;
 					i = newItem( e );
-					continue; } } }
-		if ( e == NULL )
-			; // failed e->sub
-		else if ( exponent == NULL ) {
-			if (( lookupIfThere( trail, e ) ))
-				; // ward off doublons
+					continue; } }
 			else {
-				addIfNotThere( &trail, e );
-				if ( traverse_CB( e, expression, data )==BM_DONE ) {
-					success = e;
-					goto RETURN; } } }
-		else {
-			for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next )
-				if ( !db_private( privy, j->ptr, db ) )
-					break;
-			if (( j )) {
-				addItem( &stack, i );
-				addItem( &stack, exponent );
-				exponent = exponent->next;
-				i = j; continue; } }
+				for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next )
+					if ( !db_private( privy, j->ptr, db ) )
+						break;
+				if ( !j ) e = NULL;
+				else {
+					addItem( &stack, i );
+					addItem( &stack, exponent );
+					exponent = exponent->next;
+					i = j; continue; } } }
+
+		if ((e) && !lookupIfThere( trail, e ) ) { // ward off doublons
+			addIfNotThere( &trail, e );
+			if ( traverse_CB( e, expression, data )==BM_DONE ) {
+				success = e;
+				goto RETURN; } }
 		for ( ; ; ) {
 			if (( i->next )) {
 				i = i->next;
@@ -169,7 +165,7 @@ fprintf( stderr, "\n" );
 					break; }
 			else if (( stack )) {
 				exponent = popListItem( &stack );
-				exp = (int) exponent->ptr;
+				int exp = (int) exponent->ptr;
 				if ( exp & SUB ) freeItem( i );
 				i = popListItem( &stack ); }
 			else goto RETURN; } }
@@ -177,7 +173,7 @@ RETURN:
 	freeListItem( &trail );
 	while (( stack )) {
 		exponent = popListItem( &stack );
-		exp = (int) exponent->ptr;
+		int exp = (int) exponent->ptr;
 		if ( exp & SUB ) freeItem( i );
 		i = popListItem( &stack ); }
 	if ( strncmp( pivot->name, "%|", 2 ) )

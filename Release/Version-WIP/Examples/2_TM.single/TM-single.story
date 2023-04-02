@@ -10,8 +10,8 @@
 			} )
 		do : HALT : H
 		do : BLANK : 0
-		do (( init, * ), A )
-#		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
+#		do (( init, * ), A )
+		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
 	else in ( init )
 		on ( init )
 			do : record : %(( init, * ), . )

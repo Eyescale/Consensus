@@ -12,7 +12,8 @@
 #define _return( val ) { \
 		traverse_data->done = val; \
 		return BM_DONE; }
-#define _continue( q ) \
+#define _continue( p ) \
+		*q = p; \
 		return BM_DONE;
 #define	_break \
 		return BM_CONTINUE;

@@ -12,7 +12,9 @@
 #include "locate_pivot_traversal.h"
 
 typedef struct {
+	char *expression;
 	int primary, secondary;
+	Pair *expr; // EXPR case
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;
@@ -30,6 +32,7 @@ bm_locate_pivot( char *expression, listItem **exponent )
 
 	LocatePivotData data;
 	memset( &data, 0, sizeof(data) );
+	data.expression = expression;
 	data.primary = EENOK|EMARK|QMARK;
 	data.exponent = exponent;
 
@@ -41,17 +44,21 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	char *p = locate_pivot_traversal( expression, &traverse_data, FIRST );
 
 	switch ( traverse_data.done ) {
-	case 2: break;
+	case 2:
+		break;
 	default:
-		if ( data.secondary ) {
-			traverse_data.done = 0;
+		switch ( data.secondary ) {
+		case 0:
 			xpn_pop( exponent, base );
+			return NULL;
+		case EXPR:
+			addItem( exponent, data.expr );
+			return (char *) data.expr->name;
+		default:
+			xpn_pop( exponent, base );
+			traverse_data.done = 0;
 			data.primary = data.secondary;
-			p = locate_pivot_traversal( expression, &traverse_data, FIRST );
-			if ( traverse_data.done==2 )
-				break; }
-		xpn_pop( exponent, base );
-		return NULL; }
+			p = locate_pivot_traversal( expression, &traverse_data, FIRST ); } }
 
 	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
@@ -63,66 +70,77 @@ bm_locate_pivot( char *expression, listItem **exponent )
 //	locate_pivot_traversal
 //---------------------------------------------------------------------------
 #define CHECK( this ) \
-	is_f( NEGATED ) ; \
-	else if (!( data->primary & this )) { \
-		if ( !data->secondary || ( this < data->secondary )) { \
-			data->secondary = this; } } \
-	else \
+	(!( data->primary & this )) { \
+		if ( !data->secondary || ( this < data->secondary )) \
+			data->secondary = this; } \
+	else
 
 BMTraverseCBSwitch( locate_pivot_traversal )
 case_( dot_expression_CB )
 	listItem **exponent = data->exponent;
-	if CHECK( PERSO ) {
-		xpn_add( exponent, AS_SUB, 0 );
-		_return( 2 ) }
+	if ( !is_f(NEGATED) ) {
+		if CHECK( PERSO ) {
+			xpn_add( exponent, AS_SUB, 0 );
+			_return( 2 ) } }
 
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
 	_break
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
-	if CHECK( PERSO ) {
-		xpn_add( exponent, AS_SUB, 0 );
-		_return( 2 ); }
+	if ( !is_f(NEGATED) ) {
+		if CHECK( PERSO ) {
+			xpn_add( exponent, AS_SUB, 0 );
+			_return( 2 ); } }
 
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
-	if CHECK( IDENTIFIER ) {
-		(*q)++;
-		_return( 2 ) }
+	if ( !is_f(NEGATED) ) {
+		if CHECK( IDENTIFIER ) {
+			(*q)++;
+			_return( 2 ) } }
 	_break
 case_( identifier_CB )
-	if CHECK( IDENTIFIER )
-		_return( 2 )
+	if ( !is_f(NEGATED) ) {
+		if CHECK( IDENTIFIER )
+			_return( 2 ) }
 	_break
 case_( character_CB )
-	if CHECK( CHARACTER )
-		_return( 2 )
+	if ( !is_f(NEGATED) ) {
+		if CHECK( CHARACTER )
+			_return( 2 ) }
 	_break
 case_( mod_character_CB )
-	if CHECK( MOD )
-		_return( 2 )
+	if ( !is_f(NEGATED) ) {
+		if CHECK( MOD )
+			_return( 2 ) }
 	_break
 case_( star_character_CB )
-	if CHECK( STAR )
-		_return( 2 )
+	if ( !is_f(NEGATED) ) {
+		if CHECK( STAR )
+			_return( 2 ) }
 	_break
 case_( register_variable_CB )
-	switch ( p[1] ) {
-	case '<': if CHECK( EENOK ) _return( 2 ) break;
-	case '?': if CHECK( QMARK ) _return( 2 ) break;
-	case '!': if CHECK( EMARK ) _return( 2 ) break;
-	case '|': if CHECK( PMARK ) _return( 2 ) break;
-	case '.': if CHECK( PARENT ) _return( 2 ) break;
-	case '%': if CHECK( SELF ) _return( 2 ) break; }
+	if ( !is_f(NEGATED) ) {
+		int mark;
+		switch ( p[1] ) {
+		case '<': mark = EENOK; break;
+		case '?': mark = QMARK; break;
+		case '!': mark = EMARK; break;
+		case '|': mark = PMARK; break;
+		case '.': mark = PARENT; break;
+		case '%': mark = SELF; break; }
+		if CHECK( mark )
+			_return( 2 ) }
 	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
-	if CHECK( STAR ) {
-		xpn_add( exponent, SUB, 1 );
-		xpn_add( exponent, AS_SUB, 0 );
-		xpn_add( exponent, AS_SUB, 0 );
-		_return( 2 ) }
+	if ( !is_f(NEGATED) ) {
+		if CHECK( STAR ) {
+			xpn_add( exponent, SUB, 1 );
+			xpn_add( exponent, AS_SUB, 0 );
+			xpn_add( exponent, AS_SUB, 0 );
+			_return( 2 ) } }
 	// apply dereferencing operator to whatever comes next
 	xpn_add( exponent, SUB, 1 );
 	xpn_add( exponent, AS_SUB, 0 );
@@ -130,12 +148,18 @@ case_( dereference_CB )
 	_break
 case_( sub_expression_CB )
 	listItem *mark_exp = NULL;
+	char *mark = bm_locate_mark( p+1, &mark_exp );
+	if ((mark_exp) && !strncmp( mark+1, ":...", 4 )) {
+		freeListItem( &mark_exp );
 #ifdef LIST_EXP
-	char *m = bm_locate_mark( p+1, &mark_exp );
-	if ((mark_exp) && !strncmp( m+1, ":...", 4 ))
-		_prune( BM_PRUNE_FILTER )
+		if ( !is_f(NEGATED) ) {
+			if ( data->primary & EXPR )
+				_return( 2 )
+			else if ( !data->secondary || ( EXPR < data->secondary ) )
+				data->expr = newPair( p, mark+6 ); }
+		_continue( mark+6 ) } // _prune( BM_PRUNE_FILTER )
 #else
-	bm_locate_mark( p+1, &mark_exp );
+		_prune( BM_PRUNE_FILTER ) }
 #endif
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
