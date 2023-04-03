@@ -46,14 +46,12 @@ CB_EEnovEndCB				f_clr( EENOV )
 CB_ActivateCB			p+=2; break;
 			case '~':
 				if ( p[1]=='<' ) {
-					switch ( p[2] ) {
-					case '\0':
-CB_ActivateCB				default:
-						p+=2; }
-					break; }
-CB_NotCB			if is_f( NEGATED ) f_clr( NEGATED )	
-				else f_set( NEGATED )
-				p++; break;
+CB_ActivateCB				p+=2; }
+				else {
+CB_NotCB				if is_f( NEGATED ) f_clr( NEGATED )	
+					else f_set( NEGATED )
+					p++; }
+				break;
 			case '{':
 CB_BgnSetCB			f_push( stack )
 				f_reset( FIRST|SET, 0 )

@@ -213,7 +213,7 @@
 				else
 					do >"Error: Yak: rule '%_' not found or invalid\n": %<!>
 					do .EXIT
-			else on MORE~ < *s
+			else on ~( MORE ) < *s
 				do .READY
 			else on NEXT < *s
 				do : p : %(*p:(.,?))
@@ -263,7 +263,7 @@
 		else // *p is a base entity (singleton) other than '\0'
 			do >"Error: Yak: %_-terminated schema not supported\n": *p
 			do exit // FAIL
-	else on MORE~
+	else on ~( MORE )
 		do NEXT
 	else on : p : ?
 		in %?: '\0'

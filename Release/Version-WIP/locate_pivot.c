@@ -151,16 +151,12 @@ case_( sub_expression_CB )
 	char *mark = bm_locate_mark( p+1, &mark_exp );
 	if ((mark_exp) && !strncmp( mark+1, ":...", 4 )) {
 		freeListItem( &mark_exp );
-#ifdef LIST_EXP
 		if ( !is_f(NEGATED) ) {
 			if ( data->primary & EXPR )
 				_return( 2 )
 			else if ( !data->secondary || ( EXPR < data->secondary ) )
 				data->expr = newPair( p, mark+6 ); }
 		_continue( mark+6 ) } // _prune( BM_PRUNE_FILTER )
-#else
-		_prune( BM_PRUNE_FILTER ) }
-#endif
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
 	if (( mark_exp )) {

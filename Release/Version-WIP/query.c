@@ -43,7 +43,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 #endif
 	int privy = data.privy = ( type==BM_RELEASED ? 1 : 0 );
 	CNInstance *success = NULL, *e;
-	ifn_PIVOT( privy, expression, (&data), bm_verify, NULL ) {
+	IFN_PIVOT( privy, expression, (&data), bm_verify, NULL ) {
 		listItem *s = NULL;
 		switch ( type ) {
 		case BM_CONDITION:
@@ -84,7 +84,7 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 }
 
 //---------------------------------------------------------------------------
-//	pivot_check	- ifn_PIVOT internal
+//	pivot_check	- IFN_PIVOT internal
 //---------------------------------------------------------------------------
 static inline char *
 pivot_check( char *p, listItem **exponent, listItem **xpn, BMQueryData *data )
@@ -109,7 +109,7 @@ pivot_check( char *p, listItem **exponent, listItem **xpn, BMQueryData *data )
 }
 
 //---------------------------------------------------------------------------
-//	xp_traverse	- ifn_PIVOT internal
+//	xp_traverse	- IFN_PIVOT internal
 //---------------------------------------------------------------------------
 static CNInstance *
 xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, void *user_data )
@@ -120,7 +120,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	. user_data only specified for query_assignment, in which case
 	  we can overwrite data->user_data with the passed user_data
 	. pivot->value is not deprecated - and neither are its subs
-	. POP_ set to POP_LAST
+	. _POP set to POP_LAST
 */
 {
 	CNDB *db = data->db;
@@ -163,7 +163,7 @@ RETURN:
 }
 
 //---------------------------------------------------------------------------
-//	xp_traverse_list	- ifn_PIVOT internal
+//	xp_traverse_list	- IFN_PIVOT internal
 //---------------------------------------------------------------------------
 #undef _POP
 #define _POP( NEXT ) POP_( NEXT )
@@ -183,7 +183,7 @@ xp_traverse_list( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB
 	. user_data only specified for query_assignment, in which case
 	  we can overwrite data->user_data with the passed user_data
 	. pivot->value is not deprecated - and neither are its subs
-	. POP_ set to POP_NEXT
+	. _POP set to POP_( NEXT )
 */
 {
 	CNInstance *success = NULL;
@@ -281,7 +281,7 @@ static int
 list_verify( CNInstance *e, char *expression, BMQueryData *data )
 /*
 	invoke bm_verify on all { e.as_sub[0]^n.sub[1] / n>=1 }
-	Assumption: POP_ set to POP_LAST
+	Assumption: _POP set to POP_LAST
 */
 {
 	XPTraverseCB *traverse_CB = data->list->name;
@@ -744,7 +744,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 //===========================================================================
 //	query_assignment
 //===========================================================================
-#undef _XP_TRAVERSE // ifn_PIVOT internal
+#undef _XP_TRAVERSE // IFN_PIVOT internal
 #define _XP_TRAVERSE XP_TRAVERSE_ASSIGNMENT
 
 static XPTraverseCB
@@ -762,7 +762,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
 	CNInstance *success = NULL, *e;
 	if ( !strncmp( value, "~.", 2 ) ) {
-		ifn_PIVOT( 0, expression, data, bm_verify_unassigned, NULL ) {
+		IFN_PIVOT( 0, expression, data, bm_verify_unassigned, NULL ) {
 			switch ( type ) {
 			case BM_CONDITION: ;
 				for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
@@ -782,8 +782,8 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 						success = e; // return (*,.)
 						break; } } } } }
 	else {
-		ifn_PIVOT( 0, expression, data, bm_verify_value, value ) {
-			ifn_PIVOT( 0, value, data, bm_verify_variable, expression ) {
+		IFN_PIVOT( 0, expression, data, bm_verify_value, value ) {
+			IFN_PIVOT( 0, value, data, bm_verify_variable, expression ) {
 				switch ( type ) {
 				case BM_CONDITION: ;
 					for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {

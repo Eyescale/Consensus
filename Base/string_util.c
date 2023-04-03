@@ -298,7 +298,7 @@ p_prune( PruneType type, char *p )
 				informed = 1; break;
 			case '~':
 			case '@':
-				if ( p[1]=='<' && !p[2] )
+				if ( p[1]=='<' )
 					return p;
 				p++; break;
 			case ',':

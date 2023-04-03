@@ -63,8 +63,8 @@ New Features
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	Signal Event Ocurrence		on identifier~ < src
-					on identifier~
+	Signal Event Ocurrence		on identifier~ < src	NO LONGER SUPPORTED [Update 2023-04-03]
+					on identifier~		NO LONGER SUPPORTED [Update 2023-04-03]
 
 	EENO Register Variables		%<?:sub>		sub is a B% valid expression combining
 					%<!:sub>		  . B% valid identifiers
@@ -325,7 +325,7 @@ New Feature Description
 	cell communication protocol, that it allows only to query manifested
 	changes - and not one another's internal conditions.
 
-    5. Signal event occurrence
+    5. Signal event occurrence - NO LONGER SUPPORTED [2023-04-03]
 
 	B% Version-2.0 allows the following alternative syntax to be used
 

@@ -78,6 +78,10 @@ inline int
 f_signal_authorize( listItem **stack )
 /*
 	Assumption: TERNARY is set all the way
+	prevents signal from being used in TERNARY guard, where
+ 		ternary:( guard ?_:_)
+ 	in other words, only the very base level of the current
+ 	flags stack should be tagged FIRST
 */
 {
 	union { void *ptr; int value; } icast;

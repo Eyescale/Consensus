@@ -743,7 +743,10 @@ else					; // err
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&(DO|ON) && !are_f(CARRY|DOT) && ( is_f(LEVEL) ?
+		ons( " \t" )	do_( "term_" )
+				f_clr( DOT )
+				f_set( INFORMED )
+		on_( '~' ) if ( *type&DO && !are_f(CARRY|DOT) && ( is_f(LEVEL) ?
 				is_f(TERNARY) && f_signal_authorize(stack) :
 				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
 				do_( "term~" )	s_take
@@ -754,12 +757,14 @@ D:CND_endif
 						f_set( INFORMED )
 		on_other	do_( same )	s_take
 		end
+		in_( "term_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '~' )	; // err
+			on_other	do_( "expr" )	REENTER
+			end
 		in_( "term~" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '<' ) if ( *type&DO ) {
-					do_( "@<" )	s_take }
-				else { do_( "expr" )	REENTER }
-			on_( '?' )	; // err
+			ons( "?<" )	; // err
 			on_other	do_( "expr" )	REENTER
 			end
 	in_( "char" ) bgn_

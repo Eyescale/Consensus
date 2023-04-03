@@ -2,7 +2,7 @@
 #define QUERY_PRIVATE_H
 
 //---------------------------------------------------------------------------
-//	ifn_PIVOT
+//	IFN_PIVOT
 //---------------------------------------------------------------------------
 typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 static CNInstance * xp_traverse_list( char *, BMQueryData *, XPTraverseCB *, void * );
@@ -14,7 +14,7 @@ static inline char * pivot_check( char *, listItem **, listItem **, BMQueryData 
 #define XP_TRAVERSE_ASSIGNMENT( a, b, c, d ) \
 	if (( XP_TRAVERSE(a,b,c,d) )) success = data->instance;
 #define _XP_TRAVERSE XP_TRAVERSE
-#define ifn_PIVOT( privy, expression, data, CB, user_data ) \
+#define IFN_PIVOT( privy, expression, data, CB, user_data ) \
 	listItem *exponent = NULL, *xpn = NULL; \
 	char *p = bm_locate_pivot( expression, &exponent ); \
 	if (( p = pivot_check( p, &exponent, &xpn, data ) )) { \
