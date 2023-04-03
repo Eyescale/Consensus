@@ -271,19 +271,19 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 		if ( !strncmp( value, "~.", 2 ) ) {
 			// we know x: ( *, e )
 			if (( bm_locate_mark( expression, &xpn ) )) {
-				*marked = QMARK|EMARK;
+				*marked = EMARK|QMARK;
 				bm_push_mark( ctx, "?", xsub(x->sub[1],&xpn) );
-				bm_push_mark( ctx, "!", NULL ); } }
+				bm_push_mark( ctx, "!", x ); } }
 		else {
 			// we know x: (( *, e ), f )
 			if (( bm_locate_mark( value, &xpn ) )) {
 				*marked = EMARK|QMARK;
-				bm_push_mark( ctx, "!", x->sub[0]->sub[1] );
-				bm_push_mark( ctx, "?", xsub(x->sub[1],&xpn) ); }
+				bm_push_mark( ctx, "?", xsub(x->sub[1],&xpn) );
+				bm_push_mark( ctx, "!", x ); }
 			else if (( bm_locate_mark( expression, &xpn ) )) {
-				*marked = QMARK|EMARK;
+				*marked = EMARK|QMARK;
 				bm_push_mark( ctx, "?", xsub(x->sub[0]->sub[1],&xpn) );
-				bm_push_mark( ctx, "!", x->sub[1] ); } } }
+				bm_push_mark( ctx, "!", x ); } } }
 	else {
 		if (( bm_locate_mark( expression, &xpn ) )) {
 			*marked = QMARK;
@@ -297,34 +297,42 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int
 	CNInstance *proxy = found->value;
 	listItem *xpn = NULL;
 	Pair *event = NULL;
-	if ( !expression ) {
-		if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
-			// freeListItem( &xpn ); // Assumption: unnecessary
-			event = newPair( x, NULL ); } }
+	if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
+		freeListItem( &xpn );
+		event = newPair( proxy, x ); }
+	else if ( !expression )
+		return 1;
+#if 0
 	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
 		if ( !strncmp( value, "~.", 2 ) ) {
 			// we know x: ( *, . )
-			if (( bm_locate_mark( src, &xpn ) )) {
-				// freeListItem( &xpn ); // Assumption: unnecessary
-				event = newPair( NULL, x->sub[1] ); }
-			else if (( bm_locate_mark( expression, &xpn ) ))
+			if (( bm_locate_mark( expression, &xpn ) ))
 				event = newPair( xsub(x->sub[1],&xpn), NULL ); }
 		else {
 			// we know x: (( *, . ), . )
-			if (( bm_locate_mark( src, &xpn ) )) {
-				// freeListItem( &xpn ); // Assumption: unnecessary
-				event = newPair( x->sub[0]->sub[1], x->sub[1] ); }
-			else if (( bm_locate_mark( value, &xpn ) )) {
+			if (( bm_locate_mark( value, &xpn ) )) {
 				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] ); }
 			else if (( bm_locate_mark( expression, &xpn ) )) {
 				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } } }
-	else {
-		if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
-			// freeListItem( &xpn ); // Assumption: unnecessary
-			event = newPair( x, NULL ); }
-		else if ( !!x && ( bm_locate_mark( expression, &xpn ) )) {
-			event = newPair( xsub(x,&xpn), NULL ); } }
+	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
+		event = newPair( xsub(x,&xpn), NULL ); }
+#else
+	else if ( *expression==':' ) {
+		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
+		if ( !strncmp( value, "~.", 2 ) ) {
+			// we know x: ( *, . )
+			if (( bm_locate_mark( expression, &xpn ) ))
+				event = newPair( xsub(x->sub[1],&xpn), x ); }
+		else {
+			// we know x: (( *, . ), . )
+			if (( bm_locate_mark( value, &xpn ) )) {
+				event = newPair( xsub(x->sub[1],&xpn), x ); }
+			else if (( bm_locate_mark( expression, &xpn ) )) {
+				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x ); } } }
+	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
+		event = newPair( xsub(x,&xpn), x ); }
+#endif
 
 	if (( event )) {
 		*marked = EENOK;

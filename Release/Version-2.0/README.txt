@@ -63,8 +63,8 @@ New Features
 	External Event Narrative	on event < src
 	Occurrence (EENO)
 
-	Signal Event Ocurrence		on identifier~ < src	NO LONGER SUPPORTED [Update 2023-04-03]
-					on identifier~		NO LONGER SUPPORTED [Update 2023-04-03]
+	Signal Event Ocurrence		on ~( identifier ) < src	[UPDATE: 2023-04-03]
+					on ~( identifier )		[UPDATE: 2023-04-03]
 
 	EENO Register Variables		%<?:sub>		sub is a B% valid expression combining
 					%<!:sub>		  . B% valid identifiers
@@ -108,19 +108,14 @@ Changes & Extensions
 		in/on/do : variable : value
 	  
 	. Concerning the Narrative %? and %! Register Variables, the rules
-	  of assignment are as follow:
+	  of assignment are as follow:	[UPDATE: 2023-04-03]
 
-	 When the query signus ? is included in the variable part of
-	 the assignment occurrence, then the %? mark register variable
-	 holds the corresponding query result, if any, and the %!
-	 register variable holds the instance corresponding to the value
-	 part of the query result.
-
-	 Conversely, when the query signus ? is included in the value
-	 part of the assignment occurrence, then the %? mark register
-	 variable holds the corresponding query result, if any, and
-	 %! holds the instance corresponding to the variable part of
-	 the query result.
+	 When the query signus ? is included in the assignment expression,
+	 then the %? mark register variable holds the corresponding query
+	 result, if any, and the %! register variable holds the instance
+	 corresponding to the overall query result - e.g.
+		in : variable : ?
+	 when successful, yields %! and %? verifying %!:((*,variable),%?)
 
     3. Input alternative syntax do : input, format <
 
@@ -325,12 +320,12 @@ New Feature Description
 	cell communication protocol, that it allows only to query manifested
 	changes - and not one another's internal conditions.
 
-    5. Signal event occurrence - NO LONGER SUPPORTED [2023-04-03]
+    5. Signal event occurrence - [UPDATE: 2023-04-03]
 
 	B% Version-2.0 allows the following alternative syntax to be used
 
-		on identifier~
-		on identifier~ < src	// EENO
+		on ~( identifier )
+		on ~( identifier ) < src	// EENO
 
 	to test signal events - which are release events associated with CNDB
 	base entities. See example usage in
@@ -338,14 +333,14 @@ New Feature Description
 		Examples/1_Schematize/yak.new
 		Examples/3_TM.multi/TM-head_cell.story
 
-    6. EENO Register Variables
+    6. EENO Register Variables	[UPDATE:2023-04-03]
 
 	The EENO Register Variables %<?> and %<!> allow subsequent references
 	to the EENO query results to be made by the narrative, using
 
 		%<?>	to represent event = first match
-		%<!>	to represent the complementary match (variable or value)
-			in case of assignment expression - if marked
+		%<!>	to represent the overall query result in case of
+			an assignment expression - if marked
 		%<	to represent src = proxy to the corresponding connection
 
 	The rules of assignment described in the Changes section of this document
@@ -359,8 +354,8 @@ New Feature Description
 	will yield the following results, if any
 
 		%< 	matching source (proxy)
-		%<?>	matching variable
-		%<!>	matching value
+		%<?>	matching source (proxy)		[UPDATE: 2023-04-03]
+		%<!>	matching ((*,variable),value)
 
 	whereas the occurrence expression
 
@@ -370,7 +365,7 @@ New Feature Description
 
 		%< 	matching source (proxy)
 		%<?>	matching value
-		%<!>	matching variable
+		%<!>	matching ((*variable),value)	[UPDATE: 2023-04-03]
 
 	And that when found on their own in occurrences the EENO register
 	variables will be dereferenced inside the local CNDB prior to the

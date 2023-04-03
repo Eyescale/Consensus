@@ -195,21 +195,21 @@
 			on : ( TAKE, ? ) : ~. < *s
 				do .( %<?>, *record ) // TAKE, consumed or unconsumed
 			else on : ( TAKE, ? ) : . < *s
-				in ((Rule,%<!>),(Schema,~'\0'))
-					in ((Rule,%<!>),(Schema,'\0')) // FORK on null-schema
+				in ((Rule,?:%<!:(.,?)>),(Schema,~'\0'))
+					in ((Rule,%?),(Schema,'\0'))
 						do .(((schema, %(*p:(.,?))), (%<?>,*record)), r )
-					in ?: ((rule,%<!>), (%<?>,*record)) // rule already instantiated
+					in ?: ((rule,%?), (%<?>,*record)) // rule already instantiated
 						do .( %?, s )
 						do .CYCLIC
-					else do (((rule,%<!>), (%<?>,*record)) | {
-						(((schema, %((Rule,%<!>),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+					else do (((rule,%?), (%<?>,*record)) | {
+						(((schema, %((Rule,%?),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 						.( %|, s ) } )
-				else in ((Rule,%<!>),(Schema,'\0')) // moving on
+				else in ((Rule,%<!:(.,?)>),(Schema,'\0')) // moving on
 					do : p : %(*p:(.,?))
 					do : s : !! Take( ((*,p),%(*p:(.,?))),
 						( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 				else
-					do >"Error: Yak: rule '%_' not found or invalid\n": %<!>
+					do >"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
 					do .EXIT
 			else on ~( MORE ) < *s
 				do .READY

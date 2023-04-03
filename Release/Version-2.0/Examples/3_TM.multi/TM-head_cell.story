@@ -29,7 +29,7 @@
 				do >"Error: head: unable to dereference ( state, symbol )\n"
 				do exit
 		else on : next : ? < *cell
-			do (*cell) ~<
+			do *cell ~<
 			do : cell : %<?> @<
 	else on init
 		do : state : *INIT
@@ -66,7 +66,7 @@
 				do : value : %<?>
 				on : shift : ? < %< // assumed concurrent
 					do : shift : %<?>
-					do (*head) ~<
+					do *head ~<
 			else on exit < %?
 				do > "%s%s":<(*value?:*BLANK), (*RIGHT?' ':'\n')>
 				do ( *RIGHT ? callout~ :)
