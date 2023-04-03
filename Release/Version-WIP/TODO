@@ -1,32 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	REVISIONS
-	1. Version-2.0 SIGNAL handling revision
-	   identifier~ only supported during INSTANTIATION
-	   and then has precedence over e.g. do *identifier ~<
-		which should be written do (*identifier) ~<
-		otherwise interpreted as do *identifier~ <
-		which generates ERROR
-	   on signal~ < src
-		should likewise become on ~( signal ) < src
-		otherwise generate ERROR
-	   Examples: 3_TM.multi/TM_head-cell.story
-
-=> expected simplifications in parser / p_prune / bm_traverse ?
-p_prune and bm_traverse:
-	case '~': if ( p[1]=='<' )
-		=> test p[2]=='\0' ? p+=2	[invoking CB_AtivateCB]
-
-	case '~':
-		if ( p[1]=='<' )
-CB_ActivateCB		p+=2;
-		else {
-CB_NotCB		if is_f( NEGATED ) f_clr( NEGATED )
-			else f_set( NEGATED )
-			p++; }
-		break;
-		
-
 	. Version-2.0 ASSIGNMENT rules revision
 	  in/on : variable : value [ < src ]
 		  %? (resp.%<?>) represents whatever is marked in expression
@@ -35,6 +9,7 @@ CB_NotCB		if is_f( NEGATED ) f_clr( NEGATED )
 		  %<?> same as %< - so yes, basically useless, BUT
 		  %<!> same as %<!:((*,variable),value)>
 	  => WRITE COMPLETE Test/script for all assignment cases
+
 	. Implement %<(expression)> allowing ! in expression, e.g.
 		on (%%,.) < ?
 			do >: %<(!,?:...)>
@@ -72,6 +47,16 @@ WIP
 DONE
 	. %( list, ?:... ) equivalent to %((list,...),?) (not implemented)
 	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
+	. Version-2.0 SIGNAL handling revision
+	  identifier~ only supported during INSTANTIATION
+	  and then has precedence over e.g. do *identifier ~<
+		which should be written do (*identifier) ~<
+		otherwise interpreted as do *identifier~ <
+		which generates ERROR
+	  on signal~ < src
+		should likewise become on ~( signal ) < src
+		otherwise generate ERROR
+	  cf. ./Examples/3_TM.multi/TM_head-cell.story
 	. Branched Version-2.0
 
 NICE TO HAVE
