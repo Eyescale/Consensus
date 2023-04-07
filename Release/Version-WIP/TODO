@@ -32,7 +32,7 @@ TODO
 	. WARNING: tricky usage of ~ esp. in EENO
 		e.g. on ?:~toto < .
 		does not mean that anything other than toto will pass
-		it means that anything other than *what the caller has*
+		it means that anything matching *what the caller has*
 		other than toto will pass -- note that in this case we
 		do not have pivot, and that the expression, since it is
 		negated, will be dereferenced first in the caller
