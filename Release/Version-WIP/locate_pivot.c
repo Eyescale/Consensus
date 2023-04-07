@@ -14,7 +14,6 @@
 typedef struct {
 	char *expression;
 	int primary, secondary;
-	Pair *expr; // EXPR case
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;
@@ -47,18 +46,14 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	case 2:
 		break;
 	default:
-		switch ( data.secondary ) {
-		case 0:
-			xpn_pop( exponent, base );
-			return NULL;
-		case EXPR:
-			addItem( exponent, data.expr );
-			return (char *) data.expr->name;
-		default:
-			xpn_pop( exponent, base );
+		if ( data.secondary ) {
+			xpn_free( exponent, base );
 			traverse_data.done = 0;
 			data.primary = data.secondary;
-			p = locate_pivot_traversal( expression, &traverse_data, FIRST ); } }
+			p = locate_pivot_traversal( expression, &traverse_data, FIRST ); }
+		else {
+			xpn_free( exponent, base );
+			return NULL; } }
 
 	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
@@ -152,10 +147,10 @@ case_( sub_expression_CB )
 	if ((mark_exp) && !strncmp( mark+1, ":...", 4 )) {
 		freeListItem( &mark_exp );
 		if ( !is_f(NEGATED) ) {
-			if ( data->primary & EXPR )
-				_return( 2 )
-			else if ( !data->secondary || ( EXPR < data->secondary ) )
-				data->expr = newPair( p, mark+6 ); }
+			if CHECK( LIST_EXPR ) {
+				Pair * list_expr = newPair( p, mark+6 );
+				addItem( data->exponent, list_expr );
+				_return( 2 ) } }
 		_continue( mark+6 ) } // _prune( BM_PRUNE_FILTER )
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
@@ -170,14 +165,14 @@ case_( open_CB )
 	data->level = *data->exponent;
 	_break
 case_( filter_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	_break
 case_( decouple_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	xpn_set( *data->exponent, AS_SUB, 1 );
 	_break
 case_( close_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	if is_f( COUPLE )
 		popListItem( data->exponent );
 	if is_f( DOT )
@@ -185,7 +180,7 @@ case_( close_CB )
 	data->level = popListItem( &data->stack.level );
 	if ( is_f(SUB_EXPR) && !is_f(LEVEL) ) {
 		listItem *tag = popListItem( &data->stack.premark );
-		if ((tag)) xpn_pop( data->exponent, tag ); }
+		if ((tag)) xpn_free( data->exponent, tag ); }
 	_break;
 BMTraverseCBEnd
 

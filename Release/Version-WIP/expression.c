@@ -211,12 +211,6 @@ bm_input( int type, char *arg, BMContext *ctx )
 //	bm_outputf
 //===========================================================================
 static int bm_output( int type, char *expression, BMContext *);
-static BMQueryCB output_CB;
-typedef struct {
-	int type;
-	int first;
-	CNInstance *last;
-} OutputData;
 
 int
 bm_outputf( char *fmt, listItem *args, BMContext *ctx )
@@ -245,18 +239,23 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 				if ( delta ) {
 					printf( "%c", q.value );
 					fmt += delta; }
-				else fmt++;
-			} } }
-	else if ((args)) {
-		do {
+				else fmt++; } } }
+	else {
+		if ((args)) do {
 			char *arg = args->ptr;
 			bm_output( DEFAULT_TYPE, arg, ctx );
 			args = args->next;
-		} while ((args)); }
-	else printf( "\n" );
+		} while ((args));
+		printf( "\n" ); }
 RETURN:
 	return 0;
 }
+
+//---------------------------------------------------------------------------
+//	bm_output
+//---------------------------------------------------------------------------
+static BMQueryCB output_CB;
+
 static int
 bm_output( int type, char *arg, BMContext *ctx )
 /*
@@ -264,46 +263,29 @@ bm_output( int type, char *arg, BMContext *ctx )
 	note that we rely on bm_query to eliminate doublons
 */
 {
-	// special case: EEnoRV as-is
-	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
-		return eenov_output( ctx, type, arg );
-	else if ( *arg=='\'' && type=='s' ) {
+	if ( *arg=='\'' && type=='s' ) {
 		char_s q;
 		if ( charscan( arg+1, &q ) )
 			fprintf( stdout, "%c", q.value );
 		return 0; }
 
-	OutputData data = { type, 1, NULL };
-	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
-	CNDB *db = BMContextDB( ctx );
-	if ( data.first )
-		switch ( type ) {
-		case 's':
-			db_outputf( stdout, db, "%s", data.last );
-			break;
-		default:
-			db_outputf( stdout, db, "%_", data.last );
-			break; }
-	else {
-		printf( ", " );
-		db_outputf( stdout, db, "%_", data.last );
-		printf( " }" ); }
+	OutputData data;
+	data.type = type;
+	data.first = 1;
+	data.last = NULL;
 
-	return 0;
+	// special case: EEnoRV as-is
+	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
+		return eenov_output( arg, ctx, &data );
+
+	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
+	return db_flush( &data, BMContextDB(ctx) );
 }
+
 static BMCBTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	OutputData *data = user_data;
-	if (( data->last )) {
-		CNDB *db = BMContextDB( ctx );
-		if ( data->first ) {
-			if ( data->type=='s' )
-				printf( "\\{ " );
-			else printf( "{ " );
-			data->first = 0; }
-		else printf( ", " );
-		db_outputf( stdout, db, "%_", data->last ); }
-	data->last = e;
+	db_putout( e, BMContextDB(ctx), (OutputData *) user_data );
 	return BM_CONTINUE;
 }
+

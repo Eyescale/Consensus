@@ -211,26 +211,12 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 	if ( !proxies ) return 0;
 
 	Pair *found = NULL;
-	if ( !is_separator( *expression ) ) {
-		if ( !strncmp( expression, "init<", 5 ) ) {
-			found = proxy_test( bm_proxy_in, &proxies );
-			if (( found )) success = 1; }
-		else if ( !strncmp( expression, "exit<", 5 ) ) {
-			found = proxy_test( bm_proxy_out, &proxies );
-			if (( found )) success = 1; }
-		else {
-			char *p = expression;
-			do p++; while ( !is_separator(*p) );
-			switch ( *p ) {
-			case ':':
-				found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
-				if (( found )) { expression=p+1; success=2; }
-				break;
-			default:
-				found = ( *p=='~' ) ?
-					proxy_feel( BM_RELEASED, expression, &proxies, ctx ) :
-					proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
-				if (( found )) success = 1; } } }
+	if ( !strncmp( expression, "init<", 5 ) ) {
+		found = proxy_test( bm_proxy_in, &proxies );
+		if (( found )) success = 1; }
+	else if ( !strncmp( expression, "exit<", 5 ) ) {
+		found = proxy_test( bm_proxy_out, &proxies );
+		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
 		found = proxy_test( bm_proxy_active, &proxies );
 		if (( found )) success = 1; }

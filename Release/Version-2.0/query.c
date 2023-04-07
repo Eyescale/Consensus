@@ -95,7 +95,8 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 		return xp_verify( e, expression, data ) ?
 			(data->user_CB) ?
 				data->user_CB( e, data->ctx, data->user_data ) :
-			BM_DONE : BM_CONTINUE; }
+				BM_DONE :
+			BM_CONTINUE; }
 }
 
 //---------------------------------------------------------------------------

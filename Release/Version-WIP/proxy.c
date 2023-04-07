@@ -209,7 +209,7 @@ static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
 	ProxyFeelData *data = user_data;
-	if ( db_match( data->db_x, data->x, BMContextDB(ctx), e ) )
+	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
 		return BM_DONE;
 	return BM_CONTINUE;
 }
@@ -230,14 +230,14 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 		return DBStarMatch( x, db_x );
 	case '.':
 		return ( p[1]=='.' ) ?
-			db_match( db_x, x, CTX_DB, BMContextParent(ctx) ) :
-			db_match( db_x, x, CTX_DB, BMContextPerso(ctx) );
+			db_match( x, db_x, BMContextParent(ctx), CTX_DB ) :
+			db_match( x, db_x, BMContextPerso(ctx), CTX_DB );
 	case '%':
 		switch ( p[1] ) {
-		case '?': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"?") );
-		case '!': return db_match( db_x, x, CTX_DB, bm_context_lookup(ctx,"!") );
-		case '%': return db_match( db_x, x, CTX_DB, BMContextSelf(ctx) );
-		case '<': return eenov_match( ctx, p, db_x, x ); }
+		case '?': return db_match( x, db_x, bm_context_lookup(ctx,"?"), CTX_DB );
+		case '!': return db_match( x, db_x, bm_context_lookup(ctx,"!"), CTX_DB );
+		case '%': return db_match( x, db_x, BMContextSelf(ctx), CTX_DB );
+		case '<': return eenov_match( ctx, p, x, db_x ); }
 		return ( !x->sub[0] && *DBIdentifier(x,db_x)=='%' ); }
 
 	if ( !x->sub[0] ) {

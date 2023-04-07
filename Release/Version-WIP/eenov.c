@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "eenov_private.h"
+#include "locate_emark.h"
 #include "traverse.h"
 #include "cell.h"
 #include "eenov.h"
@@ -9,112 +11,127 @@
 //===========================================================================
 //	eenov_output / eenov_inform / eenov_lookup / eenov_match
 //===========================================================================
-typedef struct {
-	CNInstance *src;
-	CNInstance *result;
-	struct { listItem *instance, *flags; } stack;
-	CNInstance *instance;
-	int success;
-	CNDB *db;
-} EEnovData;
-static inline int eenov_read( BMContext *, char *, EEnovData * );
+static EEnovType eenov_type( BMContext *, char *, EEnovData * );
+static CNInstance * eenov_query_op( EEnovQueryOp, BMContext *, char *, EEnovData * );
 
 int
-eenov_output( BMContext *ctx, int type, char *p )
+eenov_output( char *p, BMContext *ctx, OutputData *od )
 {
 	EEnovData data;
-	switch ( eenov_read(ctx,p,&data) ) {
-	case 0: break;
-	case 1: ;
+	switch ( eenov_type(ctx,p,&data) ) {
+	case EEnovNone:
+		return 0;
+	case EEnovSrcType: ;
 		CNDB *db = BMContextDB( ctx );
-		db_outputf( stdout, db, (type=='s'?"%s":"%_"), data.src );
-		break;
-	default: ;
-		CNEntity *cell = DBProxyThat( data.src );
-		CNDB *db_x = BMContextDB( BMCellContext(cell) );
-		db_outputf( stdout, db_x, (type=='s'?"%s":"%_"), data.result ); }
-	return 0;
+		char *fmt = (od->type=='s'?"%s":"%_");
+		return db_outputf( stdout, db, fmt, data.src );
+	case EEnovInstanceType: ;
+		fmt = (od->type=='s'?"%s":"%_");
+		return db_outputf( stdout, data.db, fmt, data.instance );
+	case EEnovExprType:
+		data.param.output.od = od;
+		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );
+		return db_flush( od, data.db ); }
 }
-CNInstance *
+listItem *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 {
 	EEnovData data;
-	switch ( eenov_read(ctx,p,&data) ) {
-	case 0: return NULL;
-	case 1: return ((dst) ? bm_inform_context(db,data.src,dst) : data.src );
-	default: ;
-		CNEntity *cell = DBProxyThat( data.src );
-		CNDB *db_x = BMContextDB( BMCellContext(cell) );
-		return bm_inform_context( db_x, data.result, ((dst)?dst:ctx) ); }
+	switch ( eenov_type(ctx,p,&data) ) {
+	case EEnovNone:
+		return NULL;
+	case EEnovSrcType: ;
+		CNInstance *e = ((dst) ? bm_inform_context(dst,data.src,db) : data.src );
+		return ((e) ? newItem(e) : NULL );
+	case EEnovInstanceType:
+		e = bm_inform_context( ((dst)?dst:ctx), data.instance, data.db );
+		return ((e) ? newItem(e) : NULL );
+	case EEnovExprType:
+		data.param.inform.ctx = ((dst)?dst:ctx);
+		data.param.inform.result = NULL;
+		eenov_query_op( EEnovInformOp, ctx, p+2, &data );
+		return data.param.inform.result; }
 }
 CNInstance *
 eenov_lookup( BMContext *ctx, CNDB *db, char *p )
-{
-	EEnovData data;
-	switch ( eenov_read(ctx,p,&data) ) {
-	case 0: return NULL;
-	case 1: return data.src;
-	default: ;
-		if ( !db ) return data.result;
-		CNEntity *cell = DBProxyThat( data.src );
-		CNDB *db_x = BMContextDB( BMCellContext(cell) );
-		return bm_lookup_x( db_x, data.result, ctx, db ); }
-}
-int
-eenov_match( BMContext *ctx, char *p, CNDB *db_x, CNInstance *x )
 /*
-	Note that when invoked by query.c:match() then
-		BMContextDB(ctx)==db_x
+	Note that when db==NULL we return data.instance as is
 */
 {
 	EEnovData data;
-	switch ( eenov_read(ctx,p,&data) ) {
-	case 0: return 0;
-	case 1: return db_match( db_x, x, BMContextDB(ctx), data.src ); 
-	default: ;
-		CNEntity *cell = DBProxyThat( data.src );
-		CNDB *db_y = BMContextDB( BMCellContext(cell) );
-		return db_match( db_x, x, db_y, data.result ); }
+	switch ( eenov_type(ctx,p,&data) ) {
+	case EEnovNone:
+		return NULL;
+	case EEnovSrcType:
+		return data.src;
+	case EEnovInstanceType:
+		if ( !db ) return data.instance;
+		return bm_lookup_x( ctx, db, data.instance, data.db );
+	case EEnovExprType:
+		data.param.lookup.ctx = ctx;
+		data.param.lookup.db = db;
+		return eenov_query_op( EEnovLookupOp, ctx, p+2, &data ); }
+}
+int
+eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
+/*
+	Note that when invoked by query.c:match() then
+		BMContextDB(ctx)==data.db==db_x
+*/
+{
+	EEnovData data;
+	switch ( eenov_type(ctx,p,&data) ) {
+	case EEnovNone:
+		return 0;
+	case EEnovSrcType:
+		return db_match( x, db_x, data.src, BMContextDB(ctx) ); 
+	case EEnovInstanceType:
+		return db_match( x, db_x, data.instance, data.db );
+	case EEnovExprType:
+		data.param.match.x = x;
+		data.param.match.db = db_x;
+		return !!eenov_query_op( EEnovMatchOp, ctx, p+2, &data ); }
 }
 
-//---------------------------------------------------------------------------
-//	eenov_read
-//---------------------------------------------------------------------------
+//===========================================================================
+//	eenov_type
+//===========================================================================
 #include "eenov_traversal.h"
 
-static inline int
-eenov_read( BMContext *ctx, char *p, EEnovData *data )
+static EEnovType
+eenov_type( BMContext *ctx, char *p, EEnovData *data )
 {
 	EEnoRV *eenov = bm_context_lookup( ctx, "<" );
-	if ( !eenov ) return 0;
-	data->src = eenov->src;
+	if (( eenov )) {
+		CNInstance *src = eenov->src;
+		data->src = src;
 
-	p+=2; // skip leading "%<"
-	CNInstance *y;
-	switch ( *p++ ) {
-	case '?': y = eenov->event->name; break;
-	case '!': y = eenov->event->value; break;
-	default: return 1; }
+		switch ( p[2] ) {
+		case '?': data->instance = eenov->event->name; break;
+		case '!': data->instance = eenov->event->value; break;
+		case '(': data->instance = eenov->event->value; break;
+		default: return EEnovSrcType; }
 
-	if ( *p++==':' ) {
-		CNEntity *cell = DBProxyThat( data->src );
+		CNEntity *cell = DBProxyThat( src );
 		data->db = BMContextDB( BMCellContext(cell) );
-		data->result = y;
-		data->instance = y;
-		data->stack.flags = NULL;
-		data->stack.instance = NULL;
+		if ( p[2]=='(' )
+			return EEnovExprType;
+		else if ( p[3]=='>' )
+			return EEnovInstanceType;
+		else {
+			BMTraverseData traverse_data;
+			traverse_data.user_data = data;
+			traverse_data.stack = &data->stack.flags;
 
-		BMTraverseData traverse_data;
-		traverse_data.user_data = data;
-		traverse_data.stack = &data->stack.flags;
-		traverse_data.done = 0;
-
-		eenov_traversal( p, &traverse_data, FIRST );
-
-		return ( data->success ? 2 : 0 ); }
-	else {
-		data->result = y;
-		return 2; }
+			data->stack.flags = NULL;
+			data->stack.instance = NULL;
+			data->result = data->instance;
+			traverse_data.done = 0;
+			eenov_traversal( p+4, &traverse_data, FIRST );
+			if ( data->success ) {
+				data->instance = data->result;
+				return EEnovInstanceType; } } }
+	return EEnovNone;
 }
 
 //---------------------------------------------------------------------------
@@ -136,12 +153,12 @@ case_( identifier_CB )
 case_( open_CB )
 	if ( f_next & COUPLE ) {
 		CNInstance *x = data->instance;
-		x = CNSUB( x, is_f(FIRST)?0:1 );
-		data->success = is_f( NEGATED ) ? !x : !!x;
-		if ( data->success ) {
+		if (( x = CNSUB( x, is_f(FIRST)?0:1 ) )) {
 			addItem( &data->stack.instance, data->instance );
 			data->instance = x; }
-		else _prune( BM_PRUNE_TERM ) }
+		else {
+			data->success = !!is_f( NEGATED );
+			_prune( BM_PRUNE_TERM ) } }
 	_break
 case_( decouple_CB )
 	if ( !data->success )
@@ -156,10 +173,107 @@ case_( close_CB )
 	if ( f_next & NEGATED ) data->success = !data->success;
 	_break
 case_( wildcard_CB )
-	if ( *p=='?' )
+	if ( *p=='?' ) {
 		data->result = data->instance;
+		if (!strncmp(p+1,":...",4))
+			_return( 2 ) }
 	data->success = !is_f( NEGATED );
 	_break
 case_( end_CB )
 	_return( 1 )
 BMTraverseCBEnd
+
+//===========================================================================
+//	eenov_query_op
+//===========================================================================
+static inline int eenov_op( EEnovQueryOp, CNInstance *, CNDB *, EEnovData * );
+
+static CNInstance *
+eenov_query_op( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
+/*
+	Traverses %<(_!_)> using data->instance==%<!> as pivot
+		invoking EEnovTraverseCB on every match
+        returns current match on the callback's BM_DONE, and NULL otherwise
+	Assumption: p points to either %<?:_> or %<!:_> or %<(_)>
+*/
+{
+	CNDB *db = data->db;
+	CNInstance *e = data->instance;
+	int privy = db_deprecated( e, db );
+	listItem *i = newItem( e ), *j;
+	listItem *xpn = NULL;
+
+	bm_locate_emark( p, &xpn );
+
+	BMTraverseData traverse_data;
+	traverse_data.user_data = data;
+	traverse_data.stack = &data->stack.flags;
+
+	data->stack.flags = NULL;
+	data->stack.instance = NULL;
+	CNInstance *success = NULL;
+	listItem *trail = NULL;
+	listItem *stack[ 2 ] = { NULL, NULL };
+	enum { XPN_id, LIST_id };
+	for ( ; ; ) {
+PUSH_xpn:	PUSH( stack[ XPN_id ], xpn, POP_xpn )
+		data->result = e;
+		data->instance = e;
+		traverse_data.done = 0;
+		eenov_traversal( p, &traverse_data, FIRST );
+		if (( data->success )) {
+			if ( !lookupIfThere( trail, e ) ) { // ward off doublons
+				addIfNotThere( &trail, e );
+				if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
+					success = data->result;
+					goto RETURN; } }
+			switch ( traverse_data.done ) {
+			case 2: /* we have %<(_!_,?:...)>
+		               	             ^    ^----- current traverse_data.p
+					      ---------- current data->stack.instance
+				*/
+				e = popListItem( &data->stack.instance );
+				popListItem( &data->stack.flags ); // flush
+				for ( ; ; ) {
+PUSH_list:				LUSH( stack[ LIST_id ], POP_list )
+					if ( !lookupIfThere( trail, e ) ) { // ward off doublons
+						addIfNotThere( &trail, e );
+						if ( eenov_op( op, e, db, data )==BM_DONE ) {
+							success = data->result;
+							goto RETURN; } }
+					i = popListItem( &stack[ LIST_id ] );
+					e = i->ptr; goto PUSH_list;
+POP_list:				LOP( stack[ LIST_id ], PUSH_list, NULL ) }
+				if (( stack[ XPN_id ] ))
+					POP_XPi( stack[ XPN_id ], xpn )
+				else goto RETURN; } }
+POP_xpn:	POP( stack[ XPN_id ], xpn, PUSH_xpn, NULL ) }
+RETURN:
+	POP_ALL( stack[ XPN_id ] );
+	freeListItem( &stack[ LIST_id ] );
+	freeListItem( &trail );
+	freeItem( i );
+	return success;
+}
+static inline int
+eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
+{
+	switch ( op ) {
+	case EEnovOutputOp:
+		db_putout( e, db, data->param.output.od );
+		return BM_CONTINUE;
+	case EEnovInformOp:
+		e = bm_inform_context( data->param.inform.ctx, e, db );
+		if (( e )) addItem( &data->param.inform.result, e );
+		return BM_CONTINUE;
+	case EEnovLookupOp:
+		if ( !data->param.lookup.db || ( e = bm_lookup_x(
+			data->param.lookup.ctx, data->param.lookup.db,
+			e, db )) ) { data->result = e; return BM_DONE; }
+		break;
+	case EEnovMatchOp:
+		if ( db_match( data->param.match.x, data->param.match.db,
+			e, db ) ) { data->result = e; return BM_DONE; } }
+	return BM_CONTINUE;
+}
+

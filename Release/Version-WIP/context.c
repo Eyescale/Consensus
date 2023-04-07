@@ -294,31 +294,15 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 int
 bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int *marked )
 {
+	Pair *event = NULL;
+	listItem *xpn = NULL;
 	CNInstance *x = found->name;
 	CNInstance *proxy = found->value;
-	listItem *xpn = NULL;
-	Pair *event = NULL;
 	if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
 		freeListItem( &xpn );
 		event = newPair( proxy, x ); }
 	else if ( !expression )
 		return 1;
-#if 0
-	else if ( *expression==':' ) {
-		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
-		if ( !strncmp( value, "~.", 2 ) ) {
-			// we know x: ( *, . )
-			if (( bm_locate_mark( expression, &xpn ) ))
-				event = newPair( xsub(x->sub[1],&xpn), NULL ); }
-		else {
-			// we know x: (( *, . ), . )
-			if (( bm_locate_mark( value, &xpn ) )) {
-				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] ); }
-			else if (( bm_locate_mark( expression, &xpn ) )) {
-				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } } }
-	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
-		event = newPair( xsub(x,&xpn), NULL ); }
-#else
 	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
 		if ( !strncmp( value, "~.", 2 ) ) {
@@ -333,7 +317,6 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int
 				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x ); } } }
 	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
 		event = newPair( xsub(x,&xpn), x ); }
-#endif
 
 	if (( event )) {
 		*marked = EENOK;
@@ -449,7 +432,7 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 }
 
 CNInstance *
-bm_lookup_x( CNDB *db_x, CNInstance *x, BMContext *dst, CNDB *db_dst )
+bm_lookup_x( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x )
 {
 	if ( !x ) return NULL;
 	if ( db_dst==db_x ) return x;
@@ -535,17 +518,17 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 //	bm_inform / bm_inform_context
 //===========================================================================
 listItem *
-bm_inform( CNDB *db_src, listItem **instances, BMContext *dst )
+bm_inform( BMContext *dst, listItem **instances, CNDB *db_src )
 {
 	listItem *results = NULL;
 	for ( CNInstance *e;( e = popListItem(instances) ); ) {
-		e = bm_inform_context( db_src, e, dst );
+		e = bm_inform_context( dst, e, db_src );
 		if (( e )) addItem( &results, e ); }
 	return results;
 }
 
 CNInstance *
-bm_inform_context( CNDB *db_src, CNInstance *e, BMContext *dst )
+bm_inform_context( BMContext *dst, CNInstance *e, CNDB *db_src )
 {
 	if ( !e ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );

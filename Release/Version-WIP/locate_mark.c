@@ -68,14 +68,14 @@ case_( open_CB )
 	data->level = *data->exponent;
 	_break
 case_( filter_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	_break
 case_( decouple_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	xpn_set( *data->exponent, SUB, 1 );
 	_break
 case_( close_CB )
-	xpn_pop( data->exponent, data->level );
+	xpn_free( data->exponent, data->level );
 	if is_f( COUPLE )
 		popListItem( data->exponent );
 	if is_f( DOT )

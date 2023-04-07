@@ -149,7 +149,7 @@ case_( term_CB )
 		if (( results )) {
 			BMContext *carry = data->carry;
 			data->sub[ current ] = ( (carry) ?
-				bm_inform( data->db, &results, carry ) :
+				bm_inform( carry, &results, data->db ) :
 				results );
 			_prune( BM_PRUNE_TERM ) }
 		else _return( 2 ) }
@@ -159,7 +159,7 @@ case_( collect_CB )
 	if (( results )) {
 		BMContext *carry = data->carry;
 		data->sub[ current ] = ( (carry) ?
-			bm_inform( data->db, &results, carry ) :
+			bm_inform( carry, &results, data->db ) :
 			results );
 		_prune( BM_PRUNE_TERM ) }
 	else _return( 2 )
@@ -207,9 +207,9 @@ case_( register_variable_CB )
 			_break }
 		_return( 2 )
 	case '<':
-		e = eenov_inform( data->ctx, data->db, p, data->carry );
-		if (( e )) {
-			data->sub[ current ] = newItem( e );
+		i = eenov_inform( data->ctx, data->db, p, data->carry );
+		if (( i )) {
+			data->sub[ current ] = i;
 			_break }
 		_return( 2 )
 	case '?': e = bm_context_lookup( data->ctx, "?" ); break;
@@ -219,7 +219,7 @@ case_( register_variable_CB )
 	if (( e )) {
 		BMContext *carry = data->carry;
 		if (( carry ))
-			e = bm_inform_context( data->db, e, carry );
+			e = bm_inform_context( carry, e, data->db );
 		data->sub[ current ] = newItem( e );
 		_break }
 	_return( 2 )
@@ -250,7 +250,7 @@ case_( dot_expression_CB )
 		if (( results )) {
 			for ( listItem *i=results; i!=NULL; i=i->next )
 				i->ptr = ((CNInstance *) i->ptr )->sub[ 1 ];
-			data->sub[ current ] = bm_inform( data->db, &results, carry );
+			data->sub[ current ] = bm_inform( carry, &results, data->db );
 			_prune( BM_PRUNE_TERM ) }
 		else _return( 2 ) }
 	_break
@@ -315,7 +315,7 @@ case_( dot_identifier_CB )
 	CNInstance *e;
 	if (( carry )) {
 		if (( e = bm_context_lookup( ctx, p+1 ) ))
-			e = bm_inform_context( db, e, carry );
+			e = bm_inform_context( carry, e, db );
 		else _return( 2 ) }
 	else {
 		CNInstance *perso = BMContextPerso( ctx );

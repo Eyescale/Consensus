@@ -22,10 +22,10 @@ listItem *	bm_push_mark( BMContext *, char *, void * );
 void		bm_pop_mark( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
 CNInstance *	bm_lookup( int privy, char *, BMContext *, CNDB * );
-CNInstance *	bm_lookup_x( CNDB *, CNInstance *, BMContext *, CNDB * );
+CNInstance *	bm_lookup_x( BMContext *, CNDB *, CNInstance *, CNDB * );
 CNInstance *	bm_register( BMContext *, char *, CNDB *);
-listItem *	bm_inform( CNDB *, listItem **, BMContext * );
-CNInstance *	bm_inform_context( CNDB *, CNInstance *, BMContext * );
+listItem *	bm_inform( BMContext *, listItem **, CNDB * );
+CNInstance *	bm_inform_context( BMContext *, CNInstance *, CNDB * );
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;

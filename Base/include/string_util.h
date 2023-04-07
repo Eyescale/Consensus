@@ -8,7 +8,7 @@
 #include "pair.h"
 #include "list.h"
 
-typedef union { char s[2]; int value; } char_s;
+typedef union { char s[4]; int value; } char_s;
 
 int	is_separator( int event );
 int	is_printable( int event );
@@ -25,10 +25,6 @@ typedef enum {
 	PRUNE_FILTER,
 	PRUNE_LITERAL,
 	PRUNE_LIST,
-#if 0
-	PRUNE_FORMAT,
-	PRUNE_CHARACTER,
-#endif
 	PRUNE_IDENTIFIER
 } PruneType;
 char *	p_prune( PruneType type, char * );

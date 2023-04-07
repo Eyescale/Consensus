@@ -45,8 +45,8 @@ bm_locate_param( char *expression, listItem **exponent, BMLocateCB param_CB, voi
 		freeListItem( &data.stack.flags );
 		freeListItem( &data.stack.level ); }
 
-	if ( *p=='?' )
-		return p;
+	if ( *p=='?' ) {
+		return p; }
 	else {
 		freeListItem( exponent );
 		return NULL; }

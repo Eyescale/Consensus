@@ -3,6 +3,7 @@
 
 #include "entity.h"
 #include "registry.h"
+#include "string_util.h"
 
 typedef CNEntity CNInstance;
 typedef struct {
@@ -21,7 +22,7 @@ void	freeCNDB( CNDB * );
 //	data
 //===========================================================================
 CNInstance *	db_register( char *identifier, CNDB * );
-int		db_match( CNDB *, CNInstance *, CNDB *, CNInstance * );
+int		db_match( CNInstance *, CNDB *, CNInstance *, CNDB * );
 CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
@@ -56,6 +57,37 @@ inline int isProxySelf( CNInstance *proxy )
 //	i/o
 //===========================================================================
 int	db_outputf( FILE *, CNDB *, char *fmt, ... );
+
+typedef struct {
+	int type, first;
+	CNInstance *last;
+} OutputData;
+static inline void
+db_putout( CNInstance *e, CNDB *db, OutputData *data )
+{
+	if (( data->last )) {
+		if ( data->first ) {
+			printf( (data->type=='s') ? "\\{ " : "{ " );
+			data->first = 0; }
+		else printf( ", " );
+		db_outputf( stdout, db, "%_", data->last ); }
+	data->last = e;
+}
+
+inline int
+db_flush( OutputData *data, CNDB *db )
+{
+	if ( data->first ) {
+		char_s fmt;
+		fmt.value = 0;
+		sprintf( fmt.s, "%%%c", data->type );
+		db_outputf( stdout, db, fmt.s, data->last ); }
+	else {
+		printf( ", " );
+		db_outputf( stdout, db, "%_", data->last );
+		printf( " }" ); }
+	return 0;
+}
 
 //===========================================================================
 //	op (nil-based)

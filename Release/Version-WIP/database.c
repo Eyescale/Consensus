@@ -92,7 +92,7 @@ db_register( char *p, CNDB *db )
 //	db_match
 //===========================================================================
 int
-db_match( CNDB *db_x, CNInstance *x, CNDB *db_y, CNInstance *y )
+db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 /*
 	Assumption: x!=NULL
 	Note that we use y to lead the traversal - but works either way

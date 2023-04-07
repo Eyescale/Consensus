@@ -91,9 +91,9 @@ CB_OpenCB				f_push( stack )
 CB_RegisterVariableCB			f_cls; p+=2;
 					if ( strmatch( "?!", *p ) ) {
 						f_set( EENOV )
-						p = p_prune( PRUNE_TERM, p ); }
+						p = p_prune( PRUNE_TERM, p )+1; }
 					break; }
-				else if ( strmatch( "?!|%<", p[1] ) ) {
+				else if ( strmatch( "?!|%", p[1] ) ) {
 CB_RegisterVariableCB			f_cls; p+=2; break; }
 				else {
 CB_ModCharacterCB			f_cls; p++; break; }

@@ -352,6 +352,10 @@ A:CND_else_( B )
 		on_( '!' ) if ( *type&DO && ( s_empty || (are_f(ASSIGN|FILTERED) &&
 				!is_f(INFORMED|LEVEL|SUB_EXPR|SET|NEGATED)) ) ) {
 				do_( "!" )	s_take }
+			else if ( are_f(EENOV|SUB_EXPR) && !is_f(EMARKED|INFORMED|NEGATED) ) {
+				do_( same )	s_take
+						f_tag( stack, EMARKED )
+						f_set( EMARKED|INFORMED ) }
 		on_( '?' ) if ( is_f(INFORMED) ) {
 				if ( is_f(TERNARY) ) {
 					do_( "(_?" )	s_take
@@ -370,7 +374,7 @@ A:CND_else_( B )
 							f_tag( stack, MARKED )
 							f_set( MARKED|INFORMED ) } }
 		on_( ')' ) if ( is_f(EENOV) ) {
-				if ( are_f(LEVEL|INFORMED) ) {
+				if ( is_f(INFORMED) && ( is_f(LEVEL) || are_f(SUB_EXPR|EMARKED) ) ) {
 					do_( same )	s_take
 							f_pop( stack, MARKED )
 							f_set( INFORMED ) } }
@@ -458,7 +462,7 @@ CND_ifn( mode==BM_STORY, C )
 			else {	do_( "expr" )	REENTER
 						s_add( "~" )
 						f_set( NEGATED ) } // object is to prevent MARK
-		ons( "{}?" )	; //err
+		ons( "{}?!" )	; //err
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
 		end
@@ -501,6 +505,11 @@ CND_ifn( mode==BM_STORY, C )
 		end
 		in_( "%<" ) bgn_
 			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "expr" )	s_take
+							f_push( stack )
+							f_reset( EENOV|FIRST, 0 )
+							f_push( stack )
+							f_reset( EENOV|SUB_EXPR|FIRST, 0 )
 			ons( "?!" )	do_( "%<?" )	s_take
 							f_push( stack )
 							f_reset( EENOV|INFORMED|FIRST, 0 )
@@ -654,15 +663,16 @@ C:CND_endif
 		on_( '(' )	do_( "expr" )	REENTER
 						f_push( stack )
 						f_clr( SET|TERNARY )
+						f_set( FIRST|LEVEL )
 				if ( *type&DO && is_f(CLEAN) ) {
-						f_set( FIRST|LEVEL|LISTABLE ) }
-				else {		f_set( FIRST|LEVEL|CLEAN ) }
+						f_set( CLEAN|LISTABLE ) }
+				else {		f_set( CLEAN ) }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
 						f_clr( SET|TERNARY )
+						f_set( FIRST|LEVEL )
 				if ( *type&DO && is_f(CLEAN) ) {
-						f_set( FIRST|LEVEL|LISTABLE ) }
-				else {		f_set( FIRST|LEVEL ) }
+						f_set( LISTABLE ) }
 		end
 	in_( "," ) bgn_
 		ons( " \t" )	do_( same )
@@ -853,8 +863,15 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 		in_other bgn_
 			on_( '\n' )	errnum = ErrUnexpectedCR;
 			on_( ' ' )	errnum = ErrSpace;
+			on_( ')' )	errnum = ( are_f(EENOV|SUB_EXPR|INFORMED) && !is_f(LEVEL) ?
+						   ErrEMarked : ErrSyntaxError );
 			on_( '?' )	errnum = ( is_f(NEGATED) ? ErrMarkNegated :
 						   is_f(MARKED) ? ErrMarkMultiple :
+						   ErrSyntaxError );
+			on_( '!' )	errnum = ( are_f(EENOV|SUB_EXPR) && !is_f(INFORMED ) ?
+							is_f(NEGATED) ? ErrEMarkNegated :
+							is_f(EMARKED) ? ErrEMarkMultiple :
+							ErrSyntaxError :
 						   ErrSyntaxError );
 			on_other	errnum = ErrSyntaxError;
 			end
@@ -915,6 +932,12 @@ else {
 		fprintf( stderr, "Error: %s: l%dc%d: '?' already informed\n", src, l, c  ); break;
 	case ErrMarkNegated:
 		fprintf( stderr, "Error: %s: l%dc%d: '?' negated\n", src, l, c  ); break;
+	case ErrEMarked:
+		fprintf( stderr, "Error: %s: l%dc%d: '!' unspecified\n", src, l, c  ); break;
+	case ErrEMarkMultiple:
+		fprintf( stderr, "Error: %s: l%dc%d: '!' already informed\n", src, l, c  ); break;
+	case ErrEMarkNegated:
+		fprintf( stderr, "Error: %s: l%dc%d: '!' negated\n", src, l, c  ); break;
 	case ErrNarrativeEmpty:
 		fprintf( stderr, "Error: %s: l%dc%d: empty narrative\n", src, l, c  ); break;
 	case ErrNarrativeDouble:

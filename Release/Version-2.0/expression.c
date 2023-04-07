@@ -252,13 +252,13 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 					fmt += delta; }
 				else fmt++;
 			} } }
-	else if ((args)) {
-		do {
+	else {
+		if ((args)) do {
 			char *arg = args->ptr;
 			bm_output( DEFAULT_TYPE, arg, ctx );
 			args = args->next;
-		} while ((args)); }
-	else printf( "\n" );
+		} while ((args));
+		printf( "\n" ); }
 RETURN:
 	return 0;
 }

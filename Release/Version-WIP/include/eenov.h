@@ -4,10 +4,10 @@
 #include "database.h"
 #include "context.h"
 
-int eenov_output( BMContext *, int type, char * );
-CNInstance * eenov_inform( BMContext *, CNDB *, char *, BMContext * );
+int eenov_output( char *, BMContext *, OutputData * );
+listItem * eenov_inform( BMContext *, CNDB *, char *, BMContext * );
 CNInstance * eenov_lookup( BMContext *, CNDB *, char * );
-int eenov_match( BMContext *, char *, CNDB *, CNInstance * );
+int eenov_match( BMContext *, char *, CNInstance *, CNDB * );
 
 
 #endif	// EENOV_H

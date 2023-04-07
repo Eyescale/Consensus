@@ -39,6 +39,7 @@
 	BMEndPipeCB
 	BMModCharacterCB
 	BMStarCharacterCB
+	BMEMarkCharacterCB
 	BMRegisterVariableCB
 	BMTernaryOperatorCB
 	BMSubExpressionCB
@@ -130,6 +131,12 @@
 #define CB_StarCharacterCB	_CB( BMStarCharacterCB )
 #else
 #define CB_StarCharacterCB
+#endif
+
+#ifdef BMEMarkCharacterCB
+#define CB_EMarkCharacterCB	_CB( BMEMarkCharacterCB )
+#else
+#define CB_EMarkCharacterCB
 #endif
 
 #ifdef BMRegisterVariableCB

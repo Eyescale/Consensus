@@ -1,30 +1,52 @@
-#ifndef QUERY_PRIVATE_H
-#define QUERY_PRIVATE_H
+#ifndef EENOV_PRIVATE_H
+#define EENOV_PRIVATE_H
+
+#include "context.h"
+
+typedef struct {
+	CNInstance *src; // proxy
+	CNDB *db; // corresponding to src
+	CNInstance *instance;
+	union {
+		struct { OutputData *od; } output;
+		struct { BMContext *ctx; listItem *result; } inform;
+		struct { BMContext *ctx; CNDB *db; } lookup;
+		struct { CNInstance *x; CNDB *db; } match;
+	} param;
+	int success;
+	CNInstance *result;
+	struct { listItem *instance, *flags; } stack;
+} EEnovData;
+typedef enum {
+	EEnovNone,
+	EEnovSrcType,
+	EEnovInstanceType,
+	EEnovExprType
+} EEnovType;
+typedef enum {
+	EEnovOutputOp,
+	EEnovInformOp,
+	EEnovLookupOp,
+	EEnovMatchOp
+} EEnovQueryOp;
 
 //---------------------------------------------------------------------------
 //	PUSH and POP
 //---------------------------------------------------------------------------
+// Assumption: eenov exponent is AS_SUB-only
+
 #define PUSH( stack, exponent, FAIL ) \
 	while (( exponent )) { \
 		int exp = (int) exponent->ptr; \
-		if ( exp & SUB ) { \
-			e = CNSUB( e, exp&1 ); \
-			if (( e )) { \
-				addItem( &stack, i ); \
-				addItem( &stack, exponent ); \
-				exponent = exponent->next; \
-				i = newItem( e ); } \
-			else goto FAIL; } \
-		else { \
-			for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next ) \
-				if ( !db_private( privy, j->ptr, db ) ) \
-					break; \
-			if (( j )) { \
-				addItem( &stack, i ); \
-				addItem( &stack, exponent ); \
-				exponent = exponent->next; \
-				i = j; e = j->ptr; } \
-			else goto FAIL; } }
+		for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next ) { \
+			if ( !db_private( privy, j->ptr, db ) ) \
+				break; } \
+		if (( j )) { \
+			addItem( &stack, i ); \
+			addItem( &stack, exponent ); \
+			exponent = exponent->next; \
+			i = j; e = j->ptr; } \
+		else goto FAIL; }
 
 #define POP( stack, exponent, PASS, NEXT ) \
 	for ( ; ; ) { \
@@ -33,23 +55,23 @@
 			if ( !db_private( privy, i->ptr, db ) ) { \
 				e = i->ptr; \
 				goto PASS; } } \
-		else if (( stack )) \
-			POP_XPi( stack, exponent ) \
+		else if (( stack )) { \
+			POP_XPi( stack, exponent ) } \
 		else break; } \
 	if ( !NEXT ) break;
 
 #define POP_XPi( stack, exponent ) { \
 	exponent = popListItem( &stack ); \
-	int exp = (int) exponent->ptr; \
-	if ( exp & SUB ) freeItem( i ); \
 	i = popListItem( &stack ); }
 
 #define POP_ALL( stack ) \
-	while (( stack )) POP_XPi( stack, exponent )
+	freeListItem( &stack );
 
 //---------------------------------------------------------------------------
 //	LUSH and LOP	- PUSH and POP list
 //---------------------------------------------------------------------------
+// Same here as in query_private.h
+
 #define LUSH( stack, FAIL ) \
 	addItem( &stack, i ); \
 	for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
@@ -74,15 +96,5 @@
 		else break; } \
 	if ( !NEXT ) break;
 
-//---------------------------------------------------------------------------
-//	assignment	- query_assignment utility
-//---------------------------------------------------------------------------
-static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
-	// Assumption: e:( *, . ) -> returns first ( e, . )
-	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
-		if ( !db_private( 0, j->ptr, db ) )
-			return j->ptr;
-	return NULL; }
 
-
-#endif // QUERY_PRIVATE_H
+#endif // EENOV_PRIVATE_H

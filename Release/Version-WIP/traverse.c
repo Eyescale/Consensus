@@ -39,7 +39,10 @@ CB_EEnovEndCB				f_clr( EENOV )
 #endif
 				p++; break;
 			case '!':
-				p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				if ( p[1]=='!' )
+					p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				else {
+CB_EMarkCharacterCB			f_cls; p++; }
 				break;
 			case '@':
 				// Assumption: p[1]=='<' && p[2]=='\0'
@@ -89,11 +92,11 @@ CB_OpenCB				f_push( stack )
 					p++; break; }
 				else if ( p[1]=='<' ) {
 CB_RegisterVariableCB			f_cls; p+=2;
-					if ( strmatch( "?!", *p ) ) {
+					if ( strmatch( "?!(", *p ) ) {
 						f_set( EENOV )
-						p = p_prune( PRUNE_TERM, p ); }
+						p = p_prune( PRUNE_TERM, p )+1; }
 					break; }
-				else if ( strmatch( "?!|%<", p[1] ) ) {
+				else if ( strmatch( "?!|%", p[1] ) ) {
 CB_RegisterVariableCB			f_cls; p+=2; break; }
 				else {
 CB_ModCharacterCB			f_cls; p++; break; }

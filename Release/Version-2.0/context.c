@@ -293,8 +293,8 @@ bm_context_mark( BMContext *ctx, char *expression, CNInstance *x, int *marked )
 int
 bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int *marked )
 {
-	CNInstance *x = found->name;
 	CNInstance *proxy = found->value;
+	CNInstance *x = found->name;
 	listItem *xpn = NULL;
 	Pair *event = NULL;
 	if (( *src!='{' ) && ( bm_locate_mark(src,&xpn) )) {
@@ -302,22 +302,6 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int
 		event = newPair( proxy, x ); }
 	else if ( !expression )
 		return 1;
-#if 0
-	else if ( *expression==':' ) {
-		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
-		if ( !strncmp( value, "~.", 2 ) ) {
-			// we know x: ( *, . )
-			if (( bm_locate_mark( expression, &xpn ) ))
-				event = newPair( xsub(x->sub[1],&xpn), NULL ); }
-		else {
-			// we know x: (( *, . ), . )
-			if (( bm_locate_mark( value, &xpn ) )) {
-				event = newPair( xsub(x->sub[1],&xpn), x->sub[0]->sub[1] ); }
-			else if (( bm_locate_mark( expression, &xpn ) )) {
-				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x->sub[1] ); } } }
-	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
-		event = newPair( xsub(x,&xpn), NULL ); }
-#else
 	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
 		if ( !strncmp( value, "~.", 2 ) ) {
@@ -332,7 +316,6 @@ bm_context_mark_x( BMContext *ctx, char *expression, char *src, Pair *found, int
 				event = newPair( xsub(x->sub[0]->sub[1],&xpn), x ); } } }
 	else if ((x) && ( bm_locate_mark( expression, &xpn ) )) {
 		event = newPair( xsub(x,&xpn), x ); }
-#endif
 
 	if (( event )) {
 		*marked = EENOK;
