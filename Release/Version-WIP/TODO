@@ -1,32 +1,43 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Implement %<(expression)> using ! as pivot in expression, e.g.
-		on (%%,.) < ?
-			do >: %<(!,?:...)>
-	  outputs all newly instantiated %((%%,.),?:...) in %< (followed by '\n')
+	. fix BUG_TO_BE_FIXED
+		>>> in ?:~toto < . <<<<
+			fails?????
+
+	. automatically deprecate ( proxy, ... )
+	  <=> Before/At the beginning of db_update()
+		for each e: (((this,that),NULL), . )
+			db_fire( e, db )
+	    where
+		db_fire() implementation is the same as db_deprecate(), except
+		calling DB_SIGNAL_OP instead of DB_DEPRECATE_OP
+
 	. automatically deprecate ( proxy, ... ) on instantiation => signal only
 	. automatically search log( RELEASED ) for on expression < src where
 		pivot is %% and pivot.exponent is as_sub[0]^n
 	  Notes:
-	  . kinda on expression~ < src which we do not want to support
+	  . same as on expression~ < src except we do not want to support this
 	  . "spying" on signals between other connections is allowed, but
 	    requires explicitely specifying
 			on ~( proxy_dst, ... ) < proxy_src
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
 		  Actually I would like default to be all the cases which are WRONG
-		. IFN_PIVOT PUSH LUSH POP LOP => no longer #define
-		. use data.instance to return results from xp_traverse/xp_traverse_list
-	. do >: expression should append '\n' to the result
 	. Version-2.0 README.txt - document output changes
 		. multiple output format supported - with vector
 			e.g. do >"%s%s":<*alpha,*beta>
-		. format %s allows single quote to be used without
-		  requiring the corresponding SCE to be instantiating
+			     do >: expression post-outputs '\n'
+		. format %s allows single quote to be used without requiring
+		  the corresponding SCE to be instantiated
 			e.g do >"%s\n":'h'	// will work
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
+	. WARNING: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
+		=> These instances will not be found in Version-2.0 when the
+		   query expression is non-pivotable
+		=> Not a problem in Version-2.1 (currently WIP) as these will
+		   only be created as DB_SIGNAL_OP
 	. WARNING: self and parent proxies are manifested on new cell creation
 	     =>	: // will output @@@
 			on init
@@ -50,6 +61,12 @@ WIP
 		  building up on 1_Schematize/yak.new example
 
 DONE
+	. do >: expression // appends '\n' to the resulting output
+	. %<(expression)> done, using ! as pivot in expression, e.g.
+		on (%%,.) < ?
+			do >: %<(!,?:...)>
+	  	does output all newly instantiated %((%%,.),?:...) in %<
+		(followed by '\n')
 	. %( list, ?:... ) implementation done
 	  conceptually the same as %((list,...),?) - not implemented -
 	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp

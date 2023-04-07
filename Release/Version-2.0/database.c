@@ -139,11 +139,14 @@ FAIL:
 //===========================================================================
 CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
+/*
+	Assumption: proxy not already created
+*/
 {
 	CNInstance *proxy = NULL;
 	if (( that )) {
 		proxy = cn_new( cn_new( this, that ), NULL );
-		if (( this )) db_op( DB_MANIFEST_OP, proxy, db ); }
+		if ( !this ) db_op( DB_MANIFEST_OP, proxy, db ); }
 	return proxy;
 }
 

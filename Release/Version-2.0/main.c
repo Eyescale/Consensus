@@ -41,7 +41,7 @@ main( int argc, char *argv[] )
 		cnStoryOutput( stdout, story );
 	else {
 		CNProgram *program = newProgram( story, path[1] );
-		do cnUpdate( program );
+		do { cnUpdate( program ); }
 		while ( cnOperate( program ) );
 		freeProgram( program ); }
 	freeStory( story );

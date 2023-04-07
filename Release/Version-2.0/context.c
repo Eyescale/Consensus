@@ -99,8 +99,6 @@ bm_context_init( BMContext *ctx )
 	db_update( db, NULL );
 	// activate parent connection, if there is
 	update_active( BMContextActive(ctx) );
-	// in case someone (parent) listens
-	db_manifest( BMContextSelf(ctx), db );
 	db_init( db );
 }
 int

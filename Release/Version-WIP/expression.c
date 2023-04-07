@@ -263,10 +263,11 @@ bm_output( int type, char *arg, BMContext *ctx )
 	note that we rely on bm_query to eliminate doublons
 */
 {
+	// special case: single quote / format "%s" - output as-is
 	if ( *arg=='\'' && type=='s' ) {
 		char_s q;
 		if ( charscan( arg+1, &q ) )
-			fprintf( stdout, "%c", q.value );
+			printf( "%c", q.value );
 		return 0; }
 
 	OutputData data;

@@ -130,7 +130,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
-	if ( DBInitOn(db_x) ) return NULL;
+//	if ( DBInitOn(db_x) ) return NULL;
 
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
