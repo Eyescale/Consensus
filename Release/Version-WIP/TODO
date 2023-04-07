@@ -1,9 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. fix BUG_TO_BE_FIXED
-		>>> in ?:~toto < . <<<<
-			fails?????
-
 	. automatically deprecate ( proxy, ... )
 	  <=> Before/At the beginning of db_update()
 		for each e: (((this,that),NULL), . )
@@ -33,6 +29,18 @@ TODO
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
+	. WARNING: tricky usage of ~ esp. in EENO
+		e.g. on ?:~toto < .
+		does not mean that anything other than toto will pass
+		it means that anything other than *what the caller has*
+		other than toto will pass -- note that in this case we
+		do not have pivot, and that the expression, since it is
+		negated, will be dereferenced first in the caller
+		in other words: ~instance does not mean "not this instance",
+		but the set of instances other than this instance in the CNDB
+		Therefore it has to be dereferenced in the caller's CNDB first,
+		as EENO are external *event* occurrences, and are not supposed to
+		give access to the contents of the external CNDB
 	. WARNING: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
 		=> These instances will not be found in Version-2.0 when the
 		   query expression is non-pivotable
