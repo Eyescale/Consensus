@@ -30,10 +30,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				break; // already to-be-released, possibly manifested
 			// case newborn, possibly manifested (reassigned)
 			else if (( f->as_sub[ 0 ] )) { // can only be ( f, nil )
-				if ( op == DB_SIGNAL_OP ) {
-					// remove (( e, nil ), nil )
-					db_remove( f->as_sub[0]->ptr, db ); }
-				else if (( g = cn_instance( nil, e, 0 ) )) {
+				if ( op==DB_SIGNAL_OP || ( cn_instance( nil, e, 0 ) )) {
 					// remove (( e, nil ), nil ) only
 					db_remove( f->as_sub[0]->ptr, db ); }
 				// create ( nil, ( e, nil )) (to be released)

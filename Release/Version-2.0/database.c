@@ -141,13 +141,10 @@ CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 /*
 	Assumption: proxy not already created
+	Note that we do not manifest new proxy
 */
 {
-	CNInstance *proxy = NULL;
-	if (( that )) {
-		proxy = cn_new( cn_new( this, that ), NULL );
-		if ( !this ) db_op( DB_MANIFEST_OP, proxy, db ); }
-	return proxy;
+	return ((that) ? cn_new( cn_new(this,that), NULL ) : NULL );
 }
 
 //===========================================================================
@@ -248,11 +245,6 @@ db_unassign( CNInstance *x, CNDB *db )
 //===========================================================================
 void
 db_deprecate( CNInstance *x, CNDB *db )
-/*
-	Assumption: x is deprecatable
-	deprecate (ie. set "to-be-released") x and all its ascendants,
-	proceeding top-down
-*/
 {
 	if ( !x ) return;
 

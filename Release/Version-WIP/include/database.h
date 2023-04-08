@@ -73,7 +73,6 @@ db_putout( CNInstance *e, CNDB *db, OutputData *data )
 		db_outputf( stdout, db, "%_", data->last ); }
 	data->last = e;
 }
-
 inline int
 db_flush( OutputData *data, CNDB *db )
 {

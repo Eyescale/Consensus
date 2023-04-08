@@ -141,13 +141,10 @@ CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 /*
 	Assumption: proxy not already created
+	Note that we do not manifest new proxy
 */
 {
-	CNInstance *proxy = NULL;
-	if (( that )) {
-		proxy = cn_new( cn_new( this, that ), NULL );
-		if ( !this ) db_op( DB_MANIFEST_OP, proxy, db ); }
-	return proxy;
+	return ((that) ? cn_new( cn_new(this,that), NULL ) : NULL );
 }
 
 //===========================================================================
@@ -244,17 +241,27 @@ db_unassign( CNInstance *x, CNDB *db )
 }
 
 //===========================================================================
-//	db_deprecate
+//	db_fire, db_deprecate
 //===========================================================================
-void
-db_deprecate( CNInstance *x, CNDB *db )
+static inline void db_spread( DBOperation op, CNInstance *, CNDB * );
 /*
 	Assumption: x is deprecatable
 	deprecate (ie. set "to-be-released") x and all its ascendants,
 	proceeding top-down
 */
+void
+db_fire( CNInstance *x, CNDB *db )
 {
-	if ( !x ) return;
+	db_spread( DB_SIGNAL_OP, x, db );
+}
+void
+db_deprecate( CNInstance *x, CNDB *db )
+{
+	if (( x )) db_spread( DB_DEPRECATE_OP, x, db );
+}
+static inline void
+db_spread( DBOperation op, CNInstance *x, CNDB *db )
+{
 
 	listItem * stack = NULL,
 		 * i = newItem( x ),
@@ -270,7 +277,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 			add_item( &stack, ndx );
 			ndx=0; i=j; continue; }
 
-		if ( ndx ) db_op( DB_DEPRECATE_OP, x, db );
+		if ( ndx ) db_op( op, x, db );
 		else { ndx=1; continue; }
 		for ( ; ; ) {
 			if (( i->next )) {
@@ -280,7 +287,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 			else if (( stack )) {
 				ndx = pop_item( &stack );
 				i = popListItem( &stack );
-				if ( ndx ) db_op( DB_DEPRECATE_OP, i->ptr, db );
+				if ( ndx ) db_op( op, i->ptr, db );
 				else { ndx=1; break; } }
 			else goto RETURN; } }
 RETURN:

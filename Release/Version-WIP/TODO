@@ -1,20 +1,20 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. automatically deprecate ( proxy, ... )
-	  <=> Before/At the beginning of db_update()
+	. automatically deprecate ( proxy, ... ) on instantiation => signal only
+	  i.e. Before/At the beginning of db_update(), perform
+
 		for each e: (((this,that),NULL), . )
 			db_fire( e, db )
-	    where
-		db_fire() implementation is the same as db_deprecate(), except
-		calling DB_SIGNAL_OP instead of DB_DEPRECATE_OP
+		where
+			db_fire() implementation is the same as db_deprecate(),
+			except calling DB_SIGNAL_OP instead of DB_DEPRECATE_OP
 
-	. automatically deprecate ( proxy, ... ) on instantiation => signal only
 	. automatically search log( RELEASED ) for on expression < src where
 		pivot is %% and pivot.exponent is as_sub[0]^n
 	  Notes:
-	  . same as on expression~ < src except we do not want to support this
-	  . "spying" on signals between other connections is allowed, but
-	    requires explicitely specifying
+		. same as on expression~ < src except we do not want to support this
+		. "spying" on signals occurring between other cells is allowed, but
+		  requires explicitely specifying
 			on ~( proxy_dst, ... ) < proxy_src
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
@@ -29,8 +29,16 @@ TODO
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
+	. WARNING: in Version-2.0 implementation (db_op.c)
+		signals as newborn entities become to-be-released => immediately visible
+		whereas released entities cannot become signals => not repeatable
+	    whereas
+		in Version-WIP signals as newborn entities are both newborn and
+		to-be-released, newborn to-be-released entities being born as released
+		Furthermore, released entities can repeat as signals, using the new
+		combination (e,nil) and ((nil,e),nil)
 	. WARNING: tricky usage of ~ esp. in EENO
-		e.g. on ?:~toto < .
+		e.g. on ?:~toto < .be
 		does not mean that anything other than toto will pass
 		it means that anything matching *what the caller has*
 		other than toto will pass -- note that in this case we
@@ -69,7 +77,9 @@ WIP
 		  building up on 1_Schematize/yak.new example
 
 DONE
-	. do >: expression // appends '\n' to the resulting output
+	. db_proxy() no longer manifests new proxies [rev-2.0]
+		<=> proxy instantiation does not trigger any event
+	. do >: expression // appends '\n' to the resulting output [rev-2.0]
 	. %<(expression)> done, using ! as pivot in expression, e.g.
 		on (%%,.) < ?
 			do >: %<(!,?:...)>

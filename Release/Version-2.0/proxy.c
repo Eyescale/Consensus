@@ -99,8 +99,7 @@ bm_proxy_in( CNInstance *proxy )
 	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	CNInstance *self = BMContextSelf( ctx );
-	return db_manifested( self, db );
+	return DBInitOn( db );
 }
 int
 bm_proxy_out( CNInstance *proxy )

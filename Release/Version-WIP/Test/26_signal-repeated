@@ -1,0 +1,10 @@
+
+	on init
+		do toto~
+	else on ~( toto )
+		do >"hello\n"
+		in titi
+			do exit
+		else
+			do titi
+			do toto~

@@ -99,8 +99,7 @@ bm_proxy_in( CNInstance *proxy )
 	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	CNInstance *self = BMContextSelf( ctx );
-	return db_manifested( self, db );
+	return DBInitOn( db );
 }
 int
 bm_proxy_out( CNInstance *proxy )
@@ -130,7 +129,6 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
-//	if ( DBInitOn(db_x) ) return NULL;
 
 	int privy = ( type==BM_RELEASED ? 1 : 0 );
         CNInstance *success = NULL, *e;
