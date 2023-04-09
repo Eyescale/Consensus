@@ -39,16 +39,25 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				break; // already to-be-released, possibly manifested
 			// case released, possibly to-be-released (signal), xor
 			// to-be-manifested (rehabilitated)
-			else {
-				if (( g = cn_instance( nil, e, 0 ) )) {
+			else if (( g = cn_instance( nil, e, 0 ) )) {
+				switch ( op ) {
+				case DB_DEPRECATE_OP:
 					if (( g->as_sub[ 1 ] )) { // rehabilitated
 						// remove ( nil, ( nil, e )) and ( nil, e )
 						db_remove( g->as_sub[1]->ptr, db );
-						// remove ( nil, e )
-						db_remove( g, db ); } }
-				if ( op==DB_SIGNAL_OP ) {
-					// create ( ( nil, e ), nil ) (signal)
-					cn_new( cn_new( nil, e ), nil ); } } }
+						db_remove( g, db ); }
+					break;
+				default: // DB_SIGNAL_OP:
+					if (( g->as_sub[ 1 ] )) { // rehabilitated
+						// remove ( nil, ( nil, e ))
+						db_remove( g->as_sub[1]->ptr, db ); }
+					if ( !g->as_sub[ 0 ] ) {
+						// create ( ( nil, e ), nil ) (signal)
+						cn_new( g, nil ); } } }
+			// just released
+			else if ( op==DB_SIGNAL_OP ) {
+				// create ( ( nil, e ), nil ) (signal)
+				cn_new( cn_new( nil, e ), nil ); } }
 		else {
 			/* neither released, nor newborn, nor to-be-released
 			   possibly manifested or to-be-manifested
@@ -79,7 +88,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				if ( !f->as_sub[ 0 ] ) db_remove( f, db ); }
 			// case released, possibly to-be-released (signal), xor
 			// to-be-manifested (rehabilitated)
-			else if ( !cn_instance( nil, e, 0 ) ) {
+			else if ( !cn_instance( nil, e, 0 ) ) { // just released
 				// create ( nil, ( nil, e )) (to be manifested)
 				cn_new( nil, cn_new( nil, e ) ); } }
 		else if ( op==DB_REHABILITATE_OP )
@@ -267,89 +276,5 @@ db_log( int first, int released, CNDB *db, listItem **stack )
 		return e; }
 
 	return NULL;
-}
-
-//===========================================================================
-//	db_private
-//===========================================================================
-int
-db_private( int privy, CNInstance *e, CNDB *db )
-/*
-	called by xp_traverse() and xp_verify()
-	. if privy==0
-		returns 1 if either newborn (not reassigned) or released
-		returns 0 otherwise
-	. if privy==1 - traversing db_log( released, ... )
-		returns 1 if newborn (not reassigned)
-		returns 0 otherwise
-	. if privy==2 - traversing %| or in proxy_feel_assignment()
-		returns 1 if e:( ., nil ) or e:( nil, . )
-		returns 0 otherwise
-*/
-{
-	CNInstance *nil = db->nil;
-	if ( e->sub[0]==nil || e->sub[1]==nil )
-		return 1;
-	if ( privy == 2 ) return 0;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	if (( f )) {
-		if ( f->as_sub[ 1 ] ) // to be released
-			return !!f->as_sub[ 0 ]; // newborn
-		if ( f->as_sub[ 0 ] ) // newborn or reassigned
-			return !cn_instance( nil, e, 0 );
-		return !privy; } // released
-	return 0;
-}
-
-//===========================================================================
-//	db_to_be_manifested
-//===========================================================================
-int
-db_to_be_manifested( CNInstance *e, CNDB *db )
-/*
-	called by db_instantiate() in case of assignment
-	returns 1 if e is either newborn or to-be-manifested
-	returns 0 otherwise.
-	Assumption: we don't have e:(.,nil) or e:(nil,.)
-*/
-{
-	CNInstance *nil = db->nil, *f = cn_instance( e, nil, 1 );
-	if (( f ) && (f->as_sub[0] ) ) return 1; // newborn
-	f = cn_instance( nil, e, 0 );
-	if (( f ) && (f->as_sub[1] ) ) return 1; // to-be-manifested
-	return 0;
-}
-
-//===========================================================================
-//	db_deprecatable / db_deprecated / db_manifested
-//===========================================================================
-int
-db_deprecatable( CNInstance *e, CNDB *db )
-/*
-	called by db_deprecate() and db_instantiate() (reassign)
-	returns 0 if e is either released or to-be-released,
-		which we assume applies to all its ascendants
-	returns 1 otherwise.
-*/
-{
-	CNInstance *nil = db->nil;
-	if ( e->sub[0]==nil || e->sub[1]==nil )
-		return 0;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
-}
-int
-db_deprecated( CNInstance *e, CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	return (( f ) && !f->as_sub[0] && !f->as_sub[1] );
-}
-int
-db_manifested( CNInstance *e, CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	CNInstance *f = cn_instance( nil, e, 0 );
-	return (( f ) && !f->as_sub[1] );
 }
 

@@ -39,7 +39,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			else if (( g = cn_instance( nil, e, 0 ) )) {
 				// remove ( nil, ( nil, e )) and ( nil, e )
 				db_remove( g->as_sub[1]->ptr, db );
-				// remove ( nil, e )
 				db_remove( g, db ); }
 			/* else already released */ }
 		else {

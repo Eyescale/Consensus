@@ -280,13 +280,13 @@ bm_output( int type, char *arg, BMContext *ctx )
 		return eenov_output( arg, ctx, &data );
 
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
-	return db_flush( &data, BMContextDB(ctx) );
+	return db_out_flush( &data, BMContextDB(ctx) );
 }
 
 static BMCBTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	db_putout( e, BMContextDB(ctx), (OutputData *) user_data );
+	db_out_put( e, BMContextDB(ctx), (OutputData *) user_data );
 	return BM_CONTINUE;
 }
 

@@ -18,8 +18,8 @@ newContext( CNEntity *cell, CNEntity *parent )
 	Registry *ctx = newRegistry( IndexedByCharacter );
 	CNDB *db = newCNDB();
 	Pair *id = newPair(
-		db_proxy( NULL, cell, db ),
-		db_proxy( cell, parent, db ) );
+		db_new_proxy( NULL, cell, db ),
+		db_new_proxy( cell, parent, db ) );
 	Pair *active = newPair(
 		newPair( NULL, NULL ),
 		NULL );
@@ -112,13 +112,12 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
-	// deprecate dangling connections
+	// fire resp. deprecate [dangling] connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
-		if (( connection->sub[ 1 ] )) continue;
 		CNInstance *proxy = connection->as_sub[0]->ptr;
-		if ( db_deprecatable( proxy, db ) )
-			db_deprecate( proxy, db ); }
+		if (( connection->sub[ 1 ] )) db_fire_proxy( proxy, db );
+		else db_deprecate_proxy( proxy, db ); }
 	// invoke db_update - turning deprecated into released
 	db_update( db, BMContextParent(ctx) );
 	// deactivate released connections
@@ -486,7 +485,7 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 		if ( connection->sub[ 1 ]==that )
 			return connection->as_sub[ 0 ]->ptr; }
 
-	return ( inform ? db_proxy(this,that,db) : NULL );
+	return ( inform ? db_new_proxy(this,that,db) : NULL );
 }
 
 //===========================================================================

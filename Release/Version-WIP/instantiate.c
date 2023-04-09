@@ -127,7 +127,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 		bm_context_finish( carry, 0 );
 	else {
 		bm_context_finish( carry, 1 );
-		proxy = db_proxy( cell, new, data->db );
+		proxy = db_new_proxy( cell, new, data->db );
 		bm_context_activate( ctx, proxy ); }
 	traverse_data->done = 1;
 	return proxy;

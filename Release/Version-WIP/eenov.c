@@ -31,7 +31,7 @@ eenov_output( char *p, BMContext *ctx, OutputData *od )
 	case EEnovExprType:
 		data.param.output.od = od;
 		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );
-		return db_flush( od, data.db ); }
+		return db_out_flush( od, data.db ); }
 }
 listItem *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
@@ -260,7 +260,7 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
 {
 	switch ( op ) {
 	case EEnovOutputOp:
-		db_putout( e, db, data->param.output.od );
+		db_out_put( e, db, data->param.output.od );
 		return BM_CONTINUE;
 	case EEnovInformOp:
 		e = bm_inform_context( data->param.inform.ctx, e, db );

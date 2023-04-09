@@ -1,43 +1,42 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. automatically deprecate ( proxy, ... ) on instantiation => signal only
-	  i.e. Before/At the beginning of db_update(), perform
-
-		for each e: (((this,that),NULL), . )
-			db_fire( e, db )
-		where
-			db_fire() implementation is the same as db_deprecate(),
-			except calling DB_SIGNAL_OP instead of DB_DEPRECATE_OP
-
-	. automatically search log( RELEASED ) for on expression < src where
-		pivot is %% and pivot.exponent is as_sub[0]^n
-	  Notes:
-		. same as on expression~ < src except we do not want to support this
-		. "spying" on signals occurring between other cells is allowed, but
-		  requires explicitely specifying
-			on ~( proxy_dst, ... ) < proxy_src
+	. implement
+		do (( a, ... ), b, c, ... )
+		do ( a, b, c, ... )
+	. publish %@
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
 		  Actually I would like default to be all the cases which are WRONG
-	. Version-2.0 README.txt - document output changes
-		. multiple output format supported - with vector
-			e.g. do >"%s%s":<*alpha,*beta>
-			     do >: expression post-outputs '\n'
-		. format %s allows single quote to be used without requiring
-		  the corresponding SCE to be instantiated
-			e.g do >"%s\n":'h'	// will work
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
-	. WARNING: in Version-2.0 implementation (db_op.c)
+
+TODOC
+	. write Consensus B% Version-2.0 Programming Guide
+		. Reminder: instantiation may do half a job, as
+		  we do not pre-check with bm_void
+	. update Consensus B% Version-1.x programming guide to
+		  include Version-1.2 features - as Addendum (?)
+	. Version-2.0 Announcement
+		. Next Step: Version-2.1 (now Version-WIP)
+		  building up on 1_Schematize/yak.new example
+	. Version-2.0 README.txt - document output changes
+		. multiple output format supported - with vector
+			e.g. do >"%s%s":<*alpha,*beta>
+		. default format ("%_") appends '\n' to the resulting output
+			e.g. do >: expression
+			  or do >:< expression(s) >
+		. format %s allows single quote to be used without requiring
+		  the corresponding SCE to be instantiated
+			e.g do >"%s\n":'h'	// will always work
+	. CAVEAT: in Version-2.0 implementation (db_op.c)
 		signals as newborn entities become to-be-released => immediately visible
 		whereas released entities cannot become signals => not repeatable
 	    whereas
-		in Version-WIP signals as newborn entities are both newborn and
-		to-be-released, newborn to-be-released entities being born as released
-		Furthermore, released entities can repeat as signals, using the new
-		combination (e,nil) and ((nil,e),nil)
-	. WARNING: tricky usage of ~ esp. in EENO
+		in Version-WIP entities can be both newborn and to-be-released, these
+		entities being born as released; furthermore, released entities can be
+		reborn as released, using the new combination (e,nil) x ((nil,e),nil)
+	. CAVEAT: tricky usage of ~ esp. in EENO
 		e.g. on ?:~toto < .be
 		does not mean that anything other than toto will pass
 		it means that anything matching *what the caller has*
@@ -49,12 +48,12 @@ TODO
 		Therefore it has to be dereferenced in the caller's CNDB first,
 		as EENO are external *event* occurrences, and are not supposed to
 		give access to the contents of the external CNDB
-	. WARNING: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
+	. CAVEAT: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
 		=> These instances will not be found in Version-2.0 when the
 		   query expression is non-pivotable
 		=> Not a problem in Version-2.1 (currently WIP) as these will
 		   only be created as DB_SIGNAL_OP
-	. WARNING: self and parent proxies are manifested on new cell creation
+	. CAVEAT: self and parent proxies are manifested on new cell creation
 	     =>	: // will output @@@
 			on init
 				do !! Cell()	// new cell
@@ -65,18 +64,11 @@ TODO
 			on init
 				do ( hello, world )
 				do exit
-WIP
-	. Documentation
-		1. write Consensus B% Version-2.0 Programming Guide
-			. Reminder: instantiation may do half a job, as
-			  we do not pre-check with bm_void
-		2. update Consensus B% Version-1.x programming guide to
-		  include Version-1.2 features - as Addendum (?)
-	. Version-2.0 Announcement
-		. Next Step: Version-2.1 (now Version-WIP)
-		  building up on 1_Schematize/yak.new example
 
 DONE
+	. implemented db_fire_proxy( proxy, db )
+		. called in bm_context_update() before db_update()
+		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
 	. db_proxy() no longer manifests new proxies [rev-2.0]
 		<=> proxy instantiation does not trigger any event
 	. do >: expression // appends '\n' to the resulting output [rev-2.0]
@@ -84,7 +76,6 @@ DONE
 		on (%%,.) < ?
 			do >: %<(!,?:...)>
 	  	does output all newly instantiated %((%%,.),?:...) in %<
-		(followed by '\n')
 	. %( list, ?:... ) implementation done
 	  conceptually the same as %((list,...),?) - not implemented -
 	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
