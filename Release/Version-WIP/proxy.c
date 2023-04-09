@@ -146,11 +146,6 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 		success = proxy_feel_assignment( proxy, expression, &traverse_data );
 	else {
 		listItem *s = NULL;
-		if ( type==BM_INSTANTIATED ) {
-			for ( char *p=expression; *p=='('; p++ ) {
-				if ( !strncmp( p+1, "%%", 2 ) ) {
-					type = BM_RELEASED;
-					break; } } }
 		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
 			data.x = e;
 			proxy_feel_traversal( expression, &traverse_data, FIRST );
