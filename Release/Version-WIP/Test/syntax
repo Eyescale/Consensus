@@ -51,5 +51,6 @@
 		do : p : %<?:((?,.),.)>
 	else in ( toto, %( list, ?:... ) )
 	else in %<((tata,(!,.)),?:...)>
+		do (( toto, ... ), titi )
 	else
 		do exit

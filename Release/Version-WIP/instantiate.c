@@ -139,6 +139,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 static listItem *bm_couple( listItem *sub[2], CNDB * );
 static CNInstance *bm_literal( char **, CNDB * );
 static listItem *bm_list( char **, listItem **, CNDB * );
+static listItem *bm_xpan( char **, listItem **, BMContext * );
 
 #define current ( is_f( FIRST ) ? 0 : 1 )
 
@@ -223,19 +224,31 @@ case_( register_variable_CB )
 		data->sub[ current ] = newItem( e );
 		_break }
 	_return( 2 )
-case_( list_CB )
-	/*	((expression,...):_sequence_:)
-	   start p ----------^               ^
-		     return p ---------------
-	*/
+case_( ellipsis_CB )
 	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
-	data->sub[ 0 ] = bm_list( q, data->sub, db );
+	switch ( p[4] ) {
+	case ',':
+		/* We have ((expression,...),expression)
+		   start p -------------^              ^
+			     return p=*q --------------
+		*/
+		data->sub[ 0 ] = ((carry) ?
+			bm_xpan( q, data->sub, carry ) :
+			bm_xpan( q, data->sub, data->ctx ));
+		break;
+	default:
+		/* We have ((expression,...):_sequence_:)
+		   start p -------------^               ^
+			     return p=*q ---------------
+		*/
+		data->sub[ 0 ] = ((carry) ?
+			bm_list( q, data->sub, BMContextDB(carry) ) :
+			bm_list( q, data->sub, data->db )); }
 	_break
 case_( literal_CB )
 	/*		(:_sequence_:)
 	   start p -----^             ^
-		return p -------------
+		return p=*q ----------
 	*/
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
@@ -373,7 +386,7 @@ bm_couple( listItem *sub[2], CNDB *db )
 }
 
 //---------------------------------------------------------------------------
-//	bm_literal
+//	bm_literal, bm_list
 //---------------------------------------------------------------------------
 static char *sequence_step( char *, CNInstance **, CNDB * );
 
@@ -412,9 +425,6 @@ RETURN:
 	return e;
 }
 
-//---------------------------------------------------------------------------
-//	bm_list
-//---------------------------------------------------------------------------
 static listItem *
 bm_list( char **position, listItem **sub, CNDB *db )
 /*
@@ -497,6 +507,41 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		p++; }
 	wi[ 2 ] = e;
 	return p;
+}
+
+//---------------------------------------------------------------------------
+//	bm_xpan
+//---------------------------------------------------------------------------
+static BMQueryCB xpan_CB;
+
+static listItem *
+bm_xpan( char **position, listItem **sub, BMContext *ctx )
+/*
+	Assumption: ((expression,...),sub-expression)
+	  start	*position -------^                  ^
+		 return *position ------------------
+	converts into ((((expression,a),b),...),z)
+		where {a,b,...,z}==either
+			sub-expression query results
+*/
+{
+	listItem *results = NULL;
+	if (( sub[0] )) {
+		CNInstance *e;
+		char *p = *position + 5; // start past "...),"
+		while (( e=popListItem(&sub[0]) )) {
+			bm_query( BM_CONDITION, p, ctx, xpan_CB, &e );
+			addItem( &results, e ); } }
+	*position = p_prune( PRUNE_LIST, *position );
+	return results;
+}
+
+static BMCBTake
+xpan_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	CNInstance **instance = user_data;
+	*instance = db_instantiate( *instance, e, BMContextDB(ctx) );
+	return BM_CONTINUE;
 }
 
 //===========================================================================

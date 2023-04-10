@@ -4,9 +4,7 @@
 		do ((*,toto),titi)
 	else on ?:((*,toto),titi)
 		do >:%((.,?):%?)
-		do >:
 	else in ?:%((*,?),titi)
 		do >"%_\n":%?
 		do >:%((.,%?),?)
-		do >:
 		do exit

@@ -1,0 +1,11 @@
+
+	on init
+		do : proxy : !! Func()
+	else
+		on ~( %%, ? ) < .
+			do >"Received: %_\n": %<?>
+			do exit
+: Func
+	on init
+		do ( .., ( hello, world ))
+		do exit

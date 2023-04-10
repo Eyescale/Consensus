@@ -1,0 +1,12 @@
+
+	on init
+		do ( A, toto )
+		do ( A, titi )
+		do ( A, tata )
+		do ( A, tutu )
+		do ( A, zebulon )
+	else on A
+		do (( B, ... ), %(A,?) )
+	else
+		do >: %( B, ?:... )
+		do exit

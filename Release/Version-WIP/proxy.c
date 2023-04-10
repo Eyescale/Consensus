@@ -12,19 +12,18 @@
 //===========================================================================
 //	bm_proxy_scan
 //===========================================================================
-static void proxy_verify( CNInstance *, char *, BMQueryData *, listItem ** );
 // #define TYPED
 
 #ifdef TYPED
-#define VERIFY( e, p, data ) \
-	bm_verify( e, p, data )==BM_DONE
 #define TYPESET( type ) \
 	data.type = type; \
 	data.privy = ( type==BM_RELEASED ? 1 : 0 );
-#else
 #define VERIFY( e, p, data ) \
-	xp_verify( e, p, data )
+	( bm_verify( e, p, data )==BM_DONE )
+#else
 #define TYPESET( type )
+#define VERIFY( e, p, data ) \
+	( xp_verify( e, p, data ) )
 #endif
 
 listItem *
@@ -66,7 +65,7 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 			do {	p++;
 				if ( !strncmp( p, "%%", 2 ) )
 					{ p+=2; continue; }
-				if ( VERIFY( proxy, p, &data ) ) {
+				if VERIFY( proxy, p, &data ) {
 					addIfNotThere( &results, proxy );
 					break; }
 				p = p_prune( PRUNE_TERM, p ); }
@@ -167,9 +166,7 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 //	proxy_feel_traversal
 //---------------------------------------------------------------------------
 static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
-static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
-#define proxy_verify( p, data ) \
-	bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data )
+static inline CNInstance * proxy_verify( char *p, ProxyFeelData *data );
 
 BMTraverseCBSwitch( proxy_feel_traversal )
 case_( term_CB )
@@ -203,6 +200,12 @@ case_( identifier_CB )
 	_break
 BMTraverseCBEnd
 
+static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
+static inline CNInstance *
+proxy_verify( char *p, ProxyFeelData *data )
+{
+	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data );
+}
 static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {

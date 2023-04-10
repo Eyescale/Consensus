@@ -76,7 +76,7 @@ CB_BgnPipeCB			f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;
 			case '*':
-				if ( !is_separator(p[1]) || strmatch("*.%(",p[1]) ) {
+				if ( !is_separator(p[1]) || strmatch("*.%(?",p[1]) ) {
 CB_DereferenceCB			f_clr( INFORMED ) }
 				else {
 CB_StarCharacterCB			f_cls }
@@ -166,7 +166,15 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					f_cls; break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
-CB_ListCB					f_pop( stack, 0 )
+#ifdef BMEllipsisCB
+CB_EllipsisCB					f_pop( stack, 0 )
+#else
+						if ( !strncmp( p+3, "):", 2 ) ) {
+							p = p_prune( PRUNE_LIST, p );
+							f_pop( stack, 0 ) }
+						else {
+							p+=3; }
+#endif
 						f_cls; break; }
 					else {
 CB_RegisterVariableCB				f_cls; p+=2; break; } }

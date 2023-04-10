@@ -467,7 +467,7 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '*' )	do_( same )	s_take
-		ons( ".%(" )	do_( "expr" )	REENTER
+		ons( ".%(?" )	do_( "expr" )	REENTER
 		ons( "~{" )	; //err
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )

@@ -6,7 +6,7 @@ TODO
 	. publish %@
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
-		  Actually I would like default to be all the cases which are WRONG
+		  Actually I would like default to cover all the terminal cases
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal

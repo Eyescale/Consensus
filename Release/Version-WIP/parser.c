@@ -479,7 +479,7 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '*' )	do_( same )	s_take
-		ons( ".%(" )	do_( "expr" )	REENTER
+		ons( ".%(?" )	do_( "expr" )	REENTER
 		ons( "~{" )	; //err
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
@@ -749,7 +749,9 @@ else					; // err
 			on_( ')' )	do_( ",...)" )	f_pop( stack, 0 )
 			end
 		in_( ",...)" ) bgn_
+			ons( " \t" )	do_( same )
 			on_( ':' )	do_( "(:" )	s_add( "...):" )
+			on_( ',' )	do_( "expr" )	s_add( "...)," )
 			end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )

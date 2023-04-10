@@ -40,9 +40,10 @@ bm_scan( char *expression, BMContext *ctx )
 	return results;
 }
 static BMCBTake
-scan_CB( CNInstance *e, BMContext *ctx, void *results )
+scan_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	addIfNotThere((listItem **) results, e );
+	listItem **results = user_data;
+	addItem( results, e );
 	return BM_CONTINUE;
 }
 

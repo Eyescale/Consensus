@@ -1,0 +1,28 @@
+
+	on init
+		do :func: !!Func()
+#	else on ?:~toto < .	// GOOD: tries to match with something other than toto
+#	else on ?:~(*func) < .	// GOOD: tries to match with something other than *func
+#	else on (?:*func) < .
+	else on init < .
+		do >"INIT\n"
+	else on ? < .
+		in %%:%<?>
+			do >"BINGO\n"
+		else in *func:%<?>
+			do >"Wow!\n"
+#		in %<?>:~toto	// GOOD: tries to match with something other than toto
+#		in %<?>:toto	// GOOD - toto not instantiated
+		in %<?:~toto>	// GOOD
+			do >"TAG-"
+		do >"gotcha: %_\n": %<?>
+		on exit < .
+			do exit
+: Func
+	on init
+		do toto
+	else on toto
+		do titi
+	else on titi
+		do tata
+		do exit
