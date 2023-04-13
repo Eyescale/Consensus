@@ -46,9 +46,24 @@ StringAppend( CNString *string, int event )
 */
 {
 #ifdef DEBUG_2
-	output( Debug, "StringAppend: '%c'", (char) event );
+	output( Debug, "StringAppend: '%c'", event );
 #endif
 	add_item( (listItem**) &string->data, event );
+	return 0;
+}
+int
+StringAffix( CNString *string, int event )
+/*
+	Assumption: string->mode == CNStringBytes
+*/
+{
+#ifdef DEBUG_2
+	output( Debug, "StringAffix: '%c'", event );
+#endif
+	listItem *list = string->data;
+	if ( !list ) return StringAppend( string, event );
+	while (( list->next )) list = list->next;
+	list->next = new_item( event );
 	return 0;
 }
 char *
@@ -833,10 +848,12 @@ strscanid( char *str, char **identifier )
 int
 strmatch( char *s, int event )
 {
-	if ( *s ) {
-		do { if ( event == *s++ ) return 1; } while ( *s );
-		return 0; }
-	return event ? 0 : 1;
+	if ( *s=='\0' )
+		return !event;
+	else do {
+		if ( event==*s++ ) return 1;
+	} while ( *s );
+	return 0;
 }
 
 //---------------------------------------------------------------------------

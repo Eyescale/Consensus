@@ -224,26 +224,25 @@ case_( register_variable_CB )
 		data->sub[ current ] = newItem( e );
 		_break }
 	_return( 2 )
-case_( ellipsis_CB )
+case_( list_CB )
+	/* We have ((expression,...):_sequence_:)
+	   start p -------------^               ^
+		     return p=*q ---------------
+	*/
 	BMContext *carry = data->carry;
-	switch ( p[4] ) {
-	case ',':
-		/* We have ((expression,...),expression)
-		   start p -------------^              ^
-			     return p=*q --------------
-		*/
-		data->sub[ 0 ] = ((carry) ?
-			bm_xpan( q, data->sub, carry ) :
-			bm_xpan( q, data->sub, data->ctx ));
-		break;
-	default:
-		/* We have ((expression,...):_sequence_:)
-		   start p -------------^               ^
-			     return p=*q ---------------
-		*/
-		data->sub[ 0 ] = ((carry) ?
-			bm_list( q, data->sub, BMContextDB(carry) ) :
-			bm_list( q, data->sub, data->db )); }
+	data->sub[ 0 ] = ((carry) ?
+		bm_list( q, data->sub, BMContextDB(carry) ) :
+		bm_list( q, data->sub, data->db ));
+	_break
+case_( ellipsis_CB )
+	/* We have ((expression,...),expression)
+	   start p -------------^              ^
+		     return p=*q --------------
+	*/
+	BMContext *carry = data->carry;
+	data->sub[ 0 ] = ((carry) ?
+		bm_xpan( q, data->sub, carry ) :
+		bm_xpan( q, data->sub, data->ctx ));
 	_break
 case_( literal_CB )
 	/*		(:_sequence_:)
@@ -515,24 +514,23 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 static BMQueryCB xpan_CB;
 
 static listItem *
-bm_xpan( char **position, listItem **sub, BMContext *ctx )
+bm_xpan( char **q, listItem **sub, BMContext *ctx )
 /*
 	Assumption: ((expression,...),sub-expression)
 	  start	*position -------^                  ^
 		 return *position ------------------
 	converts into ((((expression,a),b),...),z)
-		where {a,b,...,z}==either
-			sub-expression query results
+		where {a,b,...,z}==sub-expression query results
 */
 {
 	listItem *results = NULL;
+	char *p = *q + 5; // start past "...),"
 	if (( sub[0] )) {
 		CNInstance *e;
-		char *p = *position + 5; // start past "...),"
 		while (( e=popListItem(&sub[0]) )) {
 			bm_query( BM_CONDITION, p, ctx, xpan_CB, &e );
 			addItem( &results, e ); } }
-	*position = p_prune( PRUNE_LIST, *position );
+	*q = p_prune( PRUNE_TERM, p );
 	return results;
 }
 

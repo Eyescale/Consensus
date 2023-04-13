@@ -35,7 +35,7 @@ typedef enum {
 //---------------------------------------------------------------------------
 // Assumption: eenov exponent is AS_SUB-only
 
-#define PUSH( stack, exponent, FAIL ) \
+#define PUSH( stack, exponent, POP ) \
 	while (( exponent )) { \
 		int exp = (int) exponent->ptr; \
 		for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next ) { \
@@ -46,15 +46,15 @@ typedef enum {
 			addItem( &stack, exponent ); \
 			exponent = exponent->next; \
 			i = j; e = j->ptr; } \
-		else goto FAIL; }
+		else goto POP; }
 
-#define POP( stack, exponent, PASS, NEXT ) \
+#define POP( stack, exponent, PUSH, NEXT ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
 			if ( !db_private( privy, i->ptr, db ) ) { \
 				e = i->ptr; \
-				goto PASS; } } \
+				goto PUSH; } } \
 		else if (( stack )) { \
 			POP_XPi( stack, exponent ) } \
 		else break; } \
@@ -72,7 +72,7 @@ typedef enum {
 //---------------------------------------------------------------------------
 // Same here as in query_private.h
 
-#define LUSH( stack, FAIL ) \
+#define LUSH( stack, LOP ) \
 	addItem( &stack, i ); \
 	for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
 		if ( !db_private( privy, i->ptr, db ) ) \
@@ -82,15 +82,15 @@ typedef enum {
 		e = ((CNInstance *) i->ptr )->sub[ 1 ]; } \
 	else { \
 		i = popListItem( &stack ); \
-		goto FAIL; }
+		goto LOP; }
 
-#define LOP( stack, PASS, NEXT ) \
+#define LOP( stack, LUSH, NEXT ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
 			if ( !db_private( privy, i->ptr, db ) ) { \
 				e = i->ptr; \
-				goto PASS; } } \
+				goto LUSH; } } \
 		else if (( stack )) \
 			i = popListItem( &stack ); \
 		else break; } \

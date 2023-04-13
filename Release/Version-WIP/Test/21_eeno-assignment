@@ -11,7 +11,7 @@
 		do > "child: init - %_\n" : .
 	else on : toto : . < ?
 		in %<: ..
-			do > "child: << toto assigned (.,%_)\n": %<!:(.,?)>
+			do > "child: << toto assigned %_\n": %<!:(.,?)>
 			do %<!>
 	else on exit < ..
 		do > "child: exit - %_\n": . 

@@ -130,7 +130,7 @@ CB_if_( NarrativeTake, mode, data ) {
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
 			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "sub." )	s_take }
+					do_( "sub." )	}
 			on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
@@ -141,11 +141,27 @@ CB_if_( NarrativeTake, mode, data ) {
 					do_( "sub$" )	s_take }
 			end
 		in_( "sub." ) bgn_
-			ons( " \t,)" )	do_( "sub" )	REENTER
+			on_( '.' )	do_( "sub.." )
+			on_separator	do_( "sub" )	REENTER
+							s_add( "." )
 							f_set( INFORMED )
-			on_separator	; // err
-			on_other	do_( "sub.$" )	s_take
+			on_other	do_( "sub.$" )	REENTER
+							s_add( "." )
 			end
+			in_( "sub.." ) bgn_
+				on_( '.' ) if ( !is_f(FIRST) ) {
+						do_( "sub..." )	s_add( "..." )
+								f_pop( stack, 0 )
+								f_set( INFORMED ) }
+				on_other	do_( "sub" )	REENTER
+								s_add( ".." )
+								f_set( INFORMED )
+				end
+			in_( "sub..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' ) if ( !is_f(LEVEL) ) {
+						do_( "sub" ) 	s_take }
+				end
 		in_( "sub.$" ) bgn_
 			ons( " \t:," )	do_( "sub.$_" )	REENTER
 			on_separator	; // err
@@ -254,6 +270,9 @@ EXPR_BGN:CND_endif
 					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
 				else if ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) {
 					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
+				else if ( are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED) ) {
+					do_( "," )	f_clr( FIRST|INFORMED )
+							f_set( LISTABLE ) }
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|FILTERED ) } }
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED) ) {
@@ -390,7 +409,7 @@ A:CND_else_( B )
 B:CND_endif
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
-		on_( '{' ) if ( is_f(INFORMED|SUB_EXPR|NEGATED|FILTERED|VECTOR|EENOV) )
+		on_( '{' ) if ( is_f(INFORMED|SUB_EXPR|NEGATED|FILTERED|VECTOR|EENOV|ELLIPSIS) )
 				; // err
 			else if ( *type&DO && !is_f(ASSIGN) ) {
 				do_( same )	s_take
@@ -486,8 +505,7 @@ CND_ifn( mode==BM_STORY, C )
 		on_other	do_( "term" )	s_take
 		end
 	in_( "%" ) bgn_
-		on_( '(' )	do_( "expr" )	s_add( "%(" )
-						f_push( stack )
+		on_( '(' )	do_( "%(" )	f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
 		ons( "?!|%" )
 			if (!( *type&EN && s_empty )) {
@@ -503,6 +521,14 @@ CND_ifn( mode==BM_STORY, C )
 						s_add( "%" )
 						f_set( INFORMED ) }
 		end
+		in_( "%(" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "expr" )	s_add( "%((" )
+							f_push( stack )
+							f_set( LEVEL|CLEAN )
+			on_other	do_( "expr" )	REENTER
+							s_add( "%(" )
+			end
 		in_( "%<" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_take
@@ -666,6 +692,9 @@ C:CND_endif
 						f_set( FIRST|LEVEL )
 				if ( *type&DO && is_f(CLEAN) ) {
 						f_set( CLEAN|LISTABLE ) }
+				else if ( are_f(SUB_EXPR|CLEAN) ) {
+						// CLEAN only for %((?,...):_)
+						f_clr( CLEAN ) }
 				else {		f_set( CLEAN ) }
 		on_other	do_( "expr" )	REENTER
 						f_push( stack )
@@ -679,7 +708,7 @@ C:CND_endif
 		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) {
 				do_( "_^" ) } // allow \nl inside {} () <> as comma
 		ons( "})>" )	do_( "expr" )	REENTER
-		on_( '.' ) if ( is_f(LISTABLE) ) {
+		on_( '.' ) if ( is_f(LISTABLE) || ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) ) {
 				do_( ",." ) 	s_add( "," ) }
 			else {	do_( "expr" )	REENTER
 						s_add( "," )
@@ -693,6 +722,40 @@ C:CND_endif
 						s_add( "," )
 						f_clr( INFORMED )
 		end
+		in_( ",." ) bgn_
+			on_( '.' )	do_( ",.." )
+			on_other
+if ( mode==BM_STORY ) {			do_( "." )	REENTER
+							s_add( "." ) }
+else 					; // err
+			end
+			in_( ",.." ) bgn_
+				on_( '.' )	do_( ",..." )
+				on_other
+if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
+							s_add( ".." )
+							f_set( INFORMED ) }
+else					; // err
+				end
+			in_( ",..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' ) if ( !is_f(SUB_EXPR) || is_f(LISTABLE) ) {
+						do_( ",...)" )	f_pop( stack, 0 ) }
+					else {	do_( "expr" ) 	REENTER
+								s_add( "..." )
+								f_set( INFORMED ) }
+				end
+			in_( ",...)" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ':' ) if ( is_f(SUB_EXPR) ) { // %((?,...)_
+						do_( "expr" )	s_add( "...):" )
+								f_clr( FIRST ) }
+					else {	do_( "(:" )	s_add( "...):" ) }
+				on_( ',' ) if ( !is_f(SUB_EXPR) ) {
+						do_( "expr" )	s_add( "...)," )
+								f_set( ELLIPSIS )
+								f_clr( FIRST ) }
+				end
 		in_( ",?" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( ':' )	do_( ",?:" )
@@ -701,58 +764,34 @@ C:CND_endif
 							f_tag( stack, MARKED )
 							f_set( MARKED|INFORMED )
 			end
-		in_( ",?:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '.' )	do_( ",?:." )
-			on_other	do_( "expr" )	REENTER
-							s_add( "?:" )
-							f_tag( stack, MARKED )
-							f_set( MARKED )
-			end
-		in_( ",?:." ) bgn_
-			on_( '.' )	do_( ",?:.." )
-			on_other	do_( "." )	REENTER
-							s_add( "?:." )
-							f_tag( stack, MARKED )
-							f_set( MARKED )
-			end
-		in_( ",?:.." ) bgn_
-			on_( '.' )	do_( ",?:..." )
-			on_other	do_( "expr" )	REENTER
-							s_add( "?:.." )
-							f_tag( stack, MARKED )
-							f_set( MARKED|INFORMED )
-			end
-		in_( ",?:..." ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ')' )	do_( "expr" )	REENTER
-							s_add( "?:..." )
-							f_set( INFORMED )
-			end
-		in_( ",." ) bgn_
-			on_( '.' )	do_( ",.." )
-			on_other
-if ( mode==BM_STORY ) {			do_( "." )	REENTER
-							s_add( "." ) }
-else 					; // err
-			end
-		in_( ",.." ) bgn_
-			on_( '.' )	do_( ",..." )
-			on_other
-if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
-							s_add( ".." )
-							f_set( INFORMED ) }
-else					; // err
-			end
-		in_( ",..." ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ')' )	do_( ",...)" )	f_pop( stack, 0 )
-			end
-		in_( ",...)" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ':' )	do_( "(:" )	s_add( "...):" )
-			on_( ',' )	do_( "expr" )	s_add( "...)," )
-			end
+			in_( ",?:" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '.' )	do_( ",?:." )
+				on_other	do_( "expr" )	REENTER
+								s_add( "?:" )
+								f_tag( stack, MARKED )
+								f_set( MARKED )
+				end
+			in_( ",?:." ) bgn_
+				on_( '.' )	do_( ",?:.." )
+				on_other	do_( "." )	REENTER
+								s_add( "?:." )
+								f_tag( stack, MARKED )
+								f_set( MARKED )
+				end
+			in_( ",?:.." ) bgn_
+				on_( '.' )	do_( ",?:..." )
+				on_other	do_( "expr" )	REENTER
+								s_add( "?:.." )
+								f_tag( stack, MARKED )
+								f_set( MARKED|INFORMED )
+				end
+			in_( ",?:..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' )	do_( "expr" )	REENTER
+								s_add( "?:..." )
+								f_set( INFORMED )
+				end
 	in_( "term" ) bgn_
 CND_ifn( mode==BM_STORY, D )
 		on_( '~' ) if ( *type&DO && !are_f(CARRY|DOT) && ( is_f(LEVEL) ?
@@ -847,13 +886,8 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	BMParseDefault
 		on_( EOF )		errnum= ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState;
-		in_( "^:." ) bgn_
-			ons( " \t\n" )	errnum = ErrNarrativeEmpty;
-			on_other	errnum = ErrSyntaxError;
-			end
-		in_( "^:_" ) bgn_
-			on_( '\n' )	errnum = ErrNarrativeDouble;
-			on_other	errnum = ErrSyntaxError;
+		in_( "sub..." ) bgn_
+			on_( ')' )	errnum = ErrEllipsisLevel;
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
@@ -896,26 +930,26 @@ bm_parse_report( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	char *src = (mode==BM_LOAD)?(mode==BM_INPUT)?"bm_input":"bm_load":"bm_read";
 
 if ( mode==BM_INPUT ) {
-	char *s = StringFinish( data->string, 0 );
+	char *stump = StringFinish( data->string, 0 );
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
 	case ErrUnexpectedEOF:
-		fprintf( stderr, "Error: %s: in expression '%s' unexpected EOF\n", src, s  ); break;
+		fprintf( stderr, "Error: %s: in expression '%s' unexpected EOF\n", src, stump  ); break;
 	case ErrUnexpectedCR:
-		fprintf( stderr, "Error: %s: in expression '%s' unexpected \\cr\n", src, s  ); break;
+		fprintf( stderr, "Error: %s: in expression '%s' unexpected \\cr\n", src, stump  ); break;
 	default:
-		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, s  ); break;
-	}
-}
+		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, stump  ); } }
 else {
-	char *s = StringFinish( data->string, 0 );
+	char *stump = StringFinish( data->string, 0 );
 	int l = parser->line, c = parser->column;
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state  ); break;
 	case ErrUnexpectedEOF:
 		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
+	case ErrEllipsisLevel:
+		fprintf( stderr, "Error: %s: l%dc%d: ellipsis must close narrative proto\n", src, l, c ); break;
 	case ErrSpace:
 		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
 	case ErrInstantiationFiltered:
@@ -935,20 +969,15 @@ else {
 	case ErrMarkNegated:
 		fprintf( stderr, "Error: %s: l%dc%d: '?' negated\n", src, l, c  ); break;
 	case ErrEMarked:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' unspecified\n", src, l, c  ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: '!' unspecified\n", src, l, c ); break;
 	case ErrEMarkMultiple:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' already informed\n", src, l, c  ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: '!' already informed\n", src, l, c ); break;
 	case ErrEMarkNegated:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' negated\n", src, l, c  ); break;
-	case ErrNarrativeEmpty:
-		fprintf( stderr, "Error: %s: l%dc%d: empty narrative\n", src, l, c  ); break;
-	case ErrNarrativeDouble:
-		fprintf( stderr, "Error: %s: l%dc%d: narrative already defined\n", src, l, c  ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: '!' negated\n", src, l, c ); break;
 	case ErrUnknownCommand:
-		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, s  ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, stump  ); break;
 	default:
-		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); break;
-	} }
+		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); } }
 }
 
 //===========================================================================

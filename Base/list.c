@@ -165,6 +165,13 @@ reorderListItem( listItem **list )
 	return count;
 }
 listItem *
+new_item( int value )
+{
+	union { int value; void *ptr; } icast;
+	icast.value = value;
+	return newItem( icast.ptr );
+}
+listItem *
 add_item( listItem **list, int value )
 {
 	union { int value; void *ptr; } icast;

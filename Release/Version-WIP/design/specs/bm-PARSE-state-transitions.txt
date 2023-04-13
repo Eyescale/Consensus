@@ -67,7 +67,8 @@ Consensus B% Version-WIP
 							,?:...	expr
 			,.	.
 				,..	expr
-					,...	,...)	(:
+					,...	expr
+						,...)	(:
 		@	@<	expr
 		~	expr
 		.	expr
@@ -75,6 +76,7 @@ Consensus B% Version-WIP
 		*	expr
 			term
 		%	expr
+			%(
 			%<	expr
 				%<?	expr
 		:	expr

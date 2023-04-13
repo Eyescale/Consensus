@@ -1,4 +1,5 @@
-
+:
+	%( list, ... )
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
@@ -52,5 +53,7 @@
 	else in ( toto, %( list, ?:... ) )
 	else in %<((tata,(!,.)),?:...)>
 		do (( toto, ... ), titi )
+	else in %(( titi, . ), ... )
+	else in %(( ?, ... ) : expression )
 	else
 		do exit

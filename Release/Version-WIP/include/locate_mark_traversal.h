@@ -8,7 +8,7 @@ static BMTraversal locate_mark_traversal;
 
 static BMTraverseCB
 	dereference_CB, sub_expression_CB, dot_expression_CB, open_CB,
-	filter_CB, decouple_CB, close_CB, wildcard_CB;
+	filter_CB, decouple_CB, close_CB, ellipsis_CB, wildcard_CB;
 
 #define BMDereferenceCB		dereference_CB
 #define BMSubExpressionCB	sub_expression_CB
@@ -17,6 +17,7 @@ static BMTraverseCB
 #define BMFilterCB		filter_CB
 #define BMDecoupleCB		decouple_CB
 #define BMCloseCB		close_CB
+#define BMEllipsisCB		ellipsis_CB
 #define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"

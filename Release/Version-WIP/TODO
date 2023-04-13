@@ -1,8 +1,19 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. implement
-		do (( a, ... ), b, c, ... )
-		do ( a, b, c, ... )
+	. do (( list, ... ), expression )
+		. must instantiate expression => bm_xpan() on pop => is_f(ELLIPSIS)
+		. problem: will reverse order (?)
+	. do (( list, ... ), < expression(s) > )
+	. Publish %@
+	. proto :( func, ... )	vs. locale(s) ?
+	. NTH: verify_traversal optimization
+		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
+		but actually we do have a pivot.e inside LIST_EXPR (?)
+	. Maths
+		. Add, Mult, Sub, Div
+		. Mem
+		. Yak integration (full interactive calculator)
+	. NTH: ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
 	. publish %@
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
@@ -66,6 +77,12 @@ TODOC
 				do exit
 
 DONE
+	. implemented %((?,...):expression) = expression's root(s)
+	. do (( expression, ... ), sub-expression )
+		converts into ((((expression,a),b),...),z)
+			where {a,b,...,z}==sub-expression query results
+		Note that e.g. do (( expression, ... ), identifier )
+			requires identifier to be instantiated
 	. implemented db_fire_proxy( proxy, db )
 		. called in bm_context_update() before db_update()
 		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
@@ -89,17 +106,14 @@ DONE
 	  Test/script for all assignment cases
 	. REV-2.0 SIGNAL handling
 	  identifier~ only supported during INSTANTIATION
-	  and then has precedence over e.g. do *identifier ~<
-		which should be written do (*identifier) ~<
-		otherwise interpreted as do *identifier~ <
-		which generates ERROR
 	  on signal~ < src
-		should likewise become on ~( signal ) < src
+		should therefore become on ~( signal ) < src
 		otherwise generate ERROR
 	  cf. ./Examples/3_TM.multi/TM_head-cell.story
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. do (( expression, ... ), < expression(s) > )
 	. allow %@ to be used - spec?
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is

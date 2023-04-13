@@ -12,7 +12,6 @@
 //===========================================================================
 //	bm_proxy_scan
 //===========================================================================
-static void proxy_verify( CNInstance *, char *, BMQueryData *, listItem ** );
 // #define TYPED
 
 #ifdef TYPED

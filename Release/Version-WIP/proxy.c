@@ -12,20 +12,6 @@
 //===========================================================================
 //	bm_proxy_scan
 //===========================================================================
-// #define TYPED
-
-#ifdef TYPED
-#define TYPESET( type ) \
-	data.type = type; \
-	data.privy = ( type==BM_RELEASED ? 1 : 0 );
-#define VERIFY( e, p, data ) \
-	( bm_verify( e, p, data )==BM_DONE )
-#else
-#define TYPESET( type )
-#define VERIFY( e, p, data ) \
-	( xp_verify( e, p, data ) )
-#endif
-
 listItem *
 bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 /*
@@ -54,7 +40,6 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
-	TYPESET( type );
 	data.ctx = ctx;
 	data.db = db;
 	ActiveRV *active = BMContextActive( ctx );
@@ -65,7 +50,7 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 			do {	p++;
 				if ( !strncmp( p, "%%", 2 ) )
 					{ p+=2; continue; }
-				if VERIFY( proxy, p, &data ) {
+				if ( xp_verify( proxy, p, &data ) ) {
 					addIfNotThere( &results, proxy );
 					break; }
 				p = p_prune( PRUNE_TERM, p ); }
@@ -73,7 +58,7 @@ bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
 	else {
 		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 			CNInstance *proxy = i->ptr;
-			if ( VERIFY( proxy, expression, &data ) )
+			if ( xp_verify( proxy, expression, &data ) )
 				addIfNotThere( &results, proxy ); } }
 #ifdef DEBUG
 	fprintf( stderr, "bm_proxy_scan: end\n" );

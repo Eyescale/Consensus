@@ -4,7 +4,7 @@
 //---------------------------------------------------------------------------
 //	PUSH and POP
 //---------------------------------------------------------------------------
-#define PUSH( stack, exponent, FAIL ) \
+#define PUSH( stack, exponent, POP ) \
 	while (( exponent )) { \
 		int exp = (int) exponent->ptr; \
 		if ( exp & SUB ) { \
@@ -14,7 +14,7 @@
 				addItem( &stack, exponent ); \
 				exponent = exponent->next; \
 				i = newItem( e ); } \
-			else goto FAIL; } \
+			else goto POP; } \
 		else { \
 			for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next ) \
 				if ( !db_private( privy, j->ptr, db ) ) \
@@ -24,19 +24,18 @@
 				addItem( &stack, exponent ); \
 				exponent = exponent->next; \
 				i = j; e = j->ptr; } \
-			else goto FAIL; } }
+			else goto POP; } }
 
-#define POP( stack, exponent, PASS, NEXT ) \
+#define POP( stack, exponent, PUSH ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
 			if ( !db_private( privy, i->ptr, db ) ) { \
 				e = i->ptr; \
-				goto PASS; } } \
+				goto PUSH; } } \
 		else if (( stack )) \
 			POP_XPi( stack, exponent ) \
-		else break; } \
-	if ( !NEXT ) break;
+		else break; }
 
 #define POP_XPi( stack, exponent ) { \
 	exponent = popListItem( &stack ); \
@@ -50,29 +49,51 @@
 //---------------------------------------------------------------------------
 //	LUSH and LOP	- PUSH and POP list
 //---------------------------------------------------------------------------
-#define LUSH( stack, FAIL ) \
-	addItem( &stack, i ); \
-	for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
-		if ( !db_private( privy, i->ptr, db ) ) \
-			break; \
-	if (( i )) { \
-		addItem( &stack, i ); \
-		e = ((CNInstance *) i->ptr )->sub[ 1 ]; } \
+/*
+	in case %( list, ?:... ) we have lm==1
+		we process e->as_sub[ 0 ]^n.sub[ 1 ] (n>=1)
+	otherwise - case %( list, ... )
+		we process e->as_sub[ 0 ]^n (n>=0)
+*/
+#define LUSH( stack, lm, LOP ) \
+	if ( lm==3 ) \
+		for ( CNInstance *f=CNSUB(e,0); (f); e=f ) {} \
 	else { \
-		i = popListItem( &stack ); \
-		goto FAIL; }
+		addItem( &stack, i ); \
+		if ( lm ) { \
+			for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
+				if ( !db_private( privy, i->ptr, db ) ) \
+					break; \
+			if (( i )) { \
+				addItem( &stack, i ); \
+				e = i->ptr; \
+				if ( lm & 1 ) { \
+					e = e->sub[ 1 ]; } } \
+			else { \
+				i = popListItem( &stack ); \
+				goto LOP; } } }
 
-#define LOP( stack, PASS, NEXT ) \
+#define LOP( stack, lm, LUSH, NEXT ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
 			if ( !db_private( privy, i->ptr, db ) ) { \
-				e = i->ptr; \
-				goto PASS; } } \
+				e = i->ptr; lm &= 1; \
+				goto LUSH; } } \
 		else if (( stack )) \
 			i = popListItem( &stack ); \
-		else break; } \
+		else { lm &= 1; break; } } \
 	if ( !NEXT ) break;
+
+//---------------------------------------------------------------------------
+//	LFLUSH
+//---------------------------------------------------------------------------
+#define	LFLUSH( list_exp, i, list_i, stack ) { \
+	if ( list_exp & 1 ) { \
+		switch ( list_exp-- ) { \
+		case 7: while (( j=popListItem(&list_i) )) i=j; break; \
+		default: freeItem( i ); i = list_i; } \
+		list_i = popListItem( &stack ); } }
 
 //---------------------------------------------------------------------------
 //	assignment	- query_assignment utility

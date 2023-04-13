@@ -118,11 +118,14 @@ pivot_check( char *p, listItem **exponent, BMQueryData *data )
 		case '|':
 			data->privy = 2;
 			break;
-		case '(': ; // %(list,?:...)
+		case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
 			Pair *list = popListItem( exponent );
-			char *list_p = list->name;
+			// list_p = list->name;
+			// mark_p = list->value;
 			listItem *xpn = NULL;
-			p = bm_locate_pivot( list_p+2, &xpn );
+			p = strncmp(p+2,"(?",2) ?
+				bm_locate_pivot( p+2, &xpn ) :
+				bm_locate_pivot( p+10, &xpn );
 			if ((p) && strncmp(p,"%(",2))
 				data->list = newPair( list, xpn );
 			else {
@@ -144,10 +147,19 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 		invoking traverse_CB on every match
 	returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumptions
-	. we have data->list:[ list:[ list_p, next_p ], xpn ] where
-		expression is in the form  _%(list,?:...)_
-			list_p -------------^            ^
-			next_p --------------------------
+	. when set, we have data->list:[ list:[ list_p, mark_p ], xpn ] where
+	  expression is in either form
+			_%(list,?:...)_
+			 ^      ^---------------- mark_p
+			  ----------------------- list_p
+		or
+			_%(list,...)_
+			 ^      ^---------------- mark_p
+			  ----------------------- list_p
+		or
+			_%((?,...):list)
+			 ^  ^-------------------- mark_p
+			  ----------------------- list_p
 	. user_data only specified for query_assignment, in which case
 	  we can overwrite data->user_data with the passed user_data
 	. pivot->value is not deprecated - and neither are its subs
@@ -157,7 +169,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
 	listItem *i, *j;
-	CNInstance *e;
+	CNInstance *e, *f;
 	if ( !strncmp( pivot->name, "%|", 2 ) ) {
 		i = pivot->value;
 		e = i->ptr; }
@@ -167,6 +179,12 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	listItem *exponent = data->exponent;
 	if (( user_data ))
 		data->user_data = user_data;
+#ifdef DEBUG
+fprintf( stderr, "XP_TRAVERSE: privy=%d, pivot=", privy );
+db_outputf( stderr, db, "%_, exponent=", e );
+xpn_out( stderr, exponent );
+fprintf( stderr, "\n" );
+#endif
 
 	CNInstance *success = NULL;
 	listItem *trail = NULL;
@@ -179,37 +197,48 @@ PUSH_stack:		PUSH( stack, exponent, POP_stack )
 				if ( traverse_CB( e, expression, data )==BM_DONE ) {
 					success = e;
 					break; } }
-POP_stack:		POP( stack, exponent, PUSH_stack, NULL ) }
+POP_stack:		POP( stack, exponent, PUSH_stack )
+			break; }
 		POP_ALL( stack ) }
 	else {
 		Pair *list = data->list->name;
 		listItem *xpn = data->list->value;
-		char *list_p = list->name;
-		char *next_p = list->value;
+		char *mark_p = list->value;
+		int lm = !strncmp(mark_p+1,",...",4) ? 3 : ( *mark_p=='?' );
 		listItem *stack[ 3 ] = { NULL, NULL, NULL };
 		enum { XPN_id, LIST_id, EXP_id };
 		for ( ; ; ) {
 PUSH_xpn:		PUSH( stack[ XPN_id ], xpn, POP_xpn )
-PUSH_list:		LUSH( stack[ LIST_id ], POP_list )
+			if ( lm==3 ) {
+				while (( f=CNSUB(e,0) )) e=f;
+				goto PUSH_exp; }
+PUSH_list:		LUSH( stack[ LIST_id ], lm, POP_list )
 PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 			if ( !lookupIfThere( trail, e ) ) { // ward off doublons
 				addIfNotThere( &trail, e );
 				if ( traverse_CB( e, expression, data )==BM_DONE ) {
 					success = e;
 					break; } }
-POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp, stack[ LIST_id ] )
-			i = popListItem( &stack[ LIST_id ] );
-			e = i->ptr; goto PUSH_list;
-POP_list:		LOP( stack[ LIST_id ], PUSH_list, stack[ XPN_id ] )
+POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp )
+			if ( lm==3 ) goto POP_xpn;
+			else if (( stack[ LIST_id ] )) {
+				if (!lm) lm = 2;
+				i = popListItem( &stack[ LIST_id ] );
+				e = i->ptr; goto PUSH_list; }
+			else break;
+POP_list:		LOP( stack[ LIST_id ], lm, PUSH_list, stack[ XPN_id ] )
 			POP_XPi( stack[ XPN_id ], xpn );
-POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn, NULL ) }
+POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
+			break; }
 		POP_ALL( stack[ XPN_id ] )
 		POP_ALL( stack[ EXP_id ] )
 		freeListItem( &stack[ LIST_id ] );
 		freeListItem( &xpn );
 		freePair( list );
 		freePair( data->list ); }
-
+#ifdef DEBUG
+	fprintf( stderr, "XP_TRAVERSE: end, success=%d\n", !!success );
+#endif
 	freeListItem( &trail );
 	if ( strncmp( pivot->name, "%|", 2 ) )
 		freeItem( i );
@@ -294,6 +323,11 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					continue; } } }
 
 		if ((x) && ( x = op_set( op, data, x, &p, success ) )) {
+			switch ( list_exp ) {
+			case 2: case 3: // start past opening '%(' of %(list,...)
+				p++; break;
+			case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
+				p+=9; break; }
 			//----------------------------------------------------------
 
 				p = verify_traversal( p, &traverse_data, flags );
@@ -318,6 +352,9 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					// setup new sub context
 					f_clr( NEGATED )
 					list_exp = data->list_exp;
+					// cases %(list,...) or %((?,...):list)
+					if ( list_exp==2 || list_exp==6 )
+						freeListItem( &data->mark_exp );
 					mark_exp = data->mark_exp;
 					stack.as_sub = NULL;
 					i = newItem( x );
@@ -340,12 +377,15 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				success = data->success; } }
 		else success = 0;
 
-		if (( mark_exp )) {
+		if (( mark_exp ) || list_exp ) {
+			switch ( list_exp ) {
+			case 1: case 2:	// finish past closing ',...)' of %(list,...)
+				p += 5; break;
+			case 6: case 7: // finish past closing ')' of %((?,...):list)
+				p++; break; }
 			if ( success ) {
 				// restore context & move on past sub-expression
-				if ( list_exp==2 ) {
-					freeItem( i ); i = list_i;
-					list_i = popListItem( &stack.list_i ); }
+				LFLUSH( list_exp, i, list_i, stack.list_i )
 				// pop stack
 				popListItem( &stack.p );
 				i = pop_as_sub( &stack, i, &mark_exp );
@@ -357,20 +397,44 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				exponent = NULL;
 				op = BM_END; }
 			else {
-				if ( list_exp ) { // %( list, ?:... )
-					CNInstance *y = (x) ? CNSUB(x,0) : NULL;
-					if ( !y ) {
-						if ( list_exp==2 ) {
-							list_exp = 1;
-							freeItem( i ); i = list_i;
-							list_i = popListItem( &stack.list_i ); } }
-					else {
-						if ( list_exp==1 ) {
-							list_exp = 2;
+				if ( list_exp ) {
+					CNInstance *y;
+					switch ( list_exp ) {
+					case 2: case 4: ; // %(list,...) or %(list,?:...)
+						if ((x) && ( y=CNSUB(x,0) )) {
+							list_exp++;
 							addItem( &stack.list_i, list_i );
-							list_i = i; i = newItem( y ); }
-						else {
-							i->ptr = y; }
+							list_i = i; j = newItem( y ); }
+						else j = NULL;
+						break;
+					case 3: case 5: // %(list,...) or %(list,?:...)
+						if ((x) && ( y=CNSUB(x,0) )) {
+							i->ptr = y; j = i; }
+						else j = NULL;
+						break;
+					case 6: case 7: // %((?,...):list)
+						for ( j=x->as_sub[ 0 ]; j!=NULL; j=j->next )
+							if ( !db_private( privy, j->ptr, db ) )
+								break;
+						if (( j )) {
+							if ( list_exp==6 ) {
+								list_exp++;
+								addItem( &stack.list_i, list_i ); }
+							addItem( &list_i, i ); }
+						else if (( list_i )) {
+							for ( j=i; ; ) {
+								if (( j->next )) {
+									j = j->next;
+									if ( !db_private( privy, j->ptr, db ) )
+										break; }
+								else if (( list_i->next ))
+									j = popListItem( &list_i );
+								else { j = NULL; break; } } }
+						break; }
+					if ( !j )
+						LFLUSH( list_exp, i, list_i, stack.list_i )
+					else {
+						i = j;
 						p = stack.p->ptr;
 						op = BM_BGN;
 						success = 0;
@@ -405,8 +469,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
-		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent %d %d\n",
-			(int)data->stack.flags, (int)data->stack.exponent );
+		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent\n" );
 		exit( -1 ); }
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
@@ -533,10 +596,18 @@ case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
 	_return( 1 )
 case_( sub_expression_CB )
-	p = bm_locate_mark( p+1, &data->mark_exp );
+	char *mark = bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) {
-		if ( !strncmp( p+1, ":...", 4 ) )
-			data->list_exp = 1;
+		if ( !strncmp( mark, "...", 3 ) )
+			data->list_exp = 2;
+		else if ( !strncmp( mark+1, ":...", 4 ) )
+			data->list_exp = 4;
+		else if ( !strncmp( mark+1, ",...", 4 ) ) {
+			if ( !CNSUB( data->instance, 0 ) ) {
+				data->list_exp = 6; }
+			else {
+				freeListItem( &data->mark_exp );
+				data->success = 0; } }
 		_return( 1 ) }
 	_break
 case_( dot_expression_CB )

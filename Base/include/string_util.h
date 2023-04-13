@@ -51,6 +51,7 @@ void	freeString( CNString * );
 
 int	StringStart( CNString *string, int event );
 int	StringAppend( CNString *string, int event );
+int	StringAffix( CNString *string, int event );
 void	StringReset( CNString *string, int );
 char *	StringFinish( CNString *string, int trim );
 char *	l2s( listItem **, int trim );

@@ -284,18 +284,24 @@ do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ct
 	CNString *s = newString();
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
+		int ellipsis = 0;
 		// build query string "proto:expression"
 		for ( char *p=narrative->proto; *p; p++ ) {
 			// reducing proto params as we go
-			if ( *p=='.' ) {
+			if ( !strncmp( p, "...", 3 ) ) {
+				ellipsis = 1;
+				s_add( "..." );
+				p += 3; }
+			else if ( *p=='.' ) {
 				do p++; while ( !is_separator(*p) );
 				if ( *p==':' ) continue;
 				else StringAppend( s, '.' ); }
 			StringAppend( s, *p ); }
-		if ( strcmp(expression,"%(.)") ) {
-			StringAppend( s, ':' );
-			for ( char *p=expression; *p; p++ )
-				StringAppend( s, *p ); }
+		if ( ellipsis )
+			StringAffix( s, '%' );
+		StringAppend( s, ':' );
+		for ( char *p=expression; *p; p++ )
+			StringAppend( s, *p );
 		char *q = StringFinish( s, 0 );
 		// launch query
 		data.narrative = narrative;

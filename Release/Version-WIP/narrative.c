@@ -211,11 +211,16 @@ bm_read_exit( int errnum, BMParseData *data, BMReadMode mode )
 		icast.value = errnum;
 		return icast.ptr;
 	case BM_INPUT: ;
-		CNString *s = data->string;
-		char *expression = StringFinish( s, 0 );
-		StringReset( s, CNStringMode );
-		freeString( s );
-		return expression;
+		if ( errnum ) {
+			freeString( data->string );
+			return NULL; }
+		else {
+			CNString *s = data->string;
+			char *expression = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			return expression; }
+		break;
 	case BM_STORY:
 		freeString( data->string );
 		freeListItem( &data->stack.occurrences );
@@ -224,8 +229,7 @@ bm_read_exit( int errnum, BMParseData *data, BMReadMode mode )
 			if ( read_CB( NarrativeTake, 0, data ) )
 				take = data->story;
 			else {
-				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
-			} }
+				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); } }
 		if ( !take ) {
 			freeNarrative( data->narrative );
 			freeStory( data->story ); }

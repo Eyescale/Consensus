@@ -28,6 +28,7 @@ void *popListItem( listItem **item );
 void freeListItem( listItem **item );
 int reorderListItem( listItem **item );
 
+listItem *new_item( int value );
 listItem *add_item( listItem **list, int value );
 int pop_item( listItem **list );
 

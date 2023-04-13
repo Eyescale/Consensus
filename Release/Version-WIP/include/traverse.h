@@ -36,6 +36,7 @@
 #define CARRY		(1<<19)
 #define VECTOR		(1<<20)
 #define EENOV		(1<<21)
+#define ELLIPSIS	(1<<22)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

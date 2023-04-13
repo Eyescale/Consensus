@@ -56,6 +56,7 @@ typedef enum {
 	ErrNone = 0,
 	ErrUnknownState,
 	ErrUnexpectedEOF,
+	ErrEllipsisLevel,
 	ErrSpace,
 	ErrInstantiationFiltered,
 	ErrUnexpectedCR,
@@ -69,8 +70,6 @@ typedef enum {
 	ErrEMarked,
 	ErrEMarkMultiple,
 	ErrEMarkNegated,
-	ErrNarrativeEmpty,
-	ErrNarrativeDouble,
 	ErrUnknownCommand,
 } BMParseErr;
 

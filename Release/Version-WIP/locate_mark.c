@@ -18,9 +18,9 @@ typedef struct {
 char *
 bm_locate_mark( char *expression, listItem **exponent )
 /*
-	returns first '?' found in expression, together with exponent
+	returns first '?' found in sub-expression, together with exponent
 	Assumption: negated mark is ruled out at expression creation time
-	Note that we do not enter %(...) sub-expressions
+	Note that we do not enter %(...) sub-sub-expressions
 	Note also that the caller is expected to reorder the list of exponents
 */
 {
@@ -33,7 +33,7 @@ bm_locate_mark( char *expression, listItem **exponent )
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 
-	char *p = locate_mark_traversal( expression, &traverse_data, FIRST );
+	char *p = locate_mark_traversal( expression, &traverse_data, FIRST|SUB_EXPR );
 
 	freeListItem( &data.stack.level );
 	freeListItem( &data.stack.flags );
@@ -82,6 +82,8 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	_break;
+case_( ellipsis_CB )
+	_return( 2 )
 case_( wildcard_CB )
 	if ( *p=='?' )
 		_return( 2 )

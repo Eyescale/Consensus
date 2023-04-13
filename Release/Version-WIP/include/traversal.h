@@ -45,6 +45,7 @@
 	BMSubExpressionCB
 	BMDereferenceCB
 	BMLiteralCB
+	BMListCB
 	BMEllipsisCB
 	BMDecoupleCB
 	BMFilterCB
@@ -79,7 +80,8 @@
 
 #ifdef BMTermCB
 #define CB_TermCB \
-	if ( p_filtered(p) ) f_set( FILTERED ) \
+	if ( p_filtered( p ) ) \
+		f_set( FILTERED ) \
 	_CB( BMTermCB )
 #else
 #define CB_TermCB
@@ -168,6 +170,13 @@
 #else
 #define CB_LiteralCB	p = p_prune( PRUNE_LITERAL, p );
 #endif
+
+#ifdef BMListCB
+#define CB_ListCB	_CB( BMListCB )
+#else
+#define CB_ListCB	p = p_prune( PRUNE_LIST, p );
+#endif
+
 
 #ifdef BMEllipsisCB
 #define CB_EllipsisCB	_CB( BMEllipsisCB )

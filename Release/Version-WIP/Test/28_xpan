@@ -6,6 +6,9 @@
 		do ( A, tutu )
 		do ( A, zebulon )
 	else on A
+		/* %(A,?) results should not be in any particular order
+		   but in this mono-thread implementation, they will be
+		   in order reverse to creation order */
 		do (( B, ... ), %(A,?) )
 	else
 		do >: %( B, ?:... )
