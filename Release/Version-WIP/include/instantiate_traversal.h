@@ -9,8 +9,8 @@ static BMTraversal instantiate_traversal;
 static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	dot_expression_CB, open_CB, close_CB, decouple_CB, register_variable_CB,
-	literal_CB, list_CB, ellipsis_CB, wildcard_CB, dot_identifier_CB,
-	identifier_CB, signal_CB, end_CB, activate_CB;
+	literal_CB, list_CB, wildcard_CB, dot_identifier_CB, identifier_CB,
+	signal_CB, end_CB, activate_CB;
 
 #define BMTermCB		term_CB
 #define BMActivateCB		activate_CB
@@ -27,7 +27,6 @@ static BMTraverseCB
 #define BMDotExpressionCB	dot_expression_CB
 #define BMLiteralCB		literal_CB
 #define BMListCB		list_CB
-#define BMEllipsisCB		ellipsis_CB
 #define BMOpenCB		open_CB
 #define BMDecoupleCB		decouple_CB
 #define BMCloseCB		close_CB

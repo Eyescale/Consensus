@@ -139,7 +139,7 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 static listItem *bm_couple( listItem *sub[2], CNDB * );
 static CNInstance *bm_literal( char **, CNDB * );
 static listItem *bm_list( char **, listItem **, CNDB * );
-static listItem *bm_xpan( char **, listItem **, BMContext * );
+static listItem *bm_xpan( listItem **, CNDB * );
 
 #define current ( is_f( FIRST ) ? 0 : 1 )
 
@@ -234,16 +234,6 @@ case_( list_CB )
 		bm_list( q, data->sub, BMContextDB(carry) ) :
 		bm_list( q, data->sub, data->db ));
 	_break
-case_( ellipsis_CB )
-	/* We have ((expression,...),expression)
-	   start p -------------^              ^
-		     return p=*q --------------
-	*/
-	BMContext *carry = data->carry;
-	data->sub[ 0 ] = ((carry) ?
-		bm_xpan( q, data->sub, carry ) :
-		bm_xpan( q, data->sub, data->ctx ));
-	_break
 case_( literal_CB )
 	/*		(:_sequence_:)
 	   start p -----^             ^
@@ -288,7 +278,9 @@ case_( close_CB )
 	if ( is_f( FIRST ) )
 		instances = data->sub[ 0 ];
 	else {
-		instances = bm_couple( data->sub, db );
+		instances = is_f(ELLIPSIS) ?
+			bm_xpan( data->sub, db ) :
+			bm_couple( data->sub, db );
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( !instances ) _return( 2 )
@@ -297,10 +289,11 @@ case_( close_CB )
 		CNInstance *perso = BMContextPerso( ctx );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
-		listItem *localized = bm_couple( data->sub, db );
+		instances = is_f(ELLIPSIS) ?
+			bm_xpan( data->sub, db ) :
+			bm_couple( data->sub, db );
 		freeListItem( &data->sub[ 0 ] );
-		freeListItem( &data->sub[ 1 ] );
-		instances = localized; }
+		freeListItem( &data->sub[ 1 ] ); }
 	if ( f_next & FIRST )
 		data->sub[ 0 ] = instances;
 	else {
@@ -355,32 +348,75 @@ BMTraverseCBEnd
 //---------------------------------------------------------------------------
 //	bm_couple
 //---------------------------------------------------------------------------
+static inline void
+_couple( CNInstance *, CNInstance *, CNDB *, listItem **, listItem ** );
+
 static listItem *
 bm_couple( listItem *sub[2], CNDB *db )
 /*
 	Instantiates and/or returns all ( sub[0], sub[1] )
 */
 {
-	listItem *results = NULL, *s = NULL;
+	listItem *results=NULL, *s=NULL, *trail=NULL;
 	if ( sub[0]->ptr == NULL ) {
 		if ( sub[1]->ptr == NULL ) {
 			listItem *t = NULL;
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
-				addIfNotThere( &results, db_instantiate(e,f,db) ); }
+				_couple( e, f, db, &trail, &results ); }
 		else {
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-				addIfNotThere( &results, db_instantiate(e,j->ptr,db) ); } }
+				_couple( e, j->ptr, db, &trail, &results ); } }
 	else if ( sub[1]->ptr == NULL ) {
 		listItem *t = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 		for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
-			addIfNotThere( &results, db_instantiate(i->ptr,f,db) ); }
+			_couple( i->ptr, f, db, &trail, &results ); }
 	else {
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-			addIfNotThere( &results, db_instantiate(i->ptr,j->ptr,db) ); }
+			_couple( i->ptr, j->ptr, db, &trail, &results ); }
+	return results;
+}
+
+static inline void
+_couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **results )
+{
+	CNInstance *g = db_instantiate( e, f, db );
+	if ((g) && !lookupIfThere( *trail, g ) ) {
+		addIfNotThere( trail, g );
+		addItem( results, g ); }
+}
+
+//---------------------------------------------------------------------------
+//	bm_xpan
+//---------------------------------------------------------------------------
+static listItem *
+bm_xpan( listItem *sub[2], CNDB *db )
+/*
+	Assuming we had expression:((sub[0],...),sub[1])
+		where sub[1] is { a, b, ..., z }
+	converts into ((((sub[0],a),b),...),z)
+*/
+{
+	listItem *results=NULL, *trail=NULL;
+	if ( !sub[ 0 ] ) {
+		results = sub[ 1 ];
+		sub[ 1 ] = NULL; }
+	else if ( !sub[ 1 ] ) {
+		results = sub[ 0 ];
+		sub[ 0 ] = NULL; }
+	else {
+		reorderListItem( &sub[1] );
+		for ( listItem *i=sub[0]; i!=NULL; i=i->next ) {
+			CNInstance *e = i->ptr;
+			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
+				e = db_instantiate( e, j->ptr, db );
+			if ( !lookupIfThere( trail, e ) ) {
+				addIfNotThere( &trail, e );
+				addItem( &results, e ); } }
+		freeListItem( &trail ); }
 	return results;
 }
 
@@ -506,40 +542,6 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		p++; }
 	wi[ 2 ] = e;
 	return p;
-}
-
-//---------------------------------------------------------------------------
-//	bm_xpan
-//---------------------------------------------------------------------------
-static BMQueryCB xpan_CB;
-
-static listItem *
-bm_xpan( char **q, listItem **sub, BMContext *ctx )
-/*
-	Assumption: ((expression,...),sub-expression)
-	  start	*position -------^                  ^
-		 return *position ------------------
-	converts into ((((expression,a),b),...),z)
-		where {a,b,...,z}==sub-expression query results
-*/
-{
-	listItem *results = NULL;
-	char *p = *q + 5; // start past "...),"
-	if (( sub[0] )) {
-		CNInstance *e;
-		while (( e=popListItem(&sub[0]) )) {
-			bm_query( BM_CONDITION, p, ctx, xpan_CB, &e );
-			addItem( &results, e ); } }
-	*q = p_prune( PRUNE_TERM, p );
-	return results;
-}
-
-static BMCBTake
-xpan_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	CNInstance **instance = user_data;
-	*instance = db_instantiate( *instance, e, BMContextDB(ctx) );
-	return BM_CONTINUE;
 }
 
 //===========================================================================

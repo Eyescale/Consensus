@@ -1,8 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. do (( list, ... ), expression )
-		. must instantiate expression => bm_xpan() on pop => is_f(ELLIPSIS)
-		. problem: will reverse order (?)
 	. do (( list, ... ), < expression(s) > )
 	. Publish %@
 	. proto :( func, ... )	vs. locale(s) ?
@@ -78,11 +75,10 @@ TODOC
 
 DONE
 	. implemented %((?,...):expression) = expression's root(s)
-	. do (( expression, ... ), sub-expression )
-		converts into ((((expression,a),b),...),z)
-			where {a,b,...,z}==sub-expression query results
-		Note that e.g. do (( expression, ... ), identifier )
-			requires identifier to be instantiated
+	. do (( list, ... ), xpan )
+		instantiates xpan if needed, then
+		converts into ((((list,a),b),...),z)
+			where xpan is {a,b,...,z}
 	. implemented db_fire_proxy( proxy, db )
 		. called in bm_context_update() before db_update()
 		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)

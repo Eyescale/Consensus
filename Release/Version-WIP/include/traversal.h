@@ -46,7 +46,6 @@
 	BMDereferenceCB
 	BMLiteralCB
 	BMListCB
-	BMEllipsisCB
 	BMDecoupleCB
 	BMFilterCB
 	BMWildCardCB
@@ -177,12 +176,6 @@
 #define CB_ListCB	p = p_prune( PRUNE_LIST, p );
 #endif
 
-
-#ifdef BMEllipsisCB
-#define CB_EllipsisCB	_CB( BMEllipsisCB )
-#else
-#define CB_EllipsisCB
-#endif
 
 #ifdef BMDecoupleCB
 #define CB_DecoupleCB	_CB( BMDecoupleCB )

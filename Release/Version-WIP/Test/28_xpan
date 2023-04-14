@@ -10,6 +10,8 @@
 		   but in this mono-thread implementation, they will be
 		   in order reverse to creation order */
 		do (( B, ... ), %(A,?) )
+		do (( C, ... ), instantiate )
 	else
 		do >: %( B, ?:... )
+		do >: %( C, ?:... )
 		do exit

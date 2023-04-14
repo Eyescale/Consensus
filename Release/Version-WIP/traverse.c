@@ -166,16 +166,26 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					f_cls; break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
-						if ( (mode&SUB_EXPR) || is_f(SUB_EXPR) ) {
-CB_EllipsisCB						p+=3; }
-						// Assumption: p[3]==')'
-						else if ( p[4]==',' ) {
-							if ( mode&TERNARY ) {
-								p+=3; }
-							else {
-CB_EllipsisCB							f_pop( stack, 0 ) } }
-						else {
+						/* Assumption: p[3]==')'
+						   MUST BE TESTED IN THIS EXACT ORDER
+						   start with cases
+							%(list,...) or
+							%(list,?:...) or
+							%((?,...):list) */
+						if ((mode&SUB_EXPR)||is_f(SUB_EXPR)) {
+							f_set( ELLIPSIS )
+CB_WildCardCB						p+=3; }
+						else if ( p[4]==':' ) { // ((list,...):_:)
 CB_ListCB						f_pop( stack, 0 ) }
+						else if ( mode&TERNARY ) {
+							p+=3; }
+						else if ( p[4]==',' ) { // ((list,...),xpan)
+							f_set( ELLIPSIS )
+							f_pop( stack, 0 )
+							p+=4; }
+						else { // :(proto,...)
+							f_set( ELLIPSIS )
+CB_WildCardCB						p+=3; }
 						f_cls; break; }
 					else {
 CB_RegisterVariableCB				f_cls; p+=2; break; } }

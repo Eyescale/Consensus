@@ -82,10 +82,8 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	_break;
-case_( ellipsis_CB )
-	_return( 2 )
 case_( wildcard_CB )
-	if ( *p=='?' )
+	if (( *p=='?' )||is_f( ELLIPSIS ))
 		_return( 2 )
 	_break
 BMTraverseCBEnd

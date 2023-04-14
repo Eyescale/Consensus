@@ -34,7 +34,7 @@ bm_locate_emark( char *expression, listItem **exponent )
 	BMTraverseData traverse_data;
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = 0;
+	traverse_data.done = SUB_EXPR;
 	char *p = locate_emark_traversal( expression, &traverse_data, FIRST );
 
 	freeListItem( &data.stack.flags );
