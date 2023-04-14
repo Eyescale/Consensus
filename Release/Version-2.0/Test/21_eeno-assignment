@@ -14,5 +14,5 @@
 			do > "child: << toto assigned %_\n": %<!:(.,?)>
 			do %<!>
 	else on exit < ..
-		do > "child: exit - %_\n": . 
+		do > "child: exit - %_\n": ~%(?,.):~%(.,?)
 		do exit

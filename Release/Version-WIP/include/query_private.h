@@ -56,22 +56,19 @@
 		we process e->as_sub[ 0 ]^n (n>=0)
 */
 #define LUSH( stack, lm, LOP ) \
-	if ( lm==3 ) \
-		for ( CNInstance *f=CNSUB(e,0); (f); e=f ) {} \
-	else { \
-		addItem( &stack, i ); \
-		if ( lm ) { \
-			for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
-				if ( !db_private( privy, i->ptr, db ) ) \
-					break; \
-			if (( i )) { \
-				addItem( &stack, i ); \
-				e = i->ptr; \
-				if ( lm & 1 ) { \
-					e = e->sub[ 1 ]; } } \
-			else { \
-				i = popListItem( &stack ); \
-				goto LOP; } } }
+	addItem( &stack, i ); \
+	if ( lm ) { \
+		for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
+			if ( !db_private( privy, i->ptr, db ) ) \
+				break; \
+		if (( i )) { \
+			addItem( &stack, i ); \
+			e = i->ptr; \
+			if ( lm & 1 ) { \
+				e = e->sub[ 1 ]; } } \
+		else { \
+			i = popListItem( &stack ); \
+			goto LOP; } }
 
 #define LOP( stack, lm, LUSH, NEXT ) \
 	for ( ; ; ) { \

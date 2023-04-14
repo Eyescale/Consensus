@@ -166,11 +166,14 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					f_cls; break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
-						// Assumption: p[3]==')'
-						if ((mode&TERNARY) || is_f(SUB_EXPR)) {
+						if ( (mode&SUB_EXPR) || is_f(SUB_EXPR) ) {
 CB_EllipsisCB						p+=3; }
+						// Assumption: p[3]==')'
 						else if ( p[4]==',' ) {
-CB_EllipsisCB						f_pop( stack, 0 ) }
+							if ( mode&TERNARY ) {
+								p+=3; }
+							else {
+CB_EllipsisCB							f_pop( stack, 0 ) } }
 						else {
 CB_ListCB						f_pop( stack, 0 ) }
 						f_cls; break; }
