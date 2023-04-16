@@ -1,7 +1,8 @@
 :
 	on init
-		do (( list, toto ), titi )
+		do : list : (( base, toto ), titi )
 		do ((( algae, plancton ), lichen ), garbage )
 	else
-		do > "root: %_\n": %((?,...):(.,titi))
+		do > "genealogy: %_\n": %((?,...):*list)
+		do > "root: %_\n": %((?,...):*list):~(.,.)
 		do exit

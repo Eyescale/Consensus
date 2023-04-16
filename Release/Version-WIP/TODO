@@ -1,6 +1,15 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. do (( list, ... ), < expression(s) > )
+	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
+	  starting from expression itself
+		so for expression: (func,...)
+			we have func:
+				%((?,...):expression):~(.,.)
+			and params:
+				%(func,?):%((?,...):expression)
+				%((func,.),?):%((?,...):expression)
+				%(((func,.),.),?):%((?,...):expression)
+				%((((func,.),.),.),?):%((?,...):expression)
 	. Publish %@
 	. proto :( func, ... )	vs. locale(s) ?
 	. NTH: verify_traversal optimization

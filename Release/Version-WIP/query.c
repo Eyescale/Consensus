@@ -209,9 +209,6 @@ POP_stack:		POP( stack, exponent, PUSH_stack )
 		enum { XPN_id, LIST_id, EXP_id };
 		for ( ; ; ) {
 PUSH_xpn:		PUSH( stack[ XPN_id ], xpn, POP_xpn )
-			if ( lm==3 ) {
-				while (( f=CNSUB(e,0) )) e=f;
-				goto PUSH_exp; }
 PUSH_list:		LUSH( stack[ LIST_id ], lm, POP_list )
 PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 			if ( !lookupIfThere( trail, e ) ) { // ward off doublons
@@ -220,12 +217,9 @@ PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 					success = e;
 					break; } }
 POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp )
-			if ( lm==3 ) goto POP_xpn;
-			else if (( stack[ LIST_id ] )) {
-				if (!lm) lm = 2;
+			if ( lm!=3 ) {
 				i = popListItem( &stack[ LIST_id ] );
 				e = i->ptr; goto PUSH_list; }
-			else break;
 POP_list:		LOP( stack[ LIST_id ], lm, PUSH_list, stack[ XPN_id ] )
 			POP_XPi( stack[ XPN_id ], xpn );
 POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
@@ -323,11 +317,12 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					continue; } } }
 
 		if ((x) && ( x = op_set( op, data, x, &p, success ) )) {
-			switch ( list_exp ) {
-			case 2: case 3: // start past opening '%(' of %(list,...)
-				p++; break;
-			case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
-				p+=9; break; }
+			if ( op==BM_BGN )
+				switch ( list_exp ) {
+				case 2: case 3: // start past opening '%(' of %(list,...)
+					p++; break;
+				case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
+					p+=9; break; }
 			//----------------------------------------------------------
 
 				p = verify_traversal( p, &traverse_data, flags );
@@ -427,9 +422,10 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 									j = j->next;
 									if ( !db_private( privy, j->ptr, db ) )
 										break; }
-								else if (( list_i->next ))
+								else {
 									j = popListItem( &list_i );
-								else { j = NULL; break; } } }
+									if ( !list_i ) {
+										j = NULL; break; } } } }
 						break; }
 					if ( !j )
 						LFLUSH( list_exp, i, list_i, stack.list_i )
@@ -602,12 +598,8 @@ case_( sub_expression_CB )
 			data->list_exp = 2;
 		else if ( !strncmp( mark+1, ":...", 4 ) )
 			data->list_exp = 4;
-		else if ( !strncmp( mark+1, ",...", 4 ) ) {
-			if ( !CNSUB( data->instance, 0 ) ) {
-				data->list_exp = 6; }
-			else {
-				freeListItem( &data->mark_exp );
-				data->success = 0; } }
+		else if ( !strncmp( mark+1, ",...", 4 ) )
+			data->list_exp = 6;
 		_return( 1 ) }
 	_break
 case_( dot_expression_CB )

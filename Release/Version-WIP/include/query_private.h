@@ -52,34 +52,38 @@
 /*
 	in case %( list, ?:... ) we have lm==1
 		we process e->as_sub[ 0 ]^n.sub[ 1 ] (n>=1)
-	otherwise - case %( list, ... )
+	otherwise - case %( list, ... ) we have lm=0 then 2
 		we process e->as_sub[ 0 ]^n (n>=0)
 */
 #define LUSH( stack, lm, LOP ) \
-	addItem( &stack, i ); \
-	if ( lm ) { \
-		for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
-			if ( !db_private( privy, i->ptr, db ) ) \
+	if ( lm==3 ) { \
+		stack = (void*)CNSUB(e,0); } \
+	else if ( lm ) { /* lm==1 or lm==2 */ \
+		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) \
+			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
-		if (( i )) { \
+		if (( j )) { \
 			addItem( &stack, i ); \
-			e = i->ptr; \
-			if ( lm & 1 ) { \
-				e = e->sub[ 1 ]; } } \
-		else { \
-			i = popListItem( &stack ); \
-			goto LOP; } }
+			addItem( &stack, j ); \
+			i = j; e = i->ptr; \
+			if ( lm==1 ) e = e->sub[ 1 ]; } \
+		else goto LOP; } \
+	else { /* lm==0 */ \
+		lm=2; addItem( &stack, i ); }
 
 #define LOP( stack, lm, LUSH, NEXT ) \
-	for ( ; ; ) { \
-		if (( i->next )) { \
-			i = i->next; \
-			if ( !db_private( privy, i->ptr, db ) ) { \
-				e = i->ptr; lm &= 1; \
-				goto LUSH; } } \
-		else if (( stack )) \
-			i = popListItem( &stack ); \
-		else { lm &= 1; break; } } \
+	if ( lm==3 ) { \
+		if (( e=(void*)stack )) goto LUSH; } \
+	else if (( stack )) { /* lm==1 or lm==2 */ \
+		lm &= 1; \
+		for ( ; ; ) { \
+			if (( i->next )) { \
+				i = i->next; \
+				if ( !db_private( privy, i->ptr, db ) ) { \
+					e = i->ptr; goto LUSH; } } \
+			else { \
+				i = popListItem( &stack ); \
+				if ( !stack ) break; } } } \
 	if ( !NEXT ) break;
 
 //---------------------------------------------------------------------------

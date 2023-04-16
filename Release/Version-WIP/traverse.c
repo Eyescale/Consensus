@@ -180,8 +180,8 @@ CB_ListCB						f_pop( stack, 0 ) }
 						else if ( mode&TERNARY ) {
 							p+=3; }
 						else if ( p[4]==',' ) { // ((list,...),xpan)
-							f_set( ELLIPSIS )
 							f_pop( stack, 0 )
+							f_set( ELLIPSIS )
 							p+=4; }
 						else { // :(proto,...)
 							f_set( ELLIPSIS )
