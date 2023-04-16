@@ -88,8 +88,8 @@
 						e = i->ptr; goto LUSH; } } \
 				else { \
 					i = popListItem( &stack ); \
-					if ( !stack ) break; } } } \
-		if ( !NEXT ) break; }
+					if ( !stack ) break; } } } } \
+	if ( !NEXT ) break;
 
 //---------------------------------------------------------------------------
 //	LFLUSH
