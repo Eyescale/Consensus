@@ -1,26 +1,14 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
-	  starting from expression itself
-		so for expression: (func,...)
-			we have func:
-				%((?,...):expression):~(.,.)
-			and params:
-				%(func,?):%((?,...):expression)
-				%((func,.),?):%((?,...):expression)
-				%(((func,.),.),?):%((?,...):expression)
-				%((((func,.),.),.),?):%((?,...):expression)
-	. Publish %@
+	. do (( expression, ... ), < expression(s) > )
+	. proto: support :( .return:(( %%, .server ), .request:(.func,...) ), ... )
 	. proto :( func, ... )	vs. locale(s) ?
-	. NTH: verify_traversal optimization
-		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
-		but actually we do have a pivot.e inside LIST_EXPR (?)
+	. :(func,...) garbage collection
+	. Publish %@
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
 		. Yak integration (full interactive calculator)
-	. NTH: ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
-	. publish %@
 	. CLEANUP
 		. p_prune( ) use strmatch( "asd", event ) in default
 		  Actually I would like default to cover all the terminal cases
@@ -83,6 +71,16 @@ TODOC
 				do exit
 
 DONE
+	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
+	  starting from expression itself
+		so for expression: (func,...)
+			we have func:
+				%((?,...):expression):~(.,.)
+			and params:
+				%(func,?):%((?,...):expression)
+				%((func,.),?):%((?,...):expression)
+				%(((func,.),.),?):%((?,...):expression)
+				%((((func,.),.),.),?):%((?,...):expression)
 	. implemented %((?,...):expression) = expression's root(s)
 	. do (( list, ... ), xpan )
 		instantiates xpan if needed, then
@@ -118,7 +116,10 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. do (( expression, ... ), < expression(s) > )
+	. NTH: verify_traversal optimization
+		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
+		but actually we do have a pivot.e inside LIST_EXPR (?)
+	. NTH: ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
 	. allow %@ to be used - spec?
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is

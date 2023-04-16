@@ -217,9 +217,6 @@ PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 					success = e;
 					break; } }
 POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp )
-			if ( lm!=3 ) {
-				i = popListItem( &stack[ LIST_id ] );
-				e = i->ptr; goto PUSH_list; }
 POP_list:		LOP( stack[ LIST_id ], lm, PUSH_list, stack[ XPN_id ] )
 			POP_XPi( stack[ XPN_id ], xpn );
 POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )

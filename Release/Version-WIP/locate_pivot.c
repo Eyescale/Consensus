@@ -144,21 +144,6 @@ case_( dereference_CB )
 case_( sub_expression_CB )
 	listItem *mark_exp = NULL;
 	char *mark = bm_locate_mark( p+1, &mark_exp );
-#if 0
-	if (( mark_exp )) {
-		if ( !strncmp( mark+1, ",...", 4 ) ) {	// %((?,...):list)
-			freeListItem( &mark_exp );
-			_prune( BM_PRUNE_FILTER ); }
-		if ( !strncmp( mark, "...", 3 ) ||	// %(list,...)
-		     !strncmp( mark+1, ":...", 4 )) {	// %(list,?:...)
-			freeListItem( &mark_exp );
-			if ( !is_f(NEGATED) ) {
-				if CHECK( LIST_EXPR ) {
-					Pair * list_expr = newPair( p, mark );
-					addItem( data->exponent, list_expr );
-					_return( 2 ) } }
-			_prune( BM_PRUNE_FILTER ) } }
-#else
 	if (( mark_exp )) {
 		if ( !strncmp( mark, "...", 3 ) ||	// %(list,...)
 		     !strncmp( mark+1, ":...", 4 ) ||	// %(list,?:...)
@@ -170,7 +155,6 @@ case_( sub_expression_CB )
 					addItem( data->exponent, list_expr );
 					_return( 2 ) } }
 			_prune( BM_PRUNE_FILTER ) } }
-#endif
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
 	if (( mark_exp )) {
