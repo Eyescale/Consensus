@@ -175,8 +175,10 @@ case_( end_set_CB )
 	*/
 	listItem *instances = popListItem( &data->results );
 	instances = catListItem( instances, data->sub[ 0 ] );
-	if ( f_next & FIRST )
-		data->sub[ 0 ] = instances;
+	if is_f( VECTOR ) {
+		reorderListItem( &instances ); }
+	if ( f_next & FIRST ) {
+		data->sub[ 0 ] = instances; }
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
@@ -264,7 +266,7 @@ case_( open_CB )
 		data->sub[ 0 ] = NULL; }
 	_break
 case_( decouple_CB )
-	if (!is_f(LEVEL|SUB_EXPR)) {	// Assumption: is_f(SET)
+	if (!is_f(LEVEL|SUB_EXPR)) {	// Assumption: is_f(SET|VECTOR)
 		listItem **results = &data->results;
 		listItem *instances = popListItem( results );
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
@@ -289,9 +291,7 @@ case_( close_CB )
 		CNInstance *perso = BMContextPerso( ctx );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
-		instances = is_f(ELLIPSIS) ?
-			bm_xpan( data->sub, db ) :
-			bm_couple( data->sub, db );
+		instances = bm_couple( data->sub, db );
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( f_next & FIRST )

@@ -390,43 +390,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				op = BM_END; }
 			else {
 				if ( list_exp ) {
-					CNInstance *y;
-					switch ( list_exp ) {
-					case 2: case 4: ; // %(list,...) or %(list,?:...)
-						if ((x) && ( y=CNSUB(x,0) )) {
-							list_exp++;
-							addItem( &stack.list_i, list_i );
-							list_i = i; j = newItem( y ); }
-						else j = NULL;
-						break;
-					case 3: case 5: // %(list,...) or %(list,?:...)
-						if ((x) && ( y=CNSUB(x,0) )) {
-							i->ptr = y; j = i; }
-						else j = NULL;
-						break;
-					case 6: case 7: // %((?,...):list)
-						for ( j=x->as_sub[ 0 ]; j!=NULL; j=j->next )
-							if ( !db_private( privy, j->ptr, db ) )
-								break;
-						if (( j )) {
-							if ( list_exp==6 ) {
-								list_exp++;
-								addItem( &stack.list_i, list_i ); }
-							addItem( &list_i, i ); }
-						else if (( list_i )) {
-							for ( j=i; ; ) {
-								if (( j->next )) {
-									j = j->next;
-									if ( !db_private( privy, j->ptr, db ) )
-										break; }
-								else {
-									j = popListItem( &list_i );
-									if ( !list_i ) {
-										j = NULL; break; } } } }
-						break; }
-					if ( !j )
-						LFLUSH( list_exp, i, list_i, stack.list_i )
-					else {
+					CND_LXj( list_exp, x, i, list_i, stack.list_i ) {
 						i = j;
 						p = stack.p->ptr;
 						op = BM_BGN;

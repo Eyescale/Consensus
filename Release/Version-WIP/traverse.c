@@ -27,17 +27,25 @@ CB_TermCB	} while ( 0 );
 CB_EEnovEndCB				f_clr( EENOV )
 					f_cls }
 				else if is_f( VECTOR ) {
-					f_clr( VECTOR )
+					if ((*stack)) {
+						icast.ptr = (*stack)->ptr;
+						f_next = icast.value; }
+CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
 				p++; break;
 			case '<':
-				if is_f( INFORMED ) // EENO
-#ifdef BMTernaryOperatorCB
-					f_clr( NEGATED|FILTERED|INFORMED )
-#else
-					{ traverse_data->done=1; break; }
-#endif
-				p++; break;
+				if is_f( INFORMED ) { // input or EENO
+					if ( mode&TERNARY ) {
+						f_clr( NEGATED|FILTERED|INFORMED )
+						p++; break; }
+					else {
+						traverse_data->done=1;
+						break; } }
+				f_set( VECTOR )
+CB_BgnSetCB			f_push( stack )
+				f_reset( VECTOR|FIRST, 0 )
+				p++;
+CB_TermCB			break;
 			case '!':
 				if ( p[1]=='!' )
 					p = p_prune( PRUNE_IDENTIFIER, p+2 );
@@ -115,12 +123,12 @@ CB_OpenCB				f_push( stack )
 CB_TermCB				break; }
 			case ':':
 				if ( p[1]=='<' ) {
-					f_clr( NEGATED|FILTERED|INFORMED )
-					f_set( VECTOR );
-					p+=2; break; }
+					f_clr( NEGATED|INFORMED|FILTERED )
+					p++; break; }
 				else {
 CB_FilterCB				f_clr( NEGATED|INFORMED )
 					p++; break; }
+				break;
 			case ',':
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
 					{ traverse_data->done=1; break; }
@@ -168,7 +176,7 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					if ( p[2]=='.' ) {
 						/* Assumption: p[3]==')'
 						   MUST BE TESTED IN THIS EXACT ORDER
-						   start with cases
+						   starting with cases
 							%(list,...) or
 							%(list,?:...) or
 							%((?,...):list) */
@@ -181,6 +189,7 @@ CB_ListCB						f_pop( stack, 0 ) }
 							p+=3; }
 						else if ( p[4]==',' ) { // ((list,...),xpan)
 							f_pop( stack, 0 )
+							f_clr( FIRST )
 							f_set( ELLIPSIS )
 							p+=4; }
 						else { // :(proto,...)

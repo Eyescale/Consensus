@@ -80,12 +80,12 @@ Consensus B% Version-WIP
 			%<	expr
 				%<?	expr
 		:	expr
-			:_<	expr
 			/
 			:~	:
 				~
 			:\"	:\"\\	:\"
-				:_	:_<	expr
+				:_	_<
+		_<	expr
 		/	expr
 			/\\	/
 				/\\x	/\\x_	/

@@ -59,7 +59,9 @@
 #define LUSH( stack, lm, LOP ) \
 	if ( lm==3 ) { \
 		stack = (void*)CNSUB(e,0); } \
-	else if ( lm ) { /* lm==1 or lm==2 */ \
+	else if ( !lm ) { \
+		lm=2; addItem( &stack, i ); } \
+	else { /* lm==1 or lm==2 */ \
 		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) \
 			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
@@ -69,8 +71,6 @@
 			i = j; e = i->ptr; \
 			if ( lm==1 ) e = e->sub[ 1 ]; } \
 		else { lm=NEG(lm); goto LOP; } } \
-	else { /* lm==0 */ \
-		lm=2; addItem( &stack, i ); }
 
 #define LOP( stack, lm, LUSH, NEXT ) \
 	if ( lm==3 ) { \
@@ -80,26 +80,63 @@
 		e = i->ptr; goto LUSH; } \
 	else { /* lm==-1 or lm==-2 */ \
 		lm = NEG(lm)&1; /* reset to resp. 1 or 0 */ \
-		if (( stack )) { \
-			for ( ; ; ) { \
-				if (( i->next )) { \
-					i = i->next; \
-					if ( !db_private( privy, i->ptr, db ) ) { \
-						e = i->ptr; goto LUSH; } } \
-				else { \
-					i = popListItem( &stack ); \
-					if ( !stack ) break; } } } } \
+		while (( stack )) { \
+			if (( i->next )) { \
+				i = i->next; \
+				if ( !db_private( privy, i->ptr, db ) ) { \
+					e = i->ptr; goto LUSH; } } \
+			else i = popListItem( &stack ); } } \
 	if ( !NEXT ) break;
 
 //---------------------------------------------------------------------------
-//	LFLUSH
+//	LFLUSH, CND_LXj
 //---------------------------------------------------------------------------
-#define	LFLUSH( list_exp, i, list_i, stack ) { \
+#define LFLUSH( list_exp, i, list_i, stack ) { \
 	if ( list_exp & 1 ) { \
 		switch ( list_exp-- ) { \
 		case 7: while (( j=popListItem(&list_i) )) i=j; break; \
 		default: freeItem( i ); i = list_i; } \
 		list_i = popListItem( &stack ); } }
+
+#define CND_LXj( list_exp, x, i, list_i, stack ) { \
+	CNInstance *y; \
+	switch ( list_exp ) { \
+	case 2: case 4: ; /* %(list,...) or %(list,?:...) */ \
+		if ((x) && ( y=CNSUB(x,0) )) { \
+			list_exp++; \
+			addItem( &stack, list_i ); \
+			list_i = i; j = newItem( y ); } \
+		else j = NULL; \
+		break; \
+	case 3: case 5: /* %(list,...) or %(list,?:...) */ \
+		if ((x) && ( y=CNSUB(x,0) )) { \
+			i->ptr = y; j = i; } \
+		else j = NULL; \
+		break; \
+	case 6: case 7: /* %((?,...):list) */ \
+		for ( j=x->as_sub[ 0 ]; j!=NULL; j=j->next ) \
+			if ( !db_private( privy, j->ptr, db ) ) \
+				break; \
+		if (( j )) { \
+			if ( list_exp==6 ) { \
+				list_exp++; \
+				addItem( &stack, list_i ); } \
+			addItem( &list_i, i ); } \
+		else j = pop_list_i( i, &list_i, privy, db ); \
+		break; } } \
+	if ( !j ) \
+		LFLUSH( list_exp, i, list_i, stack ) \
+	else
+
+static inline listItem *
+pop_list_i( listItem *i, listItem **list_i, int privy, CNDB *db ) {
+	while (( *list_i )) {
+		if (( i->next )) {
+			i = i->next;
+			if ( !db_private( privy, i->ptr, db ) )
+				return i; }
+		else i = popListItem( list_i ); }
+	return NULL; }
 
 //---------------------------------------------------------------------------
 //	assignment	- query_assignment utility

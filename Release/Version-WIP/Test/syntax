@@ -4,6 +4,7 @@
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
 	else in toto
+		do ((alpha,...),<a,%(b,?),c>)
 		do :<
 		do input:<
 		do input:"asldkj"<

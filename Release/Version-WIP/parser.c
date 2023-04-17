@@ -351,10 +351,13 @@ A:CND_else_( B )
 						*type = (*type&ELSE)|ON_X;
 						f_clr( ASSIGN|INFORMED|NEGATED|FILTERED )
 						f_set(FIRST) }
+			else if ( *type&DO && is_f(ELLIPSIS) && !is_f(NEGATED|FILTERED|INFORMED) ) {
+				do_( same )	s_take
+						f_set( VECTOR ) }
 			else if ( *type&DO && ( is_f(ASSIGN) ? !is_f(INFORMED|FILTERED) : is_f(INFORMED) ) ) {
-				do_( ":_<" )	s_take
+				do_( "_<" )	s_take
 						f_clr(ASSIGN) }
-			else if ( *type&OUTPUT && !is_f(NEGATED|INFORMED|FILTERED) ) {
+			else if ( *type&OUTPUT && !is_f(NEGATED|FILTERED|INFORMED) ) {
 				do_( same )	s_take
 						f_set( VECTOR ) }
 		on_( '>' ) if ( *type&DO && s_empty ) {
@@ -364,6 +367,9 @@ A:CND_else_( B )
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED ) }
+			else if ( *type&DO && are_f(ELLIPSIS|INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
+				do_( same )	s_take
+						f_clr( VECTOR ) }
 			else if ( *type&OUTPUT && are_f(INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
 				do_( same )	s_take
 						f_clr( VECTOR )
@@ -400,6 +406,10 @@ A:CND_else_( B )
 			else if ( is_f(LEVEL|SUB_EXPR) && (is_f(TERNARY)?is_f(FILTERED):is_f(INFORMED)) ) {
 					do_( same )	s_take
 				if ( is_f(TERNARY) ) {	while (!is_f(FIRST)) f_pop( stack, 0 ) }
+							f_pop( stack, 0 )
+							f_set( INFORMED ) }
+			else if ( is_f(ELLIPSIS) && is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|VECTOR) ) {
+					do_( same )	s_take
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
 			else if ( is_f(CARRY) && !is_f(LEVEL|SUB_EXPR) ) {
@@ -553,7 +563,7 @@ CND_ifn( mode==BM_STORY, C )
 		on_( '~' )	do_( ":~" )
 		on_( '/' ) 	do_( "/" )	s_add( ":/" )
 		on_( '<' ) if ( !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
-				do_( ":_<" )	s_take }
+				do_( "_<" )	s_take }
 		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( ":\"" )	s_add( ",\"" ) }
 		on_( ')' )	do_( "expr" )	REENTER
@@ -580,9 +590,9 @@ CND_ifn( mode==BM_STORY, C )
 				end
 			in_( ":_" ) bgn_
 				ons( " \t" )	do_( same )
-				on_( '<' )	do_( ":_<" )	s_take
+				on_( '<' )	do_( "_<" )	s_take
 				end
-		in_( ":_<" ) bgn_
+		in_( "_<" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( "expr" )	REENTER
 							*type = (*type&ELSE)|INPUT;
@@ -707,7 +717,7 @@ C:CND_endif
 		ons( " \t" )	do_( same )
 		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) {
 				do_( "_^" ) } // allow \nl inside {} () <> as comma
-		ons( "})>" )	do_( "expr" )	REENTER
+		ons( "})>" )	do_( "expr" )	REENTER // ignore trailing comma
 		on_( '.' ) if ( is_f(LISTABLE) || ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) ) {
 				do_( ",." ) 	s_add( "," ) }
 			else {	do_( "expr" )	REENTER
@@ -753,8 +763,7 @@ else					; // err
 					else {	do_( "(:" )	s_add( "...):" ) }
 				on_( ',' ) if ( !is_f(SUB_EXPR) ) {
 						do_( "expr" )	s_add( "...)," )
-								f_set( ELLIPSIS )
-								f_clr( FIRST ) }
+								f_reset( ELLIPSIS, 0 ) }
 				end
 		in_( ",?" ) bgn_
 			ons( " \t" )	do_( same )
@@ -892,7 +901,7 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
 		in_( ":_" ) 		errnum = ErrInputScheme;
-		in_( ":_<" ) 		errnum = ErrInputScheme;
+		in_( "_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;
 		in_( ">_" )		errnum = ErrOutputScheme;
 		in_( "expr_" )		errnum = ErrInstantiationFiltered;

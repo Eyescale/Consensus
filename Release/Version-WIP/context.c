@@ -153,7 +153,7 @@ typedef struct {
 	CNInstance *instance;
 	Registry *ctx;
 } RegisterData;
-static BMLocateCB register_CB;
+static BMLocateCB param_CB;
 
 void
 bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
@@ -163,13 +163,13 @@ bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
 		entry->value = instance;
 		listItem *xpn = NULL;
 		RegisterData data = { instance, ctx };
-		bm_locate_param( proto, &xpn, register_CB, &data ); }
+		bm_locate_param( proto, &xpn, param_CB, &data ); }
 	else {
 		Pair *entry = registryLookup( ctx, "." );
 		entry->value = BMContextSelf( ctx ); }
 }
 static void
-register_CB( char *p, listItem *exponent, void *user_data )
+param_CB( char *p, listItem *exponent, void *user_data )
 {
 	RegisterData *data = user_data;
 	listItem *xpn = NULL;

@@ -157,9 +157,8 @@ case_( sub_expression_CB )
 			_prune( BM_PRUNE_FILTER ) } }
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
-	if (( mark_exp )) {
-		do addItem( exponent, popListItem(&mark_exp) );
-		while (( mark_exp )); }
+	while (( mark_exp )) {
+		addItem( exponent, popListItem(&mark_exp) ); }
 	_break
 case_( open_CB )
 	if ( f_next & COUPLE )

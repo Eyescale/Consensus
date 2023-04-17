@@ -1,9 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. do (( expression, ... ), < expression(s) > )
-	. proto: support :( .return:(( %%, .server ), .request:(.func,...) ), ... )
 	. proto :( func, ... )	vs. locale(s) ?
+	. proto: support
+		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
+			-------------------------------------^
 	. :(func,...) garbage collection
+		do ~((?,...):expression)	// refcounting ancestry
+	 	do ~(list,?:...)		// NTH: short for do ~( %(list,?:...) )
 	. Publish %@
 	. Maths
 		. Add, Mult, Sub, Div
@@ -58,19 +61,10 @@ TODOC
 		   query expression is non-pivotable
 		=> Not a problem in Version-2.1 (currently WIP) as these will
 		   only be created as DB_SIGNAL_OP
-	. CAVEAT: self and parent proxies are manifested on new cell creation
-	     =>	: // will output @@@
-			on init
-				do !! Cell()	// new cell
-			else on ? < .		// catches cell's self proxy
-				do >"%_\n": %<?>
-				do exit
-		: Cell
-			on init
-				do ( hello, world )
-				do exit
+	. CAVEAT: proxies are NOT manifested on creation
 
 DONE
+	. do (( expression, ... ), < expression(s) > )
 	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
 	  starting from expression itself
 		so for expression: (func,...)
@@ -97,14 +91,13 @@ DONE
 			do >: %<(!,?:...)>
 	  	does output all newly instantiated %((%%,.),?:...) in %<
 	. %( list, ?:... ) implementation done
-	  conceptually the same as %((list,...),?) - not implemented -
 	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
 	. REV-2.0 ASSIGNMENT rules
 	  in/on : variable : value [ < src ]
 		  %? (resp.%<?>) represents whatever is marked in expression
 		  %! (resp.%<!>) ALWAYS represents the whole expression: ((*,.),.)
 	  e.g. in/on : variable : value < ?
-		  %<?> same as %< - so yes, basically useless, BUT
+		  %<?> same as %< - but w/o mark neither %<?> nor %<!> are informed
 		  %<!> same as %<!:((*,variable),value)>
 	  Test/script for all assignment cases
 	. REV-2.0 SIGNAL handling
@@ -116,11 +109,14 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. NTH: verify_traversal optimization
+	. output format %^ (top-level relationship instances) so that
+		do >"%^\n":. same as do >"%_\n":~%(?,.):~%(.,?)
+	  or maybe just in default, i.e.
+		do >:. same as do >"%_\n":~%(?,.):~%(.,?)
+	. verify_traversal optimization
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)
-	. NTH: ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
-	. allow %@ to be used - spec?
+	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
@@ -134,7 +130,7 @@ NICE TO HAVE
 	. support multiple args in do input
 		do < arg1, arg2, ..., argN > : "format" <
 	. Design document: formalize the internal data structures, e.g.
-		cell:[ entry:[ name, narratives:{} ], ctx:[ this, registry ] ]
+		cell:[ [ entry:[ name, narratives:{} ], carry ], ctx:[ this, registry ] ]
 	. optimization
 		. Remodel occurrence->data->expression from char * to TBD
 		. do_enable: without building string?
