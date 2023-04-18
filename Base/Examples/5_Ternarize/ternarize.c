@@ -40,8 +40,7 @@ ternarize( char *expression )
 			if ( segment->name != p ) {
 				segment->value = p;
 				addItem( &sequence, newPair( segment, NULL ) );
-				segment = newPair( p, NULL );
-			}
+				segment = newPair( p, NULL ); }
 			if is_f( SUB_EXPR ) { p++; f_clr( SUB_EXPR ) }
 			// start a new Sequence
 			addItem( &stack.sequence, sequence );
@@ -56,8 +55,7 @@ ternarize( char *expression )
 				if ( segment->name != p ) { // should not be, here
 					segment->value = p;
 					addItem( &sequence, newPair( segment, NULL ) );
-					segment = newPair( p, NULL );
-				}
+					segment = newPair( p, NULL ); }
 				reorderListItem( &sequence );
 				// whole Sequence is guard
 				Pair *ternary = newPair( sequence, newPair( NULL, NULL ) );
@@ -67,15 +65,13 @@ ternarize( char *expression )
 					if is_f( FILTERED )
 						((Pair *) sup->value )->value = newItem( ternary );
 					else
-                                                ((Pair *) sup->value )->name = newItem( ternary );
-				}
+                                                ((Pair *) sup->value )->name = newItem( ternary ); }
 				else { f_set( TERNARY ) }
 				// start new sequence
 				addItem( &stack.sequence, ternary );
 				sequence = NULL;
 				f_push( &stack.flags )
-				f_clr( FIRST|INFORMED|FILTERED )
-			}
+				f_clr( FIRST|INFORMED|FILTERED ) }
 			else {	f_set( INFORMED ) }
 			p++; break;
 		case ':':
@@ -84,22 +80,18 @@ ternarize( char *expression )
 				if ( segment->name != p ) {
 					segment->value = p;
 					addItem( &sequence, newPair( segment, NULL ) );
-					segment = newPair( p, NULL );
-				}
+					segment = newPair( p, NULL ); }
 				reorderListItem( &sequence );
 				// ternary==[ guard, [.,.] ] is on stack.sequence
 				if is_f( FILTERED ) {
 					Pair *ternary = popListItem( &stack.sequence );
 					((Pair *) ternary->value )->value = sequence;
-					f_pop( &stack.flags, 0 )
-				}
+					f_pop( &stack.flags, 0 ) }
 				else {
 					Pair *ternary = stack.sequence->ptr;
 					((Pair *) ternary->value )->name = sequence;
-					f_set( FILTERED )
-				}
-				sequence = NULL;
-			}
+					f_set( FILTERED ) }
+				sequence = NULL; }
 			f_clr( INFORMED )
 			p++; break;
 		case ')':
@@ -108,8 +100,7 @@ ternarize( char *expression )
 			if ( segment->name != p ) {
 				segment->value = p;
 				addItem( &sequence, newPair( segment, NULL ) );
-				segment = newPair( p, NULL );
-			}
+				segment = newPair( p, NULL ); }
 			reorderListItem( &sequence );
 			if is_f( TERNARY ) {
 				// ternary==[ guard, [ passed, NULL ] ] is on stack.sequence
@@ -118,16 +109,13 @@ ternarize( char *expression )
 				((Pair *) ternary->value )->value = sequence;
 				while (!is_f( FIRST )) {
 					ternary = popListItem( &stack.sequence );
-					f_pop( &stack.flags, 0 );
-				}
+					f_pop( &stack.flags, 0 ); }
 				sequence = popListItem( &stack.sequence );
-				addItem( &sequence, ternary );
-			}
+				addItem( &sequence, ternary ); }
 			else {
 				listItem *sub = sequence;
 				sequence = popListItem( &stack.sequence );
-				addItem( &sequence, newPair( NULL, sub ) );
-			}
+				addItem( &sequence, newPair( NULL, sub ) ); }
 			f_pop( &stack.flags, 0 );
 			f_set( INFORMED );
 			p++; break;
@@ -138,25 +126,20 @@ ternarize( char *expression )
 		case '%':
 			if ( p[1]=='(' ) {
 				f_set( SUB_EXPR )
-				p++; break;
-			}
+				p++; break; }
 			// no break;
 		case '*':
 			if ( p[1]=='?' ) {
 				f_set( INFORMED )
-				p+=2; break;
-			}
+				p+=2; break; }
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) );
-			f_set( INFORMED )
-		}
-	}
+			f_set( INFORMED ) } }
 	// finish current sequence, reordered
 	if ( segment->name != p ) {
 		segment->value = p;
-		addItem( &sequence, newPair( segment, NULL ) );
-	}
+		addItem( &sequence, newPair( segment, NULL ) ); }
 	else freePair( segment );
 	reorderListItem( &sequence );
 
@@ -164,8 +147,7 @@ ternarize( char *expression )
 		fprintf( stderr, ">>>>> B%%: Error: ternarize: Memory Leak\n" );
 		freeListItem( &stack.sequence );
 		freeListItem( &stack.flags );
-		exit( -1 );
-	}
+		exit( -1 ); }
 	return sequence;
 }
 
@@ -210,9 +192,7 @@ free_ternarized( listItem *sequence )
 				item->value = p->name;
 				addItem( &stack, item );
 				i = item->name;	// traverse guard
-				continue;
-			}
-		}
+				continue; } }
 		else if (( item->value )) {
 			/* item==[ NULL, sub:Sequence ]
 			   We want the following on the stack:
@@ -223,8 +203,7 @@ free_ternarized( listItem *sequence )
 			item->value = i->next;
 			addItem( &stack, item );
 			i = item->name; // traverse sub
-			continue;
-		}
+			continue; }
 		if (( item->name )) freePair( item->name ); // segment
 		freePair( item );
 		if (( i->next ))
@@ -238,10 +217,8 @@ free_ternarized( listItem *sequence )
 				i = item->value;
 				freePair( item );
 			}
-			while ( !i && (stack) );
-		}
-		else break;
-	}
+			while ( !i && (stack) ); }
+		else break; }
 	freeListItem( &sequence );
 }
 
@@ -280,27 +257,21 @@ output_ternarized( listItem *sequence )
 				if (( p->value )) addItem( &stack, p->value );
 				addItem( &stack, p->name );
 				i = item->name;	// traverse guard
-				continue;
-			}
-		}
+				continue; } }
 		else if (( item->value )) {
 			// item==[ NULL, sub:Sequence ]
 			if (( i->next )) addItem( &stack, i->next );
 			i = item->value; // traverse sub
-			continue;
-		}
+			continue; }
 		if (( item->name )) {
 			// item==[ segment:Segment, NULL ]
 			Pair *segment = item->name;
-			output_s( tab, segment->name, segment->value );
-		}
+			output_s( tab, segment->name, segment->value ); }
 		// moving on
 		if (( i->next )) {
-			i = i->next;
-		}
+			i = i->next; }
 		else if (( stack )) {
-			i = popListItem( &stack );
-		}
+			i = popListItem( &stack ); }
 		else break;
 	}
 }
@@ -325,8 +296,7 @@ tab_bgn( int *tab, char *bgn )
 		break;
 	case ')':
 		tab[ TAB_BASE ]--;
-		break;
-	}
+		break; }
 	return tab[ TAB_OFFSET ] > 0 ?
 		tab[ TAB_BASE ] + tab[ TAB_OFFSET ] :
 		tab[ TAB_BASE ];
@@ -344,6 +314,5 @@ tab_end( int *tab, char *bgn, char *end )
 		break;
 	case ':':
 		tab[ TAB_OFFSET ]--;
-		break;
-	}
+		break; }
 }

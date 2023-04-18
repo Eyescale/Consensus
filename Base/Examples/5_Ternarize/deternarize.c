@@ -49,8 +49,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 				// push current Sequence on stack.sequence and start new
 				addItem( &stack.sequence, sequence );
 				sequence = NULL;
-				segment = newPair ( p+1, NULL );
-			}
+				segment = newPair ( p+1, NULL ); }
 			f_push( &stack.flags )
 			f_reset( FIRST|LEVEL, 0 )
 			p++; break;
@@ -74,30 +73,25 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 					if ( p[1]==':' || p[1]==')' ) {
 						// ~. is our current candidate
 						segment = NULL;
-						p = p_prune( PRUNE_TERNARY, p ); // proceed to ")"
-					}
+						// proceed to ")"
+						p = p_prune( PRUNE_TERNARY, p ); }
 					else {
 						p++; // resume past ":"
-						segment = newPair( p, NULL );
-					}
-				}
+						segment = newPair( p, NULL ); } }
 				else if ( p[1]==':' ) {
 					// sequence==guard is our current candidate
 					// sequence is already informed and completed
 					segment = NULL;
 					// proceed to ")"
-					p = p_prune( PRUNE_TERNARY, p+1 );
-				}
+					p = p_prune( PRUNE_TERNARY, p+1 ); }
 				else {
 					// release guard sequence
 					free_ternarized( sequence );
 					sequence = NULL;
 					p++; // resume past "?"
-					segment = newPair( p, NULL );
-				}
+					segment = newPair( p, NULL ); }
 				freeString( s );
-				f_set( TERNARY )
-			}
+				f_set( TERNARY ) }
 			else { p++; f_set( INFORMED ) }
 			break;
 		case ':':
@@ -105,8 +99,7 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 				// option completed
 				segment->value = p;
 				// proceed to ")"
-				p = p_prune( PRUNE_TERNARY, p );
-			}
+				p = p_prune( PRUNE_TERNARY, p ); }
 			else {	p++; f_clr( INFORMED ) }
 			break;
 		case ')':
@@ -124,22 +117,18 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 					listItem *sub = sequence;
 					sequence = popListItem( &stack.sequence );
 					next_p = optimize( sequence->ptr, p );
-					addItem( &sequence, newPair( NULL, sub ) );
-				}
+					addItem( &sequence, newPair( NULL, sub ) ); }
 				else if (( segment )) {
 					if ( !segment->value ) segment->value = p;
 					// add as-is to on-going expression
 					sequence = popListItem( &stack.sequence );
 					next_p = optimize( sequence->ptr, p );
-					addItem( &sequence, newPair( segment, NULL ) );
-				}
+					addItem( &sequence, newPair( segment, NULL ) ); }
 				else { // special case: ~.
 					sequence = popListItem( &stack.sequence );
 					next_p = optimize( sequence->ptr, p );
-					addItem( &sequence, newPair( NULL, NULL ) );
-				}	
-				segment = newPair( next_p, NULL );
-			}
+					addItem( &sequence, newPair( NULL, NULL ) ); }	
+				segment = newPair( next_p, NULL ); }
 			f_pop( &stack.flags, 0 );
 			f_set( INFORMED )
 			p++; break;
@@ -149,29 +138,24 @@ deternarize( char *expression, BMTernaryCB pass_CB, void *user_data )
 			p++; break;
 		case '%':
 			if ( p[1]=='(' ) {
-				p++; break;
-			}
+				p++; break; }
 			// no break
 		case '*':
 			if ( p[1]=='?' ) {
 				f_set( INFORMED );
-				p+=2; break;
-			}
+				p+=2; break; }
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) );
-			f_set( INFORMED )
-		}
-	}
+			f_set( INFORMED ) } }
 	if ( !ternary ) {
 		freePair( segment );
-		goto RETURN;
-	}
+		goto RETURN; }
 	// finish current sequence, reordered
 	if ( segment->name != p ) {
 		segment->value = p;
-		addItem( &sequence, newPair( segment, NULL ) );
-	} else freePair( segment );
+		addItem( &sequence, newPair( segment, NULL ) ); }
+	else freePair( segment );
 	reorderListItem( &sequence );
 
 	// convert sequence to char *string
@@ -188,8 +172,7 @@ RETURN:
 		freeListItem( &stack.sequence );
 		freeListItem( &stack.flags );
 		free( deternarized );
-		exit( -1 );
-	}
+		exit( -1 ); }
 	return deternarized;
 }
 
@@ -236,13 +219,11 @@ s_scan( CNString *s, listItem *sequence )
 			// item==[ NULL, sub:Sequence ]
 			if (( i->next )) addItem( &stack, i->next );
 			i = item->value; // parse sub-sequence
-			continue;
-		}
+			continue; }
 		else if (( item->name )) {
 			// item==[ segment:Segment, NULL ]
 			Pair *segment = item->name;
-			s_append( s, segment->name, segment->value );
-		}
+			s_append( s, segment->name, segment->value ); }
 		else s_add( "~." )
 		// moving on
 		if (( i->next ))
@@ -261,6 +242,5 @@ s_append( CNString *s, char *bgn, char *end )
 		case '\t':
 			break;
 		default:
-			StringAppend( s, *p );
-		}
+			StringAppend( s, *p ); }
 }

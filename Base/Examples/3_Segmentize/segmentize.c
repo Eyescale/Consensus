@@ -37,8 +37,7 @@ main( int argc, char *argv[] )
 			if (( segment ))
 				for ( char *p=segment->name; p!=segment->value; p++ )
 					printf( "%c", *p );
-			else break;
-		}
+			else break; }
 #endif
 	} while ( cycle_through( stack ) );
 
@@ -61,8 +60,7 @@ static void tie_up( listItem **, listItem **, listItem ** );
 	} else { \
 		segment->value = p++; \
 		addItem( &sequence, newPair( segment, NULL ) ); \
-		segment = newPair( p, NULL ); \
-	}
+		segment = newPair( p, NULL ); }
 
 listItem *
 segmentize( char *expression )
@@ -94,15 +92,13 @@ segmentize( char *expression )
 			if (( sequence )) {
 				reorderListItem( &sequence );
 				alternative = addItem( &alternative, sequence );
-				sequence = NULL;
-			}
+				sequence = NULL; }
 			if ( *p == ',' ) {
 				segment->value = p++;
 				addItem( &sequence, newPair( segment, NULL ) );
 				segment = newPair( p, NULL );
 				alternative = addItem( &alternative, sequence );
-				sequence = NULL;
-			}
+				sequence = NULL; }
 			break;
 		case '}':
 			if ( stack[ ALTERNATIVE ]==NULL ) { p++; break; }
@@ -129,18 +125,14 @@ segmentize( char *expression )
 				CLIP( sequence, segment, p );
 				break;
 			default:
-				p++;
-			}
+				p++; }
 			// no break
 		default:
-			p++;
-		}
-	}
+			p++; } }
 	segment->value = p;
 	addItem( &sequence, newPair( segment, NULL ) );
 	while (( stack[ ALTERNATIVE ] )) {
-		tie_up( &alternative, &sequence, stack );
-	}
+		tie_up( &alternative, &sequence, stack ); }
 	reorderListItem( &sequence );
 	return sequence;
 }
@@ -150,22 +142,17 @@ tie_up( listItem **alternative, listItem **sequence, listItem **stack )
 	if (( *alternative )) {
 		if (( *sequence )) {
 			reorderListItem( sequence );
-			addItem( alternative, *sequence );
-		}
+			addItem( alternative, *sequence ); }
 		if (( (*alternative)->next )) {
 			reorderListItem( alternative );
 			*sequence = popListItem( &stack[ SEQUENCE ] );
-			*sequence = addItem( sequence, *alternative );
-		}
+			*sequence = addItem( sequence, *alternative ); }
 		else {
 			listItem *s = popListItem( &stack[ SEQUENCE ] );
-			*sequence = catListItem( *sequence, s );
-		}
-	}
+			*sequence = catListItem( *sequence, s ); } }
 	else {
 		listItem *s = popListItem( &stack[ SEQUENCE ] );
-		*sequence = catListItem( *sequence, s );
-	}
+		*sequence = catListItem( *sequence, s ); }
 	*alternative = popListItem( &stack[ ALTERNATIVE ] );
 }
 
@@ -192,28 +179,22 @@ expand( listItem *sequence, listItem **stack )
 			addItem( &stack[ SEQUENCE ], i );
 			if (( j )) {
 				i = j->ptr;
-				j = j->next;
-			}
+				j = j->next; }
 			else {
 				addItem( &stack[ BRANCH ], newPair( NULL, item ));
-				i = ((listItem *) item )->ptr;
-			}
-			continue;
-		}
+				i = ((listItem *) item )->ptr; }
+			continue; }
 		Pair *segment = item->name;
 		if (( segment )) {
 			for ( char *p=segment->name; p!=segment->value; p++ )
-				printf( "%c", *p );
-		}
+				printf( "%c", *p ); }
 		else return;
 		for ( ; ; ) {
 			i = i->next;
 			if (( i )) break;
 			else if (( stack[ SEQUENCE ] ))
 				i = popListItem( &stack[ SEQUENCE ] );
-			else return;
-		}
-	}
+			else return; } }
 }
 listItem *
 firsti( listItem *i, listItem **stack )
@@ -225,16 +206,12 @@ firsti( listItem *i, listItem **stack )
 			addItem( &stack[ SEQUENCE ], i );
 			if (( stack[ 3 ] )) {
 				i = stack[ 3 ]->ptr;
-				stack[ 3 ] = stack[ 3 ]->next;
-			}
+				stack[ 3 ] = stack[ 3 ]->next; }
 			else {
 				addItem( &stack[ BRANCH ], newPair( NULL, item ));
-				i = ((listItem *) item )->ptr;
-			}
-			continue;
-		}
-		return i;
-	}
+				i = ((listItem *) item )->ptr; }
+			continue; }
+		return i; }
 }
 listItem *
 nexti( listItem *i, listItem **stack )
@@ -244,8 +221,7 @@ nexti( listItem *i, listItem **stack )
 		if (( i )) break;
 		else if (( stack[ SEQUENCE ] ))
 			i = popListItem( &stack[ SEQUENCE ] );
-		else return NULL;
-	}
+		else return NULL; }
 	return firsti( i, stack );
 }
 
@@ -270,17 +246,14 @@ cycle_through( listItem **stack )
 			break;
 		else {
 			freePair( iterator );
-			popListItem( &stack[ BRANCH ] );
-		}
-	}
+			popListItem( &stack[ BRANCH ] ); } }
 	if (!( stack[ BRANCH ] )) return 0;
 
 	/* buid new path, setting branches in proper order
 	*/
 	for ( listItem *i=stack[ BRANCH ]; i!=NULL; i=i->next ) {
 		Pair *iterator = i->ptr;
-		addItem( &stack[ PATH ], ((listItem *) iterator->value )->ptr );
-	}
+		addItem( &stack[ PATH ], ((listItem *) iterator->value )->ptr ); }
 	stack[ 3 ] = stack[ PATH ];
 	return 1;
 }
@@ -309,8 +282,7 @@ free_segmentized( listItem *sequence )
 			listItem *j = (listItem *) item;
 			addItem( &stack, newPair( j, i->next ) );
 			i = j->ptr;
-			continue;
-		}
+			continue; }
 		if (( item->name )) freePair( item->name ); // segment
 		freePair( item );
 		if (( i->next ))
@@ -325,18 +297,14 @@ free_segmentized( listItem *sequence )
 					freeItem( alternative );
 					alternative = item->name;
 					i = alternative->ptr;
-					break;
-				}
+					break; }
 				else {
 					i = item->value;
 					freeItem( alternative );
 					freePair( item );
-					popListItem( &stack );
-				}
-			} while ( !i && (stack) );
-		}
-		else break;
-	}
+					popListItem( &stack ); }
+			} while ( !i && (stack) ); }
+		else break; }
 	freeListItem( &sequence );
 }
 

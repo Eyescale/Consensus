@@ -42,8 +42,7 @@ main( int argc, char *argv[] )
 			printf( "\\n" );
 			break;
 		default:
-                	putchar( *p );
-		}
+                	putchar( *p ); }
         printf( "\nternarized:\n" );
 		listItem *sequence = ternarize( expression );
 		output_ternarized( sequence );
@@ -53,8 +52,7 @@ main( int argc, char *argv[] )
 		if ( p ) {
 			printf( "result:\n" );
 			printf( "\t%s\n", p );
-			free( p );
-		}
+			free( p ); }
 		else printf( "\tas is\n" );
 }
 

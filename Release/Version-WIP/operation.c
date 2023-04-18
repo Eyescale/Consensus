@@ -5,6 +5,7 @@
 #include "cell.h"
 #include "operation.h"
 #include "deternarize.h"
+#include "deparameterize.h"
 #include "expression.h"
 #include "instantiate.h"
 #include "proxy.h"
@@ -31,7 +32,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
-	bm_context_set( ctx, narrative->proto, instance );
+	bm_context_actualize( ctx, narrative->proto, instance );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
 	int passed = 1, marked = 0;
 	for ( ; ; ) {
@@ -59,10 +60,6 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			deternarized = bm_deternarize( &expression, ctx );
 			do_action( expression, ctx, story );
 			break;
-		ctrl(ELSE_EN) case EN:
-			deternarized = bm_deternarize( &expression, ctx );
-			do_enable( subs, narratives, expression, ctx );
-			break;
 		ctrl(ELSE_INPUT) case INPUT:
 			deternarized = bm_deternarize( &expression, ctx );
 			do_input( expression, ctx );
@@ -71,8 +68,12 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			deternarized = bm_deternarize( &expression, ctx );
 			do_output( expression, ctx );
 			break;
+		ctrl(ELSE_EN) case EN:
+			deternarized = bm_deternarize( &expression, ctx );
+			do_enable( subs, narratives, expression, ctx );
+			break;
 		case LOCALE:
-			bm_declare( ctx, expression );
+			bm_context_register( ctx, expression );
 			break; }
 
 		if (( deternarized )) free( expression );
@@ -95,7 +96,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			else goto RETURN; } }
 RETURN:
 	freeItem( i );
-	bm_context_clear( ctx );
+	bm_context_release( ctx );
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
@@ -267,64 +268,6 @@ do_action( char *expression, BMContext *ctx, CNStory *story )
 }
 
 //===========================================================================
-//	do_enable
-//===========================================================================
-static BMQueryCB enable_CB;
-typedef struct {
-	CNNarrative *narrative;
-	Registry *subs;
-	Pair *entry;
-} EnableData;
-
-static int
-do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
-{
-	EnableData data;
-	data.subs = subs;
-	CNString *s = newString();
-	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
-		CNNarrative *narrative = i->ptr;
-		int ellipsis = 0;
-		// build query string "proto:expression"
-		for ( char *p=narrative->proto; *p; p++ ) {
-			// reducing proto params as we go
-			if ( !strncmp( p, "...", 3 ) ) {
-				ellipsis = 1;
-				s_add( "..." );
-				p += 3; }
-			else if ( *p=='.' ) {
-				do p++; while ( !is_separator(*p) );
-				if ( *p==':' ) continue;
-				else StringAppend( s, '.' ); }
-			StringAppend( s, *p ); }
-		if ( ellipsis )
-			StringAffix( s, '%' );
-		StringAppend( s, ':' );
-		for ( char *p=expression; *p; p++ )
-			StringAppend( s, *p );
-		char *q = StringFinish( s, 0 );
-		// launch query
-		data.narrative = narrative;
-		data.entry = NULL;
-		bm_query( BM_CONDITION, q, ctx, enable_CB, &data );
-		// reset
-		StringReset( s, CNStringAll ); }
-	freeString( s );
-	return 1;
-}
-static BMCBTake
-enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
-	Pair *entry;
-	EnableData *data = user_data;
-	if (!( entry = data->entry )) {
-		entry = registryRegister( data->subs, data->narrative, NULL );
-		data->entry = entry; }
-	addIfNotThere((listItem **) &entry->value, e );
-	return BM_CONTINUE;
-}
-
-//===========================================================================
 //	do_input
 //===========================================================================
 static int
@@ -413,5 +356,52 @@ do_output( char *expression, BMContext *ctx )
 	fprintf( stderr, "do_output end\n" );
 #endif
 	return retval;
+}
+
+//===========================================================================
+//	do_enable
+//===========================================================================
+static BMQueryCB enable_CB;
+typedef struct {
+	CNNarrative *narrative;
+	Registry *subs;
+	Pair *entry;
+} EnableData;
+
+static int
+do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
+{
+	EnableData data;
+	data.subs = subs;
+	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		// build query string "proto:expression"
+		CNString *s = bm_deparameterize( narrative->proto );
+		StringAppend( s, ':' );
+		s_add( expression )
+		char *p = StringFinish( s, 0 );
+#ifdef DEBUG
+		if ( !strncmp( p, "%(.,...):", 9 ) ) {
+			fprintf( stderr, ">>>>> B%%: do_enable(): Warning: "
+				"proto %s resolves to %%(.,...) - "
+				"passes through!!\n", narrative->proto ); }
+#endif
+		// launch enable query
+		data.narrative = narrative;
+		data.entry = NULL;
+		bm_query( BM_CONDITION, p, ctx, enable_CB, &data );
+		freeString( s ); }
+	return 1;
+}
+static BMCBTake
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
+{
+	Pair *entry;
+	EnableData *data = user_data;
+	if (!( entry = data->entry )) {
+		entry = registryRegister( data->subs, data->narrative, NULL );
+		data->entry = entry; }
+	addIfNotThere((listItem **) &entry->value, e );
+	return BM_CONTINUE;
 }
 

@@ -40,10 +40,16 @@ Consensus B% Version-WIP
 		-	base
 		^.	^.$ 	^.$_	^.
 					_expr
-					.id:	sub	def$
-							sub$	sub
-							sub.	sub
-								sub.$	sub.$_	sub.$:	sub
+					.id:	¶	def$
+							¶$	¶
+							¶.	¶
+								¶..	¶
+									¶...	¶
+								¶.$	¶.$_	¶.$:	¶
+										¶.$,	¶
+											¶.$,.	¶
+												¶.$
+												¶.$,..	¶
 		def	.id:
 			def$_
 			def$	def$_	base

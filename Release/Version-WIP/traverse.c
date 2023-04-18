@@ -27,9 +27,8 @@ CB_TermCB	} while ( 0 );
 CB_EEnovEndCB				f_clr( EENOV )
 					f_cls }
 				else if is_f( VECTOR ) {
-					if ((*stack)) {
-						icast.ptr = (*stack)->ptr;
-						f_next = icast.value; }
+					icast.ptr = (*stack)->ptr;
+					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
 				p++; break;
@@ -41,7 +40,6 @@ CB_EndSetCB				f_pop( stack, 0 )
 					else {
 						traverse_data->done=1;
 						break; } }
-				f_set( VECTOR )
 CB_BgnSetCB			f_push( stack )
 				f_reset( VECTOR|FIRST, 0 )
 				p++;
@@ -65,14 +63,13 @@ CB_NotCB				if is_f( NEGATED ) f_clr( NEGATED )
 				break;
 			case '{':
 CB_BgnSetCB			f_push( stack )
-				f_reset( FIRST|SET, 0 )
+				f_reset( SET|FIRST, 0 )
 				p++;
 CB_TermCB			break;
 			case '}':
 				if ( !is_f(SET) ) { traverse_data->done=1; break; }
-				if ((*stack)) {
-					icast.ptr = (*stack)->ptr;
-					f_next = icast.value; }
+				icast.ptr = (*stack)->ptr;
+				f_next = icast.value;
 CB_EndSetCB			f_pop( stack, 0 )
 				f_cls; p++; break;
 			case '|':
@@ -175,26 +172,24 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
 						/* Assumption: p[3]==')'
-						   MUST BE TESTED IN THIS EXACT ORDER
-						   starting with cases
+						   Starting with cases
 							%(list,...) or
 							%(list,?:...) or
-							%((?,...):list) */
-						if ((mode&SUB_EXPR)||is_f(SUB_EXPR)) {
+							%((?,...):list) or
+							.proto:(_,...) or
+							.proto:(_(.param,...)_) */
+						if ( is_f(SUB_EXPR)||(mode&(SUB_EXPR|FILTERED))) {
 							f_set( ELLIPSIS )
 CB_WildCardCB						p+=3; }
-						else if ( p[4]==':' ) { // ((list,...):_:)
-CB_ListCB						f_pop( stack, 0 ) }
-						else if ( mode&TERNARY ) {
-							p+=3; }
-						else if ( p[4]==',' ) { // ((list,...),xpan)
-							f_pop( stack, 0 )
-							f_clr( FIRST )
-							f_set( ELLIPSIS )
-							p+=4; }
-						else { // :(proto,...)
-							f_set( ELLIPSIS )
-CB_WildCardCB						p+=3; }
+						else {	// instantiating or deternarizing
+							if ( p[4]==':' ) { // ((list,...):_:)
+CB_ListCB							f_pop( stack, 0 ) }
+							else if ( mode&TERNARY ) {
+								p+=3; }
+							else { // ((list,...),xpan)
+								f_set( ELLIPSIS )
+								f_pop( stack, ELLIPSIS )
+								p+=4; } }
 						f_cls; break; }
 					else {
 CB_RegisterVariableCB				f_cls; p+=2; break; } }

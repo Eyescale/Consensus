@@ -7,19 +7,16 @@ typedef Registry BMContext;
 
 BMContext *	newContext( CNEntity *cell, CNEntity *parent );
 void		freeContext( BMContext * );
-void		bm_context_finish( BMContext *ctx, int subscribe );
-void		bm_context_activate( BMContext *ctx, CNInstance *proxy );
 void		bm_context_init( BMContext *ctx );
 int		bm_context_update( CNEntity *this, BMContext *ctx );
-void 		bm_context_set( BMContext *, char *, CNInstance * );
-int		bm_declare( BMContext *, char * );
-void		bm_context_clear( BMContext * );
-void		bm_context_pipe_flush( BMContext * );
+void 		bm_context_actualize( BMContext *, char *, CNInstance * );
+void		bm_context_release( BMContext * );
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_mark_x( BMContext *, char *, char *, Pair *, int * );
 void 		bm_context_unmark( BMContext *, int );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
+int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
 CNInstance *	bm_lookup( int privy, char *, BMContext *, CNDB * );
 CNInstance *	bm_lookup_x( BMContext *, CNDB *, CNInstance *, CNDB * );
@@ -52,6 +49,13 @@ static inline CNInstance * BMContextPerso( BMContext *ctx )
 
 static inline CNEntity * BMContextCell( BMContext *ctx )
 	{ return DBProxyThat( BMContextSelf(ctx) ); }
+
+//===========================================================================
+//	Utilities
+//===========================================================================
+static inline void bm_context_pipe_flush( BMContext *ctx ) {
+	Pair *entry = registryLookup( ctx, "|" );
+	freeListItem((listItem **) &entry->value ); }
 
 
 #endif	// CONTEXT_H

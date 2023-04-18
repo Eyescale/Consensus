@@ -25,8 +25,8 @@
 //===========================================================================
 #include "instantiate_traversal.h"
 
+static CNInstance * conceive( Pair *, char *, BMTraverseData * );
 static void instantiate_assignment( char *, BMTraverseData *, CNStory * );
-static CNInstance * bm_conceive( Pair *, char *, BMTraverseData * );
 typedef struct {
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
@@ -51,17 +51,18 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	if ( *expression==':' )
-		instantiate_assignment( expression, &traverse_data, story );
-	else if ( *expression=='!' ) {
+	if ( *expression=='!' ) {
 		char *p = expression + 2; // skip '!!'
 		Pair *entry = registryLookup( story, p );
 		if (( entry )) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
-			bm_conceive( entry, p, &traverse_data ); }
+			conceive( entry, p, &traverse_data );
+			traverse_data.done = 1; } // cleanup done if any
 		else {
 			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
 				"\tdo !! %s <<<<<\n", p ); } }
+	else if ( *expression==':' )
+		instantiate_assignment( expression, &traverse_data, story );
 	else {
 		DBG_VOID( expression )
 		traverse_data.done = INFORMED;
@@ -93,10 +94,10 @@ cleanup( InstantiateData *data, BMContext *ctx )
 }
 
 //---------------------------------------------------------------------------
-//	bm_conceive
+//	conceive
 //---------------------------------------------------------------------------
 static CNInstance *
-bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
+conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 /*
 	Assumption: *p=='('
 */
@@ -107,9 +108,9 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	// instantiate new cell
 	CNCell *new = newCell( entry, cell );
 	BMContext *carry = BMCellContext( new );
-	// inform cell
+	// inform new cell's context
 	data->carry = carry;
-	p++; // skipping '('
+	p++; // skipping opening '('
 	if ( *p==')' ) p++;
 	else do {
 		char *q = p;
@@ -118,28 +119,19 @@ bm_conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 		if ( traverse_data->done==2 ) {
 			p = p_prune( PRUNE_TERM, q );
 			cleanup( data, ctx ); }
-		freeListItem( &data->sub[ 0 ] );
-	} while ( *p++!=')' );
-	// carry cell
-	CNInstance *proxy = NULL;
-	addItem( BMCellCarry(cell), new );
-	if ( *p=='~' ) 
-		bm_context_finish( carry, 0 );
-	else {
-		bm_context_finish( carry, 1 );
-		proxy = db_new_proxy( cell, new, data->db );
-		bm_context_activate( ctx, proxy ); }
-	traverse_data->done = 1;
-	return proxy;
+		freeListItem( &data->sub[ 0 ] ); }
+	while ( *p++!=')' );
+	// carry new and return proxy
+	return bm_cell_carry( cell, new, !(*p=='~') );
 }
 
 //---------------------------------------------------------------------------
 //	instantiate_traversal
 //---------------------------------------------------------------------------
-static listItem *bm_couple( listItem *sub[2], CNDB * );
-static CNInstance *bm_literal( char **, CNDB * );
-static listItem *bm_list( char **, listItem **, CNDB * );
-static listItem *bm_xpan( listItem **, CNDB * );
+static listItem *instantiate_couple( listItem *sub[2], CNDB * );
+static CNInstance *instantiate_literal( char **, CNDB * );
+static listItem *instantiate_list( char **, listItem **, CNDB * );
+static listItem *instantiate_xpan( listItem **, CNDB * );
 
 #define current ( is_f( FIRST ) ? 0 : 1 )
 
@@ -233,8 +225,8 @@ case_( list_CB )
 	*/
 	BMContext *carry = data->carry;
 	data->sub[ 0 ] = ((carry) ?
-		bm_list( q, data->sub, BMContextDB(carry) ) :
-		bm_list( q, data->sub, data->db ));
+		instantiate_list( q, data->sub, BMContextDB(carry) ) :
+		instantiate_list( q, data->sub, data->db ));
 	_break
 case_( literal_CB )
 	/*		(:_sequence_:)
@@ -243,7 +235,7 @@ case_( literal_CB )
 	*/
 	BMContext *carry = data->carry;
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
-	CNInstance *e = bm_literal( q, db );
+	CNInstance *e = instantiate_literal( q, db );
 	data->sub[ current ] = newItem( e );
 	(*q)++;
 	_break
@@ -281,8 +273,8 @@ case_( close_CB )
 		instances = data->sub[ 0 ];
 	else {
 		instances = is_f(ELLIPSIS) ?
-			bm_xpan( data->sub, db ) :
-			bm_couple( data->sub, db );
+			instantiate_xpan( data->sub, db ) :
+			instantiate_couple( data->sub, db );
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( !instances ) _return( 2 )
@@ -291,7 +283,7 @@ case_( close_CB )
 		CNInstance *perso = BMContextPerso( ctx );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
-		instances = bm_couple( data->sub, db );
+		instances = instantiate_couple( data->sub, db );
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( f_next & FIRST )
@@ -346,13 +338,13 @@ case_( signal_CB )
 BMTraverseCBEnd
 
 //---------------------------------------------------------------------------
-//	bm_couple
+//	instantiate_couple
 //---------------------------------------------------------------------------
 static inline void
 _couple( CNInstance *, CNInstance *, CNDB *, listItem **, listItem ** );
 
 static listItem *
-bm_couple( listItem *sub[2], CNDB *db )
+instantiate_couple( listItem *sub[2], CNDB *db )
 /*
 	Instantiates and/or returns all ( sub[0], sub[1] )
 */
@@ -390,10 +382,10 @@ _couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **re
 }
 
 //---------------------------------------------------------------------------
-//	bm_xpan
+//	instantiate_xpan
 //---------------------------------------------------------------------------
 static listItem *
-bm_xpan( listItem *sub[2], CNDB *db )
+instantiate_xpan( listItem *sub[2], CNDB *db )
 /*
 	Assuming we had expression:((sub[0],...),sub[1])
 		where sub[1] is { a, b, ..., z }
@@ -421,12 +413,12 @@ bm_xpan( listItem *sub[2], CNDB *db )
 }
 
 //---------------------------------------------------------------------------
-//	bm_literal, bm_list
+//	instantiate_literal, instantiate_list
 //---------------------------------------------------------------------------
 static char *sequence_step( char *, CNInstance **, CNDB * );
 
 static CNInstance *
-bm_literal( char **position, CNDB *db )
+instantiate_literal( char **position, CNDB *db )
 /*
 	Assumption: expression = (:_sequence_) resp. (:_sequence_:)
 	where
@@ -461,7 +453,7 @@ RETURN:
 }
 
 static listItem *
-bm_list( char **position, listItem **sub, CNDB *db )
+instantiate_list( char **position, listItem **sub, CNDB *db )
 /*
 	Assumption: ((expression,...):_sequence_:)
 	  start	*position -------^               ^
@@ -544,9 +536,9 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 	return p;
 }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	instantiate_assignment
-//===========================================================================
+//---------------------------------------------------------------------------
 #define bm_assign( sub, db ) \
 	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
 		db_assign( i->ptr, j->ptr, db );
@@ -582,7 +574,8 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		if (( entry )) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			while (( e = popListItem( &sub[0] ) )) {
-				CNInstance *proxy = bm_conceive( entry, p, traverse_data );
+				CNInstance *proxy = conceive( entry, p, traverse_data );
+				traverse_data->done = 1; // cleanup done if any
 				if (( proxy )) db_assign( e, proxy, db );
 				else db_unassign( e, db ); } }
 		else {
@@ -614,12 +607,6 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 //===========================================================================
 void
 bm_instantiate_input( char *input, char *arg, BMContext *ctx )
-/*
-	Note that the number of assignments actually performed is
-		INF( cardinal(sub[0]), cardinal(sub[1]) )
-	And that nothing is done with the excess, if there is -
-		case input==NULL excepted
-*/
 {
 #ifdef DEBUG
 	fprintf( stderr, "bm_instantiate_input: %s, arg=%s ........{\n",

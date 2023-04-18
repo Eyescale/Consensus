@@ -1,9 +1,18 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. proto :( func, ... )	vs. locale(s) ?
-	. proto: support
+	. support ellipsis at any level in proto, e.g.
 		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
-			-------------------------------------^
+		   e.g.	-------------------------------------^-------^
+
+	  => context.c: param_CB is called on any .identifier p
+		if p_prune(PRUNE_TERM,p) verifies ",..." then
+			. ignore exponent
+			. set param to instances.sub[0]^MAX
+		
+	  Limitation: as we do not [yet] support e.g. %(( a, ? ), ... ) we only
+		support ( .param, ... ) OR ellipsis as last symbol in proto
+
 	. :(func,...) garbage collection
 		do ~((?,...):expression)	// refcounting ancestry
 	 	do ~(list,?:...)		// NTH: short for do ~( %(list,?:...) )
@@ -109,6 +118,8 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. enabler: allow negated in front ?
+	. instantiate.c: allow !! inside of expression
 	. output format %^ (top-level relationship instances) so that
 		do >"%^\n":. same as do >"%_\n":~%(?,.):~%(.,?)
 	  or maybe just in default, i.e.

@@ -10,10 +10,10 @@ SRCS =	narrative.c \
 		context.c \
 			database.c \
 			db_op.c \
-			locate_param.c \
 			locate_mark.c \
 		operation.c \
 			deternarize.c \
+			deparameterize.c \
 			instantiate.c \
 				eenov.c \
 					locate_emark.c \

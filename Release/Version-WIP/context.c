@@ -5,7 +5,6 @@
 #include "context.h"
 #include "scour.h"
 #include "locate_mark.h"
-#include "locate_param.h"
 #include "proxy.h"
 #include "eenov.h"
 
@@ -59,32 +58,6 @@ freeContext( BMContext *ctx )
 	CNDB *db = BMContextDB( ctx );
 	freeCNDB( db );
 	freeRegistry( ctx, NULL );
-}
-
-//===========================================================================
-//	bm_context_finish / bm_context_activate
-//===========================================================================
-void
-bm_context_finish( BMContext *ctx, int subscribe )
-/*
-	Assumption: only invoked at inception - see bm_conceive()
-	finish cell's context: activate or deprecate proxy to parent
-*/
-{
-	Pair *id = BMContextId( ctx );
-	if ( subscribe ) {
-		ActiveRV *active = BMContextActive( ctx );
-		addIfNotThere( &active->buffer->activated, id->value ); }
-	else {
-		db_deprecate( id->value, BMContextDB(ctx) );
-		id->value = NULL; }
-}
-
-void
-bm_context_activate( BMContext *ctx, CNInstance *proxy )
-{
-	ActiveRV *active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->activated, proxy );
 }
 
 //===========================================================================
@@ -147,75 +120,127 @@ update_active( ActiveRV *active )
 }
 
 //===========================================================================
-//	bm_context_set / bm_declare
+//	bm_context_actualize
 //===========================================================================
+#include "actualize_traversal.h"
+
 typedef struct {
 	CNInstance *instance;
-	Registry *ctx;
-} RegisterData;
-static BMLocateCB param_CB;
+	BMContext *ctx;
+	listItem *exponent, *level;
+	struct { listItem *flags, *level; } stack;
+} ActualizeData;
 
 void
-bm_context_set( BMContext *ctx, char *proto, CNInstance *instance )
+bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance )
 {
+	Pair *entry = registryLookup( ctx, "." );
 	if (( instance )) {
-		Pair *entry = registryLookup( ctx, "." );
 		entry->value = instance;
-		listItem *xpn = NULL;
-		RegisterData data = { instance, ctx };
-		bm_locate_param( proto, &xpn, param_CB, &data ); }
+
+		ActualizeData data;
+		memset( &data, 0, sizeof(ActualizeData) );
+		data.instance = instance;
+		data.ctx = ctx;
+
+		BMTraverseData traverse_data;
+		traverse_data.user_data = &data;
+		traverse_data.stack = &data.stack.flags;
+		traverse_data.done = FILTERED;
+
+		actualize_traversal( proto, &traverse_data, FIRST ); }
 	else {
-		Pair *entry = registryLookup( ctx, "." );
 		entry->value = BMContextSelf( ctx ); }
+#ifdef DEBUG
+	freeListItem( &data.stack.flags );
+	freeListItem( &data.stack.level );
+#endif		
 }
+
+//---------------------------------------------------------------------------
+//	actualize_traversal
+//---------------------------------------------------------------------------
+static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
+
+BMTraverseCBSwitch( actualize_traversal )
+/*
+	invokes actualize_param() on each .param found in expression, plus
+	sets context's perso to context's (self,perso) in case of varargs.
+	Note that we do not enter negated, starred or %(...) expressions
+	Note also that the caller is expected to reorder the list of exponents
+*/
+case_( sub_expression_CB )
+	_prune( BM_PRUNE_FILTER )
+case_( dot_expression_CB )
+	xpn_add( &data->exponent, SUB, 1 );
+	_break
+case_( open_CB )
+	if ( f_next & COUPLE )
+		xpn_add( &data->exponent, SUB, 0 );
+	addItem( &data->stack.level, data->level );
+	data->level = data->exponent;
+	_break
+case_( filter_CB )
+	xpn_free( &data->exponent, data->level );
+	_break
+case_( decouple_CB )
+	xpn_free( &data->exponent, data->level );
+	xpn_set( data->exponent, SUB, 1 );
+	_break
+case_( close_CB )
+	xpn_free( &data->exponent, data->level );
+	if is_f( COUPLE )
+		popListItem( &data->exponent );
+	if is_f( DOT )
+		popListItem( &data->exponent );
+	data->level = popListItem( &data->stack.level );
+	_break;
+case_( wildcard_CB )
+	if is_f( ELLIPSIS ) {
+		listItem *exponent = data->exponent;
+		int exp = (int) exponent->ptr;
+		if ((exp&1) && !exponent->next ) {
+			BMContext *ctx = data->ctx;
+			CNDB *db = BMContextDB( ctx );
+			CNInstance *self = BMContextSelf( ctx );
+			Pair *entry = registryLookup( ctx, "." );
+			entry->value = db_instantiate( self, entry->value, db ); } }
+	_break
+case_( dot_identifier_CB )
+	 actualize_param( p+1, data->instance, data->exponent, data->ctx );
+	_break
+BMTraverseCBEnd
+
+//---------------------------------------------------------------------------
+//	actualize_param / actualize_perso
+//---------------------------------------------------------------------------
 static void
-param_CB( char *p, listItem *exponent, void *user_data )
+actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx )
 {
-	RegisterData *data = user_data;
+	// Special case: ( .identifier, ... )
+	if ((exponent) && !(((int)exponent->ptr)&1)) {
+		char *q = p;
+		do q++; while ( !is_separator(*q) );
+		if ( !strncmp(q,",...",4) ) {
+			CNInstance *e;
+			while (( e=CNSUB(instance,0) )) instance=e;
+			registryRegister( ctx, p, instance );
+			return; } }
+	// General case
 	listItem *xpn = NULL;
 	for ( listItem *i=exponent; i!=NULL; i=i->next )
 		addItem( &xpn, i->ptr );
-	int exp; // note that we do not reorder xpn
-	CNInstance *instance = data->instance;
+	int exp;
 	while (( exp = pop_item( &xpn ) ))
 		instance = instance->sub[ exp & 1 ];
-	registryRegister( data->ctx, p, instance );
-}
-
-int
-bm_declare( BMContext *ctx, char *p )
-/*
-	register .locale(s)
-*/
-{
-	CNInstance *perso = BMContextPerso( ctx );
-	Pair *entry;
-	CNDB *db = BMContextDB( ctx );
-	while ( *p=='.' ) {
-		p++;
-		entry = registryLookup( ctx, p );
-		if (( entry )) { // already registered
-			CNInstance *instance = entry->value;
-			fprintf( stderr, ">>>>> B%%: Error: LOCALE " );
-			fprintf( stderr, ( instance->sub[ 0 ]==perso ?
-				"multiple declarations: '.%s'\n" :
-				"name %s conflict with sub-narrative .arg\n" ),
-				p );
-			exit( -1 ); }
-		else {
-			CNInstance *x = db_register( p, db );
-			x = db_instantiate( perso, x, db );
-			registryRegister( ctx, p, x ); }
-		p = p_prune( PRUNE_IDENTIFIER, p );
-		while ( *p==' ' || *p=='\t' ) p++; }
-	return 1;
+	registryRegister( ctx, p, instance );
 }
 
 //===========================================================================
-//	bm_context_clear / bm_context_pipe_flush
+//	bm_context_release
 //===========================================================================
 void
-bm_context_clear( BMContext *ctx )
+bm_context_release( BMContext *ctx )
 {
 	listItem **stack;
 	listItem **entries = &ctx->entries;
@@ -246,12 +271,6 @@ bm_context_clear( BMContext *ctx )
 				entry->value = NULL;
 				break; }
 			last_i = i; } }
-}
-void
-bm_context_pipe_flush( BMContext *ctx )
-{
-	Pair *entry = registryLookup( ctx, "|" );
-	freeListItem((listItem **) &entry->value );
 }
 
 //===========================================================================
@@ -372,6 +391,38 @@ bm_pop_mark( BMContext *ctx, char *mark )
 			break;
 		default:
 			popListItem((listItem**) &entry->value ); }
+}
+
+//===========================================================================
+//	bm_context_register
+//===========================================================================
+int
+bm_context_register( BMContext *ctx, char *p )
+/*
+	register .locale(s)
+*/
+{
+	CNInstance *perso = BMContextPerso( ctx );
+	Pair *entry;
+	CNDB *db = BMContextDB( ctx );
+	while ( *p=='.' ) {
+		p++;
+		entry = registryLookup( ctx, p );
+		if (( entry )) { // already registered
+			CNInstance *instance = entry->value;
+			fprintf( stderr, ">>>>> B%%: Error: LOCALE " );
+			fprintf( stderr, ( instance->sub[ 0 ]==perso ?
+				"multiple declarations: '.%s'\n" :
+				"name %s conflict with sub-narrative .arg\n" ),
+				p );
+			exit( -1 ); }
+		else {
+			CNInstance *x = db_register( p, db );
+			x = db_instantiate( perso, x, db );
+			registryRegister( ctx, p, x ); }
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		while ( *p==' ' || *p=='\t' ) p++; }
+	return 1;
 }
 
 //===========================================================================

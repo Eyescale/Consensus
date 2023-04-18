@@ -58,16 +58,16 @@ releaseCell( CNCell *cell )
 }
 
 //===========================================================================
-//	cellOperate
+//	bm_cell_operate
 //===========================================================================
 static void enlist( Registry *subs, Registry *index, Registry *warden );
 static void free_CB( Registry *, Pair *entry );
 
 int
-cellOperate( CNCell *cell, listItem **new, CNStory *story )
+bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
 {
 #ifdef DEBUG
-	fprintf( stderr, "cellOperate: bgn\n" );
+	fprintf( stderr, "bm_cell_operate: bgn\n" );
 #endif
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
@@ -99,7 +99,7 @@ cellOperate( CNCell *cell, listItem **new, CNStory *story )
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
 #ifdef DEBUG
-	fprintf( stderr, "cellOperate: end\n" );
+	fprintf( stderr, "bm_cell_operate: end\n" );
 #endif
 	return 1;
 }
@@ -141,5 +141,34 @@ static void
 free_CB( Registry *warden, Pair *entry )
 {
 	freeListItem((listItem **) &entry->value );
+}
+
+//===========================================================================
+//	bm_cell_carry
+//===========================================================================
+CNInstance *
+bm_cell_carry( CNCell *cell, CNCell *new, int subscribe )
+{
+	addItem( BMCellCarry(cell), new );
+
+	CNInstance *proxy = NULL;
+	BMContext *carry = BMCellContext( new );
+	Pair *id = BMContextId( carry );
+	if ( subscribe ) {
+		// activate connection from new to parent cell
+		ActiveRV *active = BMContextActive( carry );
+		addIfNotThere( &active->buffer->activated, id->value );
+
+		// create proxy and activate connection from parent cell to new
+		BMContext *ctx = BMCellContext( cell );
+		proxy = db_new_proxy( cell, new, BMContextDB(ctx) );
+		active = BMContextActive( ctx );
+		addIfNotThere( &active->buffer->activated, proxy ); }
+	else {
+		// deprecate parent proxy and nullify parent in new
+		db_deprecate( id->value, BMContextDB(carry) );
+		id->value = NULL; }
+
+	return proxy;
 }
 

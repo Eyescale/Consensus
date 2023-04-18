@@ -73,7 +73,7 @@ cnUpdate( CNProgram *program )
 	// update active cells
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		cell = i->ptr;
-		int over = cellUpdate( cell );
+		int over = bm_cell_update( cell );
 		if (( carry = *BMCellCarry(cell) )) {
 			*BMCellCarry( cell ) = NULL;
 			addItem( new, carry ); }
@@ -82,7 +82,7 @@ cnUpdate( CNProgram *program )
 	while (( carry = popListItem(new) ))
 		while (( cell = popListItem(&carry) )) {
 			addItem( active, cell );
-			cellInit( cell ); }
+			bm_cell_init( cell ); }
 	// mark exiting cells
 	while (( cell = popListItem(&out) ))
 		*BMCellCarry( cell ) = (void *) cell;
@@ -111,7 +111,7 @@ cnOperate( CNProgram *program )
 	for ( listItem *i=*active; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		cell = i->ptr;
-		if ( !cellOperate( cell, new, story ) ) {
+		if ( !bm_cell_operate( cell, new, story ) ) {
 			addItem( &released, cell );
 			clipListItem( active, i, last_i, next_i ); }
 		else last_i = i; }

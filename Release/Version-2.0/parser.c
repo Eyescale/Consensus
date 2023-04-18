@@ -147,7 +147,7 @@ CB_if_( NarrativeTake, mode, data ) {
 			on_other	do_( "sub.$" )	s_take
 			end
 		in_( "sub.$" ) bgn_
-			ons( " \t:," )	do_( "sub.$_" )	REENTER
+			ons( " \t:,)" )	do_( "sub.$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end

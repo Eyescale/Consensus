@@ -114,9 +114,9 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 		ons( " \t" )	do_( same )
 		on_( '(' )
 CB_if_( NarrativeTake, mode, data ) {
-				do_( "sub" )	REENTER }
+				do_( "¶" )	REENTER }
 		end
-		in_( "sub" ) bgn_
+		in_( "¶" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
 					do_( "def$_" )	REENTER
@@ -126,11 +126,11 @@ CB_if_( NarrativeTake, mode, data ) {
 							f_push( stack )
 							f_clr( INFORMED )
 							f_set( FIRST|LEVEL ) }
+			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+					do_( "¶." )	}
 			on_( ',' ) if ( are_f(INFORMED|FIRST|LEVEL) ) {
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
-			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "sub." )	}
 			on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
@@ -138,49 +138,72 @@ CB_if_( NarrativeTake, mode, data ) {
 			on_separator	; // err
 			on_other
 				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "sub$" )	s_take }
+					do_( "¶$" )	s_take }
 			end
-		in_( "sub." ) bgn_
-			on_( '.' )	do_( "sub.." )
-			on_separator	do_( "sub" )	REENTER
+		in_( "¶." ) bgn_
+			on_( '.' )	do_( "¶.." )
+			on_separator	do_( "¶" )	REENTER
 							s_add( "." )
 							f_set( INFORMED )
-			on_other	do_( "sub.$" )	REENTER
+			on_other	do_( "¶.$" )	REENTER
 							s_add( "." )
 			end
-			in_( "sub.." ) bgn_
+			in_( "¶.." ) bgn_
 				on_( '.' ) if ( !is_f(FIRST) ) {
-						do_( "sub..." )	s_add( "..." )
+						do_( "¶..." )	s_add( "..." )
 								f_pop( stack, 0 )
 								f_set( INFORMED ) }
-				on_other	do_( "sub" )	REENTER
+				on_other	do_( "¶" )	REENTER
 								s_add( ".." )
 								f_set( INFORMED )
 				end
-			in_( "sub..." ) bgn_
+			in_( "¶..." ) bgn_
 				ons( " \t" )	do_( same )
 				on_( ')' ) if ( !is_f(LEVEL) ) {
-						do_( "sub" ) 	s_take }
+						do_( "¶" ) 	s_take }
 				end
-		in_( "sub.$" ) bgn_
-			ons( " \t:," )	do_( "sub.$_" )	REENTER
+		in_( "¶.$" ) bgn_
+			ons( " \t:,)" )	do_( "¶.$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end
-			in_( "sub.$_" ) bgn_
+			in_( "¶.$_" ) bgn_
 				ons( " \t" )	do_( same )
-				on_( ':' )	do_( "sub.$:" )	s_take
-				ons( ",)" )	do_( "sub" )	REENTER
+				on_( ',' ) if ( is_f(FIRST) ) {
+						do_( "¶.$," )	s_take
+								f_clr( FIRST ) }
+				on_( ':' )	do_( "¶.$:" )	s_take
+				on_( ')' )	do_( "¶" )	REENTER
 								f_set( INFORMED )
 				end
-			in_( "sub.$:" ) bgn_
+			in_( "¶.$," ) bgn_
 				ons( " \t" )	do_( same )
-				on_( '(' )	do_( "sub" )	REENTER
-				on_separator	; // err
-				on_other	do_( "sub" )	REENTER
+				on_( '.' )	do_( "¶.$,." )
+				on_other	do_( "¶" )	REENTER
 				end
-		in_( "sub$" ) bgn_
-			on_separator	do_( "sub" )	REENTER
+				in_( "¶.$,." ) bgn_
+					on_( '.' )	do_( "¶.$,.." )
+					on_separator	do_( "¶" )	REENTER
+									s_add( "." )
+									f_set( INFORMED )
+					on_other	do_( "¶.$" )	REENTER
+									s_add( "." )
+					end
+				in_( "¶.$,.." ) bgn_
+					on_( '.' )	do_( "¶" )	s_add( "..." )
+									f_set( INFORMED )
+					on_other	do_( "¶" )	REENTER
+									s_add( ".." )
+									f_set( INFORMED )
+					end
+			in_( "¶.$:" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '(' )	do_( "¶" )	REENTER
+				on_separator	; // err
+				on_other	do_( "¶" )	REENTER
+				end
+		in_( "¶$" ) bgn_
+			on_separator	do_( "¶" )	REENTER
 			on_other	do_( same )	s_take
 							f_set( INFORMED )
 			end
@@ -895,7 +918,7 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	BMParseDefault
 		on_( EOF )		errnum= ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState;
-		in_( "sub..." ) bgn_
+		in_( "¶..." ) bgn_
 			on_( ')' )	errnum = ErrEllipsisLevel;
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
@@ -958,7 +981,7 @@ else {
 	case ErrUnexpectedEOF:
 		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
 	case ErrEllipsisLevel:
-		fprintf( stderr, "Error: %s: l%dc%d: ellipsis must close narrative proto\n", src, l, c ); break;
+		fprintf( stderr, "Error: %s: l%dc%d: ellipsis usage not supported\n", src, l, c ); break;
 	case ErrSpace:
 		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
 	case ErrInstantiationFiltered:

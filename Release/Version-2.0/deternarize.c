@@ -132,7 +132,7 @@ BMTraverseCBSwitch( deternarize_traversal )
 	and convert into string
 
    Note
-	only pre-ternary-operated sequences are pushed on stack.sequence
+	only ternary-operated sequences are pushed on stack.sequence
 */
 case_( open_CB )
 	data->ternary = 1;

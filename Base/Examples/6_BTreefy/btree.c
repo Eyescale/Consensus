@@ -48,8 +48,7 @@ btreefy( char *sequence )
 			if (!( *(char *)node->p == '{' )) {
 				reorderListItem( node_sub );
 				position = POSITION_RIGHT;
-				node_sub = &node->sub[ POSITION_RIGHT ];
-			}
+				node_sub = &node->sub[ POSITION_RIGHT ]; }
 			sub = newNode( p );
 			break;
 		case '}':
@@ -61,9 +60,7 @@ btreefy( char *sequence )
 			node = popListItem( &stack );
 			position = pop_item( &stack );
 			node_sub = &node->sub[ position ];
-			break;
-		}
-	}
+			break; } }
 RETURN:
 	if ((sub)) addItem( &root->sub[ 0 ], sub );
 	reorderListItem( &root->sub[0] );
@@ -100,8 +97,7 @@ output_btree( BTreeNode *root, int base )
 				level++;
 			}
 			else position = POSITION_LEFT;
-			i = j; continue;
-		}
+			i = j; continue; }
 		if (( i->next ))
 			i = i->next;
 		else if (( stack )) {
@@ -115,19 +111,15 @@ output_btree( BTreeNode *root, int base )
 					listItem *j = stack->next->ptr;
 					BTreeNode *parent = j->ptr;
 
-					i = parent->sub[ POSITION_RIGHT ];
-				}
+					i = parent->sub[ POSITION_RIGHT ]; }
 				else {
 					level--;
 					position = pop_item( &stack );
 					i = popListItem( &stack );
-					i = i->next;
-				}
-				position = POSITION_LEFT;
-			} while ( !i && (stack) );
-		}
-		else break;
-	}
+					i = i->next; }
+				position = POSITION_LEFT; }
+			while ( !i && (stack) ); }
+		else break; }
 }
 static void
 output_data( char *p, int level, int base )
@@ -158,8 +150,7 @@ output_data( char *p, int level, int base )
 		default:
 			output_tab( level );
 			putchar( *p );
-			break;
-	}
+			break; }
 	for ( p++; *p; p++ ) {
 		switch ( *p ) {
 		case '{':
@@ -174,8 +165,7 @@ output_data( char *p, int level, int base )
 				putchar( '\n' );
 				output_tab( level );
 				putchar( *p );
-				putchar( '\n' );
-			}
+				putchar( '\n' ); }
 			while ((level>base) && ((p[1]=='}'||p[1]==')') ? p++ : NULL ));
 			return;
 		case '|':
@@ -184,9 +174,7 @@ output_data( char *p, int level, int base )
 			putchar( '\n' );
 			return;
 		default:
-			putchar( *p );
-		}
-	}
+			putchar( *p ); } }
 	// here we finished sequence !
 	putchar( '\n' );
 }
@@ -213,8 +201,7 @@ freeBTree( BTreeNode *root )
 		if (( j )) {
 			if ( position == POSITION_LEFT ) {
 				addItem( &stack, i );
-				add_item( &stack, POSITION_LEFT );
-			}
+				add_item( &stack, POSITION_LEFT ); }
 			position = POSITION_LEFT;
 			i = j; continue;
 		}
@@ -232,19 +219,15 @@ freeBTree( BTreeNode *root )
 					listItem *j = stack->next->ptr;
 					BTreeNode *parent = j->ptr;
 
-					i = parent->sub[ POSITION_RIGHT ];
-				}
+					i = parent->sub[ POSITION_RIGHT ]; }
 				else {
 					position = pop_item( &stack );
 					i = popListItem( &stack );
 					freeNode( i->ptr );
-					i = i->next;
-				}
-				position = POSITION_LEFT;
-			} while ( !i && (stack) );
-		}
-		else break;
-	}
+					i = i->next; }
+				position = POSITION_LEFT; }
+			while ( !i && (stack) ); }
+		else break; }
 	freeNode( root );
 }
 
