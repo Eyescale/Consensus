@@ -1,18 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. proto :( func, ... )	vs. locale(s) ?
-	. support ellipsis at any level in proto, e.g.
-		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
-		   e.g.	-------------------------------------^-------^
-
-	  => context.c: param_CB is called on any .identifier p
-		if p_prune(PRUNE_TERM,p) verifies ",..." then
-			. ignore exponent
-			. set param to instances.sub[0]^MAX
-		
-	  Limitation: as we do not [yet] support e.g. %(( a, ? ), ... ) we only
-		support ( .param, ... ) OR ellipsis as last symbol in proto
-
 	. :(func,...) garbage collection
 		do ~((?,...):expression)	// refcounting ancestry
 	 	do ~(list,?:...)		// NTH: short for do ~( %(list,?:...) )
@@ -73,6 +60,20 @@ TODOC
 	. CAVEAT: proxies are NOT manifested on creation
 
 DONE
+	. support ellipsis at any level in proto, e.g.
+		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
+		   e.g.	-------------------------------------^-------^
+
+	  => context.c: param_CB is called on any .identifier p
+		if p_prune(PRUNE_TERM,p) verifies ",..." then
+			. ignore exponent
+			. set param to instances.sub[0]^MAX
+	  CAVEATS
+	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) we only support
+	     inner ( .param, ... ) and/or terminating ellipsis in proto
+	  2. when proto is ellipsis-terminated, then the sub-narrative perso
+	     is changed to (%%,this) Consequently all .locale(s) will be
+	     instantiated as ((%%,this), locale(s)), etc.
 	. do (( expression, ... ), < expression(s) > )
 	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
 	  starting from expression itself
