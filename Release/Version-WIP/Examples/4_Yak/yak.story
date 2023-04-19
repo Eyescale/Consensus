@@ -143,17 +143,14 @@
 			do : s : !! Take( ((*,p), .position ),
 				( start:('[',.) ? ((*,event), %(start:(.,(.,?)))) :) )
 	else on .EXIT
-		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
-			do ~( %(s:(?,.)) )
-		else do ~( s )
+		do s~
 		in ~.: ( ., r ): ~%(?,EXIT) // all r feeder schemas failed
-			do ~( r )
+			do r~
 	else on ~( .(.,s) ) // feeder rule failed
 		do .EXIT
 	else in ~.: ( (r,base) ?: (r,.) ) // all r subscribers failed
-		in ~.: ( %(s:(?,.)), ~r ) // no other rule to feed
-			do ~( %(s:(?,.)) )
-		do ~( r )
+		do s~
+		do r~
 	else in .DONE
 		in .( ?, s ) // s has successor schema
 			on ~( .(.) ) // successor schema failed

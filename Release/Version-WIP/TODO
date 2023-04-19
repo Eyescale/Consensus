@@ -1,8 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. :(func,...) garbage collection
-		do ~((?,...):expression)	// refcounting ancestry
-	 	do ~(list,?:...)		// NTH: short for do ~( %(list,?:...) )
 	. Publish %@
 	. Maths
 		. Add, Mult, Sub, Div
@@ -14,6 +11,119 @@ TODO
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
+
+DONE
+	. extended do identifier~ in case identifier is not base entity
+	  (i.e. identifier is sub-narrative param or locale), so that
+		  identifier's subs get deprecated if
+			these are not referenced elsewhere
+		  	these are not base entities
+	  further extended to allow
+		do %?~
+		do %!~
+	  cf. Test/33_untrace and Examples/4_Yak/yak.story
+	. implement en for enable, so that the two following commands are equivalent
+		en expression
+		%( expression )
+	. support ellipsis at any level in proto, e.g.
+		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
+		   e.g.	-------------------------------------^-------^
+
+	  => context.c: param_CB is called on any .identifier p
+		if p_prune(PRUNE_TERM,p) verifies ",..." then
+			. ignore exponent
+			. set param to instances.sub[0]^MAX
+	  CAVEATS
+	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) we only support
+	     inner ( .param, ... ) and/or terminating ellipsis in proto
+	  2. when proto is ellipsis-terminated, then the sub-narrative perso
+	     is changed to (%%,this) - consequently all .locale(s) will be
+	     instantiated as ((%%,this), locale(s)), etc.
+	. do (( expression, ... ), < expression(s) > )
+	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
+	  starting from expression itself
+		so for expression: (func,...)
+			we have func:
+				%((?,...):expression):~(.,.)
+			and params:
+				%(func,?):%((?,...):expression)
+				%((func,.),?):%((?,...):expression)
+				%(((func,.),.),?):%((?,...):expression)
+				%((((func,.),.),.),?):%((?,...):expression)
+	. do (( list, ... ), xpan )
+		instantiates xpan if needed, then
+		instantiates ((((list,a),b),...),z) where xpan is {a,b,...,z}
+	. implemented db_fire_proxy( proxy, db )
+		. called in bm_context_update() before db_update()
+		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
+	. db_proxy() no longer manifests new proxies [rev-2.0]
+		<=> proxy instantiation does not trigger any event
+	. do >: expression // appends '\n' to the resulting output [rev-2.0]
+	. %<(expression)> done, using ! as pivot in expression, e.g.
+		on ~(%%,.) < ?
+			do >: %<(!,?:...)>
+	  	does output all newly instantiated %((%%,.),?:...) in %<
+	. %( list, ?:... ) implementation done
+	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
+	. REV-2.0 ASSIGNMENT rules
+	  in/on : variable : value [ < src ]
+		  %? (resp.%<?>) represents whatever is marked in expression
+		  %! (resp.%<!>) ALWAYS represents the whole expression: ((*,.),.)
+	  e.g. in/on : variable : value < ?
+		  %<?> same as %< - but w/o mark neither %<?> nor %<!> are informed
+		  %<!> same as %<!:((*,variable),value)>
+	  Test/script for all assignment cases
+	. REV-2.0 SIGNAL handling
+	  identifier~ only supported during INSTANTIATION
+	  on signal~ < src
+		should therefore become on ~( signal ) < src
+		otherwise generate ERROR
+	  cf. ./Examples/3_TM.multi/TM_head-cell.story
+	. Branched Version-2.0
+
+NICE TO HAVE
+	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
+		~%(?,.)		== %(^.) == en ^.
+		~%(.,?)		== %(.$) == en .$
+	. verify_traversal optimization
+		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
+		but actually we do have a pivot.e inside LIST_EXPR (?)
+	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
+	. instantiate.c: allow !! inside of expression
+	. extend do !!identifier( ) to support do !!expression( )
+	. Other EEnoRV as-is
+		on ~( %<_> )
+		on %<_> < .
+		do !! Narrative( %<_> )
+	. improve >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
+	. parser.c
+		. more & better error messages
+		. extract bm_parser_report from parser.c => error.c ?
+		. integrate 'caught' in CNParserData => all flags
+	. support multiple args in do input
+		do < arg1, arg2, ..., argN > : "format" <
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ [ entry:[ name, narratives:{} ], carry ], ctx:[ this, registry ] ]
+	. optimization
+		. Remodel occurrence->data->expression from char * to TBD
+		. do_enable: without building string?
+	. bm_void() - should bm_instantiate() verify expression?
+		. Pros: instantiate all or nothing
+		. Cons: performances
+		. Alternative:
+		  1. propose special execution mode (like Debug)
+		  2. special do - e.g. do$ - where bm_void() is enforced
+	  Current status & Decision
+		. bm_instantiate() does not invoke bm_void()
+		  => bm_instantiate() may do half a job (user responsibility)
+	. per proto:expression <<< where proto can be '?' or narrative-type proto
+		. PER/ELSE_PER
+		. also DO_PER, e.g.
+			do per ?:expression
+				: var : %?
+		  => only ONE occurrence->data->expression?
+	. multi-threading (pthreads)
+	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 TODOC
 	. write Consensus B% Version-2.0 Programming Guide
@@ -58,109 +168,4 @@ TODOC
 		=> Not a problem in Version-2.1 (currently WIP) as these will
 		   only be created as DB_SIGNAL_OP
 	. CAVEAT: proxies are NOT manifested on creation
-
-DONE
-	. support ellipsis at any level in proto, e.g.
-		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
-		   e.g.	-------------------------------------^-------^
-
-	  => context.c: param_CB is called on any .identifier p
-		if p_prune(PRUNE_TERM,p) verifies ",..." then
-			. ignore exponent
-			. set param to instances.sub[0]^MAX
-	  CAVEATS
-	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) we only support
-	     inner ( .param, ... ) and/or terminating ellipsis in proto
-	  2. when proto is ellipsis-terminated, then the sub-narrative perso
-	     is changed to (%%,this) Consequently all .locale(s) will be
-	     instantiated as ((%%,this), locale(s)), etc.
-	. do (( expression, ... ), < expression(s) > )
-	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
-	  starting from expression itself
-		so for expression: (func,...)
-			we have func:
-				%((?,...):expression):~(.,.)
-			and params:
-				%(func,?):%((?,...):expression)
-				%((func,.),?):%((?,...):expression)
-				%(((func,.),.),?):%((?,...):expression)
-				%((((func,.),.),.),?):%((?,...):expression)
-	. implemented %((?,...):expression) = expression's root(s)
-	. do (( list, ... ), xpan )
-		instantiates xpan if needed, then
-		converts into ((((list,a),b),...),z)
-			where xpan is {a,b,...,z}
-	. implemented db_fire_proxy( proxy, db )
-		. called in bm_context_update() before db_update()
-		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
-	. db_proxy() no longer manifests new proxies [rev-2.0]
-		<=> proxy instantiation does not trigger any event
-	. do >: expression // appends '\n' to the resulting output [rev-2.0]
-	. %<(expression)> done, using ! as pivot in expression, e.g.
-		on (%%,.) < ?
-			do >: %<(!,?:...)>
-	  	does output all newly instantiated %((%%,.),?:...) in %<
-	. %( list, ?:... ) implementation done
-	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
-	. REV-2.0 ASSIGNMENT rules
-	  in/on : variable : value [ < src ]
-		  %? (resp.%<?>) represents whatever is marked in expression
-		  %! (resp.%<!>) ALWAYS represents the whole expression: ((*,.),.)
-	  e.g. in/on : variable : value < ?
-		  %<?> same as %< - but w/o mark neither %<?> nor %<!> are informed
-		  %<!> same as %<!:((*,variable),value)>
-	  Test/script for all assignment cases
-	. REV-2.0 SIGNAL handling
-	  identifier~ only supported during INSTANTIATION
-	  on signal~ < src
-		should therefore become on ~( signal ) < src
-		otherwise generate ERROR
-	  cf. ./Examples/3_TM.multi/TM_head-cell.story
-	. Branched Version-2.0
-
-NICE TO HAVE
-	. enabler: allow negated in front ?
-	. instantiate.c: allow !! inside of expression
-	. output format %^ (top-level relationship instances) so that
-		do >"%^\n":. same as do >"%_\n":~%(?,.):~%(.,?)
-	  or maybe just in default, i.e.
-		do >:. same as do >"%_\n":~%(?,.):~%(.,?)
-	. verify_traversal optimization
-		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
-		but actually we do have a pivot.e inside LIST_EXPR (?)
-	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
-	. extend do !!identifier( ) to support do !!expression( )
-	. Other EEnoRV as-is
-		on ~( %<_> )
-		on %<_> < .
-		do !! Narrative( %<_> )
-	. improve >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
-	. parser.c
-		. more & better error messages
-		. extract bm_parser_report from parser.c => error.c ?
-		. integrate 'caught' in CNParserData => all flags
-	. support multiple args in do input
-		do < arg1, arg2, ..., argN > : "format" <
-	. Design document: formalize the internal data structures, e.g.
-		cell:[ [ entry:[ name, narratives:{} ], carry ], ctx:[ this, registry ] ]
-	. optimization
-		. Remodel occurrence->data->expression from char * to TBD
-		. do_enable: without building string?
-	. bm_void() - should bm_instantiate() verify expression?
-		. Pros: instantiate all or nothing
-		. Cons: performances
-		. Alternative:
-		  1. propose special execution mode (like Debug)
-		  2. special do - e.g. do$ - where bm_void() is enforced
-	  Current status & Decision
-		. bm_instantiate() does not invoke bm_void()
-		  => bm_instantiate() may do half a job (user responsibility)
-	. per proto:expression <<< where proto can be '?' or narrative-type proto
-		. PER/ELSE_PER
-		. also DO_PER, e.g.
-			do per ?:expression
-				: var : %?
-		  => only ONE occurrence->data->expression?
-	. multi-threading (pthreads)
-	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 

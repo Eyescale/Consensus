@@ -102,7 +102,10 @@ CB_RegisterVariableCB			f_cls; p+=2;
 						p = p_prune( PRUNE_TERM, p )+1; }
 					break; }
 				else if ( strmatch( "?!|%", p[1] ) ) {
-CB_RegisterVariableCB			f_cls; p+=2; break; }
+CB_RegisterVariableCB			f_cls; p+=2;
+					if ( *p=='~' && p[1]!='<' ) {
+CB_SignalCB					p++; }
+					break; }
 				else {
 CB_ModCharacterCB			f_cls; p++; break; }
 				break;

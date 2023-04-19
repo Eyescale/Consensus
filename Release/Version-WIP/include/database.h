@@ -19,6 +19,33 @@ CNDB *	newCNDB( void );
 void	freeCNDB( CNDB * );
 
 //===========================================================================
+//	data
+//===========================================================================
+CNInstance *	db_register( char *identifier, CNDB * );
+void		db_deprecate( CNInstance *, CNDB * );
+void		db_signal( CNInstance *, CNDB * );
+int		db_match( CNInstance *, CNDB *, CNInstance *, CNDB * );
+CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
+CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
+CNInstance *	db_unassign( CNInstance *, CNDB * );
+CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
+int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
+CNInstance *	DBFirst( CNDB *, listItem ** );
+CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
+
+#define UNIFIED
+#ifndef UNIFIED
+	char *	DBIdentifier( CNInstance *, CNDB * );
+	int	DBStarMatch( CNInstance *e, CNDB *db );
+#else
+static inline char * DBIdentifier( CNInstance *e, CNDB *db ) {
+	return (char *) e->sub[ 1 ]; }
+
+static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
+	return ((e) && !(e->sub[0]) && *(char*)e->sub[1]=='*' ); }
+#endif
+
+//===========================================================================
 //	proxy
 //===========================================================================
 CNInstance *	db_new_proxy( CNEntity *, CNEntity *, CNDB * );
@@ -39,32 +66,6 @@ inline CNEntity * DBProxyThat( CNInstance *proxy ) {
 
 inline int isProxySelf( CNInstance *proxy ) {
 	return !DBProxyThis(proxy); }
-
-//===========================================================================
-//	data
-//===========================================================================
-CNInstance *	db_register( char *identifier, CNDB * );
-int		db_match( CNInstance *, CNDB *, CNInstance *, CNDB * );
-CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
-CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
-CNInstance *	db_unassign( CNInstance *, CNDB * );
-void		db_deprecate( CNInstance *, CNDB * );
-CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
-int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
-CNInstance *	DBFirst( CNDB *, listItem ** );
-CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
-
-#define UNIFIED
-#ifndef UNIFIED
-	char *	DBIdentifier( CNInstance *, CNDB * );
-	int	DBStarMatch( CNInstance *e, CNDB *db );
-#else
-static inline char * DBIdentifier( CNInstance *e, CNDB *db ) {
-	return (char *) e->sub[ 1 ]; }
-
-static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
-	return ((e) && !(e->sub[0]) && *(char*)e->sub[1]=='*' ); }
-#endif
 
 //===========================================================================
 //	i/o
@@ -101,9 +102,6 @@ static inline int db_out_flush( OutputData *data, CNDB *db ) {
 //	op (nil-based)
 //===========================================================================
 #include "db_op.h"
-
-static inline void db_signal( CNInstance *x, CNDB *db ) {
-	db_op( DB_SIGNAL_OP, x, db ); }
 
 //---------------------------------------------------------------------------
 //	db_init, db_exit, DBInitOn, DBExitOn, DBActive

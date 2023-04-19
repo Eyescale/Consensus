@@ -56,8 +56,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		Pair *entry = registryLookup( story, p );
 		if (( entry )) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
-			conceive( entry, p, &traverse_data );
-			traverse_data.done = 1; } // cleanup done if any
+			conceive( entry, p, &traverse_data ); }
 		else {
 			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
 				"\tdo !! %s <<<<<\n", p ); } }
@@ -117,8 +116,9 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 		traverse_data->done = INFORMED;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 ) {
-			p = p_prune( PRUNE_TERM, q );
-			cleanup( data, ctx ); }
+			cleanup( data, ctx );
+			traverse_data->done = 1;
+			p = p_prune( PRUNE_TERM, q ); }
 		freeListItem( &data->sub[ 0 ] ); }
 	while ( *p++!=')' );
 	// carry new and return proxy
@@ -575,7 +575,6 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			while (( e = popListItem( &sub[0] ) )) {
 				CNInstance *proxy = conceive( entry, p, traverse_data );
-				traverse_data->done = 1; // cleanup done if any
 				if (( proxy )) db_assign( e, proxy, db );
 				else db_unassign( e, db ); } }
 		else {

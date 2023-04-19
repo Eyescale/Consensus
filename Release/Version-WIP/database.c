@@ -53,116 +53,6 @@ free_CB( Registry *registry, Pair *entry )
 }
 
 //===========================================================================
-//	db_new_proxy
-//===========================================================================
-CNInstance *
-db_new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
-/*
-	Assumption: proxy not already created
-	Note that we do not manifest new proxy
-*/
-{
-	return ((that) ? cn_new( cn_new(this,that), NULL ) : NULL );
-}
-
-//===========================================================================
-//	db_deprecate_proxy
-//===========================================================================
-static inline int _deprecatable( CNInstance *e, CNDB *db );
-
-void
-db_deprecate_proxy( CNInstance *proxy, CNDB *db )
-{
-	if (( _deprecatable( proxy, db ) ))
-		db_deprecate( proxy, db );
-}
-
-static inline int
-_deprecatable( CNInstance *e, CNDB *db )
-/*
-	returns 0 if e is either released or to-be-released,
-		which we assume applies to all its ascendants
-	returns 1 otherwise.
-*/
-{
-	CNInstance *nil = db->nil, *f;
-	if ( e->sub[0]==nil || e->sub[1]==nil )
-		return 0;
-	if (( f=cn_instance( e, nil, 1 ) )) {
-		if (( f->as_sub[ 1 ] )) return 0;
-		else return !!f->as_sub[ 0 ]; }
-	return 1;
-}
-
-//===========================================================================
-//	db_fire_proxy
-//===========================================================================
-static inline int _flareable( CNInstance *e, CNDB *db );
-static inline void _flare( CNInstance *, CNDB * );
-
-void
-db_fire_proxy( CNInstance *proxy, CNDB *db )
-/*
-	invoke db_op( DB_SIGNAL_OP, e, db ) on all e:( proxy, . )
-	and their ascendants, proceeding top-down
-*/
-{
-	for ( listItem *i=proxy->as_sub[ 0 ], *j; i!=NULL; i=i->next ) {
-		CNInstance *e = i->ptr;
-		if ( _flareable( e, db ) )
-			_flare( e, db ); }
-}
-
-static inline int
-_flareable( CNInstance *e, CNDB *db )
-{
-	CNInstance *nil = db->nil, *f;
-	if ( e->sub[0]==nil || e->sub[1]==nil )
-		return 0;
-	// check not already flared
-	if (( f=cn_instance( e, nil, 1 ) )) {
-		if (( f->as_sub[ 1 ] )) return 0;
-		else if (( f=cn_instance( nil, e, 0 ) ))
-			return !f->as_sub[ 0 ]; }
-	return 1;
-}
-
-static inline void
-_flare( CNInstance *x, CNDB *db )
-{
-	CNInstance *nil = db->nil;
-	listItem * stack = NULL,
-		 * i = newItem( x ),
-		 * j;
-	int ndx = 0;
-	for ( ; ; ) {
-		x = i->ptr;
-		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
-			if ( _flareable( j->ptr, db ) )
-				break;
-		if (( j )) {
-			addItem( &stack, i );
-			add_item( &stack, ndx );
-			i=j; ndx=0; continue; }
-
-		if ( ndx ) db_op( DB_SIGNAL_OP, x, db );
-		else { ndx=1; continue; }
-		for ( ; ; ) {
-			if (( i->next )) {
-				i = i->next;
-				if ( _flareable( i->ptr, db ) )
-					{ ndx=0; break; } }
-			else if (( stack )) {
-				ndx = pop_item( &stack );
-				i = popListItem( &stack );
-				if ( ndx ) db_op( DB_SIGNAL_OP, i->ptr, db );
-				else { ndx=1; break; } }
-			else goto RETURN; } }
-RETURN:
-	freeItem( i );
-}
-
-//===========================================================================
 //	db_register
 //===========================================================================
 CNInstance *
@@ -197,6 +87,211 @@ db_register( char *p, CNDB *db )
 		db_op( DB_MANIFEST_OP, e, db );
 	}
 	return e;
+}
+
+//===========================================================================
+//	db_deprecate
+//===========================================================================
+static inline int _deprecatable( CNInstance *e, CNDB *db );
+
+void
+db_deprecate( CNInstance *x, CNDB *db )
+/*
+	Assumption: x is deprecatable
+	deprecate (ie. set "to-be-released") x and all its ascendants,
+	proceeding top-down
+*/
+{
+	if ( !x ) return;
+
+	listItem * stack = NULL,
+		 * i = newItem( x ),
+		 * j;
+	int ndx = 0;
+	for ( ; ; ) {
+		x = i->ptr;
+		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
+			if ( _deprecatable( j->ptr, db ) )
+				break;
+		if (( j )) {
+			addItem( &stack, i );
+			add_item( &stack, ndx );
+			i=j; ndx=0; continue; }
+
+		if ( ndx ) db_op( DB_DEPRECATE_OP, x, db );
+		else { ndx=1; continue; }
+		for ( ; ; ) {
+			if (( i->next )) {
+				i = i->next;
+				if ( _deprecatable( i->ptr, db ) )
+					{ ndx=0; break; } }
+			else if (( stack )) {
+				ndx = pop_item( &stack );
+				i = popListItem( &stack );
+				if ( ndx ) db_op( DB_DEPRECATE_OP, i->ptr, db );
+				else { ndx=1; break; } }
+			else goto RETURN; } }
+RETURN:
+	freeItem( i );
+}
+
+static inline int
+_deprecatable( CNInstance *e, CNDB *db )
+/*
+	returns 0 if e is either released or to-be-released,
+		which we assume applies to all its ascendants
+	returns 1 otherwise.
+*/
+{
+	CNInstance *nil = db->nil, *f;
+	if ( e->sub[0]==nil || e->sub[1]==nil )
+		return 0;
+	if (( f=cn_instance( e, nil, 1 ) )) {
+		if (( f->as_sub[ 1 ] )) return 0;
+		else return !!f->as_sub[ 0 ]; }
+	return 1;
+}
+
+//===========================================================================
+//	db_flare
+//===========================================================================
+static inline int _flareable( CNInstance *e, CNDB *db );
+static inline void _flare( CNInstance *, CNDB * );
+static inline void _untrace( CNInstance *x, CNDB *db );
+
+void
+db_signal( CNInstance *x, CNDB *db )
+/*
+	Assumption: x!=NULL
+	if x is a base entity
+		flare x, ie. invoke db_op( DB_SIGNAL_OP, x )
+		on x and all its ascendants
+	otherwise
+		. deprecate x and all its ascendants
+		. deprecate all x's subs so long as
+			these are not referenced anywhere else
+			these are not base entities
+	proceeding top-down
+*/
+{
+	if isBase( x ) {
+		if ( _flareable( x, db ) )
+			_flare( x, db ); }
+	else if ( _deprecatable( x, db ) ) {
+		// deprecate x and all its ascendants
+		db_deprecate( x, db );
+		// deprecate x's subs, proceeding top-down
+		_untrace( x, db ); }
+}
+
+static inline void
+_flare( CNInstance *x, CNDB *db )
+/*
+	flare x, ie. invoke db_op( DB_SIGNAL_OP, x ) on x and
+	all its ascendants, proceeding top-down
+*/
+{
+	listItem * stack = NULL,
+		 * i = newItem( x ),
+		 * j;
+	int ndx = 0;
+	for ( ; ; ) {
+		x = i->ptr;
+		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
+			if ( _flareable( j->ptr, db ) )
+				break;
+		if (( j )) {
+			addItem( &stack, i );
+			add_item( &stack, ndx );
+			i=j; ndx=0; continue; }
+
+		if ( ndx ) db_op( DB_SIGNAL_OP, x, db );
+		else { ndx=1; continue; }
+		for ( ; ; ) {
+			if (( i->next )) {
+				i = i->next;
+				if ( _flareable( i->ptr, db ) )
+					{ ndx=0; break; } }
+			else if (( stack )) {
+				ndx = pop_item( &stack );
+				i = popListItem( &stack );
+				if ( ndx ) db_op( DB_SIGNAL_OP, i->ptr, db );
+				else { ndx=1; break; } }
+			else goto RETURN; } }
+RETURN:
+	freeItem( i );
+}
+static inline int
+_flareable( CNInstance *e, CNDB *db )
+/*
+	returns 0 if e is already to-be-released or flared
+		which we assume applies to all its ascendants
+	returns 1 otherwise.
+*/
+{
+	CNInstance *nil = db->nil, *f;
+	if ( e->sub[0]==nil || e->sub[1]==nil )
+		return 0;
+	// check not already to-be-released or flared
+	if (( f=cn_instance( e, nil, 1 ) )) {
+		if (( f->as_sub[ 1 ] )) return 0;
+		else if (( f=cn_instance( nil, e, 0 ) ))
+			return !f->as_sub[ 0 ]; }
+	return 1;
+}
+
+static inline int _untraceable( CNInstance *, CNInstance *, CNDB *db );
+static inline void
+_untrace( CNInstance *x, CNDB *db )
+/*
+	deprecate all x's subs so long as
+		these are not referenced anywhere else
+		these are not base entities
+	proceeding top-down
+*/
+{
+	CNInstance *nil = db->nil;
+	listItem * stack = NULL;
+	int ndx = 0;
+	for ( ; ; ) {
+		CNInstance *y = CNSUB( x, ndx );
+		if ( _untraceable( y, x, db ) ) {
+			db_op( DB_DEPRECATE_OP, y, db );
+			add_item( &stack, ndx );
+			addItem( &stack, x );
+			x=y; ndx=0; continue; }
+
+		while ( ndx && ( stack )) {
+			x = popListItem( &stack );
+			ndx = pop_item( &stack ); }
+		if ( !ndx ) ndx = 1;
+		else return; }
+}
+static inline int
+_untraceable( CNInstance *y, CNInstance *x, CNDB *db )
+/*
+	Assumption: x is deprecatable
+
+	check all connections other than x to and from y=x's sub, and
+	make sure that all these connections are either released or
+	to-be-released - so that we can release y
+
+	Note: y is deprecatable otherwise x wouldn't be, so we can
+	ignore ( y, nil ) and ( nil, y ) instances
+*/
+{
+	if ( !y || isBase( y ) ) // base entities are kept untouched
+		return 0;
+
+	CNInstance *nil = db->nil;
+	for ( int ndx=0; ndx<2; ndx++ )
+		for ( listItem *i=y->as_sub[ ndx ]; i!=NULL; i=i->next ) {
+			CNInstance *e = i->ptr;
+			if ( e==x || e->sub[!ndx]==nil )
+				continue;
+			else if ( _deprecatable( e, db ) )
+				return 0; }
+	return 1;
 }
 
 //===========================================================================
@@ -347,50 +442,6 @@ db_unassign( CNInstance *x, CNDB *db )
 }
 
 //===========================================================================
-//	db_deprecate
-//===========================================================================
-void
-db_deprecate( CNInstance *x, CNDB *db )
-/*
-	Assumption: x is deprecatable
-	deprecate (ie. set "to-be-released") x and all its ascendants,
-	proceeding top-down
-*/
-{
-	if ( !x ) return;
-
-	listItem * stack = NULL,
-		 * i = newItem( x ),
-		 * j;
-	int ndx = 0;
-	for ( ; ; ) {
-		x = i->ptr;
-		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
-			if ( _deprecatable( j->ptr, db ) )
-				break;
-		if (( j )) {
-			addItem( &stack, i );
-			add_item( &stack, ndx );
-			i=j; ndx=0; continue; }
-
-		if ( ndx ) db_op( DB_DEPRECATE_OP, x, db );
-		else { ndx=1; continue; }
-		for ( ; ; ) {
-			if (( i->next )) {
-				i = i->next;
-				if ( _deprecatable( i->ptr, db ) )
-					{ ndx=0; break; } }
-			else if (( stack )) {
-				ndx = pop_item( &stack );
-				i = popListItem( &stack );
-				if ( ndx ) db_op( DB_DEPRECATE_OP, i->ptr, db );
-				else { ndx=1; break; } }
-			else goto RETURN; } }
-RETURN:
-	freeItem( i );
-}
-
-//===========================================================================
 //	db_lookup
 //===========================================================================
 CNInstance *
@@ -409,7 +460,7 @@ db_lookup( int privy, char *p, CNDB *db )
 }
 
 //===========================================================================
-//	DBIdentifier
+//	DBIdentifier, DBStarMatch
 //===========================================================================
 #ifndef UNIFIED
 char *
@@ -514,6 +565,39 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack )
 		else if (( *stack ))
 			i = popListItem( stack );
 		else return NULL; }
+}
+
+//===========================================================================
+//	db_new_proxy / db_deprecate_proxy / db_fire_proxy
+//===========================================================================
+CNInstance *
+db_new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
+/*
+	Assumption: proxy not already created
+	Note that we do not manifest new proxy
+*/
+{
+	return ((that) ? cn_new( cn_new(this,that), NULL ) : NULL );
+}
+
+void
+db_deprecate_proxy( CNInstance *proxy, CNDB *db )
+{
+	if (( _deprecatable( proxy, db ) ))
+		db_deprecate( proxy, db );
+}
+
+void
+db_fire_proxy( CNInstance *proxy, CNDB *db )
+/*
+	invoke db_op( DB_SIGNAL_OP, e ) on all e:( proxy, . )
+	and their ascendants, proceeding top-down
+*/
+{
+	for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next ) {
+		CNInstance *e = i->ptr;
+		if ( _flareable( e, db ) )
+			_flare( e, db ); }
 }
 
 //===========================================================================

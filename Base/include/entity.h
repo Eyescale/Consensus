@@ -17,6 +17,8 @@ void cn_free( CNEntity * );
 
 #define CNSUB(e,ndx) \
 	( (e)->sub[!(ndx)] ? (e)->sub[ndx] : NULL )
+#define isBase( e ) \
+	( !(e)->sub[0] || !(e)->sub[1] )
 
 
 #endif	// ENTITY_H

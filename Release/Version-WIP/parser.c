@@ -233,21 +233,21 @@ CB_if_( ProtoSet, mode, data ) {
 	// bm_parse:	Narrative in / on / do / en / else Command
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
-		ons( " \t" ) if ( !s_cmp( "in" ) ) {
+		ons( " \t" ) if ( !s_cmp( "en" ) ) {
+				do_( "cmd_" )	*type |= EN; }
+			else if ( !s_cmp( "in" ) ) {
 				do_( "cmd_" )	*type |= IN; }
 			else if ( !s_cmp( "on" ) ) {
 				do_( "cmd_" )	*type |= ON; }
 			else if ( !s_cmp( "do" ) ) {
 				do_( "cmd_" )	*type |= DO; }
-			else if ( !s_cmp( "else" ) ) {
+			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
 				do_( "else" )	*type = ELSE; }
 		on_( '\n' )
 			if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
 				do_( "else" )	REENTER
 						*type = ELSE; }
-		on_( '%' )	do_( "_expr" )	REENTER
-						TAB_CURRENT += TAB_SHIFT;
-						*type |= EN;
+		on_( '%' )	do_( "%_" )	s_take
 		on_separator	; // err
 		on_other	do_( same )	s_take
 		end
@@ -259,6 +259,14 @@ CB_if_( ProtoSet, mode, data ) {
 						s_reset( CNStringAll )
 		on_other	do_( "cmd" )	REENTER
 						s_reset( CNStringAll )
+		end
+	in_( "%_" ) bgn_
+		on_( '(' )	do_( "_expr" )	s_take
+						f_push( stack )
+						f_reset( FIRST|SUB_EXPR, 0 )
+						TAB_CURRENT += TAB_SHIFT;
+						*type |= EN;
+		on_other	; // err
 		end
 	in_( "cmd_" ) bgn_
 		ons( " \t" )	do_( same )
@@ -470,7 +478,11 @@ B:CND_endif
 		on_( '#' )	do_( "_#" )
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
-				do_( "term" )	s_take }
+				if ( mode==BM_STORY && *type&DO && ( is_f(LEVEL) ?
+					is_f(TERNARY) && f_signal_authorize(stack) :
+					!is_f(NEGATED|SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
+					do_( "term_" )	s_take } // signalable
+				else {	do_( "term" )	s_take } }
 		end
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression sub-states
@@ -514,9 +526,10 @@ CND_ifn( mode==BM_STORY, C )
 			else {	do_( "expr" )	REENTER
 						s_add( "~" )
 						f_set( NEGATED ) } // object is to prevent MARK
-		ons( "{}?!" )	; //err
+		ons( "{}?" )	; //err
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
+						f_set( NEGATED )
 		end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
@@ -526,7 +539,6 @@ CND_ifn( mode==BM_STORY, C )
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other	do_( "term" )	s_take
-						f_set( DOT )
 		end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
@@ -540,20 +552,27 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "%(" )	f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
-		ons( "?!|%" )
-			if (!( *type&EN && s_empty )) {
-				do_( "expr" )	s_add( "%" )
+		ons( "?!" ) if ( *type&DO && ( is_f(LEVEL) ?
+					is_f(TERNARY) && f_signal_authorize(stack) :
+					!is_f(NEGATED|SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
+				do_( "%?_" )	s_add( "%" )
 						s_take
 						f_set( INFORMED ) }
-		on_( '<' )
-			if (!( *type&EN && s_empty )) {
-				do_( "%<" )	s_add( "%<" ) }
-		on_other
-			if (!( *type&EN && s_empty )) {
-				do_( "expr" )	REENTER
-						s_add( "%" )
+			else {	do_( "expr" )	s_add( "%" )
+						s_take
 						f_set( INFORMED ) }
+		ons( "|%" )	do_( "expr" )	s_add( "%" )
+						s_take
+						f_set( INFORMED )
+		on_( '<' )	do_( "%<" )	s_add( "%<" )
+		on_other	do_( "expr" )	REENTER
+						s_add( "%" )
+						f_set( INFORMED )
 		end
+		in_( "%?_" ) bgn_
+			on_( '~' )	do_( "term~" )	s_take
+			on_other	do_( "expr" )	REENTER
+			end
 		in_( "%(" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_add( "%((" )
@@ -825,17 +844,17 @@ else					; // err
 								f_set( INFORMED )
 				end
 	in_( "term" ) bgn_
-CND_ifn( mode==BM_STORY, D )
-		on_( '~' ) if ( *type&DO && !are_f(CARRY|DOT) && ( is_f(LEVEL) ?
-				is_f(TERNARY) && f_signal_authorize(stack) :
-				!is_f(SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
-				do_( "term~" )	s_take
-						f_set( INFORMED ) }
-D:CND_endif
+		on_( '~' ) 	; // err
 		on_separator	do_( "expr" )	REENTER
-						f_clr( DOT )
 						f_set( INFORMED )
-		on_other	do_( same )	s_take
+		on_other 	do_( same )	s_take
+		end
+	in_( "term_" ) bgn_
+		on_( '~' ) 	do_( "term~" )	s_take
+						f_set( INFORMED )
+		on_separator	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other 	do_( same )	s_take
 		end
 		in_( "term~" ) bgn_
 			ons( " \t" )	do_( same )

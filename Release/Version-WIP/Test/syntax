@@ -11,7 +11,7 @@
 		do input: <
 		do input,"asldkj"<
 		do :<
-		do .identifier~
+		do identifier~
 		do ( titi ? ~toto : tata ? ~titi :)
 		do >"asd":< alpha,
 			beta >
@@ -30,7 +30,7 @@
 		do ( titi, (( toto, ... ):asdlkjasd:) )
 		in ( toto ? tata ? titi : roro : titi )
 		in ( toto ? tata ? titi ? tutu :)
-		do :~ titi : ~( tutu, tata )
+		do : ~titi : ~( tutu, tata )
 		do ( { tata, toto }, titi )
 		do ~.	// nop
 	else on ~( signal )
@@ -56,5 +56,7 @@
 		do (( toto, ... ), titi )
 	else in %(( titi, . ), ... )
 	else in %(( ?, ... ) : expression )
+		do %?~
+		do %!~
 	else
 		do exit
