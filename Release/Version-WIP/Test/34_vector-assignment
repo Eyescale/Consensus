@@ -1,0 +1,8 @@
+
+	on init
+		do : < a, b, c > : < 1, 2, 3 >
+		do >"press enter_ "
+		do : <	// just to make sure
+	else
+		do >: ~%(?,.):~%(.,?)
+		do exit
