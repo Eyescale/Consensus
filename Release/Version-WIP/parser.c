@@ -301,8 +301,10 @@ EXPR_BGN:CND_endif
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
 				; // err
-			else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) ) {
-				if ( is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
+			else if ( is_f(LEVEL|SUB_EXPR) ) {
+				if ( !is_f(FIRST) )
+					; // err
+				else if ( is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
 					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
 				else if ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) {
 					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
@@ -311,15 +313,14 @@ EXPR_BGN:CND_endif
 							f_set( LISTABLE ) }
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|FILTERED ) } }
-			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED|VECTOR) ) {
+			else if ( is_f(SET|CARRY|VECTOR) ) {
+				do_( "," ) }
+			else if ( is_f(ASSIGN) && !is_f(FILTERED) ) {
 				do_( same )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
-			else if ( !is_f(LEVEL|SUB_EXPR) ) {
-				if ( is_f(SET|CARRY|VECTOR) ) {
-					do_( "," ) }
-				else if ( *type&DO ) {
-					do_( ":" ) } }
+			else if ( *type&DO && !is_f(ASSIGN) ) { 
+				do_( "_," ) }
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER }
@@ -620,9 +621,9 @@ CND_ifn( mode==BM_STORY, C )
 		on_( '~' )	do_( ":~" )
 		on_( '/' ) 	do_( "/" )	s_add( ":/" )
 		on_( '<' ) if ( !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
-				do_( "_<" )	s_take }
+				do_( "_," )	REENTER }
 		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
-				do_( ":\"" )	s_add( ",\"" ) }
+				do_( "_," )	REENTER }
 		on_( ')' )	do_( "expr" )	REENTER
 						s_add( ":" )
 		if are_f( TERNARY|FILTERED ) {	f_set( INFORMED ) }
@@ -635,17 +636,23 @@ CND_ifn( mode==BM_STORY, C )
 			on_other	do_( "~" )	REENTER
 							s_add( ":" )
 			end
-		in_( ":\"" ) bgn_
+	in_( "_," ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '<' )	do_( "_<" )	s_take
+		on_( '\"' )	do_( "_,\"" )	s_add( ",\"" )
+		on_other	; // err
+		end
+		in_( "_,\"" ) bgn_
 			on_( '\t' )	do_( same )	s_add( "\\t" )
 			on_( '\n' )	do_( same )	s_add( "\\n" )
-			on_( '\\' )	do_( ":\"\\" )	s_take
-			on_( '\"' )	do_( ":_" )	s_take
+			on_( '\\' )	do_( "_,\"\\" )	s_take
+			on_( '\"' )	do_( "_,_" )	s_take
 			on_other	do_( same )	s_take
 			end
-			in_( ":\"\\" ) bgn_
-				on_any		do_( ":\"" )	s_take
+			in_( "_,\"\\" ) bgn_
+				on_any		do_( "_,\"" )	s_take
 				end
-			in_( ":_" ) bgn_
+			in_( "_,_" ) bgn_
 				ons( " \t" )	do_( same )
 				on_( '<' )	do_( "_<" )	s_take
 				end
@@ -794,7 +801,7 @@ C:CND_endif
 			on_other
 if ( mode==BM_STORY ) {			do_( "." )	REENTER
 							s_add( "." ) }
-else 					; // err
+else { 					; } // err
 			end
 			in_( ",.." ) bgn_
 				on_( '.' )	do_( ",..." )
@@ -802,7 +809,7 @@ else 					; // err
 if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
 							s_add( ".." )
 							f_set( INFORMED ) }
-else					; // err
+else {					; } // err
 				end
 			in_( ",..." ) bgn_
 				ons( " \t" )	do_( same )
@@ -957,7 +964,7 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
-		in_( ":_" ) 		errnum = ErrInputScheme;
+		in_( ",_" ) 		errnum = ErrInputScheme;
 		in_( "_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;
 		in_( ">_" )		errnum = ErrOutputScheme;

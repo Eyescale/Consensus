@@ -60,8 +60,10 @@ DONE
 	  2. when proto is ellipsis-terminated, then the sub-narrative perso
 	     is changed to (%%,this) - consequently all .locale(s) will be
 	     instantiated as ((%%,this), locale(s)), etc.
-	. do (( expression, ... ), < expression(s) > )
-	. %((?,...):expression) represents ALL expression.sub[0]^n (n>=0)
+	. supported ellipsis / vector
+		do (( list, ... ), < expression(s) > )
+	. supported %((?,...):expression)
+		representing ALL expression.sub[0]^n (n>=0)
 	  starting from expression itself
 		so for expression: (func,...)
 			we have func:
@@ -71,7 +73,7 @@ DONE
 				%((func,.),?):%((?,...):expression)
 				%(((func,.),.),?):%((?,...):expression)
 				%((((func,.),.),.),?):%((?,...):expression)
-	. do (( list, ... ), xpan )
+	. supported do (( list, ... ), xpan )
 		instantiates xpan if needed, then
 		instantiates ((((list,a),b),...),z) where xpan is {a,b,...,z}
 	. implemented db_fire_proxy( proxy, db )
@@ -79,7 +81,7 @@ DONE
 		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
 	. db_proxy() no longer manifests new proxies [rev-2.0]
 		<=> proxy instantiation does not trigger any event
-	. do >: expression // appends '\n' to the resulting output [rev-2.0]
+	. extended do >: expression // appends '\n' to the resulting output [rev-2.0]
 	. %<(expression)> done, using ! as pivot in expression, e.g.
 		on (%%,.) < ?
 			do >: %<(!,?:...)>
