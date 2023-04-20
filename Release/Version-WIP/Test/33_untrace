@@ -1,7 +1,7 @@
 
 	on init
 		do : this : toto
-#		do ( a, (*,this) )
+		do ( a, (*,this) )
 	else on ?: ((*,this),toto)
 		do %?~
 	else

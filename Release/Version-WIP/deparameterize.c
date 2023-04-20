@@ -4,28 +4,6 @@
 #include "traverse.h"
 #include "deparameterize.h"
 
-#if 0
-CNString *
-bm_deparameterize( char *proto )
-{
-	int ellipsis = 0;
-	CNString *s = newString();
-	for ( char *p=proto; *p; p++ ) {
-		// reducing proto params as we go
-		if ( !strncmp( p, "...", 3 ) ) {
-			ellipsis = 1;
-			s_add( "..." );
-			p += 3; }
-		else if ( *p=='.' ) {
-			do p++; while ( !is_separator(*p) );
-			if ( *p==':' ) continue;
-			else StringAppend( s, '.' ); }
-		StringAppend( s, *p ); }
-	if ( ellipsis )
-		StringAffix( s, '%' );
-	return s;
-}
-#else
 //===========================================================================
 //	bm_deparameterize
 //===========================================================================
@@ -41,8 +19,9 @@ bm_deparameterize( char *proto )
 /*
 	The objective is to convert proto into a CNString
 	where
-		.identifier (not filtered) are replaced by .
-		.identifier: (filtered) are removed
+		.identifier [not filtered] are replaced by .
+		.identifier: [filtered] are removed
+		(.identifier,...) are replaced by .
 		(expr,...) are replaced by %(expr,...)
 
 	For this we traverse proto generating the list
@@ -58,7 +37,6 @@ bm_deparameterize( char *proto )
 		bgn --------^ ^--------- end
 
 	which we then use to fulfill our mission
-	Note that (.param,...) will be replaced by .
 */
 {
 	DeparameterizeData data;
@@ -98,13 +76,6 @@ bm_deparameterize( char *proto )
 			p = ((*end==':') ? end+1 : (StringAppend(s,'.'),end));
 			break; } }
 	do StringAppend(s,*p++); while ( *p );
-
-#if 0
-	p = StringFinish(s,0);
-	fprintf( stderr, "deparameterized: %s\n", p );
-	freeString( s );
-	exit( 0 );
-#endif
 	return s;
 }
 
@@ -113,8 +84,12 @@ bm_deparameterize( char *proto )
 //---------------------------------------------------------------------------
 /*
 	Assumption: .identifier is followed by either one of ,:)
+	Note that we do not enter negated, starred or %(...) expressions
+	Note also that the caller is expected to reorder the resulting list
 */
 BMTraverseCBSwitch( deparameterize_traversal )
+case_( sub_expression_CB ) // provision
+	_prune( BM_PRUNE_FILTER )
 case_( open_CB )
 	Pair *segment = newPair( p, NULL );
 	addItem( &data->stack.level, segment );
@@ -151,4 +126,3 @@ case_( dot_identifier_CB )
 	_break
 BMTraverseCBEnd
 
-#endif

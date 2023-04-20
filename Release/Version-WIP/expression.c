@@ -7,7 +7,6 @@
 #include "expression.h"
 #include "instantiate.h"
 #include "narrative.h"
-#include "proxy.h"
 #include "eenov.h"
 
 // #define DEBUG

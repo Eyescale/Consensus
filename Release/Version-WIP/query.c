@@ -4,7 +4,6 @@
 #include "string_util.h"
 #include "locate_pivot.h"
 #include "locate_mark.h"
-#include "proxy.h"
 #include "query.h"
 #include "query_private.h"
 #include "eenov.h"
@@ -99,7 +98,7 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, v
 	listItem *exponent = NULL;
 	char *p = bm_locate_pivot( expression, &exponent );
 	if (( p = pivot_check( p, &exponent, data ) )) {
-		CNInstance *e = bm_lookup( privy, p, ctx, db );
+		CNInstance *e = bm_lookup( ctx, p, privy, db );
 		if (( e )) {
 			data->exponent = exponent;
 			data->pivot = newPair( p, e );

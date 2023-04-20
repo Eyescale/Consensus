@@ -7,10 +7,9 @@ SRCS =	narrative.c \
 		parser.c \
 	program.c \
 		cell.c \
-		context.c \
-			database.c \
-			db_op.c \
-			locate_mark.c \
+			context.c \
+				database.c \
+				db_op.c \
 		operation.c \
 			deternarize.c \
 			deparameterize.c \
@@ -20,7 +19,8 @@ SRCS =	narrative.c \
 			expression.c \
 				query.c \
 					locate_pivot.c \
-			proxy.c
+					locate_mark.c \
+			proxy_feel.c
 LIB = libbmod.a
 
 TARGETS = $(LIB) B%

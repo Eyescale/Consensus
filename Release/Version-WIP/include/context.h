@@ -11,18 +11,19 @@ void		bm_context_init( BMContext *ctx );
 int		bm_context_update( CNEntity *this, BMContext *ctx );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
+
 int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
 int		bm_context_mark_x( BMContext *, char *, char *, Pair *, int * );
 void 		bm_context_unmark( BMContext *, int );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
+
+CNInstance *	bm_register( BMContext *, char *, CNDB * );
+CNInstance *	bm_lookup( BMContext *, char *, int, CNDB * );
 int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
-CNInstance *	bm_lookup( int privy, char *, BMContext *, CNDB * );
+void *		bm_inform( int, BMContext *, void *, CNDB * );
 CNInstance *	bm_lookup_x( BMContext *, CNDB *, CNInstance *, CNDB * );
-CNInstance *	bm_register( BMContext *, char *, CNDB *);
-listItem *	bm_inform( BMContext *, listItem **, CNDB * );
-CNInstance *	bm_inform_context( BMContext *, CNInstance *, CNDB * );
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;

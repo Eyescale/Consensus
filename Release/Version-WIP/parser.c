@@ -135,10 +135,15 @@ CB_if_( NarrativeTake, mode, data ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
+			on_( '%' )	do_( "¶%" )	s_take
 			on_separator	; // err
 			on_other
 				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
 					do_( "¶$" )	s_take }
+			end
+		in_( "¶%" ) bgn_
+			on_( '%' )	do_( "¶" )	s_take
+							f_set( INFORMED )
 			end
 		in_( "¶." ) bgn_
 			on_( '.' )	do_( "¶.." )

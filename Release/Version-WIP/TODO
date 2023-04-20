@@ -1,18 +1,40 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. per event
+		easy - as bm_feel() and bm_proxy_feel() don't use pivot -
+		to return a list instead of a single CNInstance *
+		=> redefine BM_CONDITION, BM_INSTANTIATED and BM_RELEASED
+
+			BM_EVENT	1
+			BM_VISIBLE	2
+			BM_TYPE		3
+			BM_AS_PER	4
+
+			BM_CONDITION	BM_VISIBLE
+			BM_INSTANTIATED	BM_VISIBLE|BM_EVENT
+			BM_RELEASED	BM_EVENT
+
+		can test (type&BM_TYPE) and (type&BM_AS_PER)
+
+	  TODO:
+	  1. just listItem * and type redefinition
+	  2. extend bm_operate() -> do { } while();
+
 	. Publish %@
+		. Test Maths/add
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
 		. Yak integration (full interactive calculator)
-	. CLEANUP
-		. p_prune( ) use strmatch( "asd", event ) in default
-		  Actually I would like default to cover all the terminal cases
+	. extend vector usage beyond ellipsis case, e.g.
+		do :< a, b, c >:< 1, 2, 3 >
+	  Issue: do :<	// want to support
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
 
 DONE
+	. allowed %% in ¶
 	. extended do identifier~ in case identifier is not base entity
 	  (i.e. identifier is sub-narrative param or locale), so that
 		  identifier's subs get deprecated if
@@ -60,7 +82,7 @@ DONE
 		<=> proxy instantiation does not trigger any event
 	. do >: expression // appends '\n' to the resulting output [rev-2.0]
 	. %<(expression)> done, using ! as pivot in expression, e.g.
-		on ~(%%,.) < ?
+		on (%%,.) < ?
 			do >: %<(!,?:...)>
 	  	does output all newly instantiated %((%%,.),?:...) in %<
 	. %( list, ?:... ) implementation done
@@ -82,13 +104,16 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
-		~%(?,.)		== %(^.) == en ^.
-		~%(.,?)		== %(.$) == en .$
 	. verify_traversal optimization
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)
+	. CLEANUP
+		. p_prune( ) use strmatch( "asd", event ) in default
+		  Actually I would like default to cover all the terminal cases
 	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
+	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
+		~%(?,.)		== %(^.) == en ^.
+		~%(.,?)		== %(.$) == en .$
 	. instantiate.c: allow !! inside of expression
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is

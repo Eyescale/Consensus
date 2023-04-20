@@ -176,10 +176,10 @@ CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					if ( p[2]=='.' ) {
 						/* Assumption: p[3]==')'
 						   Starting with cases
-							%(list,...) or
-							%(list,?:...) or
-							%((?,...):list) or
-							.proto:(_,...) or
+							%(list,...)
+							%(list,?:...)
+							%((?,...):list)
+							.proto:(_,...)
 							.proto:(_(.param,...)_) */
 						if ( is_f(SUB_EXPR)||(mode&(SUB_EXPR|FILTERED))) {
 							f_set( ELLIPSIS )

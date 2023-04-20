@@ -176,8 +176,8 @@ on_event( char *expression, BMContext *ctx, int *marked )
 //	on_event_x
 //===========================================================================
 typedef int ProxyTest( CNInstance *proxy );
-static inline Pair * proxy_feel( BMQueryType, char *, listItem **, BMContext * );
-static inline Pair * proxy_test( ProxyTest *, listItem ** );
+static inline Pair * _feel( BMQueryType, char *, listItem **, BMContext * );
+static inline Pair * _test( ProxyTest *, listItem ** );
 
 static int
 on_event_x( char *expression, BMContext *ctx, int *marked )
@@ -199,20 +199,20 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 
 	Pair *found = NULL;
 	if ( !strncmp( expression, "init<", 5 ) ) {
-		found = proxy_test( bm_proxy_in, &proxies );
+		found = _test( bm_proxy_in, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp( expression, "exit<", 5 ) ) {
-		found = proxy_test( bm_proxy_out, &proxies );
+		found = _test( bm_proxy_out, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
-		found = proxy_test( bm_proxy_active, &proxies );
+		found = _test( bm_proxy_active, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,"~(",2) ) {
 		expression++;
-		found = proxy_feel( BM_RELEASED, expression, &proxies, ctx );
+		found = _feel( BM_RELEASED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 	else {
-		found = proxy_feel( BM_INSTANTIATED, expression, &proxies, ctx );
+		found = _feel( BM_INSTANTIATED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 
 	freeListItem( &proxies );
@@ -228,7 +228,7 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 }
 
 static inline Pair *
-proxy_feel( BMQueryType type, char *p, listItem **proxies, BMContext *ctx )
+_feel( BMQueryType type, char *p, listItem **proxies, BMContext *ctx )
 {
 	CNInstance *proxy, *found;
 	while (( proxy = popListItem(proxies) )) {
@@ -237,11 +237,11 @@ proxy_feel( BMQueryType type, char *p, listItem **proxies, BMContext *ctx )
 	return NULL;
 }
 static inline Pair *
-proxy_test( ProxyTest *test, listItem **proxies )
+_test( ProxyTest *func, listItem **proxies )
 {
 	CNInstance *proxy;
 	while (( proxy = popListItem(proxies) ))
-		if ( test( proxy ) )
+		if ( func( proxy ) )
 			return newPair( NULL, proxy );
 	return NULL;
 }

@@ -60,3 +60,6 @@
 		do %!~
 	else
 		do exit
+
+:( %%, ... )
+	do >"hi\n"

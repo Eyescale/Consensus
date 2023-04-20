@@ -41,10 +41,10 @@ eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 	case EEnovNone:
 		return NULL;
 	case EEnovSrcType: ;
-		CNInstance *e = ((dst) ? bm_inform_context(dst,data.src,db) : data.src );
+		CNInstance *e = ((dst) ? bm_inform(0,dst,data.src,db) : data.src );
 		return ((e) ? newItem(e) : NULL );
 	case EEnovInstanceType:
-		e = bm_inform_context( ((dst)?dst:ctx), data.instance, data.db );
+		e = bm_inform( 0, ((dst)?dst:ctx), data.instance, data.db );
 		return ((e) ? newItem(e) : NULL );
 	case EEnovExprType:
 		data.param.inform.ctx = ((dst)?dst:ctx);
@@ -263,7 +263,7 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
 		db_out_put( e, db, data->param.output.od );
 		return BM_CONTINUE;
 	case EEnovInformOp:
-		e = bm_inform_context( data->param.inform.ctx, e, db );
+		e = bm_inform( 0, data->param.inform.ctx, e, db );
 		if (( e )) addItem( &data->param.inform.result, e );
 		return BM_CONTINUE;
 	case EEnovLookupOp:

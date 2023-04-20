@@ -7,7 +7,7 @@ static BMTraversal actualize_traversal;
 		ActualizeData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	dereference_CB, sub_expression_CB, dot_expression_CB, dot_identifier_CB,
+	sub_expression_CB, dot_expression_CB, dot_identifier_CB,
 	open_CB, filter_CB, decouple_CB, wildcard_CB, close_CB;
 
 #define BMNotCB			sub_expression_CB

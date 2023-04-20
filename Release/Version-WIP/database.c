@@ -280,8 +280,12 @@ _untraceable( CNInstance *y, CNInstance *x, CNDB *db )
 	ignore ( y, nil ) and ( nil, y ) instances
 */
 {
+#if 0
 	if ( !y || isBase( y ) ) // base entities are kept untouched
 		return 0;
+#else
+	if ( !y || isProxy(y) ) return 0;
+#endif
 
 	CNInstance *nil = db->nil;
 	for ( int ndx=0; ndx<2; ndx++ )
