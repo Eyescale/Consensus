@@ -10,12 +10,14 @@
 
 // #define DEBUG
 
+typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+
 //===========================================================================
 //	bm_query
 //===========================================================================
-typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
 static CNInstance * query_assignment( BMQueryType, char *, BMQueryData * );
+static XPTraverseCB bm_verify;
 
 CNInstance *
 bm_query( BMQueryType type, char *expression, BMContext *ctx,
@@ -61,7 +63,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 			return NULL; } }
 	return data.instance;
 }
-int
+static int
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
 	CNDB *db;
@@ -292,9 +294,10 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
-			int exp = (int) exponent->ptr;
-			if ( exp & SUB ) {
-				for ( j=x->as_sub[ exp&1 ]; j!=NULL; j=j->next )
+			union { void *ptr; int value; } exp;
+			exp.ptr = exponent->ptr;
+			if ( exp.value & SUB ) {
+				for ( j=x->as_sub[ exp.value&1 ]; j!=NULL; j=j->next )
 					if ( !db_private( privy, j->ptr, db ) )
 						break;
 				if (( j )) {
@@ -304,7 +307,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					i = j; continue; }
 				else x = NULL; }
 			else {
-				x = CNSUB( x, exp&1 );
+				x = CNSUB( x, exp.value&1 );
 				if (( x )) {
 					addItem( &stack.as_sub, i );
 					addItem( &stack.as_sub, exponent );
@@ -404,9 +407,10 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 							success = 0;
 							break; } }
 					else if (( stack.as_sub )) {
+						union { void *ptr; int value; } exp;
 						exponent = popListItem( &stack.as_sub );
-						int exp = (int) exponent->ptr;
-						if (!( exp & SUB )) freeItem( i );
+						exp.ptr = exponent->ptr;
+						if (!( exp.value & SUB )) freeItem( i );
 						i = popListItem( &stack.as_sub ); }
 					else {
 						// restore context & move on past sub-expression
@@ -465,9 +469,10 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 {
 	listItem **as_sub = &stack->as_sub;
 	while (( *as_sub )) {
+		union { void *ptr; int value; } exp;
 		listItem *xpn = popListItem( as_sub );
-		int exp = (int) xpn->ptr;
-		if (!( exp & SUB )) freeItem( i );
+		exp.ptr = xpn->ptr;
+		if (!( exp.value & SUB )) freeItem( i );
 		i = popListItem( as_sub ); }
 	freeItem( i );
 	stack->as_sub = popListItem( &stack->sub );
@@ -527,6 +532,7 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 //	verify_traversal
 //---------------------------------------------------------------------------
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
+static inline int ineq( listItem *i, int operand );
 
 BMTraverseCBSwitch( verify_traversal )
 case_( match_CB )
@@ -605,7 +611,7 @@ case_( close_CB )
 	_break
 case_( wildcard_CB )
 	if is_f( NEGATED ) data->success = 0;
-	else if ( !data->stack.exponent || (int)data->stack.exponent->ptr==1 )
+	else if ( !ineq( data->stack.exponent, 1 ) )
 		data->success = 1; // wildcard is any or as_sub[1]
 	else switch ( match( data->instance, NULL, data->base, data ) ) {
 		case -1: // no break
@@ -613,6 +619,13 @@ case_( wildcard_CB )
 		case  1: data->success = 1; break; }
 	_break
 BMTraverseCBEnd
+
+
+static inline int ineq( listItem *i, int operand ) {
+	if (( i )) {
+		union { void *ptr; int value; } icast;
+		icast.ptr = i->ptr; return ( icast.value!=operand ); }
+	return 0; }
 
 //---------------------------------------------------------------------------
 //	match

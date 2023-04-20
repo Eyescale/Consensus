@@ -198,8 +198,9 @@ case_( close_CB )
 case_( wildcard_CB )
 	if is_f( ELLIPSIS ) {
 		listItem *exponent = data->exponent;
-		int exp = (int) exponent->ptr;
-		if ((exp&1) && !exponent->next ) {
+		union { void *ptr; int value; } exp;
+		exp.ptr = exponent->ptr;
+		if ((exp.value&1) && !exponent->next ) {
 			BMContext *ctx = data->ctx;
 			CNDB *db = BMContextDB( ctx );
 			CNInstance *self = BMContextSelf( ctx );
@@ -214,11 +215,13 @@ BMTraverseCBEnd
 //---------------------------------------------------------------------------
 //	actualize_param
 //---------------------------------------------------------------------------
+static inline int inand( listItem *i, int operand );
+
 static void
 actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx )
 {
 	// Special case: ( .identifier, ... )
-	if ((exponent) && !(((int)exponent->ptr)&1)) {
+	if ( inand( exponent, 1 ) ) {
 		char *q = p;
 		do q++; while ( !is_separator(*q) );
 		if ( !strncmp(q,",...",4) ) {
@@ -235,6 +238,12 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 		instance = instance->sub[ exp & 1 ];
 	registryRegister( ctx, p, instance );
 }
+
+static inline int inand( listItem *i, int operand ) {
+	if (( i )) {
+		union { void *ptr; int value; } icast;
+		icast.ptr = i; return !( icast.value & operand ); }
+	return 0; }
 
 //===========================================================================
 //	bm_context_release

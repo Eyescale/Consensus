@@ -20,20 +20,18 @@ typedef struct {
 } LocatePivotData;
 
 char *
-bm_locate_pivot( char *expression, listItem **exponent )
+bm_locate_pivot( char *expression, listItem **xpn )
 /*
 	returns first term (according to prioritization) which
 	is not a wildcard and is not negated, with corresponding
 	exponent (in reverse order).
 */
 {
-	listItem *base = *exponent;
-
 	LocatePivotData data;
 	memset( &data, 0, sizeof(data) );
 	data.expression = expression;
 	data.primary = EENOK|EMARK|QMARK;
-	data.exponent = exponent;
+	data.exponent = xpn;
 
 	BMTraverseData traverse_data;
 	traverse_data.user_data = &data;
@@ -41,24 +39,24 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	traverse_data.done = 0;
 
 	char *p = locate_pivot_traversal( expression, &traverse_data, FIRST );
+	if ( traverse_data.done==2 ) {
+		freeListItem( &data.stack.flags );
+		freeListItem( &data.stack.level );
+		freeListItem( &data.stack.premark );
+		return p; }
+	else if ( data.secondary ) {
+		xpn_free( xpn, NULL );
+		traverse_data.done = 0;
+		data.primary = data.secondary;
+		p = locate_pivot_traversal( expression, &traverse_data, FIRST );
+		if ( traverse_data.done==2 ) {
+			freeListItem( &data.stack.flags );
+			freeListItem( &data.stack.level );
+			freeListItem( &data.stack.premark );
+			return p; } }
 
-	switch ( traverse_data.done ) {
-	case 2:
-		break;
-	default:
-		if ( data.secondary ) {
-			xpn_free( exponent, base );
-			traverse_data.done = 0;
-			data.primary = data.secondary;
-			p = locate_pivot_traversal( expression, &traverse_data, FIRST ); }
-		else {
-			xpn_free( exponent, base );
-			return NULL; } }
-
-	freeListItem( &data.stack.flags );
-	freeListItem( &data.stack.level );
-	freeListItem( &data.stack.premark );
-	return p;
+	xpn_free( xpn, NULL );
+	return NULL;
 }
 
 //---------------------------------------------------------------------------

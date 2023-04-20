@@ -108,7 +108,8 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 		freeListItem( &data->stack.sequence );
 		freeListItem( &data->stack.flags );
 		exit( -1 ); }
-	else if ( !data->ternary )
+
+	if ( !data->ternary )
 		freePair( data->segment );
 	else {
 		// finish sequence

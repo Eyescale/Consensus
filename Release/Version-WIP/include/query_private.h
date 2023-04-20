@@ -6,9 +6,10 @@
 //---------------------------------------------------------------------------
 #define PUSH( stack, exponent, POP ) \
 	while (( exponent )) { \
-		int exp = (int) exponent->ptr; \
-		if ( exp & SUB ) { \
-			e = CNSUB( e, exp&1 ); \
+		union { void *ptr; int value; } exp; \
+		exp.ptr = exponent->ptr; \
+		if ( exp.value & SUB ) { \
+			e = CNSUB( e, exp.value&1 ); \
 			if (( e )) { \
 				addItem( &stack, i ); \
 				addItem( &stack, exponent ); \
@@ -16,7 +17,7 @@
 				i = newItem( e ); } \
 			else goto POP; } \
 		else { \
-			for ( j=e->as_sub[ exp & 1 ]; j!=NULL; j=j->next ) \
+			for ( j=e->as_sub[ exp.value & 1 ]; j!=NULL; j=j->next ) \
 				if ( !db_private( privy, j->ptr, db ) ) \
 					break; \
 			if (( j )) { \
@@ -38,9 +39,10 @@
 		else break; }
 
 #define POP_XPi( stack, exponent ) { \
+	union { void *ptr; int value; } exp; \
 	exponent = popListItem( &stack ); \
-	int exp = (int) exponent->ptr; \
-	if ( exp & SUB ) freeItem( i ); \
+	exp.ptr = exponent->ptr; \
+	if ( exp.value & SUB ) freeItem( i ); \
 	i = popListItem( &stack ); }
 
 #define POP_ALL( stack ) \

@@ -315,12 +315,13 @@ EXPR_BGN:CND_endif
 							f_clr( FIRST|INFORMED|FILTERED ) } }
 			else if ( is_f(SET|CARRY|VECTOR) ) {
 				do_( "," ) }
-			else if ( is_f(ASSIGN) && !is_f(FILTERED) ) {
-				do_( same )	s_take
-						f_clr( INFORMED )
-						f_set( FILTERED ) }
-			else if ( *type&DO && !is_f(ASSIGN) ) { 
-				do_( "_," ) }
+			else if ( is_f(ASSIGN) ) {
+				if ( !is_f(FILTERED) ) {
+					do_( same )	s_take
+							f_clr( INFORMED )
+							f_set( FILTERED ) } }
+			else if ( *type&DO )
+				do_( "_," )
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER }
