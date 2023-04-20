@@ -6,12 +6,15 @@
 		do ( A, tutu )
 		do ( A, zebulon )
 	else on A
-		/* %(A,?) results should not be in any particular order
-		   but in this mono-thread implementation, they will be
-		   in order reverse to creation order */
+		do >"A: %_\n": %(A,?)
+		/* %(A,?) should not come in any particular order,
+		   but in this monothread implementation, they will
+		   be reversed once at creation time, and again
+		   during instantiation, prior to coupling */
 		do (( B, ... ), %(A,?) )
 		do (( C, ... ), instantiate )
 	else
+		do >"B:%_\n": %(B,...):~%(?,.)
 		do >: %( B, ?:... )
 		do >: %( C, ?:... )
 		do exit

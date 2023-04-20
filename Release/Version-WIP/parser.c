@@ -311,7 +311,7 @@ EXPR_BGN:CND_endif
 							f_set( LISTABLE ) }
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|FILTERED ) } }
-			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED) ) {
+			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR|FILTERED|VECTOR) ) {
 				do_( same )	s_take
 						f_clr( INFORMED )
 						f_set( FILTERED ) }
@@ -380,19 +380,22 @@ A:CND_else_( B )
 							f_set( FILTERED ) }
 		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENOV) ) ) {
 				do_( "/" )	s_take }
-		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|EENOV) )
+		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|EENOV|VECTOR) )
 				; // err
 			else if ( *type&ON && is_f(INFORMED) && (is_f(ASSIGN)?is_f(FILTERED):is_f(FIRST)) ) {
 				do_( same )	s_take
 						*type = (*type&ELSE)|ON_X;
 						f_clr( ASSIGN|INFORMED|NEGATED|FILTERED )
 						f_set(FIRST) }
-			else if ( *type&DO && is_f(ELLIPSIS) && !is_f(NEGATED|FILTERED|INFORMED) ) {
-				do_( same )	s_take
-						f_set( VECTOR ) }
-			else if ( *type&DO && ( is_f(ASSIGN) ? !is_f(INFORMED|FILTERED) : is_f(INFORMED) ) ) {
-				do_( "_<" )	s_take
-						f_clr(ASSIGN) }
+			else if ( *type&DO ) {
+				if ( is_f(ELLIPSIS) && !is_f(NEGATED|FILTERED|INFORMED) ) {
+					do_( same )	s_take
+							f_set( VECTOR ) }
+				else if ( is_f(ASSIGN) && !is_f(NEGATED|INFORMED) ) {
+					do_( ":<" )	s_take
+							f_set( VECTOR ) }
+				else if ( is_f(INFORMED) && !is_f(ASSIGN|ELLIPSIS) ) {
+					do_( "_<" )	s_take } }
 			else if ( *type&OUTPUT && !is_f(NEGATED|FILTERED|INFORMED) ) {
 				do_( same )	s_take
 						f_set( VECTOR ) }
@@ -403,13 +406,10 @@ A:CND_else_( B )
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED ) }
-			else if ( *type&DO && are_f(ELLIPSIS|INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
-				do_( same )	s_take
-						f_clr( VECTOR ) }
-			else if ( *type&OUTPUT && are_f(INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
-				do_( same )	s_take
-						f_clr( VECTOR )
-						f_set( COMPOUND ) }
+			else if ( *type&(DO|OUTPUT) && are_f(INFORMED|VECTOR) && !is_f(LEVEL|SUB_EXPR|EENOV) ) {
+					do_( same )	s_take
+							f_clr( VECTOR )
+				if ( *type&OUTPUT ) {	f_set( COMPOUND ) } }
 		on_( '!' ) if ( *type&DO && ( s_empty || (are_f(ASSIGN|FILTERED) &&
 				!is_f(INFORMED|LEVEL|SUB_EXPR|SET|NEGATED)) ) ) {
 				do_( "!" )	s_take }
@@ -605,6 +605,16 @@ CND_ifn( mode==BM_STORY, C )
 			on_( ':' )	do_( "expr" )	s_take
 							f_clr( INFORMED )
 			end
+	in_( ":<" ) bgn_ // Assumption: assign and vector are set
+		ons( " \t" )	do_( same )
+		on_( '\n' ) if ( !is_f(FILTERED) ) {
+				do_( "expr" )	REENTER
+						*type = (*type&ELSE)|INPUT;
+						f_clr( ASSIGN|VECTOR )
+						f_set( INFORMED ) }
+		on_other	do_( "expr" )	REENTER
+						f_set( VECTOR )
+		end
 	in_( ":" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( ":~" )

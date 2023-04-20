@@ -23,7 +23,7 @@ CNInstance *	bm_lookup( BMContext *, char *, int, CNDB * );
 int		bm_context_register( BMContext *, char * );
 void *		bm_context_lookup( BMContext *, char * );
 void *		bm_inform( int, BMContext *, void *, CNDB * );
-CNInstance *	bm_lookup_x( BMContext *, CNDB *, CNInstance *, CNDB * );
+CNInstance *	bm_match( BMContext *, CNDB *, CNInstance *, CNDB * );
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;

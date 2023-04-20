@@ -370,7 +370,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 
 		if (( mark_exp ) || list_exp ) {
 			switch ( list_exp ) {
-			case 1: case 2:	// finish past closing ',...)' of %(list,...)
+			case 2: case 3:	// finish past closing ',...)' of %(list,...)
 				p += 5; break;
 			case 6: case 7: // finish past closing ')' of %((?,...):list)
 				p++; break; }

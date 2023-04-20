@@ -31,6 +31,9 @@ bm_deternarize( char **candidate, BMContext *ctx )
 */
 {
 	char *expression = *candidate;
+	if ( !strcmp( expression, ":<" ) )
+		return NULL;
+
 	char *deternarized = NULL;
 
 	DeternarizeData data;

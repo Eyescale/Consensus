@@ -574,10 +574,10 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 }
 
 //===========================================================================
-//	bm_lookup_x
+//	bm_match
 //===========================================================================
 CNInstance *
-bm_lookup_x( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x )
+bm_match( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x )
 {
 	if ( !x ) return NULL;
 	if ( db_dst==db_x ) return x;

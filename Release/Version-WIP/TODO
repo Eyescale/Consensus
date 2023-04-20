@@ -21,19 +21,18 @@ TODO
 	  2. extend bm_operate() -> do { } while();
 
 	. Publish %@
-		. Test Maths/add
+		. Test on Maths/add rewrite
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
 		. Yak integration (full interactive calculator)
-	. extend vector usage beyond ellipsis case, e.g.
-		do :< a, b, c >:< 1, 2, 3 >
-	  Issue: do :<	// want to support
 	. Release/Version-WIP/Examples/4_Yak
 		. supporting B% Grammar as example
 		. with interactive traversal
 
 DONE
+	. support vector assignment - e.g.
+		do :< a, b, c >:< 1, 2, 3 >
 	. allowed %% in ¶
 	. extended do identifier~ in case identifier is not base entity
 	  (i.e. identifier is sub-narrative param or locale), so that

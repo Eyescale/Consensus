@@ -166,8 +166,6 @@ case_( end_set_CB )
 	*/
 	listItem *instances = popListItem( &data->results );
 	instances = catListItem( instances, data->sub[ 0 ] );
-	if is_f( VECTOR ) {
-		reorderListItem( &instances ); }
 	if ( f_next & FIRST ) {
 		data->sub[ 0 ] = instances; }
 	else {
@@ -399,7 +397,6 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 		results = sub[ 0 ];
 		sub[ 0 ] = NULL; }
 	else {
-		reorderListItem( &sub[1] );
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *e = i->ptr;
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
