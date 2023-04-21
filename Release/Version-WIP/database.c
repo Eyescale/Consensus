@@ -153,7 +153,7 @@ _deprecatable( CNInstance *e, CNDB *db )
 }
 
 //===========================================================================
-//	db_flare
+//	db_signal
 //===========================================================================
 static inline int _flareable( CNInstance *e, CNDB *db );
 static inline void _flare( CNInstance *, CNDB * );
@@ -250,7 +250,6 @@ _untrace( CNInstance *x, CNDB *db )
 	proceeding top-down
 */
 {
-	CNInstance *nil = db->nil;
 	listItem * stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {

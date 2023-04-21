@@ -240,13 +240,11 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 					printf( "%c", q.value );
 					fmt += delta; }
 				else fmt++; } } }
-	else {
-		if ((args)) do {
-			char *arg = args->ptr;
-			bm_output( DEFAULT_TYPE, arg, ctx );
-			args = args->next;
-		} while ((args));
-		printf( "\n" ); }
+	else if (( args )) {
+		for ( listItem *i=args; i!=NULL; i=i->next ) {
+			bm_output( DEFAULT_TYPE, i->ptr, ctx );
+			printf( "\n" ); } }
+	else printf( "\n" );
 RETURN:
 	return 0;
 }
@@ -270,10 +268,7 @@ bm_output( int type, char *arg, BMContext *ctx )
 			printf( "%c", q.value );
 		return 0; }
 
-	OutputData data;
-	data.type = type;
-	data.first = 1;
-	data.last = NULL;
+	OutputData data = { type, 1, NULL };
 
 	// special case: EEnoRV as-is
 	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )

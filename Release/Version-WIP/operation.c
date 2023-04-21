@@ -12,9 +12,9 @@
 
 // #define DEBUG
 
-static int in_condition( char *, BMContext *, int *marked );
-static int on_event( char *, BMContext *, int *marked );
-static int on_event_x( char *, BMContext *, int *marked );
+static int in_condition( char *, BMContext *, Pair **marked );
+static int on_event( char *, BMContext *, Pair **marked );
+static int on_event_x( char *, BMContext *, Pair **marked );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
@@ -34,7 +34,8 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 #endif
 	bm_context_actualize( ctx, narrative->proto, instance );
 	listItem *i = newItem( narrative->root ), *stack = NULL;
-	int passed = 1, marked = 0;
+	int passed = 1;
+	Pair *marked = NULL;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		char *expression = occurrence->data->expression;
@@ -78,20 +79,19 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 
 		if (( deternarized )) free( expression );
 		if (( j && passed )) {
+			bm_context_mark( ctx, marked );
 			addItem( &stack, i );
-			add_item( &stack, marked );
-			i = j; marked = 0;
+			addItem( &stack, marked );
+			i = j; marked = NULL;
 			continue; }
 		for ( ; ; ) {
-			if (( marked )) {
-				bm_context_unmark( ctx, marked );
-				marked = 0; }
+			marked = bm_context_unmark( ctx, marked );
 			if (( i->next )) {
 				i = i->next;
 				break; }
 			else if (( stack )) {
 				passed = 1; // otherwise we would not be here
-				marked = pop_item( &stack );
+				marked = popListItem( &stack );
 				i = popListItem( &stack ); }
 			else goto RETURN; } }
 RETURN:
@@ -106,9 +106,9 @@ RETURN:
 //	in_condition
 //===========================================================================
 static int
-in_condition( char *expression, BMContext *ctx, int *marked )
+in_condition( char *expression, BMContext *ctx, Pair **marked )
 /*
-	Assumption: *marked==0 to begin with
+	Assumption: *marked==NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -124,8 +124,16 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success )
-		bm_context_mark( ctx, expression, found, marked );
+	else if ( success ) {
+		// get mark:[ type, xpn ]
+		Pair *mark = bm_mark( expression, NULL );
+		if (( mark )) {
+			/* turn - found (for now)
+			   into *marked:[ mark, {[ {instance(s)}, NULL ]} ]
+			*/
+			listItem *instances = newItem( found );
+			Pair *batch = newPair( instances, NULL );
+			*marked = newPair( mark, newItem(batch) ); } }
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -136,7 +144,7 @@ in_condition( char *expression, BMContext *ctx, int *marked )
 //	on_event
 //===========================================================================
 static int
-on_event( char *expression, BMContext *ctx, int *marked )
+on_event( char *expression, BMContext *ctx, Pair **marked )
 /*
 	Assumption: *marked==0 to begin with
 */
@@ -164,8 +172,16 @@ on_event( char *expression, BMContext *ctx, int *marked )
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if ( success==2 )
-		bm_context_mark( ctx, expression, found, marked );
+	else if ( success==2 ) {
+		// get mark:[ type, xpn ]
+		Pair *mark = bm_mark( expression, NULL );
+		if (( mark )) {
+			/* turn - found (for now)
+			   into *marked:[ mark, {[ {instance(s)}, NULL ]} ]
+			*/
+			listItem *instances = newItem( found );
+			Pair *batch = newPair( instances, NULL );
+			*marked = newPair( mark, newItem(batch) ); } }
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -180,7 +196,7 @@ static inline Pair * _feel( BMQueryType, char *, listItem **, BMContext * );
 static inline Pair * _test( ProxyTest *, listItem ** );
 
 static int
-on_event_x( char *expression, BMContext *ctx, int *marked )
+on_event_x( char *expression, BMContext *ctx, Pair **marked )
 /*
 	Assumption: *marked==0 to begin with
 */
@@ -216,11 +232,24 @@ on_event_x( char *expression, BMContext *ctx, int *marked )
 		if (( found )) success = 2; }
 
 	freeListItem( &proxies );
-	if ( negated ) success = !success;
-	else switch ( success ) {
-		case 1: bm_context_mark_x( ctx, NULL, src, found, marked ); break;
-		case 2: bm_context_mark_x( ctx, expression, src, found, marked ); }
-	if (( found )) freePair( found );
+	if ( negated ) {
+		success = !success;
+ 		if (( found )) freePair( found ); }
+	else if ( success ) {
+		// get mark:[ type, xpn ]
+		char *p = (( success==2 ) ? expression : NULL );
+		Pair *mark = bm_mark( p, src );
+		if (( mark )) {
+			/* turn - found:[ instance, proxy ] (for now)
+			   into *marked:[ mark, {[ {instance(s)}, proxy ]} ]
+			*/
+			CNInstance *instance = found->name;
+			CNInstance *proxy = found->value;
+			listItem *instances = newItem( instance );
+			Pair *batch = newPair( instances, proxy );
+			*marked = newPair( mark, newItem(batch) ); }
+		freePair( found ); }
+
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif

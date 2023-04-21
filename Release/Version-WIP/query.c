@@ -470,8 +470,8 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 	listItem **as_sub = &stack->as_sub;
 	while (( *as_sub )) {
 		union { void *ptr; int value; } exp;
-		listItem *xpn = popListItem( as_sub );
-		exp.ptr = xpn->ptr;
+		listItem *exponent = popListItem( as_sub );
+		exp.ptr = exponent->ptr;
 		if (!( exp.value & SUB )) freeItem( i );
 		i = popListItem( as_sub ); }
 	freeItem( i );

@@ -107,9 +107,9 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 		data->src = src;
 
 		switch ( p[2] ) {
-		case '?': data->instance = eenov->event->name; break;
-		case '!': data->instance = eenov->event->value; break;
-		case '(': data->instance = eenov->event->value; break;
+		case '!': data->instance = eenov->event->name; break;
+		case '?': data->instance = eenov->event->value; break;
+		case '(': data->instance = eenov->event->name; break;
 		default: return EEnovSrcType; }
 
 		CNEntity *cell = DBProxyThat( src );

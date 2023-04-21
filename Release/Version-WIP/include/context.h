@@ -12,9 +12,9 @@ int		bm_context_update( CNEntity *this, BMContext *ctx );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
-int		bm_context_mark( BMContext *, char *, CNInstance *, int *marked );
-int		bm_context_mark_x( BMContext *, char *, char *, Pair *, int * );
-void 		bm_context_unmark( BMContext *, int );
+Pair *		bm_mark( char *, char * );
+void		bm_context_mark( BMContext *, Pair * );
+Pair * 		bm_context_unmark( BMContext *, Pair * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
 

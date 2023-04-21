@@ -1,5 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. do >:< a, b >	/// not formatted: ??
 	. per event
 		easy - as bm_feel() and bm_proxy_feel() don't use pivot -
 		to return a list instead of a single CNInstance *
@@ -20,8 +21,13 @@ TODO
 	  1. just listItem * and type redefinition
 	  2. extend bm_operate() -> do { } while();
 
+	  NOTE:
+		on ~.: event < src
+			passes iff NONE among src verifies event (tricky)
+
 	. Publish %@
 		. Test on Maths/add rewrite
+	. rewrite deternarize ala() deparameterize()
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
@@ -31,6 +37,8 @@ TODO
 		. with interactive traversal
 
 DONE
+	. Now use only one registry for %? and %! [it's a pair]
+		=> %! always available when %? is
 	. support vector assignment - e.g.
 		do :< a, b, c >:< 1, 2, 3 >
 	. allowed %% in ¶
