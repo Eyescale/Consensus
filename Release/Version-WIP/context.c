@@ -22,8 +22,8 @@ newContext( CNEntity *cell, CNEntity *parent )
 	Pair *active = newPair(
 		newPair( NULL, NULL ),
 		NULL );
-	registryRegister( ctx, "", id ); // aka. %% and ..
-	registryRegister( ctx, "%", db );
+	registryRegister( ctx, "", db ); // BMContextDB( ctx )
+	registryRegister( ctx, "%", id ); // aka. %% and ..
 	registryRegister( ctx, "@", active ); // active connections (proxies)
 	registryRegister( ctx, ".", NULL ); // aka. perso
 	registryRegister( ctx, "?", NULL ); // aka. %?
@@ -241,7 +241,7 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 static inline int inand( listItem *i, int operand ) {
 	if (( i )) {
 		union { void *ptr; int value; } icast;
-		icast.ptr = i; return !( icast.value & operand ); }
+		icast.ptr = i->ptr; return !( icast.value & operand ); }
 	return 0; }
 
 //===========================================================================
@@ -288,9 +288,13 @@ bm_context_release( BMContext *ctx )
 //	bm_mark
 //===========================================================================
 Pair *
-bm_mark( char *expression, char *src )
+bm_mark( int as_per, char *expression, char *src, void *user_data )
 /*
-	return mark:[ type, xpn ] from expression < src
+	return either one of the following from expression < src
+	in case src==NULL
+		[ [ type, xpn ], [ user_data, NULL ] ]
+	otherwise
+		[ [ type, xpn ], user_data ]
 */
 {
 	union { void *ptr; int value; } type;
@@ -317,34 +321,55 @@ bm_mark( char *expression, char *src )
 
 	Pair *mark = NULL;
 	if ( type.value ) {
-		if (( src )) type.value |= EENOK;
+		if ( as_per ) type.value |= AS_PER;
 		if (( xpn )) reorderListItem( &xpn );
-		mark = newPair( type.ptr, xpn ); }
+		if (( src )) type.value |= EENOK;
+		else user_data = newPair( user_data, NULL );
+		mark = newPair( newPair( type.ptr, xpn ), user_data ); }
+
 	return mark;
 }
 
 //===========================================================================
 //	bm_context_mark / bm_context_unmark
 //===========================================================================
-static Pair * mark_set( Pair *, CNInstance *, CNInstance * );
+static Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
 /*
-	marked:[ mark:[type,xpn], {batch:[ {instance(s)}, proxy ]} ]
+	marked is either
+	in case ( type & AS_PER )
+		[ mark:[ type, xpn ], { batch:[ { instance(s) }, proxy ] } ]
+	otherwise
+		[ mark:[ type, xpn ], batch:[ instance,proxy ] ]
 */
 void
 bm_context_mark( BMContext *ctx, Pair *marked )
 {
+	Pair *batch, *event;
+	CNInstance *instance, *proxy;
 	if (( marked )) {
 		Pair *mark = marked->name;
-		Pair *batch = ((listItem *) marked->value )->ptr;
-		CNInstance *proxy = batch->value;
-		CNInstance *x = popListItem((listItem **) &batch->name );
-		if ( !batch->name ) {
-			freePair( batch ); // one batch per proxy
-			popListItem((listItem **) &marked->value ); }
-		Pair *event = mark_set( mark, x, proxy );
+		union { void *ptr; int value; } type;
+		type.ptr = mark->name;
+		if ( type.value & AS_PER ) {
+			batch = ((listItem *) marked->value )->ptr;
+			instance = popListItem((listItem **) &batch->name );
+			proxy = batch->value;
+			if ( !batch->name ) {
+				freePair( batch ); // one batch per proxy
+				popListItem((listItem **) &marked->value ); } }
+		else {
+			batch = marked->value;
+			instance = batch->name;
+			proxy = batch->value;
+			freePair( batch );
+			marked->value = NULL; }
+
+		event = mark_prep( mark, instance, proxy );
 		if (( event )) {
-			if ( !proxy ) bm_push_mark( ctx, "?", event );
-			else bm_push_mark( ctx, "<", newPair(event,proxy) ); } }
+			if (( proxy ))
+				bm_push_mark( ctx, "<", newPair( event, proxy ) );
+			else
+				bm_push_mark( ctx, "?", event ); } }
 }
 Pair *
 bm_context_unmark( BMContext *ctx, Pair *marked )
@@ -353,11 +378,13 @@ bm_context_unmark( BMContext *ctx, Pair *marked )
 		Pair *mark = marked->name;
 		union { void *ptr; int value; } type;
 		type.ptr = mark->name;
-
-		bm_pop_mark( ctx, ((type.value&EENOK) ? "<" : "?" ) );
-
+		if ( type.value & EENOK )
+			bm_pop_mark( ctx, "<" );
+		else
+			bm_pop_mark( ctx, "?" );
 		if ( !marked->value ) {
-			freeListItem((listItem **) &mark->value );
+			listItem *xpn = mark->value;
+			freeListItem( &xpn );
 			freePair( mark );
 			freePair( marked );
 			marked = NULL; } }
@@ -365,19 +392,19 @@ bm_context_unmark( BMContext *ctx, Pair *marked )
 }
 
 //---------------------------------------------------------------------------
-//	mark_set
+//	mark_prep
 //---------------------------------------------------------------------------
 static inline CNInstance * xsub( CNInstance *, listItem * );
 
 static Pair *
-mark_set( Pair *mark, CNInstance *x, CNInstance *proxy )
+mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 /*
 	Assumption: mark is not NULL
 	However x may be NULL, in which case we have type.value==EENOK
 	Use cases:	on . < ?
 			on init < ?
 			on exit < ?
-	Note: we may have type.value==EENOK and x not NULL
+	Note: we may also have type.value==EENOK and x not NULL
 */
 {
 	union { void *ptr; int value; } type;

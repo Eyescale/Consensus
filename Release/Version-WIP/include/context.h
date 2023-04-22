@@ -12,7 +12,7 @@ int		bm_context_update( CNEntity *this, BMContext *ctx );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
-Pair *		bm_mark( char *, char * );
+Pair *		bm_mark( int, char *, char *, void * );
 void		bm_context_mark( BMContext *, Pair * );
 Pair * 		bm_context_unmark( BMContext *, Pair * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
@@ -35,14 +35,14 @@ typedef struct {
 	CNInstance *src;
 } EEnoRV;
 
-static inline Pair * BMContextId( BMContext *ctx )
+static inline CNDB * BMContextDB( BMContext *ctx )
 	{ return registryLookup( ctx, "" )->value; }
+static inline Pair * BMContextId( BMContext *ctx )
+	{ return registryLookup( ctx, "%" )->value; }
 static inline CNInstance * BMContextSelf( BMContext *ctx )
 	{ return BMContextId( ctx )->name; }
 static inline CNInstance * BMContextParent( BMContext *ctx )
 	{ return BMContextId( ctx )->value; }
-static inline CNDB * BMContextDB( BMContext *ctx )
-	{ return registryLookup( ctx, "%" )->value; }
 static inline ActiveRV * BMContextActive( BMContext *ctx )
 	{ return registryLookup( ctx, "@" )->value; }
 static inline CNInstance * BMContextPerso( BMContext *ctx )

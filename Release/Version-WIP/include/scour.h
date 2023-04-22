@@ -14,5 +14,7 @@
 #define	LIST_EXPR	(1<<10)
 #define	STAR		(1<<11)
 
+#define	AS_PER		(1<<15)
+
 
 #endif	// SCOUR_H

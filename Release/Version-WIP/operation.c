@@ -23,8 +23,6 @@ static int do_output( char *, BMContext * );
 //===========================================================================
 //	bm_operate
 //===========================================================================
-#define ctrl(e)	case e:	if ( passed ) { j = NULL; break; }
-
 void
 bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	Registry *subs, listItem *narratives, CNStory *story )
@@ -33,57 +31,39 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	fprintf( stderr, "operate bgn\n" );
 #endif
 	bm_context_actualize( ctx, narrative->proto, instance );
-	listItem *i = newItem( narrative->root ), *stack = NULL;
-	int passed = 1;
+	listItem *i = newItem( narrative->root ), *j;
+	listItem *stack = NULL;
+	int as_per=0, passed=1;
 	Pair *marked = NULL;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
-		char *expression = occurrence->data->expression;
-		char *deternarized = NULL;
-		listItem *j = occurrence->sub;
-		switch ( occurrence->data->type ) {
-		ctrl(ELSE) case ROOT:
-			passed = 1;
-			break;
-		ctrl(ELSE_IN) case IN:
-			deternarized = bm_deternarize( &expression, ctx );
-			passed = in_condition( expression, ctx, &marked );
-			break;
-		ctrl(ELSE_ON) case ON:
-			deternarized = bm_deternarize( &expression, ctx );
-			passed = on_event( expression, ctx, &marked );
-			break;
-		ctrl(ELSE_ON_X) case ON_X:
-			deternarized = bm_deternarize( &expression, ctx );
-			passed = on_event_x( expression, ctx, &marked );
-			break;
-		ctrl(ELSE_DO) case DO:
-			deternarized = bm_deternarize( &expression, ctx );
-			do_action( expression, ctx, story );
-			break;
-		ctrl(ELSE_INPUT) case INPUT:
-			deternarized = bm_deternarize( &expression, ctx );
-			do_input( expression, ctx );
-			break;
-		ctrl(ELSE_OUTPUT) case OUTPUT:
-			deternarized = bm_deternarize( &expression, ctx );
-			do_output( expression, ctx );
-			break;
-		ctrl(ELSE_EN) case EN:
-			deternarized = bm_deternarize( &expression, ctx );
-			do_enable( subs, narratives, expression, ctx );
-			break;
-		case LOCALE:
-			bm_context_register( ctx, expression );
-			break; }
-
-		if (( deternarized )) free( expression );
-		if (( j && passed )) {
-			bm_context_mark( ctx, marked );
-			addItem( &stack, i );
-			addItem( &stack, marked );
-			i = j; marked = NULL;
-			continue; }
+		int type = occurrence->data->type;
+		if ( type&ELSE && passed ) {}
+		else {
+			// processing
+			if ( !as_per ) {
+				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
+				char *expression = occurrence->data->expression;
+				char *deternarized = ( type&LOCALE ? NULL : bm_deternarize(&expression,ctx) );
+				switch ( type ) {
+				case ROOT: passed=1; break;
+				case IN: passed=in_condition( expression, ctx, &marked ); break;
+				case ON: passed=on_event( expression, ctx, &marked ); break;
+				case ON_X: passed=on_event_x( expression, ctx, &marked ); break;
+				case DO: do_action( expression, ctx, story ); break;
+				case INPUT: do_input( expression, ctx ); break;
+				case OUTPUT: do_output( expression, ctx ); break;
+				case EN: do_enable( subs, narratives, expression, ctx ); break;
+				case LOCALE: bm_context_register( ctx, expression ); break; }
+				if (( deternarized )) free( expression ); }
+			// pushing down
+			if ( passed && ( j=occurrence->sub )) {
+				bm_context_mark( ctx, marked );
+				addItem( &stack, i );
+				addItem( &stack, marked );
+				i = j; marked = NULL;
+				continue; } }
+		// popping up
 		for ( ; ; ) {
 			marked = bm_context_unmark( ctx, marked );
 			if (( i->next )) {
@@ -124,16 +104,8 @@ in_condition( char *expression, BMContext *ctx, Pair **marked )
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success ) {
-		// get mark:[ type, xpn ]
-		Pair *mark = bm_mark( expression, NULL );
-		if (( mark )) {
-			/* turn - found (for now)
-			   into *marked:[ mark, {[ {instance(s)}, NULL ]} ]
-			*/
-			listItem *instances = newItem( found );
-			Pair *batch = newPair( instances, NULL );
-			*marked = newPair( mark, newItem(batch) ); } }
+	else if ( success )
+		*marked = bm_mark( 0, expression, NULL, found );
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -172,16 +144,8 @@ on_event( char *expression, BMContext *ctx, Pair **marked )
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if ( success==2 ) {
-		// get mark:[ type, xpn ]
-		Pair *mark = bm_mark( expression, NULL );
-		if (( mark )) {
-			/* turn - found (for now)
-			   into *marked:[ mark, {[ {instance(s)}, NULL ]} ]
-			*/
-			listItem *instances = newItem( found );
-			Pair *batch = newPair( instances, NULL );
-			*marked = newPair( mark, newItem(batch) ); } }
+	else if ( success==2 )
+		*marked = bm_mark( 0, expression, NULL, found );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -235,21 +199,8 @@ on_event_x( char *expression, BMContext *ctx, Pair **marked )
 	if ( negated ) {
 		success = !success;
  		if (( found )) freePair( found ); }
-	else if ( success ) {
-		// get mark:[ type, xpn ]
-		char *p = (( success==2 ) ? expression : NULL );
-		Pair *mark = bm_mark( p, src );
-		if (( mark )) {
-			/* turn - found:[ instance, proxy ] (for now)
-			   into *marked:[ mark, {[ {instance(s)}, proxy ]} ]
-			*/
-			CNInstance *instance = found->name;
-			CNInstance *proxy = found->value;
-			listItem *instances = newItem( instance );
-			Pair *batch = newPair( instances, proxy );
-			*marked = newPair( mark, newItem(batch) ); }
-		freePair( found ); }
-
+	else if ( success )
+		*marked = bm_mark( 0, expression, src, found );
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
