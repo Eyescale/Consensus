@@ -14,7 +14,7 @@
 
 static int in_condition( char *, BMContext *, Pair **marked );
 static int on_event( char *, BMContext *, Pair **marked );
-static int on_event_x( char *, int type, BMContext *, Pair **marked );
+static int on_event_x( char *, int pre, BMContext *, Pair **marked );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );

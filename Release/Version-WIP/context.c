@@ -298,7 +298,7 @@ bm_mark( int pre, char *expression, char *src, void *user_data )
 */
 {
 	union { void *ptr; int value; } type;
-	type.value = pre;
+	type.value = 0;
 	listItem *xpn = NULL;
 
 	if (( src ) && *src!='{' && ( bm_locate_mark(src,&xpn) ))
