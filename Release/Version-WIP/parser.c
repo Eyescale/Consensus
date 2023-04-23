@@ -364,7 +364,7 @@ A:CND_else_( B )
 		on_( ':' ) if ( s_empty ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
-			else if ( is_f(EENOV) || !is_f(INFORMED) )
+			else if ( !is_f(INFORMED) || is_f(EENOV) || ( *type&PER && !s_diff("~.") ) )
 				; // err
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( !is_f(FILTERED) ) {
@@ -964,6 +964,7 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 		in_none_sofar		errnum = ErrUnknownState;
 		in_( "¶..." ) bgn_
 			on_( ')' )	errnum = ErrEllipsisLevel;
+			on_other	errnum = ErrSyntaxError;
 			end
 		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
@@ -985,6 +986,7 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 							is_f(EMARKED) ? ErrEMarkMultiple :
 							ErrSyntaxError :
 						   ErrSyntaxError );
+			on_( ':' )	errnum = !s_cmp( "~." ) ? ErrPerContrary : ErrSyntaxError;
 			on_other	errnum = ErrSyntaxError;
 			end
 	//----------------------------------------------------------------------
@@ -1052,6 +1054,8 @@ else {
 		fprintf( stderr, "Error: %s: l%dc%d: '!' negated\n", src, l, c ); break;
 	case ErrUnknownCommand:
 		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, stump  ); break;
+	case ErrPerContrary:
+		fprintf( stderr, "Error: %s: l%dc%d: per contrary not supported\n", src, l, c ); break;
 	default:
 		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); } }
 }

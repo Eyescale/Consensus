@@ -178,7 +178,7 @@ StringAt( CNString *string )
 	return 0;
 }
 int
-StringDiffer( CNString *string, char *cmp )
+StringCompare( CNString *string, char *cmp )
 /*
 	kind of strcmp() except starts from end
 */

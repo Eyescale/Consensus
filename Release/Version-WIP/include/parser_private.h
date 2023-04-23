@@ -107,6 +107,8 @@
 	StringAppend( s, event );
 #define s_cmp( str ) \
 	strcmp( str, StringFinish(s,0) )
+#define s_diff( str ) \
+	StringCompare( s, str )
 
 
 #endif	// PARSER_PRIVATE_H

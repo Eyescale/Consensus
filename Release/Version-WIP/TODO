@@ -1,8 +1,8 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. Publish %@
-		. Test on Maths/add rewrite
-	. rewrite deternarize ala() deparameterize()
+		. Note: could then output proxy as (%@:*var) when assigned
+	. rewrite Maths/add rewrite
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
@@ -21,10 +21,17 @@ DONE
 			#define BM_RELEASED	BM_EVENT
 			#define BM_CONDITION	BM_VISIBLE
 			#define BM_INSTANTIATED	(BM_VISIBLE|BM_EVENT)
-	  NOTE:
-		contrary expression per ~.:_ NOT ACCEPTED (parser)
-		on ~.: event < src
-			passes iff NONE among src verifies event (tricky)
+	  CAVEATS:
+		per . < . not to be mistaken with per ( . ) < .
+			per . < . <=> for all active cells
+			per ( . ) < .  <=> for all cells on which instantiation just happened
+		also
+			per ~. < .  accepted but will never pass
+			per ~( . ) < . <=> for all cells on which deprecation just happened
+		whereas
+			per ~.: _ NOT ACCEPTED (parser)
+			on ~.: event < src passes iff NONE among src verifies event (tricky)
+
 	. do >:< a, b >	// output results are separated by cr
 	. Now use only one registry for %? and %! [it's a pair]
 		=> %! always available when %? is
@@ -102,7 +109,17 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. verify_traversal optimization
+	. do e.g. : var : %?	when %? is NULL
+		=> should it be equivalent to do : var : ~.
+		=> currently assignment fails
+	. support per ~.: . < ?
+		allows to identify all inactive cells among connections
+	. extend query.c to support BM_AS_PER, so as to allow
+		per event	// currently requires < src
+		per condition	// would need keyword other than per
+				// unless default => per event < %%
+	. rewrite deternarize ala() deparameterize()
+	. OPT verify_traversal
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)
 	. CLEANUP
@@ -139,12 +156,6 @@ NICE TO HAVE
 	  Current status & Decision
 		. bm_instantiate() does not invoke bm_void()
 		  => bm_instantiate() may do half a job (user responsibility)
-	. per proto:expression <<< where proto can be '?' or narrative-type proto
-		. PER/ELSE_PER
-		. also DO_PER, e.g.
-			do per ?:expression
-				: var : %?
-		  => only ONE occurrence->data->expression?
 	. multi-threading (pthreads)
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 

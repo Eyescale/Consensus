@@ -70,6 +70,7 @@ typedef enum {
 	ErrEMarked,
 	ErrEMarkMultiple,
 	ErrEMarkNegated,
+	ErrPerContrary,
 	ErrUnknownCommand,
 } BMParseErr;
 
