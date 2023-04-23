@@ -15,7 +15,7 @@
 //	bm_feel
 //===========================================================================
 CNInstance *
-bm_feel( BMQueryType type, char *expression, BMContext *ctx )
+bm_feel( int type, char *expression, BMContext *ctx )
 {
 	switch ( type ) {
 	case BM_CONDITION: // special case: EEnoRV as-is

@@ -1,0 +1,24 @@
+/*
+	on init
+		do : titi : toto
+		do : tata : tutu
+	else
+		per : . : ? < %%
+			do >"BINGO %_\n": %<?>
+		do exit
+*/
+/**/
+	on init
+		do !! Test()
+	else on ( . ) < .	// . without parenthesis means active
+		per : . : ? < .
+			do >"BINGO %_\n": %<?>
+		do exit
+
+: Test
+	on init
+		do : titi : toto
+		do : tata : tutu
+	else on exit < ..
+		do exit
+/**/

@@ -249,10 +249,10 @@ fprintf( stderr, "--\n" );
 }
 
 //===========================================================================
-//	db_log
+//	DBLog
 //===========================================================================
 CNInstance *
-db_log( int first, int released, CNDB *db, listItem **stack )
+DBLog( int first, int released, CNDB *db, listItem **stack )
 /*
 	returns first / next e verifying
 		if released: ( e, nil )

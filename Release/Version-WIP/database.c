@@ -92,7 +92,7 @@ db_register( char *p, CNDB *db )
 //===========================================================================
 //	db_deprecate
 //===========================================================================
-static inline int _deprecatable( CNInstance *e, CNDB *db );
+static inline int deprecatable( CNInstance *e, CNDB *db );
 
 void
 db_deprecate( CNInstance *x, CNDB *db )
@@ -111,7 +111,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 	for ( ; ; ) {
 		x = i->ptr;
 		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
-			if ( _deprecatable( j->ptr, db ) )
+			if ( deprecatable( j->ptr, db ) )
 				break;
 		if (( j )) {
 			addItem( &stack, i );
@@ -123,7 +123,7 @@ db_deprecate( CNInstance *x, CNDB *db )
 		for ( ; ; ) {
 			if (( i->next )) {
 				i = i->next;
-				if ( _deprecatable( i->ptr, db ) )
+				if ( deprecatable( i->ptr, db ) )
 					{ ndx=0; break; } }
 			else if (( stack )) {
 				ndx = pop_item( &stack );
@@ -134,9 +134,8 @@ db_deprecate( CNInstance *x, CNDB *db )
 RETURN:
 	freeItem( i );
 }
-
 static inline int
-_deprecatable( CNInstance *e, CNDB *db )
+deprecatable( CNInstance *e, CNDB *db )
 /*
 	returns 0 if e is either released or to-be-released,
 		which we assume applies to all its ascendants
@@ -155,9 +154,9 @@ _deprecatable( CNInstance *e, CNDB *db )
 //===========================================================================
 //	db_signal
 //===========================================================================
-static inline int _flareable( CNInstance *e, CNDB *db );
-static inline void _flare( CNInstance *, CNDB * );
-static inline void _untrace( CNInstance *x, CNDB *db );
+static inline int flareable( CNInstance *e, CNDB *db );
+static inline void flare( CNInstance *, CNDB * );
+static inline void untrace( CNInstance *x, CNDB *db );
 
 void
 db_signal( CNInstance *x, CNDB *db )
@@ -175,17 +174,20 @@ db_signal( CNInstance *x, CNDB *db )
 */
 {
 	if isBase( x ) {
-		if ( _flareable( x, db ) )
-			_flare( x, db ); }
-	else if ( _deprecatable( x, db ) ) {
+		if ( flareable( x, db ) )
+			flare( x, db ); }
+	else if ( deprecatable( x, db ) ) {
 		// deprecate x and all its ascendants
 		db_deprecate( x, db );
 		// deprecate x's subs, proceeding top-down
-		_untrace( x, db ); }
+		untrace( x, db ); }
 }
 
+//---------------------------------------------------------------------------
+//	flare
+//---------------------------------------------------------------------------
 static inline void
-_flare( CNInstance *x, CNDB *db )
+flare( CNInstance *x, CNDB *db )
 /*
 	flare x, ie. invoke db_op( DB_SIGNAL_OP, x ) on x and
 	all its ascendants, proceeding top-down
@@ -198,7 +200,7 @@ _flare( CNInstance *x, CNDB *db )
 	for ( ; ; ) {
 		x = i->ptr;
 		for ( j=x->as_sub[ ndx ]; j!=NULL; j=j->next )
-			if ( _flareable( j->ptr, db ) )
+			if ( flareable( j->ptr, db ) )
 				break;
 		if (( j )) {
 			addItem( &stack, i );
@@ -210,7 +212,7 @@ _flare( CNInstance *x, CNDB *db )
 		for ( ; ; ) {
 			if (( i->next )) {
 				i = i->next;
-				if ( _flareable( i->ptr, db ) )
+				if ( flareable( i->ptr, db ) )
 					{ ndx=0; break; } }
 			else if (( stack )) {
 				ndx = pop_item( &stack );
@@ -222,7 +224,7 @@ RETURN:
 	freeItem( i );
 }
 static inline int
-_flareable( CNInstance *e, CNDB *db )
+flareable( CNInstance *e, CNDB *db )
 /*
 	returns 0 if e is already to-be-released or flared
 		which we assume applies to all its ascendants
@@ -240,9 +242,13 @@ _flareable( CNInstance *e, CNDB *db )
 	return 1;
 }
 
-static inline int _untraceable( CNInstance *, CNInstance *, CNDB *db );
+//---------------------------------------------------------------------------
+//	untrace
+//---------------------------------------------------------------------------
+static inline int untraceable( CNInstance *, CNInstance *, CNDB *db );
+
 static inline void
-_untrace( CNInstance *x, CNDB *db )
+untrace( CNInstance *x, CNDB *db )
 /*
 	deprecate all x's subs so long as
 		these are not referenced anywhere else
@@ -254,7 +260,7 @@ _untrace( CNInstance *x, CNDB *db )
 	int ndx = 0;
 	for ( ; ; ) {
 		CNInstance *y = CNSUB( x, ndx );
-		if ( _untraceable( y, x, db ) ) {
+		if ( untraceable( y, x, db ) ) {
 			db_op( DB_DEPRECATE_OP, y, db );
 			add_item( &stack, ndx );
 			addItem( &stack, x );
@@ -267,7 +273,7 @@ _untrace( CNInstance *x, CNDB *db )
 		else return; }
 }
 static inline int
-_untraceable( CNInstance *y, CNInstance *x, CNDB *db )
+untraceable( CNInstance *y, CNInstance *x, CNDB *db )
 /*
 	Assumption: x is deprecatable
 
@@ -292,7 +298,7 @@ _untraceable( CNInstance *y, CNInstance *x, CNDB *db )
 			CNInstance *e = i->ptr;
 			if ( e==x || e->sub[!ndx]==nil )
 				continue;
-			else if ( _deprecatable( e, db ) )
+			else if ( deprecatable( e, db ) )
 				return 0; }
 	return 1;
 }
@@ -388,7 +394,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 			CNInstance *candidate = i->ptr;
 			if ( candidate->sub[ 1 ] == f )
 				instance = candidate;
-			else if ( _deprecatable( candidate, db ) )
+			else if ( deprecatable( candidate, db ) )
 				db_deprecate( candidate, db ); }
 		if (( instance )) {
 			db_op( DB_REASSIGN_OP, instance, db );
@@ -435,7 +441,7 @@ db_unassign( CNInstance *x, CNDB *db )
 			continue;
 		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
 			CNInstance *f = j->ptr;
-			if ( _deprecatable(f,db) )
+			if ( deprecatable(f,db) )
 				db_deprecate( f, db ); }
 		db_op( DB_REASSIGN_OP, e, db );
 		return e; }
@@ -586,7 +592,7 @@ db_new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 void
 db_deprecate_proxy( CNInstance *proxy, CNDB *db )
 {
-	if (( _deprecatable( proxy, db ) ))
+	if (( deprecatable( proxy, db ) ))
 		db_deprecate( proxy, db );
 }
 
@@ -599,8 +605,8 @@ db_fire_proxy( CNInstance *proxy, CNDB *db )
 {
 	for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 		CNInstance *e = i->ptr;
-		if ( _flareable( e, db ) )
-			_flare( e, db ); }
+		if ( flareable( e, db ) )
+			flare( e, db ); }
 }
 
 //===========================================================================

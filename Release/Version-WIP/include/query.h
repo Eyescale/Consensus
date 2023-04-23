@@ -4,17 +4,19 @@
 #include "context.h"
 #include "traverse.h"
 
-typedef enum {
-        BM_CONDITION = 0,
-        BM_RELEASED,
-        BM_INSTANTIATED
-} BMQueryType;
+#define BM_EVENT	1
+#define BM_VISIBLE	2
+#define BM_AS_PER	4
+
+#define	BM_RELEASED	BM_EVENT
+#define	BM_CONDITION	BM_VISIBLE
+#define	BM_INSTANTIATED (BM_EVENT|BM_VISIBLE)
 
 typedef BMCBTake BMQueryCB( CNInstance *, BMContext *, void * );
-CNInstance *bm_query( BMQueryType, char *expression, BMContext *, BMQueryCB, void * );
+CNInstance *bm_query( int, char *expression, BMContext *, BMQueryCB, void * );
 
 typedef struct {
-	BMQueryType type;
+	int type;
 	BMQueryCB *user_CB;
 	void *user_data;
 	BMContext *ctx;

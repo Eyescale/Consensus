@@ -10,22 +10,17 @@
 
 #define ROOT		0
 #define	IN		1
-#define ON		2
-#define ON_X		4
-#define DO		8
-#define EN		16
-#define INPUT		32
-#define OUTPUT		64
-#define LOCALE		128
+#define ON		(1<<1)
+#define ON_X		(1<<2)
+#define DO		(1<<3)
+#define EN		(1<<4)
+#define ELSE		(1<<5)
+#define INPUT		(1<<6)
+#define OUTPUT		(1<<7)
+#define LOCALE		(1<<8)
 
-#define ELSE		512
-#define ELSE_IN		(ELSE|IN)
-#define ELSE_ON		(ELSE|ON)
-#define ELSE_ON_X	(ELSE|ON_X)
-#define ELSE_DO		(ELSE|DO)
-#define ELSE_EN		(ELSE|EN)
-#define ELSE_INPUT	(ELSE|INPUT)
-#define ELSE_OUTPUT	(ELSE|OUTPUT)
+#define PER		(1<<9)
+#define PER_X		(ON_X|PER)
 
 typedef enum {
 	BM_LOAD = 1,

@@ -1,30 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. do >:< a, b >	/// not formatted: ??
-	. per event
-		easy - as bm_feel() and bm_proxy_feel() don't use pivot -
-		to return a list instead of a single CNInstance *
-		=> redefine BM_CONDITION, BM_INSTANTIATED and BM_RELEASED
-
-			BM_EVENT	1
-			BM_VISIBLE	2
-			BM_TYPE		3
-			BM_AS_PER	4
-
-			BM_CONDITION	BM_VISIBLE
-			BM_INSTANTIATED	BM_VISIBLE|BM_EVENT
-			BM_RELEASED	BM_EVENT
-
-		can test (type&BM_TYPE) and (type&BM_AS_PER)
-
-	  TODO:
-	  1. just listItem * and type redefinition
-	  2. extend bm_operate() -> do { } while();
-
-	  NOTE:
-		on ~.: event < src
-			passes iff NONE among src verifies event (tricky)
-
 	. Publish %@
 		. Test on Maths/add rewrite
 	. rewrite deternarize ala() deparameterize()
@@ -37,6 +12,20 @@ TODO
 		. with interactive traversal
 
 DONE
+	. implemented per event < src
+	  => query.h: redefined
+			#define BM_EVENT	1
+			#define BM_VISIBLE	2
+			#define BM_AS_PER	4
+
+			#define BM_RELEASED	BM_EVENT
+			#define BM_CONDITION	BM_VISIBLE
+			#define BM_INSTANTIATED	(BM_VISIBLE|BM_EVENT)
+	  NOTE:
+		contrary expression per ~.:_ NOT ACCEPTED (parser)
+		on ~.: event < src
+			passes iff NONE among src verifies event (tricky)
+	. do >:< a, b >	// output results are separated by cr
 	. Now use only one registry for %? and %! [it's a pair]
 		=> %! always available when %? is
 	. support vector assignment - e.g.

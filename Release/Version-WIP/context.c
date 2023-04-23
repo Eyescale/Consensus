@@ -288,17 +288,17 @@ bm_context_release( BMContext *ctx )
 //	bm_mark
 //===========================================================================
 Pair *
-bm_mark( int as_per, char *expression, char *src, void *user_data )
+bm_mark( int pre, char *expression, char *src, void *user_data )
 /*
 	return either one of the following from expression < src
-	in case src==NULL
+	in case src==NULL // in_condition or on_event (pre==0)
 		[ [ type, xpn ], [ user_data, NULL ] ]
-	otherwise
+	otherwise // on_event_x (pre==0 or pre==BM_AS_PER)
 		[ [ type, xpn ], user_data ]
 */
 {
 	union { void *ptr; int value; } type;
-	type.value = 0;
+	type.value = pre;
 	listItem *xpn = NULL;
 
 	if (( src ) && *src!='{' && ( bm_locate_mark(src,&xpn) ))
@@ -321,7 +321,7 @@ bm_mark( int as_per, char *expression, char *src, void *user_data )
 
 	Pair *mark = NULL;
 	if ( type.value ) {
-		if ( as_per ) type.value |= AS_PER;
+		if ( pre ) type.value |= AS_PER;
 		if (( xpn )) reorderListItem( &xpn );
 		if (( src )) type.value |= EENOK;
 		else user_data = newPair( user_data, NULL );
@@ -338,8 +338,10 @@ static Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
 	marked is either
 	in case ( type & AS_PER )
 		[ mark:[ type, xpn ], { batch:[ { instance(s) }, proxy ] } ]
+	    or
+		[ mark:[ type, xpn ], { batch:[ NULL, proxy ] } ]
 	otherwise
-		[ mark:[ type, xpn ], batch:[ instance,proxy ] ]
+		[ mark:[ type, xpn ], batch:[ instance, proxy ] ]
 */
 void
 bm_context_mark( BMContext *ctx, Pair *marked )
@@ -400,11 +402,11 @@ static Pair *
 mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 /*
 	Assumption: mark is not NULL
-	However x may be NULL, in which case we have type.value==EENOK
+	However: x may be NULL, in which case we have type.value==EENOK
 	Use cases:	on . < ?
 			on init < ?
 			on exit < ?
-	Note: we may also have type.value==EENOK and x not NULL
+	Note: we may have type.value==EENOK and x not NULL
 */
 {
 	union { void *ptr; int value; } type;

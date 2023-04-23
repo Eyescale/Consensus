@@ -16,11 +16,11 @@ typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 //	bm_query
 //===========================================================================
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
-static CNInstance * query_assignment( BMQueryType, char *, BMQueryData * );
+static CNInstance * query_assignment( int, char *, BMQueryData * );
 static XPTraverseCB bm_verify;
 
 CNInstance *
-bm_query( BMQueryType type, char *expression, BMContext *ctx,
+bm_query( int type, char *expression, BMContext *ctx,
 	  BMQueryCB user_CB, void *user_data )
 /*
 	find the first term other than '.' or '?' in expression which is not
@@ -56,7 +56,7 @@ bm_query( BMQueryType type, char *expression, BMContext *ctx,
 					return e; }
 			return NULL;
 		default:
-			for ( CNInstance *e=db_log(1,privy,db,&s); e!=NULL; e=db_log(0,privy,db,&s) )
+			for ( CNInstance *e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
 					freeListItem( &s );
 					return e; }
@@ -696,7 +696,7 @@ static XPTraverseCB
 	bm_verify_unassigned, bm_verify_variable, bm_verify_value;
 
 static CNInstance *
-query_assignment( BMQueryType type, char *expression, BMQueryData *data )
+query_assignment( int type, char *expression, BMQueryData *data )
 {
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
@@ -717,7 +717,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 				return NULL;
 			default: ;
 				listItem *s = NULL;
-				for ( CNInstance *e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
+				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
 					if ( e->sub[0]!=star || (assignment(e,db)) )
 						continue;
 					if ( xp_verify( e->sub[1], expression, data ) ) {
@@ -740,7 +740,7 @@ query_assignment( BMQueryType type, char *expression, BMQueryData *data )
 					return NULL;
 				default: ;
 					listItem *s = NULL;
-					for ( CNInstance *e=db_log(1,0,db,&s); e!=NULL; e=db_log(0,0,db,&s) ) {
+					for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
 						CNInstance *f = CNSUB( e, 0 );
 						if ( !f || f->sub[0]!=star ) continue;
 						if ( xp_verify( f->sub[1], expression, data ) &&

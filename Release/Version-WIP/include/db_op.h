@@ -14,7 +14,7 @@ typedef enum {
 
 int	db_op( DBOperation op, CNInstance *e, CNDB *db );
 void	db_update( CNDB *, CNInstance * );
-CNInstance * db_log( int first, int released, CNDB *, listItem ** );
+CNInstance * DBLog( int first, int released, CNDB *, listItem ** );
 
 
 #endif // DB_OP_H

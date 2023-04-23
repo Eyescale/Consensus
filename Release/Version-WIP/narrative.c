@@ -131,11 +131,11 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			if ( data->type & ELSE )
 				return 0;
 			CNOccurrence *parent = data->stack.occurrences->ptr;
-			switch ( parent->data->type ) {
-			case ROOT: case ELSE:
-			case IN: case ELSE_IN:
-			case ON: case ELSE_ON:
-			case ON_X: case ELSE_ON_X:
+			switch ( parent->data->type & ~(ELSE|PER) ) {
+			case ROOT:
+			case IN:
+			case ON:
+			case ON_X:
 				break;
 			default:
 				return 0; } }
@@ -148,8 +148,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 				else if ( TAB_CURRENT <= TAB_LAST )
 					continue;
 				else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
-					break;
-				} }
+					break; } }
 		else return 0;
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;
@@ -308,7 +307,9 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 		else {
 			if ( type&ELSE )
 				fprintf( stream, "else " );
-			if ( type&IN )
+			if ( type&PER )
+				fprintf( stream, "per " );
+			else if ( type&IN )
 				fprintf( stream, "in " );
 			else if ( type&(ON|ON_X) )
 				fprintf( stream, "on " );

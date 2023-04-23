@@ -246,6 +246,8 @@ CB_if_( ProtoSet, mode, data ) {
 				do_( "cmd_" )	*type |= ON; }
 			else if ( !s_cmp( "do" ) ) {
 				do_( "cmd_" )	*type |= DO; }
+			else if ( !s_cmp( "per" ) ) {
+				do_( "cmd_" )	*type |= PER|ON; }
 			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
 				do_( "else" )	*type = ELSE; }
 		on_( '\n' )
@@ -293,7 +295,7 @@ EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
 		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|SET|CARRY|EENOV|VECTOR) &&
-				( !is_f(ASSIGN) || is_f(FILTERED) ) ) {
+				( !(*type&PER) || *type&ON_X ) && ( !is_f(ASSIGN) || is_f(FILTERED) ) ) {
 				do_( "expr_" )	REENTER }
 			else if ( is_f(SET|CARRY|VECTOR) ) { // allow \nl inside resp. {} () <>
 				do_( "_^" ) }
@@ -386,7 +388,7 @@ A:CND_else_( B )
 				; // err
 			else if ( *type&ON && is_f(INFORMED) && (is_f(ASSIGN)?is_f(FILTERED):is_f(FIRST)) ) {
 				do_( same )	s_take
-						*type = (*type&ELSE)|ON_X;
+						*type = (*type&~ON)|ON_X;
 						f_clr( ASSIGN|INFORMED|NEGATED|FILTERED )
 						f_set(FIRST) }
 			else if ( *type&DO ) {

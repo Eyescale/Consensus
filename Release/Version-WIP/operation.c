@@ -14,7 +14,7 @@
 
 static int in_condition( char *, BMContext *, Pair **marked );
 static int on_event( char *, BMContext *, Pair **marked );
-static int on_event_x( char *, BMContext *, Pair **marked );
+static int on_event_x( char *, int type, BMContext *, Pair **marked );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
@@ -33,15 +33,15 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	bm_context_actualize( ctx, narrative->proto, instance );
 	listItem *i = newItem( narrative->root ), *j;
 	listItem *stack = NULL;
-	int as_per=0, passed=1;
 	Pair *marked = NULL;
+	int passed = 1;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		int type = occurrence->data->type;
 		if ( type&ELSE && passed ) {}
 		else {
 			// processing
-			if ( !as_per ) {
+			if ( !marked ) {
 				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
 				char *expression = occurrence->data->expression;
 				char *deternarized = ( type&LOCALE ? NULL : bm_deternarize(&expression,ctx) );
@@ -49,7 +49,8 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 				case ROOT: passed=1; break;
 				case IN: passed=in_condition( expression, ctx, &marked ); break;
 				case ON: passed=on_event( expression, ctx, &marked ); break;
-				case ON_X: passed=on_event_x( expression, ctx, &marked ); break;
+				case ON_X: passed=on_event_x( expression, 0, ctx, &marked ); break;
+				case PER_X: passed=on_event_x( expression, BM_AS_PER, ctx, &marked ); break;
 				case DO: do_action( expression, ctx, story ); break;
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
@@ -66,7 +67,9 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 		// popping up
 		for ( ; ; ) {
 			marked = bm_context_unmark( ctx, marked );
-			if (( i->next )) {
+			if (( marked ))	// as per results
+				break;
+			else if (( i->next )) {
 				i = i->next;
 				break; }
 			else if (( stack )) {
@@ -118,7 +121,7 @@ in_condition( char *expression, BMContext *ctx, Pair **marked )
 static int
 on_event( char *expression, BMContext *ctx, Pair **marked )
 /*
-	Assumption: *marked==0 to begin with
+	Assumption: *marked==NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -156,13 +159,16 @@ on_event( char *expression, BMContext *ctx, Pair **marked )
 //	on_event_x
 //===========================================================================
 typedef int ProxyTest( CNInstance *proxy );
-static inline Pair * _feel( BMQueryType, char *, listItem **, BMContext * );
-static inline Pair * _test( ProxyTest *, listItem ** );
+static inline void * _test( int, ProxyTest *, listItem ** );
+static inline void * _feel( char *, int, listItem **, BMContext * );
+static inline void _release( int, void * );
 
 static int
-on_event_x( char *expression, BMContext *ctx, Pair **marked )
+on_event_x( char *expression, int pre, BMContext *ctx, Pair **marked )
 /*
-	Assumption: *marked==0 to begin with
+	Assumptions:
+		pre is either 0 or BM_AS_PER
+		*marked is NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -179,51 +185,82 @@ on_event_x( char *expression, BMContext *ctx, Pair **marked )
 
 	Pair *found = NULL;
 	if ( !strncmp( expression, "init<", 5 ) ) {
-		found = _test( bm_proxy_in, &proxies );
+		found = _test( pre, bm_proxy_in, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp( expression, "exit<", 5 ) ) {
-		found = _test( bm_proxy_out, &proxies );
+		found = _test( pre, bm_proxy_out, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
-		found = _test( bm_proxy_active, &proxies );
+		found = _test( pre, bm_proxy_active, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,"~(",2) ) {
 		expression++;
-		found = _feel( BM_RELEASED, expression, &proxies, ctx );
+		found = _feel( expression, pre|BM_RELEASED, &proxies, ctx );
 		if (( found )) success = 2; }
 	else {
-		found = _feel( BM_INSTANTIATED, expression, &proxies, ctx );
+		found = _feel( expression, pre|BM_INSTANTIATED, &proxies, ctx );
 		if (( found )) success = 2; }
 
-	freeListItem( &proxies );
 	if ( negated ) {
 		success = !success;
- 		if (( found )) freePair( found ); }
-	else if ( success )
-		*marked = bm_mark( 0, expression, src, found );
+		_release( pre, found ); }
+	else switch ( success ) {
+		case 1: *marked = bm_mark( pre, NULL, src, found ); break;
+		case 2: *marked = bm_mark( pre, expression, src, found ); break; }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
 	return success;
 }
 
-static inline Pair *
-_feel( BMQueryType type, char *p, listItem **proxies, BMContext *ctx )
-{
-	CNInstance *proxy, *found;
-	while (( proxy = popListItem(proxies) )) {
-		found = bm_proxy_feel( proxy, type, p, ctx );
-		if (( found )) return newPair( found, proxy ); }
-	return NULL;
-}
-static inline Pair *
-_test( ProxyTest *func, listItem **proxies )
+static inline void *
+_test( int pre, ProxyTest *func, listItem **proxies )
 {
 	CNInstance *proxy;
-	while (( proxy = popListItem(proxies) ))
-		if ( func( proxy ) )
-			return newPair( NULL, proxy );
-	return NULL;
+	if ( pre & BM_AS_PER ) {
+		listItem *results = NULL;
+		while (( proxy = popListItem(proxies) )) {
+			if ( func( proxy ) ) {
+				addItem( &results, newPair( NULL, proxy ) ); } }
+		return results; }
+	else {
+		while (( proxy = popListItem(proxies) )) {
+			if ( func( proxy ) ) {
+				freeListItem( proxies );
+				return newPair( NULL, proxy ); } }
+		return NULL; }
+}
+static inline void *
+_feel( char *p, int type, listItem **proxies, BMContext *ctx )
+{
+	CNInstance *proxy;
+	void *found;
+	if ( type & BM_AS_PER ) {
+		listItem *results = NULL;
+		while (( proxy = popListItem(proxies) )) {
+			found = bm_proxy_feel( proxy, type, p, ctx );
+			if (( found )) {
+				Pair *batch = newPair( found, proxy );
+				addItem( &results, batch ); } }
+		return results; }
+	else {
+		while (( proxy = popListItem(proxies) )) {
+			found = bm_proxy_feel( proxy, type, p, ctx );
+			if (( found )) {
+				freeListItem( proxies );
+				return newPair( found, proxy ); } }
+		return NULL; }
+}
+static inline void
+_release( int type, void *found )
+{
+	if (( found )) {
+		if ( type & BM_AS_PER ) {
+			Pair *batch;
+			while (( batch=popListItem((listItem **)&found) )) {
+				freeListItem((listItem **) &batch->name );
+				freePair( batch ); } }
+		else freePair( found ); }
 }
 
 //===========================================================================

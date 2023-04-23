@@ -14,16 +14,16 @@
 //===========================================================================
 #include "proxy_traversal.h"
 
-static CNInstance * proxy_feel_assignment( CNInstance *, char *, BMTraverseData * );
+static void * proxy_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
-	struct { listItem *flags, *x; } stack;
 	CNDB *db_x;
 	CNInstance *x;
+	struct { listItem *flags, *x; } stack;
 } ProxyFeelData;
 
-CNInstance *
-bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext *ctx )
+void *
+bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 {
 #ifdef DEBUG
 	fprintf( stderr, "bm_proxy_feel: %s\n", expression );
@@ -31,8 +31,10 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
 
-	int privy = ( type==BM_RELEASED ? 1 : 0 );
-        CNInstance *success = NULL, *e;
+	int as_per = ( type & BM_AS_PER );
+	int privy = !( type & BM_VISIBLE );
+        void *success = NULL;
+        CNInstance *e;
 
 	ProxyFeelData data;
 	memset( &data, 0, sizeof(data) );
@@ -44,16 +46,18 @@ bm_proxy_feel( CNInstance *proxy, BMQueryType type, char *expression, BMContext 
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 	if ( *expression==':' )
-		success = proxy_feel_assignment( proxy, expression, &traverse_data );
+		success = proxy_feel_assignment( proxy, as_per, expression, &traverse_data );
 	else {
 		listItem *s = NULL;
-		for ( e=db_log(1,privy,db_x,&s); e!=NULL; e=db_log(0,privy,db_x,&s) ) {
+		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
 			data.x = e;
 			proxy_feel_traversal( expression, &traverse_data, FIRST );
 			if ( traverse_data.done==2 ) {
 				freeListItem( &data.stack.flags );
 				freeListItem( &data.stack.x );
 				traverse_data.done = 0; }
+			else if ( as_per ) {
+				addItem((listItem **) &success, e ); }
 			else {
 				freeListItem( &s );
 				success = e;
@@ -157,8 +161,8 @@ x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
 //---------------------------------------------------------------------------
 //	proxy_feel_assignment
 //---------------------------------------------------------------------------
-static CNInstance *
-proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *traverse_data )
+static void *
+proxy_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data )
 {
 	ProxyFeelData *data = traverse_data->user_data;
 	CNDB *db_x = data->db_x;
@@ -166,7 +170,8 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 	if ( !star ) return NULL;
 	expression++; // skip leading ':'
 	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
-	CNInstance *success = NULL, *e;
+	void *success = NULL;
+	CNInstance *e;
 	if ( !strncmp( value, "~.", 2 ) ) {
 		/* we want to find x:(*,variable) in manifested log, so that
 		   	. ( x, . ) is not manifested as well
@@ -178,7 +183,7 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 		*/
 		listItem *s = NULL;
 		listItem *warden=NULL, *candidates=NULL;
-		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
 			CNInstance *f = CNSUB( e, 0 );
 			if ( !f ) continue;
 			else if ( f==star ) {
@@ -195,6 +200,8 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
 				traverse_data->done = 0; }
+			else if ( as_per ) {
+				addItem((listItem **) &success, e ); }
 			else {
 				freeListItem( &candidates );
 				success = e; // return (*,.)
@@ -206,7 +213,7 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 			. value verifies value expression
 		*/
 		listItem *s = NULL;
-		for ( e=db_log(1,0,db_x,&s); e!=NULL; e=db_log(0,0,db_x,&s) ) {
+		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
@@ -223,6 +230,8 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
 				traverse_data->done = 0; }
+			else if ( as_per ) {
+				addItem((listItem **) &success, e ); }
 			else {
 				freeListItem( &s );
 				success = e; // return ((*,.),.)
@@ -234,7 +243,7 @@ proxy_feel_assignment( CNInstance *proxy, char *expression, BMTraverseData *trav
 //	bm_proxy_scan
 //===========================================================================
 listItem *
-bm_proxy_scan( BMQueryType type, char *expression, BMContext *ctx )
+bm_proxy_scan( int type, char *expression, BMContext *ctx )
 /*
 	return all context's active connections (proxies) matching expression
 */
