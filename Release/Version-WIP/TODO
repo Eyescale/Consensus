@@ -1,8 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Publish %@
-		. Note: could then output proxy as (%@:*var) when assigned
-	. rewrite Maths/add rewrite
+	. rewrite Maths/add using design/story/yak.story template
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
@@ -12,6 +10,8 @@ TODO
 		. with interactive traversal
 
 DONE
+	. new Register Variable %@ (for active connections)
+		Now manifest proxies upon creation
 	. implemented per event < src
 	  => query.h: redefined
 			#define BM_EVENT	1
@@ -109,6 +109,7 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. output proxy as (%@:*var) when assigned
 	. do e.g. : var : %?	when %? is NULL
 		=> should it be equivalent to do : var : ~.
 		=> currently assignment fails

@@ -561,16 +561,10 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "%(" )	f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
-		ons( "?!" ) if ( *type&DO && ( is_f(LEVEL) ?
-					is_f(TERNARY) && f_signal_authorize(stack) :
-					!is_f(NEGATED|SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
-				do_( "%?_" )	s_add( "%" )
+		ons( "?!" )	do_( "%?_" )	s_add( "%" )
 						s_take
-						f_set( INFORMED ) }
-			else {	do_( "expr" )	s_add( "%" )
-						s_take
-						f_set( INFORMED ) }
-		ons( "|%" )	do_( "expr" )	s_add( "%" )
+						f_set( INFORMED )
+		ons( "|%@" )	do_( "expr" )	s_add( "%" )
 						s_take
 						f_set( INFORMED )
 		on_( '<' )	do_( "%<" )	s_add( "%<" )
@@ -579,7 +573,10 @@ CND_ifn( mode==BM_STORY, C )
 						f_set( INFORMED )
 		end
 		in_( "%?_" ) bgn_
-			on_( '~' )	do_( "term~" )	s_take
+			on_( '~' ) if ( *type&DO && ( is_f(LEVEL) ?
+					is_f(TERNARY) && f_signal_authorize(stack) :
+					!is_f(NEGATED|SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
+					do_( "term~" )	s_take }
 			on_other	do_( "expr" )	REENTER
 			end
 		in_( "%(" ) bgn_

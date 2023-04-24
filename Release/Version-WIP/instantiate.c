@@ -56,9 +56,8 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		if (( entry )) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			conceive( entry, p, &traverse_data ); }
-		else {
-			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-				"\tdo !! %s <<<<<\n", p ); } }
+		else fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+			"\tdo !! %s <<<<<\n", p ); }
 	else if ( *expression==':' )
 		instantiate_assignment( expression, &traverse_data, story );
 	else {
@@ -188,31 +187,35 @@ case_( end_pipe_CB )
 	data->sub[ 0 ] = popListItem( &data->results );
 	_break
 case_( register_variable_CB )
+	BMContext *carry = data->carry;
 	CNInstance *e = NULL;
+	listItem *i = NULL;
 	switch ( p[1] ) {
-	case '|': ;
-		listItem *i = bm_context_lookup( data->ctx, "|" );
-		if (( i )) {
-			listItem **sub = &data->sub[ current ];
-			for ( ; i!=NULL; i=i->next )
-				addItem( sub, i->ptr );
-			_break }
-		_return( 2 )
-	case '<':
-		i = eenov_inform( data->ctx, data->db, p, data->carry );
-		if (( i )) {
-			data->sub[ current ] = i;
-			_break }
-		_return( 2 )
 	case '?': e = bm_context_lookup( data->ctx, "?" ); break;
 	case '!': e = bm_context_lookup( data->ctx, "!" ); break;
 	case '.': e = BMContextParent( data->ctx ); break;
-	case '%': e = BMContextSelf( data->ctx ); break; }
+	case '%': e = BMContextSelf( data->ctx ); break;
+	case '|': i = bm_context_lookup( data->ctx, "|" ); break;
+	case '@': i = bm_context_lookup( data->ctx, "@" ); break;
+	case '<':
+		if (( i = eenov_inform( data->ctx, data->db, p, data->carry ) )) {
+			data->sub[ current ] = i;
+			_break }
+		_return( 2 ) }
 	if (( e )) {
-		BMContext *carry = data->carry;
 		if (( carry ))
 			e = bm_inform( 0, carry, e, data->db );
 		data->sub[ current ] = newItem( e );
+		_break }
+	else if (( i )) {
+		listItem **sub = &data->sub[ current ];
+		if (( carry )) {
+			CNDB *db = data->db;
+			for ( ; i!=NULL; i=i->next )
+				addItem( sub, bm_inform( 0, carry, i->ptr, db ) ); }
+		else {
+			for ( ; i!=NULL; i=i->next )
+				addItem( sub, i->ptr ); }
 		_break }
 	_return( 2 )
 case_( list_CB )
@@ -389,7 +392,7 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 	converts into ((((sub[0],a),b),...),z)
 */
 {
-	listItem *results=NULL, *trail=NULL;
+	listItem *results = NULL;
 	if ( !sub[ 0 ] ) {
 		results = sub[ 1 ];
 		sub[ 1 ] = NULL; }
@@ -397,6 +400,7 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 		results = sub[ 0 ];
 		sub[ 0 ] = NULL; }
 	else {
+		listItem *trail = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *e = i->ptr;
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )

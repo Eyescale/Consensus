@@ -110,7 +110,8 @@ case_( register_variable_CB )
 	int nope = 0;
 	switch ( p[1] ) {
 	case '?': nope = !bm_context_lookup( ctx, "?" ); break;
-	case '!': nope = !bm_context_lookup( ctx, "!" ); break; }
+	case '!': nope = !bm_context_lookup( ctx, "!" ); break;
+	case '@': nope = !bm_context_lookup( ctx, "@" ); break; }
 	if ( nope )
 		_return( 2 )
 	_break

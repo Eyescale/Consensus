@@ -254,9 +254,9 @@ _feel( char *p, int type, listItem **proxies, BMContext *ctx )
 static inline void
 _release( int type, void *found )
 {
+	Pair *batch;
 	if (( found )) {
 		if ( type & BM_AS_PER ) {
-			Pair *batch;
 			while (( batch=popListItem((listItem **)&found) )) {
 				freeListItem((listItem **) &batch->name );
 				freePair( batch ); } }

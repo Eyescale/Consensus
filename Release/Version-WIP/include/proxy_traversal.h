@@ -21,7 +21,7 @@ static BMTraverseCB
 #define BMRegisterVariableCB	identifier_CB
 #define BMModCharacterCB	identifier_CB
 #define BMStarCharacterCB	identifier_CB
-//#define BMRegexCB		identifier_CB
+#define BMRegexCB		identifier_CB
 #define BMCharacterCB		identifier_CB
 #define BMIdentifierCB		identifier_CB
 

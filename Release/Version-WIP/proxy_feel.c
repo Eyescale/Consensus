@@ -71,7 +71,6 @@ bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 //---------------------------------------------------------------------------
 //	proxy_feel_traversal
 //---------------------------------------------------------------------------
-static inline int x_match( CNDB *, CNInstance *, char *, BMContext * );
 static inline CNInstance * proxy_verify( char *p, ProxyFeelData *data );
 
 BMTraverseCBSwitch( proxy_feel_traversal )
@@ -101,7 +100,9 @@ case_( close_CB )
 		data->x = popListItem( &data->stack.x );
 	_break
 case_( identifier_CB )
-	if ( !x_match( data->db_x, data->x, p, data->ctx ) )
+	BMContext *ctx = data->ctx;
+	CNDB *db = BMContextDB( ctx );
+	if ( !bm_match( ctx, db, p, data->x, data->db_x ) )
 		_return( 2 )
 	_break
 BMTraverseCBEnd
@@ -119,43 +120,6 @@ proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
 		return BM_DONE;
 	return BM_CONTINUE;
-}
-
-//---------------------------------------------------------------------------
-//	x_match
-//---------------------------------------------------------------------------
-#define CTX_DB	BMContextDB(ctx)
-
-static inline int
-x_match( CNDB *db_x, CNInstance *x, char *p, BMContext *ctx )
-/*
-	matching is taking place in external event narrative occurrence
-*/
-{
-	switch ( *p ) {
-	case '*':
-		return DBStarMatch( x, db_x );
-	case '.':
-		return ( p[1]=='.' ) ?
-			db_match( x, db_x, BMContextParent(ctx), CTX_DB ) :
-			db_match( x, db_x, BMContextPerso(ctx), CTX_DB );
-	case '%':
-		switch ( p[1] ) {
-		case '?': return db_match( x, db_x, bm_context_lookup(ctx,"?"), CTX_DB );
-		case '!': return db_match( x, db_x, bm_context_lookup(ctx,"!"), CTX_DB );
-		case '%': return db_match( x, db_x, BMContextSelf(ctx), CTX_DB );
-		case '<': return eenov_match( ctx, p, x, db_x ); }
-		return ( !x->sub[0] && *DBIdentifier(x,db_x)=='%' ); }
-
-	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x, db_x );
-		char_s q;
-		switch ( *p ) {
-		case '/': return !strcomp( p, identifier, 2 );
-		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
-		default: return !strcomp( p, identifier, 1 ); } }
-
-	return 0; // not a base entity
 }
 
 //---------------------------------------------------------------------------

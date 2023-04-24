@@ -582,11 +582,12 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack )
 CNInstance *
 db_new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 /*
-	Assumption: proxy not already created
-	Note that we do not manifest new proxy
+	Assumptions: that!=NULL, proxy not already created
 */
 {
-	return ((that) ? cn_new( cn_new(this,that), NULL ) : NULL );
+	CNInstance *e = cn_new( cn_new(this,that), NULL );
+	db_op( DB_MANIFEST_OP, e, db );
+	return e;
 }
 
 void

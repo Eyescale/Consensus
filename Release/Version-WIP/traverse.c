@@ -101,7 +101,7 @@ CB_RegisterVariableCB			f_cls; p+=2;
 						f_set( EENOV )
 						p = p_prune( PRUNE_TERM, p )+1; }
 					break; }
-				else if ( strmatch( "?!|%", p[1] ) ) {
+				else if ( strmatch( "?!%|@", p[1] ) ) {
 CB_RegisterVariableCB			f_cls; p+=2;
 					if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }

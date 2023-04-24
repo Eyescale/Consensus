@@ -117,12 +117,13 @@ case_( register_variable_CB )
 	if ( !is_f(NEGATED) ) {
 		int mark;
 		switch ( p[1] ) {
-		case '<': mark = EENOK; break;
 		case '?': mark = QMARK; break;
 		case '!': mark = EMARK; break;
-		case '|': mark = PMARK; break;
 		case '.': mark = PARENT; break;
-		case '%': mark = SELF; break; }
+		case '%': mark = SELF; break;
+		case '@': mark = ACTIVE; break;
+		case '<': mark = EENOK; break;
+		case '|': mark = PMARK; break; }
 		if CHECK( mark )
 			_return( 2 ) }
 	_break

@@ -80,11 +80,8 @@ bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
 
 	listItem *narratives = BMCellEntry( cell )->value;
 	CNNarrative *base = narratives->ptr; // base narrative
-	registryRegister( index[ 1 ], base, newItem( NULL ) );
+	registryRegister( index[ 0 ], base, newItem( NULL ) );
 	do {
-		swap = index[ 0 ];
-		index[ 0 ] = index[ 1 ];
-		index[ 1 ] = swap;
 		listItem **active = &index[ 0 ]->entries; // narratives to be operated
 		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
 			CNNarrative *narrative = entry->name;
@@ -94,7 +91,10 @@ bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
 				bm_operate( narrative, instance, ctx, subs, narratives, story );
 				enlist( index[ 1 ], subs, warden );
 				freeRegistry( subs, NULL ); } }
-	} while (( index[ 1 ]->entries ));
+		swap = index[ 0 ];
+		index[ 0 ] = index[ 1 ];
+		index[ 1 ] = swap;
+	} while (( index[ 0 ]->entries ));
 	freeRegistry( warden, free_CB );
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
@@ -148,6 +148,9 @@ free_CB( Registry *warden, Pair *entry )
 //===========================================================================
 CNInstance *
 bm_cell_carry( CNCell *cell, CNCell *new, int subscribe )
+/*
+	invoked by conceive() - cf. instantiate.c
+*/
 {
 	addItem( BMCellCarry(cell), new );
 

@@ -66,7 +66,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 		return data.src;
 	case EEnovInstanceType:
 		if ( !db ) return data.instance;
-		return bm_match( ctx, db, data.instance, data.db );
+		return bm_intake( ctx, db, data.instance, data.db );
 	case EEnovExprType:
 		data.param.lookup.ctx = ctx;
 		data.param.lookup.db = db;
@@ -75,7 +75,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 int
 eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 /*
-	Note that when invoked by query.c:match() then
+	Note that when invoked via query.c:match() then
 		BMContextDB(ctx)==data.db==db_x
 */
 {
@@ -267,7 +267,7 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
 		if (( e )) addItem( &data->param.inform.result, e );
 		return BM_CONTINUE;
 	case EEnovLookupOp:
-		if ( !data->param.lookup.db || ( e = bm_match(
+		if ( !data->param.lookup.db || ( e = bm_intake(
 			data->param.lookup.ctx, data->param.lookup.db,
 			e, db )) ) { data->result = e; return BM_DONE; }
 		break;

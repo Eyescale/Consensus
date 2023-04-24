@@ -144,7 +144,7 @@ static CNInstance *
 xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, void *user_data )
 /*
 	Traverses data->pivot's exponent [ resp., if data->list is set,
-		xpn.as_sub[0]^n.sub[1].exponent (n>=1) ]
+		xpn.as_sub[0]^n.sub[1].exponent (n>=1), etc. ]
 		invoking traverse_CB on every match
 	returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumptions
@@ -169,9 +169,11 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	CNDB *db = data->db;
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
+	char *p = pivot->name;
+	int pv = (*p=='%'&&(p[1]=='|'||p[1]=='@'));
 	listItem *i, *j;
 	CNInstance *e, *f;
-	if ( !strncmp( pivot->name, "%|", 2 ) ) {
+	if ( pv ) {
 		i = pivot->value;
 		e = i->ptr; }
 	else {
@@ -232,7 +234,7 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 	fprintf( stderr, "XP_TRAVERSE: end, success=%d\n", !!success );
 #endif
 	freeListItem( &trail );
-	if ( strncmp( pivot->name, "%|", 2 ) )
+	if ( !pv )
 		freeItem( i );
 	return success;
 }
@@ -637,7 +639,6 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	is either NULL or the exponent of p as expression term
 */
 {
-	CNEntity *that;
 	listItem *xpn = NULL;
 	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
@@ -645,48 +646,19 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	while (( y ) && (xpn)) {
 		int exp = pop_item( &xpn );
 		y = CNSUB( y, exp&1 ); }
-	if ( y == NULL ) {
+
+	if (( y )) {
+		if (( p )) {
+			// optimization
+			if (( data->pivot ) && p==data->pivot->name &&
+			    ( *p!='%' || ( p[1]!='|' && p[1]!='@' ) ))
+				return ( y==data->pivot->value );
+			return bm_match( data->ctx, data->db, p, y, data->db ); }
+		else { // wildcard
+			return 1; } }
+	else {
 		freeListItem( &xpn );
 		return -1; }
-	else if ( p == NULL ) // wildcard
-		return 1;
-
-	// name-value-based testing: note that %| MUST come first
-	BMContext *ctx = data->ctx;
-	if ( !strncmp( p, "%|", 2 ) ) {
-		listItem *v = bm_context_lookup( ctx, "|" );
-		return !!lookupItem( v, y ); }
-	else if (( data->pivot ) && p==data->pivot->name )
-		return ( y==data->pivot->value );
-	else switch ( *p ) {
-		case '.':
-			return ( p[1]=='.' ?
-				( y==BMContextParent(ctx) ) :
-				( y==BMContextPerso(ctx) ) );
-		case '*':
-			return DBStarMatch( y, data->db );
-		case '%':
-			switch ( p[1] ) {
-			case '?': return ( y==bm_context_lookup( ctx, "?" ) );
-			case '!': return ( y==bm_context_lookup( ctx, "!" ) );
-			case '%': return ( y==BMContextSelf(ctx) );
-			case '<': return eenov_match( ctx, p, y, data->db ); }
-			return ( !y->sub[0] && *DBIdentifier(y,data->db)=='%' );
-		default:
-			if ( is_separator(*p) ) break;
-			CNInstance *found = bm_context_lookup( ctx, p );
-			if (( found )) return ( y==found ); }
-
-	// not found in data->ctx
-	if ( !y->sub[0] ) {
-		char *identifier = DBIdentifier( y, data->db );
-		char_s q;
-		switch ( *p ) {
-		case '/': return !strcomp( p, identifier, 2 );
-		case '\'': return charscan(p+1,&q) && !strcomp( q.s, identifier, 1 );
-		default: return !strcomp( p, identifier, 1 ); } }
-
-	return 0; // not a base entity
 }
 
 //===========================================================================
