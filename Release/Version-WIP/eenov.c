@@ -2,11 +2,11 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "eenov.h"
 #include "eenov_private.h"
 #include "locate_emark.h"
 #include "traverse.h"
 #include "cell.h"
-#include "eenov.h"
 
 //===========================================================================
 //	eenov_output / eenov_inform / eenov_lookup / eenov_match
@@ -31,7 +31,7 @@ eenov_output( char *p, BMContext *ctx, OutputData *od )
 	case EEnovExprType:
 		data.param.output.od = od;
 		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );
-		return db_out_flush( od, data.db ); }
+		return bm_out_flush( od, data.db ); }
 }
 listItem *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
@@ -119,6 +119,7 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 		else if ( p[3]=='>' )
 			return EEnovInstanceType;
 		else {
+
 			BMTraverseData traverse_data;
 			traverse_data.user_data = data;
 			traverse_data.stack = &data->stack.flags;
@@ -127,7 +128,7 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 			data->stack.instance = NULL;
 			data->result = data->instance;
 			traverse_data.done = 0;
-			eenov_traversal( p+4, &traverse_data, FIRST );
+			p = eenov_traversal( p+4, &traverse_data, FIRST );
 			if ( data->success ) {
 				data->instance = data->result;
 				return EEnovInstanceType; } } }
@@ -260,7 +261,7 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
 {
 	switch ( op ) {
 	case EEnovOutputOp:
-		db_out_put( e, db, data->param.output.od );
+		bm_out_put( data->param.output.od, e, db );
 		return BM_CONTINUE;
 	case EEnovInformOp:
 		e = bm_inform( 0, data->param.inform.ctx, e, db );

@@ -30,19 +30,22 @@
 			do : carry : 0
 		else on : %% : ? < *dial
 			in %<?:~'\0'>
+				do >"%_\n": %<?>
 				do : r : ( *r, %<?> )
 				in : p : (?,.)
 					do : p : ( %?:(.,*) ? ~. : %? )
 				in : q : (?,.)
 					do : q : ( %?:(.,*) ? ~. : %? )
-			else do : carry : 1
+			else
+				do >"[1] "
+				do : carry : 1
 	else in : mode : OUTPUT
 		on : mode : .
-			do > "\t"
+			do > "~~~~~~~~~~~~~~~~\n"
 			do : p : %((X,*), . )
 			do : q : X
 		else on : p : (.,?)
-			do > "%c" : %?
+			do > "%s" : %?
 			in ?: ( *p, . )
 				do : p : %?
 			else in : q : X
@@ -52,10 +55,10 @@
 			else do > " = "
 		else in : r : (.,?)
 			in %?:~*
-				do > "%c" : %?
+				do > "%s" : %?
 				do : r : %(*r:(?,.))
 			else
-				do > "\n"
+				do > "\n~~~~~~~~~~~~~~~~\n"
 				do exit
 
 : Dial
@@ -63,6 +66,10 @@
 	compute p + q + carry (digits) on demand
 */
 	on : %% : ? < ..
+		in %<?:(.,?)>: 1
+			do >"[1]\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
+		else
+			do >"\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
 		do : p : %<?:((?,.),.)>		// base
 		do : q : %<?:((.,?),.)>		// offset
 		do : carry : %<?:(.,?)>		// carry

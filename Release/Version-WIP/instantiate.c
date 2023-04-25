@@ -349,14 +349,16 @@ instantiate_couple( listItem *sub[2], CNDB *db )
 	Instantiates and/or returns all ( sub[0], sub[1] )
 */
 {
-	listItem *results=NULL, *s=NULL, *trail=NULL;
+	listItem *results=NULL, *trail=NULL;
 	if ( sub[0]->ptr == NULL ) {
 		if ( sub[1]->ptr == NULL ) {
+			listItem *s = NULL;
 			listItem *t = NULL;
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
 				_couple( e, f, db, &trail, &results ); }
 		else {
+			listItem *s = NULL;
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
 				_couple( e, j->ptr, db, &trail, &results ); } }

@@ -19,8 +19,8 @@ bm_feel( int type, char *expression, BMContext *ctx )
 {
 	switch ( type ) {
 	case BM_CONDITION: // special case: EEnoRV as-is
-		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) )
-			return eenov_lookup( ctx, NULL, expression );
+		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) ) {
+			return eenov_lookup( ctx, NULL, expression ); }
 		// no break
 	default:
 		return bm_query( type, expression, ctx, NULL, NULL ); }
@@ -209,7 +209,7 @@ bm_input( int type, char *arg, BMContext *ctx )
 }
 
 //===========================================================================
-//	bm_outputf
+//	bm_outputf / bm_out_put / bm_out_flush
 //===========================================================================
 static int bm_output( int type, char *expression, BMContext *);
 
@@ -276,13 +276,40 @@ bm_output( int type, char *arg, BMContext *ctx )
 		return eenov_output( arg, ctx, &data );
 
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
-	return db_out_flush( &data, BMContextDB(ctx) );
+	return bm_out_flush( &data, BMContextDB(ctx) );
 }
-
 static BMCBTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	db_out_put( e, BMContextDB(ctx), (OutputData *) user_data );
+	bm_out_put( user_data, e, BMContextDB(ctx) );
 	return BM_CONTINUE;
 }
 
+//---------------------------------------------------------------------------
+//	bm_out_put / bm_out_flush
+//---------------------------------------------------------------------------
+void
+bm_out_put( OutputData *data, CNInstance *e, CNDB *db )
+{
+	if (( data->last )) {
+		if ( data->first ) {
+			printf( (data->type=='s') ? "\\{ " : "{ " );
+			data->first = 0; }
+		else printf( ", " );
+		db_outputf( stdout, db, "%_", data->last ); }
+	data->last = e;
+}
+int
+bm_out_flush( OutputData *data, CNDB *db )
+{
+	if ( data->first ) {
+		char_s fmt;
+		fmt.value = 0;
+		sprintf( fmt.s, "%%%c", (data->type=='s'?'s':'_') );
+		db_outputf( stdout, db, fmt.s, data->last ); }
+	else {
+		printf( ", " );
+		db_outputf( stdout, db, "%_", data->last );
+		printf( " }" ); }
+	return 0;
+}

@@ -31,6 +31,8 @@ CB_EEnovEndCB				f_clr( EENOV )
 					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
+				else if ( !is_f(SET|SUB_EXPR|LEVEL) && !(mode&TERNARY) )
+					{ traverse_data->done=1; break; }
 				p++; break;
 			case '<':
 				if is_f( INFORMED ) { // input or EENO
@@ -99,7 +101,7 @@ CB_OpenCB				f_push( stack )
 CB_RegisterVariableCB			f_cls; p+=2;
 					if ( strmatch( "?!(", *p ) ) {
 						f_set( EENOV )
-						p = p_prune( PRUNE_TERM, p )+1; }
+						p = p_prune( PRUNE_TERM, p ); }
 					break; }
 				else if ( strmatch( "?!%|@", p[1] ) ) {
 CB_RegisterVariableCB			f_cls; p+=2;

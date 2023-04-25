@@ -2,6 +2,7 @@
 #define EENOV_H
 
 #include "database.h"
+#include "expression.h"
 #include "context.h"
 
 int eenov_output( char *, BMContext *, OutputData * );

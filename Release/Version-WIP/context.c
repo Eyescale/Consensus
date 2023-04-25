@@ -84,12 +84,21 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
+#if 0
 	// fire resp. deprecate [dangling] connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
 		CNInstance *proxy = connection->as_sub[0]->ptr;
 		if (( connection->sub[ 1 ] )) db_fire_proxy( proxy, db );
 		else db_deprecate_proxy( proxy, db ); }
+#else
+	// fire resp. deprecate [dangling] connections
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		CNInstance *proxy = connection->as_sub[0]->ptr;
+		if ( !connection->sub[ 1 ] )
+			db_deprecate_proxy( proxy, db ); }
+#endif
 	// invoke db_update - turning deprecated into released
 	db_update( db, BMContextParent(ctx) );
 	// deactivate released connections
@@ -508,7 +517,7 @@ CNInstance *
 bm_lookup( BMContext *ctx, char *p, int privy, CNDB *db )
 {
 	switch ( *p ) {
-	case '%': // looking up %?, %!, %|, %% or just plain old %
+	case '%':
 		switch ( p[1] ) {
 		case '?': return bm_context_lookup( ctx, "?" );
 		case '!': return bm_context_lookup( ctx, "!" );

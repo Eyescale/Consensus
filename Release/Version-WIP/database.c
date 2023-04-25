@@ -497,6 +497,7 @@ int
 db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 /*
 	traverses whole CNDB applying user_CB to each entity
+	Note: does not traverse any %(proxy,...), Self included
 */
 {
 	listItem *stack = NULL;
@@ -543,9 +544,7 @@ DBFirst( CNDB *db, listItem **stack )
 		CNInstance *e = entry->value;
 		if ( !db_private( 0, e, db ) ) {
 			addItem( stack, i );
-			return e;
-		}
-	}
+			return e; } }
 	return NULL;
 }
 CNInstance *

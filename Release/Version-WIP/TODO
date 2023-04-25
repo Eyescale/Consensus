@@ -1,6 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. rewrite Maths/add using design/story/yak.story template
+	. rewrite Maths/add using design/story/func.story template
 	. Maths
 		. Add, Mult, Sub, Div
 		. Mem
@@ -10,8 +10,8 @@ TODO
 		. with interactive traversal
 
 DONE
+	. Now manifest proxies upon creation
 	. new Register Variable %@ (for active connections)
-		Now manifest proxies upon creation
 	. implemented per event < src
 	  => query.h: redefined
 			#define BM_EVENT	1
@@ -109,17 +109,26 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. output proxy as (%@:*var) when assigned
-	. do e.g. : var : %?	when %? is NULL
+	. DBFirst() DBNext() do not currently traverse any %(proxy,...)
+		Implementable by passing s=newItem(this) or s=newItem(self)
+		instead of s=NULL as argument - but is it something we want?
+	  Note that (proxy,.) are automatically deprecated (for proxy!=Self)
+		Still DBFirst() DBNext() do not traverse any proxy nor %(Self,...)
+	. do : var : %?	when %? is NULL
 		=> should it be equivalent to do : var : ~.
 		=> currently assignment fails
 	. support per ~.: . < ?
 		allows to identify all inactive cells among connections
-	. extend query.c to support BM_AS_PER, so as to allow
-		per event	// currently requires < src
-		per condition	// would need keyword other than per
-				// unless default => per event < %%
-	. rewrite deternarize ala() deparameterize()
+	. support per condition
+		complements per event < %%
+	. allow !! inside of expression instead of assignment only
+		cf. parser.c and instantiate.c
+	. do >: expression(s)
+		default format currently '_' but should it be 's'
+			would allow do >:'a' without SCE 'a' existing
+		could output only highest-level expression results
+			~%(?,.):~%(.,?)
+		could output proxy as (%@:*var) when assigned
 	. OPT verify_traversal
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)
@@ -130,7 +139,6 @@ NICE TO HAVE
 	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
 		~%(?,.)		== %(^.) == en ^.
 		~%(.,?)		== %(.$) == en .$
-	. instantiate.c: allow !! inside of expression
 	. extend do !!identifier( ) to support do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )

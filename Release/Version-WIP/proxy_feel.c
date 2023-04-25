@@ -48,6 +48,8 @@ bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 	if ( *expression==':' )
 		success = proxy_feel_assignment( proxy, as_per, expression, &traverse_data );
 	else {
+		if ( !strncmp( expression, "?:", 2 ) )
+			expression += 2;
 		listItem *s = NULL;
 		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
 			data.x = e;

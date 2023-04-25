@@ -67,36 +67,10 @@ inline CNEntity * DBProxyThat( CNInstance *proxy ) {
 inline int isProxySelf( CNInstance *proxy ) {
 	return !DBProxyThis(proxy); }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	i/o
-//===========================================================================
+//---------------------------------------------------------------------------
 int	db_outputf( FILE *, CNDB *, char *fmt, ... );
-
-typedef struct {
-	int type, first;
-	CNInstance *last;
-} OutputData;
-
-static inline void db_out_put( CNInstance *e, CNDB *db, OutputData *data ) {
-	if (( data->last )) {
-		if ( data->first ) {
-			printf( (data->type=='s') ? "\\{ " : "{ " );
-			data->first = 0; }
-		else printf( ", " );
-		db_outputf( stdout, db, "%_", data->last ); }
-	data->last = e; }
-
-static inline int db_out_flush( OutputData *data, CNDB *db ) {
-	if ( data->first ) {
-		char_s fmt;
-		fmt.value = 0;
-		sprintf( fmt.s, "%%%c", data->type );
-		db_outputf( stdout, db, fmt.s, data->last ); }
-	else {
-		printf( ", " );
-		db_outputf( stdout, db, "%_", data->last );
-		printf( " }" ); }
-	return 0; }
 
 //===========================================================================
 //	op (nil-based)

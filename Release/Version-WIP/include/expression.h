@@ -11,5 +11,16 @@ int		bm_void( char *, BMContext * );
 int		bm_inputf( char *format, listItem *args, BMContext * );
 int		bm_outputf( char *format, listItem *args, BMContext * );
 
+//---------------------------------------------------------------------------
+//	bufferized output
+//---------------------------------------------------------------------------
+typedef struct {
+	int type, first;
+	CNInstance *last;
+} OutputData;
+
+void	bm_out_put( OutputData *, CNInstance *, CNDB * );
+int	bm_out_flush( OutputData *, CNDB * );
+
 
 #endif	// EXPRESSION_H

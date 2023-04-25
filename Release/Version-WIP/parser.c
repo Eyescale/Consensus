@@ -235,7 +235,7 @@ CB_if_( ProtoSet, mode, data ) {
 						TAB_LAST = -1; }
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative in / on / do / en / else Command
+	// bm_parse:	Narrative en / in / on / do / per / else Command
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
 		ons( " \t" ) if ( !s_cmp( "en" ) ) {
