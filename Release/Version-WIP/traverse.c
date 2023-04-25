@@ -31,7 +31,7 @@ CB_EEnovEndCB				f_clr( EENOV )
 					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
-				else if ( !is_f(SET|SUB_EXPR|LEVEL) && !(mode&TERNARY) )
+				else if ( !(mode&TERNARY) )
 					{ traverse_data->done=1; break; }
 				p++; break;
 			case '<':

@@ -93,7 +93,8 @@ Consensus B% Version-WIP
 			:~	:
 				~
 		_,	_<
-			_,\"	_,\"\\	_,\"
+			_,\"	_,\"%	_,\"
+				_,\"\\	_,\"
 				_,_	_<
 		_<	expr
 		/	expr
@@ -106,7 +107,8 @@ Consensus B% Version-WIP
 			(_?:	expr
 		(_?_:	expr
 		>	>:	expr
-			>\"	>\"\\	>\"
+			>\"	>\"%	>\"
+				>\"\\	>\"
 				>_	expr
 		!	!!	!!$	!!$_	expr
 		term	expr

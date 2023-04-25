@@ -54,6 +54,8 @@ typedef enum {
 } BMParseOp;
 typedef enum {
 	ErrNone = 0,
+	WarnOutputFormat,
+	WarnInputFormat,
 	ErrUnknownState,
 	ErrUnexpectedEOF,
 	ErrEllipsisLevel,
@@ -77,6 +79,7 @@ typedef enum {
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
 char *	bm_parse( int event, BMParseData *, BMParseMode, BMParseCB );
 int	bm_parse_init( BMParseData *, CNParser *, BMParseMode, char *state, FILE * );
+void	bm_parse_caution( BMParseData *, BMParseErr, BMParseMode );
 void	bm_parse_report( BMParseData *, BMParseErr, BMParseMode );
 
 #endif	// PARSER_H

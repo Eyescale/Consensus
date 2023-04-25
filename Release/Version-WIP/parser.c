@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "parser.h"
 #include "parser_private.h"
 #include "traverse.h"
-#include "parser.h"
 
 //===========================================================================
 //	bm_parse
@@ -645,10 +645,16 @@ CND_ifn( mode==BM_STORY, C )
 		in_( "_,\"" ) bgn_
 			on_( '\t' )	do_( same )	s_add( "\\t" )
 			on_( '\n' )	do_( same )	s_add( "\\n" )
+			on_( '%' )	do_( "_,\"%" )	s_take
 			on_( '\\' )	do_( "_,\"\\" )	s_take
 			on_( '\"' )	do_( "_,_" )	s_take
 			on_other	do_( same )	s_take
 			end
+			in_( "_,\"%" ) bgn_
+				ons( "cs_" )	do_( "_,\"" )	s_take
+				on_other	do_( "_,\"" )	s_add( "_" )
+								bm_parse_caution( data, WarnInputFormat, mode );
+				end
 			in_( "_,\"\\" ) bgn_
 				on_any		do_( "_,\"" )	s_take
 				end
@@ -725,9 +731,15 @@ CND_ifn( mode==BM_STORY, C )
 		in_( ">\"" ) bgn_
 			on_( '\t' )	do_( same )	s_add( "\\t" )
 			on_( '\n' )	do_( same )	s_add( "\\n" )
+			on_( '%' )	do_( ">\"%" )	s_take
 			on_( '\\' )	do_( ">\"\\" )	s_take
 			on_( '\"' )	do_( ">_" )	s_take
 			on_other	do_( same )	s_take
+			end
+		in_( ">\"%" ) bgn_
+			ons( "s_" )	do_( ">\"" )	s_take
+			on_other	do_( ">\"" )	s_add( "_" )
+							bm_parse_caution( data, WarnOutputFormat, mode );
 			end
 		in_( ">\"\\" ) bgn_
 			on_any		do_( ">\"" )	s_take
@@ -999,13 +1011,29 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 //	bm_parse_report
 //===========================================================================
 void
+bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
+/*
+	Assumption: mode==BM_STORY
+*/
+{
+	CNParser *parser = data->parser;
+	int l = parser->line, c = parser->column;
+	switch ( errnum ) {
+	case WarnOutputFormat:
+		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported output format - using default \"%%_\"\n", l, c ); break;
+	case WarnInputFormat:
+		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported input format - using default \"%%_\"\n", l, c ); break;
+	default: break; }
+}
+void
 bm_parse_report( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 {
 	CNParser *parser = data->parser;
-	char *src = (mode==BM_LOAD)?(mode==BM_INPUT)?"bm_input":"bm_load":"bm_read";
+	char *src = (mode==BM_LOAD)  ? "bm_load" :
+		    (mode==BM_INPUT) ? "bm_input" : "bm_parse";
+	char *stump = StringFinish( data->string, 0 );
 
 if ( mode==BM_INPUT ) {
-	char *stump = StringFinish( data->string, 0 );
 	switch ( errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
@@ -1016,7 +1044,6 @@ if ( mode==BM_INPUT ) {
 	default:
 		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, stump  ); } }
 else {
-	char *stump = StringFinish( data->string, 0 );
 	int l = parser->line, c = parser->column;
 	switch ( errnum ) {
 	case ErrUnknownState:

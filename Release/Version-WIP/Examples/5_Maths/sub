@@ -11,8 +11,8 @@
 */
 	on init
 		do : dial : !! Dial((:0123456789:))
-//		do : X : ((X,...):123:)	// no carry
-		do : X : ((X,...):189:)
+		do : X : ((X,...):123:)	// no carry
+//		do : X : ((X,...):189:)
 		do : Y : ((Y,...):13234:)
 		do : Z : ((Z,...)::)
 		do : mode : INIT
@@ -21,29 +21,47 @@
 		do : q : *Y
 		do : r : (r,*)
 		do : carry : 0
-		do : mode : ADD
-	else in : mode : ADD
+		do : mode : SUB
+	else in : mode : SUB
 		on : mode : .	// dial operation on next digit(s)
 			in : p : (.,?)
 				do : *dial : ((%?,(*q?%(*q:(.,?)):0)),*carry)
 			else in : q : (.,?)
-				do : *dial : ((%?,0),*carry)
+				do : *dial : ((0,%?),*carry)
 			else
-				do : r : ( *carry:1 ? (*r,1) : *r )
-				do : mode : FORMAT
+				in : carry : 0
+					do : r : *r
+					do : mode : FORMAT
+				else
+					do : r : %((r,*),.)
+					do : q : ( q, * )
+					do : mode : NEG
 			do : carry : 0
 		else on : %% : ? < *dial
 			in %<?:~'\0'>
-				do >"%_\n": %<?>
 				do : r : ( *r, %<?> )
 				in : p : (?,.)
 					do : p : ( %?:(.,*) ? ~. : %? )
 				in : q : (?,.)
 					do : q : ( %?:(.,*) ? ~. : %? )
-				do : mode : ADD
+				do : mode : SUB
+			else do : carry : 1
+	else in : mode : NEG
+		on : mode : .
+			in : r : (.,?)
+				do : *dial : ((0,%?),*carry)
+				do : carry : 0
 			else
-				do >"[1] "
-				do : carry : 1
+				do : r : *q
+				do : mode : FORMAT
+		else on : %% : ? < *dial
+			in %<?:~'\0'>
+				do : q : ( *q, %<?> )
+				in ?: (*r,.)
+					do : r : %?
+				else do ~( r )
+				do : mode : NEG
+			else do : carry : 1
 	else in : mode : FORMAT
 		on : r : (.,?)	// inform Z from r
 			in %?: ~*
@@ -54,34 +72,30 @@
 				do : mode : OUTPUT
 	else in : mode : OUTPUT
 		on : mode : .
-			do > "~~~~~~~~~~~~~~~~\n"
+			do > "\t"
 			do : p : %((X,*), . )
 			do : q : X
 		else on : p : (.,?)
 			do > "%s" : %?
-			in ?: ( *p, . )
+			in ?: (*p,.)
 				do : p : %?
 			else in : q : X
-				do > " + "
+				do > " - "
 				do : p : %((Y,*), . )
 				do : q : Y
 			else in : q : Y
-				do > " = "
+				do > " = %s": ((*carry:1)?'-':)
 				do : p : %((Z,*), . )
 				do : q : Z
-		else
-			do > "\n~~~~~~~~~~~~~~~~\n"
-			do exit
+			else
+				do > "\n"
+				do exit
 
 : Dial
 /*
-	compute p + q + carry (digits) on demand
+	compute p - q - carry (digits) on demand
 */
 	on : %% : ? < ..
-		in %<?:(.,?)>: 1
-			do >"[1]\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
-		else
-			do >"\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
 		do : p : %<?:((?,.),.)>		// base
 		do : q : %<?:((.,?),.)>		// offset
 		do : carry : %<?:(.,?)>		// carry
@@ -92,16 +106,14 @@
 			else
 				do : carry : 0
 				do : q : 1
-		else in (*p,(?,.))
-			do : p : %?		// increment p
+		else in (?,(*p,.))
+			do : p : %?		// decrement p
 			do : q : %(?,(*q,.))	// decrement q
 		else
 			do : .. : '\0'		// notify carry
 	else on : .. : '\0'
-//		do : p : %((?,(.,.)):~%(.,?))	// reset base
-		do : p : 0
+		do : p : %(?:~(.,.),'\0')	// reset base
 		do : q : %(?,(*q,.))		// decrement q
 	else on exit < ..
 		do exit
-
 

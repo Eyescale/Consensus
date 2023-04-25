@@ -84,7 +84,7 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	// activate / deactivate connections according to user request
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
-#if 0
+#if 1
 	// fire resp. deprecate [dangling] connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
