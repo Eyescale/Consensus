@@ -1,8 +1,8 @@
 :
 	on init
 #		do solo
-		do : base : 10
-#		do : base : 16
+#		do : base : 10
+		do : base : 16
 		do : state : INIT
 	else in : state : INIT
 		do : p : 0
@@ -193,49 +193,34 @@
 
 	else in : state : OPT  // optimize by using X=(base/2) depending on n=neg(p)
 		on : r : ?
-			in ( X )  // X holds center=base/2
-				in (*i,'\0')  // i reached MAX
+			in ( X ? (%?:*X) : (%?:*p) ) // r reaches X=neg(p) resp. p before i reaches center
+				in ( X )
 					do >"_"
 					do : state : MAXX
-					do : n : %?  // n is MAXX's argument to MSUB
-					do : r : 0
-				else in : n : *p  // n reached p before i reached MAX
-					do >"-"
-					do : state : MCEN
-					do : t : %?  // t is MCEN's argument to MADD/MSUB
-					do : n : *X
+					do : n : %(?,(%?,.))	// n is MAXX's argument to MSUB
 					do : r : 0
 				else
-					do : r : %(%?,(?,.))	// increment r
-					do : i : %(*i,(?,.))	// increment i
-					do : n : %(*n,(?,.))	// increment n
-			else
-				in %?: %(?,(*p,.))  // r reaches p before i reached center
 					do >"|"
 					do : state : MADD	// as is
 					do : r : 0
-				else in : i : *n  // i reached center
-					do >"!"
-					do : state : MCEN
-					do : t : %?  // t is MCEN's argument to MADD/MSUB
-					do : r : 0
-				else
-					do : r : %(%?,(?,.))	// increment r
-					do : i : %(*i,(?,.))	// increment i
-					do : n : %(?,(*n,.))	// decrement n
+			else in : i : *n  // i reaches center
+				do >"%s": ( X ? '-' : '!' )
+				do : state : MCEN
+				do : t : %(?,(%?,.))	// t is MCEN's argument to MADD/MSUB
+				do : r : 0
+			else
+				do : r : %(%?,(?,.))	// increment r
+				do : i : %(*i,(?,.))	// increment i
+				do : n : %(?,(*n,.))	// decrement n
 		else on : i : ?
 			in %?: *n
-				in %?: *p
-					do >"."
-					do : state : MCEN
-				else
-					do : X : *n  // crossed: p >= neg(p)
-					do : i : %(%?,(?,.))	// increment i
-					do : n : %(?,(*n,.))	// decrement n
+				do >"."
+				do : state : MCEN
 			else in %?: *p
-				do : r : 0
-				in ( X )
-					do : n : *X
+				do : r : 1
+			else in : n : *p
+				do : X : *i
+				do : r : 1
 			else
 				do : i : %(%?,(?,.))	// increment i
 				do : n : %(?,(*n,.))	// decrement n
