@@ -651,7 +651,7 @@ CND_ifn( mode==BM_STORY, C )
 			on_other	do_( same )	s_take
 			end
 			in_( "_,\"%" ) bgn_
-				ons( "cs_" )	do_( "_,\"" )	s_take
+				ons( "%c_" )	do_( "_,\"" )	s_take
 				on_other	do_( "_,\"" )	s_add( "_" )
 								bm_parse_caution( data, WarnInputFormat, mode );
 				end
@@ -737,7 +737,7 @@ CND_ifn( mode==BM_STORY, C )
 			on_other	do_( same )	s_take
 			end
 		in_( ">\"%" ) bgn_
-			ons( "s_" )	do_( ">\"" )	s_take
+			ons( "%s_" )	do_( ">\"" )	s_take
 			on_other	do_( ">\"" )	s_add( "_" )
 							bm_parse_caution( data, WarnOutputFormat, mode );
 			end

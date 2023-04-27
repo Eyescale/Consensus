@@ -523,7 +523,7 @@ case_( close_CB )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
 	if ( f_next & NEGATED ) data->success = !data->success;
-	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
+	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
 		traverse_data->done = 1; // after popping
 	_break
 case_( wildcard_CB )

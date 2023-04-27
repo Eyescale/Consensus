@@ -595,10 +595,10 @@ case_( filter_CB )
 		_prune( BM_PRUNE_TERM )
 	else _break
 case_( decouple_CB )
-	if ( data->stack.flags==data->OOS )
-		_return( 1 )
-	else if ( !data->success )
-		_prune( BM_PRUNE_TERM )
+	if ( data->stack.flags==data->OOS ) {
+		_return( 1 ) }
+	else if ( !data->success ) {
+		_prune( BM_PRUNE_TERM ) }
 	else {
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
 		_break }
@@ -608,13 +608,13 @@ case_( close_CB )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
 	if ( f_next & NEGATED ) data->success = !data->success;
-	if ( data->op==BM_END && data->stack.flags==data->OOS && (data->stack.scope))
+	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
 		traverse_data->done = 1; // after popping
 	_break
 case_( wildcard_CB )
 	if is_f( NEGATED ) data->success = 0;
-	else if ( !ineq( data->stack.exponent, 1 ) )
-		data->success = 1; // wildcard is any or as_sub[1]
+	else if ( !ineq( data->stack.exponent, 1 ) ) {
+		data->success = 1; } // wildcard is any or as_sub[1]
 	else switch ( match( data->instance, NULL, data->base, data ) ) {
 		case -1: // no break
 		case  0: data->success = 0; break;

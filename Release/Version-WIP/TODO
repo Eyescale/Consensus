@@ -109,23 +109,27 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. implement in/on/do :: state
+		<=> in/on/do : %% : state
 	. DBFirst() DBNext() do not currently traverse any %(proxy,...)
 		Implementable by passing s=newItem(this) or s=newItem(self)
 		instead of s=NULL as argument - but is it something we want?
 	  Note that (proxy,.) are automatically deprecated (for proxy!=Self)
-		Still DBFirst() DBNext() do not traverse any proxy nor %(Self,...)
+		Still DBFirst() DBNext() traverse no proxy nor %(Self,...)
 	. do : var : %?	when %? is NULL
 		=> should it be equivalent to do : var : ~.
 		=> currently assignment fails
 	. support per ~.: . < ?
-		allows to identify all inactive cells among connections
+		to identify all inactive cells among connections
+		currently only passes if ALL connected cells are inactive
 	. support per condition
 		complements per event < %%
+		but then we'd want to allow variable names in condition
 	. allow !! inside of expression instead of assignment only
-		cf. parser.c and instantiate.c
+		requires changes in parser.c and instantiate.c
 	. do >: expression(s)
 		default format currently '_' but should it be 's'
-			would allow do >:'a' without SCE 'a' existing
+			would allow do >:'a' without SCE existing
 		could output only highest-level expression results
 			~%(?,.):~%(.,?)
 		could output proxy as (%@:*var) when assigned

@@ -31,8 +31,9 @@ CB_EEnovEndCB				f_clr( EENOV )
 					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
-				else if ( !(mode&TERNARY) )
-					{ traverse_data->done=1; break; }
+				else if ( p!=expression ) { // leading output symbol excepted
+					traverse_data->done = 1;
+					break; }
 				p++; break;
 			case '<':
 				if is_f( INFORMED ) { // input or EENO
@@ -69,13 +70,17 @@ CB_BgnSetCB			f_push( stack )
 				p++;
 CB_TermCB			break;
 			case '}':
-				if ( !is_f(SET) ) { traverse_data->done=1; break; }
+				if ( !is_f(SET) ) {
+					traverse_data->done = 1;
+					break; }
 				icast.ptr = (*stack)->ptr;
 				f_next = icast.value;
 CB_EndSetCB			f_pop( stack, 0 )
 				f_cls; p++; break;
 			case '|':
-				if ( !is_f(LEVEL|SET) ) { traverse_data->done=1; break; }
+				if ( !is_f(LEVEL|SET) ) {
+					traverse_data->done = 1;
+					break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value; }
@@ -132,8 +137,9 @@ CB_FilterCB				f_clr( NEGATED|INFORMED )
 					p++; break; }
 				break;
 			case ',':
-				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
-					{ traverse_data->done=1; break; }
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
+					traverse_data->done = 1;
+					break; }
 CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( NEGATED|FILTERED|INFORMED )
 				p++;
@@ -144,8 +150,9 @@ CB_TermCB			break;
 						icast.ptr = (*stack)->ptr;
 						f_next = icast.value; }
 CB_EndPipeCB				f_pop( stack, 0 ) }
-				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) )
-					{ traverse_data->done=1; break; }
+				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
+					traverse_data->done = 1;
+					break; }
 				if ((*stack)) {
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value; }
@@ -153,7 +160,9 @@ CB_CloseCB			f_pop( stack, 0 );
 				f_cls; p++; break;
 			case '?':
 				if is_f( INFORMED ) {
-					if ( !is_f(SET|LEVEL|SUB_EXPR) ) { traverse_data->done=1; break; }
+					if ( !is_f(SET|LEVEL|SUB_EXPR) ) {
+						traverse_data->done=1;
+						break; }
 CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED )
 					f_set( TERNARY ) }
 				else {
@@ -210,7 +219,8 @@ CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
 CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 				f_cls; break;
 			default:
-				if ( is_separator(*p) ) traverse_data->done = BMTraverseError;
+				if ( is_separator(*p) ) {
+					traverse_data->done = BMTraverseError; }
 				else {
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' && p[1]!='<' ) {

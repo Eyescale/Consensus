@@ -11,26 +11,26 @@
 */
 	on init
 		do : dial : !! Dial((:0123456789:))
-//		do : X : ((X,...):123:)	// no carry
+#		do : X : ((X,...):123:)	// no carry
 		do : X : ((X,...):189:)
 		do : Y : ((Y,...):13234:)
 		do : Z : ((Z,...)::)
-		do : mode : INIT
-	else in : mode : INIT
+		do : state : INIT
+	else in : state : INIT
 		do : p : *X
 		do : q : *Y
 		do : r : (r,*)
 		do : carry : 0
-		do : mode : ADD
-	else in : mode : ADD
-		on : mode : .	// dial operation on next digit(s)
+		do : state : ADD
+	else in : state : ADD
+		on : state : .	// dial operation on next digit(s)
 			in : p : (.,?)
 				do : *dial : ((%?,(*q?%(*q:(.,?)):0)),*carry)
 			else in : q : (.,?)
 				do : *dial : ((%?,0),*carry)
 			else
 				do : r : ( *carry:1 ? (*r,1) : *r )
-				do : mode : FORMAT
+				do : state : FORMAT
 			do : carry : 0
 		else on : %% : ? < *dial
 			in %<?:~'\0'>
@@ -40,20 +40,20 @@
 					do : p : ( %?:(.,*) ? ~. : %? )
 				in : q : (?,.)
 					do : q : ( %?:(.,*) ? ~. : %? )
-				do : mode : ADD
+				do : state : ADD
 			else
 				do >"[1] "
 				do : carry : 1
-	else in : mode : FORMAT
+	else in : state : FORMAT
 		on : r : (.,?)	// inform Z from r
 			in %?: ~*
 				do : Z : ( *Z, %? )
 				do : r : %(*r:(?,.))
 			else
 				do ~( *r )
-				do : mode : OUTPUT
-	else in : mode : OUTPUT
-		on : mode : .
+				do : state : OUTPUT
+	else in : state : OUTPUT
+		on : state : .
 			do > "~~~~~~~~~~~~~~~~\n"
 			do : p : %((X,*), . )
 			do : q : X
@@ -98,7 +98,7 @@
 		else
 			do : .. : '\0'		// notify carry
 	else on : .. : '\0'
-//		do : p : %((?,(.,.)):~%(.,?))	// reset base
+#		do : p : %((?,(.,.)):~%(.,?))	// reset base
 		do : p : 0
 		do : q : %(?,(*q,.))		// decrement q
 	else on exit < ..
