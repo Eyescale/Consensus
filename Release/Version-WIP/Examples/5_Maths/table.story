@@ -1,15 +1,15 @@
 :
 	on init
 #		do solo
-#		do : base : 10
-		do : base : 16
+		do : base : 10
+#		do : base : 16
 		do : state : INIT
 	else in : state : INIT
 		do : p : 0
 		do : q : 0
 		in : base : 16
 			do : dial : !! Dial((:0123456789ABCDEF:),OPT)
-		else	do : dial : !! Dial((:0123456789:))
+		else	do : dial : !! Dial((:0123456789:),OPT)
 		do : state : MULT
 	else in : state : MULT
 		on : state : .
@@ -193,24 +193,24 @@
 
 	else in : state : OPT  // optimize by using X=(base/2) depending on n=neg(p)
 		on : r : ?
-			in ( X )  // n holds center=base/2
-				in : n : *p  // n reached p before i reached MAX
+			in ( X )  // X holds center=base/2
+				in (*i,'\0')  // i reached MAX
+					do >"_"
+					do : state : MAXX
+					do : n : %?  // n is MAXX's argument to MADD
+					do : r : 0
+				else in : n : *p  // n reached p before i reached MAX
 					do >"-"
 					do : state : MCEN
 					do : t : %?  // t is MCEN's argument to MADD/MSUB
 					do : n : *X
-					do : r : 0
-				else in (*i,'\0')  // i reached MAX
-					do >"_"
-					do : state : MAXX
-					do : n : %?  // n is MAXX's argument to MADD
 					do : r : 0
 				else
 					do : r : %(%?,(?,.))	// increment r
 					do : i : %(*i,(?,.))	// increment i
 					do : n : %(*n,(?,.))	// increment n
 			else
-				in %?: *p  // r reached p before i reached center
+				in %?: %(?,(*p,.))  // r reaches p before i reached center
 					do >"|"
 					do : state : MADD	// as is
 					do : r : 0
