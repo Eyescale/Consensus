@@ -197,7 +197,7 @@
 				in (*i,'\0')  // i reached MAX
 					do >"_"
 					do : state : MAXX
-					do : n : %?  // n is MAXX's argument to MADD
+					do : n : %?  // n is MAXX's argument to MSUB
 					do : r : 0
 				else in : n : *p  // n reached p before i reached MAX
 					do >"-"
