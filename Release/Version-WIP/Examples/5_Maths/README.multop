@@ -45,7 +45,7 @@ Algorithm
 			sub q from (base-1)*q, neg(p)-1 times
 	else // n did not cross X
 		if [ 0, p ] < [ p, X ]
-			add q to q, p-1 times
+			add q to p, p-1 times
 		else
 			compute p x q as: X x q - [ p, X ] x q
 
