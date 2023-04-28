@@ -23,7 +23,17 @@
 		do : carry : 0
 		do : state : ADD
 	else in : state : ADD
-		on : state : .	// dial operation on next digit(s)
+		on : %% : ? < *dial  // read operation's results
+			in %<?:'\0'>
+				do : carry : 1
+			else
+				do : r : ( *r, %<?> )
+				in : p : (?,.)
+					do : p : ( %?:(.,*) ? ~. : %? )
+				in : q : (?,.)
+					do : q : ( %?:(.,*) ? ~. : %? )
+				do : state : ADD
+		else on : state : .  // dial operation on next digit(s)
 			in : p : (.,?)
 				do : *dial : ((%?,(*q?%(*q:(.,?)):0)),*carry)
 			else in : q : (.,?)
@@ -32,18 +42,6 @@
 				do : r : ( *carry:1 ? (*r,1) : *r )
 				do : state : FORMAT
 			do : carry : 0
-		else on : %% : ? < *dial
-			in %<?:~'\0'>
-				do >"%_\n": %<?>
-				do : r : ( *r, %<?> )
-				in : p : (?,.)
-					do : p : ( %?:(.,*) ? ~. : %? )
-				in : q : (?,.)
-					do : q : ( %?:(.,*) ? ~. : %? )
-				do : state : ADD
-			else
-				do >"[1] "
-				do : carry : 1
 	else in : state : FORMAT
 		on : r : (.,?)	// inform Z from r
 			in %?: ~*
@@ -53,11 +51,7 @@
 				do ~( *r )
 				do : state : OUTPUT
 	else in : state : OUTPUT
-		on : state : .
-			do > "~~~~~~~~~~~~~~~~\n"
-			do : p : %((X,*), . )
-			do : q : X
-		else on : p : (.,?)
+		on : p : (.,?)
 			do > "%s" : %?
 			in ?: ( *p, . )
 				do : p : %?
@@ -69,23 +63,19 @@
 				do > " = "
 				do : p : %((Z,*), . )
 				do : q : Z
-		else
-			do > "\n~~~~~~~~~~~~~~~~\n"
-			do exit
+			else
+				do > "\n"
+				do exit
+		else on : state : .
+			do >"\t"
+			do : p : %((X,*), . )
+			do : q : X
 
 : Dial
 /*
 	compute p + q + carry (digits) on demand
 */
-	on : %% : ? < ..
-		in %<?:(.,?)>: 1
-			do >"[1]\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
-		else
-			do >"\t%_ + %_ -> ":< %<?:((?,.),.)>, %<?:((.,?),.)> >
-		do : p : %<?:((?,.),.)>		// base
-		do : q : %<?:((.,?),.)>		// offset
-		do : carry : %<?:(.,?)>		// carry
-	else on : q : ?
+	on : q : ?
 		in %?: 0
 			in : carry : 0
 				do : .. : *p	// notify result
@@ -98,9 +88,14 @@
 		else
 			do : .. : '\0'		// notify carry
 	else on : .. : '\0'
-#		do : p : %((?,(.,.)):~%(.,?))	// reset base
-		do : p : 0
+		do : p : 0			// reset p
 		do : q : %(?,(*q,.))		// decrement q
+		do : .. : ~.
+	else on : %% : ? < ..
+		do : p : %<?:((?,.),.)>		// base
+		do : q : %<?:((.,?),.)>		// offset
+		do : carry : %<?:(.,?)>		// carry
+		do : .. : ~.
 	else on exit < ..
 		do exit
 

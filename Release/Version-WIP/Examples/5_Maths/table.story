@@ -9,7 +9,7 @@
 		do : q : 0
 		in : base : 16
 			do : dial : !! Dial((:0123456789ABCDEF:),OPT)
-		else	do : dial : !! Dial((:0123456789:),OPT)
+		else	do : dial : !! Dial((:0123456789:))
 		do : state : MULT
 	else in : state : MULT
 		on : state : .
@@ -128,6 +128,7 @@
 		else on : state : .
 			do : p : *q			// set p to q
 			do : i : %(?,(*p,.))		// set i to p-1
+			do : n : *q			// set n
 
 	else in : state : MSUB	// sub q from (r,p) i times, via n
 		on : n : ?
@@ -157,7 +158,7 @@
 					do : p : *c
 					do : c : 0
 					do : state : MSUB
-					do : i : *n
+					do : i : *t
 				else
 					do : .. : ( %(?,(*p,.)), *c )	// notify result
 					do : state : ~.
@@ -191,13 +192,13 @@
 		else on : state : .
 			do : i : 1
 
-	else in : state : OPT  // optimize by using X=(base/2) depending on n=neg(p)
+	else in : state : OPT  // optimize using (base-1) or (base/2) depending on n=neg(p)
 		on : r : ?
 			in ( X ? (%?:*X) : (%?:*p) ) // r reaches X=neg(p) resp. p before i reaches center
 				in ( X )
 					do >"_"
 					do : state : MAXX
-					do : n : %(?,(%?,.))	// n is MAXX's argument to MSUB
+					do : t : %(?,(%?,.))	// t is MAXX's argument to MSUB
 					do : r : 0
 				else
 					do >"|"
@@ -219,7 +220,7 @@
 			else in %?: *p
 				do : r : 1
 			else in : n : *p
-				do : X : *i
+				do : X : %?
 				do : r : 1
 			else
 				do : i : %(%?,(?,.))	// increment i
