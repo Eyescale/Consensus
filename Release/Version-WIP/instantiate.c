@@ -409,8 +409,8 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 			if ( !lookupIfThere( trail, e ) ) {
 				addIfNotThere( &trail, e );
 				for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-					e = db_instantiate( e, j->ptr, db ); }
-			addItem( &results, e ); }
+					e = db_instantiate( e, j->ptr, db );
+				addItem( &results, e ); } }
 		freeListItem( &trail ); }
 	return results;
 }
