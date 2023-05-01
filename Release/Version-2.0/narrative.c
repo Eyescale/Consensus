@@ -148,8 +148,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 				else if ( TAB_CURRENT <= TAB_LAST )
 					continue;
 				else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
-					break;
-				} }
+					break; } }
 		else return 0;
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;

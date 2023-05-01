@@ -40,7 +40,6 @@ CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 #else
 static inline char * DBIdentifier( CNInstance *e, CNDB *db ) {
 	return (char *) e->sub[ 1 ]; }
-
 static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
 	return ((e) && !(e->sub[0]) && *(char*)e->sub[1]=='*' ); }
 #endif
@@ -50,7 +49,7 @@ static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
 //===========================================================================
 CNInstance *	db_new_proxy( CNEntity *, CNEntity *, CNDB * );
 void		db_deprecate_proxy( CNInstance *, CNDB * );
-void		db_fire_proxy( CNInstance *, CNDB * );
+void		db_fire( CNInstance *, CNDB * );
 
 //---------------------------------------------------------------------------
 //	isProxy, DBProxyThis, DBProxyThat, isProxySelf
@@ -113,7 +112,7 @@ static inline int db_private( int privy, CNInstance *e, CNDB *db ) {
 		returns 0 otherwise
 */
 	CNInstance *nil = db->nil, *f;
-	if ( e->sub[0]==nil || e->sub[1]==nil )
+	if ( cn_hold( e, nil ) )
 		return 1;
 	if ( privy==2 ) return 0;
 	if (( f=cn_instance( e, nil, 1 ) )) {

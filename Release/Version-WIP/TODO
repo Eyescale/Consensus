@@ -10,6 +10,48 @@ TODO
 		. with interactive traversal
 
 DONE
+	. implemented db_fire()
+	  TO BE UPDATED: db-update.txt specs
+	 	 . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
+	 	 . document db_update() assumption wrt. entities order, that is:
+
+	    db_update() assumes that released entities are registered from
+	    lower to higher level (e.g. { a, b, (a,b) }) in nil->as_sub[1]
+
+	    However db_instantiate() registers newborn entities in
+	    nil->as_sub[1] from higher to lower level (e.g. { (a,b), a, b })
+
+		  => cannot accept newborn to-be-deprecated, the only exception
+		     being via db_signal() / base entities, which is either
+		     1. performed on entity creation => not allowed to be coupled*
+		     2. performed on existing entity => will deprecate
+
+		  => bm_context_update() must call db_fire() post db_update()
+		     when newborn entities are changed into manifested
+		     Then: db_fire() traversing top-down will register bottom-up
+
+	    RESTRICTIONS - to be enforced
+		db_signal()
+			if base entity
+				if uncoupled and either newborn or deprecated
+					=> NOT rehabilitated (deprecated to-be-manifested)
+					=> then becomes resp. to-be-deprecated or flared
+					=> forbid association with newborn base entity
+					   which is also flared or to-be-deprecated
+					Since it is uncoupled I don't need to traverse anything
+				otherwise
+					=> normal deprecation
+			otherwise
+				calls db_deprecate() and detrace subs
+
+		[TODO]	. db_instantiate()
+			  forbid coupling with flared or to-be-deprecated newborn base entity
+		[DONE]	. db_fire() - implement: to happen AFTER db_update()
+			  Note: post-db_update() => can only have (proxy,nil) or (nil,proxy)
+		[NTH]	. could even detrace %(proxy,...) subs
+
+	. changed deprecatable() to exclude newborn entities, the only
+	  exception being via db_signal() / base entity
 	. Now manifest proxies upon creation
 	. new Register Variable %@ (for active connections)
 	. implemented per event < src

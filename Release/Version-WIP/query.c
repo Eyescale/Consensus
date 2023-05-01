@@ -151,15 +151,15 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	. when set, we have data->list:[ list:[ list_p, mark_p ], xpn ] where
 	  expression is in either form
 			_%(list,?:...)_
-			 ^      ^---------------- mark_p
+			 ^      ^---------------- mark_p	lm==1
 			  ----------------------- list_p
 		or
 			_%(list,...)_
-			 ^      ^---------------- mark_p
+			 ^      ^---------------- mark_p	lm==0
 			  ----------------------- list_p
 		or
 			_%((?,...):list)
-			 ^  ^-------------------- mark_p
+			 ^  ^-------------------- mark_p	lm==3
 			  ----------------------- list_p
 	. user_data only specified for query_assignment, in which case
 	  we can overwrite data->user_data with the passed user_data
@@ -214,7 +214,11 @@ POP_stack:		POP( stack, exponent, PUSH_stack )
 PUSH_xpn:		PUSH( stack[ XPN_id ], xpn, POP_xpn )
 PUSH_list:		LUSH( stack[ LIST_id ], lm, POP_list )
 PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
-			if ( !lookupIfThere( trail, e ) ) { // ward off doublons
+			if ( lm==1 ) { // Here we do NOT ward off doublons
+				if ( traverse_CB( e, expression, data )==BM_DONE ) {
+					success = e;
+					break; } }
+			else if ( !lookupIfThere( trail, e ) ) { // ward off doublons
 				addIfNotThere( &trail, e );
 				if ( traverse_CB( e, expression, data )==BM_DONE ) {
 					success = e;
@@ -534,7 +538,7 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 //	verify_traversal
 //---------------------------------------------------------------------------
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
-static inline int ineq( listItem *i, int operand );
+static inline int uneq( listItem *i, int operand );
 
 BMTraverseCBSwitch( verify_traversal )
 case_( match_CB )
@@ -613,7 +617,7 @@ case_( close_CB )
 	_break
 case_( wildcard_CB )
 	if is_f( NEGATED ) data->success = 0;
-	else if ( !ineq( data->stack.exponent, 1 ) ) {
+	else if ( !uneq( data->stack.exponent, 1 ) ) {
 		data->success = 1; } // wildcard is any or as_sub[1]
 	else switch ( match( data->instance, NULL, data->base, data ) ) {
 		case -1: // no break
@@ -623,7 +627,7 @@ case_( wildcard_CB )
 BMTraverseCBEnd
 
 
-static inline int ineq( listItem *i, int operand ) {
+static inline int uneq( listItem *i, int operand ) {
 	if (( i )) {
 		union { void *ptr; int value; } icast;
 		icast.ptr = i->ptr; return ( icast.value!=operand ); }

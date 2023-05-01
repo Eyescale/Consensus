@@ -36,6 +36,7 @@ bm_scan( char *expression, BMContext *ctx )
 {
 	listItem *results = NULL;
 	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
+	reorderListItem( &results );
 	return results;
 }
 static BMCBTake

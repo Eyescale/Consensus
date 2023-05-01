@@ -18,7 +18,8 @@ newContext( CNEntity *cell, CNEntity *parent )
 	CNDB *db = newCNDB();
 	Pair *id = newPair(
 		db_new_proxy( NULL, cell, db ),
-		db_new_proxy( cell, parent, db ) );
+		NULL );
+	if (( parent )) id->value = db_new_proxy( cell, parent, db );
 	Pair *active = newPair(
 		newPair( NULL, NULL ),
 		NULL );
@@ -81,27 +82,30 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	fprintf( stderr, "bm_context_update: bgn\n" );
 #endif
 	CNDB *db = BMContextDB( ctx );
-	// activate / deactivate connections according to user request
+	CNInstance *proxy;
+
+	// update active registry according to user request
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
-#if 1
-	// fire resp. deprecate [dangling] connections
+
+	// deprecate proxies with dangling connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
-		CNInstance *proxy = connection->as_sub[0]->ptr;
-		if (( connection->sub[ 1 ] )) db_fire_proxy( proxy, db );
-		else db_deprecate_proxy( proxy, db ); }
-#else
-	// fire resp. deprecate [dangling] connections
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		CNInstance *proxy = connection->as_sub[0]->ptr;
-		if ( !connection->sub[ 1 ] )
-			db_deprecate_proxy( proxy, db ); }
-#endif
-	// invoke db_update - turning deprecated into released
+		if ( !connection->sub[ 1 ] ) {
+			proxy = connection->as_sub[0]->ptr;
+			db_deprecate_proxy( proxy, db ); } }
+
+	// invoke db_update
 	db_update( db, BMContextParent(ctx) );
-	// deactivate released connections
+
+	// fire proxies with non-dangling connections
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		if (( connection->sub[ 1 ] )) {
+			proxy = connection->as_sub[0]->ptr;
+			db_fire( proxy, db ); } }
+
+	// update active registry wrt deprecated proxies
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
 		CNInstance *e = i->ptr;

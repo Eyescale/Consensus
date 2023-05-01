@@ -39,7 +39,6 @@
 			else in : q : (.,?)
 				do : *dial : ((%?,0),*carry)
 			else
-				do : r : ( *carry:1 ? (*r,1) : *r )
 				do : state : FORMAT
 			do : carry : 0
 	else in : state : FORMAT
@@ -50,6 +49,8 @@
 			else
 				do ~( *r )
 				do : state : OUTPUT
+		else on : state : .
+			do : r : ( *carry:1 ? (*r,1) : *r )
 	else in : state : OUTPUT
 		on : p : (.,?)
 			do > "%s" : %?

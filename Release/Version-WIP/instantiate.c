@@ -341,7 +341,7 @@ BMTraverseCBEnd
 //	instantiate_couple
 //---------------------------------------------------------------------------
 static inline void
-_couple( CNInstance *, CNInstance *, CNDB *, listItem **, listItem ** );
+couple( CNInstance *, CNInstance *, CNDB *, listItem **, listItem ** );
 
 static listItem *
 instantiate_couple( listItem *sub[2], CNDB *db )
@@ -356,26 +356,26 @@ instantiate_couple( listItem *sub[2], CNDB *db )
 			listItem *t = NULL;
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
-				_couple( e, f, db, &trail, &results ); }
+				couple( e, f, db, &trail, &results ); }
 		else {
 			listItem *s = NULL;
 			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-				_couple( e, j->ptr, db, &trail, &results ); } }
+				couple( e, j->ptr, db, &trail, &results ); } }
 	else if ( sub[1]->ptr == NULL ) {
 		listItem *t = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 		for ( CNInstance *f=DBFirst(db,&t); f!=NULL; f=DBNext(db,f,&t) )
-			_couple( i->ptr, f, db, &trail, &results ); }
+			couple( i->ptr, f, db, &trail, &results ); }
 	else {
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-			_couple( i->ptr, j->ptr, db, &trail, &results ); }
+			couple( i->ptr, j->ptr, db, &trail, &results ); }
 	return results;
 }
 
 static inline void
-_couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **results )
+couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **results )
 {
 	CNInstance *g = db_instantiate( e, f, db );
 	if ((g) && !lookupIfThere( *trail, g ) ) {
@@ -405,11 +405,12 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 		listItem *trail = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *e = i->ptr;
+			if ( lookupIfThere( &trail, e ) )
+				continue;
+			addIfNotThere( &trail, e );
 			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
 				e = db_instantiate( e, j->ptr, db );
-			if ( !lookupIfThere( trail, e ) ) {
-				addIfNotThere( &trail, e );
-				addItem( &results, e ); } }
+			addItem( &results, e ); }
 		freeListItem( &trail ); }
 	return results;
 }

@@ -142,6 +142,9 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 		else if ( TAB_CURRENT <= TAB_LAST ) {
 			for ( ; ; ) {
 				CNOccurrence *sibling = popListItem( &data->stack.occurrences );
+				if ( TAB_CURRENT==TAB_LAST && (data->type&ELSE) &&
+					!(sibling->data->type&(IN|ON|ON_X)) )
+					return 0;
 				TAB_LAST--;
 				if ( sibling->data->type == ROOT )
 					return 0;

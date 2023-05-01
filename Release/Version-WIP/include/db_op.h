@@ -6,6 +6,7 @@
 //===========================================================================
 typedef enum {
 	DB_SIGNAL_OP,
+	DB_FIRE_OP,
 	DB_DEPRECATE_OP,
 	DB_MANIFEST_OP,
 	DB_REHABILITATE_OP,

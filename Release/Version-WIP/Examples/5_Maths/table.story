@@ -1,25 +1,25 @@
 :
 	on init
 #		do solo
-#		do : base : 10
-		do : base : 16
+		do : base : 10
+#		do : base : 16
 		do : state : INIT
 	else in : state : INIT
 		do : p : 0
 		do : q : 0
 		in : base : 16
 			do : dial : !! Dial((:0123456789ABCDEF:),OPT)
-		else	do : dial : !! Dial((:0123456789:))
+		else	do : dial : !! Dial((:0123456789:),OPT)
 		do : state : MULT
 	else in : state : MULT
-		on : state : .
-			do : *dial : ((*p,*q),0)
-			in solo
-				do > "%s x %s = ":< *p, *q >
-		else on : %% : ? < *dial
+		on : %% : ? < *dial  // read operation's results
 			do : c : %<?:(?,.)>
 			do : r : %<?:(.,?)>
 			do : state : OUTPUT
+		else on : state : .  // dial operation on next digit(s)
+			do : *dial : ((*p,*q),0)
+			in solo
+				do > "%s x %s = ":< *p, *q >
 	else in : state : OUTPUT
 		in : base : 16
 			on : q : ?
@@ -120,7 +120,8 @@
 					do : .. : ( *r, *p )	// notify result
 					do : state : ~.
 				else 
-					do : n : *c	// set n to carry (last round)
+					do : n : *c	// set n to carry
+					do : i : 1	// last round
 					do : c : 0
 			else
 				do : n : *q		// reset n
@@ -129,6 +130,7 @@
 			do : p : *q			// set p to q
 			do : i : %(?,(*p,.))		// set i to p-1
 			do : n : *q			// set n
+			do : r : 0
 
 	else in : state : MSUB	// sub q from (r,p) i times, via n
 		on : n : ?
@@ -150,24 +152,25 @@
 		else on : i : .
 			do : n : *q
 
-	else in : state : MAXX	// compute p x (base-1)
+	else in : state : MAXX	// compute i x (base-1)
 		on : i : ?
 			in (%?,'\0')
 				in ( X ) // here from OPT
 					do : r : %(?,(*q,.))
-					do : p : *c
-					do : c : 0
+					do : p : *r
 					do : state : MSUB
 					do : i : *t
 				else
-					do : .. : ( %(?,(*p,.)), *c )	// notify result
-					do : state : ~.
+					do : r : %(?,(*p,.))
+					do : p : *r
+					do : state : MADD
+					do : i : 0
 			else 
-				do : c : %(*c,(?,.))
+				do : r : %(*r,(?,.))
 				do : i : %(%?,(?,.))
 		else on : state : .
 			do : i : ( X ? *q : *p ) // may be here from OPT
-			do : c : %(*c,(?,.))
+			do : r : 1
 
 	else in : state : MCEN	// compute (r,p)=q*(n=base/2)
 		on : i : ?
@@ -199,16 +202,14 @@
 					do >"_"
 					do : state : MAXX
 					do : t : %(?,(%?,.))	// t is MAXX's argument to MSUB
-					do : r : 0
 				else
 					do >"|"
 					do : state : MADD	// as is
-					do : r : 0
 			else in : i : *n  // i reaches center
 				do >"%s": ( X ? '-' : '!' )
 				do : state : MCEN
 				do : t : %(?,(%?,.))	// t is MCEN's argument to MADD/MSUB
-				do : r : 0
+				do : r : 0		// r is MCEN's alternator
 			else
 				do : r : %(%?,(?,.))	// increment r
 				do : i : %(*i,(?,.))	// increment i
@@ -269,11 +270,11 @@
 		do : q : %<?:((.,?),.)>
 		do : c : %<?:(.,?)>
 		do : r : 0
+		do : .. : ~.
+		do : state : INIT
 		in OPT
 			do : t : 0
 			do ~( X )
-		do : .. : ~.
-		do : state : INIT
 	else on exit < ..
 		do exit
 
