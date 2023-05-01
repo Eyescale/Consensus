@@ -72,13 +72,12 @@
 			do : c : 0
 			in ~.: u  // very first round: separate r into s and u
 				in ?:((r,*),.)
+					do : s : ((s,*),%(%?:(.,?)))
+					do : t : (t,*)
 					in ( %?, . )  // r has more than one digit
-						do : s : ((s,*),%(%?:(.,?)))
 						do : u : (((u,*),...),%(%?,?:...))
-						do : t : (t,*)
 						do : r : ~.
 					else  // both X and Y are one digit - and no carry
-						do : s : ((s?(*s):(s,*)),%(%?:(.,?)))
 						do : state : FORMAT
 						do ~( %? )
 			else
