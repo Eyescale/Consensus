@@ -371,6 +371,7 @@ instantiate_couple( listItem *sub[2], CNDB *db )
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next )
 		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
 			couple( i->ptr, j->ptr, db, &trail, &results ); }
+	freeListItem( &trail );
 	return results;
 }
 
@@ -405,11 +406,10 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 		listItem *trail = NULL;
 		for ( listItem *i=sub[0]; i!=NULL; i=i->next ) {
 			CNInstance *e = i->ptr;
-			if ( lookupIfThere( &trail, e ) )
-				continue;
-			addIfNotThere( &trail, e );
-			for ( listItem *j=sub[1]; j!=NULL; j=j->next )
-				e = db_instantiate( e, j->ptr, db );
+			if ( !lookupIfThere( trail, e ) ) {
+				addIfNotThere( &trail, e );
+				for ( listItem *j=sub[1]; j!=NULL; j=j->next )
+					e = db_instantiate( e, j->ptr, db ); }
 			addItem( &results, e ); }
 		freeListItem( &trail ); }
 	return results;
