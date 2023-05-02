@@ -201,8 +201,8 @@
 					do : state : MADD
 					do : i : 0
 			else 
-				do : r : %(*r,(?,.))
-				do : i : %(%?,(?,.))
+				do : i : %(%?,(?,.))	// increment i
+				do : r : %(*r,(?,.))	// increment report
 		else on : state : .
 			do : i : ( X ? *q : *p ) // may be here from OPT
 			do : r : 1

@@ -5,7 +5,6 @@
 //	operations (nil-based)
 //===========================================================================
 typedef enum {
-	DB_FIRE_OP,
 	DB_DEPRECATE_OP,
 	DB_MANIFEST_OP,
 	DB_REHABILITATE_OP,

@@ -21,34 +21,8 @@ DONE
 	    However db_instantiate() registers newborn entities in
 	    nil->as_sub[1] from higher to lower level (e.g. { (a,b), a, b })
 
-		  => db_fire() must be called AFTER db_update() by bm_context_update()
-		     when newborn entities are changed into manifested
-		     Then: db_fire() traversing top-down will register bottom-up
+	    => reorder newborn to-be-deprecated at ( e, nil ) level [DONE]
 
-		  => cannot accept newborn x to-be-deprecated, the only exception
-		     being via db_signal() / base entities, which is either
-		     1. performed on entity creation => not allowed to be coupled*
-		     2. performed on existing entity => will deprecate
-
-	    db_signal() implementation
-			if base entity
-				if uncoupled and flareable (inc. newborn or deprecated)
-					=> then becomes to-be-deprecated or flared
-					No need to traverse anything, since it is uncoupled
-				otherwise if deprecatable
-					=> normal deprecation
-			otherwise
-				calls db_deprecate() and detrace subs
-
-	    RESTRICTIONS - to be enforced
-		[DONE]	. coupling with flared or to-be-deprecated newborn base entity
-			  simply removes their condition (cf. db_op)
-		[DONE]	. db_fire() - implement: to happen AFTER db_update()
-			  Note: post-db_update() => can only have (proxy,nil) or (nil,proxy)
-		[NTH]	. could even detrace %(proxy,...) subs
-
-	. changed deprecatable() to exclude newborn entities, the only
-	  exception being via db_signal() / base entity
 	. Now manifest proxies upon creation
 	. new Register Variable %@ (for active connections)
 	. implemented per event < src

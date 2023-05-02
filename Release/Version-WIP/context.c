@@ -88,13 +88,13 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
 
-	// invoke db_update
-	db_update( db, BMContextParent(ctx) );
-
 	// fire [resp. deprecate dangling] connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
 		db_fire( connection->as_sub[0]->ptr, db ); }
+
+	// invoke db_update
+	db_update( db, BMContextParent(ctx) );
 
 	// update active registry wrt deprecated connections
 	listItem **entries = &active->value;

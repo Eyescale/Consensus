@@ -20,12 +20,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 	case DB_MANIFEST_OP: // assumption: e was just created
 		cn_new( cn_new( e, nil ), nil );
 		break;
-	case DB_FIRE_OP: // assumption: db_fire() only
-		f = cn_instance( nil, e, 0 );
-		if (( f )) db_remove( f, db );
-		f = cn_instance( e, nil, 1 );
-		if ( !f ) cn_new( e, nil );
-		break;
 	case DB_DEPRECATE_OP:
 		f = cn_instance( e, nil, 1 );
 		if (( f )) {
@@ -161,7 +155,11 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			next_i = next_i->next;
 		if (( f->as_sub[1] )) { // newborn to-be-released
 			// turn into to-be-released, handled below
-			db_remove( g, db ); }
+			db_remove( f->as_sub[1]->ptr, db );
+			db_remove( g, db );
+			db_remove( f, db );
+			// reordering x in nil->as_sub[1]
+			cn_new( nil, cn_new( x, nil ) ); }
 		else { // just newborn
 			db_remove( g, db );
 			db_remove( f, db );
