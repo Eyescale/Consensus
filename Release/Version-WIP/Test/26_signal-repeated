@@ -3,8 +3,8 @@
 		do toto~
 	else on ~( toto )
 		do >"hello\n"
-		in titi
-			do exit
-		else
+		in ~.: titi
 			do titi
 			do toto~
+		else
+			do exit

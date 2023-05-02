@@ -146,7 +146,7 @@ deprecatable( CNInstance *e, CNDB *db )
 	if ( cn_hold( e, nil ) )
 		return 0;
 	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ) );
+	return ( !f || f->as_sub[0] );
 }
 
 //===========================================================================
@@ -208,7 +208,7 @@ flareable( CNInstance *e, CNDB *db )
 		if (( f->as_sub[ 1 ] ))
 			return 0; // to-be-released
 		if (( f->as_sub[ 0 ] ))
-			return 1; // newborn
+			return 2; // newborn
 		f = cn_instance( nil, e, 0 );
 		if (( f ) && ( f->as_sub[0] ))
 			return 0; }
