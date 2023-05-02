@@ -85,7 +85,9 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			// to-be-manifested (rehabilitated)
 			else if (( g = cn_instance( nil, e, 0 ) )) {
 				if (( g->as_sub[ 0 ] )) { // signal
-					db_remove( g->as_sub[0]->ptr, db ); } }
+					db_remove( g->as_sub[0]->ptr, db );
+					// create ( nil, ( nil, e ) ) (rehabilitated)
+					cn_new( nil, g ); } }
 			// just released
 			else {	// create ( nil, ( nil, e )) (to be manifested)
 				cn_new( nil, cn_new( nil, e ) ); } }

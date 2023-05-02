@@ -49,9 +49,6 @@ static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
 //===========================================================================
 CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
 void		db_fire( CNInstance *, CNDB * );
-#ifdef PREVIOUS
-void		db_deprecate_proxy( CNInstance *, CNDB * );
-#endif
 
 //---------------------------------------------------------------------------
 //	isProxy, DBProxyThis, DBProxyThat, isProxySelf

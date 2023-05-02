@@ -315,15 +315,6 @@ db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 	return e;
 }
 
-#ifdef PREVIOUS
-void
-db_deprecate_proxy( CNInstance *proxy, CNDB *db )
-{
-	if (( deprecatable( proxy, db ) ))
-		db_deprecate( proxy, db );
-}
-#endif
-
 //===========================================================================
 //	db_match
 //===========================================================================
