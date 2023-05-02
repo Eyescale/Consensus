@@ -1,0 +1,88 @@
+
+	Entity x can be
+		to-be-manifested - then we have ( nil, ( nil, x ) )
+		to-be-released   - then we have ( nil, ( x, nil ) )
+		manifested	 - then we have ( nil, x )
+		released	 - then we have ( x, nil )
+		newborn		 - then we have ( ( x, nil ), nil )
+		signal		 - then we have ( ( nil, x ), nil )
+
+	so that
+        	x can be both manifested AND to-be-released
+	        x can be both manifested AND newborn (reassigned)
+	        x can be both released AND to-be-manifested (reborn)
+		x can be both released AND to-be-released (signal)
+	        x can be both newborn AND to-be-released
+
+		x cannot be both manifested AND released
+		x cannot be both to-be-released AND to-be-manifested
+		x cannot be both newborn AND released
+		x cannot be both newborn AND to-be-manifested
+
+	                 |------------------|----------------|------------|----------|--------|---------|
+			 | to be manifested | to be released | manifested | released | signal | newborn |
+	-----------------|------------------|----------------|------------|----------|--------|---------|
+	newborn          |       n/a        |       X        |     X      |     .    |   n/a  |    X    |
+	-----------------|------------------|----------------|------------|----------|--------|---------|
+	signal           |       n/a        |      n/a       |     .      |     X    |   n/a  |
+	-----------------|------------------|----------------|------------|----------|--------|
+	released         |        X         |       .        |    n/a     |     X    | 
+	-----------------|------------------|----------------|------------|----------|
+	manifested       |        .         |       X        |     X      |
+	-----------------|------------------|----------------|------------|
+	to be released   |       n/a        |       X        |
+	-----------------|------------------|----------------|
+	to be manifested |        X         | 
+	-----------------|------------------|
+
+	This leaves x in one of the following 11 mutually exclusive configurations
+
+		CN_NEWBORN				// newborn
+			CN_NEWBORN_TO_BE_RELEASED	// flare
+			CN_MANIFESTED_TO_BE_MANIFESTED	// reassigned: manifested
+		CN_RELEASED				// deprecated
+			CN_RELEASED_TO_BE_RELEASED	// signal
+			CN_RELEASED_TO_BE_MANIFESTED	// rehabilitated: released
+		CN_MANIFESTED
+			CN_MANIFESTED_TO_BE_RELEASED
+		CN_TO_BE_RELEASED
+		CN_TO_BE_MANIFESTED			// reassigned: not manifested
+		CN_DEFAULT				// none of the above
+
+	where
+		CN_NEWBORN means that the entity was created anew, vs. rehabilitated
+		CN_TO_BE_MANIFESTED means that the entity is not currently manifested
+
+Rationale
+	The challenge lies in reassignment, as:
+	1. we need to keep the entity manifested if it is during the current frame, while
+	   making it manifest again during the next frame (MANIFESTED_TO_BE_MANIFESTED)
+	   for which we use the combination (nil,x) and ((x,nil),nil) (born anew)
+	2. we must not make the entity manifested if it's not during the current frame,
+	   while making it manifest during the next frame (TO_BE_MANIFESTED)
+
+	Likewise, when rehabilitating a released entity, this must still be testable as
+	released during the current frame, hence the RELEASED_TO_BE_MANIFESTED case.
+
+	And again when releasing a released entity, hence the (x,nil) and ((nil,x),nil)
+	(signal) configuration.
+
+Implementation
+	db_op() and db_update() ensure that we have only the combinations allowed, the
+	implementation logics being made self-explanatory in Version-1.1 db_debug.c file.
+
+	Note about db_update() implementation:
+
+	    db_update() depends on entities being removed from higher to lower level -
+	    e.g. (a,b) before a and b.
+
+	    This happens to be the order opposite to the order in which they are popped
+	    from nil->as_sub[1] (LIFO) after db_deprecate(), but is the order in which
+	    they are registered as newborn after db_instantiate()
+
+	    newborn to-be-deprecated entities will first be released (one frame) and
+	    then removed (the frame after). Therefore db_update() re-registers
+	    newborn to-be-deprecated entities into nil->as_sub[1] so as to put them in
+	    the proper order for removal; and at removal time first reorders all
+	    deprecated entities.
+
