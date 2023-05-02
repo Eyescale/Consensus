@@ -152,12 +152,17 @@ deprecatable( CNInstance *e, CNDB *db )
 //===========================================================================
 //	db_signal
 //===========================================================================
-static inline int uncoupled( CNInstance *, CNInstance *, CNDB *db );
+static inline int flareable( CNInstance *, CNDB * );
+static inline int uncoupled( CNInstance *, CNInstance *, CNDB * );
 
 void
 db_signal( CNInstance *x, CNDB *db )
 /*
 	Assumption: x!=NULL
+	if x is a flareable base entity
+		flare x, ie. invoke db_op( DB_DEPRECATE_OP, x, db )
+		and deprecate x's ascendants if deprecatable
+	otherwise
 		. deprecate x and all its ascendants
 		. deprecate all x's subs so long as
 			these are not referenced anywhere else
@@ -165,25 +170,49 @@ db_signal( CNInstance *x, CNDB *db )
 	proceeding top-down
 */
 {
-	if ( deprecatable( x, db ) ) {
+	if isBase( x ) {
+		if ( flareable( x, db ) )
+			db_deprecate( x, db ); }
+	else if ( deprecatable( x, db ) ) {
 		// deprecate x and all its ascendants
 		db_deprecate( x, db );
 		// deprecate x's subs, proceeding top-down
-		if ( !isBase( x ) ) {
-			listItem * stack = NULL;
-			int ndx = 0;
-			for ( ; ; ) {
-				CNInstance *y = CNSUB( x, ndx );
-				if ( uncoupled( y, x, db ) ) {
-					db_op( DB_DEPRECATE_OP, y, db );
-					add_item( &stack, ndx );
-					addItem( &stack, x );
-					x=y; ndx=0; continue; }
-				while ( ndx && ( stack )) {
-					x = popListItem( &stack );
-					ndx = pop_item( &stack ); }
-				if ( !ndx ) ndx = 1;
-				else return; } } }
+		listItem * stack = NULL;
+		int ndx = 0;
+		for ( ; ; ) {
+			CNInstance *y = CNSUB( x, ndx );
+			if ( uncoupled( y, x, db ) ) {
+				db_op( DB_DEPRECATE_OP, y, db );
+				add_item( &stack, ndx );
+				addItem( &stack, x );
+				x=y; ndx=0; continue; }
+			while ( ndx && ( stack )) {
+				x = popListItem( &stack );
+				ndx = pop_item( &stack ); }
+			if ( !ndx ) ndx = 1;
+			else return; } }
+}
+static inline int
+flareable( CNInstance *e, CNDB *db )
+/*
+	Assumption: e is Base Entity (therefore cannot hold nil)
+	returns 2 if e is deprecatable
+	returns 1 if e is neither to-be-released nor flared
+	returns 0 otherwise - which we assume applies to all e's ascendants
+	Note that released entities are flareable (vs. deprecatable)
+*/
+{
+	CNInstance *nil = db->nil;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	if (( f )) {
+		if (( f->as_sub[ 1 ] ))
+			return 0; // to-be-released
+		if (( f->as_sub[ 0 ] ))
+			return 1; // newborn
+		f = cn_instance( nil, e, 0 );
+		if (( f ) && ( f->as_sub[0] ))
+			return 0; }
+	return 2; // deprecatable
 }
 static inline int
 uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
