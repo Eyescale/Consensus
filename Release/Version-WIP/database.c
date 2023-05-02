@@ -212,14 +212,15 @@ uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
 void
 db_fire( CNInstance *proxy, CNDB *db )
 /*
-	deprecates either x:%((proxy,.),...) or, if dangling, proxy
+	deprecates either all e:(proxy,.) or, if dangling, proxy
 */
 {
 	if ( deprecatable( proxy, db ) ) {
 		if (( DBProxyThat( proxy ) )) {
-			for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next )
-				if ( deprecatable( i->ptr, db ) )
-					db_deprecate( i->ptr, db ); }
+			for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next ) {
+				CNInstance *e = i->ptr;
+				if ( deprecatable( e, db ) )
+					db_deprecate( e, db ); } }
 		else db_deprecate( proxy, db ); }
 }
 
