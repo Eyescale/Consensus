@@ -27,6 +27,7 @@
 static CNInstance * conceive( Pair *, char *, BMTraverseData * );
 static void instantiate_assignment( char *, BMTraverseData *, CNStory * );
 typedef struct {
+	char *expression;
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
@@ -45,6 +46,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	memset( &data, 0, sizeof(data) );
 	data.ctx = ctx;
 	data.db = BMContextDB( ctx );
+	data.expression = expression;
 
 	BMTraverseData traverse_data;
 	traverse_data.user_data = &data;
@@ -333,7 +335,10 @@ case_( identifier_CB )
 case_( signal_CB )
 	CNInstance *e = data->sub[ current ]->ptr;
 	BMContext *carry = data->carry;
-	db_signal( e, ((carry) ? BMContextDB(carry) : data->db ));
+	int retval = db_signal( e, ((carry) ? BMContextDB(carry) : data->db ));
+	if ( retval < 0 ) {
+		fprintf( stderr, ">>>>> B%%: Warning: unable to flare signal\n"
+                        "\t\tdo %s\n\t<<<<< failed on '%s'\n", data->expression, p ); }
 	_break
 BMTraverseCBEnd
 

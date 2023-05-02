@@ -17,9 +17,9 @@ newContext( CNEntity *cell, CNEntity *parent )
 	Registry *ctx = newRegistry( IndexedByCharacter );
 	CNDB *db = newCNDB();
 	Pair *id = newPair(
-		db_new_proxy( NULL, cell, db ),
+		db_proxy( NULL, cell, db ),
 		NULL );
-	if (( parent )) id->value = db_new_proxy( cell, parent, db );
+	if (( parent )) id->value = db_proxy( cell, parent, db );
 	Pair *active = newPair(
 		newPair( NULL, NULL ),
 		NULL );
@@ -88,24 +88,15 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
 
-	// deprecate proxies with dangling connections
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		if ( !connection->sub[ 1 ] ) {
-			proxy = connection->as_sub[0]->ptr;
-			db_deprecate_proxy( proxy, db ); } }
-
 	// invoke db_update
 	db_update( db, BMContextParent(ctx) );
 
-	// fire proxies with non-dangling connections
+	// fire [resp. deprecate dangling] connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
-		if (( connection->sub[ 1 ] )) {
-			proxy = connection->as_sub[0]->ptr;
-			db_fire( proxy, db ); } }
+		db_fire( connection->as_sub[0]->ptr, db ); }
 
-	// update active registry wrt deprecated proxies
+	// update active registry wrt deprecated connections
 	listItem **entries = &active->value;
 	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
 		CNInstance *e = i->ptr;
@@ -747,7 +738,7 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 		if ( connection->sub[ 1 ]==that )
 			return connection->as_sub[ 0 ]->ptr; }
 
-	return ( inform ? db_new_proxy(this,that,db) : NULL );
+	return ( inform ? db_proxy(this,that,db) : NULL );
 }
 
 //===========================================================================

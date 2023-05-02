@@ -27,7 +27,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 		if ( !f ) cn_new( e, nil );
 		break;
 	case DB_DEPRECATE_OP:
-	case DB_SIGNAL_OP:
 		f = cn_instance( e, nil, 1 );
 		if (( f )) {
 			// case newborn, possibly to-be-released, xor
@@ -45,23 +44,14 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 			// case released, possibly to-be-released (signal), xor
 			// to-be-manifested (rehabilitated)
 			else if (( g = cn_instance( nil, e, 0 ) )) {
-				switch ( op ) {
-				case DB_DEPRECATE_OP:
-					if (( g->as_sub[ 1 ] )) { // rehabilitated
-						// remove ( nil, ( nil, e )) and ( nil, e )
-						db_remove( g->as_sub[1]->ptr, db );
-						db_remove( g, db ); }
-					break;
-				default: // DB_SIGNAL_OP:
-					if (( g->as_sub[ 1 ] )) { // rehabilitated
-						// remove ( nil, ( nil, e ))
-						db_remove( g->as_sub[1]->ptr, db ); }
-					if ( !g->as_sub[ 0 ] ) {
-						// create ( ( nil, e ), nil ) (signal)
-						cn_new( g, nil ); } } }
+				if (( g->as_sub[ 1 ] )) { // rehabilitated
+					// remove ( nil, ( nil, e ))
+					db_remove( g->as_sub[1]->ptr, db ); }
+				if ( !g->as_sub[ 0 ] ) {
+					// create ( ( nil, e ), nil ) (signal)
+					cn_new( g, nil ); } }
 			// just released
-			else if ( op==DB_SIGNAL_OP ) {
-				// create ( ( nil, e ), nil ) (signal)
+			else {	// create ( ( nil, e ), nil ) (signal)
 				cn_new( cn_new( nil, e ), nil ); } }
 		else {
 			/* neither released, nor newborn, nor to-be-released
@@ -93,8 +83,11 @@ db_op( DBOperation op, CNInstance *e, CNDB *db )
 				if ( !f->as_sub[ 0 ] ) db_remove( f, db ); }
 			// case released, possibly to-be-released (signal), xor
 			// to-be-manifested (rehabilitated)
-			else if ( !cn_instance( nil, e, 0 ) ) { // just released
-				// create ( nil, ( nil, e )) (to be manifested)
+			else if (( g = cn_instance( nil, e, 0 ) )) {
+				if (( g->as_sub[ 0 ] )) { // signal
+					db_remove( g->as_sub[0]->ptr, db ); } }
+			// just released
+			else {	// create ( nil, ( nil, e )) (to be manifested)
 				cn_new( nil, cn_new( nil, e ) ); } }
 		else if ( op==DB_REHABILITATE_OP )
 			break;

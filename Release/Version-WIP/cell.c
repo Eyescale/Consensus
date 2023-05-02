@@ -164,7 +164,7 @@ bm_cell_carry( CNCell *cell, CNCell *new, int subscribe )
 
 		// create proxy and activate connection from parent cell to new
 		BMContext *ctx = BMCellContext( cell );
-		proxy = db_new_proxy( cell, new, BMContextDB(ctx) );
+		proxy = db_proxy( cell, new, BMContextDB(ctx) );
 		active = BMContextActive( ctx );
 		addIfNotThere( &active->buffer->activated, proxy ); }
 	else {

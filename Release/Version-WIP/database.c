@@ -153,12 +153,12 @@ deprecatable( CNInstance *e, CNDB *db )
 static inline int flareable( CNInstance *e, CNDB *db );
 static inline int uncoupled( CNInstance *, CNInstance *, CNDB *db );
 
-void
+int
 db_signal( CNInstance *x, CNDB *db )
 /*
 	Assumption: x!=NULL
 	if x is a flareable uncoupled base entity
-		flare x, ie. invoke db_op( DB_SIGNAL_OP, x, db )
+		deprecate x, ie. invoke db_op( DB_DEPRECATE_OP, x, db )
 	otherwise
 		. deprecate x and all its ascendants
 		. deprecate all x's subs so long as
@@ -169,9 +169,17 @@ db_signal( CNInstance *x, CNDB *db )
 {
 	if isBase( x ) {
 		switch ( flareable( x, db ) ) {
-		case 2: db_deprecate( x, db ); break;
-		case 1: if ( uncoupled( x, NULL, db ) )
-			db_op( DB_SIGNAL_OP, x, db ); } }
+		case 0: // flareable
+			if ( uncoupled( x, NULL, db ) ) {
+				db_op( DB_DEPRECATE_OP, x, db );
+				return 1; }
+			return -1;
+		case 1: // already flared or to-be-released
+			return 0;
+		case 2: // deprecatable
+			db_deprecate( x, db );
+			return 1;
+		default: return -1; } }
 	else if ( deprecatable( x, db ) ) {
 		// deprecate x and all its ascendants
 		db_deprecate( x, db );
@@ -189,28 +197,33 @@ db_signal( CNInstance *x, CNDB *db )
 				x = popListItem( &stack );
 				ndx = pop_item( &stack ); }
 			if ( !ndx ) ndx = 1;
-			else return; } }
+			else return 1; } }
+	else return 0;
 }
 static inline int
-flareable( CNInstance *e, CNDB *db )
+flareable( CNInstance *x, CNDB *db )
 /*
-	returns 2 if e is deprecatable
-	returns 1 if e is neither to-be-released nor flared nor rehabilitated
-	returns 0 otherwise - which we assume applies to all its ascendants
+	Assumption: x is Base Entity (therefore cannot hold nil)
+	returns  2 if x is deprecatable
+	returns  1 if x is already flared or to-be-released
+	returns -1 if x is rehabilitated - which implies re-coupled
+	returns  0 otherwise - which we assume applies to all x's ascendants
 	Note that newborn and released entities are flareable (vs. deprecatable)
 */
 {
-	CNInstance *nil = db->nil;
-	if ( cn_hold( e, nil ) )
+	CNInstance *nil = db->nil, *f;
+	if (!( f=cn_instance( x, nil, 1 ) ))
+		return 2;
+	else if (( f->as_sub[1] )) // to-be-released
+		return 1;
+	else if (( f->as_sub[0] )) // newborn
 		return 0;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	if (( f )) {
-		if (( f->as_sub[ 1 ] ))
-			return 0; // to-be-released
-		if (( f->as_sub[ 0 ] ))
-			return 1; // newborn
-		return !cn_instance( nil, e, 0 ); }
-	return 2; // deprecatable
+	else if (( f=cn_instance( nil, x, 0 ) )) {
+		if (( f->as_sub[0] )) // already flared
+			return 1;
+		else if (( f->as_sub[1] )) // rehabilitated
+			return -1; }
+	return 0; // just released
 }
 static inline int
 uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
@@ -242,13 +255,16 @@ void
 db_fire( CNInstance *proxy, CNDB *db )
 /*
 	Assumption: invoked during bm_context_update() right after db_update()
-	invokes db_op( DB_FIRE_OP, x, db ) on all x:(( proxy, . ), ... )
-	proceeding top-down
+	invokes db_op( DB_FIRE_OP, x, db ) on either all
+		x:(( proxy, . ), ... ) - proceeding top-down
+	or, if connection is dangling, on x=proxy
 */
 {
-	if ( deprecatable( proxy, db ) )
-		for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next )
-			fire( i->ptr, db );
+	if ( deprecatable( proxy, db ) ) {
+		if (( DBProxyThat( proxy ) )) {
+			for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next )
+				fire( i->ptr, db ); }
+		else fire( proxy, db ); }
 }
 static inline void
 fire( CNInstance *x, CNDB *db )
@@ -284,6 +300,29 @@ fire( CNInstance *x, CNDB *db )
 RETURN:
 	freeItem( i );
 }
+
+//===========================================================================
+//	db_proxy
+//===========================================================================
+CNInstance *
+db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
+/*
+	Assumptions: proxy not already created, and that!=NULL
+*/
+{
+	CNInstance *e = cn_new( cn_new(this,that), NULL );
+	db_op( DB_MANIFEST_OP, e, db );
+	return e;
+}
+
+#ifdef PREVIOUS
+void
+db_deprecate_proxy( CNInstance *proxy, CNDB *db )
+{
+	if (( deprecatable( proxy, db ) ))
+		db_deprecate( proxy, db );
+}
+#endif
 
 //===========================================================================
 //	db_match
@@ -558,27 +597,6 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack )
 		else if (( *stack ))
 			i = popListItem( stack );
 		else return NULL; }
-}
-
-//===========================================================================
-//	db_new_proxy / db_deprecate_proxy
-//===========================================================================
-CNInstance *
-db_new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
-/*
-	Assumptions: that!=NULL, proxy not already created
-*/
-{
-	CNInstance *e = cn_new( cn_new(this,that), NULL );
-	db_op( DB_MANIFEST_OP, e, db );
-	return e;
-}
-
-void
-db_deprecate_proxy( CNInstance *proxy, CNDB *db )
-{
-	if (( deprecatable( proxy, db ) ))
-		db_deprecate( proxy, db );
 }
 
 //===========================================================================

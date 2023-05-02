@@ -23,7 +23,7 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 CNInstance *	db_register( char *identifier, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
-void		db_signal( CNInstance *, CNDB * );
+int		db_signal( CNInstance *, CNDB * );
 int		db_match( CNInstance *, CNDB *, CNInstance *, CNDB * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
@@ -47,9 +47,11 @@ static inline int DBStarMatch( CNInstance *e, CNDB *db ) {
 //===========================================================================
 //	proxy
 //===========================================================================
-CNInstance *	db_new_proxy( CNEntity *, CNEntity *, CNDB * );
-void		db_deprecate_proxy( CNInstance *, CNDB * );
+CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
 void		db_fire( CNInstance *, CNDB * );
+#ifdef PREVIOUS
+void		db_deprecate_proxy( CNInstance *, CNDB * );
+#endif
 
 //---------------------------------------------------------------------------
 //	isProxy, DBProxyThis, DBProxyThat, isProxySelf
