@@ -10,19 +10,11 @@ TODO
 		. with interactive traversal
 
 DONE
-	. implemented db_fire()
-	  TO BE UPDATED: db-update.txt specs
-	 	 . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
-	 	 . document db_update() assumption wrt. entities order, that is:
-
-	    db_update() assumes that released entities are registered from
-	    lower to higher level (e.g. { a, b, (a,b) }) in nil->as_sub[1]
-
-	    However db_instantiate() registers newborn entities in
-	    nil->as_sub[1] from higher to lower level (e.g. { (a,b), a, b })
-
-	    => reorder newborn to-be-deprecated at ( e, nil ) level [DONE]
-
+	. published updated ./design/specs/db-update.txt specs
+	  . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
+	  . documented db_update() assumption and counter-measure wrt. entities order
+	. implemented db_fire( proxy, db ) - note that we no longer have restrictions
+	  concerning newborn entities
 	. Now manifest proxies upon creation
 	. new Register Variable %@ (for active connections)
 	. implemented per event < src
