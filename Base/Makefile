@@ -3,11 +3,12 @@ SHELL = /bin/sh
 
 .SUFFIXES: .c .o
 
-SRCS =	pair.c \
-	list.c \
-	entity.c \
-	registry.c \
-	string_util.c
+SRCS =	registry.c \
+		pair.c \
+		list.c \
+	string_util.c \
+		prune.c \
+	entity.c
 
 LIB = libcn.a
 

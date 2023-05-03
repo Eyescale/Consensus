@@ -346,12 +346,11 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 		// ward off concurrent reassignment case
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			candidate = i->ptr;
-			if ( !concurrent( candidate, db ) )
-				continue;
-			if ( candidate->sub[ 1 ]==f )
-				return candidate;
-			else goto ERR; }
-		// perform assignment
+			if ( concurrent( candidate, db ) ) {
+				if ( candidate->sub[ 1 ]==f )
+					return candidate;
+				goto ERR; } }
+		// deprecate previous assignment and spot reassignment
 		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 			candidate = i->ptr;
 			if ( candidate->sub[ 1 ]==f )
@@ -374,7 +373,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	return instance;
 ERR:
 	db_outputf( stderr, db,
-		"B%%::Warning: concurrent reassignment :%_:%_->%_ unauthorized\n",
+		"B%%::Warning: concurrent reassignment :%_:%_->%_ not authorized\n",
 		e->sub[1], candidate->sub[1], f );
 	return NULL;
 }

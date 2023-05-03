@@ -294,8 +294,8 @@
 	else on ~( %%, ? ) < ..
 		in %<?:( MULT )>
 			do :< p, q, c >: %<(!,?:...)>
-			do : r : 0
 			do : state : MULT
+			do : r : 0
 			in OPT
 				do : t : 0
 				do ~( X )
