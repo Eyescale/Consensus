@@ -128,6 +128,9 @@ prune_base( char *p, PruneType type )
 	int informed = 0;
 	while ( *p ) {
 		switch ( *p ) {
+		case '{':
+		case '!':
+			p++; break;
 		case '(':
 			p = prune_level( p, 0 );
 			informed = 1; break;
@@ -160,15 +163,16 @@ prune_base( char *p, PruneType type )
 			p = prune_regex( p );
 			informed = 1; break;
 		case '*':
+		case '.':
 			if ( p[1]=='?' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		default:
-			if ( strmatch( ",<>)}|", *p ) )
-				return p;
-			else { // including case '.'
-				do p++; while ( !is_separator(*p) );
-				informed = 1; } } }
+			if ( !is_separator( *p ) ) {
+				do p++; while ( !is_separator( *p ) );
+				informed = 1; }
+			else {
+				return p; } } } // cases ,<>)}|
 	return p;
 }
 
