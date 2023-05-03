@@ -2,13 +2,10 @@ See Also: design/new-features-and-additions.txt
 TODO
 	. parser.c
 		extract parsing MACROS -> into Base/include/???
-			. integrate 'caught' in CNParserData => all flags
-			. state and errnum actually belong to BMParseData
 			. move string macros from parser_private.h into string_util.h
 		extract cn_parser_getc -> cn_io_getc -> Base/io.c
 			. rewrite preprocess using parsing MACROS
-			. preprocess pragmas
-			. push/pop io
+			. extend preprocessor -> push/pop io
 
 	. rewrite Maths/add using design/story/func.story template
 	. Maths

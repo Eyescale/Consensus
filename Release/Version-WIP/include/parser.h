@@ -77,8 +77,9 @@ typedef enum {
 } BMParseErr;
 
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
-char *	bm_parse( int event, BMParseData *, BMParseMode, BMParseCB );
-int	bm_parse_init( BMParseData * );
+char *	bm_parse( int event, BMParseMode, BMParseData *, BMParseCB );
+void	bm_parse_init( BMParseData *, BMParseMode mode );
+void	bm_parse_exit( BMParseData * );
 void	bm_parse_caution( BMParseData *, BMParseErr, BMParseMode );
 void	bm_parse_report( BMParseData *, BMParseMode );
 

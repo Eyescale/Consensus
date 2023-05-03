@@ -36,21 +36,21 @@ bm_read( BMReadMode mode, ... )
 */
 {
 	char *path;
-	FILE *file;
+	FILE *stream;
 	BMContext *ctx;
 	va_list ap;
 	va_start( ap, mode );
 	switch ( mode ) {
 	case BM_INPUT:
-		file = va_arg( ap, FILE * );
+		stream = va_arg( ap, FILE * );
 		break;
 	case BM_LOAD:
 		ctx = va_arg( ap, BMContext * );
 		// no break;
 	case BM_STORY:
 		path = va_arg( ap, char * );
-		file = fopen( path, "r" );
-		if ( file == NULL ) {
+		stream = fopen( path, "r" );
+		if ( stream == NULL ) {
 			fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 			va_end( ap );
 			return NULL; }
@@ -59,66 +59,56 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	CNParser parser;
-	cn_parser_init( &parser, file );
+	cn_parser_init( &parser, stream );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
-	data.string = newString();
         data.parser = &parser;
-	switch ( mode ) {
-	case BM_LOAD:
-		data.ctx = ctx;
-		data.type = DO;
-		break;
-	case BM_INPUT:
-		data.type = DO;
-		break;
-	case BM_STORY:
+	bm_parse_init( &data, mode );
+
+	if ( mode==BM_LOAD ) {
+		data.ctx = ctx; }
+	else if ( mode==BM_STORY ) {
 		data.narrative = newNarrative();
 		data.occurrence = data.narrative->root;
 		data.story = newRegistry( IndexedByCharacter );
-		addItem( &data.stack.occurrences, data.occurrence );
-		break; }
+		addItem( &data.stack.occurrences, data.occurrence ); }
 
-	bm_parse_init( &data );
-	data.state = "base";
 	int event = 0;
 	do {
 		event = cn_parser_getc( &parser, event );
-		data.state = bm_parse( event, &data, mode, read_CB );
+		data.state = bm_parse( event, mode, &data, read_CB );
 	} while ( strcmp( data.state, "" ) && !data.errnum );
 
+	union { int value; void *ptr; } retval;
 	switch ( mode ) {
 	case BM_LOAD:
-		fclose( file );
-		freeString( data.string );
-		union { int value; void *ptr; } icast;
-		icast.value = data.errnum;
-		return icast.ptr;
-	case BM_INPUT: ;
-		if ( data.errnum ) {
-			freeString( data.string );
-			return NULL; }
+		fclose( stream );
+		retval.value = data.errnum;
+		break;
+	case BM_INPUT:
+		if ( data.errnum )
+			retval.ptr = NULL;
 		else {
-			CNString *s = data.string;
-			char *expression = StringFinish( s, 0 );
-			StringReset( s, CNStringMode );
-			freeString( s );
-			return expression; }
+			retval.ptr = StringFinish( data.string, 0 );
+			StringReset( data.string, CNStringMode ); }
+		break;
 	case BM_STORY:
-		fclose( file );
-		freeString( data.string );
+		fclose( stream );
 		freeListItem( &data.stack.occurrences );
-		CNStory *take = NULL;
-		if ( !data.errnum ) {
-			if ( read_CB( NarrativeTake, 0, &data ) )
-				take = data.story;
-			else {
-				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); } }
-		if ( !take ) {
+		if ( data.errnum )
+			retval.ptr = NULL;
+		else if ( read_CB( NarrativeTake, 0, &data ) )
+			retval.ptr = data.story;
+		else {
+			retval.ptr = NULL;
+			fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); }
+		if ( !retval.ptr ) {
 			freeNarrative( data.narrative );
-			freeStory( data.story ); }
-		return take; }
+			freeStory( data.story ); } }
+
+	bm_parse_exit( &data );
+	return retval.ptr;
 }
 
 //---------------------------------------------------------------------------

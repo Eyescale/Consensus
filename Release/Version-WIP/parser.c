@@ -6,6 +6,24 @@
 #include "traverse.h"
 
 //===========================================================================
+//	bm_parse_init / bm_parse_exit
+//===========================================================================
+void
+bm_parse_init( BMParseData *data, BMParseMode mode )
+{
+	data->string = newString();
+	data->state = "base";
+	data->TAB_LAST = -1;
+	data->flags = FIRST;
+	data->type = ( mode==BM_STORY ) ? 0 : DO;
+}
+void
+bm_parse_exit( BMParseData *data )
+{
+	freeString( data->string );
+}
+
+//===========================================================================
 //	bm_parse
 //===========================================================================
 /*
@@ -25,7 +43,7 @@
 	>		output
 */
 char *
-bm_parse( int event, BMParseData *data, BMParseMode mode, BMParseCB cb )
+bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 {
 	CNParser *parser = data->parser;
 
@@ -1087,17 +1105,6 @@ else {
 		fprintf( stderr, "Error: %s: l%dc%d: per contrary not supported\n", src, l, c ); break;
 	default:
 		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); } }
-}
-
-//===========================================================================
-//	bm_parse_init
-//===========================================================================
-int
-bm_parse_init( BMParseData *data )
-{
-	data->TAB_LAST = -1;
-	data->flags = FIRST;
-	return 0;
 }
 
 //===========================================================================
