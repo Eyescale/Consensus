@@ -18,11 +18,11 @@ readStory( char *path )
 }
 
 //===========================================================================
-//	bm_read	- internal
+//	bm_read
 //===========================================================================
 static int read_CB( BMParseOp, BMParseMode, void * );
-static BMParseMode bm_read_init( CNParser *, BMParseData *, BMReadMode, BMContext *, FILE * );
-static void * bm_read_exit( int, BMParseData *, BMReadMode );
+static CNNarrative * newNarrative( void );
+static void freeNarrative( CNNarrative * );
 
 void *
 bm_read( BMReadMode mode, ... )
@@ -59,27 +59,74 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	CNParser parser;
+	cn_parser_init( &parser, file );
+
 	BMParseData data;
-	bm_read_init( &parser, &data, mode, ctx, file );
+	memset( &data, 0, sizeof(BMParseData) );
+	data.string = newString();
+        data.parser = &parser;
+	switch ( mode ) {
+	case BM_LOAD:
+		data.ctx = ctx;
+		data.type = DO;
+		break;
+	case BM_INPUT:
+		data.type = DO;
+		break;
+	case BM_STORY:
+		data.narrative = newNarrative();
+		data.occurrence = data.narrative->root;
+		data.story = newRegistry( IndexedByCharacter );
+		addItem( &data.stack.occurrences, data.occurrence );
+		break; }
+
+	bm_parse_init( &data );
+	data.state = "base";
+	int event = 0;
 	do {
-		int event = cn_parser_getc( &parser );
-		if ( event!=EOF && event!='\n' ) {
-			parser.column++; }
-		parser.state = bm_parse( event, &data, mode, read_CB );
-		if ( !strcmp( parser.state, "" ) || parser.errnum ) {
-			break; }
-		if ( event=='\n' ) {
-			parser.column = 0;
-			parser.line++; }
-	} while ( strcmp( parser.state, "" ) );
-	if (!( mode == BM_INPUT ))
+		event = cn_parser_getc( &parser, event );
+		data.state = bm_parse( event, &data, mode, read_CB );
+	} while ( strcmp( data.state, "" ) && !data.errnum );
+
+	switch ( mode ) {
+	case BM_LOAD:
 		fclose( file );
-	return bm_read_exit( parser.errnum, &data, mode );
+		freeString( data.string );
+		union { int value; void *ptr; } icast;
+		icast.value = data.errnum;
+		return icast.ptr;
+	case BM_INPUT: ;
+		if ( data.errnum ) {
+			freeString( data.string );
+			return NULL; }
+		else {
+			CNString *s = data.string;
+			char *expression = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			return expression; }
+	case BM_STORY:
+		fclose( file );
+		freeString( data.string );
+		freeListItem( &data.stack.occurrences );
+		CNStory *take = NULL;
+		if ( !data.errnum ) {
+			if ( read_CB( NarrativeTake, 0, &data ) )
+				take = data.story;
+			else {
+				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); } }
+		if ( !take ) {
+			freeNarrative( data.narrative );
+			freeStory( data.story ); }
+		return take; }
 }
 
-static void narrative_reorder( CNNarrative * );
-static CNNarrative * newNarrative( void );
+//---------------------------------------------------------------------------
+//	read_CB	- invoked by bm_parse()
+//---------------------------------------------------------------------------
 static CNOccurrence * newOccurrence( int );
+static void narrative_reorder( CNNarrative * );
+
 static int
 read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 {
@@ -179,63 +226,90 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 	return 1;
 }
 
-static BMParseMode
-bm_read_init( CNParser *parser, BMParseData *data, BMReadMode mode, BMContext *ctx, FILE *file )
+//---------------------------------------------------------------------------
+//	narrative_reorder
+//---------------------------------------------------------------------------
+static void
+narrative_reorder( CNNarrative *narrative )
 {
-	memset( data, 0, sizeof(BMParseData) );
-	data->string = newString();
-	switch ( mode ) {
-	case BM_LOAD:
-		data->ctx = ctx;
-		data->type = DO;
-		break;
-	case BM_INPUT:
-		data->type = DO;
-		break;
-	case BM_STORY:
-		data->narrative = newNarrative();
-		data->occurrence = data->narrative->root;
-		data->story = newRegistry( IndexedByCharacter );
-		addItem( &data->stack.occurrences, data->occurrence );
-		break; }
-	bm_parse_init( data, parser, mode, "base", file );
-	return mode;
+	if ( narrative == NULL ) return;
+	CNOccurrence *occurrence = narrative->root;
+	listItem *i = newItem( occurrence ), *stack = NULL;
+	for ( ; ; ) {
+		occurrence = i->ptr;
+		listItem *j = occurrence->sub;
+		if (( j )) { addItem( &stack, i ); i = j; }
+		else {
+			for ( ; ; ) {
+				if (( i->next )) {
+					i = i->next;
+					break; }
+				else if (( stack )) {
+					i = popListItem( &stack );
+					occurrence = i->ptr;
+					reorderListItem( &occurrence->sub ); }
+				else {
+					freeItem( i );
+					return; } } } }
 }
 
-static void freeNarrative( CNNarrative * );
-static void *
-bm_read_exit( int errnum, BMParseData *data, BMReadMode mode )
+//---------------------------------------------------------------------------
+//	newNarrative / freeNarrative
+//---------------------------------------------------------------------------
+static CNNarrative *
+newNarrative( void )
 {
-	switch ( mode ) {
-	case BM_LOAD:
-		freeString( data->string );
-		union { int value; void *ptr; } icast;
-		icast.value = errnum;
-		return icast.ptr;
-	case BM_INPUT: ;
-		if ( errnum ) {
-			freeString( data->string );
-			return NULL; }
+	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) );
+}
+
+static void freeOccurrence( CNOccurrence * );
+static void
+freeNarrative( CNNarrative *narrative )
+{
+	if (( narrative )) {
+		char *proto = narrative->proto;
+		if (( proto )) free( proto );
+		freeOccurrence( narrative->root );
+		freePair((Pair *) narrative ); }
+}
+
+//---------------------------------------------------------------------------
+//	newOccurrence / freeOccurrence
+//---------------------------------------------------------------------------
+static CNOccurrence *
+newOccurrence( int type )
+{
+	union { int value; void *ptr; } icast;
+	icast.value = type;
+	Pair *data = newPair( icast.ptr, NULL );
+	return (CNOccurrence *) newPair( data, NULL );
+}
+
+static void
+freeOccurrence( CNOccurrence *occurrence )
+{
+	if ( occurrence == NULL ) return;
+	listItem *i = newItem( occurrence ), *stack = NULL;
+	for ( ; ; ) {
+		occurrence = i->ptr;
+		listItem *j = occurrence->sub;
+		if (( j )) { addItem( &stack, i ); i = j; }
 		else {
-			CNString *s = data->string;
-			char *expression = StringFinish( s, 0 );
-			StringReset( s, CNStringMode );
-			freeString( s );
-			return expression; }
-		break;
-	case BM_STORY:
-		freeString( data->string );
-		freeListItem( &data->stack.occurrences );
-		CNStory *take = NULL;
-		if ( !errnum ) {
-			if ( read_CB( NarrativeTake, 0, data ) )
-				take = data->story;
-			else {
-				fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); } }
-		if ( !take ) {
-			freeNarrative( data->narrative );
-			freeStory( data->story ); }
-		return take; }
+			for ( ; ; ) {
+				char *expression = occurrence->data->expression;
+				if (( expression )) free( expression );
+				freePair((Pair *) occurrence->data );
+				freePair((Pair *) occurrence );
+				if (( i->next )) {
+					i = i->next;
+					break; }
+				else if (( stack )) {
+					i = popListItem( &stack );
+					occurrence = i->ptr;
+					freeListItem( &occurrence->sub ); }
+				else {
+					freeItem( i );
+					return; } } } }
 }
 
 //===========================================================================
@@ -250,7 +324,6 @@ freeStory( CNStory *story )
 	freeRegistry( story, free_CB );
 }
 
-static void freeOccurrence( CNOccurrence * );
 static void
 free_CB( Registry *registry, Pair *entry )
 {
@@ -334,90 +407,5 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 				else {
 					freeItem( i );
 					return 0; } } } }
-}
-
-//===========================================================================
-//	newNarrative / freeNarrative
-//===========================================================================
-static CNNarrative *
-newNarrative( void )
-{
-	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) );
-}
-
-static void
-freeNarrative( CNNarrative *narrative )
-{
-	if (( narrative )) {
-		char *proto = narrative->proto;
-		if (( proto )) free( proto );
-		freeOccurrence( narrative->root );
-		freePair((Pair *) narrative ); }
-}
-
-//===========================================================================
-//	narrative_reorder
-//===========================================================================
-static void
-narrative_reorder( CNNarrative *narrative )
-{
-	if ( narrative == NULL ) return;
-	CNOccurrence *occurrence = narrative->root;
-	listItem *i = newItem( occurrence ), *stack = NULL;
-	for ( ; ; ) {
-		occurrence = i->ptr;
-		listItem *j = occurrence->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
-		else {
-			for ( ; ; ) {
-				if (( i->next )) {
-					i = i->next;
-					break; }
-				else if (( stack )) {
-					i = popListItem( &stack );
-					occurrence = i->ptr;
-					reorderListItem( &occurrence->sub ); }
-				else {
-					freeItem( i );
-					return; } } } }
-}
-
-//===========================================================================
-//	newOccurrence / freeOccurrence
-//===========================================================================
-static CNOccurrence *
-newOccurrence( int type )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = type;
-	Pair *data = newPair( icast.ptr, NULL );
-	return (CNOccurrence *) newPair( data, NULL );
-}
-
-static void
-freeOccurrence( CNOccurrence *occurrence )
-{
-	if ( occurrence == NULL ) return;
-	listItem *i = newItem( occurrence ), *stack = NULL;
-	for ( ; ; ) {
-		occurrence = i->ptr;
-		listItem *j = occurrence->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
-		else {
-			for ( ; ; ) {
-				char *expression = occurrence->data->expression;
-				if (( expression )) free( expression );
-				freePair((Pair *) occurrence->data );
-				freePair((Pair *) occurrence );
-				if (( i->next )) {
-					i = i->next;
-					break; }
-				else if (( stack )) {
-					i = popListItem( &stack );
-					occurrence = i->ptr;
-					freeListItem( &occurrence->sub ); }
-				else {
-					freeItem( i );
-					return; } } } }
 }
 

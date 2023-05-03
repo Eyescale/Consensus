@@ -13,7 +13,7 @@
 // #define DEBUG
 
 #ifdef DEBUG
-#define	DBGMonitor \
+#define	DBGMonitor( state, event, line, column ) \
 	fprintf( stderr, "bm_parse:l%dc%d: in \"%s\" on ", line, column, state ); \
 	switch ( event ) { \
 	case EOF: fprintf( stderr, "EOF" ); break; \
@@ -23,18 +23,14 @@
 	} \
 	fprintf( stderr, "\n" );
 #else
-#define	DBGMonitor
+#define	DBGMonitor( state, event, line, column )
 #endif
 
-#define BMParseBegin( parser ) \
-			char *state	= parser->state; \
-			int column	= parser->column; \
-			int line	= parser->line; \
-			int errnum	= 0; \
+#define BMParseBegin( state, event, line, column ) \
 			int caught; \
 			do { \
 				caught = CNCaughtTest; \
-				DBGMonitor; bgn_
+				DBGMonitor( state, event, line, column ); bgn_
 
 #define bgn_ 			if ( 0 ) {
 
@@ -85,11 +81,12 @@
 				else bgn_
 
 #define BMParseEnd		end \
-			} while ( !errnum && (caught&CNCaughtReenter) ); \
-			parser->errnum = errnum;
+			} while ( !errnum && (caught&CNCaughtReenter) );
 
-#define CB_if_( cb, mode, data ) \
-	if ( _CB( cb, mode, data ) )
+#define CB_( op, mode, data ) \
+	( cb( op, mode, data ) )
+#define CB_if_( op, mode, data ) \
+	if CB_( op, mode, data )
 
 //===========================================================================
 //	bm_parse string utilities - macros

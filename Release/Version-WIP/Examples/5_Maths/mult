@@ -6,11 +6,10 @@
 		do : Z : ((Z,...)::)
 		do : state : INIT
 	else in : state : INIT
+		do : state : MULT
 		in (((X,*),.),.)
 			do :< P, q >:< *X, *Y >
-		else
-			do :< P, q >:< *Y, *X >
-		do : state : MULT
+		else	do :< P, q >:< *Y, *X >
 	else in : state : MULT
 		on ~( %%, MULT ) < ?  // read operation's results
 			do :< c, v >: %<(!,?:...)>

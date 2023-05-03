@@ -7,14 +7,12 @@
 
 typedef struct {
 	FILE *	stream;
-	char *	state;
 	int	line, column,
-		mode[ 4 ], buffer,
-		errnum;
+		mode[ 4 ], buffer;
 } CNParser;
 
-int	cn_parser_init( CNParser *, char *state, FILE * );
-int	cn_parser_getc( CNParser * );
+int	cn_parser_init( CNParser *, FILE * );
+int	cn_parser_getc( CNParser *, int );
 
 //===========================================================================
 //	bm_read - bm_parse interface
@@ -35,6 +33,8 @@ typedef struct {
 	Pair *		entry;
 	CNOccurrence *	occurrence;
 // bm_parse() only
+	char *		state;
+	int		errnum;
 	int		flags, opt;
 } BMParseData;
 
@@ -78,8 +78,8 @@ typedef enum {
 
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
 char *	bm_parse( int event, BMParseData *, BMParseMode, BMParseCB );
-int	bm_parse_init( BMParseData *, CNParser *, BMParseMode, char *state, FILE * );
+int	bm_parse_init( BMParseData * );
 void	bm_parse_caution( BMParseData *, BMParseErr, BMParseMode );
-void	bm_parse_report( BMParseData *, BMParseErr, BMParseMode );
+void	bm_parse_report( BMParseData *, BMParseMode );
 
 #endif	// PARSER_H

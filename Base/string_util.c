@@ -128,7 +128,7 @@ StringFinish( CNString *string, int trim )
 	return string->data;
 }
 
-char *
+static char *
 l2s( listItem **list, int trim )
 {
 	if ( *list == NULL ) return NULL;

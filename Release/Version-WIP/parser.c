@@ -25,7 +25,7 @@
 	>		output
 */
 char *
-bm_parse( int event, BMParseData *data, BMParseMode mode, BMParseCB _CB )
+bm_parse( int event, BMParseData *data, BMParseMode mode, BMParseCB cb )
 {
 	CNParser *parser = data->parser;
 
@@ -36,12 +36,16 @@ bm_parse( int event, BMParseData *data, BMParseMode mode, BMParseCB _CB )
 	int *		type	= &data->type;
 
 	// shared by copy
+	char *		state	= data->state;
 	int		flags	= data->flags;
+	int		errnum	= 0;
+	int		line	= parser->line;
+	int		column	= parser->column;
 
 	//----------------------------------------------------------------------
 	// bm_parse:	Parser Begin
 	//----------------------------------------------------------------------
-	BMParseBegin( parser )
+	BMParseBegin( state, event, line, column )
 CND_if_( data->opt, EXPR_BGN )
 	in_( "base" )
 if ( mode==BM_STORY ) {
@@ -114,9 +118,9 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 		ons( " \t" )	do_( same )
 		on_( '(' )
 CB_if_( NarrativeTake, mode, data ) {
-				do_( "¶" )	REENTER }
+				do_( "§" )	REENTER }
 		end
-		in_( "¶" ) bgn_
+		in_( "§" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
 					do_( "def$_" )	REENTER
@@ -127,7 +131,7 @@ CB_if_( NarrativeTake, mode, data ) {
 							f_clr( INFORMED )
 							f_set( FIRST|LEVEL ) }
 			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "¶." )	}
+					do_( "§." )	}
 			on_( ',' ) if ( are_f(INFORMED|FIRST|LEVEL) ) {
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
@@ -135,80 +139,80 @@ CB_if_( NarrativeTake, mode, data ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
 							f_set( INFORMED ) }
-			on_( '%' )	do_( "¶%" )	s_take
+			on_( '%' )	do_( "§%" )	s_take
 			on_separator	; // err
 			on_other
 				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "¶$" )	s_take }
+					do_( "§$" )	s_take }
 			end
-		in_( "¶%" ) bgn_
-			on_( '%' )	do_( "¶" )	s_take
+		in_( "§%" ) bgn_
+			on_( '%' )	do_( "§" )	s_take
 							f_set( INFORMED )
 			end
-		in_( "¶." ) bgn_
-			on_( '.' )	do_( "¶.." )
-			on_separator	do_( "¶" )	REENTER
+		in_( "§." ) bgn_
+			on_( '.' )	do_( "§.." )
+			on_separator	do_( "§" )	REENTER
 							s_add( "." )
 							f_set( INFORMED )
-			on_other	do_( "¶.$" )	REENTER
+			on_other	do_( "§.$" )	REENTER
 							s_add( "." )
 			end
-			in_( "¶.." ) bgn_
+			in_( "§.." ) bgn_
 				on_( '.' ) if ( !is_f(FIRST) ) {
-						do_( "¶..." )	s_add( "..." )
+						do_( "§..." )	s_add( "..." )
 								f_pop( stack, 0 )
 								f_set( INFORMED ) }
-				on_other	do_( "¶" )	REENTER
+				on_other	do_( "§" )	REENTER
 								s_add( ".." )
 								f_set( INFORMED )
 				end
-			in_( "¶..." ) bgn_
+			in_( "§..." ) bgn_
 				ons( " \t" )	do_( same )
 				on_( ')' ) if ( !is_f(LEVEL) ) {
-						do_( "¶" ) 	s_take }
+						do_( "§" ) 	s_take }
 				end
-		in_( "¶.$" ) bgn_
-			ons( " \t:,)" )	do_( "¶.$_" )	REENTER
+		in_( "§.$" ) bgn_
+			ons( " \t:,)" )	do_( "§.$_" )	REENTER
 			on_separator	; // err
 			on_other	do_( same )	s_take
 			end
-			in_( "¶.$_" ) bgn_
+			in_( "§.$_" ) bgn_
 				ons( " \t" )	do_( same )
 				on_( ',' ) if ( is_f(FIRST) ) {
-						do_( "¶.$," )	s_take
+						do_( "§.$," )	s_take
 								f_clr( FIRST ) }
-				on_( ':' )	do_( "¶.$:" )	s_take
-				on_( ')' )	do_( "¶" )	REENTER
+				on_( ':' )	do_( "§.$:" )	s_take
+				on_( ')' )	do_( "§" )	REENTER
 								f_set( INFORMED )
 				end
-			in_( "¶.$," ) bgn_
+			in_( "§.$," ) bgn_
 				ons( " \t" )	do_( same )
-				on_( '.' )	do_( "¶.$,." )
-				on_other	do_( "¶" )	REENTER
+				on_( '.' )	do_( "§.$,." )
+				on_other	do_( "§" )	REENTER
 				end
-				in_( "¶.$,." ) bgn_
-					on_( '.' )	do_( "¶.$,.." )
-					on_separator	do_( "¶" )	REENTER
+				in_( "§.$,." ) bgn_
+					on_( '.' )	do_( "§.$,.." )
+					on_separator	do_( "§" )	REENTER
 									s_add( "." )
 									f_set( INFORMED )
-					on_other	do_( "¶.$" )	REENTER
+					on_other	do_( "§.$" )	REENTER
 									s_add( "." )
 					end
-				in_( "¶.$,.." ) bgn_
-					on_( '.' )	do_( "¶" )	s_add( "..." )
+				in_( "§.$,.." ) bgn_
+					on_( '.' )	do_( "§" )	s_add( "..." )
 									f_set( INFORMED )
-					on_other	do_( "¶" )	REENTER
+					on_other	do_( "§" )	REENTER
 									s_add( ".." )
 									f_set( INFORMED )
 					end
-			in_( "¶.$:" ) bgn_
+			in_( "§.$:" ) bgn_
 				ons( " \t" )	do_( same )
-				on_( '(' )	do_( "¶" )	REENTER
+				on_( '(' )	do_( "§" )	REENTER
 				on_separator	; // err
-				on_other	do_( "¶" )	REENTER
+				on_other	do_( "§" )	REENTER
 				end
-		in_( "¶$" ) bgn_
-			on_separator	do_( "¶" )	REENTER
+		in_( "§$" ) bgn_
+			on_separator	do_( "§" )	REENTER
 			on_other	do_( same )	s_take
 							f_set( INFORMED )
 			end
@@ -956,7 +960,7 @@ else {					; } // err
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
-_CB( ExpressionTake, mode, data );
+CB_( ExpressionTake, mode, data );
 		bgn_
 			on_any
 if ( mode==BM_INPUT ) {		do_( "" ) }
@@ -969,9 +973,9 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------
 	BMParseDefault
-		on_( EOF )		errnum= ErrUnexpectedEOF;
+		on_( EOF )		errnum = ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState;
-		in_( "¶..." ) bgn_
+		in_( "§..." ) bgn_
 			on_( ')' )	errnum = ErrEllipsisLevel;
 			on_other	errnum = ErrSyntaxError;
 			end
@@ -1002,8 +1006,9 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	// bm_parse:	Parser End
 	//----------------------------------------------------------------------
 	BMParseEnd
-	if ( errnum ) bm_parse_report( data, errnum, mode );
+	data->errnum = errnum;
 	data->flags = flags;
+	if ( errnum ) bm_parse_report( data, mode );
 	return state;
 }
 
@@ -1026,7 +1031,7 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	default: break; }
 }
 void
-bm_parse_report( BMParseData *data, BMParseErr errnum, BMParseMode mode )
+bm_parse_report( BMParseData *data, BMParseMode mode )
 {
 	CNParser *parser = data->parser;
 	char *src = (mode==BM_LOAD)  ? "bm_load" :
@@ -1034,9 +1039,9 @@ bm_parse_report( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	char *stump = StringFinish( data->string, 0 );
 
 if ( mode==BM_INPUT ) {
-	switch ( errnum ) {
+	switch ( data->errnum ) {
 	case ErrUnknownState:
-		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", parser->state  ); break;
+		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", data->state  ); break;
 	case ErrUnexpectedEOF:
 		fprintf( stderr, "Error: %s: in expression '%s' unexpected EOF\n", src, stump  ); break;
 	case ErrUnexpectedCR:
@@ -1045,9 +1050,9 @@ if ( mode==BM_INPUT ) {
 		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, stump  ); } }
 else {
 	int l = parser->line, c = parser->column;
-	switch ( errnum ) {
+	switch ( data->errnum ) {
 	case ErrUnknownState:
-		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, parser->state  ); break;
+		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, data->state  ); break;
 	case ErrUnexpectedEOF:
 		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
 	case ErrEllipsisLevel:
@@ -1088,23 +1093,20 @@ else {
 //	bm_parse_init
 //===========================================================================
 int
-bm_parse_init( BMParseData *data, CNParser *parser, BMParseMode mode, char *state, FILE *file )
+bm_parse_init( BMParseData *data )
 {
-	cn_parser_init( parser, "base", file );
-	data->parser = parser;
 	data->TAB_LAST = -1;
 	data->flags = FIRST;
-	return 1;
+	return 0;
 }
 
 //===========================================================================
 //	cn_parser_init
 //===========================================================================
 int
-cn_parser_init( CNParser *parser, char *state, FILE *stream )
+cn_parser_init( CNParser *parser, FILE *stream )
 {
 	memset( parser, 0, sizeof(CNParser) );
-	parser->state = state;
 	parser->stream = stream;
 	parser->line = 1;
 	return 1;
@@ -1116,24 +1118,29 @@ cn_parser_init( CNParser *parser, char *state, FILE *stream )
 static int preprocess( int event, int *mode, int *buffer, int *skipped );
 
 int
-cn_parser_getc( CNParser *data )
+cn_parser_getc( CNParser *data, int last_event )
 /*
 	filters out comments and \cr line continuation from input
 */
 {
+	if ( last_event=='\n' ) {
+		data->column = 0;
+		data->line++; }
 	int event, skipped[ 2 ] = { 0, 0 };
 	int buffer = data->buffer;
 	do {
 		if ( buffer ) { event=buffer; buffer=0; }
 		else event = fgetc( data->stream );
-		event = preprocess( event, data->mode, &buffer, skipped );
-	} while ( !event );
+		event = preprocess( event, data->mode, &buffer, skipped ); }
+	while ( !event );
 	data->buffer = buffer;
 	if ( skipped[ 1 ] ) {
 		data->line += skipped[ 1 ];
-		data->column = skipped[ 0 ];
-	} else {
+		data->column = skipped[ 0 ]; }
+	else {
 		data->column += skipped[ 0 ]; }
+	if (!( event==EOF || event=='\n' )) {
+		data->column++; }
 	return event;
 }
 #define COMMENT		0
@@ -1284,8 +1291,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			case 0:
 				if ( !mode[ STRING ] ) {
 					mode[ COMMENT ] = 1;
-					break;
-				}
+					break; }
 				output = event;
 				break;
 			case 1: // quote just turned on
@@ -1300,8 +1306,7 @@ preprocess( int event, int *mode, int *buffer, int *skipped )
 			output = event;
 			if ( event == '\n' ) {
 				mode[ QUOTE ] = 0;
-				break;
-			}
+				break; }
 			switch ( mode[ QUOTE ] ) {
 			case 0: break;
 			case 1:
