@@ -5,7 +5,7 @@
 
 static CNOccurrence *newOccurrence( CNOccurrenceType );
 static void freeOccurrence( CNOccurrence * );
-static void occurrence_set( CNOccurrence *, listItem **sequence );
+static void occurrence_set( CNOccurrence *, CNString *sequence );
 static void narrative_reorder( CNNarrative * );
 
 typedef enum {

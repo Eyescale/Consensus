@@ -13,7 +13,7 @@
 |
 +==========================================================================*/
 //---------------------------------------------------------------------------
-//	newString, freeString, ...
+//	newString, freeString
 //---------------------------------------------------------------------------
 CNString *
 newString( void )
@@ -28,6 +28,10 @@ freeString( CNString *string )
 	StringReset( string, CNStringAll );
 	freePair( (Pair *) string );
 }
+
+//---------------------------------------------------------------------------
+//	StringStart, StringAppend, StringAffix
+//---------------------------------------------------------------------------
 int
 StringStart( CNString *string, int event )
 {
@@ -65,6 +69,53 @@ StringAffix( CNString *string, int event )
 	list->next = new_item( event );
 	return 0;
 }
+
+//---------------------------------------------------------------------------
+//	StringInformed, StringAt, StringCompare
+//---------------------------------------------------------------------------
+int
+StringInformed( CNString *string )
+{
+	return ( string->data != NULL );
+}
+int
+StringAt( CNString *string )
+{
+	if (( string->data ))
+		switch ( string->mode ) {
+		case CNStringBytes: ;
+			union { int value; void *ptr; } icast;
+			icast.ptr = ((listItem *) string->data )->ptr;
+			return icast.value;
+		case CNStringText:
+			return *(char *)string->data; }
+	return 0;
+}
+int
+StringCompare( CNString *string, char *cmp )
+/*
+	kind of strcmp() except starts from end
+*/
+{
+	if ( string->mode==CNStringText )
+		return strcmp((char *) string->data, cmp );
+
+	union { int value; void *ptr; } icast;
+	listItem *i = string->data;
+	int j;
+	for ( j=strlen(cmp), cmp+=j-1; j-- && (i); i=i->next ) {
+		icast.ptr = i->ptr;
+		int comparison = icast.value - *cmp--;
+		if ( comparison ) return comparison; }
+	return 0;
+}
+
+
+//---------------------------------------------------------------------------
+//	StringFinish, StringReset
+//---------------------------------------------------------------------------
+static char *l2s( listItem **list, int trim );
+
 char *
 StringFinish( CNString *string, int trim )
 {
@@ -76,6 +127,7 @@ StringFinish( CNString *string, int trim )
 		string->mode = CNStringText; }
 	return string->data;
 }
+
 char *
 l2s( listItem **list, int trim )
 {
@@ -140,7 +192,7 @@ l2s( listItem **list, int trim )
 	return str;
 }
 void
-StringReset( CNString *string, int target )
+StringReset( CNString *string, CNStringReset target )
 {
 	switch ( target ) {
 	case CNStringMode:
@@ -157,42 +209,6 @@ StringReset( CNString *string, int target )
 			string->data = NULL;
 			string->mode = CNStringBytes;
 			break; } }
-}
-int
-StringInformed( CNString *string )
-{
-	return ( string->data != NULL );
-}
-int
-StringAt( CNString *string )
-{
-	if (( string->data ))
-		switch ( string->mode ) {
-		case CNStringBytes: ;
-			union { int value; void *ptr; } icast;
-			icast.ptr = ((listItem *) string->data )->ptr;
-			return icast.value;
-		case CNStringText:
-			return *(char *)string->data; }
-	return 0;
-}
-int
-StringCompare( CNString *string, char *cmp )
-/*
-	kind of strcmp() except starts from end
-*/
-{
-	if ( string->mode==CNStringText )
-		return strcmp((char *) string->data, cmp );
-
-	union { int value; void *ptr; } icast;
-	listItem *i = string->data;
-	int j;
-	for ( j=strlen(cmp), cmp+=j-1; j-- && (i); i=i->next ) {
-		icast.ptr = i->ptr;
-		int comparison = icast.value - *cmp--;
-		if ( comparison ) return comparison; }
-	return 0;
 }
 
 /*===========================================================================
@@ -281,70 +297,14 @@ charscan( char *p, char_s *q )
 }
 
 //---------------------------------------------------------------------------
-//	strmake
+//	rxcmp
 //---------------------------------------------------------------------------
-char *
-strmake( char *p )
-{
-	CNString *s = newString();
-	if ( is_separator(*p) )
-		StringAppend( s, *p );
-	else do {
-		StringAppend( s, *p++ );
-	} while ( !is_separator(*p) );
-	p = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-	return p;
-}
-
-//---------------------------------------------------------------------------
-//	strcomp
-//---------------------------------------------------------------------------
-static int equivocal( char *regex, char *p );
-static int rxnext( char *regex, char **r );
 int
-strcomp( char *p, char *q, int cmptype )
-{
-	switch ( cmptype ) {
-	case 0:	// both p and q are null-terminated
-		for ( ; *p; p++, q++ ) {
-			if ( *p == *q ) continue;
-			return *(const unsigned char*)p - *(const unsigned char*)q; }
-		return - *(const unsigned char*)q;
-	case 1:	// both p and q are separator-terminated
-		if ( is_separator(*p) ) {
-			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
-			return *(const unsigned char*)p - *(const unsigned char*)q; }
-		else if ( is_separator(*q) ) {
-			return *(const unsigned char*)p; }
-		else for ( ; !is_separator(*p); p++, q++ ) {
-			if ( *p == *q ) continue;
-			return is_separator(*q) ?
-				*(const unsigned char*)p :
-				*(const unsigned char*)p - *(const unsigned char*)q; }
-		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
-	case 2:; // p is a regex, q is null-terminated
-		char *r = p+1; // skip the leading '/'
-#define RXCMP(r,e) \
-		(( *r=='\0' || *r=='/' ) ? e : ( e ? rxcmp(r,e) : -1 ))
-		int comparison;
-		for ( ; *q; q++, rxnext(p,&r) ) {
-			if (( comparison = RXCMP( r, *q ) )) {
-				if ( equivocal(p,r) ) return -1;
-				else return comparison; } }
-		if (( comparison = RXCMP( r, *q ) )) {
-			if ( equivocal(p,r) ) return -1;
-			else return comparison; }
-		return 0;
-	default:
-		return 1; }
-}
-int
-rxcmp( char *r, int event )
+rxcmp( char *regex, int event )
 {
 	int delta, not;
 	char_s q;
+	char *r = regex;
 	switch ( *r ) {
 	case '.':
 		return 0;
@@ -386,6 +346,69 @@ rxcmp( char *r, int event )
 	default:
 		return event - *(const unsigned char*)r; }
 }
+
+//---------------------------------------------------------------------------
+//	strmake
+//---------------------------------------------------------------------------
+char *
+strmake( char *p )
+{
+	CNString *s = newString();
+	if ( is_separator(*p) )
+		StringAppend( s, *p );
+	else do {
+		StringAppend( s, *p++ );
+	} while ( !is_separator(*p) );
+	p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
+	return p;
+}
+
+//---------------------------------------------------------------------------
+//	strcomp
+//---------------------------------------------------------------------------
+static int equivocal( char *regex, char *p );
+static int rxnext( char *regex, char **r );
+
+int
+strcomp( char *p, char *q, int cmptype )
+{
+	switch ( cmptype ) {
+	case 0:	// both p and q are null-terminated
+		for ( ; *p; p++, q++ ) {
+			if ( *p == *q ) continue;
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
+		return - *(const unsigned char*)q;
+	case 1:	// both p and q are separator-terminated
+		if ( is_separator(*p) ) {
+			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
+		else if ( is_separator(*q) ) {
+			return *(const unsigned char*)p; }
+		else for ( ; !is_separator(*p); p++, q++ ) {
+			if ( *p == *q ) continue;
+			return is_separator(*q) ?
+				*(const unsigned char*)p :
+				*(const unsigned char*)p - *(const unsigned char*)q; }
+		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
+	case 2:; // p is a regex, q is null-terminated
+		char *r = p+1; // skip the leading '/'
+#define RXCMP(r,e) \
+		(( *r=='\0' || *r=='/' ) ? e : ( e ? rxcmp(r,e) : -1 ))
+		int comparison;
+		for ( ; *q; q++, rxnext(p,&r) ) {
+			if (( comparison = RXCMP( r, *q ) )) {
+				if ( equivocal(p,r) ) return -1;
+				else return comparison; } }
+		if (( comparison = RXCMP( r, *q ) )) {
+			if ( equivocal(p,r) ) return -1;
+			else return comparison; }
+		return 0;
+	default:
+		return 1; }
+}
+
 static int
 equivocal( char *regex, char *p )
 {

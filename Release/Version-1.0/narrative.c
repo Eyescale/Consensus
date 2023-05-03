@@ -7,6 +7,9 @@
 #include "narrative.h"
 #include "narrative_private.h"
 
+#define s_take		StringAppend( sequence, event );
+#define s_put( c )	StringAppend( sequence, c );
+
 //===========================================================================
 //	readNarrative
 //===========================================================================
@@ -37,7 +40,7 @@ readNarrative( char *path )
 	FILE *file = fopen( path, "r" );
 	if ( file == NULL ) return NULL;
 
-	listItem *sequence = NULL;
+	CNString *sequence = newString();
 	struct {
 		listItem *occurrence;
 		listItem *position;
@@ -156,7 +159,7 @@ readNarrative( char *path )
 				in_( "do_" ) bgn_
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
-					on_( '>' )	do_( "do >" )	add_item( &sequence, event );
+					on_( '>' )	do_( "do >" )	s_take
 					on_( '/' )	; // err
 					on_other	do_( "_expr" )	REENTER
 									type = DO;
@@ -165,25 +168,25 @@ readNarrative( char *path )
 					on_( '\t' )	do_( same )
 					on_( ' ' )	do_( same )
 					on_( ':' )	do_( "_expr" )	type = OUTPUT;
-									add_item( &sequence, event );
-					on_( '\"' )	do_( "do >\"" )	add_item( &sequence, event );
+									s_take
+					on_( '\"' )	do_( "do >\"" )	s_take
 					end
 					in_( "do >\"" ) bgn_
-						on_( '\t' )	do_( same )	add_item( &sequence, '\\' );
-										add_item( &sequence, 't' );
-						on_( '\"' )	do_( "do >_" )	add_item( &sequence, event );
-						on_( '\\' )	do_( "do >\"\\" ) add_item( &sequence, event );
-						on_other	do_( same )	add_item( &sequence, event );
+						on_( '\t' )	do_( same )	s_put( '\\' )
+										s_put( 't' )
+						on_( '\"' )	do_( "do >_" )	s_take
+						on_( '\\' )	do_( "do >\"\\" ) s_take
+						on_other	do_( same )	s_take
 						end
 						in_( "do >\"\\" ) bgn_
 							on_( '\n' )	; // err
-							on_other	do_( "do >\"" )	add_item( &sequence, event );
+							on_other	do_( "do >\"" )	s_take
 							end
 					in_( "do >_" ) bgn_
 						on_( '\n' )	do_( "_expr" )	REENTER
 										type = OUTPUT;
 						on_( ':' )	do_( "_expr" )	type = OUTPUT;
-										add_item( &sequence, event );
+										s_take
 						on_( '\t' )	do_( same )
 						on_( ' ' )	do_( same )
 						end
@@ -276,35 +279,35 @@ readNarrative( char *path )
 		on_( ' ' )	do_( same )
 		on_( '*' )	do_( "*" )
 		on_( '%' )	do_( "%" )
-		on_( '~' )	do_( same )	add_item( &sequence, event );
+		on_( '~' )	do_( same )	s_take
 		on_( '(' )
 			if ( !informed ) {
 				do_( same )	level++; counter++;
-						add_item( &sequence, event );
+						s_take
 						add_item( &stack.position, first );
 						first = 1; informed = 0;
 			}
 		on_( ',' )
 			if ( first && informed && ( level > 0 )) {
-				do_( same )	add_item( &sequence, event );
+				do_( same )	s_take
 						first = 0; informed = 0;
 			}
 		on_( ':' )
 			if ( informed ) {
-				do_( same )	add_item( &sequence, event );
+				do_( same )	s_take
 						if ( first ) first |= FILTERED;
 						informed = 0;
 			}
 		on_( '<' )
 			if (( first & FILTERED ) && ( type == DO ) && ( level == 0 )) {
-				do_( "expr_" )	add_item( &sequence, event );
+				do_( "expr_" )	s_take
 						CNOccurrence *occurrence = stack.occurrence->ptr;
 						occurrence->type = typelse ? ELSE_INPUT : INPUT;
 			}
 		on_( ')' )
 			if ( informed && ( level > 0 )) {
 				do_( same )	level--;
-						add_item( &sequence, event );
+						s_take
 						if ( counter ) counter--;
 						else {
 							counter = (int) popListItem( &stack.counter );
@@ -314,25 +317,25 @@ readNarrative( char *path )
 			}
 		on_( '?' )
 			if ( !informed && !marked && (stack.counter)) {
-				do_( "?." )	add_item( &sequence, event );
+				do_( "?." )	s_take
 						marked = 1; informed = 1;
 			}
 		on_( '.' )
 			if ( !informed ) {
-				do_( "?." )	add_item( &sequence, event );
+				do_( "?." )	s_take
 						informed = 1;
 			}
 		on_( '/' )	do_( "expr_" )	REENTER
 		on_separator	; // err
 		on_other
 			if ( !informed ) {
-				do_( "term" )	add_item( &sequence, event );
+				do_( "term" )	s_take
 						informed = 1;
 			}
 		end
 		in_( "%" ) bgn_
 			on_( '(' )	do_( "expr" )	REENTER
-							add_item( &sequence, '%' );
+							s_put( '%' )
 							add_item( &stack.counter, counter );
 							add_item( &stack.marked, marked );
 							counter = marked = 0;
@@ -341,10 +344,10 @@ readNarrative( char *path )
 			on_( '\t' )	do_( same )
 			on_( ' ' )	do_( same )
 			ons( ":,)" )	do_( "expr" )	REENTER
-							add_item( &sequence, '*' );
+							s_put( '*' )
 							informed = 1;
 			on_other	do_( "expr" )	REENTER
-							add_item( &sequence, '*' );
+							s_put( '*' )
 			end
 		in_( "?." ) bgn_
 			on_( '\t' )	do_( same )
@@ -355,14 +358,14 @@ readNarrative( char *path )
 			end
 		in_( "term" ) bgn_
 			on_separator	do_( "expr" )	REENTER
-			on_other	do_( same )	add_item( &sequence, event );
+			on_other	do_( same )	s_take
 			end
 	in_( "expr_" ) bgn_
 		on_( '\t' )	do_( same )
 		on_( ' ' )	do_( same )
 		on_( '\n' )
 			if ( level == 0 ) {
-				do_( "base" )	occurrence_set( stack.occurrence->ptr, &sequence );
+				do_( "base" )	occurrence_set( stack.occurrence->ptr, sequence );
 						typelse = tab = informed = 0;
 			}
 		on_( '/' )
@@ -383,10 +386,9 @@ readNarrative( char *path )
 			if ( level ) {
 				do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			}
-			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, &sequence ); }
+			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, sequence ); }
 
 		in_( "err" )	do_( "" )	narrative_report( errnum, line, column, tabmark );
-						freeListItem( &sequence );
 						freeNarrative( narrative );
 						narrative = NULL;
 		on_( EOF ) bgn_
@@ -425,6 +427,7 @@ readNarrative( char *path )
 			do_( "err" )	REENTER
 	CNParserEnd
 	fclose( file );
+	freeString( sequence );
 	freeListItem( &stack.occurrence );
 	freeListItem( &stack.position );
 	freeListItem( &stack.counter );
@@ -532,9 +535,10 @@ freeOccurrence( CNOccurrence *occurrence )
 	}
 }
 static void
-occurrence_set( CNOccurrence *occurrence, listItem **sequence )
+occurrence_set( CNOccurrence *occurrence, CNString *sequence )
 {
-	occurrence->data->expression = l2s( sequence, 0 );
+	occurrence->data->expression = StringFinish( sequence, 0 );
+	StringReset( sequence, CNStringMode );
 }
 
 //===========================================================================

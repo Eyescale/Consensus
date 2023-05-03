@@ -141,9 +141,6 @@ NICE TO HAVE
 	. OPT verify_traversal
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)
-	. CLEANUP
-		. p_prune( ) use strmatch( "asd", event ) in default
-		  Actually I would like default to cover all the terminal cases
 	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
 	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
 		~%(?,.)		== %(^.) == en ^.
