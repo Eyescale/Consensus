@@ -73,8 +73,6 @@ if ( mode==BM_STORY ) {
 			on_( '\n' )	do_( same )	TAB_CURRENT = 0;
 			on_( '.' ) 	do_( "^." )	s_take
 							TAB_BASE = column;
-			on_( '#' ) if ( !TAB_CURRENT ) {
-					do_( "#" ) }
 			on_( '+' ) if ( !TAB_CURRENT ) {
 					do_( "+" )	TAB_SHIFT++; }
 			on_( '-' ) if ( !TAB_CURRENT ) {
@@ -89,14 +87,9 @@ if ( mode==BM_STORY ) {
 			end }
 else {		bgn_
 			on_( EOF )	do_( "" )
-			on_( '#' )	do_( "#" )
 			ons( " \t\n" )	do_( same )
 			on_other	do_( "expr" )	REENTER
 			end }
-	in_( "#" ) bgn_
-		on_( '\n' )	do_( "base" )
-		on_other	do_( same )
-		end
 CND_ifn( mode==BM_STORY, EXPR_BGN )
 	in_( "+" ) bgn_
 		on_( '+' )	do_( same )	TAB_SHIFT++;

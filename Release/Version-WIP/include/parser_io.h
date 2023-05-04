@@ -1,5 +1,5 @@
-#ifndef IO_H
-#define IO_H
+#ifndef PARSER_IO_H
+#define PARSER_IO_H
 
 typedef enum {
 	IOStreamFile
@@ -8,8 +8,9 @@ typedef enum {
 typedef struct {
 	IOStreamType type;
 	void *	stream;
-	int	line, column,
-		mode[ 4 ], buffer;
+	char *	state;
+	int	buffer,
+		line, column;
 } CNIO;
 
 void	io_init( CNIO *, void *, IOStreamType );
@@ -17,4 +18,4 @@ void	io_exit( CNIO * );
 int	io_getc( CNIO *, int );
 
 
-#endif	// IO_H
+#endif	// PARSER_IO_H

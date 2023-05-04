@@ -4,7 +4,7 @@
 #include "context.h"
 #include "narrative.h"
 #include "string_util.h"
-#include "io.h"
+#include "parser_io.h"
 
 //===========================================================================
 //	bm_read - bm_parse interface
