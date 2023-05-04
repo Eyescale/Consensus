@@ -105,11 +105,11 @@ readScheme( char *path )
 	readSchemeFrame
 ---------------------------------------------------------------------------*/
 static void	r_reset( CNString **, int *, listItem ** );
-static void 	r_append( CNString **, int );
+static void 	r_record( CNString **, int );
 static Rule *	r_set( CNString **, Scheme * );
-static void	s_append( CNString **, int, int * );
-static void	t_append( CNString **, int );
+static void	s_record( CNString **, int, int * );
 static void 	s_finish( CNString **, Rule *, int *, listItem ** );
+static void	t_record( CNString **, int );
 static void	t_finish( CNString **, Scheme *, listItem ** );
 static void	t_wrap( listItem **, int );
 
@@ -163,7 +163,7 @@ readSchemeFrame( ReadSchemeData *data, int event )
 		on_space	do_( "rule_" )
 		on_( ':' )	do_( "schema" )	rule = r_set( string, scheme );
 		on_separator	do_( "error" )	REENTER
-		on_other	do_( same )	r_append( string, event );
+		on_other	do_( same )	r_record( string, event );
 		end
 		in_( "rule_" ) bgn_
 			on_space	do_( same )
@@ -175,7 +175,7 @@ readSchemeFrame( ReadSchemeData *data, int event )
 		on_( '%' )	do_( ": %" )
 		on_( '\n' )	do_( ": \\n" )
 		on_( '\\' )	do_( ": \\" )
-		on_other	do_( ": _" )	s_append( string, event, &position );
+		on_other	do_( ": _" )	s_record( string, event, &position );
 		end
 		in_( ": space" ) bgn_
 			on_space	do_( same )
@@ -184,22 +184,22 @@ readSchemeFrame( ReadSchemeData *data, int event )
 							// space characters are ignored at the end of a schema
 			on_( '\\' )	do_( ": \\" )	rx_position = 0;
 							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-								s_append( string, ' ', &position );
+								s_record( string, ' ', &position );
 			on_other	do_( ": _" )	rx_position = 0;
 							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-								s_append( string, ' ', &position );
-							s_append( string, event, &position );
+								s_record( string, ' ', &position );
+							s_record( string, event, &position );
 			end
 		in_( ": space%" ) bgn_
 			on_( '{' )	do_( "tokens" )	// space characters are ignored before the Token sign
 							// EXCEPT following regex rule
 							if ( rx_position ) {
 								rx_position = 0;
-								s_append( string, ' ', &position );
+								s_record( string, ' ', &position );
 							}
 			on_other	do_( ": %" )	REENTER
 							if ( isRuleBase( rule ) || ( string[ SCHEMA ]->data ))
-								s_append( string, ' ', &position );
+								s_record( string, ' ', &position );
 			end
 		in_( ": \\n" ) bgn_
 			on_( '#' )	do_( ": #" )
@@ -217,26 +217,26 @@ readSchemeFrame( ReadSchemeData *data, int event )
 				end
 		in_( ": \\" ) bgn_
 			on_( '\n' )	do_( "schema" )
-			on_other	do_( "schema" )	s_append( string, '\\', &position );
-							s_append( string, event, &position );
+			on_other	do_( "schema" )	s_record( string, '\\', &position );
+							s_record( string, event, &position );
 			end
 		in_( ": _" ) bgn_
 			on_separator	do_( "schema" )	REENTER
-			on_other	do_( same )	s_append( string, event, &position );
+			on_other	do_( same )	s_record( string, event, &position );
 			end
 		in_( ": %" ) bgn_
 			on_( '{' )	do_( "tokens" )
 			on_( '-' )	do_( ": %-" )
-			on_( '/' )	do_( ": regex" )	s_append( string, '%', &position );
+			on_( '/' )	do_( ": regex" )	s_record( string, '%', &position );
 								rx_position = position;
-								s_append( string, '/', &position );
+								s_record( string, '/', &position );
 			on_( '\n' )	do_( ": \\n" )		errnum = WarnReadSchemeExtra;
-			on_space	do_( ": % " )		s_append( string, '%', &position );
-								s_append( string, ' ', &position );
-			on_separator	do_( "schema" )		s_append( string, '%', &position );
-								s_append( string, event, &position );
-			on_other	do_( ": %_" )		s_append( string, '%', &position );
-								s_append( string, event, &position );
+			on_space	do_( ": % " )		s_record( string, '%', &position );
+								s_record( string, ' ', &position );
+			on_separator	do_( "schema" )		s_record( string, '%', &position );
+								s_record( string, event, &position );
+			on_other	do_( ": %_" )		s_record( string, '%', &position );
+								s_record( string, event, &position );
 			end
 			in_( ": % " ) bgn_
 				on_space	do_( same )
@@ -247,61 +247,61 @@ readSchemeFrame( ReadSchemeData *data, int event )
 				end
 			in_( ": %_" ) bgn_
 				on_separator	do_( "schema" )	REENTER
-				on_other	do_( same )	s_append( string, event, &position );
+				on_other	do_( same )	s_record( string, event, &position );
 				end
 			in_( ": %-" ) bgn_
 				on_space	do_( same )
 				on_( '%' )	do_( ": %-%" )
 				on_( '\n' )	do_( ": \\n" )	if ( isRuleBase( rule ) && !( string[ SCHEMA ]->data )) {
-									s_append( string, '%', &position );
-									s_append( string, '-', &position );
+									s_record( string, '%', &position );
+									s_record( string, '-', &position );
 								}
 								else errnum = WarnReadSchemeExtra;
 				on_( '\\' )	do_( ": %-\\" )
-				on_other	do_( ": _" )	s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, event, &position );
+				on_other	do_( ": _" )	s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, event, &position );
 				end
 			in_( ": %-\\" ) bgn_
 				on_( '\n' )	do_( ": %-" )
-				on_other	do_( "schema" )	s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, '\\', &position );
-								s_append( string, event, &position );
+				on_other	do_( "schema" )	s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, '\\', &position );
+								s_record( string, event, &position );
 				end
 			in_( ": %-%" ) bgn_
 				on_( '{' )	do_( "tokens" )	errnum = WarnReadSchemeExtra;
 				on_( '-' )	do_( ": %-" )	errnum = WarnReadSchemeHyphen;
-				on_( '/' )	do_( ": regex" ) s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, '%', &position );
+				on_( '/' )	do_( ": regex" ) s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, '%', &position );
 								rx_position = position;
-								s_append( string, '/', &position );
+								s_record( string, '/', &position );
 				on_( '\n' ) 	do_( ": \\n" )	errnum = WarnReadSchemeExtra;
-				on_space	do_( ": % " )	s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, '%', &position );
-								s_append( string, ' ', &position );
-				on_separator	do_( "schema" )	s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, '%', &position );
-								s_append( string, event, &position );
-				on_other	do_( ": %_" )	s_append( string, '%', &position );
-								s_append( string, '-', &position );
-								s_append( string, '%', &position );
-								s_append( string, event, &position );
+				on_space	do_( ": % " )	s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, '%', &position );
+								s_record( string, ' ', &position );
+				on_separator	do_( "schema" )	s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, '%', &position );
+								s_record( string, event, &position );
+				on_other	do_( ": %_" )	s_record( string, '%', &position );
+								s_record( string, '-', &position );
+								s_record( string, '%', &position );
+								s_record( string, event, &position );
 				end
 		in_( ": regex" ) bgn_
 			on_( '\n' )	do_( "error" )	REENTER
 							rx_position = 0;
 			on_( '\\' )	do_( ": %/\\" )
-			on_( '/' )	do_( ": %//" )	s_append( string, event, &position );
-			on_other	do_( same )	s_append( string, event, &position );
+			on_( '/' )	do_( ": %//" )	s_record( string, event, &position );
+			on_other	do_( same )	s_record( string, event, &position );
 			end
 			in_( ": %/\\" ) bgn_
 				on_( '\n' )	do_( ": %/\\\\n" )
-				on_other	do_( ": regex" )	s_append( string, '\\', &position );
-									s_append( string, event, &position );
+				on_other	do_( ": regex" )	s_record( string, '\\', &position );
+									s_record( string, event, &position );
 				end
 				in_( ": %/\\\\n" ) bgn_
 					on_space	do_( same )
@@ -327,7 +327,7 @@ readSchemeFrame( ReadSchemeData *data, int event )
 								t_wrap( list, rx_position );
 							else
 								t_wrap( list, position );
-		on_other	do_( same )		t_append( string, event );
+		on_other	do_( same )		t_record( string, event );
 		end
 		in_( "token " ) bgn_
 			on_space	do_( same )
@@ -335,8 +335,8 @@ readSchemeFrame( ReadSchemeData *data, int event )
 			end
 		in_( "token\\" ) bgn_
 			on_( '\n' )	do_( "tokens" )
-			on_other	do_( "tokens" )	t_append( string, '\\' );
-							t_append( string, event );
+			on_other	do_( "tokens" )	t_record( string, '\\' );
+							t_record( string, event );
 			end
 		in_( "%{_}" ) bgn_
 			on_space	do_( ": space" )
@@ -374,7 +374,7 @@ r_reset( CNString **s, int *position, listItem **list )
 	freeListItem( &list[ 0 ] );
 }
 static void
-r_append( CNString **s, int event )
+r_record( CNString **s, int event )
 {
 	StringAppend( s[ RULE ], event );
 }
@@ -395,7 +395,7 @@ r_set( CNString **s, Scheme *scheme )
 	return rule;
 }
 static void
-s_append( CNString **s, int event, int *position )
+s_record( CNString **s, int event, int *position )
 {
 	StringAppend( s[ SCHEMA ], event );
 	*position += 1;
@@ -432,7 +432,7 @@ s_finish( CNString **s, Rule *rule, int *position, listItem **list )
 	}
 }
 static void
-t_append( CNString **s, int event )
+t_record( CNString **s, int event )
 {
 	StringAppend( s[ TOKEN ], event );
 }

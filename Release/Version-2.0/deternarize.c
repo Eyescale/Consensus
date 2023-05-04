@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "deternarize_private.h"
 #include "traverse.h"
+#include "deternarize.h"
+#include "deternarize_private.h"
 #include "expression.h"
 
 //===========================================================================
@@ -10,22 +11,7 @@
 //===========================================================================
 #include "deternarize_traversal.h"
 
-static char * deternarize( char *, listItem **, BMTraverseData *, char * );
-typedef struct {
-	BMTernaryCB *user_CB;
-	void *user_data;
-	int ternary;
-	struct { listItem *sequence, *flags; } stack;
-	listItem *sequence;
-	Pair *segment;
-} DeternarizeData;
-
-static int
-pass_CB( char *guard, void *user_data )
-{
-	BMContext *ctx = user_data;
-	return !!bm_feel( BM_CONDITION, guard, ctx );
-}
+static BMTernaryCB pass_CB;
 
 char *
 bm_deternarize( char **expression, BMContext *ctx )
@@ -79,6 +65,13 @@ bm_deternarize( char **expression, BMContext *ctx )
 			// release sequence
 			free_deternarized( data.sequence ); } }
 	return ( !!deternarized ? ((*expression=deternarized),backup) : NULL );
+}
+
+static int
+pass_CB( char *guard, void *user_data )
+{
+	BMContext *ctx = user_data;
+	return !!bm_feel( BM_CONDITION, guard, ctx );
 }
 
 //===========================================================================
@@ -240,7 +233,7 @@ optimize( Pair *segment, char *p )
 //===========================================================================
 //	free_deternarized
 //===========================================================================
-static void
+void
 free_deternarized( listItem *sequence )
 /*
 	free Sequence:{

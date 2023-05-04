@@ -40,6 +40,30 @@ typedef enum {
 char *	StringFinish( CNString *, int trim );
 void	StringReset( CNString *, CNStringReset );
 
+//---------------------------------------------------------------------------
+//	CNString macros
+//---------------------------------------------------------------------------
+
+#define s_take \
+	StringAppend( s, event ); // Assumption: event externally defined
+#define s_put( event ) \
+	StringAppend( s, event );
+#define s_add( str ) \
+	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
+#define s_append( bgn, end ) \
+	for ( char *_c=bgn; _c!=end; StringAppend(s,*_c++) );
+#define	s_reset( a ) \
+	StringReset( s, a );
+
+#define s_empty \
+	!StringInformed(s)
+#define	s_at( event ) \
+	( StringAt(s)==event )
+#define s_cmp( str ) \
+	strcmp( str, StringFinish(s,0) )
+#define s_diff( str ) \
+	StringCompare( s, str )
+
 //===========================================================================
 //	C string utilities
 //===========================================================================

@@ -376,8 +376,8 @@ readStory( char *path )
 			on_other	do_( "expr" )	REENTER
 			end
 		in_( ">\"" ) bgn_
-			on_( '\t' )	do_( same )	s_add( s, "\\t" );
-			on_( '\n' )	do_( same )	s_add( s, "\\n" );
+			on_( '\t' )	do_( same )	s_add( "\\t" )
+			on_( '\n' )	do_( same )	s_add( "\\n" )
 			on_( '\\' )	do_( ">\"\\" )	StringAppend( s, event );
 			on_( '\"' )	do_( ">_" )	StringAppend( s, event );
 			on_other	do_( same )	StringAppend( s, event );
@@ -427,7 +427,7 @@ readStory( char *path )
 		ons( " \t" )	do_( same )
 		on_( ':' )
 			if ( !StringInformed(s) && ( type==IN || type==ON )) {
-				do_( "expr" )	s_add( s, "?:" );
+				do_( "expr" )	s_add( "?:" )
 			}
 			else if ( sub_expr && !marked ) {
 				do_( "expr" )	REENTER
@@ -462,8 +462,8 @@ readStory( char *path )
 							StringAppend( s, '~' );
 			end
 		in_( ":\"" ) bgn_
-			on_( '\t' )	do_( same )	s_add( s, "\\t" );
-			on_( '\n' )	do_( same )	s_add( s, "\\n" );
+			on_( '\t' )	do_( same )	s_add( "\\t" )
+			on_( '\n' )	do_( same )	s_add( "\\n" )
 			on_( '\\' )	do_( ":\"\\" )	StringAppend( s, event );
 			on_( '\"' )	do_( ":_" )	StringAppend( s, event );
 			on_other	do_( same )	StringAppend( s, event );
@@ -1164,7 +1164,7 @@ static void
 dirty_set( int *dirty, CNString *s )
 {
 	*dirty = DIRTY;
-	s_add( s, "(this," );
+	s_add( "(this," )
 }
 static void
 dirty_go( int *dirty, CNString *s )
@@ -1173,10 +1173,5 @@ dirty_go( int *dirty, CNString *s )
 		StringAppend( s, ')' );
 		*dirty = 0;
 	}
-}
-static void
-s_add( CNString *s, char *p )
-{
-	while ( *p ) StringAppend( s, *p++ );
 }
 

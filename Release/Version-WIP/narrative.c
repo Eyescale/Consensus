@@ -54,16 +54,15 @@ bm_read( BMReadMode mode, ... )
 			fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 			va_end( ap );
 			return NULL; }
-		break;
-	}
+		break; }
 	va_end( ap );
 
-	CNParser parser;
-	cn_parser_init( &parser, stream );
+	CNIO io;
+	io_init( &io, stream, IOStreamFile );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
-        data.parser = &parser;
+        data.io = &io;
 	bm_parse_init( &data, mode );
 
 	if ( mode==BM_LOAD ) {
@@ -76,7 +75,7 @@ bm_read( BMReadMode mode, ... )
 
 	int event = 0;
 	do {
-		event = cn_parser_getc( &parser, event );
+		event = io_getc( &io, event );
 		data.state = bm_parse( event, mode, &data, read_CB );
 	} while ( strcmp( data.state, "" ) && !data.errnum );
 
@@ -108,6 +107,7 @@ bm_read( BMReadMode mode, ... )
 			freeStory( data.story ); } }
 
 	bm_parse_exit( &data );
+	io_exit( &io );
 	return retval.ptr;
 }
 

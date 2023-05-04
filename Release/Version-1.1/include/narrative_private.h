@@ -48,7 +48,6 @@ static void occurrence_set( CNOccurrence *, CNString *sequence );
 
 static void dirty_set( int *dirty, CNString *s );
 static void dirty_go( int *dirty, CNString *s );
-static void s_add( CNString *, char * );
 
 //===========================================================================
 //	Narrative CNParserBegin / CNParserEnd - macros

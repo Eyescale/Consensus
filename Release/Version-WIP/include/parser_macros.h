@@ -1,5 +1,10 @@
-#ifndef PARSER_PRIVATE_H
-#define PARSER_PRIVATE_H
+#ifndef PARSER_MACROS_H
+#define PARSER_MACROS_H
+
+#define CB_( op, mode, data ) \
+	( cb( op, mode, data ) )
+#define CB_if_( op, mode, data ) \
+	if CB_( op, mode, data )
 
 //===========================================================================
 //	bm_parse State Machine utilities - macros
@@ -83,29 +88,5 @@
 #define BMParseEnd		end \
 			} while ( !errnum && (caught&CNCaughtReenter) );
 
-#define CB_( op, mode, data ) \
-	( cb( op, mode, data ) )
-#define CB_if_( op, mode, data ) \
-	if CB_( op, mode, data )
 
-//===========================================================================
-//	bm_parse string utilities - macros
-//===========================================================================
-
-#define s_empty \
-	!StringInformed(s)
-#define	s_at( event ) \
-	( StringAt(s)==event )
-#define s_add( str ) \
-	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
-#define	s_reset( a ) \
-	StringReset( s, a );
-#define s_take \
-	StringAppend( s, event );
-#define s_cmp( str ) \
-	strcmp( str, StringFinish(s,0) )
-#define s_diff( str ) \
-	StringCompare( s, str )
-
-
-#endif	// PARSER_PRIVATE_H
+#endif	// PARSER_MACROS_H

@@ -91,22 +91,5 @@
 #define CB_if_( cb, mode, data ) \
 	if ( _CB( cb, mode, data ) )
 
-//===========================================================================
-//	bm_parse string utilities - macros
-//===========================================================================
-
-#define s_empty \
-	!StringInformed(s)
-#define	s_at( event ) \
-	( StringAt(s)==event )
-#define s_add( str ) \
-	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
-#define	s_reset( a ) \
-	StringReset( s, a );
-#define s_take \
-	StringAppend( s, event );
-#define s_cmp( str ) \
-	strcmp( str, StringFinish(s,0) )
-
 
 #endif	// PARSER_PRIVATE_H

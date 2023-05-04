@@ -5,6 +5,7 @@ SHELL = /bin/sh
 
 SRCS =	narrative.c \
 		parser.c \
+		io.c \
 	program.c \
 		cell.c \
 			context.c \

@@ -93,22 +93,5 @@
 	if ( *type&DO && is_f(LEVEL) && !is_f(SUB_EXPR|NEGATED|FILTERED) ) \
 		bm_parse_report( data, ErrEntireCNDBCoupling, mode );
 
-//===========================================================================
-//	bm_parse string utilities - macros
-//===========================================================================
-
-#define s_empty \
-	!StringInformed(s)
-#define	s_at( event ) \
-	( StringAt(s)==event )
-#define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
-#define	s_reset( a ) \
-	StringReset( s, a );
-#define s_take \
-	StringAppend( s, event );
-#define s_cmp( str ) \
-	strcmp( str, StringFinish(s,0) )
-
 
 #endif	// PARSER_PRIVATE_H

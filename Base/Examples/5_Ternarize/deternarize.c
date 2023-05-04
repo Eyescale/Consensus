@@ -191,11 +191,9 @@ optimize( Pair *segment, char *p )
 }
 
 //===========================================================================
-//	s_scan, s_append, s_add_not_any
+//	s_scan
 //===========================================================================
-static void s_append( CNString *, char *bgn, char *end );
-#define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
+static void s_build( CNString *, char *bgn, char *end );
 
 static void
 s_scan( CNString *s, listItem *sequence )
@@ -223,7 +221,7 @@ s_scan( CNString *s, listItem *sequence )
 		else if (( item->name )) {
 			// item==[ segment:Segment, NULL ]
 			Pair *segment = item->name;
-			s_append( s, segment->name, segment->value ); }
+			s_build( s, segment->name, segment->value ); }
 		else s_add( "~." )
 		// moving on
 		if (( i->next ))
@@ -234,7 +232,7 @@ s_scan( CNString *s, listItem *sequence )
 	}
 }
 static void
-s_append( CNString *s, char *bgn, char *end )
+s_build( CNString *s, char *bgn, char *end )
 {
 	for ( char *p=bgn; p!=end; p++ )
 		switch ( *p ) {

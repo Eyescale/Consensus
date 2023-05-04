@@ -3,11 +3,6 @@
 
 #include "string_util.h"
 
-#define s_append( bgn, end ) \
-	for ( char *_c=bgn; _c!=end; StringAppend(s,*_c++) );
-#define s_add( str ) \
-	for ( char *_c=str; *_c; StringAppend(s,*_c++) );
-
 #define AS_SUB  0
 #define SUB     2
 

@@ -7,9 +7,6 @@
 #include "narrative.h"
 #include "narrative_private.h"
 
-#define s_take		StringAppend( sequence, event );
-#define s_put( c )	StringAppend( sequence, c );
-
 //===========================================================================
 //	readNarrative
 //===========================================================================
@@ -40,7 +37,7 @@ readNarrative( char *path )
 	FILE *file = fopen( path, "r" );
 	if ( file == NULL ) return NULL;
 
-	CNString *sequence = newString();
+	CNString *s = newString();
 	struct {
 		listItem *occurrence;
 		listItem *position;
@@ -365,7 +362,7 @@ readNarrative( char *path )
 		on_( ' ' )	do_( same )
 		on_( '\n' )
 			if ( level == 0 ) {
-				do_( "base" )	occurrence_set( stack.occurrence->ptr, sequence );
+				do_( "base" )	occurrence_set( stack.occurrence->ptr, s );
 						typelse = tab = informed = 0;
 			}
 		on_( '/' )
@@ -386,7 +383,7 @@ readNarrative( char *path )
 			if ( level ) {
 				do_( "err" )	REENTER errnum = ErrUnexpectedEOF;
 			}
-			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, sequence ); }
+			else {	do_( "" )	occurrence_set( stack.occurrence->ptr, s ); }
 
 		in_( "err" )	do_( "" )	narrative_report( errnum, line, column, tabmark );
 						freeNarrative( narrative );
@@ -427,7 +424,7 @@ readNarrative( char *path )
 			do_( "err" )	REENTER
 	CNParserEnd
 	fclose( file );
-	freeString( sequence );
+	freeString( s );
 	freeListItem( &stack.occurrence );
 	freeListItem( &stack.position );
 	freeListItem( &stack.counter );

@@ -39,8 +39,6 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 //===========================================================================
 //	bm_assign_op
 //===========================================================================
-#define s_add( str ) for ( char *p=str; *p; StringAppend(s,*p++) );
-
 int
 bm_assign_op( int op, char *expression, BMContext *ctx, int *marked )
 /*

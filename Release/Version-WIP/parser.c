@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "parser.h"
-#include "parser_private.h"
+#include "parser_macros.h"
 #include "traverse.h"
 
 //===========================================================================
@@ -45,7 +45,7 @@ bm_parse_exit( BMParseData *data )
 char *
 bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 {
-	CNParser *parser = data->parser;
+	CNIO *io = data->io;
 
 	// shared by reference
 	listItem **	stack	= &data->stack.flags;
@@ -57,8 +57,8 @@ bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	char *		state	= data->state;
 	int		flags	= data->flags;
 	int		errnum	= 0;
-	int		line	= parser->line;
-	int		column	= parser->column;
+	int		line	= io->line;
+	int		column	= io->column;
 
 	//----------------------------------------------------------------------
 	// bm_parse:	Parser Begin
@@ -1034,24 +1034,10 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 //	bm_parse_report
 //===========================================================================
 void
-bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
-/*
-	Assumption: mode==BM_STORY
-*/
-{
-	CNParser *parser = data->parser;
-	int l = parser->line, c = parser->column;
-	switch ( errnum ) {
-	case WarnOutputFormat:
-		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported output format - using default \"%%_\"\n", l, c ); break;
-	case WarnInputFormat:
-		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported input format - using default \"%%_\"\n", l, c ); break;
-	default: break; }
-}
-void
 bm_parse_report( BMParseData *data, BMParseMode mode )
 {
-	CNParser *parser = data->parser;
+	CNIO *io = data->io;
+	int l = io->line, c = io->column;
 	char *src = (mode==BM_LOAD)  ? "bm_load" :
 		    (mode==BM_INPUT) ? "bm_input" : "bm_parse";
 	char *stump = StringFinish( data->string, 0 );
@@ -1067,7 +1053,6 @@ if ( mode==BM_INPUT ) {
 	default:
 		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, stump  ); } }
 else {
-	int l = parser->line, c = parser->column;
 	switch ( data->errnum ) {
 	case ErrUnknownState:
 		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, data->state  ); break;
@@ -1107,226 +1092,22 @@ else {
 		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); } }
 }
 
-//===========================================================================
-//	cn_parser_init
-//===========================================================================
-int
-cn_parser_init( CNParser *parser, FILE *stream )
-{
-	memset( parser, 0, sizeof(CNParser) );
-	parser->stream = stream;
-	parser->line = 1;
-	return 1;
-}
-
-//===========================================================================
-//	cn_parser_getc
-//===========================================================================
-static int preprocess( int event, int *mode, int *buffer, int *skipped );
-
-int
-cn_parser_getc( CNParser *data, int last_event )
+//---------------------------------------------------------------------------
+//	bm_parse_caution
+//---------------------------------------------------------------------------
+void
+bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 /*
-	filters out comments and \cr line continuation from input
+	Assumption: mode==BM_STORY
 */
 {
-	if ( last_event=='\n' ) {
-		data->column = 0;
-		data->line++; }
-	int event, skipped[ 2 ] = { 0, 0 };
-	int buffer = data->buffer;
-	do {
-		if ( buffer ) { event=buffer; buffer=0; }
-		else event = fgetc( data->stream );
-		event = preprocess( event, data->mode, &buffer, skipped ); }
-	while ( !event );
-	data->buffer = buffer;
-	if ( skipped[ 1 ] ) {
-		data->line += skipped[ 1 ];
-		data->column = skipped[ 0 ]; }
-	else {
-		data->column += skipped[ 0 ]; }
-	if (!( event==EOF || event=='\n' )) {
-		data->column++; }
-	return event;
-}
-#define COMMENT		0
-#define BACKSLASH	1
-#define STRING		2
-#define QUOTE		3
-static int
-preprocess( int event, int *mode, int *buffer, int *skipped )
-{
-	int output = 0;
-	if ( event == EOF )
-		output = event;
-	else if ( mode[ COMMENT ] ) {
-		switch ( event ) {
-		case '/':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 2;
-				skipped[ 0 ]++; }
-			else if ( mode[ COMMENT ] == 4 )
-				mode[ COMMENT ] = 0;
-			skipped[ 0 ]++;
-			break;
-		case '\n':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 0;
-				output = '/';
-				*buffer = '\n'; }
-			else if ( mode[ COMMENT ] == 2 ) {
-				mode[ COMMENT ] = 0;
-				output = '\n'; }
-			else {
-				if ( mode[ COMMENT ] == 4 )
-					mode[ COMMENT ] = 3;
-				skipped[ 0 ] = 0;
-				skipped[ 1 ]++; }
-			break;
-		case '*':
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 3;
-				skipped[ 0 ]++; }
-			else if ( mode[ COMMENT ] == 3 )
-				mode[ COMMENT ] = 4;
-			else if ( mode[ COMMENT ] == 4 )
-				mode[ COMMENT ] = 3;
-			skipped[ 0 ]++;
-			break;
-		default:
-			if ( mode[ COMMENT ] == 1 ) {
-				mode[ COMMENT ] = 0;
-				output = '/';
-				*buffer = event; }
-			else {
-				if ( mode[ COMMENT ] == 4 )
-					mode[ COMMENT ] = 3;
-				skipped[ 0 ]++; } } }
-	else if ( mode[ BACKSLASH ] ) {
-		if ( mode[ BACKSLASH ] == 4 ) {
-			mode[ BACKSLASH ] = 0;
-			output = event; }
-		else switch ( event ) {
-		case ' ':
-		case '\t':
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 2;
-				skipped[ 0 ]++; }
-			skipped[ 0 ]++;
-			break;
-		case '\\':
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 4;
-				output = '\\';
-				*buffer = '\\'; }
-			else mode[ BACKSLASH ] = 1;
-			break;
-		case '\n':
-			if ( mode[ BACKSLASH ] == 3 ) {
-				mode[ BACKSLASH ] = 0;
-				output = '\n'; }
-			else {
-				mode[ BACKSLASH ] = 3;
-				skipped[ 0 ] = 0;
-				skipped[ 1 ]++; }
-			break;
-		default:
-			if ( mode[ BACKSLASH ] == 1 ) {
-				mode[ BACKSLASH ] = 4;
-				output = '\\';	
-				*buffer = event; }
-			else {
-				mode[ BACKSLASH ] = 0;
-				*buffer = event; } } }
-	else {
-		switch ( event ) {
-		case '\\':
-			switch ( mode[ QUOTE ] ) {
-			case 0:
-				mode[ BACKSLASH ] = 1;
-				break;
-			case 1: // quote just turned on
-				mode[ QUOTE ] = -4;
-				output = event;
-				break;
-			case -4: // case '\\
-				mode[ QUOTE ] = -1;
-				output = event;
-				break;
-			default:
-				mode[ QUOTE ] = 0;
-				mode[ BACKSLASH ] = 1;
-				output = event; }
-			break;
-		case '"':
-			output = event;
-			switch ( mode[ QUOTE ] ) {
-			case 0:
-				mode[ STRING ] = !mode[ STRING ];
-				break;
-			case 1: // quote just turned on
-				mode[ QUOTE ] = -1;
-				break;
-			case -4: // allowing '\"'
-				mode[ QUOTE ] = -1;
-				break;
-			default:
-				mode[ QUOTE ] = 0;
-				mode[ STRING ] = !mode[ STRING ];
-				break; }
-			break;
-		case '\'':
-			output = event;
-			switch ( mode[ QUOTE ] ) {
-			case 0:
-				if ( mode[ STRING ] )
-					break;
-				mode[ QUOTE ] = 1;
-				break;
-			case 1: // allowing ''
-				mode[ QUOTE ] = 0;
-				break;
-			case -4: // allowing '\''
-				mode[ QUOTE ] = -1;
-				break;
-			default:
-				mode[ QUOTE] = 0; }
-			break;
-		case '/':
-			switch ( mode[ QUOTE ] ) {
-			case 0:
-				if ( !mode[ STRING ] ) {
-					mode[ COMMENT ] = 1;
-					break; }
-				output = event;
-				break;
-			case 1: // quote just turned on
-				mode[ QUOTE ] = -1;
-				output = event;
-				break;
-			default: // mode[ STRING ] excluded
-				mode[ QUOTE ] = 0;
-				output = event; }
-			break;
-		default:
-			output = event;
-			if ( event == '\n' ) {
-				mode[ QUOTE ] = 0;
-				break; }
-			switch ( mode[ QUOTE ] ) {
-			case 0: break;
-			case 1:
-				mode[ QUOTE ] = -1;
-				break;
-			case -4:
-				if (!( event == 'x' )) {
-					mode[ QUOTE ] = -1;
-					break; }
-				// no break
-			default:
-				mode[ QUOTE ]++;
-				break; } } }
-	return output;
+	CNIO *io = data->io;
+	int l = io->line, c = io->column;
+	switch ( errnum ) {
+	case WarnOutputFormat:
+		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported output format - using default \"%%_\"\n", l, c ); break;
+	case WarnInputFormat:
+		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported input format - using default \"%%_\"\n", l, c ); break;
+	default: break; }
 }
 

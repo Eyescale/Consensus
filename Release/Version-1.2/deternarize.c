@@ -256,11 +256,6 @@ free_deternarized( listItem *sequence )
 //===========================================================================
 //	s_scan
 //===========================================================================
-#define s_append( bgn, end ) \
-	for ( char *p=bgn; p!=end; StringAppend(s,*p++) );
-#define s_add( str ) \
-	for ( char *p=str; *p; StringAppend(s,*p++) );
-
 static void
 s_scan( CNString *s, listItem *sequence )
 /*

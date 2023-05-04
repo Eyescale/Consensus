@@ -4,15 +4,7 @@
 #include "context.h"
 #include "narrative.h"
 #include "string_util.h"
-
-typedef struct {
-	FILE *	stream;
-	int	line, column,
-		mode[ 4 ], buffer;
-} CNParser;
-
-int	cn_parser_init( CNParser *, FILE * );
-int	cn_parser_getc( CNParser *, int );
+#include "io.h"
 
 //===========================================================================
 //	bm_read - bm_parse interface
@@ -23,7 +15,7 @@ typedef struct {
 		listItem *flags; // bm_parse() only
 		listItem *occurrences; // bm_read() only
 	} stack; 
-	CNParser *	parser;
+	CNIO *		io;
 	CNString *	string;
 	int		tab[4], type;
 // bm_read() only

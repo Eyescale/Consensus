@@ -1,11 +1,11 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. parser.c
-		extract parsing MACROS -> into Base/include/???
-			. move string macros from parser_private.h into string_util.h
-		extract cn_parser_getc -> cn_io_getc -> Base/io.c
-			. rewrite preprocess using parsing MACROS
+	. parser.c / parser_macros.h
+		[TODO]	. rewrite preprocess using parsing MACROS
 			. extend preprocessor -> push/pop io
+		[DONE] moved all string macros into Base/string_util.c
+		[DONE] extracted CNIO/io_getc -> io.c
+		[DONE] renamed parser_private.h into parser_macros.h
 
 	. rewrite Maths/add using design/story/func.story template
 	. Maths

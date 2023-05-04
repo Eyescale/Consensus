@@ -1,6 +1,8 @@
 #ifndef DETERNARIZE_PRIVATE_H
 #define DETERNARIZE_PRIVATE_H
 
+#include "string_util.h"
+
 typedef int BMTernaryCB( char *, void * );
 typedef struct {
 	BMTernaryCB *user_CB;

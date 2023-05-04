@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #include "traverse.h"
-#include "deternarize_private.h"
 #include "deternarize.h"
+#include "deternarize_private.h"
 #include "expression.h"
 
 //===========================================================================
