@@ -72,6 +72,7 @@ bm_read( BMReadMode mode, ... )
 		data.occurrence = data.narrative->root;
 		data.story = newRegistry( IndexedByCharacter );
 		addItem( &data.stack.occurrences, data.occurrence ); }
+	//-----------------------------------------------------------------
 
 	int event = 0;
 	do {
@@ -79,6 +80,7 @@ bm_read( BMReadMode mode, ... )
 		data.state = bm_parse( event, mode, &data, read_CB );
 	} while ( strcmp( data.state, "" ) && !data.errnum );
 
+	//-----------------------------------------------------------------
 	union { int value; void *ptr; } retval;
 	switch ( mode ) {
 	case BM_LOAD:
