@@ -195,7 +195,7 @@ preprocess( CNIO *io, int event )
 	if ( errnum ) {
 		fprintf( stderr, "Warning: bm_parse: " );
 		if (( io->path )) fprintf( stderr, "in %s, ", io->path );
-		column = ( event=='\n' ) ? io->column : io->column+1;
+		column = ( event=='\n' ) ? column : column+1;
 		fprintf( stderr, "l%dc%d: ", io->line, column );
 		switch ( errnum ) {
 		case IOErrFileNotFound:
