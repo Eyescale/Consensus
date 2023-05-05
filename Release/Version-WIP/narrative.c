@@ -37,12 +37,14 @@ bm_read( BMReadMode mode, ... )
 {
 	char *path;
 	FILE *stream;
+	int type;
 	BMContext *ctx;
 	va_list ap;
 	va_start( ap, mode );
 	switch ( mode ) {
 	case BM_INPUT:
 		stream = va_arg( ap, FILE * );
+		type = IOStreamStdin;
 		break;
 	case BM_LOAD:
 		ctx = va_arg( ap, BMContext * );
@@ -50,7 +52,8 @@ bm_read( BMReadMode mode, ... )
 	case BM_STORY:
 		path = va_arg( ap, char * );
 		stream = fopen( path, "r" );
-		if ( stream == NULL ) {
+		type = IOStreamFile;
+		if ( !stream ) {
 			fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 			va_end( ap );
 			return NULL; }
@@ -58,7 +61,7 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	CNIO io;
-	io_init( &io, stream, IOStreamFile );
+	io_init( &io, stream, type );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );

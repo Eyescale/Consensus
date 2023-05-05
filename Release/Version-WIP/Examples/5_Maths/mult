@@ -14,7 +14,7 @@
 		on ~( %%, MULT ) < ?  // read operation's results
 			do :< c, v >: %<(!,?:...)>
 		else on : v : ?
-			do : r : ( *r, %? )
+			do : r : ( *r, %? )	// inform r
 			in : p : ( ?:~(.,*), . )
 				do : p : %?
 			else
@@ -66,7 +66,7 @@
 				else do : t : *u
 				do : state : FORMAT
 		else on : t : ?
-			do (( *dial, ... ),< MSUM, %(*r:(.,,?)), %(%?:(.,?)), *c >)
+			do (( *dial, ... ),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
 		else on : state : .
 			do : c : 0
 			in ~.: u  // very first round: separate r into s and u

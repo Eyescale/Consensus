@@ -60,10 +60,10 @@ bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	int		line	= io->line;
 	int		column	= io->column;
 
+	BMParseBegin( "bm_parse", state, event, line, column )
 	//----------------------------------------------------------------------
 	// bm_parse:	Parser Begin
 	//----------------------------------------------------------------------
-	BMParseBegin( state, event, line, column )
 CND_if_( data->opt, EXPR_BGN )
 	in_( "base" )
 if ( mode==BM_STORY ) {

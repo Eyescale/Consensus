@@ -1,19 +1,31 @@
 #ifndef PARSER_IO_H
 #define PARSER_IO_H
 
+#include "string_util.h"
+
 typedef enum {
-	IOStreamFile
-} IOStreamType;
+	IOStreamFile,
+	IOStreamStdin
+} IOType;
+typedef enum {
+	IOErrNone = 0,
+	IOErrFileNotFound,
+	IOErrIncludeFormat,
+	IOErrTrailingChar,
+	IOErrSyntaxError
+} IOErr;
 
 typedef struct {
-	IOStreamType type;
-	void *	stream;
+	CNString *string;
+	listItem *stack;
 	char *	state;
-	int	buffer,
-		line, column;
+	IOType	type;
+	void *	stream;
+	char *	path;
+	int	buffer, line, column;
 } CNIO;
 
-void	io_init( CNIO *, void *, IOStreamType );
+void	io_init( CNIO *, void *, IOType );
 void	io_exit( CNIO * );
 int	io_getc( CNIO *, int );
 

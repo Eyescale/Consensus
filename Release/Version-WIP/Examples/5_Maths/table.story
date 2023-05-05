@@ -1,8 +1,8 @@
 :
 	on init
 #		do solo
-		do : base : 10
-#		do : base : 16
+#		do : base : 10
+		do : base : 16
 		do : state : INIT
 	else in : state : INIT
 		do : p : 0

@@ -191,7 +191,12 @@
 				else // all non-cyclic rule schemas complete
 					do ( .CYCLIC ? .EXIT : .(.,r) ? .DONE : .EXIT )
 		else
-			on : ( TAKE, ? ) : ~. < *s
+			on ~( TAKE ) < *s
+				do .READY
+			else on READY < *s
+				do : p : %(*p:(.,?))
+				do .READY
+			else on : ( TAKE, ? ) : ~. < *s
 				do .( %<?>, *record ) // TAKE, consumed or unconsumed
 			else on : ( TAKE, ? ) : . < *s
 				in ((Rule,?:%<!:(.,?)>),(Schema,~'\0'))
@@ -210,21 +215,18 @@
 				else
 					do >"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
 					do .EXIT
-			else on ~( MORE ) < *s
-				do .READY
-			else on NEXT < *s
-				do : p : %(*p:(.,?))
-				do .READY
 			else on exit < *s // FAIL
 				do .EXIT
 
 : Take
 	on ~((*,.), %% ) < ..
 		do exit
-	else in NEXT
+	else in READY
 		on : record : ?  < ..
 			do : event : %<?:(.,?)>
-			do ~( NEXT )
+			do ~( READY )
+	else on ~( TAKE )
+		do READY
 	else on : event : .
 		in : p : '\0'
 			do : ( TAKE, '[' ) : ~. // TAKE, event unconsumed
@@ -235,7 +237,7 @@
 				in %?: w
 					in : event : /[A-Za-z0-9_]/
 						do check
-						do MORE~
+						do TAKE~
 					else in check
 						do ~( check )
 						do : p : %(*p:(.,?))
@@ -250,7 +252,7 @@
 				else do exit // FAIL
 			else in %?: ' '
 				in : event : /[ \t]/
-					do MORE~
+					do TAKE~
 				else
 					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
@@ -260,14 +262,12 @@
 		else // *p is a base entity (singleton) other than '\0'
 			do >"Error: Yak: %_-terminated schema not supported\n": *p
 			do exit // FAIL
-	else on ~( MORE )
-		do NEXT
 	else on : p : ?
 		in %?: '\0'
 			do : ( TAKE, ']' ): ~. // TAKE, event consumed
 		else in	%?: (( %, ? ), . )
 			do : ( TAKE, ']' ): %?
-		else do NEXT
+		else do READY
 	else on ( TAKE, . )
 		do exit
 

@@ -18,8 +18,8 @@
 // #define DEBUG
 
 #ifdef DEBUG
-#define	DBGMonitor( state, event, line, column ) \
-	fprintf( stderr, "bm_parse:l%dc%d: in \"%s\" on ", line, column, state ); \
+#define	DBGMonitor( this, state, event, line, column ) \
+	fprintf( stderr, "%s:l%dc%d: in \"%s\" on ", this, line, column, state ); \
 	switch ( event ) { \
 	case EOF: fprintf( stderr, "EOF" ); break; \
 	case '\n': fprintf( stderr, "'\\n'" ); break; \
@@ -28,14 +28,14 @@
 	} \
 	fprintf( stderr, "\n" );
 #else
-#define	DBGMonitor( state, event, line, column )
+#define	DBGMonitor( this, state, event, line, column )
 #endif
 
-#define BMParseBegin( state, event, line, column ) \
+#define BMParseBegin( this, state, event, line, column ) \
 			int caught; \
 			do { \
 				caught = CNCaughtTest; \
-				DBGMonitor( state, event, line, column ); bgn_
+				DBGMonitor( this, state, event, line, column ); bgn_
 
 #define bgn_ 			if ( 0 ) {
 
