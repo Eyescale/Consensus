@@ -18,11 +18,12 @@ typedef enum {
 typedef struct {
 	CNString *string;
 	listItem *stack;
+	listItem *buffer;
 	char *	state;
 	IOType	type;
 	void *	stream;
 	char *	path;
-	int	buffer, line, column;
+	int	line, column;
 } CNIO;
 
 void	io_init( CNIO *, void *, IOType );

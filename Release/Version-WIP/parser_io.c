@@ -24,6 +24,7 @@ io_init( CNIO *io, void *stream, IOType type )
 void
 io_exit( CNIO *io )
 {
+	freeListItem( &io->buffer );
 	freeString( io->string );
 	while (( io->stack ))
 		io_pop( io );
@@ -32,7 +33,7 @@ io_exit( CNIO *io )
 //===========================================================================
 //	io_getc
 //===========================================================================
-static int preprocess( CNIO *io, int event );
+static int preprocess( CNIO *io, int event, int *skipped );
 
 int
 io_getc( CNIO *io, int last_event )
@@ -41,31 +42,36 @@ io_getc( CNIO *io, int last_event )
 */
 {
 	int event;
+	if ( last_event=='\n' ) {
+		io->column = 0; io->line++; }
 	if ( io->buffer ) {
-		if ( last_event=='\n' ) {
-			io->column = 0; io->line++; }
-		event = io->buffer; io->buffer = 0;
-		if ( event!=EOF && event!='\n' ) {
-			io->column++; }
-		return event; }
-	else for ( ; ; ) {
-		// Note: the test below makes provision for
-		// io->buffer holding more than one event
-		if ( last_event=='\n' && !io->buffer ) {
-			io->column = 0; io->line++; }
-		switch ( io->type ) {
-		case IOStreamFile:
-		case IOStreamStdin:
-			event = fgetc( io->stream );
-			break; }
-		last_event = event;
-		event = preprocess( io, last_event );
-		// Assumption: buffering starts, if it does,
-		// upon the next event
-		if ( last_event!=EOF && last_event!='\n' ) {
-			if ( !io->buffer ) io->column++; }
-		if (( event )) {
-			return event; } }
+		event = pop_item( &io->buffer ); }
+	else {
+		int count[ 2 ] = { 0, 0 }, skipped = 0;
+		for ( ; ; ) {
+			switch ( io->type ) {
+			case IOStreamFile:
+			case IOStreamStdin:
+				event = fgetc( io->stream );
+				break; }
+			last_event = event;
+			event = preprocess( io, event, &skipped );
+			if ( !event ) {
+				if ( last_event=='\n' ) {
+					count[ 1 ]++;
+					count[ 0 ] = 0; }
+				else if ( last_event!=EOF ) {
+					count[ 0 ]++; } }
+			else break; }
+		if ( skipped ) {
+			if ( count[ 1 ] ) {
+				io->column = count[ 0 ];
+				io->line += count[ 1 ]; }
+			else if ( count[ 0 ] ) {
+				io->column += count[ 0 ]; } } }
+	if ( event!=EOF && event!='\n' ) {
+		io->column++; }
+	return event;
 }
 
 //---------------------------------------------------------------------------
@@ -75,7 +81,7 @@ io_getc( CNIO *io, int last_event )
 #include "parser_macros.h"
 
 static int
-preprocess( CNIO *io, int event )
+preprocess( CNIO *io, int event, int *skipped )
 {
 	CNString *s = io->string;
 	char *	state = io->state;
@@ -97,17 +103,25 @@ preprocess( CNIO *io, int event )
 		on_other	do_( same )	output = event;
 		end
 	in_( "\\" ) bgn_
-		on_( '\n' )	do_( "" )
+		on_( '\n' )	do_( "" )	io->line++; io->column=0;
 		on_other	do_( "" )	output = '\\';
-						io->buffer = event;
+						add_item( &io->buffer, event );
 		end
 	in_( "\"" ) bgn_
-		on_( '"' )	do_( "" )	output = event;
+		on_( '"' )	do_( "\"\"" )
 		on_( '\\' )	do_( "\"\\" )	output = event;
 		on_other	do_( same )	output = event;
 		end
 		in_( "\"\\" )	bgn_
 			on_any	do_( "\"" )	output = event;
+			end
+		in_( "\"\"" ) bgn_
+			ons( " \t\n" )		do_( same )	add_item( &io->buffer, event );
+			on_( '"' )		do_( "\"" )	freeListItem( &io->buffer );
+								*skipped = 1;
+			on_other		do_( "" )	add_item( &io->buffer, event );
+								reorderListItem( &io->buffer );
+								output = '"';
 			end
 	in_( "'" ) bgn_
 		on_( '\'' )	do_( "" )	output = event;
@@ -131,36 +145,39 @@ preprocess( CNIO *io, int event )
 		on_( '*' )	do_( "/*" )
 		on_( '/' )	do_( "//" )
 		on_( '\\' )	do_( "\\" )	output = '/';
-						io->buffer = event;
+						add_item( &io->buffer, event );
 		on_other	do_( "" )	output = '/';
-						io->buffer = event;
+						add_item( &io->buffer, event );
 		end
 		in_( "/*" ) bgn_
 			on_( '*' )	do_( "/**" )
 			on_other	do_( same )
 			end
 			in_( "/**" ) bgn_
-				on_( '/' )	do_( "" )
+				on_( '/' )	do_( "" )	*skipped = 1;
 				on_other	do_( "/*" )
 				end
 		in_( "//" ) bgn_
 			on_( '\n' )	do_( "" )	output = event;
+							*skipped = 1;
 			on_other	do_( same )
 			end
 	in_( "#" ) bgn_
 		on_( '<' )	do_( "#<" )
-		on_other	do_( "//" )
+		on_other	do_( "//" )	REENTER
 		end
 		in_( "#<" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\\' )	do_( "#<\\" )
-			on_( '>' )	do_( "//" )	errnum = IOErrIncludeFormat;
-			on_( '\n' )	do_( "//" )	errnum = IOErrIncludeFormat;
+			ons( ">\n" )	do_( "//" )	REENTER
+							errnum = IOErrIncludeFormat;
 			on_other	do_( "#<_" )	s_take
 			end
 			in_( "#<\\" ) bgn_
-				on_any	do_( "#<_" )	s_add( "\\" )
-							s_take
+				on_( '\n' )	do_( "//" )	REENTER
+								errnum = IOErrIncludeFormat;
+				on_other	do_( "#<_" )	s_add( "\\" )
+								s_take
 				end
 		in_( "#<_" ) bgn_
 			ons( " \t\n" )	do_( "#<_ " )	REENTER
@@ -171,8 +188,8 @@ preprocess( CNIO *io, int event )
 			in_( "#<_ " ) bgn_
 				ons( " \t" )	do_( same )
 				on_( '>' )	do_( "#<>" )
-				on_other	do_( "//" )	errnum = IOErrIncludeFormat;
-								s_reset( CNStringAll )
+				on_other	do_( "//" )	REENTER
+								errnum = IOErrIncludeFormat;
 				end
 		in_( "#<>" ) bgn_
 			ons( " \t" )	do_( same )
@@ -182,17 +199,18 @@ preprocess( CNIO *io, int event )
 			end
 			in_( "#<>/" ) bgn_
 				on_( '/' )	do_( "#<>_" )
-				on_( '\n' )	do_( "#<>_" )	REENTER
+				on_other	do_( "#<>_" )	REENTER
 								errnum = IOErrTrailingChar;
-				on_other	do_( "#<>_" )	errnum = IOErrTrailingChar;
 				end
 		in_( "#<>_" ) bgn_
 			on_( '\n' )	do_( "" )	errnum = io_push( io, s );
+							*skipped = 1;
 			on_other	do_( same )
 			end
 	BMParseEnd
 
 	if ( errnum ) {
+		s_reset( CNStringAll )
 		fprintf( stderr, "Warning: bm_parse: " );
 		if (( io->path )) fprintf( stderr, "in %s, ", io->path );
 		column = ( event=='\n' ) ? column : column+1;
@@ -200,7 +218,6 @@ preprocess( CNIO *io, int event )
 		switch ( errnum ) {
 		case IOErrFileNotFound:
 			fprintf( stderr, "could not open file: \"%s\"\n", StringFinish(s,0) );
-			StringReset( s, CNStringAll );
 			break;
 		case IOErrIncludeFormat:
 			fprintf( stderr, "unknown include format\n" );

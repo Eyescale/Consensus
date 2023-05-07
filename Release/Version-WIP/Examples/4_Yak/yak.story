@@ -98,7 +98,8 @@
 						do : s : %?
 						do : r : %(%?:(.,?))
 					else // if no such successor, then we must have (*r,base)
-						do >" *** Error: Yak: rule '%_': subscriber has no successor ***\n": %(*r:((.,?),.))
+						do >" *** Error: Yak: rule '%_': "
+							"subscriber has no successor ***\n": %(*r:((.,?),.))
 						do : s : ~.
 				else // back to base, where s must be successor null-schema
 					in %?:(']',.) // this frame was consumed
