@@ -552,7 +552,9 @@ case_( dot_identifier_CB )
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case -1: data->success = 0; break;
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-	case  1:
+	case  1: if ( p[1]=='?' ) { // special case: .? (cannot be negated)
+			data->success = 1;
+			break; }
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
 		switch ( match( data->instance, p+1, data->base, data ) ) {
 		case -1: data->success = 0; break;

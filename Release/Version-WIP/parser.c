@@ -560,6 +560,8 @@ CND_ifn( mode==BM_STORY, C )
 		on_( '.' )	do_( "expr" )	s_take
 						f_set( INFORMED )
 		on_( '(' )	do_( "expr" )	REENTER
+		on_( '?' ) if ( is_f(SUB_EXPR) ) {
+				do_( "expr" )	REENTER }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other	do_( "term" )	s_take

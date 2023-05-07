@@ -180,6 +180,9 @@ CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
 					p++;
 CB_TermCB				break; }
+				else if ( p[1]=='?' ) {
+CB_DotIdentifierCB			p+=2;
+					f_cls; break; }
 				else if ( !is_separator(p[1]) ) {
 CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
 					f_cls; break; }

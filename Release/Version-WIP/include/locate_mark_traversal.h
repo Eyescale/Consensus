@@ -7,10 +7,11 @@ static BMTraversal locate_mark_traversal;
 		LocateMarkData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	dereference_CB, sub_expression_CB, dot_expression_CB, open_CB,
+	dereference_CB, dot_identifier_CB, sub_expression_CB, dot_expression_CB, open_CB,
 	filter_CB, decouple_CB, close_CB, wildcard_CB;
 
 #define BMDereferenceCB		dereference_CB
+#define BMDotIdentifierCB	dot_identifier_CB
 #define BMSubExpressionCB	sub_expression_CB
 #define BMDotExpressionCB	dot_expression_CB
 #define BMOpenCB		open_CB

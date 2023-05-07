@@ -66,7 +66,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
-		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantation\n"
+		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantiation\n"
                         "\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data.p );
 		cleanup( &data, ctx ); }
 #ifdef DEBUG

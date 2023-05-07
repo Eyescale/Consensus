@@ -146,7 +146,7 @@ deprecatable( CNInstance *e, CNDB *db )
 	if ( cn_hold( e, nil ) )
 		return 0;
 	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || f->as_sub[0] );
+	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
 }
 
 //===========================================================================

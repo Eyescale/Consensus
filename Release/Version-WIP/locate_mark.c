@@ -56,6 +56,11 @@ case_( dereference_CB )
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
 	_break
+case_( dot_identifier_CB )
+	if ( p[1]=='?' ) {
+		xpn_add( data->exponent, SUB, 1 );
+		_return( 2 ); }
+	_break
 case_( sub_expression_CB )
 	_prune( BM_PRUNE_FILTER )
 case_( dot_expression_CB )
