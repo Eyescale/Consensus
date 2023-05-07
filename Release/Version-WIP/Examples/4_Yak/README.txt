@@ -46,11 +46,16 @@
 			  any of r's subscribers a successor starting at finish frame
 			. input event test failed
 
-	Note that the only reason why the relationship instances of the type ( r, s )  are
-	created as dotted - e.g. do .( %|, s ) - is for optimizing e.g. in .( ., s )
+	Note that the only reason for the relationship instances of the type ( r, s ) to be
+	dotted - e.g. do .( %|, s ) - is for optimizing e.g. in .( ., s )
 
-	In fact the example yak.proper features an implementation where this optimization
-	is not used.
+	The difference between yak.proper and yak.story is that the latter uses the schema
+	thread instead of the schema instance to establish connections, e.g.
+		do .( ((schema,position),frame), r )		// yak.story
+	    vs. do ( ((schema,position),frame) | ( %|,r) )	// yak.proper
+
+	Again, for optimization purpose.
+
 
 Notes
 1. a Schema position, being sub-literal, may be shared among multiple Schemas
