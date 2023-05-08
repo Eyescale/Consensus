@@ -86,10 +86,9 @@ case_( dot_identifier_CB )
 			xpn_add( exponent, AS_SUB, 0 );
 			_return( 2 ); } }
 
-	// apply dot operator to whatever comes next
-	xpn_add( exponent, AS_SUB, 1 );
-	if ( !is_f(NEGATED) ) {
+	if ( p[1]!='?' && !is_f(NEGATED) ) {
 		if CHECK( IDENTIFIER ) {
+			xpn_add( exponent, AS_SUB, 1 );
 			(*q)++;
 			_return( 2 ) } }
 	_break
