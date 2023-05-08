@@ -1,5 +1,5 @@
 
-#< Test/37_include >
+#include < Test/37_include >
 	else
 		do exit
 

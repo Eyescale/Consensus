@@ -18,14 +18,13 @@
 // #define DEBUG
 
 #ifdef DEBUG
-#define	DBGMonitor( this, state, event, line, column ) \
-	fprintf( stderr, "%s:l%dc%d: in \"%s\" on ", this, line, column, state ); \
+#define	DBGMonitor( src, state, event, line, column ) \
+	fprintf( stderr, "%s: l%dc%d: in \"%s\" on ", src, line, column, state ); \
 	switch ( event ) { \
 	case EOF: fprintf( stderr, "EOF" ); break; \
 	case '\n': fprintf( stderr, "'\\n'" ); break; \
 	case '\t': fprintf( stderr, "'\\t'" ); break; \
-	default: fprintf( stderr, "'%c'", event ); \
-	} \
+	default: fprintf( stderr, "'%c'", event ); } \
 	fprintf( stderr, "\n" );
 #else
 #define	DBGMonitor( this, state, event, line, column )

@@ -4,6 +4,7 @@
 #include "string_util.h"
 
 typedef enum {
+	IOBuffer,
 	IOStreamFile,
 	IOStreamStdin
 } IOType;
@@ -12,8 +13,15 @@ typedef enum {
 	IOErrFileNotFound,
 	IOErrIncludeFormat,
 	IOErrTrailingChar,
+	IOErrPragmaUnknown,
 	IOErrSyntaxError
 } IOErr;
+typedef enum {
+	IOEventTake = 0,
+	IOEventPass,
+	IOEventPush,
+	IOEventPop
+} IOEventAction;
 
 typedef struct {
 	CNString *string;

@@ -379,7 +379,7 @@ A:CND_else_( B )
 		on_( ':' ) if ( s_empty ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
-			else if ( !is_f(INFORMED) || is_f(EENOV) || ( *type&PER && !s_diff("~.") ) )
+			else if ( !is_f(INFORMED) || is_f(EENOV) || ( *type&PER && !s_cmp("~.") ) )
 				; // err
 			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( !is_f(FILTERED) ) {
@@ -1021,70 +1021,56 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	BMParseEnd
 	data->errnum = errnum;
 	data->flags = flags;
-	if ( errnum ) bm_parse_report( data, mode );
+	if ( errnum ) bm_parse_report( data, mode, line, column );
 	return state;
 }
 
 //===========================================================================
 //	bm_parse_report
 //===========================================================================
+#define err_case( err, msg ) \
+	case err: fprintf( stderr, msg
+#define _( arg ) \
+	, arg ); break;
+#define err_default( msg ) \
+	default: fprintf( stderr, msg
+#define _narg \
+	); break;
 void
-bm_parse_report( BMParseData *data, BMParseMode mode )
+bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 {
 	CNIO *io = data->io;
-	int l = io->line, c = io->column;
 	char *src = (mode==BM_LOAD)  ? "bm_load" :
 		    (mode==BM_INPUT) ? "bm_input" : "bm_parse";
 	char *stump = StringFinish( data->string, 0 );
 
-if ( mode==BM_INPUT ) {
+	fprintf( stderr, data->errnum==ErrUnknownState ? ">>>>> B%%::%s: " : "Error: %s: ", src );
+	if ( mode==BM_INPUT ) {
+		switch ( data->errnum ) {
+		err_case( ErrUnknownState, "unknown state \"%s\" <<<<<<\n" )_( data->state )
+		err_case( ErrUnexpectedEOF, "in expression '%s' unexpected EOF\n" )_( stump )
+		err_case( ErrUnexpectedCR, "in expression '%s' unexpected \\cr\n" )_( stump )
+		err_default( "in expression '%s' syntax error\n" )_( stump ) } }
+
+	fprintf( stderr, "l%dc%d: ", l, c );
 	switch ( data->errnum ) {
-	case ErrUnknownState:
-		fprintf( stderr, ">>>>> B%%::CNParser: unknown state \"%s\" <<<<<<\n", data->state  ); break;
-	case ErrUnexpectedEOF:
-		fprintf( stderr, "Error: %s: in expression '%s' unexpected EOF\n", src, stump  ); break;
-	case ErrUnexpectedCR:
-		fprintf( stderr, "Error: %s: in expression '%s' unexpected \\cr\n", src, stump  ); break;
-	default:
-		fprintf( stderr, "Error: %s: in expression '%s' syntax error\n", src, stump  ); } }
-else {
-	switch ( data->errnum ) {
-	case ErrUnknownState:
-		fprintf( stderr, ">>>>> B%%::CNParser: l%dc%d: unknown state \"%s\" <<<<<<\n", l, c, data->state  ); break;
-	case ErrUnexpectedEOF:
-		fprintf( stderr, "Error: %s: l%d: unexpected EOF\n", src, l  ); break;
-	case ErrEllipsisLevel:
-		fprintf( stderr, "Error: %s: l%dc%d: ellipsis usage not supported\n", src, l, c ); break;
-	case ErrSpace:
-		fprintf( stderr, "Error: %s: l%dc%d: unexpected ' '\n", src, l, c  ); break;
-	case ErrInstantiationFiltered:
-		fprintf( stderr, "Error: %s: l%dc%d: base instantiation must be unfiltered\n", src, l, c  ); break;
-	case ErrUnexpectedCR:
-		fprintf( stderr, "Error: %s: l%dc%d: statement incomplete\n", src, l, c  ); break;
-	case ErrIndentation:
-		fprintf( stderr, "Error: %s: l%dc%d: indentation error\n", src, l, c  ); break;
-	case ErrExpressionSyntaxError:
-		fprintf( stderr, "Error: %s: l%dc%d: syntax error in expression\n", src, l, c  ); break;
-	case ErrInputScheme:
-		fprintf( stderr, "Error: %s: l%dc%d: unsupported input scheme\n", src, l, c  ); break;
-	case ErrOutputScheme:
-		fprintf( stderr, "Error: %s: l%dc%d: unsupported output scheme\n", src, l, c  ); break;
-	case ErrMarkMultiple:
-		fprintf( stderr, "Error: %s: l%dc%d: '?' already informed\n", src, l, c  ); break;
-	case ErrMarkNegated:
-		fprintf( stderr, "Error: %s: l%dc%d: '?' negated\n", src, l, c  ); break;
-	case ErrEMarked:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' unspecified\n", src, l, c ); break;
-	case ErrEMarkMultiple:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' already informed\n", src, l, c ); break;
-	case ErrEMarkNegated:
-		fprintf( stderr, "Error: %s: l%dc%d: '!' negated\n", src, l, c ); break;
-	case ErrUnknownCommand:
-		fprintf( stderr, "Error: %s: l%dc%d: unknown command '%s'\n", src, l, c, stump  ); break;
-	case ErrPerContrary:
-		fprintf( stderr, "Error: %s: l%dc%d: per contrary not supported\n", src, l, c ); break;
-	default:
-		fprintf( stderr, "Error: %s: l%dc%d: syntax error\n", src, l, c  ); } }
+	err_case( ErrUnexpectedEOF, "unexpected EOF\n" )_narg
+	err_case( ErrUnexpectedCR, "statement incomplete\n" )_narg
+	err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg
+	err_case( ErrSpace, "unexpected ' '\n" )_narg
+	err_case( ErrInstantiationFiltered, "base instantiation must be unfiltered\n" )_narg
+	err_case( ErrIndentation, "indentation error\n" )_narg
+	err_case( ErrExpressionSyntaxError, "syntax error in expression\n" )_narg
+	err_case( ErrInputScheme, "unsupported input scheme\n" )_narg
+	err_case( ErrOutputScheme, "unsupported output scheme\n" )_narg
+	err_case( ErrMarkMultiple, "'?' already informed\n" )_narg
+	err_case( ErrMarkNegated, "'?' negated\n" )_narg
+	err_case( ErrEMarked, "'!' unspecified\n" )_narg
+	err_case( ErrEMarkMultiple, "'!' already informed\n" )_narg
+	err_case( ErrEMarkNegated, "'!' negated\n" )_narg
+	err_case( ErrUnknownCommand, "unknown command '%s'\n" )_( stump  )
+	err_case( ErrPerContrary, "per contrary not supported\n" )_narg
+	err_default( "syntax error\n" )_narg }
 }
 
 //---------------------------------------------------------------------------
@@ -1097,12 +1083,10 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 */
 {
 	CNIO *io = data->io;
-	int l = io->line, c = io->column;
+	fprintf( stderr, "Warning: bm_parse: l%dc%d: ", io->line, io->column );
 	switch ( errnum ) {
-	case WarnOutputFormat:
-		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported output format - using default \"%%_\"\n", l, c ); break;
-	case WarnInputFormat:
-		fprintf( stderr, "Warning: bm_parse: l%dc%d: unsupported input format - using default \"%%_\"\n", l, c ); break;
+	err_case( WarnOutputFormat, "unsupported output format - using default \"%%_\"\n" )_narg
+	err_case( WarnInputFormat, "unsupported input format - using default \"%%_\"\n" )_narg;
 	default: break; }
 }
 

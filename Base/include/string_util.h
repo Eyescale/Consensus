@@ -60,8 +60,6 @@ void	StringReset( CNString *, CNStringReset );
 #define	s_at( event ) \
 	( StringAt(s)==event )
 #define s_cmp( str ) \
-	strcmp( str, StringFinish(s,0) )
-#define s_diff( str ) \
 	StringCompare( s, str )
 
 //===========================================================================

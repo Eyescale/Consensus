@@ -182,11 +182,17 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			default:
 				return 0; } }
 		else if ( TAB_CURRENT <= TAB_LAST ) {
+			CNOccurrence *sibling;
+			if ( TAB_CURRENT==TAB_LAST ) {
+				sibling = data->stack.occurrences->ptr;
+				if ( sibling->data->type&(IN|ON|ON_X) ?
+					!(data->type&ELSE) : (data->type&ELSE) )
+					return 0; }
 			for ( ; ; ) {
-				CNOccurrence *sibling = popListItem( &data->stack.occurrences );
-				if ( TAB_CURRENT==TAB_LAST && (data->type&ELSE) &&
-					!(sibling->data->type&(IN|ON|ON_X)) )
-					return 0;
+				sibling = popListItem( &data->stack.occurrences );
+				if ( TAB_CURRENT==TAB_LAST ) {
+					if ((data->type&ELSE) && !(sibling->data->type&(IN|ON|ON_X)))
+						return 0; }
 				TAB_LAST--;
 				if ( sibling->data->type == ROOT )
 					return 0;

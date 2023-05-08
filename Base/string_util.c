@@ -102,12 +102,15 @@ StringCompare( CNString *string, char *cmp )
 
 	union { int value; void *ptr; } icast;
 	listItem *i = string->data;
+	if ( !i ) return 1;
+	int len = strlen( cmp );
+	if ( !len ) return 1;
 	int j;
-	for ( j=strlen(cmp), cmp+=j-1; j-- && (i); i=i->next ) {
+	for ( j=0, cmp+=len-1; j<len && (i); i=i->next, j++ ) {
 		icast.ptr = i->ptr;
 		int comparison = icast.value - *cmp--;
 		if ( comparison ) return comparison; }
-	return 0;
+	return !( j==len && !i );
 }
 
 

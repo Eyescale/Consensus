@@ -40,7 +40,7 @@
 	    EXIT	caused by either one of the following conditions
 			. all r feeder schemas fail, alt. all r subscriber schemas fail
 			. feeder rule fail
-			. feeder rule complete, and all s's successor schemas failed
+			. feeder rule complete[2], and all s's successor schemas failed
 			. r has other feeder starting at the same frame, completion guaranteed
 			. r has no feeder other than s starting at finish frame, nor has
 			  any of r's subscribers a successor starting at finish frame
@@ -59,5 +59,5 @@
 
 Notes
 1. a Schema position, being sub-literal, may be shared among multiple Schemas
-
+2. a rule is complete when all its non-cyclic schema threads are DONE
 
