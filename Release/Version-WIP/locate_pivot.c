@@ -89,8 +89,7 @@ case_( dot_identifier_CB )
 	if ( p[1]!='?' && !is_f(NEGATED) ) {
 		if CHECK( IDENTIFIER ) {
 			xpn_add( exponent, AS_SUB, 1 );
-			(*q)++;
-			_return( 2 ) } }
+			(*q)++; _return( 2 ) } }
 	_break
 case_( identifier_CB )
 	if ( !is_f(NEGATED) ) {

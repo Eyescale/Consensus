@@ -73,10 +73,9 @@ case_( dot_identifier_CB )
 		xpn_add( exponent, AS_SUB, 0 );
 		_return( 2 )
 	}
-	// apply dot operator to whatever comes next
-	xpn_add( exponent, AS_SUB, 1 );
-	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
-		{ (*q)++; _return( 2 ) }
+	if ( !is_f(NEGATED) && data->target==IDENTIFIER ) {
+		xpn_add( exponent, AS_SUB, 1 );
+		(*q)++; _return( 2 ) }
 	_break
 case_( identifier_CB )
 	if ( !is_f(NEGATED) && data->target==IDENTIFIER )
