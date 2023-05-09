@@ -199,7 +199,7 @@ preprocess( CNIO *io, int event )
 			else {	do_( "//" )	errnum = s_empty ? 0 : IOErrPragmaUnknown;
 						action = IOEventPass; }
 		on_separator	do_( "//" )	REENTER
-						errnum = s_empty ? 0 : IOErrSyntaxError;
+						errnum = s_empty ? 0 : IOErrPragmaIncomplete;
 		on_other	do_( same )	action = IOEventPass;
 						s_take
 		end
@@ -363,7 +363,8 @@ io_report( CNIO *io, int errnum, int l, int c )
 	err_case( IOErrFileNotFound, "could not open file: \"%s\"\n" )_( stump )
 	err_case( IOErrIncludeFormat, "unknown include format\n" )_narg
 	err_case( IOErrTrailingChar, "trailing characters\n" )_narg
-	err_case( IOErrPragmaUnknown, "unknown pragma directive #%s\n" )_( stump );
+	err_case( IOErrPragmaIncomplete, "pragma directive #%s incomplete\n" )_( stump );
+	err_case( IOErrPragmaUnknown, "pragma directive #%s unknown\n" )_( stump );
 	err_default( "syntax error\n" )_narg }
 
 	StringReset( s, CNStringAll );

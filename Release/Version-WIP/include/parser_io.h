@@ -14,6 +14,7 @@ typedef enum {
 	IOErrIncludeFormat,
 	IOErrTrailingChar,
 	IOErrPragmaUnknown,
+	IOErrPragmaIncomplete,
 	IOErrSyntaxError
 } IOErr;
 typedef enum {

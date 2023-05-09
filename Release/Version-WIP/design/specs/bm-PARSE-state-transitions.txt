@@ -21,6 +21,8 @@ Consensus B% Version-WIP
 			(:\\	(:
 				(:\\x	(:\\x_	(:
 			(:%	(:
+				(:%$	(:
+					(:%$'	(:
 			(::	(:
 				expr
 		|	expr
@@ -122,6 +124,8 @@ Consensus B% Version-WIP
 			(:\\	(:
 				(:\\x	(:\\x_	(:
 			(:%	(:
+				(:%$	(:
+					(:%$'	(:
 			(::	(:
 				expr
 		|	expr

@@ -956,7 +956,16 @@ else {					; } // err
 		in_( "(:%" ) bgn_
 			ons( "% " )	do_( "(:" )	s_take
 			on_separator	; // err
-			on_other	do_( "(:" )	s_take
+			on_other	do_( "(:%$" )	s_take
+			end
+		in_( "(:%$" ) bgn_
+			on_( '\'' )	do_( "(:%$'" )	s_take
+			on_separator	do_( "(:" )	REENTER
+			on_other	do_( same )	s_take
+			end
+		in_( "(:%$'" ) bgn_
+			on_separator	; // err
+			on_other	do_( "(:" )	REENTER
 			end
 		in_( "(::" ) bgn_
 			on_( ')' )	do_( "expr" )	REENTER

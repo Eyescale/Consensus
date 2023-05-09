@@ -85,7 +85,7 @@
 				else bgn_
 
 #define BMParseEnd		end \
-			} while ( !errnum && (caught&CNCaughtReenter) );
+			} while ( caught&CNCaughtReenter );
 
 
 #endif	// PARSER_MACROS_H

@@ -17,6 +17,7 @@ TODO
 		. with interactive traversal
 
 DONE
+	. parser.c: %identifier' in literal or list MUST be followed by non-separator
 	. published updated ./design/specs/db-update.txt specs
 	  . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
 	  . documented db_update() assumption and counter-measure wrt. entities order
@@ -181,6 +182,7 @@ NICE TO HAVE
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
 
 TODOC
+	. %identifier' in literal or list MUST be followed by non-separator
 	. write Consensus B% Version-2.0 Programming Guide
 		. Reminder: instantiation may do half a job, as
 		  we do not pre-check with bm_void
