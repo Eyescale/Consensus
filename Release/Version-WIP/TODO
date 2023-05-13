@@ -1,9 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. NOW I want popping NOT to generate one more pop (?)
 	. implement calculator { add, mult, mem } using yak.mod
 	. interactive B% Grammar
 
 DONE
+	. support output to stderr
+		do >&"fmt":< arg(s) >
 	. implemented ./Examples/4_Yak/{yak.drive,yak.mod}
 		using #include "path/filename" for yak.mod [mod for model]
 	. parser.c: %identifier' in literal or list MUST be followed by non-separator or '

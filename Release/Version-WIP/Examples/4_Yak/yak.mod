@@ -75,8 +75,7 @@
 				in %?:( IN, ? ) // after push notification
 					// set s to the feeder starting at candidate's starting frame
 					in ?:( (.,%(%?:(.,?))), %? )
-						// And jump to finish frame - Note: we shall have an
-						// extra pop upon pruning, but this is unavoidable.
+						// ... and jump to finish frame
 						do :< s, f >:< %?, %(%?,(.,?)) >
 						do : push : OUT
 					do : r : %?
@@ -131,7 +130,7 @@
 			// cyclic case: test if other feeder starting at s's finishing frame
 			in ?: ( (.,%?), *r ): ~*s
 				in : push : OUT  // pruning
-					do : pending : ( OUT, %? )
+					do :< r, s >:< %(%?:(.,?)), %? >
 					do : push : ~.
 				else in ( *s:(((.,~'\0'),.),.), (']',.))
 					do : pending : ( TAKE, %(*f:(.,?)) )
@@ -149,7 +148,7 @@
 				// set s to the successor of the schema which the current r
 				// fed and which started at finishing frame = %(*s,?)
 				in : push : OUT  // pruning
-					do : pending : ( OUT, %? )
+					do :< r, s >:< %(%?:(.,?)), %? >
 					do : push : ~.
 				else in ( *s:(((.,~'\0'),.),.), (']',.))
 					do : pending : ( TAKE, %(*f:(.,?)) )
