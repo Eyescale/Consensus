@@ -1,6 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. NOW I want popping NOT to generate one more pop (?)
 	. implement calculator { add, mult, mem } using yak.mod
 	. interactive B% Grammar
 
