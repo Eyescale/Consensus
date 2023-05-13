@@ -125,6 +125,21 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 	//----------------------------------------------------------------------
 	// bm_parse:	Narrative Declaration
 	//----------------------------------------------------------------------
+	in_( "def" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' )	do_( "def$" )	REENTER
+		on_( '(' )	do_( ".id:" )	REENTER
+						s_add( ".this:" )
+		on_separator	; // err
+		on_other	do_( "def$" )	s_take
+		end
+	in_( "def$" ) bgn_
+		ons( " \t\n" )
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "def$_" )	REENTER }
+		on_separator	; // err
+		on_other	do_( same )	s_take
+		end
 	in_( ".id:" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '(' )
@@ -227,21 +242,6 @@ CB_if_( NarrativeTake, mode, data ) {
 			on_other	do_( same )	s_take
 							f_set( INFORMED )
 			end
-	in_( "def" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "def$_" )	REENTER
-		on_( '(' )	do_( ".id:" )	REENTER
-						s_add( ".this:" )
-		on_separator	; // err
-		on_other	do_( "def$" )	s_take
-		end
-	in_( "def$" ) bgn_
-		ons( " \t\n" )
-CB_if_( NarrativeTake, mode, data ) {
-				do_( "def$_" )	REENTER }
-		on_separator	; // err
-		on_other	do_( same )	s_take
-		end
 	in_( "def$_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
@@ -736,9 +736,15 @@ CND_ifn( mode==BM_STORY, C )
 		end
 	in_( ">" ) bgn_
 		ons( " \t" )	do_( same )
+		on_( '&' )	do_( ">&" )	s_take
 		on_( ':' )	do_( ">:" )	s_take
 		on_( '\"' )	do_( ">\"" )	s_take
 		end
+		in_( ">&" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ':' )	do_( ">:" )	s_take
+			on_( '\"' )	do_( ">\"" )	s_take
+			end
 		in_( ">:" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( "expr" )	REENTER
@@ -964,6 +970,7 @@ else {					; } // err
 			on_other	do_( same )	s_take
 			end
 		in_( "(:%$'" ) bgn_
+			on_( '\'' )	do_( "(:" )	s_take
 			on_separator	; // err
 			on_other	do_( "(:" )	REENTER
 			end
@@ -1060,26 +1067,27 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrUnexpectedEOF, "in expression '%s' unexpected EOF\n" )_( stump )
 		err_case( ErrUnexpectedCR, "in expression '%s' unexpected \\cr\n" )_( stump )
 		err_default( "in expression '%s' syntax error\n" )_( stump ) } }
-
-	fprintf( stderr, "l%dc%d: ", l, c );
-	switch ( data->errnum ) {
-	err_case( ErrUnexpectedEOF, "unexpected EOF\n" )_narg
-	err_case( ErrUnexpectedCR, "statement incomplete\n" )_narg
-	err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg
-	err_case( ErrSpace, "unexpected ' '\n" )_narg
-	err_case( ErrInstantiationFiltered, "base instantiation must be unfiltered\n" )_narg
-	err_case( ErrIndentation, "indentation error\n" )_narg
-	err_case( ErrExpressionSyntaxError, "syntax error in expression\n" )_narg
-	err_case( ErrInputScheme, "unsupported input scheme\n" )_narg
-	err_case( ErrOutputScheme, "unsupported output scheme\n" )_narg
-	err_case( ErrMarkMultiple, "'?' already informed\n" )_narg
-	err_case( ErrMarkNegated, "'?' negated\n" )_narg
-	err_case( ErrEMarked, "'!' unspecified\n" )_narg
-	err_case( ErrEMarkMultiple, "'!' already informed\n" )_narg
-	err_case( ErrEMarkNegated, "'!' negated\n" )_narg
-	err_case( ErrUnknownCommand, "unknown command '%s'\n" )_( stump  )
-	err_case( ErrPerContrary, "per contrary not supported\n" )_narg
-	err_default( "syntax error\n" )_narg }
+	else {
+		if (( io->path )) fprintf( stderr, "in %s, ", io->path );
+		fprintf( stderr, "l%dc%d: ", l, c );
+		switch ( data->errnum ) {
+		err_case( ErrUnexpectedEOF, "unexpected EOF\n" )_narg
+		err_case( ErrUnexpectedCR, "statement incomplete\n" )_narg
+		err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg
+		err_case( ErrSpace, "unexpected ' '\n" )_narg
+		err_case( ErrInstantiationFiltered, "base instantiation must be unfiltered\n" )_narg
+		err_case( ErrIndentation, "indentation error\n" )_narg
+		err_case( ErrExpressionSyntaxError, "syntax error in expression\n" )_narg
+		err_case( ErrInputScheme, "unsupported input scheme\n" )_narg
+		err_case( ErrOutputScheme, "unsupported output scheme\n" )_narg
+		err_case( ErrMarkMultiple, "'?' already informed\n" )_narg
+		err_case( ErrMarkNegated, "'?' negated\n" )_narg
+		err_case( ErrEMarked, "'!' unspecified\n" )_narg
+		err_case( ErrEMarkMultiple, "'!' already informed\n" )_narg
+		err_case( ErrEMarkNegated, "'!' negated\n" )_narg
+		err_case( ErrUnknownCommand, "unknown command '%s'\n" )_( stump  )
+		err_case( ErrPerContrary, "per contrary not supported\n" )_narg
+		err_default( "syntax error\n" )_narg } }
 }
 
 //---------------------------------------------------------------------------
@@ -1092,7 +1100,9 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 */
 {
 	CNIO *io = data->io;
-	fprintf( stderr, "Warning: bm_parse: l%dc%d: ", io->line, io->column );
+	fprintf( stderr, "Warning: bm_parse: " );
+	if (( io->path )) fprintf( stderr, "in %s, ", io->path );
+	fprintf( stderr, "l%dc%d: ", io->line, io->column );
 	switch ( errnum ) {
 	err_case( WarnOutputFormat, "unsupported output format - using default \"%%_\"\n" )_narg
 	err_case( WarnInputFormat, "unsupported input format - using default \"%%_\"\n" )_narg;

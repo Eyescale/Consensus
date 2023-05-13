@@ -77,8 +77,8 @@ io_getc( CNIO *io, int last_event )
 					if ( last_event=='\n' ) {
 						io->line++; io->column=0; }
 					else io->column++; } }
-			if ( event!='\n' ) { io->column++; }
-			else { last_event = event; }
+			if ( event=='\n' ) last_event = event;
+			else io->column++;
 			event = 0; break;
 		case IOEventPush:
 			add_item( buffer, event );
@@ -90,7 +90,7 @@ io_getc( CNIO *io, int last_event )
 			event = 0; break; }
 	} while ( !event );
 
-	if ( event!=EOF && event!='\n' )
+	if ( event!='\n' && event!=EOF )
 		io->column++;
 
 	if (( io->buffer )) io_push( io, IOBuffer );
@@ -115,8 +115,12 @@ preprocess( CNIO *io, int event )
 
 	BMParseBegin( "preprocess", state, event, line, column )
 	on_( EOF ) bgn_
+		in_( "/" )	do_( "pop" ) 	action = IOEventPop;
+		in_( "\\" )	do_( "pop" ) 	action = IOEventPop;
 		in_( "\"\"" )	do_( "pop" ) 	action = IOEventPop;
+		in_( "\"\"\\" ) do_( "pop" )	action = IOEventPop;
 		in_other	do_( "" )	action = IOEventTake;
+						errnum = s_empty ? 0 : IOErrUnexpectedEOF;
 		end
 		in_( "pop" ) bgn_
 			on_any	do_( "" )	action = IOEventTake;
@@ -124,10 +128,10 @@ preprocess( CNIO *io, int event )
 	in_( "" ) bgn_
 		on_( '#' )	do_( column ? "//" : ( io->type==IOStreamFile ? "#" : "//" ) )
 						action = IOEventPass;
+		on_( '/' )	do_( "/" )	action = IOEventPush;
 		on_( '\\' )	do_( "\\" )	action = IOEventPush;
 		on_( '"' )	do_( "\"" )	action = IOEventTake;
 		on_( '\'' )	do_( "'" )	action = IOEventTake;
-		on_( '/' )	do_( "/" )	action = IOEventPush;
 		on_other	do_( same )	action = IOEventTake;
 		end
 	in_( "\\" ) bgn_
@@ -170,10 +174,10 @@ preprocess( CNIO *io, int event )
 			on_other	do_( "'_" )	action = IOEventTake;
 			end
 			in_( "'\\x" ) bgn_
-				on_any		do_( "'\\x_" )	action = IOEventTake;
+				on_any	do_( "'\\x_" )	action = IOEventTake;
 				end
 			in_( "'\\x_" ) bgn_
-				on_any		do_( "'_" )	action = IOEventTake;
+				on_any	do_( "'_" )	action = IOEventTake;
 				end
 	in_( "/" ) bgn_
 		on_( '*' )	do_( "/*" )	action = IOEventPass;
@@ -194,7 +198,7 @@ preprocess( CNIO *io, int event )
 			end
 	in_( "#" ) bgn_
 		ons( " \t" ) if ( !s_cmp( "include" ) ) {
-				do_( "#$" )	s_reset( CNStringAll )
+				do_( "#_" )	s_reset( CNStringAll )
 						action = IOEventPass; }
 			else {	do_( "//" )	errnum = s_empty ? 0 : IOErrPragmaUnknown;
 						action = IOEventPass; }
@@ -203,63 +207,46 @@ preprocess( CNIO *io, int event )
 		on_other	do_( same )	action = IOEventPass;
 						s_take
 		end
-
-	in_( "#$" ) bgn_
-		ons( " \t" )	do_( same )	action = IOEventPass;
-		on_( '<' )	do_( "#<" )	action = IOEventPass;
-		on_other	do_( "//" )	REENTER
-						errnum = IOErrIncludeFormat;
-		end
-
-	in_( "#<" ) bgn_
-		ons( " \t" )	do_( same )	action = IOEventPass;
-		on_( '\\' )	do_( "#<\\" )	action = IOEventPass;
-		ons( ">\n" )	do_( "//" )	REENTER
-						errnum = IOErrIncludeFormat;
-		on_other	do_( "#<_" )	action = IOEventPass;
-						s_take
-		end
-		in_( "#<\\" ) bgn_
+		in_( "#_" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_( '"' )	do_( "#\"" )	action = IOEventPass;
+			on_other	do_( "//" )	REENTER
+							errnum = IOErrIncludeFormat;
+			end
+		in_( "#\"" ) bgn_
+			on_( '"' )	do_( "#\"\"" )	action = IOEventPass;
+			on_( '\\' )	do_( "#\"\\" )	action = IOEventPass;
 			on_( '\n' )	do_( "//" )	REENTER
 							errnum = IOErrIncludeFormat;
-			on_other	do_( "#<_" )	action = IOEventPass;
+			on_other	do_( same )	action = IOEventPass;
+							s_take
+			end
+			in_( "#\"\\" ) bgn_
+				on_any	do_( "#\"" )	action = IOEventPass;
 							s_add( "\\" )
 							s_take
-			end
-		in_( "#<_" ) bgn_
-			ons( " \t\n" )	do_( "#<_ " )	REENTER
-			on_( '\\' )	do_( "#<\\" )	action = IOEventPass;
-			on_( '>' )	do_( "#<>" )	action = IOEventPass;
-			on_other	do_( same )	action = IOEventPass;
-							s_take
-			end
-			in_( "#<_ " ) bgn_
-				ons( " \t" )	do_( same )	action = IOEventPass;
-				on_( '>' )	do_( "#<>" )	action = IOEventPass;
-				on_other	do_( "//" )	REENTER
-								errnum = IOErrIncludeFormat;
 				end
-		in_( "#<>" ) bgn_
-			ons( " \t" )	do_( same )	action = IOEventPass;
-			on_( '/' )	do_( "#<>/" )	action = IOEventPass;
-			on_( '\n' )	do_( "#<>_" )	REENTER
-			on_other	do_( "#<>_" )	action = IOEventPass;
-							errnum = IOErrTrailingChar;
-			end
-			in_( "#<>/" ) bgn_
-				on_( '/' )	do_( "#<>_" )	action = IOEventPass;
-				on_other	do_( "#<>_" )	REENTER
+			in_( "#\"\"" ) bgn_
+				ons( " \t" )	do_( same )	action = IOEventPass;
+				on_( '/' )	do_( "#\"\"/" )	action = IOEventPass;
+				on_( '\n' )	do_( "#\"\"_" )	REENTER
+				on_other	do_( "#\"\"_" )	action = IOEventPass;
 								errnum = IOErrTrailingChar;
 				end
-		in_( "#<>_" ) bgn_
-			on_( '\n' )	do_( "" )	action = IOEventTake;
-							errnum = io_push( io, IOStreamFile );
-			on_other	do_( same )	action = IOEventPass;
-			end
+			in_( "#\"\"/" ) bgn_
+				on_( '/' )	do_( "#\"\"_" )	action = IOEventPass;
+				on_other	do_( "#\"\"_" )	REENTER
+								errnum = IOErrTrailingChar;
+				end
+			in_( "#\"\"_" ) bgn_
+				on_( '\n' )	do_( "" )	action = IOEventTake;
+								errnum = io_push( io, IOStreamFile );
+				on_other	do_( same )	action = IOEventPass;
+				end
 	BMParseEnd
 
 	if ( errnum ) {
-		if ( event!='\n' ) column += 1;
+		if ( event!='\n' && event!=EOF ) column++;
 		io_report( io, errnum, line, column ); }
 
 	io->state = state;
@@ -328,7 +315,7 @@ io_pop( CNIO *io )
 	Pair *pair = popListItem( stack );
 	icast.ptr = pair->name;
 	io->type = icast.value;
-	if ( previous==IOStreamFile ) {
+	if ( previous!=IOBuffer ) {
 		icast.ptr = pair->value;
 		io->line = icast.value;
 		io->column = 0; }
@@ -360,6 +347,7 @@ io_report( CNIO *io, int errnum, int l, int c )
 	fprintf( stderr, "l%dc%d: ", l, c );
 
 	switch ( errnum ) {
+	err_case( IOErrUnexpectedEOF, "unexpected EOF\n" )_narg
 	err_case( IOErrFileNotFound, "could not open file: \"%s\"\n" )_( stump )
 	err_case( IOErrIncludeFormat, "unknown include format\n" )_narg
 	err_case( IOErrTrailingChar, "trailing characters\n" )_narg

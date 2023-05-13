@@ -8,13 +8,14 @@ CNInstance *	bm_feel( int, char *, BMContext * );
 listItem *	bm_scan( char *, BMContext * );
 void		bm_release( char *expression, BMContext * );
 int		bm_void( char *, BMContext * );
-int		bm_inputf( char *format, listItem *args, BMContext * );
-int		bm_outputf( char *format, listItem *args, BMContext * );
+int		bm_inputf( char *fmt, listItem *args, BMContext * );
+int		bm_outputf( FILE *, char *fmt, listItem *args, BMContext * );
 
 //---------------------------------------------------------------------------
 //	bufferized output
 //---------------------------------------------------------------------------
 typedef struct {
+	FILE *stream;
 	int type, first;
 	CNInstance *last;
 } OutputData;

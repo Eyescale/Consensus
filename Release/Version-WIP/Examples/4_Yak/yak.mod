@@ -1,17 +1,14 @@
-/*
-	Usage: ./B% -f Scheme/yak.ini yak.story < input
-	-----------------------------------------------
-*/
+: Yak
 	on init
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
 			do : record : (record,*)
 			do : state : IN
 		else
-			do >"Error: Yak: base rule not found or invalid\n"
+			do >&"Error: Yak: base rule not found or invalid\n"
 			do exit
 
-	else in : state : IN
+	else in : state : IN  // input
 		on : state : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
@@ -20,14 +17,11 @@
 			%( . )
 			in ( %?, READY )
 				on ( %?, READY )
-					in : carry : ?
-						do : input : %?
-						do : carry : ~.
-					else do input:"%c"<
-				else on : input : ?
+					do ( .., READY )
+				else on : input : ? < ..
 					// could do some preprocessing here
-					do : record : (*record,%?)
-				else on : input : ~.
+					do : record : (*record,%<?>)
+				else on : input : ~. < ..
 					do : record : (*record,EOF)
 				else on : record : .
 					do ~( %?, READY )
@@ -39,85 +33,146 @@
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, DONE ) // all feeder schemas complete
 		else on ~( ., base ) // FAIL
-			in : record : (((record,*),.),.) // not first input
-				do : record : %(*record:(?,.))
-				do : carry : %(*record:(.,?))
+			do ( .., OUT )
 			do : state : OUT
 
-	else in : state : OUT
+	else in : state : OUT  // traversal
 		.s .f .r
 		on : state : .
 			in : record : (record,*)
-				do >"(nop)\n"
+				do >&"(nop)\n"
 				do exit
 			else
-				do : s : base
 				do : f : (record,*) // initial frame
-				in : carry : . // trim record
-					do ~( *record, . )
+				do : s : base
 
-		else on : r : ? // r pushed or popped
-			// test if r has other feeders starting at s's starting (flag,frame)
+		// pending on parent(=driver)'s request
+		else in : pending : ?
+			on ~( %%, ? ) < ..
++			in %?: OUT // no matter what
+				do : pending : ~.
+				do : state : ~.
+				do : push : ~.
+				do : pop : ~.
+			else in %<?:( CONTINUE )>
+				in %?:( IN, ? ) // after push notification
+					// set s to the feeder starting at candidate's starting frame
+					do :< r, s >:< %?, %((.,%(%?:(.,?))),%?) >
+				else in %?:( OUT, ? ) // after pop notification
+					// set r to candidate's subscriber rule
+					do :< r, s >:< %(%?:(.,?)), %? >
+				else in %?:( TAKE, . ) // after event notification
+					in : push : OUT
+						do : state : ~.
+						do : push : ~.
+					else in : push : ?
+						do : pending : (IN,%?)
+						do : push : ~.
+					else in : pop : ?
+						do : pending : ((%?:OUT) ?: (OUT,%?))
+						do : pop : ~.
+			else in %<?:( PRUNE )>
+				in %?:( IN, ? ) // after push notification
+					// set s to the feeder starting at candidate's starting frame
+					in ?:( (.,%(%?:(.,?))), %? )
+						// And jump to finish frame - Note: we shall have an
+						// extra pop upon pruning, but this is unavoidable.
+						do :< s, f >:< %?, %(%?,(.,?)) >
+						do : push : OUT
+					do : r : %?
+				else in %?:( OUT, ? ) // after pop notification
+					// pop and jump to finish frame
+					do :< s, f, r >:< %?, %(%?,(.,?)), %(%?:(.,?)) >
+					do : push : OUT
+				else in %?:( TAKE, . ) // after event notification
+					in : push : OUT
+						do : state : ~.
+						do : push : ~.
+					else in : pop : ?
+						do : pending : ((%?:OUT) ?: (OUT,%?))
+						do : pop : ~.
+					else in (*s,(.,?))  // jump to finish frame
+						do : push : OUT
+						do : f : %?
+			else in %<?:( DONE )>
+				do : state : ~.
+				do : push : ~.
+				do : pop : ~.
+
+			do ~( %? ) // release last pending condition
+-
+			else on : pending : . // send parent(=driver) notification
+				in %?:( TAKE, ? )
+					do (( .., TAKE ), %? )
+				else in %?:( IN, ? )
+					do (( .., IN ), %(((.,?),.):%?) )
+				else in %?:( OUT, ? )
+					do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
+				else in %?: OUT
+					do ( .., OUT )
+		else // done pending
+
+		// process data & set parent(=driver) notification
++		on : r : ? // r pushed or popped
+			// test if r has other feeders starting at s's starting frame
 			in ( (.,%(*s:((.,?),.))), %? ): ~*s
-				do >" *** Error: Yak: rule '%_': multiple interpretations ***\n": %(%?:((.,?),.))
+				do >&" *** Error: Yak: rule '%_': "
+					"multiple interpretations ***\n": %(%?:((.,?),.))
+				do ( .., ERR )	// notify err
 				do : s : ~.
-			in *s: %((.,*r), ? ) // s has predecessor: r popped
-			else // output r begin
-				do >"%%%_:{": %(%?:((.,?),.))
-
-		else in ( ?:(.,('[',*f)):~*r, *s ) // s has rule starting this frame - pushing
-			// set s to the feeder starting at r's starting ('[',frame)
-			do : r : %?
-			do : s : %((.,%(%?:(.,?))),%?)
-
-		else in ( ?:(.,(']',*f)):~*r, *s ) // s has rule starting this frame - pushing
-			// set s to the feeder starting at r's starting (']',frame)
-			in *f: ~(record,*) // output last schema frame
-				do >"%s": %(*f:(.,?))
-			do : r : %?
-			do : s : %((.,%(%?:(.,?))),%?)
-
+		else in ( ?:(.,('[',*f)):~*r, *s ) // s has rule starting this '[' frame
+			do : pending : ( IN, %? )
+		else in ( ?:(.,(']',*f)):~*r, *s ) // s has rule starting this ']' frame
+			in *f: ~(record,*) // output last schema event
+				do : pending : ( TAKE, %(*f:(.,?)) )
+				do : push : %?
+			else do : pending : ( IN, %? )
 		else in ( *s, ?:(.,*f)) // this frame is s's last frame
-			// cyclic case: test if other feeder starting at s's finishing (flag,frame)
+			// cyclic case: test if other feeder starting at s's finishing frame
 			in ?: ( (.,%?), *r ): ~*s
-				in ( *s:(((.,~'\0'),.),.), (']',.))
-					do >"%s": %(*f:(.,?))
-				do : s : %?
-			else
-				// output finishing event, which here cannot be initial frame
-				in ( *s:(((.,~'\0'),.),.), (']',.))
-					do >"%s}":%(*f:(.,?))
-				else do >"}"
-				in ~.: ( *r, base )
-					/* set s to the successor of the schema which the current r
-					   fed and which started at finishing (flag,frame) = %(*s,?)
-					*/
-					in ( %(*r,?), ?:((.,%?),.) )
-						do : s : %?
-						do : r : %(%?:(.,?))
-					else // if no such successor, then we must have (*r,base)
-						do >" *** Error: Yak: rule '%_': "
-							"subscriber has no successor ***\n": %(*r:((.,?),.))
-						do : s : ~.
-				else // back to base, where s must be successor null-schema
-					in %?:(']',.) // this frame was consumed
-						// right-recursive case: completes on failing next frame
-						in ( *f, ?:~EOF )
-							do : carry : %?
-					else in *f:( ., ?:~EOF )
-						// completed unconsumed - cannot be first input
-						do : carry : %?
-					do : state : ~.
-		else
+				in : push : OUT  // pruning
+					do : pending : ( OUT, %? )
+					do : push : ~.
+				else in ( *s:(((.,~'\0'),.),.), (']',.))
+					do : pending : ( TAKE, %(*f:(.,?)) )
+					do : pop : %? // take before pop
+				else do : pending : ( OUT, %? )
+			else in ( *r, base )
+				in : push : OUT  // pruning
+					do : pending : OUT
+					do : push : ~.
+				else in ( *s:(((.,~'\0'),.),.), (']',.))
+					do : pending : ( TAKE, %(*f:(.,?)) )
+					do : pop : OUT
+				else do : pending : OUT
+			else in ( %(*r,?), ?:((.,%?),.) )
+				// set s to the successor of the schema which the current r
+				// fed and which started at finishing frame = %(*s,?)
+				in : push : OUT  // pruning
+					do : pending : ( OUT, %? )
+					do : push : ~.
+				else in ( *s:(((.,~'\0'),.),.), (']',.))
+					do : pending : ( TAKE, %(*f:(.,?)) )
+					do : pop : %?
+				else do : pending : ( OUT, %? )
+			else // no such successor, then we should have had (*r,base)
+				do : push : ~.
+				do >&" *** Error: Yak: rule '%_': "
+					"subscriber has no successor ***\n": %(*r:((.,?),.))
+				do ( .., ERR )	// notify err
+				do : s : ~.
+		else in ?:( *f, . ) // there is a next frame
 			// output event, unless *f is a first ']' schema frame
-			in *f:( ., ?:~EOF ):~(record,*):~%(*s:((.,(']',?)),.))
-				do >"%s":%?
-			// move on to next frame
-			in ?: ( *f, . )
-				do : f : %?
-			else do : state : ~.
+			in *f:(.,?:~EOF):~(record,*):~%(*s:((.,(']',?)),.))
+				do : pending : ( TAKE, %? )
+			do : f : %?
+		else in *f:(.,?:~EOF):~(record,*) // no next frame
+			do : pending : ( TAKE, %? )
+			do : push : OUT
+		else do : state :~.
+-
 
-	else in : state : ~.
+	else in : state : ~.  // next input-traversal cycle - or exit
 		on : state : ~.
 			// destroy the whole record structure, including rule
 			// and schema instances - all in ONE Consensus cycle
@@ -125,9 +180,8 @@
 				do ~( record )
 			else do exit
 		else on ~( record )
-			// reset: we do not want base rule to catch this frame
+			// reset: we do not want base rule to catch this event
 			do : record : (record,*)
-			do ~( input )
 			do : state : IN
 
 
@@ -173,7 +227,7 @@
 	else in .( ?, s ) // s pending on rule
 		on ~.: . < { %%, . }
 			in .CYCLIC
-				do > "Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
+				do >&"Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 				do .EXIT
 		else	// expecting TAKE from rule schemas
 			on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
@@ -209,7 +263,7 @@
 					do : p : %? // moving on
 					do : s : !! Take( ((*,p),%?), ( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 			else
-				do >"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
+				do >&"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
 				do .EXIT
 		else on exit < *s // FAIL
 			do .EXIT
@@ -254,7 +308,7 @@
 				do : p : %(*p:(.,?))
 			else do exit // FAIL
 		else // *p is a base entity (singleton) other than '\0'
-			do >"Error: Yak: %_-terminated schema not supported\n": *p
+			do >&"Error: Yak: %_-terminated schema not supported\n": *p
 			do exit // FAIL
 	else on : p : ?
 		in %?: '\0'

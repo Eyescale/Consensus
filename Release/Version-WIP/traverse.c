@@ -31,9 +31,11 @@ CB_EEnovEndCB				f_clr( EENOV )
 					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
 					f_cls }
-				else if ( p!=expression ) { // leading output symbol excepted
+				else if ( p!=expression ) {
 					traverse_data->done = 1;
 					break; }
+				else { // output symbol
+					if ( p[1]=='&' ) p++; }
 				p++; break;
 			case '<':
 				if is_f( INFORMED ) { // input or EENO

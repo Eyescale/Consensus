@@ -1,0 +1,69 @@
+#include "yak.mod"
+:
+	on init
+		do : yak : !! Yak(
+			(( Rule, base ), ( Schema, (:%term:)))
+			(( Rule, term ), ( Schema, (:%rrec.:)))
+			(( Rule, rrec ), ( Schema, {
+				(:e:)
+				(:e%rrec:)	#right-recursive
+				}))
+			)
+		do : state : INPUT
+		do >&"> " // prompt
+
+	else in : state : INPUT
+		on ~( %%, READY ) < *yak
+			do input: "%c" <
+		else on ~( %%, OUT ) < *yak
+			do : state : FAILED
+		else on : state : OUT < *yak
+			do : state : TRAVERSE
+		else on exit < *yak
+			do exit
+
+	else in : state : TRAVERSE
+		on ~( %%, IN ) < ?:*yak
+			/* %<(!,?)> target rule id
+			   yak pending on response, which can be either
+				CONTINUE - push and enter new rule %<(!,?)>
+				PRUNE - skip new and continue current rule
+				DONE - end traversal
+			*/
+			do > "%%%s:{": %<(!,?)>
+			do ( *yak, CONTINUE )
+		else on ~( %%, OUT ) < ?:*yak
+			/* %<(!,?)> target rule id - none if OUT
+			   yak pending on response, which can be either
+				CONTINUE - pop current and continue previous rule
+				PRUNE - pop and skip to the end of previous rule
+				DONE - end traversal
+			*/
+			do > "}"
+			do ( *yak, CONTINUE )
+		else on ~( %%, TAKE ) < ?:*yak
+			/* %<(!,?)> event
+			   yak pending on response, which can be either
+				CONTINUE - continue current rule
+				PRUNE - skip to the end of current rule
+				DONE - end traversal
+			*/
+			do > "%s": %<(!,?)>
+			do ( *yak, CONTINUE )
+		else on ~( %%, ERR ) < *yak
+			do : state : ERR
+		else on : state : IN < *yak
+			do : state : INPUT
+
+	else // : state : FAILED or ERR
+		on ~( %%, TAKE ) < ?:*yak
+			do > "%s": %<(!,?)>
+			do ( *yak, CONTINUE )
+		else on : state : IN < *yak
+			do : state : INPUT
+			in : input : ~'\n'
+			else do >&"> " // prompt
+		else on exit < *yak
+			do > "  \n" // wipe out ^D
+			do exit
+

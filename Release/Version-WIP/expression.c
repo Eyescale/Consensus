@@ -212,10 +212,10 @@ bm_input( int type, char *arg, BMContext *ctx )
 //===========================================================================
 //	bm_outputf / bm_out_put / bm_out_flush
 //===========================================================================
-static int bm_output( int type, char *expression, BMContext *);
+static int bm_output( FILE *, int type, char *expression, BMContext *);
 
 int
-bm_outputf( char *fmt, listItem *args, BMContext *ctx )
+bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 /*
 	Assumption: fmt starts and finishes with \" or \0
 */
@@ -230,23 +230,23 @@ bm_outputf( char *fmt, listItem *args, BMContext *ctx )
 			case '%':
 				if ( !fmt[1] ) break;
 				else if ( fmt[1]=='%' )
-					putchar( '%' );
+					fprintf( stream, "%%" );
 				else if ((args)) {
 					char *arg = args->ptr;
-					bm_output( fmt[1], arg, ctx );
+					bm_output( stream, fmt[1], arg, ctx );
 					args = args->next; }
 				fmt+=2; break;
 			default:
 				delta = charscan( fmt, &q );
 				if ( delta ) {
-					printf( "%c", q.value );
+					fprintf( stream, "%c", q.value );
 					fmt += delta; }
 				else fmt++; } } }
 	else if (( args )) {
 		for ( listItem *i=args; i!=NULL; i=i->next ) {
-			bm_output( DEFAULT_TYPE, i->ptr, ctx );
-			printf( "\n" ); } }
-	else printf( "\n" );
+			bm_output( stream, DEFAULT_TYPE, i->ptr, ctx );
+			fprintf( stream, "\n" ); } }
+	else fprintf( stream, "\n" );
 RETURN:
 	return 0;
 }
@@ -257,7 +257,7 @@ RETURN:
 static BMQueryCB output_CB;
 
 static int
-bm_output( int type, char *arg, BMContext *ctx )
+bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 /*
 	outputs arg-expression's results
 	note that we rely on bm_query to eliminate doublons
@@ -267,10 +267,10 @@ bm_output( int type, char *arg, BMContext *ctx )
 	if ( *arg=='\'' && type=='s' ) {
 		char_s q;
 		if ( charscan( arg+1, &q ) )
-			printf( "%c", q.value );
+			fprintf( stream, "%c", q.value );
 		return 0; }
 
-	OutputData data = { type, 1, NULL };
+	OutputData data = { stream, type, 1, NULL };
 
 	// special case: EEnoRV as-is
 	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
@@ -293,24 +293,25 @@ void
 bm_out_put( OutputData *data, CNInstance *e, CNDB *db )
 {
 	if (( data->last )) {
-		if ( data->first ) {
-			printf( (data->type=='s') ? "\\{ " : "{ " );
-			data->first = 0; }
-		else printf( ", " );
-		db_outputf( stdout, db, "%_", data->last ); }
+		FILE *stream = data->stream;
+		char *s = ( data->first ?
+				(data->type=='s') ?
+					"\\{" : "{" : "," );
+		data->first = 0;
+		fprintf( stream, "%s", s );
+		db_outputf( stream, db, " %_", data->last ); }
 	data->last = e;
 }
 int
 bm_out_flush( OutputData *data, CNDB *db )
 {
+	FILE *stream = data->stream;
 	if ( data->first ) {
 		char_s fmt;
 		fmt.value = 0;
 		sprintf( fmt.s, "%%%c", (data->type=='s'?'s':'_') );
-		db_outputf( stdout, db, fmt.s, data->last ); }
-	else {
-		printf( ", " );
-		db_outputf( stdout, db, "%_", data->last );
-		printf( " }" ); }
+		db_outputf( stream, db, fmt.s, data->last ); }
+	else
+		db_outputf( stream, db, ", %_ }", data->last );
 	return 0;
 }

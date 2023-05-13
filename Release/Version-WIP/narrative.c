@@ -107,6 +107,7 @@ bm_read( BMReadMode mode, ... )
 		else {
 			retval.ptr = NULL;
 			fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); }
+
 		if ( !retval.ptr ) {
 			freeNarrative( data.narrative );
 			freeStory( data.story ); } }
@@ -127,41 +128,52 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 {
 	BMParseData *data = user_data;
 	switch ( op ) {
-	case NarrativeTake: ;
+	case NarrativeTake: ; // Assumption: mode==BM_STORY or, if last take, 0
 		CNNarrative *narrative = data->narrative;
-		if ( !narrative->root->sub ) return 0; // narrative empty
-		narrative_reorder( narrative );
 		char *proto = narrative->proto;
 		Pair *entry = data->entry;
+#ifdef DEBUG
+fprintf( stderr, "end narrative: %s\n", proto );
+#endif
+		if ( !narrative->root->sub ) // narrative is empty (may be first)
+			return ( mode && !entry );
+		// register narrative
+		narrative_reorder( narrative );
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
 			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
 		else if ( is_separator( *proto ) ) {
-			addItem((listItem **) &entry->value, narrative );
-			if ( !mode ) reorderListItem((listItem **) &entry->value ); }
+			if ( !entry ) entry = data->entry =
+				registryRegister( data->story, "", newItem(narrative) );
+			addItem((listItem **) &entry->value, narrative ); }
 		else {
+			narrative->proto = NULL; // first in class
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->story, proto, newItem(narrative) );
-			narrative->proto = NULL; }
+			data->entry = registryRegister( data->story, proto, newItem(narrative) ); }
+		// allocate new narrative
 		if ( mode ) {
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); }
+		else if (( proto ) && is_separator( *proto ) ) { // last take
+			reorderListItem((listItem **) &entry->value ); }
 		break;
 	case ProtoSet:
+		narrative = data->narrative;
 		proto = StringFinish( data->string, 0 );
 		StringReset( data->string, CNStringMode );
+#ifdef DEBUG
+fprintf( stderr, "bgn narrative: %s\n", proto );
+#endif
 		if ( !proto ) {
 			if (( registryLookup( data->story, "" ) ))
-				return 0; } // main already exists
-		else if ( is_separator( *proto ) ) {
-			if ( !registryLookup( data->story, "" ) )
-				return 0; // no main
-			data->narrative->proto = proto; }
+				return 0; } // main already registered
+		else if ( is_separator( *proto ) )
+			narrative->proto = proto; // accept double-def
 		else {
-			if (( registryLookup( data->story, proto ) ))
-				return 0; // double-def
-			data->narrative->proto = proto; }
+			if (( registryLookup( data->story, proto ) )) {
+				free(proto); return 0; } // double-def
+			narrative->proto = proto; }
 		break;
 	case OccurrenceAdd: ;
 		int *tab = data->tab;
@@ -213,8 +225,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 			bm_instantiate( expression, data->ctx, NULL );
 			StringReset( data->string, CNStringAll );
 			break;
-		case BM_INPUT:
-			// will take on bm_read_exit
+		case BM_INPUT: // will take on bm_read exit
 			break;
 		case BM_STORY: ;
 			occurrence = data->stack.occurrences->ptr;
@@ -232,13 +243,13 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 static void
 narrative_reorder( CNNarrative *narrative )
 {
-	if ( narrative == NULL ) return;
+	if ( !narrative ) return;
 	CNOccurrence *occurrence = narrative->root;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		listItem *j = occurrence->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
+		if (( j )) { addItem( &stack, i ); i=j; }
 		else {
 			for ( ; ; ) {
 				if (( i->next )) {
@@ -288,12 +299,12 @@ newOccurrence( int type )
 static void
 freeOccurrence( CNOccurrence *occurrence )
 {
-	if ( occurrence == NULL ) return;
+	if ( !occurrence ) return;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		listItem *j = occurrence->sub;
-		if (( j )) { addItem( &stack, i ); i = j; }
+		if (( j )) { addItem( &stack, i ); i=j; }
 		else {
 			for ( ; ; ) {
 				char *expression = occurrence->data->expression;
@@ -331,8 +342,9 @@ free_CB( Registry *registry, Pair *entry )
 	if ( strcmp( def, "" ) ) free( def );
 	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
-		if (( narrative->proto ))
-			free( narrative->proto );
+		char *proto = narrative->proto;
+		if (( proto ) && strcmp(proto,""))
+			free( proto );
 		freeOccurrence( narrative->root ); }
 	freeListItem((listItem **) &entry->value );
 }

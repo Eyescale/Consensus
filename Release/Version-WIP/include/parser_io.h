@@ -10,6 +10,7 @@ typedef enum {
 } IOType;
 typedef enum {
 	IOErrNone = 0,
+	IOErrUnexpectedEOF,
 	IOErrFileNotFound,
 	IOErrIncludeFormat,
 	IOErrTrailingChar,

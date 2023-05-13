@@ -341,8 +341,10 @@ do_output( char *expression, BMContext *ctx )
 		>:
 		>: expression
 		>: < expression1, expression2, ... >
+	resp.	>& instead of >
 
-	then outputs expression(s) to stdout according to fmt
+	then outputs expression(s) to stdout resp. stderr
+	according to fmt
 */
 {
 #ifdef DEBUG
@@ -350,6 +352,9 @@ do_output( char *expression, BMContext *ctx )
 #endif
 	// extracts fmt and args:{ expression(s) }
 	char *p = expression + 1; // skipping the leading '>'
+	FILE *stream;
+	if ( *p=='&' ) { stream = stderr; p++; }
+	else stream = stdout;
 	listItem *args = NULL;
 	char *fmt = ( *p=='"' ? p : "" );
 	if ( *fmt ) p = p_prune( PRUNE_FILTER, p );
@@ -365,7 +370,7 @@ do_output( char *expression, BMContext *ctx )
 			addItem( &args, p ); }
 
 	// invoke bm_outputf()
-	int retval = bm_outputf( fmt, args, ctx );
+	int retval = bm_outputf( stream, fmt, args, ctx );
 
 	// cleanup
 	freeListItem( &args );

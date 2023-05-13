@@ -1,23 +1,27 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. implement calculator { add, mult, mem } using yak.mod
+	. interactive B% Grammar
+
+DONE
+	. implemented ./Examples/4_Yak/{yak.drive,yak.mod}
+		using #include "path/filename" for yak.mod [mod for model]
+	. parser.c: %identifier' in literal or list MUST be followed by non-separator or '
+		e.g.	(%titi',whatever)	FAILS on the comma
+			(%titi'',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
+			(%titi,whatever)	PASSES -> (%,titi) ',' w h a t e v e r
+			(:%titi'toto)		PASSES -> (%,titi) t o t o
+			(:%titi''toto)		PASSES -> (%,titi) '\'' t o t o
+	  Rationale:
+		parser_io assumes quoted expressions to be either '.' or '\.' or '\x..'
+		=> in e.g. (:whatever') the following character is assumed to be '\''
+		   and therefore would miss e.g. (:whatever')//comment
 	. parser.c / parser_macros.h
-		[TODO]	. rewrite preprocess using parsing MACROS
+		[DONE]	. rewrite preprocess using parsing MACROS
 			. extend preprocessor -> push/pop io
 		[DONE] moved all string macros into Base/string_util.c
 		[DONE] extracted CNIO/io_getc -> io.c
 		[DONE] renamed parser_private.h into parser_macros.h
-
-	. rewrite Maths/add using design/story/func.story template
-	. Maths
-		. Add, Mult, Sub, Div
-		. Mem
-		. Yak integration (full interactive calculator)
-	. Release/Version-WIP/Examples/4_Yak
-		. supporting B% Grammar as example
-		. with interactive traversal
-
-DONE
-	. parser.c: %identifier' in literal or list MUST be followed by non-separator
 	. published updated ./design/specs/db-update.txt specs
 	  . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
 	  . documented db_update() assumption and counter-measure wrt. entities order
@@ -122,6 +126,14 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. yak.drive carry implementation
+	. on ~( %%, ?:TAKE ) < *yak
+		     ^---------- considered filtered!	
+	. parser.c / narrative.c
+		NarrativeTake: on empty narrative: return Warning and just ignore
+		ProtoSet: set errnum on double-def / already registered
+	. locale variables: only on 'in_' and then attached to %?
+	. active/idle: want to be specific (e.g. just Take and Yak processes, not parent )
 	. implement in/on/do :: state
 		<=> in/on/do : %% : state
 	. DBFirst() DBNext() do not currently traverse any %(proxy,...)
