@@ -1,6 +1,8 @@
 See Also: design/new-features-and-additions.txt
 TODO
 	. implement calculator { add, mult, mem } using yak.mod
+		1. just parser [./Examples/4_Yak/calculator.drive] => test Scheme
+		2. then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
 
 DONE
@@ -8,12 +10,12 @@ DONE
 		do >&"fmt":< arg(s) >
 	. implemented ./Examples/4_Yak/{yak.drive,yak.mod}
 		using #include "path/filename" for yak.mod [mod for model]
-	. parser.c: %identifier' in literal or list MUST be followed by non-separator or '
+	. parser.c: %identifier' in literal or list MUST be followed by non-separator
 		e.g.	(%titi',whatever)	FAILS on the comma
-			(%titi'',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
+			(%titi\',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
 			(%titi,whatever)	PASSES -> (%,titi) ',' w h a t e v e r
 			(:%titi'toto)		PASSES -> (%,titi) t o t o
-			(:%titi''toto)		PASSES -> (%,titi) '\'' t o t o
+			(:%titi\'toto)		PASSES -> (%,titi) '\'' t o t o
 	  Rationale:
 		parser_io assumes quoted expressions to be either '.' or '\.' or '\x..'
 		=> in e.g. (:whatever') the following character is assumed to be '\''

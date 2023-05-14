@@ -44,7 +44,7 @@
 			do > "%%%s:{": %<?>
 			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < ?:*yak
-			/* %<(!,?)> target rule id - none if OUT
+			/* %<(!,?)> target rule id - none if base-OUT
 			   yak pending on response, which can be either
 				CONTINUE - pop current and continue previous rule
 				PRUNE - pop and skip to the end of previous rule
