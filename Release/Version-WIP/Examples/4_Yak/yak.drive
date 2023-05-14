@@ -10,7 +10,6 @@
 				}))
 			)
 		do : state : INPUT
-		do >&"> " // prompt
 
 	else in : state : INPUT
 		on ~( %%, READY ) < *yak
@@ -21,17 +20,29 @@
 			do : state : TRAVERSE
 		else on exit < *yak
 			do exit
+		else on : state : .
+			in : input : ~'\n'
+			else do >&"> " // prompt
 
 	else in : state : TRAVERSE
-		on ~( %%, IN ) < ?:*yak
-			/* %<(!,?)> target rule id
+		on ~(( %%, TAKE ), ? ) < *yak
+			/* %<?> event
+			   yak pending on response, which can be either
+				CONTINUE - continue current rule
+				PRUNE - skip to the end of current rule
+				DONE - end traversal
+			*/
+			do > "%s": %<?>
+			do ( %<, CONTINUE )
+		else on ~(( %%, IN ), ? ) < *yak
+			/* %<?> target rule id
 			   yak pending on response, which can be either
 				CONTINUE - push and enter new rule %<(!,?)>
 				PRUNE - skip new and continue current rule
 				DONE - end traversal
 			*/
-			do > "%%%s:{": %<(!,?)>
-			do ( *yak, CONTINUE )
+			do > "%%%s:{": %<?>
+			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < ?:*yak
 			/* %<(!,?)> target rule id - none if OUT
 			   yak pending on response, which can be either
@@ -40,29 +51,18 @@
 				DONE - end traversal
 			*/
 			do > "}"
-			do ( *yak, CONTINUE )
-		else on ~( %%, TAKE ) < ?:*yak
-			/* %<(!,?)> event
-			   yak pending on response, which can be either
-				CONTINUE - continue current rule
-				PRUNE - skip to the end of current rule
-				DONE - end traversal
-			*/
-			do > "%s": %<(!,?)>
-			do ( *yak, CONTINUE )
+			do ( %<, CONTINUE )
 		else on ~( %%, ERR ) < *yak
 			do : state : ERR
 		else on : state : IN < *yak
 			do : state : INPUT
 
 	else // : state : FAILED or ERR
-		on ~( %%, TAKE ) < ?:*yak
-			do > "%s": %<(!,?)>
-			do ( *yak, CONTINUE )
+		on ~(( %%, TAKE ), ? ) < *yak
+			do > "%s": %<?>
+			do ( %<, CONTINUE )
 		else on : state : IN < *yak
 			do : state : INPUT
-			in : input : ~'\n'
-			else do >&"> " // prompt
 		else on exit < *yak
 			do > "  \n" // wipe out ^D
 			do exit

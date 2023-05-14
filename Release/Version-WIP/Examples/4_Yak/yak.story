@@ -152,8 +152,8 @@
 		do s~
 	else on ~( .(.,s) ) // feeder rule failed
 		do .EXIT
-	else in .DONE
-		on ~( .(.,r) ) // successor schema failed [feeder rule complete]
+	else in .DONE	// s resp. feeder rule complete
+		on ~( .(.,r) ) // successor schema failed
 			in ~.: .(.,r) // all successor schemas failed
 				do .EXIT // defunct
 		on ( ((.,'\0'),.), r ) // r's completion guaranteed

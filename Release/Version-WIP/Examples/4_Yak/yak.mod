@@ -99,16 +99,17 @@
 				do : pop : ~.
 
 			do ~( %? ) // release last pending condition
+
+		else on : pending : . // send parent(=driver) notification
+			in %?:( TAKE, ? )
+				do (( .., TAKE ), %? )
+			else in %?:( IN, ? )
+				do (( .., IN ), %(((.,?),.):%?) )
+			else in %?:( OUT, ? )
+				do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
+			else in %?: OUT
+				do ( .., OUT )
 -
-			else on : pending : . // send parent(=driver) notification
-				in %?:( TAKE, ? )
-					do (( .., TAKE ), %? )
-				else in %?:( IN, ? )
-					do (( .., IN ), %(((.,?),.):%?) )
-				else in %?:( OUT, ? )
-					do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
-				else in %?: OUT
-					do ( .., OUT )
 		else // done pending
 
 		// process data & set parent(=driver) notification
@@ -205,8 +206,8 @@
 		do s~
 	else on ~( .(.,s) ) // feeder rule failed
 		do .EXIT
-	else in .DONE
-		on ~( .(.,r) ) // successor schema failed [feeder rule complete]
+	else in .DONE	// s resp. feeder rule complete
+		on ~( .(.,r) ) // successor schema failed
 			in ~.: .(.,r) // all successor schemas failed
 				do .EXIT // defunct
 		on ( ((.,'\0'),.), r ) // r's completion guaranteed
@@ -307,7 +308,7 @@
 				do : p : %(*p:(.,?))
 			else do exit // FAIL
 		else // *p is a base entity (singleton) other than '\0'
-			do >&"Error: Yak: %_-terminated schema not supported\n": *p
+			do >&"Error: Yak: %_-terminated Schema not supported\n": *p
 			do exit // FAIL
 	else on : p : ?
 		in %?: '\0'
@@ -319,5 +320,4 @@
 		do READY
 	else on ( TAKE, . )
 		do exit
-
 

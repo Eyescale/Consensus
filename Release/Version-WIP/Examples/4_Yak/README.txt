@@ -2,7 +2,7 @@
 	a schema instance is entirely defined as
 		.s:(( schema, .position ), .start )
 	    where
-		position[1] is the entry into s's corresponding Schema definition (literal)
+		position is the entry into s's corresponding Schema definition (literal[1])
 		start (aka. start frame) can be either one of the following
 			( [, .record:( ., event ))	// event to be consumed
 			( ], .record:( ., event ))	// event already consumed
@@ -44,7 +44,7 @@
 			. r has other feeder starting at the same frame, completion guaranteed
 			. r has no feeder other than s starting at finish frame, nor has
 			  any of r's subscribers a successor starting at finish frame
-			. input event test failed
+			. Take (=record event test) failed
 
 	Note that the only reason for the relationship instances of the type ( r, s ) to be
 	dotted - e.g. do .( %|, s ) - is for optimizing e.g. in .( ., s )
@@ -52,7 +52,7 @@
 	The difference between yak.proper and yak.story is that the latter uses the schema
 	thread instead of the schema instance to establish connections, e.g.
 		do .( ((schema,position),frame), r )		// yak.story
-	    vs. do ( ((schema,position),frame) | ( %|,r) )	// yak.proper
+	   vs.  do ( ((schema,position),frame) | ( %|,r) )	// yak.proper
 
 	Again, for optimization purpose.
 
