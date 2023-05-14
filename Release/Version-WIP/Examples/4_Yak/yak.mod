@@ -73,26 +73,31 @@
 						do : pop : ~.
 			else in %<?:( PRUNE )>
 				in %?:( IN, ? ) // after push notification
-					// set s to the feeder starting at candidate's starting frame
-					in ?:( (.,%(%?:(.,?))), %? )
-						// ... and jump to finish frame
-						do :< s, f >:< %?, %(%?,(.,?)) >
-						do : push : OUT
-					do : r : %?
-				else in %?:( OUT, ? ) // after pop notification
-					// pop and jump to finish frame
-					do :< s, f, r >:< %?, %(%?,(.,?)), %(%?:(.,?)) >
+					// jump to candidate's finish frame and schema
+					do : r : %? // candidate is rule
+					do : s : %(?:(.,%?),(.,.))
+					do : f : %((.,%?),(.,?))
 					do : push : OUT
+				else in %?:( OUT, ? ) // after pop notification
+					// pop to candidate's rule and jump to finish
+					// frame and schema
+					in %?:(.,?) // candidate is schema thread
+						do : r : %?
+						do : s : %(?:(.,%?),(.,.))
+						do : f : %((.,%?),(.,?))
+						do : push : OUT
 				else in %?:( TAKE, . ) // after event notification
 					in : push : OUT
-						do : state : ~.
+						do : pending : OUT
 						do : push : ~.
 					else in : pop : ?
 						do : pending : ((%?:OUT) ?: (OUT,%?))
 						do : pop : ~.
-					else in (*s,(.,?))  // jump to finish frame
+					else in : r : ?
+						// jump to finish frame and schema
+						do : s : %(?:(.,%?),(.,.))
+						do : f : %((.,%?),(.,?))
 						do : push : OUT
-						do : f : %?
 			else in %<?:( DONE )>
 				do : state : ~.
 				do : push : ~.
@@ -131,7 +136,7 @@
 			// cyclic case: test if other feeder starting at s's finishing frame
 			in ?: ( (.,%?), *r ): ~*s
 				in : push : OUT  // pruning
-					do :< r, s >:< %(%?:(.,?)), %? >
+					do : pending : ( OUT, %? )
 					do : push : ~.
 				else in ( *s:(((.,~'\0'),.),.), (']',.))
 					do : pending : ( TAKE, %(*f:(.,?)) )
@@ -149,7 +154,7 @@
 				// set s to the successor of the schema which the current r
 				// fed and which started at finishing frame = %(*s,?)
 				in : push : OUT  // pruning
-					do :< r, s >:< %(%?:(.,?)), %? >
+					do : pending : ( OUT, %? )
 					do : push : ~.
 				else in ( *s:(((.,~'\0'),.),.), (']',.))
 					do : pending : ( TAKE, %(*f:(.,?)) )

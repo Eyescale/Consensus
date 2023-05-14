@@ -12,8 +12,9 @@ DONE
 		using #include "path/filename" for yak.mod [mod for model]
 	. parser.c: %identifier' in literal or list MUST be followed by non-separator
 		e.g.	(%titi',whatever)	FAILS on the comma
-			(%titi\',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
 			(%titi,whatever)	PASSES -> (%,titi) ',' w h a t e v e r
+			(%titi\',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
+			(:%titi''toto)		FAILS on the second quote
 			(:%titi'toto)		PASSES -> (%,titi) t o t o
 			(:%titi\'toto)		PASSES -> (%,titi) '\'' t o t o
 	  Rationale:
