@@ -520,6 +520,7 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		case '0':
 		case ' ':
 		case 'w':
+		case 'd':
 			if ( !wi[1] ) wi[1] = db_register( "\\", db );
 			e = db_register( q.s, db );
 			e = db_instantiate( wi[1], e, db );

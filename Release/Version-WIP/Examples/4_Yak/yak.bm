@@ -136,12 +136,11 @@
 			// cyclic case: test if other feeder starting at s's finishing frame
 			in ?: ( (.,%?), *r ): ~*s
 				in : push : OUT  // pruning
-					do : pending : ( OUT, %? )
-					do : push : ~.
+					do : s : %?
 				else in ( *s:(((.,~'\0'),.),.), (']',.))
 					do : pending : ( TAKE, %(*f:(.,?)) )
-					do : pop : %? // take before pop
-				else do : pending : ( OUT, %? )
+					do : s : %?
+				else do : s : %?
 			else in ( *r, base )
 				in : push : OUT  // pruning
 					do : pending : OUT
@@ -268,7 +267,7 @@
 					do : p : %? // moving on
 					do : s : !! Take( ((*,p),%?), ( %<?:'['> ? ((*,event),%(*record:(.,?))) :) )
 			else
-				do >&"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
+				do >&"Warning: Yak: rule '%s' not found or invalid\n": %<!:(.,?)>
 				do .EXIT
 		else on exit < *s // FAIL
 			do .EXIT
@@ -287,14 +286,13 @@
 			in %?: ( %, ? )
 				do :( TAKE, '[' ): %?
 			else in %?: ( '\\', ? )
-				in %?: w
-					in : event : /[A-Za-z0-9_]/
-						do check
-						do TAKE~
-					else in check
-						do ~( check )
+				in %?: d
+					in : event : /[0-9]/
 						do : p : %(*p:(.,?))
-						do : event : *event // REENTER
+					else do exit // FAIL
+				else in %?: w
+					in : event : /[A-Za-z0-9_]/
+						do : p : %(*p:(.,?))
 					else do exit // FAIL
 				else in %?: 0
 					in : event : '\0'

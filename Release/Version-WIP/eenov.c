@@ -24,10 +24,10 @@ eenov_output( char *p, BMContext *ctx, OutputData *od )
 	case EEnovSrcType: ;
 		CNDB *db = BMContextDB( ctx );
 		char *fmt = (od->type=='s'?"%s":"%_");
-		return db_outputf( stdout, db, fmt, data.src );
+		return db_outputf( od->stream, db, fmt, data.src );
 	case EEnovInstanceType: ;
 		fmt = (od->type=='s'?"%s":"%_");
-		return db_outputf( stdout, data.db, fmt, data.instance );
+		return db_outputf( od->stream, data.db, fmt, data.instance );
 	case EEnovExprType:
 		data.param.output.od = od;
 		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );

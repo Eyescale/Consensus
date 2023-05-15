@@ -1,12 +1,13 @@
-#include "yak.mod"
+#include "yak.bm"
 :
 	on init
 		do : yak : !! Yak(
 			(( Rule, base ), ( Schema, (:%term:)))
-			(( Rule, term ), ( Schema, (:%rrec.:)))
-			(( Rule, rrec ), ( Schema, {
-				(:e:)
-				(:e%rrec:)	#right-recursive
+			(( Rule, term ), ( Schema, (:%test.:)))
+			(( Rule, test ), ( Schema, {
+				(:\d:)
+//				(:%test'\d:)	#left-recursive
+				(:\d%test:)	#right-recursive
 				}))
 			)
 		do : state : INPUT
