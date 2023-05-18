@@ -123,11 +123,9 @@ static inline int db_private( int privy, CNInstance *e, CNDB *db ) {
 	return 0; }
 
 static inline int db_deprecated( CNInstance *e, CNDB *db ) {
-	CNInstance *nil = db->nil, *f;
-	if (( f=cn_instance( e, nil, 1 ) )) {
-		if (( f->as_sub[ 1 ] )) return 0;
-		else return !f->as_sub[ 0 ]; }
-	return 0; }
+	CNInstance *nil = db->nil;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	return ( f && !( f->as_sub[0] && !f->as_sub[1] )); }
 
 static inline int db_manifested( CNInstance *e, CNDB *db ) {
 	CNInstance *nil = db->nil, *f;

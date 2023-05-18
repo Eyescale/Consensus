@@ -6,24 +6,27 @@
 			(( Rule, term ), ( Schema, (:%test.:)))
 			(( Rule, test ), ( Schema, {
 				(:\d:)
-//				(:%test'\d:)	#left-recursive
-				(:\d%test:)	#right-recursive
+				(:%test'\d:)	#left-recursive
+//				(:\d%test:)	#right-recursive
 				}))
 			)
 		do : state : INPUT
 
+	else on exit < *yak
+		in : state : FAILED
+			do > "  \n" // wipe out ^D
+		do exit
+			
 	else in : state : INPUT
 		on ~( %%, READY ) < *yak
+			// prompt based on last input, if any
+			in : input : ~'\n'
+			else do >&"> " // prompt
 			do input: "%c" <
 		else on ~( %%, OUT ) < *yak
 			do : state : FAILED
 		else on : state : OUT < *yak
 			do : state : TRAVERSE
-		else on exit < *yak
-			do exit
-		else on : state : .
-			in : input : ~'\n'
-			else do >&"> " // prompt
 
 	else in : state : TRAVERSE
 		on ~(( %%, TAKE ), ? ) < *yak
@@ -64,7 +67,4 @@
 			do ( %<, CONTINUE )
 		else on : state : IN < *yak
 			do : state : INPUT
-		else on exit < *yak
-			do > "  \n" // wipe out ^D
-			do exit
 

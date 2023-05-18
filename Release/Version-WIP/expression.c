@@ -61,7 +61,9 @@ bm_release( char *expression, BMContext *ctx )
 static BMCBTake
 release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	db_deprecate( e, (CNDB *) user_data );
+	CNDB *db = user_data;
+	if ( !db_deprecated( e, db ) )
+		db_deprecate( e, db );
 	return BM_CONTINUE;
 }
 

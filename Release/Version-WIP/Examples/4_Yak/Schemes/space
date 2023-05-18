@@ -1,0 +1,27 @@
+#	Yak scheme definition file:
+#		(( Rule, identifier ), ( Schema, {
+#			(a,(b,...((%,id),...(z,'\0'))))
+#			...
+#			} ) )
+#		((Rule,base), ((%,identifier),'\0') )
+#	Assumed to be used in conjunction with yak.story, e.g.
+#	from ./EyeScale/Consensus/Release/Version-WIP/Examples/4_Yak
+#		../../B% -f Schemes/space yak.story
+
+#	(( Rule, base ), ( Schema, (:%s:)) )
+	(( Rule, base ), ( Schema, (:%term:)) )
+
+#	(( Rule, term ), ( Schema, (:%s:) ))
+	(( Rule, term ), ( Schema, {
+		(:%int:)
+#		(:%s%term:), (:%term%s:)
+		(:%s%term%s:)
+		(:(%term\):)	} ))
+
+	(( Rule, int ), ( Schema, {
+		(:\d:)
+		(:%int\d:) } ))
+
+	(( Rule, s ), ( Schema, {
+		(::)
+		(:%s :) } ))
