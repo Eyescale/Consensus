@@ -2,6 +2,7 @@ See Also: design/new-features-and-additions.txt
 TODO
 	. align yak.bm with latest yak.story (null-schema support)
 		=> update yak.drive, calculator.drive (to be published)
+	. restore blank multiple space and \d to multiple digits
 	. implement calculator { add, mult, mem } using yak.mod
 		1. just parser [./Examples/4_Yak/calculator.drive] => test Scheme
 		2. then the real thing [./Examples/5_Maths/calculator.story]

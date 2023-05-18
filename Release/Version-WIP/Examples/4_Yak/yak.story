@@ -51,7 +51,6 @@
 				do >"(nop)\n"
 				do exit
 			else
-				%( ((rule,.),.) )
 				do : s : base
 				do : f : (record,*) // initial frame
 				in : carry : . // trim record
@@ -181,9 +180,6 @@
 			on ~( .(.,r) )
 				in .(.,r) // s still has successor
 				else do .EXIT // defunct
-		else on ( s:((.,'\0'),.) ? (((.,'\0'),.), r ) :)
-			// cleanup null-schema takes on r's completion guaranteed
-			do .EXIT
 		else on ~( %(r,?), . ) // r's subscribers connections changed
 			in ( %(r,?), ((.,%(.?)),.) )
 			else // none of r's subscribers has a successor starting at s's finish frame
