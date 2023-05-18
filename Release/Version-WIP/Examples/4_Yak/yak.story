@@ -17,8 +17,7 @@
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
-			%( (((schema,.),.),.) )
-			%( ((rule,.),.) )
+			%( . )
 			in ( %?, READY )
 				on ( %?, READY )
 					in : carry : ?
