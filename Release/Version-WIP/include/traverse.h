@@ -51,20 +51,21 @@
 	flags = pop_item( stack )|(flags&(save));
 #define f_cls \
 	f_clr(NEGATED) f_set(INFORMED)
-#define f_tag( stack, flag ) \
-	traverse_tag( flags, stack, flag );
+#define f_tag( stack, tag ) \
+	stack_tag( stack, flags, tag );
 
 inline void
-traverse_tag( int flags, listItem **stack, int flag )
+stack_tag( listItem **stack, int flags, int tag )
 {
 	union { void *ptr; int value; } icast;
-	switch ( flag ) {
+	switch ( tag ) {
 	case MARKED:
 	case EMARKED:
+		// Assumption: LEVEL cleared upon SUB_EXPR/EENOV
 		if ( !is_f(LEVEL) ) return;
 		for ( listItem *i=*stack; i!=NULL; i=i->next ) {
 			icast.ptr = i->ptr;
-			icast.value |= flag;
+			icast.value |= tag;
 			i->ptr = icast.ptr;
 			if (!( icast.value & LEVEL )) break; }
 		break;

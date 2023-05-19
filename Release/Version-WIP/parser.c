@@ -322,23 +322,23 @@ EXPR_BGN:CND_endif
 				if ( !is_f(FIRST) )
 					; // err
 				else if ( is_f(LISTABLE) && !is_f(SUB_EXPR|NEGATED) ) {
-					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
+					do_( "," )	f_clr( FIRST|INFORMED|NEGATED|FILTERED ) }
 				else if ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) {
-					do_( "," )	f_clr( FIRST|INFORMED|FILTERED ) }
+					do_( "," )	f_clr( FIRST|INFORMED|NEGATED|FILTERED ) }
 				else if ( are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED) ) {
-					do_( "," )	f_clr( FIRST|INFORMED )
+					do_( "," )	f_clr( FIRST|INFORMED|NEGATED )
 							f_set( LISTABLE ) }
 				else {	do_( same )	s_take
-							f_clr( FIRST|INFORMED|FILTERED ) } }
+							f_clr( FIRST|INFORMED|NEGATED|FILTERED ) } }
 			else if ( is_f(SET|CARRY|VECTOR) ) {
-				do_( "," ) }
+				do_( "," ) 	f_clr( NEGATED ) }
 			else if ( is_f(ASSIGN) ) {
 				if ( !is_f(FILTERED) ) {
 					do_( same )	s_take
-							f_clr( INFORMED )
+							f_clr( INFORMED|NEGATED )
 							f_set( FILTERED ) } }
 			else if ( *type&DO )
-				do_( "_," )
+				do_( "_," )	f_clr( NEGATED )
 CND_if_( mode==BM_STORY, A )
 		ons( " \t" ) if ( is_f(INFORMED) && !is_f(LEVEL|SET) ) {
 				do_( "expr_" )	REENTER }

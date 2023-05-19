@@ -167,13 +167,14 @@
 				do : s : ~.
 		else in ?:( *f, . ) // there is a next frame
 			// output event, unless *f is a first ']' schema frame
-			in *f:(.,?:~EOF):~(record,*):~%(*s:((.,(']',?)),.))
+			in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
 				do : pending : ( TAKE, %? )
 			do : f : %?
-		else in *f:(.,?:~EOF):~(record,*) // no next frame
-			do : pending : ( TAKE, %? )
-			do : push : OUT
-		else do : state :~.
+		else // no next frame
+			in *f: (.,?:~EOF): ~(record,*)
+				do : pending : ( TAKE, %? )
+				do : push : OUT
+			else do : state :~.
 -
 
 	else in : state : ~.  // next input-traversal cycle - or exit

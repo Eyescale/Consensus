@@ -1,27 +1,52 @@
-#	Yak scheme definition file:
-#		(( Rule, identifier ), ( Schema, {
-#			(a,(b,...((%,id),...(z,'\0'))))
-#			...
-#			} ) )
-#		((Rule,base), ((%,identifier),'\0') )
+# Yak scheme definition file
+#
+# Format
+#	((Rule,base), ((%,identifier),'\0') )
+#	(( Rule, identifier ), ( Schema, {
+#		(a,(b,...((%,id),...(z,'\0'))))
+#		... }))
+# Description
 #	Assumed to be used in conjunction with yak.story, e.g.
 #	from ./EyeScale/Consensus/Release/Version-WIP/Examples/4_Yak
 #		../../B% -f Schemes/space yak.story
+# Caveats
+#	all the following 'space' variations are passthrough filters,
+#	therefore one of the following output
+#		%base:{}
+#		%base:{%s:{}}
+#		%base:{%space:{}}
+#	will be produced on user input when the corresponding schema
+#	is used at base level, and the input is neither ' ' nor '\t'
 
+# base rule definition - enable only one among the following
+
+#	(( Rule, base ), ( Schema, (:%space:)) )
 #	(( Rule, base ), ( Schema, (:%s:)) )
+#	(( Rule, base ), ( Schema, (: :)) )
 	(( Rule, base ), ( Schema, (:%term:)) )
 
-#	(( Rule, term ), ( Schema, (:%s:) ))
+# space rule definition
+
+#	(( Rule, space ), ( Schema, (: :) ))	// recommended - if must be
+	(( Rule, space ), ( Schema, (:%s:) ))
+
+	(( Rule, s ), ( Schema, {
+		(::)
+//		(:%s :)		// double pass-through: not working - WIP
+		(:%s\ :)
+		(:%s\t:)	} ))
+
+# general term rule (involving space) definition
+
 	(( Rule, term ), ( Schema, {
+#		(:\i:)		// double pass-through: not working - WIP
 		(:%int:)
-#		(:%s%term:), (:%term%s:)
-		(:%s%term%s:)
+#		(: %term :)	// recommended
+		(:%s%term%s:)	// using null-schema: not recommended - but working
+#		(: %term:), (:%term :)	// works as well
 		(:(%term\):)	} ))
 
 	(( Rule, int ), ( Schema, {
 		(:\d:)
 		(:%int\d:) } ))
 
-	(( Rule, s ), ( Schema, {
-		(::)
-		(:%s :) } ))

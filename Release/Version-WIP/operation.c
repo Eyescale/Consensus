@@ -12,9 +12,9 @@
 
 // #define DEBUG
 
-static int in_condition( char *, BMContext *, Pair **marked );
-static int on_event( char *, BMContext *, Pair **marked );
-static int on_event_x( char *, int pre, BMContext *, Pair **marked );
+static int in_condition( char *, BMContext *, Pair **mark );
+static int on_event( char *, BMContext *, Pair **mark );
+static int on_event_x( char *, int pre, BMContext *, Pair **mark );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( Registry *, listItem *, char *, BMContext * );
 static int do_input( char *, BMContext * );
@@ -31,26 +31,28 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	fprintf( stderr, "operate bgn\n" );
 #endif
 	bm_context_actualize( ctx, narrative->proto, instance );
-	listItem *i = newItem( narrative->root ), *j;
+	listItem *i = newItem( narrative->root );
 	listItem *stack = NULL;
 	Pair *marked = NULL;
 	int passed = 1;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		int type = occurrence->data->type;
+		listItem *j = occurrence->sub;
 		if ( type&ELSE && passed ) {}
 		else {
 			// processing
 			if ( !marked ) {
 				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
+				Pair **mark = (( j ) ? &marked : NULL );
 				char *expression = occurrence->data->expression;
 				char *deternarized = ( type&LOCALE ? NULL : bm_deternarize(&expression,ctx) );
 				switch ( type ) {
 				case ROOT: passed=1; break;
-				case IN: passed=in_condition( expression, ctx, &marked ); break;
-				case ON: passed=on_event( expression, ctx, &marked ); break;
-				case ON_X: passed=on_event_x( expression, 0, ctx, &marked ); break;
-				case PER_X: passed=on_event_x( expression, BM_AS_PER, ctx, &marked ); break;
+				case IN: passed=in_condition( expression, ctx, mark ); break;
+				case ON: passed=on_event( expression, ctx, mark ); break;
+				case ON_X: passed=on_event_x( expression, 0, ctx, mark ); break;
+				case PER_X: passed=on_event_x( expression, BM_AS_PER, ctx, mark ); break;
 				case DO: do_action( expression, ctx, story ); break;
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
@@ -58,7 +60,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 				case LOCALE: bm_context_register( ctx, expression ); break; }
 				if (( deternarized )) free( expression ); }
 			// pushing down
-			if ( passed && ( j=occurrence->sub )) {
+			if ( passed && ( j )) {
 				bm_context_mark( ctx, marked );
 				addItem( &stack, i );
 				addItem( &stack, marked );
@@ -89,9 +91,9 @@ RETURN:
 //	in_condition
 //===========================================================================
 static int
-in_condition( char *expression, BMContext *ctx, Pair **marked )
+in_condition( char *expression, BMContext *ctx, Pair **mark )
 /*
-	Assumption: *marked==NULL to begin with
+	Assumption: if (( mark )) then *mark==NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -107,8 +109,8 @@ in_condition( char *expression, BMContext *ctx, Pair **marked )
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success )
-		*marked = bm_mark( 0, expression, NULL, found );
+	else if (( mark ) && success )
+		*mark = bm_mark( 0, expression, NULL, found );
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -119,9 +121,9 @@ in_condition( char *expression, BMContext *ctx, Pair **marked )
 //	on_event
 //===========================================================================
 static int
-on_event( char *expression, BMContext *ctx, Pair **marked )
+on_event( char *expression, BMContext *ctx, Pair **mark )
 /*
-	Assumption: *marked==NULL to begin with
+	Assumption: if (( mark )) then *mark==NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -147,8 +149,8 @@ on_event( char *expression, BMContext *ctx, Pair **marked )
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if ( success==2 )
-		*marked = bm_mark( 0, expression, NULL, found );
+	else if (( mark ) && (success==2 ))
+		*mark = bm_mark( 0, expression, NULL, found );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -164,11 +166,11 @@ static inline void * _feel( char *, int, listItem **, BMContext * );
 static inline void _release( int, void * );
 
 static int
-on_event_x( char *expression, int pre, BMContext *ctx, Pair **marked )
+on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 /*
 	Assumptions:
 		pre is either 0 or BM_AS_PER
-		*marked is NULL to begin with
+		if (( mark )) then *mark==NULL to begin with
 */
 {
 #ifdef DEBUG
@@ -204,9 +206,9 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **marked )
 	if ( negated ) {
 		success = !success;
 		_release( pre, found ); }
-	else switch ( success ) {
-		case 1: *marked = bm_mark( pre, NULL, src, found ); break;
-		case 2: *marked = bm_mark( pre, expression, src, found ); break; }
+	else if (( mark )) switch ( success ) {
+		case 1: *mark = bm_mark( pre, NULL, src, found ); break;
+		case 2: *mark = bm_mark( pre, expression, src, found ); break; }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
