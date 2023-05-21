@@ -1,6 +1,10 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. implement \i (integer) => fix double-passthrough issue
+	. parser.c
+		wherever I do f_set( SET or CARRY or VECTOR ) I should do
+			f_push( stack ) / f_reset( SET or CARRY or VECTOR )
+		so that on ',' - cf. parser.c: line 333 - I can always do
+			f_clr( INFORMED|NEGATED|FILTERED )
 	. align yak.bm with latest yak.story (null-schema support)
 		=> update yak.drive, calculator.drive (to be published)
 	. implement calculator { add, mult, mem } using yak.mod
@@ -9,6 +13,7 @@ TODO
 	. interactive B% Grammar
 
 DONE
+	. implemented \i (integer) + fixed double-passthrough issue
 	. implemented yak blank space in schema definition e.g. (: %term :)
 	  rewrote ./Examples/4_Yak/yak.story => NEW null-schema support implementation
 		cf ./Examples/4_Yak/Schemes/space
@@ -137,6 +142,7 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. yak.story optimization - e.g. null-schema DONE thread instances elimination
 	. yak.drive carry implementation
 	. on ~( %%, ?:TAKE ) < *yak
 		     ^---------- considered filtered!	

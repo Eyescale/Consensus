@@ -12,7 +12,7 @@
 #define	CNCaughtEvent	1
 #define	CNCaughtState	2
 #define	CNCaughtTrans	4
-#define	CNCaughtTest	8
+#define	CNCaughtCND	8
 #define	CNCaughtReenter	16
 
 // #define DEBUG
@@ -33,18 +33,18 @@
 #define BMParseBegin( this, state, event, line, column ) \
 			int caught; \
 			do { \
-				caught = CNCaughtTest; \
+				caught = CNCaughtCND; \
 				DBGMonitor( this, state, event, line, column ); bgn_
 
 #define bgn_ 			if ( 0 ) {
 
-#define CND_ifn( a, jmp )	} else if (!(a)) { caught&=~CNCaughtTest; goto jmp;
+#define CND_ifn( a, jmp )	} else if (!(a)) { caught&=~CNCaughtCND; goto jmp;
 
-#define CND_if_( a, jmp )	} else if (a) { caught&=~CNCaughtTest; goto jmp;
+#define CND_if_( a, jmp )	} else if (a) { caught&=~CNCaughtCND; goto jmp;
 
-#define CND_else_( jmp )     ;	} if ( caught&CNCaughtTest ) { goto jmp;
+#define CND_else_( jmp )     ;	} if ( caught&CNCaughtCND ) { goto jmp;
 
-#define CND_endif	     ;	} caught|=CNCaughtTest; if ( caught&CNCaughtEvent ) {
+#define CND_endif	     ;	} caught|=CNCaughtCND; if ( caught&CNCaughtEvent ) {
 
 #define in_( s )		} else if ( !strcmp( state, (s) ) ) { \
 					caught |= CNCaughtState;

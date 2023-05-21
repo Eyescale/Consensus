@@ -15,6 +15,7 @@
 		on : state : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+//				(((schema, %((Rule,base),(Schema,?))), %(%|:(.,?))), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
 			%( . )
@@ -22,9 +23,11 @@
 				on ( %?, READY )
 					in : carry : ?
 						do : input : %?
+//						do >"---------------- carry: %_\n": %?
 						do : carry : ~.
 					else do input:"%c"<
 				else on : input : ?
+//					do >"---------------- input: %_\n": %?
 					// could do some preprocessing here
 					do : record : (*record,%?)
 				else on : input : ~.
@@ -39,6 +42,7 @@
 				else do ( %?, READY ) // all feeder schemas ready
 			else do ( %?, DONE ) // all feeder schemas complete
 		else on ~( ., base ) // FAIL
+//			do >"---------------- FAILED\n"
 			in : record : (((record,*),.),.) // not first input
 				do : record : %(*record:(?,.))
 				do : carry : %(*record:(.,?))
@@ -56,19 +60,29 @@
 				in : carry : . // trim record
 					do ~( *record, . )
 
-		else on : pop : ? // popping
+		else on : pop : ? // popping argument = s's finishing frame
 			do : pop : ~.
 			// output last schema event, providing it's not initial frame
 			in ?: %(*s:(((.,~'\0'),.),.),(']',(.,?))): ~(record,*)
-				do >"%s}":%?
+				do >"%s}": %?
 			else do >"}"
-			in ( *r, base )
+			in ~.: ( *r, base )
+				/* set s to the successor of the schema which the current r
+				   fed and which started at s's finishing frame */
+				in ( %(*r,?), ?:(((schema,.),%?),.) )
+					do : s : %?
+					do : r : %(%?:(.,?))
+				else // if no such successor, then we must have (*r,base)
+					do >" *** Error: Yak: rule '%_': "
+						"subscriber has no successor ***\n": %(*r:((.,?),.))
+					do : s : ~.
+			else // back to base
 				do : state : ~.
 				in : f : ( record, * ) // successor null-schema
 					in : input : ?
 						do >"%s": %?
 					else do >"\n" // EOF
-				else in : f : ((record,*),.) // first = last frame - no carry
+				else in : f : ((record,*),.) // first = last frame => no carry
 					in : input : ?
 						do >"%s": %?
 					else do >"\n" // EOF
@@ -79,16 +93,6 @@
 				else in ( *f, ?:~EOF )
 					// right-recursive case: completes on failing next frame
 					do : carry : %?
-			else
-				/* set s to the successor of the schema which the current r
-				   fed and which started at s's finishing frame */
-				in ( %(*r,?), ?:(((schema,.),%?),.) )
-					do : s : %?
-					do : r : %(%?:(.,?))
-				else // if no such successor, then we must have (*r,base)
-					do >" *** Error: Yak: rule '%_': "
-						"subscriber has no successor ***\n": %(*r:((.,?),.))
-					do : s : ~.
 
 		else on : r : ? // r pushed or popped
 			/* --------------------------------------------------------------
@@ -97,7 +101,7 @@
 				do >" *** Warning: Yak: rule '%_': "
 					"multiple interpretations ***\n": %(%?:((.,?),.))
 			----------------------------------------------------------------- */
-			in ((.,*r),*s) // s has predecessor: r popped
+			in ((.,*r), *s ) // s has predecessor: r popped
 			else // output r begin
 				do >"%%%s:{": %(%?:((.,?),.))
 
@@ -123,8 +127,10 @@
 			else do : pop : %?
 
 		else in ( *s, ?:(.,*f)) // this frame is s's last frame => popping
-			// test if other, non-predecessor schema starting at s's finishing frame
-			in ?: ( (.,%?), *r ): ~%(?,%?): ~%(?,*s)
+			in %?: (.,(record,*)) // special case: null-schema
+				do : pop : %?
+			// s has sibling starting and not finishing at s's finishing frame
+			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s
 				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s": %(*f:(.,?))
 				do : s : %?
@@ -171,10 +177,8 @@
 		in ~.: (.,r): ~%(?,EXIT) // all r feeder schemas failed
 			do ~( r )
 		else do ~( s )
-/*
 	else in ~.: (r,.) // all r subscribers failed
 		do ~( r )
-*/
 	else in .DONE
 		in .( ., s ) // s was pending on rule
 			on ~( .(.,r) )
@@ -195,7 +199,7 @@
 			on : record : .
 				do ~( .READY )
 		else	// expecting TAKE from rule schemas
-			on ((.,%?), ?:('[',.)) // TAKE: launch successor schema
+			on ((.,%?), ?:('[',.)) // TAKE: launch successor schema(s)
 				do .(((schema, %(*p:(.,?))), %? ), r )
 				on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
 					do .(((schema, %(*p:(.,?))), %? ), r )
@@ -224,16 +228,31 @@
 		else on :( TAKE, ? ): ~. < *s // TAKE final, position no longer relevant
 			do .( %<?>, *record )
 		else on :( TAKE, ? ): . < *s // TAKE rule
-			in : p : ( ~(%,.), ? ) // event consumed, other than first
-				do : p : %?
 			in ((Rule,?:%<!:(.,?)>),(Schema,~'\0'))
+				in : p : (~(%,.),.) // align p in case e.g. event was consumed, other than first -
+					// or special case: blank unconsumed, while rule also instantiated as ']'
+					in ( (*p:(' ',.)) ? %<?:'['> ? (?:((rule,%?), (']',*record))) :)
+						// add schema to that rule, starting at rule position in this schema
+						do (((schema, %(*p:(.,?))), %(%?:(.,?))), %? )
+						do ( (((schema, %(*p:(.,?))), %(%?:(.,?))), %? ) | {
+							( %|, CYCLIC )
+							( %|, ( %?, %| )) } )
+					do : p : %(*p:(.,?))
+				// now launch
 				in ?: ((rule,%?), (%<?>,*record)) // rule already instantiated
-					do .( %?, s )
 					do .CYCLIC
-				else do (((rule,%?), (%<?>,*record)) | {
+					do .( %?, s )
+				else in ( %<?:']'> ? ((rule,%?), ('[',*record)) ? ((Rule,%?),(Schema,(' ',.))) :)
+					// rule to be launched as ']' while already instantiated as '[', presumably
+					// due to blank unconsumed => add schemas starting post leading blank
+					do ( ((rule,%?), (%<?>,*record)) | {
+						(((schema, %((Rule,%?),(Schema,(' ',?)))), %(%|:(.,?))), %| ),
+						(((schema, %((Rule,%?),(Schema,?))), %(%|:(.,?))), %| ),
+						.( %|, s ) } )
+				else do ( ((rule,%?), (%<?>,*record)) | {
 					(((schema, %((Rule,%?),(Schema,?))), %(%|:(.,?))), %| ),
 					.( %|, s ) } )
-			else
+			else // note: we could - but don't - support rule limited to null-schema
 				do >"Error: Yak: rule '%_' not found or invalid\n": %<!:(.,?)>
 				do .EXIT
 		else on exit < *s // FAIL
@@ -267,10 +286,13 @@
 					else do exit // FAIL
 				else in %?: i
 					in : event : /[0-9]/
+						do check
 						do TAKE~
-					else
-						do : p : %(*p:(.,?))
+					else in check
+						do ~( check )
 						do : event : *event // REENTER
+						do : p : %(*p:(.,?))
+					else do exit // FAIL
 				else in : event : %?
 					do : p : %(*p:(.,?))
 				else do exit // FAIL
@@ -278,8 +300,8 @@
 				in : event : /[ \t]/
 					do TAKE~
 				else
-					do : p : %(*p:(.,?))
 					do : event : *event // REENTER
+					do : p : %(*p:(.,?))
 			else in : event : %?
 				do : p : %(*p:(.,?))
 			else do exit // FAIL
@@ -291,7 +313,7 @@
 			do :( TAKE, ']' ): ~. // TAKE, consumed
 		else in %?: (( %, ? ), . )
 			do :( TAKE, ']' ): %? // TAKE, consumed or first
-		else on init // no moving on
+		else on init // not moving
 			do TAKE~
 		else do READY
 	else on ~( TAKE )

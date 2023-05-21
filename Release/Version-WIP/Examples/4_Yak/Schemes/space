@@ -15,36 +15,60 @@
 #		%base:{}
 #		%base:{%s:{}}
 #		%base:{%space:{}}
-#	will be produced on user input when the corresponding schema
-#	is used at base level, and the input is neither ' ' nor '\t'
+#	will be produced when the corresponding schema is used at base
+#	level, and the input is neither ' ' nor '\t'
 
-# base rule definition - enable only one among the following
+# base rule definitions - enable only one among the following
 
 #	(( Rule, base ), ( Schema, (:%space:)) )
 #	(( Rule, base ), ( Schema, (:%s:)) )
 #	(( Rule, base ), ( Schema, (: :)) )
 	(( Rule, base ), ( Schema, (:%term:)) )
 
-# space rule definition
+# space rule definitions
 
 #	(( Rule, space ), ( Schema, (: :) ))	// recommended - if must be
-	(( Rule, space ), ( Schema, (:%s:) ))
+	(( Rule, space ), ( Schema, (:%s:) ))	// functional
+
+# s rule definition (left-recursive alternative to ' ' using null-schema)
 
 	(( Rule, s ), ( Schema, {
 		(::)
-//		(:%s :)		// double pass-through: not working - WIP
-		(:%s\ :)
-		(:%s\t:)	} ))
+		(:%s\ :), (:%s\t:)	// recommended - if must be
+#		(:%s :)			// double pass-through - functional
+	} ) )
 
-# general term rule (involving space) definition
+# term rule (involving space) definitions
 
+#	(( Rule, term0 ), ( Schema, {
 	(( Rule, term ), ( Schema, {
-#		(:\i:)		// double pass-through: not working - WIP
-		(:%int:)
-#		(: %term :)	// recommended
-		(:%s%term%s:)	// using null-schema: not recommended - but working
-#		(: %term:), (:%term :)	// works as well
-		(:(%term\):)	} ))
+		(:\i:)
+#		(:%int:)
+		(: %term :)
+		(:(%term\):)		// recommended
+#		(:( %term \):)		// functional
+#		(:(%term \):)		// functional
+#		(:( %term\):)		// functional
+	} ) )
+
+	(( Rule, term1 ), ( Schema, {
+#	(( Rule, term ), ( Schema, {
+		(:\i:)
+#		(:%int:)
+		(: %term:), (:%term :)	// functional
+		(:(%term\):)
+	} ) )
+
+	(( Rule, term2 ), ( Schema, {
+#	(( Rule, term ), ( Schema, {
+		(:\i:)
+#		(:%int:)
+		(:%s%term%s:)		// functional
+		(:(%term\):)
+	} ) )
+
+
+# int rule definition (alternative to \i)
 
 	(( Rule, int ), ( Schema, {
 		(:\d:)
