@@ -52,68 +52,53 @@
 				do : r : ~.
 		else in : send : ?
 +
-		on %! // send notification to parent(=driver)
+		on %! // sending notification to parent(=driver)
 			in %?:( TAKE, ? )
 				do (( .., TAKE ), %? )
 			else in %?:( IN, ? )
 				do (( .., IN ), %(((.,?),.):%(%?:(.,?))) )
 			else in %?:( OUT, ? )
 				do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
-			else in %?: ( CARRY, . )
-				do (( .., CARRY ), %(%?:(.,?)) )
-				// in this case, not waiting for response
-				do ~( %? ) // releases send condition
-				do : f : ~.
-				do : pop : OUT
 			else in %?: OUT
 				do ( .., OUT )
 				// in this case, not waiting for response
 				do :< f, send >: ~.
 				do : pop : OUT
-		else on ~( %%, ? ) < .. // pending on parent(=driver)'s response
-			in %?: ( IN, ? ) // after push notification
-				in %<?:( CONTINUE )>
-					do :< s, r >:< %?, %(%?:(.,?)) >
-				else in %<?:( PRUNE )>
-					do :< s, r >:< %?, %(%?:(.,?)) >
-					do : push : ( IN, OUT )
-				else // %<?:( DONE )>
-					do :< f, send >: ~.
-					do : pop : OUT
-			else in %?: ( OUT, ? ) // after pop notification
-				in %<?:( CONTINUE )>
-					do :< s, r >:< %?, %(%?:(.,?)) >
-				else in %<?:( PRUNE )>
-					do :< s, r >:< %?, %(%?:(.,?)) >
-					do : push : OUT
-				else // %<?:( DONE )>
-					do :< f, send >: ~.
-					do : pop : OUT
-			else in %?:( TAKE, . ) // after event notification
-				in %<?:( CONTINUE )>
-					in : push : OUT
-						do : send : OUT
-						do : push : ~.
-					else in : push : ?
+			else in %?: ( CARRY, . )
+				do (( .., CARRY ), %(%?:(.,?)) )
+				// in this case, not waiting for response
+				do : f : ~.
+				do ~( %? ) // releases send condition
+				do : pop : OUT
+		else on ~( %%, ? ) < .. // on parent(=driver)'s response
+			in %<?:( DONE )> // no matter what
+				do :< f, send >: ~.
+				do : pop : OUT
+			else in %?:( TAKE, . ) // after take notification
+				in : pop : ? // popping anyway
+					do : send : ((%?:OUT) ?: (OUT,%?))
+					do : pop : ~.
+				else in : push : OUT // leaving anyway
+					do : send : OUT
+					do : push : ~.
+				else in : push : ?
+					in %<?:( CONTINUE )>
 						do : send : (IN,%?)
 						do : push : ~.
-					else in : pop : ?
-						do : send : ((%?:OUT) ?: (OUT,%?))
-						do : pop : ~.
-				else in %<?:( PRUNE )>
-					in : push : OUT // we were leaving anyway
-						do : send : OUT
-						do : push : ~.
-					else in : push : ? // we were going to push
+					else
 						do :< s, r >:< %?, %(%?:(.,?)) >
-						do : push : ( OUT, OUT )
-					else in : pop : ? // we were going to pop anyway
-						do : send : ((%?:OUT) ?: (OUT,%?))
-						do : pop : ~.
-				else // %<?:( DONE )>
-					do :< f, send >: ~.
-					do : pop : OUT
-			do ~( %? ) // also releases send condition
+						do : push : (OUT,OUT)
+				else in %<?:( PRUNE )>
+					do : push : OUT
+			else in %?:( IN, ? ) // after push notification
+				do :< s, r >:< %?, %(%?:(.,?)) >
+				in %<?:( PRUNE )>
+					do : push : ( IN, OUT )
+			else in %?:( OUT, ? ) // after pop notification
+				do :< s, r >:< %?, %(%?:(.,?)) >
+				in %<?:( PRUNE )>
+					do : push : OUT
+			do ~( %? )
 -
 		else on : pop : ? // argument = s finish frame, or OUT
 			in %?: OUT
