@@ -26,7 +26,7 @@ freeRegistry( Registry *registry, freeRegistryCB callback )
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		if (( callback )) callback( registry, entry );
-		else if ( type == IndexedByName ) free( entry->name );
+		else if ( type==IndexedByName ) free( entry->name );
 		freePair( entry ); }
 	freeListItem( &registry->entries );
 	freePair((Pair *) registry );
@@ -83,9 +83,9 @@ void
 registryDeregister( Registry *registry, void *name, ... )
 {
 	Pair *r;
+	RegistryType type = registry->type;
 	listItem *i, *next_i, *last_i=NULL;
 	if (( name )) {
-		RegistryType type = registry->type;
 		for ( i=registry->entries; i!=NULL; i=next_i ) {
 			r = i->ptr;
 			next_i = i->next;
@@ -111,6 +111,7 @@ CLIP:
 	if (( last_i )) last_i->next = next_i;
 	else registry->entries = next_i;
 	freeItem( i );
+	if ( type==IndexedByName ) free( r->name );
 	freePair( r );
 }
 Pair *

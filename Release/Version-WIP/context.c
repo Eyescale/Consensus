@@ -297,11 +297,12 @@ bm_context_release( BMContext *ctx )
 Pair *
 bm_mark( int pre, char *expression, char *src, void *user_data )
 /*
-	return either one of the following from expression < src
-	in case src==NULL // in_condition or on_event (pre==0)
-		[ [ type, xpn ], [ user_data, NULL ] ]
-	otherwise // on_event_x (pre==0 or pre==BM_AS_PER)
-		[ [ type, xpn ], user_data ]
+	in case src==NULL: narrative in/on expression
+		called from in_condition or on_event, with pre==0
+		returns [ [ type, xpn ], [ user_data, NULL ] ]
+	otherwise: narrative on/per expression < src
+		called from on_event_x, with pre==0 or pre==BM_AS_PER
+		returns [ [ type, xpn ], user_data ]
 */
 {
 	union { void *ptr; int value; } type;
@@ -341,39 +342,45 @@ bm_mark( int pre, char *expression, char *src, void *user_data )
 //	bm_context_mark / bm_context_unmark
 //===========================================================================
 static Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
-/*
-	marked is either
-	in case ( type & AS_PER )
-		[ mark:[ type, xpn ], { batch:[ { instance(s) }, proxy ] } ]
-	    or
-		[ mark:[ type, xpn ], { batch:[ NULL, proxy ] } ]
-	otherwise
-		[ mark:[ type, xpn ], batch:[ instance, proxy ] ]
-*/
+typedef struct {
+	struct {
+		union { void *ptr; int value; }	type;
+		listItem *xpn; } *mark;
+	union {
+		listItem *list;
+		Pair *record; } match;
+} MarkData;
+
 void
-bm_context_mark( BMContext *ctx, Pair *marked )
+bm_context_mark( BMContext *ctx, void *user_data )
+/*
+	user_data can be either, depending on mark->type
+	in case ( mark->type & AS_PER )
+		[ mark:[ type, xpn ], match.list:{ batch:[ { instance(s) }, proxy ] } ]
+	    or
+		[ mark:[ type, xpn ], match.list:{ batch:[ NULL, proxy ] } ]
+	otherwise
+		[ mark:[ type, xpn ], match.record:[ instance, proxy ] ]
+*/
 {
-	Pair *batch, *event;
 	CNInstance *instance, *proxy;
-	if (( marked )) {
-		Pair *mark = marked->name;
-		union { void *ptr; int value; } type;
-		type.ptr = mark->name;
-		if ( type.value & AS_PER ) {
-			batch = ((listItem *) marked->value )->ptr;
-			instance = popListItem((listItem **) &batch->name );
+	if (( user_data )) {
+		MarkData *data = user_data;
+		if ( data->mark->type.value&AS_PER ) {
+			Pair *batch = data->match.list->ptr;
 			proxy = batch->value;
+			instance = popListItem((listItem **) &batch->name );
 			if ( !batch->name ) {
 				freePair( batch ); // one batch per proxy
-				popListItem((listItem **) &marked->value ); } }
+				popListItem( &data->match.list ); } }
 		else {
-			batch = marked->value;
-			instance = batch->name;
-			proxy = batch->value;
-			freePair( batch );
-			marked->value = NULL; }
+			Pair *record = data->match.record;
+			instance = record->name;
+			proxy = record->value;
+			freePair( record );
+			data->match.record = NULL; }
 
-		event = mark_prep( mark, instance, proxy );
+		Pair *event = mark_prep((Pair *) data->mark, instance, proxy );
 		if (( event )) {
 			if (( proxy ))
 				bm_push_mark( ctx, "<", newPair( event, proxy ) );
@@ -381,23 +388,17 @@ bm_context_mark( BMContext *ctx, Pair *marked )
 				bm_push_mark( ctx, "?", event ); } }
 }
 Pair *
-bm_context_unmark( BMContext *ctx, Pair *marked )
+bm_context_unmark( BMContext *ctx, void *user_data )
 {
-	if (( marked )) {
-		Pair *mark = marked->name;
-		union { void *ptr; int value; } type;
-		type.ptr = mark->name;
-		if ( type.value & EENOK )
-			bm_pop_mark( ctx, "<" );
-		else
-			bm_pop_mark( ctx, "?" );
-		if ( !marked->value ) {
-			listItem *xpn = mark->value;
-			freeListItem( &xpn );
-			freePair( mark );
-			freePair( marked );
-			marked = NULL; } }
-	return marked;
+	if (( user_data )) {
+		MarkData *data = user_data;
+		bm_pop_mark( ctx, (( data->mark->type.value&EENOK ) ? "<" : "?" ) );
+		if ( !data->match.record ) {
+			freeListItem( &data->mark->xpn );
+			freePair((Pair *) data->mark );
+			freePair((Pair *) data );
+			user_data = NULL; } }
+	return user_data;
 }
 
 //---------------------------------------------------------------------------

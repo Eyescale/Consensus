@@ -80,10 +80,14 @@ bm_read( BMReadMode mode, ... )
 	int event = 0;
 	do {
 		event = io_getc( &io, event );
-		data.state = bm_parse( event, mode, &data, read_CB );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse( event, mode, &data, read_CB );
 	} while ( strcmp( data.state, "" ) && !data.errnum );
 
 	//-----------------------------------------------------------------
+	if ( !data.errnum && ( io.control.stack )) {
+		io.errnum = IOErrIfUnterminated;
+		data.errnum = io_report( &io ); }
 	union { int value; void *ptr; } retval;
 	switch ( mode ) {
 	case BM_LOAD:

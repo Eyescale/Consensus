@@ -13,8 +13,8 @@ void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
 Pair *		bm_mark( int, char *, char *, void * );
-void		bm_context_mark( BMContext *, Pair * );
-Pair * 		bm_context_unmark( BMContext *, Pair * );
+void		bm_context_mark( BMContext *, void * );
+Pair * 		bm_context_unmark( BMContext *, void * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
 

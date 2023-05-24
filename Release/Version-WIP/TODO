@@ -1,26 +1,29 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. align yak-drive.story with the latest yak.story (null-schema support)
+		[DONE]	update yak-drive.story
+		[WIP]	update calculator.drive [WIP]
 	. parser.c
 		wherever I do f_set( SET or CARRY or VECTOR ) I should do
 			f_push( stack ) / f_reset( SET or CARRY or VECTOR )
 		so that on ',' - cf. parser.c: line 333 - I can always do
 			f_clr( INFORMED|NEGATED|FILTERED )
-	. align yak.bm with latest yak.story (null-schema support)
-		=> update yak.drive, calculator.drive (to be published)
 	. implement calculator { add, mult, mem } using yak.mod
 		1. just parser [./Examples/4_Yak/calculator.drive] => test Scheme
 		2. then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
 
 DONE
-	. implemented \i (integer) + fixed double-passthrough issue
-	. implemented yak blank space in schema definition e.g. (: %term :)
-	  rewrote ./Examples/4_Yak/yak.story => NEW null-schema support implementation
-		cf ./Examples/4_Yak/Schemes/space
+	. yak-drive.story updated
+	. implemented preprocessing directives #define #ifdef, #ifndef, etc.
+	. yak.story
+		. implemented \i (integer) + fixed double-passthrough issue
+		. implemented yak blank space in schema definition e.g. (: %term :)
+		. new (working) null-schema implementation
+		. cf. ./Examples/4_Yak/Schemes/space
+	. implemented preprocessing directive #include
 	. support output to stderr
 		do >&"fmt":< arg(s) >
-	. implemented ./Examples/4_Yak/{yak.drive,yak.mod}
-		using #include "path/filename" for yak.mod [mod for model]
 	. parser.c: %identifier' in literal or list MUST be followed by non-separator
 		e.g.	(%titi',whatever)	FAILS on the comma
 			(%titi,whatever)	PASSES -> (%,titi) ',' w h a t e v e r
@@ -92,11 +95,18 @@ DONE
 			. ignore exponent
 			. set param to instances.sub[0]^MAX
 	  CAVEATS
-	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) we only support
-	     inner ( .param, ... ) and/or terminating ellipsis in proto
+	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) in proto
+	     we only support inner ( .param, ... ) and/or terminating ellipsis
 	  2. when proto is ellipsis-terminated, then the sub-narrative perso
 	     is changed to (%%,this) - consequently all .locale(s) will be
 	     instantiated as ((%%,this), locale(s)), etc.
+	. support %<(!,?)> supposed to be used in association with e.g.
+		on ~( %%, func ) < ?:srv
+			do : value : %<(!,?)>
+	  Note: in %<(!,?)> does in fact read the src's CNDB, but design-wise
+	  does not break the model consisting of only catching events: since
+	  %<!> does refer to a new or released event, so does %<(!,?)> which
+	  here we just pretend has been caught along.
 	. supported ellipsis / vector
 		do (( list, ... ), < expression(s) > )
 	. supported %((?,...):expression)

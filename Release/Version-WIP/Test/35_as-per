@@ -10,9 +10,11 @@
 /**/
 	on init
 		do !! Test()
-	else on ( . ) < .	// . without parenthesis means active
+	else on : . : . < .	// catch the right event
 		per : . : ? < .
-			do >"BINGO %_\n": %<?>
+			do >": %_ : %_\n":< %<!:((.,?),.)>, %<!:(.,?)> >
+			do >"\tBINGO %_\n": %<?>
+			do >"\tBINGY %_\n": %<?>
 		do exit
 
 : Test

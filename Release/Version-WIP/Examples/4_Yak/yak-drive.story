@@ -1,0 +1,81 @@
+/*===========================================================================
+|
+|			yak-drive story main
+|
++==========================================================================*/
+#define YAK_DRIVE
+#include "yak.story"
+:
+	on init
+		in ( Rule, . ) // Scheme from file.ini
+			do : yak : !! Yak( %((Rule,.),(Schema,.)) )
+		else
+			// default Scheme: takes '.'-terminated number
+			do : yak : !! Yak(
+				(( Rule, base ), ( Schema, (:%term:)))
+				(( Rule, term ), ( Schema, (:%test.:)))
+				(( Rule, test ), ( Schema, {
+					(:\d:)
+					(:%test\d:)	} ))
+				)
+		do : state : INPUT
+
+	else on exit < *yak
+		in : state : FAILED
+			do > "  \n" // wipe out ^D
+		do exit
+			
+	else in : state : INPUT
+		on ~( %%, READY ) < *yak
+			// prompt based on last input, none included
+			in : input : ~'\n'
+			else do >&"yak-drive > " // prompt
+			do input: "%c" <
+		else on ~( %%, IN ) < *yak
+			do : state : TRAVERSE
+		else on ~( %%, OUT ) < *yak
+			do : state : FAILED
+
+	else in : state : TRAVERSE
+		on ~(( %%, TAKE ), ? ) < *yak
+			/* %<?> event
+			   yak pending on response, which can be either
+				CONTINUE - continue current rule
+				PRUNE - skip to the end of current rule
+				DONE - end traversal */
+			do > "%s": %<?>
+			do ( %<, CONTINUE )
+		else on ~(( %%, IN ), ? ) < *yak
+			/* %<?> target rule id
+			   yak pending on response, which can be either
+				CONTINUE - push and enter new rule %<?>
+				PRUNE - pass and continue current rule
+				DONE - end traversal */
+			do > "%%%s:{": %<?>
+			do ( %<, CONTINUE )
+		else on ~(( %%, OUT ), ? ) < *yak
+			/* %<?> target rule id
+			   yak pending on response, which can be either
+				CONTINUE - pop current and continue previous rule
+				PRUNE - pop and skip to the end of previous rule
+				DONE - end traversal */
+			do > "}"
+			do ( %<, CONTINUE )
+		else on ~( %%, OUT ) < *yak
+			/* yak either returning to input mode or exiting */
+			do : state : INPUT
+		else on ~(( %%, CARRY ), ? ) < *yak
+			/* last event unconsumed - e.g. \i completing on fail
+			   yak then either returns to input mode or exits
+			   without further notification */
+			do > "%s": %<?>
+			do : state : INPUT
+		else on ~( %%, ERR ) < *yak
+			do : state : ERR
+
+	else // : state : FAILED or ERR
+		on ~(( %%, TAKE ), ? ) < *yak
+			do > "%s": %<?>
+			do ( %<, CONTINUE )
+		else on ~( %%, OUT ) < ?:*yak
+			do : state : INPUT

@@ -64,8 +64,8 @@ typedef enum {
 	exponent = popListItem( &stack ); \
 	i = popListItem( &stack ); }
 
-#define POP_ALL( stack ) \
-	freeListItem( &stack );
+#define POP_ALL( stack, exponent ) \
+	while (( stack )) POP_XPi( stack, exponent )
 
 //---------------------------------------------------------------------------
 //	LUSH and LOP	- PUSH and POP list

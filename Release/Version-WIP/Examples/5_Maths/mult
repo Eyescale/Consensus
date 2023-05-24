@@ -263,8 +263,7 @@
 	else in : state : MULT
 		on : i : ?  // no OPT - we want q > p
 			in (%?,'\0')		// p is greater than q
-				do : p : *q
-				do : q : *p
+				do :< p, q >:< *q, *p > // swap p q
 				do : state : MADD
 			else in %? : *q		// q is greater than p
 				do : state : MADD

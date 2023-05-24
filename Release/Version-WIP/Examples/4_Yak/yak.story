@@ -1,12 +1,21 @@
+/*===========================================================================
+|
+|				yak story
+|
++==========================================================================*/
 /*
-	Usage: ../../B% -f Schemes/yak.ini yak.story < input
-	----------------------------------------------------
+	Usage
+		../../B% -f Schemes/file yak.story < input
+	 or
+		as driver interface - see yak-drive.story
 */
+#ifdef YAK_DRIVE
+#include "yak.bm"
+#else
 	on init
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
-			do : record : (record,*)
-			do : state : IN
+			do :< record, state >:< (record,*), IN >
 		else
 			do >"Error: Yak: base rule not found or invalid\n"
 			do exit
@@ -15,17 +24,17 @@
 		on : state : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
-//				(((schema, %((Rule,base),(Schema,?))), %(%|:(.,?))), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
 			%( . )
 			in ( %?, READY )
 				on ( %?, READY )
 					in : carry : ?
-						do : input : %?
 //						do >"---------------- carry: %_\n": %?
+						do : input : %?
 						do : carry : ~.
-					else do input:"%c"<
+					else
+						do input:"%c"<
 				else on : input : ?
 //					do >"---------------- input: %_\n": %?
 					// could do some preprocessing here
@@ -55,24 +64,23 @@
 				do >"(nop)\n"
 				do exit
 			else
-				do : s : base
-				do : f : (record,*) // initial frame
+				do :< s, f >:< base, (record,*) >
 				in : carry : . // trim record
 					do ~( *record, . )
+				do : r : ~.
 
-		else on : pop : ? // popping argument = s's finishing frame
+		else on : pop : ? // popping argument = s's finishing frame, or OUT
 			do : pop : ~.
-			// output last schema event, providing it's not initial frame
-			in ?: %(*s:(((.,~'\0'),.),.),(']',(.,?))): ~(record,*)
-				do >"%s}": %?
-			else do >"}"
-			in ~.: ( *r, base )
+			in %?: OUT
+				in *f: (.,?:~EOF): ~(record,*)
+					do >"%s": %?
+				do : state : ~.
+			else in ~.: ( *r, base )
 				/* set s to the successor of the schema which the current r
 				   fed and which started at s's finishing frame */
 				in ( %(*r,?), ?:(((schema,.),%?),.) )
-					do : s : %?
-					do : r : %(%?:(.,?))
-				else // if no such successor, then we must have (*r,base)
+					do :< s, r >:< %?, %(%?:(.,?)) >
+				else // no such successor, we should have (*r,base)
 					do >" *** Error: Yak: rule '%_': "
 						"subscriber has no successor ***\n": %(*r:((.,?),.))
 					do : s : ~.
@@ -89,29 +97,27 @@
 				else in %?: ('[',.) // completed unconsumed
 					in ?: %(*f:(.,?:~EOF))
 						do : carry : %?
-					else do >"\n"
+					else do >"\n" // EOF
 				else in ( *f, ?:~EOF )
 					// right-recursive case: completes on failing next frame
 					do : carry : %?
 
 		else on : r : ? // r pushed or popped
-			/* --------------------------------------------------------------
+			/*---------------------------------------------------------------
 			// test if r has other feeders starting at s's starting frame
 			in ( (.,%(*s:((.,?),.))), %? ): ~*s
 				do >" *** Warning: Yak: rule '%_': "
 					"multiple interpretations ***\n": %(%?:((.,?),.))
-			----------------------------------------------------------------- */
+			-----------------------------------------------------------------*/
 			in ((.,*r), *s ) // s has predecessor: r popped
 			else // output r begin
 				do >"%%%s:{": %(%?:((.,?),.))
 
-		// s has rule with event consumed starting this frame => pushing or popping
+		// s has rule with event to-be-consumed starting this frame => pushing or popping
 		else in ( (.,?:('[',*f)):~*r, *s )
 			// rule has schema not starting & finishing both at the same frame => pushing
 			in ?: ((.,%?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
-				// set s to the feeder starting & not finishing at r's starting frame
-				do : s : %?
-				do : r : %(%?:(.,?))
+				do :< s, r >:< %?, %(%?:(.,?)) >
 			else do : pop : %?
 
 		// s has rule with event unconsumed starting this frame => pushing or popping
@@ -121,20 +127,29 @@
 				// output last schema event, providing it's not also starting
 				in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
 					do >"%s": %(*f:(.,?))
-				// set s to the feeder starting & not finishing at r's starting frame
-				do : s : %?
-				do : r : %(%?:(.,?))
-			else do : pop : %?
+				do :< s, r >:< %?, %(%?:(.,?)) >
+			else
+				// output last schema event, providing it's not initial frame
+				in (*s:(((.,~'\0'),.),.), (']',~(record,*)))
+					do >"%s}": %(*f:(.,?))
+				else do >"}"
+				do : pop : %?
 
 		else in ( *s, ?:(.,*f)) // this frame is s's last frame => popping
 			in %?: (.,(record,*)) // special case: null-schema
 				do : pop : %?
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s
+				// output current schema's last event, if consumed
 				in ( *s:(((.,~'\0'),.),.), (']',.))
 					do >"%s": %(*f:(.,?))
 				do : s : %?
-			else do : pop : %?
+			else
+				// output last schema event if consumed, and f is not initial frame
+				in ?: ( %?:~(.,(record,*)) ? %(*s:(((.,~'\0'),.),.),(']',(.,?))) :)
+					do >"%s}": %?
+				else do >"}"
+				do : pop : %?
 
 		else // moving on
 			in ?:( *f, . ) // there is a next frame
@@ -142,25 +157,25 @@
 				in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
 					do >"%s": %(*f:(.,?))
 				do : f : %?
-			else
-				in *f: (.,?:~EOF): ~(record,*)
-					do >"%s": %?
-				do : state : ~.
+			else do : pop : OUT
 
-	else in : state : ~.
-		on : state : ~.
-			// destroy the whole record structure, including rule
-			// and schema instances - all in ONE Consensus cycle
-			in : record : ~(.,EOF)
-				do ~( record )
-			else do exit
-		else on ~( record )
-			// reset: we do not want base rule to catch this frame
-			do : record : (record,*)
-			do ~( input )
-			do : state : IN
+	else on : state : ~.
+		// destroy the whole record structure, including rule
+		// and schema instances - all in ONE Consensus cycle
+		in : record : ~(.,EOF)
+			do ~( record )
+		else
+			do > "  \n" // wipe out ^D
+			do exit
 
+	else on ~( record ) // next input-traversal cycle
+		// reset: we do not want base rule to catch this frame
+		do :< record, state >:< (record,*), IN >
+#endif
 
+//---------------------------------------------------------------------------
+//	yak input schema threads sub-narrative definition
+//---------------------------------------------------------------------------
 .s: ((( schema, .position ), .start ), .r )
 	.p
 	on ( s )
@@ -230,10 +245,9 @@
 		else on :( TAKE, ? ): . < *s // TAKE rule
 			in ((Rule,?:%<!:(.,?)>),(Schema,~'\0'))
 				in : p : (~(%,.),.) // align p in case e.g. event was consumed, other than first -
-					// or special case: blank unconsumed, while rule also instantiated as ']'
-					in ( (*p:(' ',.)) ? %<?:'['> ? (?:((rule,%?), (']',*record))) :)
+					// or special case: blank unconsumed, while rule already instantiated as ']'
+					in ( *p:(' ',.) ? %<?:'['> ? (?:((rule,%?), (']',*record))) :)
 						// add schema to that rule, starting at rule position in this schema
-						do (((schema, %(*p:(.,?))), %(%?:(.,?))), %? )
 						do ( (((schema, %(*p:(.,?))), %(%?:(.,?))), %? ) | {
 							( %|, CYCLIC )
 							( %|, ( %?, %| )) } )
@@ -258,6 +272,9 @@
 		else on exit < *s // FAIL
 			do .EXIT
 
+//===========================================================================
+//	yak input Take narrative definition
+//===========================================================================
 : Take
 	on ~( ., %% ) < ..
 		do exit

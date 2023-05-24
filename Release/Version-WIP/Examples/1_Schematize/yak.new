@@ -168,9 +168,9 @@
 				in ( %(r,?), ((.,%(s,?)),.) )
 				else in ((.,%(s,?)), r ): ~s
 				else do .EXIT // defunct
-			on (((.,'\0'),.), r ) // completion guaranteed
-				in ((.,start), r ): ~s
-					do .EXIT // defunct
+			on (((.,'\0'),.), r:%(((.,start),?):~s) ) /* completion guaranteed
+				and r has other feeder started at same start frame */
+				do .EXIT // defunct
 	else in .READY
 		on : record : .
 			do ~( .READY )

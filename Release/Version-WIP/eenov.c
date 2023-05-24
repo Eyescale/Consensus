@@ -224,8 +224,8 @@ PUSH_xpn:	PUSH( stack[ XPN_id ], xpn, POP_xpn )
 		traverse_data.done = 0;
 		eenov_traversal( p, &traverse_data, FIRST );
 		if (( data->success )) {
-			switch ( traverse_data.done ) {
-			case 2: /* we have %<(_!_,?:...)>
+			if ( traverse_data.done==2 ) {
+				/* we have %<(_!_,?:...)>
 		               	             ^    ^----- current traverse_data.p
 					      ---------- current data->stack.instance
 				*/
@@ -245,8 +245,8 @@ PUSH_list:				LUSH( stack[ LIST_id ], POP_list )
 POP_list:				LOP( stack[ LIST_id ], PUSH_list, NULL ) }
 				if (( stack[ XPN_id ] ))
 					POP_XPi( stack[ XPN_id ], xpn )
-				else goto RETURN;
-			default:
+				else goto RETURN; }
+			else {
 				if ( !lookupIfThere( trail, e ) ) { // ward off doublons
 					addIfNotThere( &trail, e );
 					if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
@@ -254,7 +254,7 @@ POP_list:				LOP( stack[ LIST_id ], PUSH_list, NULL ) }
 						goto RETURN; } } } }
 POP_xpn:	POP( stack[ XPN_id ], xpn, PUSH_xpn, NULL ) }
 RETURN:
-	POP_ALL( stack[ XPN_id ] );
+	POP_ALL( stack[ XPN_id ], xpn );
 	freeListItem( &stack[ LIST_id ] );
 	freeListItem( &trail );
 	freeItem( i );

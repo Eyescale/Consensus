@@ -38,15 +38,14 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
 		int type = occurrence->data->type;
-		listItem *j = occurrence->sub;
-		if ( type&ELSE && passed ) {}
-		else {
+		if (!( type&ELSE && passed )) {
 			// processing
+			listItem *j = occurrence->sub;
 			if ( !marked ) {
 				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
-				Pair **mark = (( j ) ? &marked : NULL );
 				char *expression = occurrence->data->expression;
 				char *deternarized = ( type&LOCALE ? NULL : bm_deternarize(&expression,ctx) );
+				Pair **mark = (( j ) ? &marked : NULL );
 				switch ( type ) {
 				case ROOT: passed=1; break;
 				case IN: passed=in_condition( expression, ctx, mark ); break;
@@ -62,22 +61,22 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			// pushing down
 			if ( passed && ( j )) {
 				bm_context_mark( ctx, marked );
-				addItem( &stack, i );
 				addItem( &stack, marked );
+				addItem( &stack, i );
 				i = j; marked = NULL;
 				continue; } }
 		// popping up
 		for ( ; ; ) {
 			marked = bm_context_unmark( ctx, marked );
-			if (( marked ))	// as per results
+			if (( marked )) // "per" result
 				break;
 			else if (( i->next )) {
 				i = i->next;
 				break; }
 			else if (( stack )) {
 				passed = 1; // otherwise we would not be here
-				marked = popListItem( &stack );
-				i = popListItem( &stack ); }
+				i = popListItem( &stack );
+				marked = popListItem( &stack ); }
 			else goto RETURN; } }
 RETURN:
 	freeItem( i );
@@ -174,7 +173,8 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 */
 {
 #ifdef DEBUG
-	fprintf( stderr, "on_event_x bgn: %s\n", expression );
+	if ( pre ) fprintf( stderr, "on_event_x bgn: per %s\n", expression );
+	else fprintf( stderr, "on_event_x bgn: on %s\n", expression );
 #endif
 	int success=0, negated=0;
 	if ( !strncmp(expression,"~.:",3) )
