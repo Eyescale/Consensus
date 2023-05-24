@@ -27,11 +27,10 @@
 #define LITERAL		(1<<15)
 #define CLEAN		(1<<16)
 #define LISTABLE	(1<<17)
-#define NEW		(1<<18)
-#define CARRY		(1<<19)
-#define VECTOR		(1<<20)
-#define EENOV		(1<<21)
-#define ELLIPSIS	(1<<22)
+#define CARRY		(1<<18)
+#define VECTOR		(1<<19)
+#define EENOV		(1<<20)
+#define ELLIPSIS	(1<<21)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

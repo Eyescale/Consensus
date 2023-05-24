@@ -1,19 +1,14 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. align yak-drive.story with the latest yak.story (null-schema support)
-		[DONE]	update yak-drive.story
-		[WIP]	update calculator.drive [WIP]
-	. parser.c
-		wherever I do f_set( SET or CARRY or VECTOR ) I should do
-			f_push( stack ) / f_reset( SET or CARRY or VECTOR )
-		so that on ',' - cf. parser.c: line 333 - I can always do
-			f_clr( INFORMED|NEGATED|FILTERED )
 	. implement calculator { add, mult, mem } using yak.mod
-		1. just parser [./Examples/4_Yak/calculator.drive] => test Scheme
-		2. then the real thing [./Examples/5_Maths/calculator.story]
+		[WIP] just parser [./Examples/4_Yak/calculator.drive] => test Scheme
+		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
 
 DONE
+	. modified parser.c, so that SET, CARRY or VECTOR always start from
+	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
+	  and then exit via f_pop( state, INFORMED )
 	. yak-drive.story updated
 	. implemented preprocessing directives #define #ifdef, #ifndef, etc.
 	. yak.story

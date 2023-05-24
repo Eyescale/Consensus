@@ -61,8 +61,8 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			// pushing down
 			if ( passed && ( j )) {
 				bm_context_mark( ctx, marked );
-				addItem( &stack, marked );
 				addItem( &stack, i );
+				addItem( &stack, marked );
 				i = j; marked = NULL;
 				continue; } }
 		// popping up
@@ -75,8 +75,8 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 				break; }
 			else if (( stack )) {
 				passed = 1; // otherwise we would not be here
-				i = popListItem( &stack );
-				marked = popListItem( &stack ); }
+				marked = popListItem( &stack );
+				i = popListItem( &stack ); }
 			else goto RETURN; } }
 RETURN:
 	freeItem( i );

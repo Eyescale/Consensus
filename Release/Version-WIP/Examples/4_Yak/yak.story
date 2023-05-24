@@ -171,8 +171,8 @@
 	else on ~( record ) // next input-traversal cycle
 		// reset: we do not want base rule to catch this frame
 		do :< record, state >:< (record,*), IN >
-#endif
 
+#endif // YAK_DRIVE
 //---------------------------------------------------------------------------
 //	yak input schema threads sub-narrative definition
 //---------------------------------------------------------------------------
