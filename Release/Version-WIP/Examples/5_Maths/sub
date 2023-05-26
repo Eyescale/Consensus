@@ -15,14 +15,14 @@
 //		do : X : ((X,...):189:)
 		do : Y : ((Y,...):13234:)
 		do : Z : ((Z,...)::)
-		do : state : INIT
-	else in : state : INIT
+		do : INIT
+	else in : INIT
 		do : p : *X
 		do : q : *Y
 		do : r : (r,*)
 		do : carry : 0
-		do : state : SUB
-	else in : state : SUB
+		do : SUB
+	else in : SUB
 		on : %% : ? < *dial  // read operation's results
 			in %<?:~'\0'>
 				do : r : ( *r, %<?> )
@@ -30,47 +30,47 @@
 					do : p : ( %?:(.,*) ? ~. : %? )
 				in : q : (?,.)
 					do : q : ( %?:(.,*) ? ~. : %? )
-				do : state : SUB
+				do : SUB
 			else do : carry : 1
-		else on : state : .  // dial operation on next digit(s)
+		else on : .  // dial operation on next digit(s)
 			in : p : (.,?)
 				do : *dial : ((%?,(*q?%(*q:(.,?)):0)),*carry)
 			else in : q : (.,?)
 				do : *dial : ((0,%?),*carry)
 			else // no more digits
 				in : carry : 0
-					do : state : FORMAT
+					do : FORMAT
 					do : r : *r
 				else
 					do : r : %((r,*),.)
 					do : q : ( q, * )
-					do : state : NEG
+					do : NEG
 			do : carry : 0
-	else in : state : NEG
+	else in : NEG
 		on : %% : ? < *dial  // read operation's results
 			in %<?:~'\0'>
 				do : q : ( *q, %<?> )
 				in ?: (*r,.)
 					do : r : %?
 				else do ~( r )
-				do : state : NEG
+				do : NEG
 			else do : carry : 1
-		else on : state : .
+		else on : .
 			in : r : (.,?)
 				do : *dial : ((0,%?),*carry)
 				do : carry : 0
 			else
-				do : state : FORMAT
+				do : FORMAT
 				do : r : *q
-	else in : state : FORMAT
+	else in : FORMAT
 		on : r : (.,?)	// inform Z from r
 			in %?: ~*
 				do : Z : ( *Z, %? )
 				do : r : %(*r:(?,.))
 			else
 				do ~( *r )
-				do : state : OUTPUT
-	else in : state : OUTPUT
+				do : OUTPUT
+	else in : OUTPUT
 		on : p : (.,?)
 			do > "%s" : %?
 			in ?: (*p,.)
@@ -86,7 +86,7 @@
 			else
 				do > "\n"
 				do exit
-		else on : state : .
+		else on : .
 			do > "\t"
 			do : p : %((X,*), . )
 			do : q : X

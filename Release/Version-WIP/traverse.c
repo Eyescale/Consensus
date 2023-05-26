@@ -119,17 +119,22 @@ CB_SignalCB					p++; }
 CB_ModCharacterCB			f_cls; p++; break; }
 				break;
 			case '(':
-				if ( p[1]==':' )
-					f_next = FIRST|LEVEL|ASSIGN;
-				else if ( !(mode&INFORMED) && !p_single(p) )
-					f_next = FIRST|LEVEL|COUPLE;
-				else f_next = FIRST|LEVEL;
-				f_next |= is_f(SET|SUB_EXPR|MARKED);
-CB_OpenCB			f_push( stack )
-				f_reset( f_next, 0 )
-				p++;
-CB_TermCB			if ( *p==':' ) p++;
-				break;
+				if ( p[1]==':' && (mode&LITERAL) && !is_f(SUB_EXPR)) {
+					p = p_prune( PRUNE_LITERAL, p );
+					f_set( INFORMED );
+					break; }
+				else {
+					if ( p[1]==':' )
+						f_next = FIRST|LEVEL|ASSIGN;
+					else if ( !(mode&INFORMED) && !p_single(p) )
+						f_next = FIRST|LEVEL|COUPLE;
+					else f_next = FIRST|LEVEL;
+					f_next |= is_f(SET|SUB_EXPR|MARKED);
+CB_OpenCB				f_push( stack )
+					f_reset( f_next, 0 )
+					p++;
+CB_TermCB				if ( *p==':' ) p++;
+					break; }
 			case ':':
 				if ( p[1]=='<' ) {
 					f_clr( NEGATED|INFORMED|FILTERED )
@@ -224,7 +229,7 @@ CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
 CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 				f_cls; break;
 			default:
-				if ( is_separator(*p) ) {
+				if ( *p!='\\' && is_separator(*p) ) {
 					traverse_data->done = BMTraverseError; }
 				else {
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );

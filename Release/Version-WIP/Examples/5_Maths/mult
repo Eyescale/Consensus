@@ -4,13 +4,13 @@
 		do : X : ((X,...):1230456:)
 		do : Y : ((Y,...):9870654:)
 		do : Z : ((Z,...)::)
-		do : state : INIT
-	else in : state : INIT
-		do : state : MULT
+		do : INIT
+	else in : INIT
+		do : MULT
 		in (((X,*),.),.)
 			do :< P, q >:< *X, *Y >
 		else	do :< P, q >:< *Y, *X >
-	else in : state : MULT
+	else in : MULT
 		on ~( %%, MULT ) < ?  // read operation's results
 			do :< c, v >: %<(!,?:...)>
 		else on : v : ?
@@ -24,10 +24,10 @@
 		else on : p : ~.
 			in : c : (?:~0)
 				do : r : ( *r, %? )
-			do : state : MSUM
-		else on : state : .
+			do : MSUM
+		else on : .
 			do :< p, c, r >:< *P, 0, (r,*) >
-	else in : state : MSUM
+	else in : MSUM
 		/* we have
 			: r : (( r, * ), ... )	// input
 			: s : (( s, * ), ... )  // done digits
@@ -57,17 +57,17 @@
 			in : q : ( ?:~(.,*), . )
 				in : c : (?:~0)  // finish u
 					do : u : ( *u, %? )
-				do : state : MULT
+				do : MULT
 				do : q : %?
 			else
 				do ~( %((.,*):%((?,...):*t)) )
 				in : c : (?:~0)
 					do : t : ( *u, %? )
 				else do : t : *u
-				do : state : FORMAT
+				do : FORMAT
 		else on : t : ?
 			do (( *dial, ... ),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
-		else on : state : .
+		else on : .
 			do : c : 0
 			in ~.: u  // very first round: separate r into s and u
 				in ?:((r,*),.)
@@ -77,14 +77,14 @@
 						do : u : (((u,*),...),%(%?,?:...))
 						do : r : ~.
 					else  // both X and Y are one digit - and no carry
-						do : state : FORMAT
+						do : FORMAT
 						do ~( %? )
 			else
 				// swap t and u from last round
 				do : t : %(((.,*),.):%((?,...):*u))
 				do : u : %((.,*):%((?,...):*t))
 				do : r : %(( r, * ), . )
-	else in : state : FORMAT
+	else in : FORMAT
 		on : r : ?
 			in %?: ~(.,*)  // inform Z from t then s
 				do : Z : ( *Z, %(%?:(.,?)) )
@@ -94,10 +94,10 @@
 				do : r : *s
 			else
 				do ~( %? )
-				do : state : OUTPUT
-		else on : state : .
+				do : OUTPUT
+		else on : .
 			do : r : *t
-	else in : state : OUTPUT
+	else in : OUTPUT
 		on : p : (.,?)
 			do > "%s" : %?
 			in ?: ( *p, . )
@@ -113,18 +113,18 @@
 			else
 				do > "\n"
 				do exit
-		else on : state : .
+		else on : .
 			do >"\t"
 			do : p : %((X,*), . )
 			do : q : X
 
 : Dial
-	in : state : MSUM	// add q to p via n
+	in : MSUM	// add q to p via n
 		on : n : ? 
 			in %?: 0
 				in : c : 0
 					do (( .., ... ),< MSUM, *r, *p >)  // notify result
-					do : state : ~.
+					do : ~.
 				else 
 					do : n : *c	// set n to carry
 					do : c : 0
@@ -135,10 +135,10 @@
 				else
 					do : r : %(*r,(?,.))	// increment report
 					do : p : 0		// reset p to 0
-		else on : state : .
+		else on : .
 			do : n : *q	// set n
 
-	else in : state : MADD	// add q to (r,p) i times, via n
+	else in : MADD	// add q to (r,p) i times, via n
 		on : n : ? 
 			in %?: 0
 				do : i : %(?,(*i,.))	// decrement i
@@ -153,25 +153,25 @@
 			in %?: 0
 				in : c : 0
 					do (( .., ... ),< MULT, *r, *p >)  // notify result
-					do : state : ~.
+					do : ~.
 				else 
 					do : n : *c	// set n to carry
 					do : i : 1	// last round
 					do : c : 0
 			else
 				do : n : *q		// reset n
-		else on : state : .
+		else on : .
 			do : p : *q			// set p to q
 			do : i : %(?,(*p,.))		// set i to p-1
 			do : n : *q			// set n
 			do : r : 0
 
-	else in : state : MSUB	// sub q from (r,p) i times, via n
+	else in : MSUB	// sub q from (r,p) i times, via n
 		on : n : ?
 			in %?: 0
 				in (?,(*i,.))  // decrement i
 					in %?: 0
-						do : state : MADD
+						do : MADD
 						do : i : 0
 					else
 						do : i : %?
@@ -186,36 +186,36 @@
 		else on : i : .
 			do : n : *q
 
-	else in : state : MAXX	// compute i x (base-1)
+	else in : MAXX	// compute i x (base-1)
 		on : i : ?
 			in (%?,'\0')
 				in ( X ) // here from OPT
 					do : r : %(?,(*q,.))
 					do : p : *r
-					do : state : MSUB
+					do : MSUB
 					do : i : *t
 				else
 					do : r : %(?,(*p,.))
 					do : p : *r
-					do : state : MADD
+					do : MADD
 					do : i : 0
 			else 
 				do : i : %(%?,(?,.))	// increment i
 				do : r : %(*r,(?,.))	// increment report
-		else on : state : .
+		else on : .
 			do : i : ( X ? *q : *p ) // may be here from OPT
 			do : r : 1
 
-	else in : state : MCEN	// compute (r,p)=q*(n=base/2)
+	else in : MCEN	// compute (r,p)=q*(n=base/2)
 		on : i : ?
 			in %?: *q
 				in : p : *n
-					do : state : MADD
-					do : i : 0 	// override default state init
+					do : MADD
+					do : i : 0 	// override default MADD init
 					on : r : .
 						do : p : 0
 				else
-					do : state : ( X ? MADD : MSUB )
+					do : ( X ? MADD : MSUB )
 					do : i : *t
 					on : r : .
 						do : p : 0
@@ -226,19 +226,19 @@
 				on : r : .		// increment report every 2nd time
 				else
 					do : r : %(*r,(?,.))
-		else on : state : .
+		else on : .
 			do : i : 1
 
-	else in : state : OPT  // optimize using (base-1) or (base/2) depending on n=neg(p)
+	else in : OPT  // optimize using (base-1) or (base/2) depending on n=neg(p)
 		on : r : ?
 			in ( X ? (%?:*X) : (%?:*p) ) // r reaches X=neg(p) resp. p before i reaches center
 				in ( X )
-					do : state : MAXX
+					do : MAXX
 					do : t : %(?,(%?,.))	// t is MAXX's argument to MSUB
 				else
-					do : state : MADD	// as is
+					do : MADD	// as is
 			else in : i : *n  // i reaches center
-				do : state : MCEN
+				do : MCEN
 				do : t : %(?,(%?,.))	// t is MCEN's argument to MADD/MSUB
 				do : r : 0		// r is MCEN's alternator
 			else
@@ -247,7 +247,7 @@
 				do : n : %(?,(*n,.))	// decrement n
 		else on : i : ?
 			in %?: *n			// center reached
-				do : state : MCEN
+				do : MCEN
 			else in %?: *p			// p reached
 				do : r : 1
 			else in : n : *p		// neg(p) reached
@@ -256,50 +256,50 @@
 			else
 				do : i : %(%?,(?,.))	// increment i
 				do : n : %(?,(*n,.))	// decrement n
-		else on : state : .
+		else on : .
 			do : i : %(1,(?,.))
 			do : n : %(?,(.,'\0'))
 
-	else in : state : MULT
+	else in : MULT
 		on : i : ?  // no OPT - we want q > p
 			in (%?,'\0')		// p is greater than q
 				do :< p, q >:< *q, *p > // swap p q
-				do : state : MADD
+				do : MADD
 			else in %? : *q		// q is greater than p
-				do : state : MADD
+				do : MADD
 			else do : i : %(%?,(?,.))
-		else on : state : .
+		else on : .
 			in ((*p:0)?:(*q:0))
 				do (( .., ... ),< MULT, 0, *c >) // notify result
-				do : state : ~.
+				do : ~.
 			else in *p: %(?,'\0')
 				do : p : *q
-				do : state : MAXX
+				do : MAXX
 			else in *q: %(?,'\0')
-				do : state : MAXX
+				do : MAXX
 			else in *p: 1
 				do : p : *q
-				do : state : MADD
+				do : MADD
 				do : i : 0
 			else in *q: 1
-				do : state : MADD
+				do : MADD
 				do : i : 0
 			else in OPT
-				do : state : OPT
+				do : OPT
 			else
 				do : i : %(*p,(?,.))
 
 	else on ~( %%, ? ) < ..
 		in %<?:( MULT )>
 			do :< p, q, c >: %<(!,?:...)>
-			do : state : MULT
+			do : MULT
 			do : r : 0
 			in OPT
 				do : t : 0
 				do ~( X )
 		else in %<?:( MSUM )>
 			do :< p, q, c >: %<(!,?:...)>
-			do : state : MSUM
+			do : MSUM
 			do : r : 0
 
 	else on exit < ..

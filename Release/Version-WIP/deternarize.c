@@ -31,12 +31,15 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 	only ternary-operated sequences are pushed on stack.sequence
 */
 {
+	if ( type&LOCALE ) return NULL;
+
 	char *expression = *candidate;
-	if ( !expression || !strcmp( expression, ":<" ) || type&LOCALE )
+	if ( !expression || !strcmp( expression, ":<" ) )
 		return NULL;
 
 	char *deternarized = NULL;
 	int traverse_mode = TERNARY|INFORMED;
+	if ( type&DO ) traverse_mode |= LITERAL;
 
 	DeternarizeData data;
 	memset( &data, 0, sizeof(data) );

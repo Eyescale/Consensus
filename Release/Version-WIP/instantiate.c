@@ -46,7 +46,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	else if ( *expression==':' )
 		instantiate_assignment( expression, &traverse_data, story );
 	else {
-		traverse_data.done = INFORMED;
+		traverse_data.done = INFORMED|LITERAL;
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
@@ -117,7 +117,7 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	if ( *p==')' ) p++;
 	else do {
 		char *q = p;
-		traverse_data->done = INFORMED;
+		traverse_data->done = INFORMED|LITERAL;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 ) {
 			cleanup( data, ctx );
@@ -574,7 +574,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		db_unassign( self, db );
 		return; }
 
-	traverse_data->done = INFORMED;
+	traverse_data->done = INFORMED|LITERAL;
 	p = instantiate_traversal( p, traverse_data, FIRST );
 	if ( traverse_data->done==2 || !data->sub[ 0 ] )
 		return;
@@ -592,7 +592,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		while (( e = popListItem( &sub[0] ) ))
 			db_unassign( e, db ); }
 	else {
-		traverse_data->done = INFORMED;
+		traverse_data->done = INFORMED|LITERAL;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 || !data->sub[ 0 ] )
 			freeListItem( &sub[ 0 ] );
@@ -626,7 +626,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	traverse_data.done = INFORMED;
+	traverse_data.done = INFORMED|LITERAL;
 	char *p = instantiate_traversal( arg, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		goto FAIL;
@@ -639,7 +639,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 			db_unassign( e, db );
 		return; }
 
-	traverse_data.done = INFORMED;
+	traverse_data.done = INFORMED|LITERAL;
 	p = instantiate_traversal( input, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		freeListItem( &sub[ 0 ] );

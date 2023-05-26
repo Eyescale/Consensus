@@ -13,13 +13,13 @@
 		do : dial : !! Dial((:0123456789:))
 		do : X : ((X,...):000189:)
 		do : Y : ((Y,...):13234:)
-		do : state : INIT
-	else in : state : INIT
+		do : INIT
+	else in : INIT
 		do : p : *X
 		do : q : *Y
 		do : r : '='
-		do : state : CMP
-	else in : state : CMP
+		do : CMP
+	else in : CMP
 		on : %% : ? < *dial  // read operation's result
 			in %<?:~'='>
 				do : r : %<?>
@@ -27,15 +27,15 @@
 				do : p : ( %?:(.,*) ? ~. : %? )
 			in : q : (?,.)
 				do : q : ( %?:(.,*) ? ~. : %? )
-			do : state : CMP
-		else on : state : .  // dial operation on next digit(s)
+			do : CMP
+		else on : .  // dial operation on next digit(s)
 			in : p : (.,?)
 				do : *dial : (%?,(*q?%(*q:(.,?)):0))
 			else in : q : (.,?)
 				do : *dial : ( 0, %? )
 			else
-				do : state : OUTPUT
-	else in : state : OUTPUT
+				do : OUTPUT
+	else in : OUTPUT
 		on : p : (.,?)
 			do > "%s" : %?
 			in ?: ( *p, . )
@@ -47,7 +47,7 @@
 			else
 				do > "\n"
 				do exit
-		else on : state : .
+		else on : .
 			do > "\t"
 			do : p : %((X,*), . )
 			do : q : X
