@@ -10,7 +10,7 @@
 		in ( Rule, . ) // Scheme from file.ini
 			do : yak : !! Yak( %((Rule,.),(Schema,.)) )
 		else
-			// default Scheme: takes '.'-terminated number
+			// default Scheme: dot-terminated number
 			do : yak : !! Yak(
 				(( Rule, base ), ( Schema, (:%term:)))
 				(( Rule, term ), ( Schema, (:%test.:)))
@@ -18,25 +18,27 @@
 					(:\d:)
 					(:%test\d:)	} ))
 				)
-		do : state : INPUT
+		do : INPUT
 
 	else on exit < *yak
-		in : state : FAILED
+		in : OUT
 			do > "  \n" // wipe out ^D
 		do exit
 			
-	else in : state : INPUT
+	else in : INPUT
 		on ~( %%, READY ) < *yak
 			// prompt based on last input, none included
 			in : input : ~'\n'
 			else do >&"yak-drive > " // prompt
 			do input: "%c" <
 		else on ~( %%, IN ) < *yak
-			do : state : TRAVERSE
+			// yak recognized input and traverses results
+			do : TRAVERSE
 		else on ~( %%, OUT ) < *yak
-			do : state : FAILED
+			// yak failed to recognize and flushes input
+			do : OUT
 
-	else in : state : TRAVERSE
+	else in : TRAVERSE
 		on ~(( %%, TAKE ), ? ) < *yak
 			/* %<?> event
 			   yak pending on response, which can be either
@@ -63,19 +65,20 @@
 			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < *yak
 			/* yak either returning to input mode or exiting */
-			do : state : INPUT
+			do : INPUT
 		else on ~(( %%, CARRY ), ? ) < *yak
 			/* last event unconsumed - e.g. \i completing on fail
 			   yak then either returns to input mode or exits
 			   without further notification */
 			do > "%s": %<?>
-			do : state : INPUT
+			do : INPUT
 		else on ~( %%, ERR ) < *yak
-			do : state : ERR
+			do : ERR
 
-	else // : state : FAILED or ERR
+	else // in : OUT or : ERR
 		on ~(( %%, TAKE ), ? ) < *yak
 			do > "%s": %<?>
 			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < ?:*yak
-			do : state : INPUT
+			do : INPUT
+

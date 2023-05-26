@@ -3,30 +3,30 @@
 
 #include "string_util.h"
 #include "traverse.h"
-#include "proxy.h"
-#include "cell.h"
+#include "eeno_feel.h"
 #include "eenov.h"
+#include "cell.h"
 
 // #define DEBUG
 
 //===========================================================================
-//	bm_proxy_feel
+//	bm_eeno_feel
 //===========================================================================
-#include "proxy_traversal.h"
+#include "eeno_feel_traversal.h"
 
-static void * proxy_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
+static void * eeno_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
 	CNDB *db_x;
 	CNInstance *x;
 	struct { listItem *flags, *x; } stack;
-} ProxyFeelData;
+} EENOFeelData;
 
 void *
-bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
+bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 {
 #ifdef DEBUG
-	fprintf( stderr, "bm_proxy_feel: %s\n", expression );
+	fprintf( stderr, "bm_eeno_feel: %s\n", expression );
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
@@ -36,7 +36,7 @@ bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
         void *success = NULL;
         CNInstance *e;
 
-	ProxyFeelData data;
+	EENOFeelData data;
 	memset( &data, 0, sizeof(data) );
 	data.ctx = ctx;
 	data.db_x = db_x;
@@ -45,15 +45,15 @@ bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
-	if ( *expression==':' )
-		success = proxy_feel_assignment( proxy, as_per, expression, &traverse_data );
+	if ( *expression==':' ) {
+		success = eeno_feel_assignment( proxy, as_per, expression, &traverse_data ); }
 	else {
 		if ( !strncmp( expression, "?:", 2 ) )
 			expression += 2;
 		listItem *s = NULL;
 		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
 			data.x = e;
-			proxy_feel_traversal( expression, &traverse_data, FIRST );
+			eeno_feel_traversal( expression, &traverse_data, FIRST );
 			if ( traverse_data.done==2 ) {
 				freeListItem( &data.stack.flags );
 				freeListItem( &data.stack.x );
@@ -65,17 +65,17 @@ bm_proxy_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 				success = e;
 				break; } } }
 #ifdef DEBUG
-	fprintf( stderr, "bm_proxy_feel: success=%d\n", !!success );
+	fprintf( stderr, "bm_eeno_feel: success=%d\n", !!success );
 #endif
 	return success;
 }
 
 //---------------------------------------------------------------------------
-//	proxy_feel_traversal
+//	eeno_feel_traversal
 //---------------------------------------------------------------------------
-static inline CNInstance * proxy_verify( char *p, ProxyFeelData *data );
+static inline CNInstance * proxy_verify( char *p, EENOFeelData *data );
 
-BMTraverseCBSwitch( proxy_feel_traversal )
+BMTraverseCBSwitch( eeno_feel_traversal )
 case_( term_CB )
 	if is_f( FILTERED ) {
 		if ( !proxy_verify( p, data ) )
@@ -111,34 +111,79 @@ BMTraverseCBEnd
 
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 static inline CNInstance *
-proxy_verify( char *p, ProxyFeelData *data )
+proxy_verify( char *p, EENOFeelData *data )
 {
 	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data );
 }
 static BMCBTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
 {
-	ProxyFeelData *data = user_data;
+	EENOFeelData *data = user_data;
 	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
 		return BM_DONE;
 	return BM_CONTINUE;
 }
 
 //---------------------------------------------------------------------------
-//	proxy_feel_assignment
+//	eeno_feel_assignment
 //---------------------------------------------------------------------------
 static void *
-proxy_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data )
+eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data )
 {
-	ProxyFeelData *data = traverse_data->user_data;
+	EENOFeelData *data = traverse_data->user_data;
 	CNDB *db_x = data->db_x;
 	CNInstance *star = db_lookup( 2, "*", db_x );
 	if ( !star ) return NULL;
+	CNInstance *success = NULL, *e, *f;
+
 	expression++; // skip leading ':'
-	char *value = p_prune( PRUNE_FILTER, expression ) + 1;
-	void *success = NULL;
-	CNInstance *e;
-	if ( !strncmp( value, "~.", 2 ) ) {
+	if ( !strcmp(expression,"~.") ) {
+		/* we want to find x:(*,proxy_self) in manifested log, so that
+			we have proxy_self:((NULL,that),NULL) where proxy:((this,that),NULL)
+			but we don't have ( x, . ) in there as well
+		*/
+		listItem *s = NULL;
+		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
+			if (( success )) {
+				if ( e->sub[ 0 ]==success ) {
+					success = NULL;
+					freeListItem( &s );
+					break; } }
+			else if ( e->sub[0]==star ) {
+				f = e->sub[ 1 ];
+				if (( f->sub[0] ) && DBProxyThat(f)==DBProxyThat(proxy) )
+					success = f; }
+			else if (( f=CNSUB(e,0) ) && f->sub[0]==star ) {
+				f = f->sub[ 1 ]; // here we have e:((*,f),.)
+				if (( f->sub[0] ) && DBProxyThat(f)==DBProxyThat(proxy) ) {
+					freeListItem( &s );
+					break; } } }
+		return success; } // (*,%%) manifested
+
+	char *value = p_prune( PRUNE_FILTER, expression );
+	if ( *value++=='\0' ) { // moving past ',' aka. ':' if there is
+		/* we want to find x:((*,proxy_self),expression) in manifested log, so that
+			proxy_self:((NULL,that),NULL) where proxy:((this,that),NULL)
+		*/
+		listItem *s = NULL;
+		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
+			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
+			if ( !f || f->sub[0]!=star ) continue;
+			CNInstance *g = f->sub[ 1 ];
+			if ( !g->sub[0] || DBProxyThat(g)!=DBProxyThat(proxy) )
+				continue;
+			// here we have g:((.,that),.)=>=proxy-Self
+			data->x = e->sub[ 1 ];
+			eeno_feel_traversal( expression, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				freeListItem( &data->stack.flags );
+				freeListItem( &data->stack.x );
+				traverse_data->done = 0; }
+			else {
+				freeListItem( &s );
+				success = e; // return ((*,.),.)
+				break; } } }
+	else if ( !strncmp( value, "~.", 2 ) ) {
 		/* we want to find x:(*,variable) in manifested log, so that
 		   	. ( x, . ) is not manifested as well
 		   	. variable verifies expression
@@ -161,7 +206,7 @@ proxy_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
 			data->x = e->sub[ 1 ];
-			proxy_feel_traversal( expression, traverse_data, FIRST );
+			eeno_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -183,7 +228,7 @@ proxy_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
-			proxy_feel_traversal( expression, traverse_data, FIRST );
+			eeno_feel_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -191,7 +236,7 @@ proxy_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 				continue; }
 			data->x = e->sub[ 1 ];
 			traverse_data->done = 0;
-			proxy_feel_traversal( value, traverse_data, FIRST );
+			eeno_feel_traversal( value, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );

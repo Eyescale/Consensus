@@ -4,7 +4,6 @@ Consensus B% Version-WIP
     parser.c: bm_parse() - state transitions for mode!=STORY
 
 	base	""
-		#	base
 		expr
 	expr	expr_
 		(	(:
@@ -26,10 +25,6 @@ Consensus B% Version-WIP
 			(::	(:
 				expr
 		|	expr
-		_^	_#
-			expr
-		_#	expr
-		expr_
 	expr_	base
 		""
 
@@ -37,7 +32,6 @@ Consensus B% Version-WIP
     parser.c: bm_parse() - state transitions for mode==STORY
 
 	base	""
-		#	base
 		+	base
 		-	base
 		^.	^.$ 	^.$_	^.
@@ -64,7 +58,6 @@ Consensus B% Version-WIP
 	expr	expr_	base
 			""
 		_^	expr
-			_#	expr
 		(	expr
 			(:
 		,	expr

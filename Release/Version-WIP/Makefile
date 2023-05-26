@@ -21,7 +21,7 @@ SRCS =	narrative.c \
 				query.c \
 					locate_pivot.c \
 					locate_mark.c \
-			proxy_feel.c
+			eeno_feel.c
 LIB = libbmod.a
 
 TARGETS = $(LIB) B%

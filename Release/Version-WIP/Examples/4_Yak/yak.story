@@ -15,13 +15,13 @@
 	on init
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, state >:< (record,*), IN >
+			do :< record, %% >:< (record,*), IN >
 		else
 			do >"Error: Yak: base rule not found or invalid\n"
 			do exit
 
-	else in : state : IN
-		on : state : . // start base rule instance - feeding base
+	else in : IN
+		on : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
 				.( %|, base ) } )
@@ -45,7 +45,7 @@
 					do ~( %?, READY )
 			else in ( %?, DONE )
 				on ~.: . < { ., %% }
-					do : state : OUT
+					do : OUT
 			else in (.,%?): ~%(?,DONE)
 				in (.,%?): ~%(?,DONE): ~%(?,READY)
 				else do ( %?, READY ) // all feeder schemas ready
@@ -55,11 +55,11 @@
 			in : record : (((record,*),.),.) // not first input
 				do : record : %(*record:(?,.))
 				do : carry : %(*record:(.,?))
-			do : state : OUT
+			do : OUT
 
-	else in : state : OUT
+	else in : OUT
 		.s .f .r
-		on : state : .
+		on : .
 			in : record : (record,*)
 				do >"(nop)\n"
 				do exit
@@ -74,7 +74,7 @@
 			in %?: OUT
 				in *f: (.,?:~EOF): ~(record,*)
 					do >"%s": %?
-				do : state : ~.
+				do : ~.
 			else in ~.: ( *r, base )
 				/* set s to the successor of the schema which the current r
 				   fed and which started at s's finishing frame */
@@ -85,7 +85,7 @@
 						"subscriber has no successor ***\n": %(*r:((.,?),.))
 					do : s : ~.
 			else // back to base
-				do : state : ~.
+				do : ~.
 				in : f : ( record, * ) // successor null-schema
 					in : input : ?
 						do >"%s": %?
@@ -159,7 +159,7 @@
 				do : f : %?
 			else do : pop : OUT
 
-	else on : state : ~.
+	else on : ~.
 		// destroy the whole record structure, including rule
 		// and schema instances - all in ONE Consensus cycle
 		in : record : ~(.,EOF)
@@ -170,7 +170,7 @@
 
 	else on ~( record ) // next input-traversal cycle
 		// reset: we do not want base rule to catch this frame
-		do :< record, state >:< (record,*), IN >
+		do :< record, %% >:< (record,*), IN >
 
 #endif // YAK_DRIVE
 //---------------------------------------------------------------------------

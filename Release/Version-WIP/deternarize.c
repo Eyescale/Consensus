@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "narrative.h"
 #include "traverse.h"
 #include "deternarize.h"
 #include "deternarize_private.h"
@@ -14,7 +15,7 @@
 static BMTernaryCB pass_CB;
 
 char *
-bm_deternarize( char **candidate, BMContext *ctx )
+bm_deternarize( char **candidate, int type, BMContext *ctx )
 /*
 	build Sequence:{
 		| [ segment:Segment, NULL ]
@@ -31,10 +32,12 @@ bm_deternarize( char **candidate, BMContext *ctx )
 */
 {
 	char *expression = *candidate;
-	if ( !expression || !strcmp( expression, ":<" ) )
+	if ( !expression || !strcmp( expression, ":<" ) || type&LOCALE )
 		return NULL;
 
 	char *deternarized = NULL;
+	int traverse_mode = TERNARY|INFORMED;
+	if ( type&DO ) traverse_mode |= LITERAL;
 
 	DeternarizeData data;
 	memset( &data, 0, sizeof(data) );
@@ -44,9 +47,9 @@ bm_deternarize( char **candidate, BMContext *ctx )
 	BMTraverseData traverse_data;
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = TERNARY|INFORMED;
+	traverse_data.done = traverse_mode;
 
-	if (!( *expression==':' )) {
+	if ( *expression!=':' ) {
 		deternarize( expression, NULL, &traverse_data, expression );
 		if (( data.sequence )) {
 			// convert sequence to char *string
@@ -58,12 +61,13 @@ bm_deternarize( char **candidate, BMContext *ctx )
 			// release sequence
 			free_deternarized( data.sequence ); } }
 	else {
-		char *p = expression + 1;
+		char *p = expression + 1, *q;
 		listItem *sequence[ 2 ] = { NULL, NULL };
 		p = deternarize( p, &sequence[0], &traverse_data, expression );
-		data.sequence = NULL;
-		traverse_data.done = TERNARY|INFORMED;
-		char *q = deternarize( p+1, &sequence[1], &traverse_data, expression );
+		if ( *(q=p) ) {
+			data.sequence = NULL;
+			traverse_data.done = traverse_mode;
+			q = deternarize( p+1, &sequence[1], &traverse_data, expression ); }
 		if ((sequence[ 0 ])||(sequence[ 1 ])) {
 			CNString *s = newString();
 			if (( sequence[ 0 ] )) {

@@ -4,6 +4,7 @@
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
 	else in toto
+		do : titi
 		do ((alpha,...),<a,%(b,?),c>)
 		do :<
 		do input:<
@@ -29,8 +30,8 @@
 		do (:titi:)
 		do ( titi, (( toto, ... ):asdlkjasd:) )
 		in ( toto ? tata ? titi : roro : titi )
-		in ( toto ? tata ? titi ? tutu :)
-		do : ~titi : ~( tutu, tata )
+		else in ( toto ? tata ? titi ? tutu :)
+		else do : ~titi : ~( tutu, tata )
 		do ( { tata, toto }, titi )
 		do ~.	// nop
 	else on ~( signal )
@@ -59,6 +60,7 @@
 		do ( toto, (titi,%@) )
 		do %?~
 		do %!~
+	else in :titi
 	else
 		do exit
 

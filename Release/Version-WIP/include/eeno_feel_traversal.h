@@ -1,10 +1,10 @@
-#ifndef PROXY_TRAVERSAL_H
-#define PROXY_TRAVERSAL_H
+#ifndef EENO_FEEL_TRAVERSAL_H
+#define EENO_FEEL_TRAVERSAL_H
 
-static BMTraversal proxy_feel_traversal;
+static BMTraversal eeno_feel_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		ProxyFeelData *data = traverse_data->user_data; char *p = *q;
+		EENOFeelData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
@@ -28,4 +28,4 @@ static BMTraverseCB
 #include "traversal.h"
 
 
-#endif	// PROXY_TRAVERSAL_H
+#endif	// EENO_FEEL_TRAVERSAL_H

@@ -3,7 +3,7 @@
 
 #include "context.h"
 
-char * bm_deternarize( char **expression, BMContext * );
+char * bm_deternarize( char **expression, int type, BMContext * );
 
 void free_deternarized( listItem *sequence );
 

@@ -252,24 +252,22 @@ CB_if_( ProtoSet, mode, data ) {
 	// bm_parse:	Narrative en / in / on / do / per / else Command
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
-		ons( " \t" ) if ( !s_cmp( "en" ) ) {
-				do_( "cmd_" )	*type |= EN; }
-			else if ( !s_cmp( "in" ) ) {
-				do_( "cmd_" )	*type |= IN; }
-			else if ( !s_cmp( "on" ) ) {
-				do_( "cmd_" )	*type |= ON; }
-			else if ( !s_cmp( "do" ) ) {
-				do_( "cmd_" )	*type |= DO; }
-			else if ( !s_cmp( "per" ) ) {
-				do_( "cmd_" )	*type |= PER|ON; }
-			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
-				do_( "else" )	*type = ELSE; }
-		on_( '\n' )
-			if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
+		on_( '%' )	do_( "%_" )	s_take
+		on_( '\n' ) if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
 				do_( "else" )	REENTER
 						*type = ELSE; }
-		on_( '%' )	do_( "%_" )	s_take
-		on_separator	; // err
+		on_separator if ( !s_cmp( "en" ) ) {
+				do_( "cmd_" )	REENTER *type |= EN; }
+			else if ( !s_cmp( "in" ) ) {
+				do_( "cmd_" )	REENTER *type |= IN; }
+			else if ( !s_cmp( "on" ) ) {
+				do_( "cmd_" )	REENTER *type |= ON; }
+			else if ( !s_cmp( "do" ) ) {
+				do_( "cmd_" )	REENTER *type |= DO; }
+			else if ( !s_cmp( "per" ) ) {
+				do_( "cmd_" )	REENTER *type |= PER|ON; }
+			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
+				do_( "else" )	REENTER *type = ELSE; }
 		on_other	do_( same )	s_take
 		end
 	in_( "else" ) bgn_
@@ -278,6 +276,7 @@ CB_if_( ProtoSet, mode, data ) {
 						TAB_CURRENT += TAB_SHIFT;
 						f_set( INFORMED )
 						s_reset( CNStringAll )
+		on_separator	; // err
 		on_other	do_( "cmd" )	REENTER
 						s_reset( CNStringAll )
 		end
@@ -308,12 +307,10 @@ EXPR_BGN:CND_endif
 	// bm_parse:	Expression
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
-		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) { // allow \nl inside resp. {} () <>
+		on_( '\n' ) if ( is_f(SET|CARRY|LEVEL|VECTOR) ) { // allow \nl inside resp. {} () <>
 				do_( "_^" ) }
-			else if ( !is_f(INFORMED) || is_f(LEVEL|SUB_EXPR|EENOV) ||
-				( *type&PER && !*type&ON_X ) || ( is_f(ASSIGN) && !is_f(FILTERED) ) )
-				; // err
-			else { do_( "expr_" )	REENTER }
+			else if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|EENOV) && (*type&PER?*type&ON_X:1) ) {
+				do_( "expr_" )	REENTER }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
 				do_( "(" )	s_take }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY) )
@@ -487,7 +484,6 @@ B:CND_endif
 				do_( "|" )	s_take
 						f_tag( stack, COMPOUND )
 						f_clr( INFORMED ) }
-		on_( '#' )	do_( "_#" )
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
 				if ( mode==BM_STORY && *type&DO && ( is_f(LEVEL) ?
@@ -764,7 +760,6 @@ CND_ifn( mode==BM_STORY, C )
 C:CND_endif
 	in_( "_^" ) bgn_	// \nl allowed inside {} () <>
 		ons( " \t\n" )	do_( same )
-		on_( '#' )	do_( "_#" )
 		ons( "})>" )	do_( "expr" )	REENTER
 		on_( ',' )	; // err
 		on_other // allow newline to act as comma
@@ -774,13 +769,9 @@ C:CND_endif
 						f_clr( INFORMED ) }
 			else {	do_( "expr" )	REENTER }
 		end
-	in_( "_#" ) bgn_
-		on_( '\n' )	do_( "expr" )	REENTER
-		on_other	do_( same )
-		end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' ) if ( *type&DO && !is_f(SUB_EXPR|NEGATED) ) {
+		on_( ':' ) if ( *type&DO && !is_f(NEGATED|SUB_EXPR) ) {
 				do_( "(:" )	s_take
 						f_set( LITERAL ) }
 		on_( '(' )	do_( "expr" )	REENTER
@@ -824,7 +815,6 @@ C:CND_endif
 			on_other
 if ( mode==BM_STORY ) {			do_( "." )	REENTER
 							s_add( "." ) }
-else { 					; } // err
 			end
 			in_( ",.." ) bgn_
 				on_( '.' )	do_( ",..." )
@@ -832,7 +822,6 @@ else { 					; } // err
 if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
 							s_add( ".." )
 							f_set( INFORMED ) }
-else {					; } // err
 				end
 			in_( ",..." ) bgn_
 				ons( " \t" )	do_( same )
@@ -925,16 +914,16 @@ else {					; } // err
 							f_set( INFORMED )
 			end
 	in_( "(:" ) bgn_
-		on_( ')' ) if ( is_f(LITERAL) ) {
+		ons( "(\n" )	; // err
+		on_( ')' ) if ( is_f(LITERAL) ) { // otherwise list
 				do_( "expr" )	s_take
 						f_tag( stack, COMPOUND )
 						f_set( INFORMED ) }
 		on_( '\\' )	do_( "(:\\" )	s_take
 		on_( '%' )	do_( "(:%" )	s_take
-		on_( ':' ) if ( is_f(LITERAL) ) {
+		on_( ':' ) if ( is_f(LITERAL) ) { // otherwise list
 				do_( same )	s_take }
 			else {	do_( "(::" )	s_take }
-		on_( '\n' )	; // err
 		on_other	do_( same )	s_take
 		end
 		in_( "(:\\" ) bgn_
@@ -976,15 +965,14 @@ else {					; } // err
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
-CB_( ExpressionTake, mode, data );
-		bgn_
-			on_any
+CB_( ExpressionTake, mode, data )
+		bgn_	on_any
 if ( mode==BM_INPUT ) {		do_( "" ) }
 else {				do_( "base" )	f_reset( FIRST, 0 );
 						TAB_CURRENT = 0;
 						data->opt = 0;
 	if ( mode==BM_STORY ) {			*type = 0; } }
-			end
+		end
 	//----------------------------------------------------------------------
 	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------

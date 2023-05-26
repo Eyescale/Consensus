@@ -24,7 +24,7 @@
 //===========================================================================
 #include "instantiate_traversal.h"
 
-static CNInstance * conceive( Pair *, char *, BMTraverseData * );
+static void instantiate_new( char *, CNStory *, BMTraverseData *, listItem ** );
 static void instantiate_assignment( char *, BMTraverseData *, CNStory * );
 typedef struct {
 	struct { listItem *flags; } stack;
@@ -51,18 +51,12 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	traverse_data.stack = &data.stack.flags;
 
 	if ( *expression=='!' ) {
-		char *p = expression + 2; // skip '!!'
-		Pair *entry = registryLookup( story, p );
-		if (( entry )) {
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			conceive( entry, p, &traverse_data ); }
-		else fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-			"\tdo !! %s <<<<<\n", p ); }
+		instantiate_new( expression, story, &traverse_data, NULL ); }
 	else if ( *expression==':' )
 		instantiate_assignment( expression, &traverse_data, story );
 	else {
 		DBG_VOID( expression )
-		traverse_data.done = INFORMED;
+		traverse_data.done = INFORMED|LITERAL;
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
@@ -91,8 +85,30 @@ cleanup( InstantiateData *data, BMContext *ctx )
 }
 
 //---------------------------------------------------------------------------
-//	conceive
+//	instantiate_new
 //---------------------------------------------------------------------------
+static CNInstance * conceive( Pair *entry, char *, BMTraverseData * );
+
+static void
+instantiate_new( char *expression, CNStory *story, BMTraverseData *data, listItem **per )
+{
+	char *p = expression + 2; // skip '!!'
+	Pair *entry = registryLookup( story, p );
+	if (( entry )) {
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		if (( per )) {
+			CNDB *db = ((InstantiateData *)( data->user_data ))->db;
+			for ( CNInstance *x; (x=popListItem( per )); ) {
+				CNInstance *proxy = conceive( entry, p, data );
+				if (( proxy )) db_assign( x, proxy, db );
+				else db_unassign( x, db ); } }
+		else conceive( entry, p, data ); }
+	else {
+		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
+			"\tdo !! %s <<<<<\n", p );
+		if (( per )) freeListItem( per ); }
+}
+
 static CNInstance *
 conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 /*
@@ -111,7 +127,7 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	if ( *p==')' ) p++;
 	else do {
 		char *q = p;
-		traverse_data->done = INFORMED;
+		traverse_data->done = INFORMED|LITERAL;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 ) {
 			cleanup( data, ctx );
@@ -500,6 +516,7 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 {
 	CNInstance *e;
 	char_s q;
+	int len;
 	switch ( *p ) {
 	case '%':
 		if ( !wi[0] ) wi[0] = db_register( "%", db );
@@ -518,7 +535,6 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 	case '\\':
 		switch (( q.value = p[1] )) {
 		case '0':
-		case ' ':
 		case 'w':
 		case 'd':
 		case 'i':
@@ -526,12 +542,13 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 			e = db_register( q.s, db );
 			e = db_instantiate( wi[1], e, db );
 			p+=2; break;
-		case ')':
-			e = db_register( q.s, db );
-			p+=2; break;
-		default:
-			p += charscan( p, &q );
-			e = db_register( q.s, db ); }
+		default: ;
+			if (( len = charscan( p, &q ) )) {
+				e = db_register( q.s, db );
+				p += len; }
+			else {
+				e = db_register( q.s, db );
+				p+=2; } }
 		break;
 	default:
 		q.value = p[0];
@@ -559,51 +576,46 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 {
 	InstantiateData *data = traverse_data->user_data;
 	CNDB *db = data->db;
-	char *p = expression + 1; // skip leading ':'
 	listItem *sub[ 2 ];
 	CNInstance *e;
 
+	char *p = expression + 1; // skip leading ':'
+	if ( !strcmp(p,"~.") ) {
+		BMContext *ctx = data->ctx;
+		CNInstance *self = BMContextSelf( ctx );
+		db_unassign( self, db );
+		return; }
+
 	DBG_VOID( p )
-	traverse_data->done = INFORMED;
+	traverse_data->done = INFORMED|LITERAL;
 	p = instantiate_traversal( p, traverse_data, FIRST );
 	if ( traverse_data->done==2 || !data->sub[ 0 ] )
 		return;
 
 	sub[ 0 ] = data->sub[ 0 ];
 	data->sub[ 0 ] = NULL;
-	p++; // move past ',' - aka. ':'
-	switch ( *p ) {
-	case '!':
-		p += 2; // skip '!!'
-		Pair *entry = registryLookup( story, p );
-		if (( entry )) {
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			while (( e = popListItem( &sub[0] ) )) {
-				CNInstance *proxy = conceive( entry, p, traverse_data );
-				if (( proxy )) db_assign( e, proxy, db );
-				else db_unassign( e, db ); } }
-		else {
-			fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-				"\tdo !! %s <<<<<\n", p );
-			freeListItem( &sub[ 0 ] ); }
-		return;
-	case '~':
-		if ( p[1]=='.' ) {
-			while (( e = popListItem( &sub[0] ) ))
-				db_unassign( e, db );
-			return; } }
-
-	DBG_VOID( p )
-	traverse_data->done = INFORMED;
-	p = instantiate_traversal( p, traverse_data, FIRST );
-	if ( traverse_data->done==2 || !data->sub[ 0 ] )
-		freeListItem( &sub[ 0 ] );
+	if ( *p++=='\0' ) { // moving past ',' aka. ':' if there is
+		BMContext *ctx = data->ctx;
+		CNInstance *self = BMContextSelf( ctx );
+		while (( e = popListItem( &sub[0] ) ))
+			db_assign( self, e, db ); }
+	else if ( *p=='!' ) {
+		instantiate_new( p, story, traverse_data, &sub[ 0 ] ); }
+	else if ( !strncmp( p, "~.", 2 ) ) {
+		while (( e = popListItem( &sub[0] ) ))
+			db_unassign( e, db ); }
 	else {
-		sub[ 1 ] = data->sub[ 0 ];
-		data->sub[ 0 ] = NULL;
-		bm_assign( sub, db );
-		freeListItem( &sub[ 0 ] );
-		freeListItem( &sub[ 1 ] ); }
+		DBG_VOID( p )
+		traverse_data->done = INFORMED|LITERAL;
+		p = instantiate_traversal( p, traverse_data, FIRST );
+		if ( traverse_data->done==2 || !data->sub[ 0 ] )
+			freeListItem( &sub[ 0 ] );
+		else {
+			sub[ 1 ] = data->sub[ 0 ];
+			data->sub[ 0 ] = NULL;
+			bm_assign( sub, db );
+			freeListItem( &sub[ 0 ] );
+			freeListItem( &sub[ 1 ] ); } }
 }
 
 //===========================================================================
@@ -629,7 +641,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 	traverse_data.stack = &data.stack.flags;
 
 	DBG_VOID( arg )
-	traverse_data.done = INFORMED;
+	traverse_data.done = INFORMED|LITERAL;
 	char *p = instantiate_traversal( arg, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		goto FAIL;
@@ -643,7 +655,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 		return; }
 
 	DBG_VOID( input )
-	traverse_data.done = INFORMED;
+	traverse_data.done = INFORMED|LITERAL;
 	p = instantiate_traversal( input, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		freeListItem( &sub[ 0 ] );

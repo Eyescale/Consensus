@@ -1,5 +1,22 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. Modified literal format: ( MUST be bacslashed in sequence,
+		e.g. do (:\(whatever\):)
+	. implement in/on/do : expression to be the same as
+		in/on/do : %% : expression
+	  implement in/on (:expression) resp. in/on ~(:expression)
+		Note that we cannot have do (:expression) // literal
+		but do ((*,%%),expression) gives the same result
+	  The immediate formal benefit is to be able to support
+		on ((:state)?~(:previous):) // transition event
+		<=> on :previous->state
+
+	So: if I allow (:toto) during in/on/etc. traversal, then I
+	should also allow in (:variable:value) as well
+
+	Also: Must NOT allow ( in litterals unles backslashed
+		-> otherwise messes my counting
+
 	. implement calculator { add, mult, mem } using yak.mod
 		[WIP] just parser [./Examples/4_Yak/calculator.drive] => test Scheme
 		[TODO] then the real thing [./Examples/5_Maths/calculator.story]

@@ -228,8 +228,9 @@ preprocess( CNIO *io, int event )
 			on_any	do_( "" )	action = IOEventTake;
 			end
 	in_( "" ) bgn_
-		on_( '#' )	do_( column ? "//" : ( io->type==IOStreamFile ? "#" : "//" ) )
-						action = IOEventPass;
+		on_( '#' ) if ( !column && io->type==IOStreamFile ) {
+				do_( "#" )	action = IOEventPass; }
+			else {	do_( "//" )	action = IOEventPass; }
 		on_( '/' )	do_( "/" )	action = IOEventQueue;
 		on_( '\\' )	do_( "\\" )	action = IOEventQueue;
 		on_( '"' )	do_( "\"" )	action = IOEventTake;
@@ -328,9 +329,8 @@ preprocess( CNIO *io, int event )
 				do_( "#_" )	io->control.pragma = IOEndif;
 						s_reset( CNStringAll )
 						action = IOEventPass; }
-			else if ( s_empty ) {
-				do_( "//" )	action = IOEventPass; }
-			else {	do_( "" )	errnum = IOErrPragmaUnknown; }
+			else {	do_( "//" )	s_reset( CNStringAll )
+						action = IOEventPass; }
 		on_( '\n' ) if ( !s_cmp( "else" ) ) {
 				do_( "" )	io->control.pragma = IOElse;
 						s_reset( CNStringAll )
@@ -339,12 +339,10 @@ preprocess( CNIO *io, int event )
 				do_( "" )	io->control.pragma = IOEndif;
 						s_reset( CNStringAll )
 						action = IOEventPragma; }
-			else if ( s_empty ) {
-				do_( "" )	action = IOEventPass; }
-			else {	do_( "" )	errnum = IOErrPragmaIncomplete; }
-		on_separator if ( s_empty ) {
-				do_( "//" )	action = IOEventPass; }
-			else {	do_( "" )	errnum = IOErrPragmaIncomplete; }
+			else {	do_( "//" )	REENTER
+						s_reset( CNStringAll ) }
+		on_separator {	do_( "//" )	s_reset( CNStringAll )
+						action = IOEventPass; }
 		on_other	do_( same )	s_take
 						action = IOEventPass;
 		end
@@ -390,7 +388,7 @@ preprocess( CNIO *io, int event )
 			in_( "#_//" ) bgn_
 				on_( '\n' )	do_( "" )	action = IOEventPragma;
 								io->control.param = StringFinish( s, 0 );
-								StringReset( s, CNStringMode );
+								s_reset( CNStringMode )
 				on_other	do_( same )	action = IOEventPass;
 				end
 	BMParseEnd

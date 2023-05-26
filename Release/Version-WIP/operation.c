@@ -8,7 +8,7 @@
 #include "deparameterize.h"
 #include "expression.h"
 #include "instantiate.h"
-#include "proxy.h"
+#include "eeno_feel.h"
 
 // #define DEBUG
 
@@ -44,7 +44,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			if ( !marked ) {
 				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
 				char *expression = occurrence->data->expression;
-				char *deternarized = ( type&LOCALE ? NULL : bm_deternarize(&expression,ctx) );
+				char *deternarized = bm_deternarize( &expression, type, ctx );
 				Pair **mark = (( j ) ? &marked : NULL );
 				switch ( type ) {
 				case ROOT: passed=1; break;
@@ -240,14 +240,14 @@ _feel( char *p, int type, listItem **proxies, BMContext *ctx )
 	if ( type & BM_AS_PER ) {
 		listItem *results = NULL;
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_proxy_feel( proxy, type, p, ctx );
+			found = bm_eeno_feel( proxy, type, p, ctx );
 			if (( found )) {
 				Pair *batch = newPair( found, proxy );
 				addItem( &results, batch ); } }
 		return results; }
 	else {
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_proxy_feel( proxy, type, p, ctx );
+			found = bm_eeno_feel( proxy, type, p, ctx );
 			if (( found )) {
 				freeListItem( proxies );
 				return newPair( found, proxy ); } }
@@ -272,7 +272,7 @@ static int
 do_action( char *expression, BMContext *ctx, CNStory *story )
 {
 #ifdef DEBUG
-	fprintf( stderr, "do_action: do %s\n", expression );
+	fprintf( stderr, "do_action: %s\n", expression );
 #endif
 	if ( !strncmp(expression,"~(",2) )
 		bm_release( expression+1, ctx );

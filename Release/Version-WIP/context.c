@@ -313,8 +313,12 @@ bm_mark( int pre, char *expression, char *src, void *user_data )
 		type.value = EENOK; // Assumption: xpn==NULL
 	else if ( !expression ) ;
 	else if ( *expression==':' ) {
-		char *value = p_prune( PRUNE_FILTER, expression+1 ) + 1;
-		if ( !strncmp( value, "~.", 2 ) ) {
+		char *value = p_prune( PRUNE_FILTER, expression+1 );
+		if ( *value++=='\0' ) { // move past ',' aka. ':' if there is
+			// we know instance to be ((*,.),e)
+			if (( bm_locate_mark( expression, &xpn ) ))
+				type.value = EMARK|QMARK; }
+		else if ( !strncmp( value, "~.", 2 ) ) {
 			// we know instances will be ( *, e )
 			if (( bm_locate_mark( expression, &xpn ) ))
 				type.value = EMARK|QMARK; }
