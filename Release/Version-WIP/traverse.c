@@ -229,7 +229,7 @@ CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
 CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 				f_cls; break;
 			default:
-				if ( *p!='\\' && is_separator(*p) ) {
+				if ( is_separator(*p) ) {
 					traverse_data->done = BMTraverseError; }
 				else {
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
