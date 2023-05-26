@@ -1,5 +1,5 @@
-#ifndef EENO_H
-#define EENO_H
+#ifndef EENO_FEEL_H
+#define EENO_FEEL_H
 
 #include "context.h"
 #include "query.h"
@@ -11,4 +11,4 @@ int		bm_proxy_in( CNInstance * );
 int		bm_proxy_out( CNInstance * );
 
 
-#endif	// EENO_H
+#endif	// EENO_FEEL_H

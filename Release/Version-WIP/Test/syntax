@@ -3,6 +3,7 @@
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit
+	else in (titi,(:toto:tata))
 	else in toto
 		do : titi
 		do ((alpha,...),<a,%(b,?),c>)

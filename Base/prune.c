@@ -15,7 +15,6 @@ static char *prune_mod( char * );
 static char *prune_format( char * );
 static char *prune_char( char * );
 static char *prune_regex( char * );
-static char *prune_literal( char * );
 static char *prune_list( char * );
 
 char *
@@ -34,7 +33,7 @@ p_prune( PruneType type, char *p )
 	case PRUNE_FILTER: ;
 		return prune_base( p, type );
 	case PRUNE_LITERAL:
-		return prune_literal( p );
+		return prune_level( p, 0 );
 	case PRUNE_LIST:
 		return prune_list( p );
 	case PRUNE_IDENTIFIER:
@@ -42,6 +41,7 @@ p_prune( PruneType type, char *p )
 		case '"':  return prune_format( p );
 		case '\'': return prune_char( p );
 		case '/':  return prune_regex( p );
+		case '(':  return prune_level( p, 0 );
 		default:
 			while ( !is_separator(*p) ) p++;
 			return p; } }
@@ -191,15 +191,14 @@ prune_level( char *p, int level )
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
-			if ( p[1]==':' ) {
-				p = prune_literal( p );
-				if ( !level ) return p;
-				break; }
 			level++;
 			p++; break;
 		case ')':
 			level--;
 			if ( !level ) return p+1;
+			p++; break;
+		case '\\':
+			if ( p[1] ) p++;
 			p++; break;
 		case '\'':
 			p = prune_char( p );
@@ -318,32 +317,6 @@ prune_regex( char *p )
 		case ']':
 			bracket = 0;
 			p++; break;
-		default:
-			p++; } }
-	return p;
-}
-
-//---------------------------------------------------------------------------
-//	prune_literal
-//---------------------------------------------------------------------------
-static char *
-prune_literal( char *p )
-/*
-	Assumption: p==(:sequence:) or p==(:sequence)
-*/
-{
-	p+=2; // skip opening "(:"
-	while ( *p ) {
-		switch ( *p ) {
-		case ':':
-			if ( p[1]==')' )
-				return p+2;
-			p++; break;
-		case ')':
-			return p+1;
-		case '\\':
-			if ( p[1] ) p++;
-			// no break
 		default:
 			p++; } }
 	return p;

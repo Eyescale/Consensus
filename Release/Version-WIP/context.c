@@ -563,6 +563,8 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x )
 		case '@': return ctx_match_v( ctx, db, "@", x, db_x );
 		case '|': return ctx_match_v( ctx, db, "|", x, db_x ); }
 		break;
+	case ':': ; return db==db_x && // (:expression) makes no sense in EENO
+			DBStarMatch(x->sub[0],db) && x->sub[1]==BMContextSelf(ctx);
 	case '.':
 		return db_match( x, db_x, bm_context_lookup(ctx,p), db );
 	default:

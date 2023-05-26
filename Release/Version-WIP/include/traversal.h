@@ -44,7 +44,6 @@
 	BMTernaryOperatorCB
 	BMSubExpressionCB
 	BMDereferenceCB
-	BMLiteralCB
 	BMListCB
 	BMDecoupleCB
 	BMFilterCB
@@ -164,18 +163,11 @@
 #define CB_DereferenceCB
 #endif
 
-#ifdef BMLiteralCB
-#define CB_LiteralCB	_CB( BMLiteralCB )
-#else
-#define CB_LiteralCB	p = p_prune( PRUNE_LITERAL, p );
-#endif
-
 #ifdef BMListCB
 #define CB_ListCB	_CB( BMListCB )
 #else
 #define CB_ListCB	p = p_prune( PRUNE_LIST, p );
 #endif
-
 
 #ifdef BMDecoupleCB
 #define CB_DecoupleCB	_CB( BMDecoupleCB )

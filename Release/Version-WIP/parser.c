@@ -308,7 +308,7 @@ EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
 		on_( '\n' ) if ( is_f(SET|CARRY|LEVEL|VECTOR) ) { // allow \nl inside resp. {} () <>
-				do_( "_^" ) }
+				do_( "_\\n" ) }
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|EENOV) && (*type&PER?*type&ON_X:1) ) {
 				do_( "expr_" )	REENTER }
 		on_( '(' ) if ( !is_f(INFORMED) ) {
@@ -323,16 +323,16 @@ EXPR_BGN:CND_endif
 				else if ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) {
 					do_( "," )	f_clr( FIRST|INFORMED|NEGATED|FILTERED ) }
 				else if ( are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED) ) {
-					do_( "," )	f_clr( FIRST|INFORMED|NEGATED )
+					do_( "," )	f_clr( FIRST|INFORMED|NEGATED|FILTERED )
 							f_set( LISTABLE ) }
 				else {	do_( same )	s_take
 							f_clr( FIRST|INFORMED|NEGATED|FILTERED ) } }
 			else if ( is_f(SET|CARRY|VECTOR) ) {
-				do_( "," )	f_clr( INFORMED|NEGATED|FILTERED ) }
+				do_( "," )	f_clr( NEGATED|FILTERED ) } // do not clear FIRST
 			else if ( is_f(ASSIGN) ) {
 				if ( !is_f(FILTERED) ) {
 					do_( same )	s_take
-							f_clr( INFORMED|NEGATED )
+							f_clr( FIRST|INFORMED|NEGATED )
 							f_set( FILTERED ) } }
 			else if ( *type&DO ) {
 				do_( "_," )	f_clr( FIRST|INFORMED|NEGATED|FILTERED ) }
@@ -372,15 +372,15 @@ A:CND_else_( B )
 				do_( same ) 	s_take
 						f_set( INFORMED ) }
 			else {	do_( "%" ) }
-		on_( ':' ) if ( s_empty ) {
+		on_( ':' ) if ( s_empty || !s_cmp( "~.:" ) ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
 			else if ( !is_f(INFORMED) || is_f(EENOV) || ( *type&PER && !s_cmp("~.") ) )
 				; // err
-			else if ( is_f(ASSIGN) && !is_f(LEVEL|SUB_EXPR) ) {
-				if ( !is_f(FILTERED) ) {
+			else if ( is_f(ASSIGN) ) {
+				if ( !is_f(FILTERED|LEVEL|SUB_EXPR) ) {
 					do_( same )	s_add( "," )
-							f_clr( INFORMED )
+							f_clr( FIRST|NEGATED|INFORMED )
 							f_set( FILTERED ) } }
 			else if ( is_f(TERNARY) ) {
 				if ( !is_f(FILTERED) ) {
@@ -495,6 +495,214 @@ B:CND_endif
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression sub-states
 	//----------------------------------------------------------------------
+	in_( "_\\n" ) bgn_ // \nl allowed inside {} () <>
+		ons( " \t\n" )	do_( same )
+		ons( "})>" )	do_( "expr" )	REENTER
+		on_( ',' )	; // err
+		on_other // allow newline to act as comma
+			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
+				do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+			else {	do_( "expr" )	REENTER }
+		end
+	in_( "(" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ':' ) if ( *type&DO && !is_f(NEGATED|SUB_EXPR|EENOV) ) {
+				do_( "(:" )	s_take
+						f_set( LITERAL ) }
+			else if ( !EENOV ) {
+				do_( "expr" )	s_take
+						f_push( stack )
+						f_clr( CLEAN|SET|TERNARY )
+						f_set( LEVEL|ASSIGN ) }
+		on_( '(' )	do_( "expr" )	REENTER
+						f_push( stack )
+						f_clr( SET|TERNARY|ASSIGN )
+						f_set( FIRST|LEVEL )
+				if ( *type&DO && is_f(CLEAN) ) {
+						f_set( CLEAN|LISTABLE ) }
+				else if ( are_f(SUB_EXPR|CLEAN) ) {
+						// CLEAN only for %((?,...):_)
+						f_clr( CLEAN ) }
+				else {		f_set( CLEAN ) }
+		on_other	do_( "expr" )	REENTER
+						f_push( stack )
+						f_clr( SET|TERNARY|ASSIGN )
+						f_set( FIRST|LEVEL )
+				if ( *type&DO && is_f(CLEAN) ) {
+						f_set( LISTABLE ) }
+		end
+	in_( "," ) bgn_ // Assumption: INFORMED is set
+		ons( " \t" )	do_( same )
+		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) {
+				do_( "_\\n" ) } // allow \nl inside {} () <> as comma
+		ons( "})>" )	do_( "expr" )	REENTER // ignore trailing comma
+		on_( '.' ) if ( is_f(LISTABLE) || ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) ) {
+				do_( ",." ) 	s_add( "," ) }
+			else {	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+		on_( '?' ) if ( is_f(SUB_EXPR) ) {
+				do_( ",?" )	s_add( "," ) }
+			else {	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED ) }
+		on_other	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED )
+		end
+		in_( ",." ) bgn_
+			on_( '.' )	do_( ",.." )
+			on_other
+if ( mode==BM_STORY ) {			do_( "." )	REENTER
+							s_add( "." ) }
+			end
+			in_( ",.." ) bgn_
+				on_( '.' )	do_( ",..." )
+				on_other
+if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
+							s_add( ".." )
+							f_set( INFORMED ) }
+				end
+			in_( ",..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' ) if ( !is_f(SUB_EXPR) || is_f(LISTABLE) ) {
+						do_( ",...)" )	f_pop( stack, 0 ) }
+					else {	do_( "expr" ) 	REENTER
+								s_add( "..." )
+								f_set( INFORMED ) }
+				end
+			in_( ",...)" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ':' ) if ( is_f(SUB_EXPR) ) { // %((?,...)_
+						do_( "expr" )	s_add( "...):" )
+								f_clr( FIRST ) }
+					else {	do_( "(:" )	s_add( "...):" ) }
+				on_( ',' ) if ( !is_f(SUB_EXPR) ) {
+						do_( "expr" )	s_add( "...)," )
+								f_reset( ELLIPSIS, 0 ) }
+				end
+		in_( ",?" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ':' )	do_( ",?:" )
+			on_other	do_( "expr" )	REENTER
+							s_add( "?" )
+							f_tag( stack, MARKED )
+							f_set( MARKED|INFORMED )
+			end
+			in_( ",?:" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '.' )	do_( ",?:." )
+				on_other	do_( "expr" )	REENTER
+								s_add( "?:" )
+								f_tag( stack, MARKED )
+								f_set( MARKED )
+				end
+			in_( ",?:." ) bgn_
+				on_( '.' )	do_( ",?:.." )
+				on_other	do_( "." )	REENTER
+								s_add( "?:." )
+								f_tag( stack, MARKED )
+								f_set( MARKED )
+				end
+			in_( ",?:.." ) bgn_
+				on_( '.' )	do_( ",?:..." )
+				on_other	do_( "expr" )	REENTER
+								s_add( "?:.." )
+								f_tag( stack, MARKED )
+								f_set( MARKED|INFORMED )
+				end
+			in_( ",?:..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' )	do_( "expr" )	REENTER
+								s_add( "?:..." )
+								f_set( INFORMED )
+				end
+	in_( "term" ) bgn_
+		on_( '~' ) 	; // err
+		on_separator	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other 	do_( same )	s_take
+		end
+	in_( "term_" ) bgn_
+		on_( '~' ) 	do_( "term~" )	s_take
+						f_set( INFORMED )
+		on_separator	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other 	do_( same )	s_take
+		end
+		in_( "term~" ) bgn_
+			ons( " \t" )	do_( same )
+			ons( "?<" )	; // err
+			on_other	do_( "expr" )	REENTER
+			end
+	in_( "char" ) bgn_
+		on_( '\\' )	do_( "char\\" )	s_take
+		on_printable	do_( "char_" )	s_take
+		end
+		in_( "char\\" ) bgn_
+			on_escapable	do_( "char_" )	s_take
+			on_( 'x' )	do_( "char\\x" ) s_take
+			end
+		in_( "char\\x" ) bgn_
+			on_xdigit	do_( "char\\x_" ) s_take
+			end
+		in_( "char\\x_" ) bgn_
+			on_xdigit	do_( "char_" )	s_take
+			end
+		in_( "char_" ) bgn_
+			on_( '\'' )	do_( "expr" )	s_take
+							f_set( INFORMED )
+			end
+	in_( "(:" ) bgn_
+		ons( "(\n" )	; // err
+		on_( ')' ) if ( is_f(LITERAL) ) { // otherwise list
+				do_( "expr" )	s_take
+						f_tag( stack, COMPOUND )
+						f_set( INFORMED ) }
+		on_( '\\' )	do_( "(:\\" )	s_take
+		on_( '%' )	do_( "(:%" )	s_take
+		on_( ':' ) if ( is_f(LITERAL) ) { // otherwise list
+				do_( same )	s_take }
+			else {	do_( "(::" )	s_take }
+		on_other	do_( same )	s_take
+		end
+		in_( "(:\\" ) bgn_
+			on_( 'x' )	do_( "(:\\x" )	s_take
+			on_other	do_( "(:" )	s_take
+			end
+		in_( "(:\\x" ) bgn_
+			on_xdigit	do_( "(:\\x_" ) s_take
+			end
+		in_( "(:\\x_" ) bgn_
+			on_xdigit	do_( "(:" )	s_take
+			end
+		in_( "(:%" ) bgn_
+			ons( "% " )	do_( "(:" )	s_take
+			on_separator	; // err
+			on_other	do_( "(:%$" )	s_take
+			end
+		in_( "(:%$" ) bgn_
+			on_( '\'' )	do_( "(:%$'" )	s_take
+			on_separator	do_( "(:" )	REENTER
+			on_other	do_( same )	s_take
+			end
+		in_( "(:%$'" ) bgn_
+			on_separator	; // err
+			on_other	do_( "(:" )	REENTER
+			end
+		in_( "(::" ) bgn_
+			on_( ')' )	do_( "expr" )	REENTER
+							f_tag( stack, COMPOUND )
+							f_set( INFORMED )
+			on_other	do_( "(:" )	REENTER
+			end
+	in_( "|" ) bgn_
+		ons( " \t" )	do_( same )
+		ons( "({" )	do_( "expr" )	REENTER
+						f_set( COMPOUND )
+		end
 CND_ifn( mode==BM_STORY, C )
 	in_( "!" ) bgn_
 		on_( '!' )	do_( "!!" )	s_take
@@ -527,6 +735,10 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
+		on_( '.' ) if ( s_empty ) {
+				do_( "~." ) }
+			else { do_( "expr" )	REENTER
+						s_add( "~" ) }
 		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
@@ -537,6 +749,13 @@ CND_ifn( mode==BM_STORY, C )
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
 						f_set( NEGATED )
+		end
+	in_( "~." ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "expr" )	s_add( "~.:" )
+		on_other	do_( "expr" )	REENTER
+						s_add( "~." )
+						f_set( INFORMED )
 		end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
@@ -758,209 +977,6 @@ CND_ifn( mode==BM_STORY, C )
 							f_set( INFORMED )
 			end
 C:CND_endif
-	in_( "_^" ) bgn_	// \nl allowed inside {} () <>
-		ons( " \t\n" )	do_( same )
-		ons( "})>" )	do_( "expr" )	REENTER
-		on_( ',' )	; // err
-		on_other // allow newline to act as comma
-			if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
-				do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED ) }
-			else {	do_( "expr" )	REENTER }
-		end
-	in_( "(" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( ':' ) if ( *type&DO && !is_f(NEGATED|SUB_EXPR) ) {
-				do_( "(:" )	s_take
-						f_set( LITERAL ) }
-		on_( '(' )	do_( "expr" )	REENTER
-						f_push( stack )
-						f_clr( SET|TERNARY )
-						f_set( FIRST|LEVEL )
-				if ( *type&DO && is_f(CLEAN) ) {
-						f_set( CLEAN|LISTABLE ) }
-				else if ( are_f(SUB_EXPR|CLEAN) ) {
-						// CLEAN only for %((?,...):_)
-						f_clr( CLEAN ) }
-				else {		f_set( CLEAN ) }
-		on_other	do_( "expr" )	REENTER
-						f_push( stack )
-						f_clr( SET|TERNARY )
-						f_set( FIRST|LEVEL )
-				if ( *type&DO && is_f(CLEAN) ) {
-						f_set( LISTABLE ) }
-		end
-	in_( "," ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' ) if ( is_f(SET|CARRY|VECTOR) ) {
-				do_( "_^" ) } // allow \nl inside {} () <> as comma
-		ons( "})>" )	do_( "expr" )	REENTER // ignore trailing comma
-		on_( '.' ) if ( is_f(LISTABLE) || ( is_f(SUB_EXPR) && !is_f(LEVEL|MARKED) ) ) {
-				do_( ",." ) 	s_add( "," ) }
-			else {	do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED ) }
-		on_( '?' ) if ( is_f(SUB_EXPR) ) {
-				do_( ",?" )	s_add( "," ) }
-			else {	do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED ) }
-		on_other	do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED )
-		end
-		in_( ",." ) bgn_
-			on_( '.' )	do_( ",.." )
-			on_other
-if ( mode==BM_STORY ) {			do_( "." )	REENTER
-							s_add( "." ) }
-			end
-			in_( ",.." ) bgn_
-				on_( '.' )	do_( ",..." )
-				on_other
-if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
-							s_add( ".." )
-							f_set( INFORMED ) }
-				end
-			in_( ",..." ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ')' ) if ( !is_f(SUB_EXPR) || is_f(LISTABLE) ) {
-						do_( ",...)" )	f_pop( stack, 0 ) }
-					else {	do_( "expr" ) 	REENTER
-								s_add( "..." )
-								f_set( INFORMED ) }
-				end
-			in_( ",...)" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ':' ) if ( is_f(SUB_EXPR) ) { // %((?,...)_
-						do_( "expr" )	s_add( "...):" )
-								f_clr( FIRST ) }
-					else {	do_( "(:" )	s_add( "...):" ) }
-				on_( ',' ) if ( !is_f(SUB_EXPR) ) {
-						do_( "expr" )	s_add( "...)," )
-								f_reset( ELLIPSIS, 0 ) }
-				end
-		in_( ",?" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ':' )	do_( ",?:" )
-			on_other	do_( "expr" )	REENTER
-							s_add( "?" )
-							f_tag( stack, MARKED )
-							f_set( MARKED|INFORMED )
-			end
-			in_( ",?:" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '.' )	do_( ",?:." )
-				on_other	do_( "expr" )	REENTER
-								s_add( "?:" )
-								f_tag( stack, MARKED )
-								f_set( MARKED )
-				end
-			in_( ",?:." ) bgn_
-				on_( '.' )	do_( ",?:.." )
-				on_other	do_( "." )	REENTER
-								s_add( "?:." )
-								f_tag( stack, MARKED )
-								f_set( MARKED )
-				end
-			in_( ",?:.." ) bgn_
-				on_( '.' )	do_( ",?:..." )
-				on_other	do_( "expr" )	REENTER
-								s_add( "?:.." )
-								f_tag( stack, MARKED )
-								f_set( MARKED|INFORMED )
-				end
-			in_( ",?:..." ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ')' )	do_( "expr" )	REENTER
-								s_add( "?:..." )
-								f_set( INFORMED )
-				end
-	in_( "term" ) bgn_
-		on_( '~' ) 	; // err
-		on_separator	do_( "expr" )	REENTER
-						f_set( INFORMED )
-		on_other 	do_( same )	s_take
-		end
-	in_( "term_" ) bgn_
-		on_( '~' ) 	do_( "term~" )	s_take
-						f_set( INFORMED )
-		on_separator	do_( "expr" )	REENTER
-						f_set( INFORMED )
-		on_other 	do_( same )	s_take
-		end
-		in_( "term~" ) bgn_
-			ons( " \t" )	do_( same )
-			ons( "?<" )	; // err
-			on_other	do_( "expr" )	REENTER
-			end
-	in_( "char" ) bgn_
-		on_( '\\' )	do_( "char\\" )	s_take
-		on_printable	do_( "char_" )	s_take
-		end
-		in_( "char\\" ) bgn_
-			on_escapable	do_( "char_" )	s_take
-			on_( 'x' )	do_( "char\\x" ) s_take
-			end
-		in_( "char\\x" ) bgn_
-			on_xdigit	do_( "char\\x_" ) s_take
-			end
-		in_( "char\\x_" ) bgn_
-			on_xdigit	do_( "char_" )	s_take
-			end
-		in_( "char_" ) bgn_
-			on_( '\'' )	do_( "expr" )	s_take
-							f_set( INFORMED )
-			end
-	in_( "(:" ) bgn_
-		ons( "(\n" )	; // err
-		on_( ')' ) if ( is_f(LITERAL) ) { // otherwise list
-				do_( "expr" )	s_take
-						f_tag( stack, COMPOUND )
-						f_set( INFORMED ) }
-		on_( '\\' )	do_( "(:\\" )	s_take
-		on_( '%' )	do_( "(:%" )	s_take
-		on_( ':' ) if ( is_f(LITERAL) ) { // otherwise list
-				do_( same )	s_take }
-			else {	do_( "(::" )	s_take }
-		on_other	do_( same )	s_take
-		end
-		in_( "(:\\" ) bgn_
-			on_( 'x' )	do_( "(:\\x" )	s_take
-			on_other	do_( "(:" )	s_take
-			end
-		in_( "(:\\x" ) bgn_
-			on_xdigit	do_( "(:\\x_" ) s_take
-			end
-		in_( "(:\\x_" ) bgn_
-			on_xdigit	do_( "(:" )	s_take
-			end
-		in_( "(:%" ) bgn_
-			ons( "% " )	do_( "(:" )	s_take
-			on_separator	; // err
-			on_other	do_( "(:%$" )	s_take
-			end
-		in_( "(:%$" ) bgn_
-			on_( '\'' )	do_( "(:%$'" )	s_take
-			on_separator	do_( "(:" )	REENTER
-			on_other	do_( same )	s_take
-			end
-		in_( "(:%$'" ) bgn_
-			on_separator	; // err
-			on_other	do_( "(:" )	REENTER
-			end
-		in_( "(::" ) bgn_
-			on_( ')' )	do_( "expr" )	REENTER
-							f_tag( stack, COMPOUND )
-							f_set( INFORMED )
-			on_other	do_( "(:" )	REENTER
-			end
-	in_( "|" ) bgn_
-		ons( " \t" )	do_( same )
-		ons( "({" )	do_( "expr" )	REENTER
-						f_set( COMPOUND )
-		end
 	//----------------------------------------------------------------------
 	// bm_parse:	Expression End
 	//----------------------------------------------------------------------

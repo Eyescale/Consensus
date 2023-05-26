@@ -1,28 +1,35 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. Modified literal format: ( MUST be bacslashed in sequence,
-		e.g. do (:\(whatever\):)
-	. implement in/on/do : expression to be the same as
-		in/on/do : %% : expression
-	  implement in/on (:expression) resp. in/on ~(:expression)
-		Note that we cannot have do (:expression) // literal
-		but do ((*,%%),expression) gives the same result
-	  The immediate formal benefit is to be able to support
-		on ((:state)?~(:previous):) // transition event
-		<=> on :previous->state
-
-	So: if I allow (:toto) during in/on/etc. traversal, then I
-	should also allow in (:variable:value) as well
-
-	Also: Must NOT allow ( in litterals unles backslashed
-		-> otherwise messes my counting
-
 	. implement calculator { add, mult, mem } using yak.mod
 		[WIP] just parser [./Examples/4_Yak/calculator.drive] => test Scheme
 		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
 
 DONE
+	. allow contrary assignment occurrence, e.g.
+		in~.::variable:value
+		in~.::state
+	. implemented in/on (:expression) resp. in/on ~(:expression)
+	  Rules:
+	  . in instantiation mode, (:expression) represents literal
+	  . in query mode, (:expression) represents ((*,%%),expression)
+	  Example Usages
+		on event
+			do :((:current1) ? next1 :
+			     (:current2) ? next2 :
+				...
+			     (:currentN) ? nextN :)
+		on ((:state)?~(:previous):) // transition event
+	  Notes
+	   . Strictly speaking, do ((:state) ? action1 : action2 ) is incorrect
+	     as parser treats (:state) as literal, whereas deternarize will
+	     evaluate ((*,%%),state) as guard. The correct formulation is
+		   	do ( %(:state) ? action1 : action 2 )
+	     but we do not strictly enforce it.
+	. allowed \cr in expressions (so long as LEVEL is set)
+	. implemented in/on/do : expression // same as in/on/do : %% : expression
+	. Modified literal format: ( MUST be bacslashed in sequence,
+		e.g. do (:\(whatever\):)
 	. modified parser.c, so that SET, CARRY or VECTOR always start from
 	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
 	  and then exit via f_pop( state, INFORMED )

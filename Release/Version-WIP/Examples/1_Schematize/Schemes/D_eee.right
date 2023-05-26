@@ -4,7 +4,6 @@
 #	Assumed to be used in conjunction with schematize, as in
 #		./%B -f Schemes/file schematize < input
 
-
 	((eee,%), {
 		(e,'\0'),
 		(e,((%,eee),'\0'))	#right-recursive

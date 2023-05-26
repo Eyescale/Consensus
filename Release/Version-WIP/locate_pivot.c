@@ -69,16 +69,6 @@ bm_locate_pivot( char *expression, listItem **xpn )
 	else
 
 BMTraverseCBSwitch( locate_pivot_traversal )
-case_( dot_expression_CB )
-	listItem **exponent = data->exponent;
-	if ( !is_f(NEGATED) ) {
-		if CHECK( PERSO ) {
-			xpn_add( exponent, AS_SUB, 0 );
-			_return( 2 ) } }
-
-	// apply dot operator to whatever comes next
-	xpn_add( exponent, AS_SUB, 1 );
-	_break
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) ) {
@@ -157,7 +147,30 @@ case_( sub_expression_CB )
 	while (( mark_exp )) {
 		addItem( exponent, popListItem(&mark_exp) ); }
 	_break
+case_( dot_expression_CB )
+	listItem **exponent = data->exponent;
+	if ( !is_f(NEGATED) ) {
+		if CHECK( PERSO ) {
+			xpn_add( exponent, AS_SUB, 0 );
+			_return( 2 ) } }
+
+	// apply dot operator to whatever comes next
+	xpn_add( exponent, AS_SUB, 1 );
+	_break
 case_( open_CB )
+	if ( f_next & ASSIGN ) {
+		listItem **exponent = data->exponent;
+		if ( !is_f(NEGATED) ) {
+			xpn_add( exponent, AS_SUB, 0 );
+			if CHECK( SELF ) {
+				xpn_add( exponent, AS_SUB, 1 );
+				_return( 2 ) }
+			if CHECK( STAR ) {
+				xpn_add( exponent, AS_SUB, 0 );
+				_return( 2 ) } }
+
+		// apply (: operator to whatever comes next
+		xpn_add( exponent, AS_SUB, 1 ); }
 	if ( f_next & COUPLE )
 		xpn_add( data->exponent, AS_SUB, 0 );
 	addItem( &data->stack.level, data->level );
@@ -172,7 +185,9 @@ case_( decouple_CB )
 	_break
 case_( close_CB )
 	xpn_free( data->exponent, data->level );
-	if is_f( COUPLE )
+	if is_f( ASSIGN )
+		popListItem( data->exponent );
+	else if is_f( COUPLE )
 		popListItem( data->exponent );
 	if is_f( DOT )
 		popListItem( data->exponent );

@@ -67,7 +67,9 @@ case_( dot_expression_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	_break
 case_( open_CB )
-	if ( f_next & COUPLE )
+	if ( f_next & ASSIGN )
+		xpn_add( data->exponent, SUB, 1 );
+	else if ( f_next & COUPLE )
 		xpn_add( data->exponent, SUB, 0 );
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
@@ -82,6 +84,8 @@ case_( decouple_CB )
 case_( close_CB )
 	xpn_free( data->exponent, data->level );
 	if is_f( COUPLE )
+		popListItem( data->exponent );
+	else if is_f( ASSIGN )
 		popListItem( data->exponent );
 	if is_f( DOT )
 		popListItem( data->exponent );

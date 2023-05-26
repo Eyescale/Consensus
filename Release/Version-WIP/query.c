@@ -246,7 +246,7 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 //===========================================================================
 //	xp_verify
 //===========================================================================
-#include "verify_traversal.h"
+#include "query_traversal.h"
 
 typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 static CNInstance * op_set( BMVerifyOp, BMQueryData *, CNInstance *, char **, int );
@@ -268,7 +268,7 @@ int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 /*
 	Assumption: expression is not ternarized
-	invokes verify_traversal on each [sub-]expression, ie. on each
+	invokes query_traversal on each [sub-]expression, ie. on each
 	expression term starting with '*' or '%' - note that *var is same
 	as %((*,var),?)
 */
@@ -330,7 +330,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					p+=9; break; }
 			//----------------------------------------------------------
 
-				p = verify_traversal( p, &traverse_data, flags );
+				p = query_traversal( p, &traverse_data, flags );
 
 			//----------------------------------------------------------
 			if (( data->mark_exp )) {
@@ -535,12 +535,12 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 }
 
 //---------------------------------------------------------------------------
-//	verify_traversal
+//	query_traversal
 //---------------------------------------------------------------------------
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
 static inline int uneq( listItem *i, int operand );
 
-BMTraverseCBSwitch( verify_traversal )
+BMTraverseCBSwitch( query_traversal )
 case_( match_CB )
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case -1: data->success = 0; break;
@@ -581,17 +581,26 @@ case_( dot_expression_CB )
 	xpn_add( stack, AS_SUB, 0 );
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case 0: if is_f( NEGATED ) {
-			data->success=1; popListItem( stack );
-			_prune( BM_PRUNE_FILTER ) }
-		// no break
-	case -1:
+		data->success=1; popListItem( stack );
+		_prune( BM_PRUNE_FILTER ) }
+	case -1: // no break
 		data->success=0; popListItem( stack );
 		_prune( BM_PRUNE_TERM )
-	default:
-		xpn_set( *stack, AS_SUB, 1 );
-		_break }
+	default: xpn_set( *stack, AS_SUB, 1 ); }
+	_break
 case_( open_CB )
-	if ( f_next & COUPLE )
+	if ( f_next & ASSIGN ) {
+		listItem **stack = &data->stack.exponent;
+		xpn_add( stack, AS_SUB, 0 );
+		switch ( match( data->instance, p, data->base, data ) ) {
+		case 0: if is_f( NEGATED ) {
+			data->success=1; popListItem( stack );
+			_prune( BM_PRUNE_FILTER ) }
+		case -1: // no break
+			data->success=0; popListItem( stack );
+			_prune( BM_PRUNE_TERM )
+		default: xpn_set( *stack, AS_SUB, 1 ); } }
+	else if ( f_next & COUPLE )
 		xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	_break
 case_( filter_CB )
@@ -612,6 +621,7 @@ case_( close_CB )
 	if ( data->stack.flags==data->OOS )
 		_return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
+	else if is_f( ASSIGN ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
 	if ( f_next & NEGATED ) data->success = !data->success;
 	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
@@ -652,7 +662,6 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	while (( y ) && (xpn)) {
 		int exp = pop_item( &xpn );
 		y = CNSUB( y, exp&1 ); }
-
 	if (( y )) {
 		if (( p )) {
 			// optimization

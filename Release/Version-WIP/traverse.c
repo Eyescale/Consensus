@@ -119,17 +119,17 @@ CB_SignalCB					p++; }
 CB_ModCharacterCB			f_cls; p++; break; }
 				break;
 			case '(':
-				if ( p[1]==':' ) {
-CB_LiteralCB				f_set( INFORMED )
-					break; }
-				else {
-					f_next = FIRST|LEVEL|is_f(SET|SUB_EXPR|MARKED);
-					if (!(mode&INFORMED) && !p_single(p))
-						f_next |= COUPLE;
-CB_OpenCB				f_push( stack )
-					f_reset( f_next, 0 )
-					p++;
-CB_TermCB				break; }
+				if ( p[1]==':' )
+					f_next = FIRST|LEVEL|ASSIGN;
+				else if ( !(mode&INFORMED) && !p_single(p) )
+					f_next = FIRST|LEVEL|COUPLE;
+				else f_next = FIRST|LEVEL;
+				f_next |= is_f(SET|SUB_EXPR|MARKED);
+CB_OpenCB			f_push( stack )
+				f_reset( f_next, 0 )
+				p++;
+CB_TermCB			if ( *p==':' ) p++;
+				break;
 			case ':':
 				if ( p[1]=='<' ) {
 					f_clr( NEGATED|INFORMED|FILTERED )

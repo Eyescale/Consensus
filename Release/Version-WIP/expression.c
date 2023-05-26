@@ -68,59 +68,6 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data )
 }
 
 //===========================================================================
-//	bm_void
-//===========================================================================
-#include "void_traversal.h"
-
-int
-bm_void( char *expression, BMContext *ctx )
-/*
-	tests if expression is instantiable, ie. that
-	. all inner queries have results
-	. all the associations it contains can be made 
-	returns 0 if it is instantiable, 1 otherwise
-*/
-{
-	// fprintf( stderr, "bm_void: %s\n", expression );
-	listItem *stack = NULL;
-
-	BMTraverseData traverse_data;
-	traverse_data.user_data = ctx;
-	traverse_data.stack = &stack;
-	traverse_data.done = INFORMED;
-
-	void_traversal( expression, &traverse_data, FIRST );
-
-	freeListItem( &stack );
-	return ( traverse_data.done==2 );
-}
-
-//---------------------------------------------------------------------------
-//	void_traversal
-//---------------------------------------------------------------------------
-BMTraverseCBSwitch( void_traversal )
-case_( term_CB )
-	if is_f( FILTERED ) {
-		if ( !bm_feel( BM_CONDITION, p, ctx ) )
-			_return( 2 )
-		_prune( BM_PRUNE_TERM ) }
-	_break
-case_( dereference_CB )
-	if ( !bm_feel( BM_CONDITION, p, ctx ) )
-		_return( 2 )
-	_prune( BM_PRUNE_TERM )
-case_( register_variable_CB )
-	int nope = 0;
-	switch ( p[1] ) {
-	case '?': nope = !bm_context_lookup( ctx, "?" ); break;
-	case '!': nope = !bm_context_lookup( ctx, "!" ); break;
-	case '@': nope = !bm_context_lookup( ctx, "@" ); break; }
-	if ( nope )
-		_return( 2 )
-	_break
-BMTraverseCBEnd
-
-//===========================================================================
 //	bm_inputf
 //===========================================================================
 static int bm_input( int type, char *arg, BMContext * );

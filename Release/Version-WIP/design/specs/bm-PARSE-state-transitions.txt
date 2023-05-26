@@ -9,7 +9,7 @@ Consensus B% Version-WIP
 		(	(:
 			expr
 		,	expr
-			_^
+			_\\n
 			,.	.
 				,..	,...	,...)	(:
 		term	expr
@@ -57,11 +57,11 @@ Consensus B% Version-WIP
 		_expr	expr
 	expr	expr_	base
 			""
-		_^	expr
+		_\\n	expr
 		(	expr
 			(:
 		,	expr
-			_^
+			_\\n
 			,?	expr
 				,?:	expr
 					,?:.	.
@@ -73,6 +73,7 @@ Consensus B% Version-WIP
 						,...)	(:
 		@	@<	expr
 		~	expr
+			~.	expr
 		.	expr
 			term
 		*	expr

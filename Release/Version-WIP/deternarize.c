@@ -37,7 +37,6 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 
 	char *deternarized = NULL;
 	int traverse_mode = TERNARY|INFORMED;
-	if ( type&DO ) traverse_mode |= LITERAL;
 
 	DeternarizeData data;
 	memset( &data, 0, sizeof(data) );

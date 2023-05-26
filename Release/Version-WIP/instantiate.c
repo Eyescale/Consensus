@@ -10,15 +10,6 @@
 
 // #define DEBUG
 
-#ifdef DEBUG
-#define DBG_VOID( p ) \
-	if ( bm_void( p, ctx ) ) { \
-		fprintf( stderr, ">>>>> B%%: bm_instantiate(): VOID: %s\n", p ); \
-		exit( -1 ); }
-#else
-#define	DBG_VOID( p )
-#endif
-
 //===========================================================================
 //	bm_instantiate
 //===========================================================================
@@ -55,8 +46,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	else if ( *expression==':' )
 		instantiate_assignment( expression, &traverse_data, story );
 	else {
-		DBG_VOID( expression )
-		traverse_data.done = INFORMED|LITERAL;
+		traverse_data.done = INFORMED;
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
@@ -127,7 +117,7 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	if ( *p==')' ) p++;
 	else do {
 		char *q = p;
-		traverse_data->done = INFORMED|LITERAL;
+		traverse_data->done = INFORMED;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 ) {
 			cleanup( data, ctx );
@@ -151,7 +141,16 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 
 BMTraverseCBSwitch( instantiate_traversal )
 case_( term_CB )
-	if is_f( FILTERED ) {
+	if ( !strncmp(p,"(:",2) ) {
+		/*		(:_sequence_:)
+		   start p -----^             ^
+			return p=*q ----------
+		*/
+		BMContext *carry = data->carry;
+		CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
+		CNInstance *e = instantiate_literal( q, db );
+		data->sub[ current ] = newItem( e ); }
+	else if is_f( FILTERED ) {
 		listItem *results = bm_scan( p, data->ctx );
 		if (( results )) {
 			BMContext *carry = data->carry;
@@ -243,17 +242,6 @@ case_( list_CB )
 	data->sub[ 0 ] = ((carry) ?
 		instantiate_list( q, data->sub, BMContextDB(carry) ) :
 		instantiate_list( q, data->sub, data->db ));
-	_break
-case_( literal_CB )
-	/*		(:_sequence_:)
-	   start p -----^             ^
-		return p=*q ----------
-	*/
-	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
-	CNInstance *e = instantiate_literal( q, db );
-	data->sub[ current ] = newItem( e );
-	(*q)++;
 	_break
 case_( dot_expression_CB )
 	BMContext *carry = data->carry;
@@ -467,7 +455,7 @@ instantiate_literal( char **position, CNDB *db )
 		if (( e )) addItem( &stack, e );
 	}
 RETURN:
-	*position = p;
+	*position = p+1;
 	return e;
 }
 
@@ -586,8 +574,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		db_unassign( self, db );
 		return; }
 
-	DBG_VOID( p )
-	traverse_data->done = INFORMED|LITERAL;
+	traverse_data->done = INFORMED;
 	p = instantiate_traversal( p, traverse_data, FIRST );
 	if ( traverse_data->done==2 || !data->sub[ 0 ] )
 		return;
@@ -605,8 +592,7 @@ instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory
 		while (( e = popListItem( &sub[0] ) ))
 			db_unassign( e, db ); }
 	else {
-		DBG_VOID( p )
-		traverse_data->done = INFORMED|LITERAL;
+		traverse_data->done = INFORMED;
 		p = instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 || !data->sub[ 0 ] )
 			freeListItem( &sub[ 0 ] );
@@ -640,8 +626,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	DBG_VOID( arg )
-	traverse_data.done = INFORMED|LITERAL;
+	traverse_data.done = INFORMED;
 	char *p = instantiate_traversal( arg, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		goto FAIL;
@@ -654,8 +639,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 			db_unassign( e, db );
 		return; }
 
-	DBG_VOID( input )
-	traverse_data.done = INFORMED|LITERAL;
+	traverse_data.done = INFORMED;
 	p = instantiate_traversal( input, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		freeListItem( &sub[ 0 ] );
