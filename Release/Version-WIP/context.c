@@ -563,11 +563,12 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x )
 		case '@': return ctx_match_v( ctx, db, "@", x, db_x );
 		case '|': return ctx_match_v( ctx, db, "|", x, db_x ); }
 		break;
-	case ':': ;
-		if ( db==db_x ) // (:expression) makes no sense in EENO
-			return DBStarMatch(x->sub[0],db) && x->sub[1]==BMContextSelf(ctx);
-		else { fprintf( stderr, ">>>>> B%%::Warning: Self-assignment expression\n"
-			"\t\t(%s\n\t<<<<< always fails in EENO\n", p ); break; }
+	case ':':
+		if ( db!=db_x ) { // (:expression) makes no sense in EENO
+			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
+				"\t\t(%s\n\t<<<<< not supported in EENO\n", p );
+			return 0; }
+		return DBStarMatch(x->sub[0],db) && x->sub[1]==BMContextSelf(ctx);
 	case '.':
 		return db_match( x, db_x, bm_context_lookup(ctx,p), db );
 	default:
