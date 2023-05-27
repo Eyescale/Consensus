@@ -98,12 +98,17 @@ CB_StarCharacterCB			f_cls }
 			case '%':
 				if ( p[1]=='(' ) {
 CB_SubExpressionCB			p++;
-					f_next = FIRST|SUB_EXPR|is_f(SET);
-					if (!(mode&INFORMED) && !p_single(p))
-						f_next |= COUPLE;
+					if ( p[1]==':' )
+						f_next = FIRST|SUB_EXPR|ASSIGN;
+					else if ( !(mode&INFORMED) && !p_single(p) )
+						f_next = FIRST|SUB_EXPR|COUPLE;
+					else f_next = FIRST|SUB_EXPR;
+					f_next |= is_f(SET);
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
-					p++; break; }
+					p++;
+					if ( *p==':' ) p++;
+					break; }
 				else if ( p[1]=='<' ) {
 CB_RegisterVariableCB			f_cls; p+=2;
 					if ( strmatch( "?!(", *p ) ) {

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "parser.h"
+// #define DEBUG
 #include "parser_macros.h"
 #include "traverse.h"
 
@@ -433,11 +434,12 @@ A:CND_else_( B )
 						f_tag( stack, EMARKED )
 						f_set( EMARKED|INFORMED ) }
 		on_( '?' ) if ( is_f(INFORMED) ) {
-				if ( is_f(TERNARY) ) {
+				if ( is_f(COMPOUND) ) ; // err
+				else if ( is_f(TERNARY) ) {
 					do_( "(_?" )	s_take
 							f_push( stack )
 							f_clr( FIRST|INFORMED|FILTERED ) }
-				else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) && !is_f(COMPOUND|EENOV) ) {
+				else if ( is_f(FIRST) && is_f(LEVEL|SUB_EXPR) && !is_f(EENOV) ) {
 					do_( "(_?" )	s_take
 							f_clr( INFORMED|FILTERED )
 							f_set( TERNARY ) } }
@@ -511,7 +513,7 @@ B:CND_endif
 		on_( ':' ) if ( *type&DO && !is_f(NEGATED|SUB_EXPR|EENOV) ) {
 				do_( "(:" )	s_take
 						f_set( LITERAL ) }
-			else if ( !EENOV ) {
+			else if ( !is_f(EENOV) ) {
 				do_( "expr" )	s_take
 						f_push( stack )
 						f_clr( CLEAN|SET|TERNARY )
@@ -660,7 +662,7 @@ if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
 		on_( ')' ) if ( is_f(LITERAL) ) { // otherwise list
 				do_( "expr" )	s_take
 						f_tag( stack, COMPOUND )
-						f_set( INFORMED ) }
+						f_set( INFORMED|COMPOUND ) }
 		on_( '\\' )	do_( "(:\\" )	s_take
 		on_( '%' )	do_( "(:%" )	s_take
 		on_( ':' ) if ( is_f(LITERAL) ) { // otherwise list
@@ -695,7 +697,7 @@ if ( mode==BM_STORY ) {			do_( "expr" )	REENTER
 		in_( "(::" ) bgn_
 			on_( ')' )	do_( "expr" )	REENTER
 							f_tag( stack, COMPOUND )
-							f_set( INFORMED )
+							f_set( INFORMED|COMPOUND )
 			on_other	do_( "(:" )	REENTER
 			end
 	in_( "|" ) bgn_
@@ -791,20 +793,22 @@ CND_ifn( mode==BM_STORY, C )
 						s_add( "%" )
 						f_set( INFORMED )
 		end
+		in_( "%(" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "expr" )	s_add( "%((" )
+							f_push( stack )
+							f_set( LEVEL|CLEAN )
+			on_( ':' )	do_( "expr" )	s_add( "%(:" )
+							f_set( ASSIGN )
+			on_other	do_( "expr" )	REENTER
+							s_add( "%(" )
+			end
 		in_( "%?_" ) bgn_
 			on_( '~' ) if ( *type&DO && ( is_f(LEVEL) ?
 					is_f(TERNARY) && f_signal_authorize(stack) :
 					!is_f(NEGATED|SUB_EXPR|SET|ASSIGN|EENOV) ) ) {
 					do_( "term~" )	s_take }
 			on_other	do_( "expr" )	REENTER
-			end
-		in_( "%(" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '(' )	do_( "expr" )	s_add( "%((" )
-							f_push( stack )
-							f_set( LEVEL|CLEAN )
-			on_other	do_( "expr" )	REENTER
-							s_add( "%(" )
 			end
 		in_( "%<" ) bgn_
 			ons( " \t" )	do_( same )

@@ -153,7 +153,6 @@ case_( dot_expression_CB )
 		if CHECK( PERSO ) {
 			xpn_add( exponent, AS_SUB, 0 );
 			_return( 2 ) } }
-
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
 	_break
@@ -161,17 +160,12 @@ case_( open_CB )
 	if ( f_next & ASSIGN ) {
 		listItem **exponent = data->exponent;
 		if ( !is_f(NEGATED) ) {
-			xpn_add( exponent, AS_SUB, 0 );
 			if CHECK( SELF ) {
-				xpn_add( exponent, AS_SUB, 1 );
-				_return( 2 ) }
-			if CHECK( STAR ) {
 				xpn_add( exponent, AS_SUB, 0 );
 				_return( 2 ) } }
-
 		// apply (: operator to whatever comes next
 		xpn_add( exponent, AS_SUB, 1 ); }
-	if ( f_next & COUPLE )
+	else if ( f_next & COUPLE )
 		xpn_add( data->exponent, AS_SUB, 0 );
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;

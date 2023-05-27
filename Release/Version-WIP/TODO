@@ -12,20 +12,14 @@ DONE
 	. implemented in/on (:expression) resp. in/on ~(:expression)
 	  Rules:
 	  . in instantiation mode, (:expression) represents literal
-	  . in query mode, (:expression) represents ((*,%%),expression)
+	  . in query mode, (:expression) represents %((*,%%),expression)
 	  Example Usages
-		on event
-			do :((:current1) ? next1 :
-			     (:current2) ? next2 :
-				...
-			     (:currentN) ? nextN :)
 		on ((:state)?~(:previous):) // transition event
-	  Notes
-	   . Strictly speaking, do ((:state) ? action1 : action2 ) is incorrect
-	     as parser treats (:state) as literal, whereas deternarize will
-	     evaluate ((*,%%),state) as guard. The correct formulation is
-		   	do ( %(:state) ? action1 : action 2 )
-	     but we do not strictly enforce it.
+		on event
+			do :( %(:current1) ? next1 : // could be %(:?):current1
+			      %(:current2) ? next2 :
+				...
+			      %(:currentN) ? nextN :)
 	. allowed \cr in expressions (so long as LEVEL is set)
 	. implemented in/on/do : expression // same as in/on/do : %% : expression
 	. Modified literal format: ( MUST be bacslashed in sequence,

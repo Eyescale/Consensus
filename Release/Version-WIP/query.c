@@ -89,52 +89,57 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 //===========================================================================
 //	pivot_query
 //===========================================================================
-static inline char * pivot_check( char *, listItem **, BMQueryData * );
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB *, void * );
 
 static int
 pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, void *user_data )
 {
-	BMContext *ctx = data->ctx;
-	CNDB *db = data->db;
+	int traversed = 0;
+	CNInstance *e = NULL;
 	listItem *exponent = NULL;
 	char *p = bm_locate_pivot( expression, &exponent );
-	if (( p = pivot_check( p, &exponent, data ) )) {
-		CNInstance *e = bm_lookup( ctx, p, privy, db );
-		if (( e )) {
-			data->exponent = exponent;
-			data->pivot = newPair( p, e );
-			if ( !xp_traverse( expression, data, CB, user_data ) )
-				data->instance = NULL;
-			freePair( data->pivot ); }
-		freeListItem( &exponent );
-		return 1; }
-	return 0;
-}
-static inline char *
-pivot_check( char *p, listItem **exponent, BMQueryData *data )
-{
-	if ((p) && *p=='%' ) {
-		switch ( p[1] ) {
-		case '|':
-			data->privy = 2;
+	if (( p )) {
+		BMContext *ctx = data->ctx;
+		CNDB *db = data->db;
+		switch ( *p ) {
+		case '(':
+			if ( p[1]==':' ) {
+				p++;
+				e = db_lookup( 0, "*", db );
+				if (( e )) e = cn_instance( e, BMContextSelf(ctx), 0 ); }
 			break;
-		case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
-			Pair *list = popListItem( exponent );
-			// list_p = list->name;
-			// mark_p = list->value;
-			listItem *xpn = NULL;
-			p = strncmp(p+2,"(?",2) ?
-				bm_locate_pivot( p+2, &xpn ) :
-				bm_locate_pivot( p+10, &xpn );
-			if ((p) && strncmp(p,"%(",2))
-				data->list = newPair( list, xpn );
-			else {
-				freeListItem( &xpn );
-				freePair( list );
-				p = NULL; }
-			break; } }
-	return p;
+		case '%':
+			switch ( p[1] ) {
+			case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
+				Pair *list = popListItem( &exponent );
+				// list_p = list->name;
+				// mark_p = list->value;
+				listItem *xpn = NULL;
+				p = strncmp(p+2,"(?",2) ?
+					bm_locate_pivot( p+2, &xpn ) :
+					bm_locate_pivot( p+10, &xpn );
+				if ((p) && strncmp(p,"%(",2))
+					data->list = newPair( list, xpn );
+				else {
+					freeListItem( &xpn );
+					freePair( list );
+					goto RETURN; }
+				break;
+			case '|':
+				data->privy = 2; }
+				// no break
+		default:
+			e = bm_lookup( ctx, p, privy, db ); } }
+	if (( e )) {
+		data->exponent = exponent;
+		data->pivot = newPair( p, e );
+		if ( !xp_traverse( expression, data, CB, user_data ) )
+			data->instance = NULL;
+		freePair( data->pivot );
+		traversed = 1; }
+RETURN:
+	freeListItem( &exponent );
+	return traversed;
 }
 
 //---------------------------------------------------------------------------
@@ -592,7 +597,7 @@ case_( open_CB )
 	if ( f_next & ASSIGN ) {
 		listItem **stack = &data->stack.exponent;
 		xpn_add( stack, AS_SUB, 0 );
-		switch ( match( data->instance, p, data->base, data ) ) {
+		switch ( match( data->instance, p+1, data->base, data ) ) {
 		case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
 			_prune( BM_PRUNE_FILTER ) }
@@ -666,8 +671,8 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		if (( p )) {
 			// optimization
 			if (( data->pivot ) && p==data->pivot->name &&
-			    ( *p!='%' || ( p[1]!='|' && p[1]!='@' ) ))
-				return ( y==data->pivot->value );
+			    ( *p!='%' || ( p[1]!='|' && p[1]!='@' ) )) {
+				return ( y==data->pivot->value ); }
 			return bm_match( data->ctx, data->db, p, y, data->db ); }
 		else { // wildcard
 			return 1; } }

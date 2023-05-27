@@ -27,6 +27,7 @@
 			
 	else in : INPUT
 		on ~( %%, READY ) < *yak
+			// yak is pending on input
 			// prompt based on last input, none included
 			in : input : ~'\n'
 			else do >&"yak-drive > " // prompt
