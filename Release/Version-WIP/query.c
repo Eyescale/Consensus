@@ -102,12 +102,6 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, v
 		BMContext *ctx = data->ctx;
 		CNDB *db = data->db;
 		switch ( *p ) {
-		case '(':
-			if ( p[1]==':' ) {
-				p++;
-				e = db_lookup( 0, "*", db );
-				if (( e )) e = cn_instance( e, BMContextSelf(ctx), 0 ); }
-			break;
 		case '%':
 			switch ( p[1] ) {
 			case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
@@ -129,7 +123,7 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, v
 				data->privy = 2; }
 				// no break
 		default:
-			e = bm_lookup( ctx, p, privy, db ); } }
+			e = bm_lookup( ctx, p, db, privy ); } }
 	if (( e )) {
 		data->exponent = exponent;
 		data->pivot = newPair( p, e );
@@ -670,9 +664,13 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	if (( y )) {
 		if (( p )) {
 			// optimization
-			if (( data->pivot ) && p==data->pivot->name &&
-			    ( *p!='%' || ( p[1]!='|' && p[1]!='@' ) )) {
-				return ( y==data->pivot->value ); }
+			if (( data->pivot ) && p==data->pivot->name ) {
+				switch ( *p ) {
+				case '%':
+					if ( strmatch( "|@", p[1] ) )
+						break;
+				default: // no break
+					return ( y==data->pivot->value ); } }
 			return bm_match( data->ctx, data->db, p, y, data->db ); }
 		else { // wildcard
 			return 1; } }

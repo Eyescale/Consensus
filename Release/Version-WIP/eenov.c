@@ -102,7 +102,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data )
 {
-	EEnoRV *eenov = bm_context_lookup( ctx, "<" );
+	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
 	if (( eenov )) {
 		CNInstance *src = eenov->src;
 		data->src = src;

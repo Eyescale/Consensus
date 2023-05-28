@@ -203,35 +203,36 @@ case_( end_pipe_CB )
 	_break
 case_( register_variable_CB )
 	BMContext *carry = data->carry;
-	CNInstance *e = NULL;
-	listItem *i = NULL;
+	CNInstance *e;
+	listItem *i;
 	switch ( p[1] ) {
-	case '?': e = bm_context_lookup( data->ctx, "?" ); break;
-	case '!': e = bm_context_lookup( data->ctx, "!" ); break;
-	case '.': e = BMContextParent( data->ctx ); break;
-	case '%': e = BMContextSelf( data->ctx ); break;
-	case '|': i = bm_context_lookup( data->ctx, "|" ); break;
-	case '@': i = bm_context_lookup( data->ctx, "@" ); break;
-	case '<':
-		if (( i = eenov_inform( data->ctx, data->db, p, data->carry ) )) {
+	case '<': ;
+		i = eenov_inform( data->ctx, data->db, p, data->carry );
+		if (( i )) {
 			data->sub[ current ] = i;
 			_break }
-		_return( 2 ) }
-	if (( e )) {
-		if (( carry ))
-			e = bm_inform( 0, carry, e, data->db );
-		data->sub[ current ] = newItem( e );
-		_break }
-	else if (( i )) {
-		listItem **sub = &data->sub[ current ];
-		if (( carry )) {
-			CNDB *db = data->db;
-			for ( ; i!=NULL; i=i->next )
-				addItem( sub, bm_inform( 0, carry, i->ptr, db ) ); }
-		else {
-			for ( ; i!=NULL; i=i->next )
-				addItem( sub, i->ptr ); }
-		_break }
+		break;
+	case '|':
+	case '@':
+		i = bm_context_lookup( data->ctx, p );
+		if (( i )) {
+			listItem **sub = &data->sub[ current ];
+			if (( carry )) {
+				CNDB *db = data->db;
+				for ( ; i!=NULL; i=i->next )
+					addItem( sub, bm_inform( 0, carry, i->ptr, db ) ); }
+			else {
+				for ( ; i!=NULL; i=i->next )
+					addItem( sub, i->ptr ); }
+			_break }
+		break;
+	default:
+		e = bm_context_lookup( data->ctx, p );
+		if (( e )) {
+			if (( carry ))
+				e = bm_inform( 0, carry, e, data->db );
+			data->sub[ current ] = newItem( e );
+			_break } }
 	_return( 2 )
 case_( list_CB )
 	/* We have ((expression,...):_sequence_:)

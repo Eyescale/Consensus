@@ -106,8 +106,7 @@ CB_SubExpressionCB			p++;
 					f_next |= is_f(SET);
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
-					p++;
-					if ( *p==':' ) p++;
+					if ( *++p==':' ) p++;
 					break; }
 				else if ( p[1]=='<' ) {
 CB_RegisterVariableCB			f_cls; p+=2;

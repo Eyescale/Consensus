@@ -1,5 +1,23 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. nice to have would be
+		on ~.			// == inactive
+		=> on/per ~. < src	// can be determined
+		Note: on ~.: . < { ~(..), %% } => Yak would work as well
+	. Implement
+		in .:expression	// e.g. in .:: OUT
+			=> rebase perso for locale definition
+			=> %. new registry variable
+			=> now perso should be %[ perso, registry ]
+		and any identifier lookup may go through the whole stack of registries
+		Example
+			in .:: state	// pushes [ perso, registry ] where perso=%.:((*,%%),state)
+				.locate	// instantiates ( %., locale )
+		Benefit
+		. locale will be released automatically on state changes
+		. Eventually of course we may want to support
+			.locale: expression	// but use cases need to be specified
+
 	. implement calculator { add, mult, mem } using yak.mod
 		[WIP] just parser [./Examples/4_Yak/calculator.drive] => test Scheme
 		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
@@ -22,7 +40,7 @@ DONE
 			      %(:currentN) ? nextN :)
 	. allowed \cr in expressions (so long as LEVEL is set)
 	. implemented in/on/do : expression // same as in/on/do : %% : expression
-	. Modified literal format: ( MUST be bacslashed in sequence,
+	. Modified literal format: ( MUST be backslashed in sequence,
 		e.g. do (:\(whatever\):)
 	. modified parser.c, so that SET, CARRY or VECTOR always start from
 	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
@@ -32,7 +50,7 @@ DONE
 	. yak.story
 		. implemented \i (integer) + fixed double-passthrough issue
 		. implemented yak blank space in schema definition e.g. (: %term :)
-		. new (working) null-schema implementation
+		. new (functional) null-schema implementation
 		. cf. ./Examples/4_Yak/Schemes/space
 	. implemented preprocessing directive #include
 	. support output to stderr
@@ -86,7 +104,7 @@ DONE
 		=> %! always available when %? is
 	. support vector assignment - e.g.
 		do :< a, b, c >:< 1, 2, 3 >
-	. allowed %% in ¶
+	. allowed %% in §
 	. extended do identifier~ in case identifier is not base entity
 	  (i.e. identifier is sub-narrative param or locale), so that
 		  identifier's subs get deprecated if
@@ -95,7 +113,7 @@ DONE
 	  further extended to allow
 		do %?~
 		do %!~
-	  cf. Test/33_untrace and Examples/4_Yak/yak.story
+	  cf. Test/33_untrace
 	. implement en for enable, so that the two following commands are equivalent
 		en expression
 		%( expression )
@@ -114,12 +132,12 @@ DONE
 	     is changed to (%%,this) - consequently all .locale(s) will be
 	     instantiated as ((%%,this), locale(s)), etc.
 	. support %<(!,?)> supposed to be used in association with e.g.
-		on ~( %%, func ) < ?:srv
+		on ~( %%, func ) < ?:src
 			do : value : %<(!,?)>
 	  Note: in %<(!,?)> does in fact read the src's CNDB, but design-wise
 	  does not break the model consisting of only catching events: since
 	  %<!> does refer to a new or released event, so does %<(!,?)> which
-	  here we just pretend has been caught along.
+	  here we just claim has been caught along.
 	. supported ellipsis / vector
 		do (( list, ... ), < expression(s) > )
 	. supported %((?,...):expression)

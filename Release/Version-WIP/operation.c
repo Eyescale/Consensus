@@ -56,7 +56,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
 				case EN: do_enable( subs, narratives, expression, ctx ); break;
-				case LOCALE: bm_context_register( ctx, expression ); break; }
+				case LOCALE: bm_register_locale( ctx, expression ); break; }
 				if (( deternarized )) free( expression ); }
 			// pushing down
 			if ( passed && ( j )) {

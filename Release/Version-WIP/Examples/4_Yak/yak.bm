@@ -30,7 +30,7 @@
 				else on : record : .
 					do ~( %?, READY )
 			else in ( %?, DONE )
-				on ~.: . < { ., %% }
+				on ~.: . < { ~(..), %% }
 					do ( .., IN ) // notify traversal
 					do : OUT
 			else in (.,%?): ~%(?,DONE)

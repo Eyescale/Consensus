@@ -44,7 +44,7 @@
 				else on : record : .
 					do ~( %?, READY )
 			else in ( %?, DONE )
-				on ~.: . < { ., %% }
+				on ~.: . < { ~(..), %% }
 					do : OUT
 			else in (.,%?): ~%(?,DONE)
 				in (.,%?): ~%(?,DONE): ~%(?,READY)
@@ -122,7 +122,7 @@
 
 		// s has rule with event unconsumed starting this frame => pushing or popping
 		else in ( (.,?:(']',*f)):~*r, *s )
-			// rule has schema not both starting & finishing at the same frame => pushing
+			// rule has schema not starting & finishing both at the same frame => pushing
 			in ?: ((.,%?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
 				// output last schema event, providing it's not also starting
 				in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
@@ -192,8 +192,10 @@
 		in ~.: (.,r): ~%(?,EXIT) // all r feeder schemas failed
 			do ~( r )
 		else do ~( s )
+/*
 	else in ~.: (r,.) // all r subscribers failed
 		do ~( r )
+*/
 	else in .DONE
 		in .( ., s ) // s was pending on rule
 			on ~( .(.,r) )
@@ -206,7 +208,7 @@
 				else // r has no feeder other than s starting at s's finish frame
 					do .EXIT // defunct
 	else in .( ?, s ) // s is pending on rule
-		on ~.: . < { %%, . }
+		on ~.: . < { ~(..), %% }
 			in .CYCLIC
 				do > "Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 				do .EXIT
@@ -278,10 +280,10 @@
 : Take
 	on ~( ., %% ) < ..
 		do exit
-	else in READY
+	else in : READY
 		on ~( %%, ? ) < ..
 			do : event : %<?>
-			do ~( READY )
+			do :~.
 	else on : event : .
 		in : p : '\0'
 			do :( TAKE, '[' ): ~. // TAKE, unconsumed
@@ -332,9 +334,9 @@
 			do :( TAKE, ']' ): %? // TAKE, consumed or first
 		else on init // not moving
 			do TAKE~
-		else do READY
+		else do : READY
 	else on ~( TAKE )
-		do READY
+		do : READY
 	else on ( TAKE, . )
 		do exit
 
