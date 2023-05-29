@@ -47,6 +47,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		instantiate_assignment( expression, &traverse_data, story );
 	else {
 		traverse_data.done = INFORMED|LITERAL;
+		if ( !story ) traverse_data.done |= CLEAN;
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
 
 	if ( traverse_data.done==2 ) {
@@ -627,7 +628,7 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	traverse_data.done = INFORMED|LITERAL;
+	traverse_data.done = INFORMED|LITERAL|CLEAN;
 	char *p = instantiate_traversal( arg, &traverse_data, FIRST );
 	if ( traverse_data.done==2 || !data.sub[ 0 ] )
 		goto FAIL;

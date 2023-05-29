@@ -53,12 +53,13 @@ static inline ActiveRV * BMContextActive( BMContext *ctx ) {
 static inline void * BMContextEENOVCurrent( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "<" );
         return (( entry->value ) ? ((listItem *) entry->value )->ptr : NULL ); }
+
+static inline Pair * BMContextCurrent( BMContext *ctx ) {
+	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
 static inline CNInstance * BMContextPerso( BMContext *ctx ) {
-	listItem *i = registryLookup( ctx, "." )->value;
-	return (( i ) ? ((Pair *) i->ptr )->name : NULL ); }
-static inline Registry *BMContextCurrent( BMContext *ctx ) {
-	listItem *i = registryLookup( ctx, "." )->value;
-	return (( i ) ? ((Pair *) i->ptr )->value : NULL ); }
+	return BMContextCurrent( ctx )->name; }
+static inline Registry *BMContextLocales( BMContext *ctx ) {
+	return BMContextCurrent( ctx )->value; }
 
 //===========================================================================
 //	Utilities
@@ -70,7 +71,7 @@ static inline void bm_context_pipe_flush( BMContext *ctx ) {
 static inline void context_rebase( BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *self = BMContextSelf( ctx );
-	Pair *entry = ((listItem *) registryLookup( ctx, "." )->value )->ptr;
+	Pair *entry = BMContextCurrent( ctx );
 	entry->name = db_instantiate( self, entry->name, db ); }
 
 

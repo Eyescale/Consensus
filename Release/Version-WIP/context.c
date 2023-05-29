@@ -12,21 +12,20 @@
 //	newContext / freeContext
 //===========================================================================
 BMContext *
-newContext( CNEntity *cell, CNEntity *parent )
+newContext( CNEntity *cell, CNEntity *p )
 {
-	Registry *ctx = newRegistry( IndexedByCharacter );
 	CNDB *db = newCNDB();
-	Pair *id = newPair(
-		db_proxy( NULL, cell, db ),
-		NULL );
-	if (( parent )) id->value = db_proxy( cell, parent, db );
-	Pair *active = newPair(
-		newPair( NULL, NULL ),
-		NULL );
+	CNInstance *self = db_proxy( NULL, cell, db );
+	CNInstance *parent = (( p ) ? db_proxy( cell, p, db ) : NULL );
+	Pair *id = newPair( self, parent );
+	Pair *active = newPair( newPair( NULL, NULL ), NULL );
+	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+
+	Registry *ctx = newRegistry( IndexedByCharacter );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
 	registryRegister( ctx, "%", id ); // aka. %% and ..
 	registryRegister( ctx, "@", active ); // active connections (proxies)
-	registryRegister( ctx, ".", NULL ); // aka. perso
+	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
 	registryRegister( ctx, "?", NULL ); // aka. %?
 	registryRegister( ctx, "|", NULL ); // aka. %|
 	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
@@ -53,6 +52,12 @@ freeContext( BMContext *ctx )
 	// free context id register value
 	Pair *id = BMContextId( ctx );
 	freePair( id );
+
+	// free perso stack
+	listItem *stack = registryLookup( ctx, "." )->value;
+	freeRegistry(((Pair *) stack->ptr )->value, NULL );
+	freePair( stack->ptr );
+	freeItem( stack );
 
 	// free CNDB & context registry
 	CNDB *db = BMContextDB( ctx );
@@ -137,10 +142,9 @@ typedef struct {
 void
 bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance )
 {
-	Pair *entry = registryLookup( ctx, "." );
+	Pair *current = BMContextCurrent( ctx );
 	if (( instance )) {
-		Pair *current = newPair( instance, newRegistry(IndexedByCharacter) );
-		entry->value = newItem( current );
+		current->name = instance;
 
 		ActualizeData data;
 		memset( &data, 0, sizeof(ActualizeData) );
@@ -154,8 +158,7 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance )
 
 		actualize_traversal( proto, &traverse_data, FIRST ); }
 	else {
-		Pair *current = newPair( BMContextSelf(ctx), newRegistry(IndexedByCharacter) );
-		entry->value = newItem( current ); }
+		current->name = BMContextSelf( ctx ); }
 
 #ifdef DEBUG
 	freeListItem( &data.stack.flags );
@@ -222,7 +225,6 @@ static inline int inand( listItem *i, int operand );
 static void
 actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx )
 {
-	Registry *registry = BMContextCurrent( ctx );
 	// Special case: ( .identifier, ... )
 	if ( inand( exponent, 1 ) ) {
 		char *q = p;
@@ -238,7 +240,7 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 	int exp;
 	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
 RETURN:
-	registryRegister( registry, p, instance );
+	registryRegister( BMContextLocales(ctx), p, instance );
 }
 
 static inline int inand( listItem *i, int operand ) {
@@ -250,7 +252,7 @@ static inline int inand( listItem *i, int operand ) {
 //===========================================================================
 //	bm_context_release
 //===========================================================================
-static void release_stack( listItem ** );
+static inline void flush_perso( listItem * );
 
 void
 bm_context_release( BMContext *ctx )
@@ -287,19 +289,22 @@ bm_context_release( BMContext *ctx )
 				freeListItem( stack );
 				break;
 			case '.':
-				release_stack((listItem **) &entry->value );
+				flush_perso( entry->value );
 				break; }
 			last_i = i; } }
 }
 
-static void
-release_stack( listItem **entries )
+static inline void
+flush_perso( listItem *stack )
 {
-	for ( listItem *i=*entries; i!=NULL; i=i->next ) {
-		Pair *current = i->ptr;
-		freeRegistry((Registry *) current->value, NULL );
-		freePair( current ); }
-	freeListItem( entries );
+	Pair *current = stack->ptr;
+	for ( listItem *i=stack->next; i!=NULL; i=i->next ) {
+		Pair *next = i->ptr;
+		freeRegistry((Registry *) next->value, NULL );
+		freePair( next ); }
+	freeListItem( &stack->next );
+	freeRegistry((Registry *) current->value, NULL );
+	current->value = newRegistry( IndexedByCharacter );
 }
 
 //===========================================================================
@@ -514,10 +519,9 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 			return db_register( q.s, db ); }
 		return NULL; }
 	else if (( ctx ) && !is_separator(*p) ) {
-		Registry *registry = BMContextCurrent( ctx );
-		if (( registry )) {
-			Pair *entry = registryLookup( registry, p );
-			if (( entry )) return entry->value; } }
+		Registry *locales = BMContextLocales( ctx );
+		Pair *entry = registryLookup( locales, p );
+		if (( entry )) return entry->value; }
 
 	return db_register( p, db );
 }
@@ -525,13 +529,13 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 int
 bm_register_locale( BMContext *ctx, char *p )
 {
-	Pair *entry = ((listItem *) registryLookup( ctx, "." )->value )->ptr;
-	Registry *registry = entry->value;
+	Pair *entry = BMContextCurrent( ctx );
 	CNInstance *perso = entry->name;
+	Registry *locales = entry->value;
 	CNDB *db = BMContextDB( ctx );
 	while ( *p=='.' ) {
 		p++;
-		entry = registryLookup( registry, p );
+		entry = registryLookup( locales, p );
 		if (( entry )) { // already registered
 			CNInstance *instance = entry->value;
 			fprintf( stderr, ">>>>> B%%: Error: LOCALE " );
@@ -543,7 +547,7 @@ bm_register_locale( BMContext *ctx, char *p )
 		else {
 			CNInstance *x = db_register( p, db );
 			x = db_instantiate( perso, x, db );
-			registryRegister( registry, p, x ); }
+			registryRegister( locales, p, x ); }
 
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
@@ -569,8 +573,8 @@ bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy )
 		return (( star ) ? cn_instance( star, self, 0 ) : NULL ); }
 
 	if ( !is_separator( *p ) ) {
-		Registry *registry = BMContextCurrent( ctx );
-		Pair *entry = registryLookup( registry, p );
+		Registry *locales = BMContextLocales( ctx );
+		Pair *entry = registryLookup( locales, p );
 		if (( entry )) return entry->value; }
 
 	if (( db )) {
@@ -581,8 +585,6 @@ bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy )
 			if ( charscan( p+1, &q ) )
 				return db_lookup( privy, q.s, db );
 			return NULL;
-		case '*':
-		case '%':
 		default:
 			return db_lookup( privy, p, db ); } }
 	return NULL;
@@ -653,8 +655,8 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x )
 		return 0; }
 
 	if ( db==db_x && !is_separator( *p ) ) {
-		Registry *registry = BMContextCurrent( ctx );
-		Pair *entry = registryLookup( registry, p );
+		Registry *locales = BMContextLocales( ctx );
+		Pair *entry = registryLookup( locales, p );
 		if (( entry )) return x==entry->value; }
 
 	// not found in ctx

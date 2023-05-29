@@ -44,12 +44,12 @@
 	else in : OUT  // traversal
 		.s .f .r
 		on : .
-			in : record : (record,*)
+			in ~.:: record : (record,*)
+				do :< s, f >:< base, (record,*) >
+			else
 				do >&"(nop)\n"
 				do exit
-			else
-				do :< s, f >:< base, (record,*) >
-				do : r : ~.
+
 		else in : send : ?
 +
 		on %! // sending notification to parent(=driver)
@@ -160,7 +160,7 @@
 
 		// s has rule with event unconsumed starting this frame => pushing or popping
 		else in ( (.,?:(']',*f)):~*r, *s )
-			// rule has schema not both starting & finishing at the same frame => pushing
+			// rule has schema not starting & finishing both at the same frame => pushing
 			in ?: ((.,%?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
 				in : push : . // pruning
 					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >

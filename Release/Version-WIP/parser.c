@@ -169,7 +169,8 @@ CB_if_( NarrativeTake, mode, data ) {
 			on_separator	; // err
 			on_other
 				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
-					do_( "§$" )	s_take }
+					do_( "§$" )	s_take
+							f_set( INFORMED ) }
 			end
 		in_( "§%" ) bgn_
 			on_( '%' )	do_( "§" )	s_take

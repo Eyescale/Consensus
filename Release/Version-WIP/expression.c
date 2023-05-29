@@ -145,16 +145,12 @@ bm_input( int type, char *arg, BMContext *ctx )
 			if ( is_printable( event ) ) asprintf( &input, "'%c'", event );
 			else asprintf( &input, "'\\x%.2X'", event ); }
 		break;
-	case '_':
-		input = bm_read( BM_INPUT, stdin );
-		if ( !input ) return EOF;
-		break;
 	default:
-		return 0; }
+		input = bm_read( BM_INPUT, stdin );
+		if ( !input ) return EOF; }
 
 	bm_instantiate_input( input, arg, ctx );
 	free( input );
-
 	return 0;
 }
 

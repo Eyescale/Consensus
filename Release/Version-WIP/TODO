@@ -1,25 +1,8 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. nice to have would be
-		on ~.			// == inactive
-		=> on/per ~. < src	// can be determined
-		Note: on ~.: . < { ~(..), %% } => Yak would work as well
-	. Implement
-		in .:expression	// e.g. in .:: OUT
-			=> rebase perso for locale definition
-			=> %. new registry variable
-			=> now perso should be %[ perso, registry ]
-		and any identifier lookup may go through the whole stack of registries
-		Example
-			in .:: state	// pushes [ perso, registry ] where perso=%.:((*,%%),state)
-				.locate	// instantiates ( %., locale )
-		Benefit
-		. locale will be released automatically on state changes
-		. Eventually of course we may want to support
-			.locale: expression	// but use cases need to be specified
-
+	. BM_INPUT / BM_LOAD: don't need term_CB !
 	. implement calculator { add, mult, mem } using yak.mod
-		[WIP] just parser [./Examples/4_Yak/calculator.drive] => test Scheme
+		[WIP] just parser [./Examples/4_Yak/calculator-ui.story] => test Scheme
 		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
 
@@ -183,6 +166,25 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. OPT: occurrence meta-characters ?:~ => ExpressionTake post-processing
+		meaning, per Term: Ternary, Filtered, Unmarked, Coupled
+	. Implement
+		in .:expression	// e.g. in .:: OUT
+			=> rebase perso for locale definition
+			=> %. new registry variable
+			=> now perso should be %[ perso, registry ]
+		and any identifier lookup may go through the whole stack of registries
+		Requirement
+			expression:~( *, . )
+		Example
+			in .:: state	// pushes [ perso, registry ] where perso=%.:((*,%%),state)
+				.locate	// instantiates ( %., locale )
+		Benefit
+		. locale will be released automatically on state changes
+		. Eventually of course we may want to support
+	. .locale: expression // initialization - use cases to be determined
+		on ~.				// == inactive
+		    =>	on/per ~. < src		// src can be determined
 	. yak.story optimization - e.g. null-schema DONE thread instances elimination
 	. yak.drive carry implementation
 	. on ~( %%, ?:TAKE ) < *yak

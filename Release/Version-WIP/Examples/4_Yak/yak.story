@@ -67,7 +67,6 @@
 				do :< s, f >:< base, (record,*) >
 				in : carry : . // trim record
 					do ~( *record, . )
-				do : r : ~.
 
 		else on : pop : ? // popping argument = s's finishing frame, or OUT
 			do : pop : ~.
@@ -176,18 +175,18 @@
 //---------------------------------------------------------------------------
 //	yak input schema threads sub-narrative definition
 //---------------------------------------------------------------------------
-.s: ((( schema, .position ), .start ), .r )
-	.p
+.s: ((( schema, .p ), .f ), .r )
+	.q
 	on ( s )
 		// schema is in null position AND has predecessor
-		in ( position:'\0' ? ((.,r), s ) :)
-			do .( start ) // TAKE as-is
-		else in start: ('[',(.,?)) // event to be consumed
-			do : p : position
-			do : s : !! Take( ((*,p),.position), ((*,event),%?) )
+		in ( p:'\0' ? ((.,r), s ) :)
+			do .( f ) // TAKE as-is
+		else in f: ('[',(.,?)) // event to be consumed
+			do : q : p
+			do : s : !! Take( ((*,p),.p), ((*,event),%?) )
 		else
-			do : p : position
-			do : s : !! Take( ((*,p),.position) )
+			do : q : p
+			do : s : !! Take( ((*,p),.p) )
 	else on .EXIT
 		in ~.: (.,r): ~%(?,EXIT) // all r feeder schemas failed
 			do ~( r )
@@ -204,7 +203,7 @@
 		else on ~( %(r,?), . ) // r's subscribers connections changed
 			in ( %(r,?), ((.,%(.?)),.) )
 			else // none of r's subscribers has a successor starting at s's finish frame
-				in ((.,%(.?)), r ) :~s // :~%(?,DONE)
+				in ((.,%(.?)), r ) :~s
 				else // r has no feeder other than s starting at s's finish frame
 					do .EXIT // defunct
 	else in .( ?, s ) // s is pending on rule
@@ -217,11 +216,11 @@
 				do ~( .READY )
 		else	// expecting TAKE from rule schemas
 			on ((.,%?), ?:('[',.)) // TAKE: launch successor schema(s)
-				do .(((schema, %(*p:(.,?))), %? ), r )
+				do .(((schema, %(*q:(.,?))), %? ), r )
 				on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
-					do .(((schema, %(*p:(.,?))), %? ), r )
+					do .(((schema, %(*q:(.,?))), %? ), r )
 			else on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
-				do .(((schema, %(*p:(.,?))), %? ), r )
+				do .(((schema, %(*q:(.,?))), %? ), r )
 			else // sync based on rule schemas
 				in (.,%?): ~%(?,CYCLIC): ~%(?,DONE)
 					in (.,%?): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
@@ -237,23 +236,23 @@
 			do ~( .READY )
 			do ( *s, %? )
 	else
-		on READY < *s // TAKE and move on
+		on READY < *s // move on & next input
+			do : q : %(*q:(.,?))
 			do .READY
-			do : p : %(*p:(.,?))
 		else on ~( TAKE ) < *s // next input
 			do .READY
 		else on :( TAKE, ? ): ~. < *s // TAKE final, position no longer relevant
 			do .( %<?>, *record )
 		else on :( TAKE, ? ): . < *s // TAKE rule
 			in ((Rule,?:%<!:(.,?)>),(Schema,~'\0'))
-				in : p : (~(%,.),.) // align p in case e.g. event was consumed, other than first -
+				in : q : (~(%,.),.) // align q in case e.g. event was consumed, other than first -
 					// or special case: blank unconsumed, while rule already instantiated as ']'
-					in ( *p:(' ',.) ? %<?:'['> ? (?:((rule,%?), (']',*record))) :)
+					in ( *q:(' ',.) ? %<?:'['> ? (?:((rule,%?), (']',*record))) :)
 						// add schema to that rule, starting at rule position in this schema
-						do ( (((schema, %(*p:(.,?))), %(%?:(.,?))), %? ) | {
+						do ( (((schema, %(*q:(.,?))), %(%?:(.,?))), %? ) | {
 							( %|, CYCLIC )
 							( %|, ( %?, %| )) } )
-					do : p : %(*p:(.,?))
+					do : q : %(*q:(.,?))
 				// now launch
 				in ?: ((rule,%?), (%<?>,*record)) // rule already instantiated
 					do .CYCLIC
@@ -280,10 +279,10 @@
 : Take
 	on ~( ., %% ) < ..
 		do exit
-	else in : READY
+	else in READY
 		on ~( %%, ? ) < ..
 			do : event : %<?>
-			do :~.
+			do ~( READY )
 	else on : event : .
 		in : p : '\0'
 			do :( TAKE, '[' ): ~. // TAKE, unconsumed
@@ -301,6 +300,11 @@
 					else do exit // FAIL
 				else in %?: w
 					in : event : /[A-Za-z0-9_]/
+						do check
+						do TAKE~
+					else in check
+						do ~( check )
+						do : event : *event // REENTER
 						do : p : %(*p:(.,?))
 					else do exit // FAIL
 				else in %?: i
