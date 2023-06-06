@@ -36,8 +36,8 @@ io_exit( CNIO *io )
 //===========================================================================
 //	io_getc
 //===========================================================================
-static int io_push( CNIO *, IOType, char * );
 static IOEventAction preprocess( CNIO *, int event );
+static int io_push( CNIO *, IOType, char * );
 static int io_pragma_execute( CNIO * );
 
 int
@@ -142,6 +142,7 @@ io_pragma_execute( CNIO *io )
 			io->control.mode = IO_SILENT;
 			break;
 		case IOPragma_eldef:
+			free( param );
 			parent_mode.ptr = io->control.stack->ptr;
 			if ( mode & IO_ELSE )
 				errnum = IOErrElseAgain;
@@ -149,9 +150,9 @@ io_pragma_execute( CNIO *io )
 			else if ( parent_mode.value & IO_SILENT ) {}
 			else if (( registryLookup( io->control.registry, param ) ))
 				io->control.mode = IO_ACTIVE|IO_ELIF;
-			free( param );
 			break;
 		case IOPragma_elndef:
+			free( param );
 			parent_mode.ptr = io->control.stack->ptr;
 			if ( mode & IO_ELSE )
 				errnum = IOErrElseAgain;
@@ -159,7 +160,6 @@ io_pragma_execute( CNIO *io )
 			else if ( parent_mode.value & IO_SILENT ) {}
 			else if ( !registryLookup( io->control.registry, param ) )
 				io->control.mode = IO_ACTIVE|IO_ELIF;
-			free( param );
 			break;
 		case IOPragma_else:
 			if ( mode & IO_ELSE )

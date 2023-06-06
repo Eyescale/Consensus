@@ -1,5 +1,6 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. calculator issue w/space => integrate in yak.story.NOTAKE
 	. implement 4_Yak/calculator-ui.story
 		. finish 4_Yak/Schemes/calculator => addition/multiplication + space
 	. implement calculator { add, mult, mem } using yak.bm
