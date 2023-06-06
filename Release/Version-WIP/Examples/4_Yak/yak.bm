@@ -19,24 +19,29 @@
 				.( %|, base ) } )
 		else in .( ?, base )
 			%( . )
-			in ( %?, READY )
-				on ( %?, READY )
-					do ( .., READY )
-				else on : input : ? < ..
-					// could do some preprocessing here
-					do : record : (*record,%<?>)
-				else on : input : ~. < ..
-					do : record : (*record,EOF)
-				else on : record : .
-					do ~( %?, READY )
-			else in ( %?, DONE )
-				on ~.: . < { ~(..), %% }
-					do ( .., IN ) // notify traversal
-					do : OUT
-			else in (.,%?): ~%(?,DONE)
-				in (.,%?): ~%(?,DONE): ~%(?,READY)
-				else do ( %?, READY ) // all feeder schemas ready
-			else do ( %?, DONE ) // all feeder schemas complete
+			in ~.: .READY
+				in (.,%?): ~%(?,DONE)
+					in (.,%?): ~%(?,DONE): ~%(?,READY)
+					else do .READY // all feeder schemas ready
+				else on ~.: . < { ~(..), %% }
+					in ((.,%?),(']',(record,*)))
+						do ~( %?, base )
+					else in ((.,%?),('[',((record,*),.)))
+						do ~( %?, base )
+					else in ~.: ((.,%?),(/[[\]]/,.))
+						do ~( %?, base )
+					else
+						do ( .., IN ) // notify traversal
+						do : OUT
+			else on .READY
+				do ( .., READY )
+			else on : input : ? < ..
+				// could do some preprocessing here
+				do : record : (*record,%<?>)
+			else on : input : ~. < ..
+				do : record : (*record,EOF)
+			else on : record : .
+				do ~( .READY )
 		else on ~( ., base ) // FAIL
 			do ( .., OUT ) // notify failure
 			do : OUT
@@ -44,11 +49,11 @@
 	else in : OUT  // traversal
 		.s .f .r
 		on : .
-			in ~.:: record : (record,*)
-				do :< s, f >:< base, (record,*) >
-			else
+			in : record : (record,*)
 				do >&"(nop)\n"
 				do exit
+			else
+				do :< s, f >:< base, (record,*) >
 
 		else in : send : ?
 +
@@ -100,12 +105,13 @@
 					do : push : OUT
 			do ~( %? )
 -
-		else on : pop : ? // argument = s finish frame, or OUT
+		else on : pop : ? // argument = s terminating frame, or OUT
 			in %?: OUT
 				in *f: (.,?:~EOF): ~(record,*)
 					in : push : . // pruning
 						do : send : OUT
-					else do :< send, push >:<( TAKE, %? ), OUT >
+					else
+						do :< send, push >:<( TAKE, %? ), OUT >
 				else
 					do :< push, %% >: ~.
 					do ~( OUT, . )
@@ -123,8 +129,8 @@
 						do : pop : ~.
 					else
 						do : push : ~.
-						// output last schema event, providing it's not initial frame
-						in (*s:(((.,~'\0'),.),.), (']',~(record,*)))
+						// output current schema's last event, if consumed
+						in ( *s:(((.,~'\0'),.),.), (']',~(record,*)) )
 							do :< send, pop >:<( TAKE, %(*f:(.,?)) ), %? >
 						else
 							do : send : ( OUT, %? )
@@ -135,13 +141,13 @@
 					do :< s, pop, push >: ~.
 					do ( .., ERR )
 			else // back to base
-				// output last schema event, providing it's not initial frame
-				in (*s:(((.,~'\0'),.),.), (']',~(record,*)))
+				// output current schema's last event, if consumed
+				in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
 					in : push : . // pruning
 						do : send : OUT
-					else do :< send, pop >:<( TAKE, %(*f:(.,?)) ), OUT >
+					else do :< send, pop >:<( TAKE, %? ), OUT >
 				else in %?: ('[',.) // completed unconsumed
-					in ?:%(*f:(.,?:~EOF))
+					in : f : (.,?:~EOF)
 						do :< send, pop >:<( CARRY, %? ), OUT >
 					else do : send : OUT
 				else in ( *f, ?:~EOF )
@@ -151,34 +157,50 @@
 
 		// s has rule with event to-be-consumed starting this frame => pushing or popping
 		else in ( (.,?:('[',*f)):~*r, *s )
-			// rule has schema not starting & finishing both at the same frame => pushing
-			in ?: ((.,%?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
+			// rule has schema starting & not finishing at the same frame => pushing
+			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
 				in : push : . // pruning
 					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
 				else do : send : ( IN, %? )
+			// s has sibling starting and not finishing at s's finishing frame
+			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
+				do : s : %?
 			else do : pop : %?
 
 		// s has rule with event unconsumed starting this frame => pushing or popping
 		else in ( (.,?:(']',*f)):~*r, *s )
-			// rule has schema not starting & finishing both at the same frame => pushing
-			in ?: ((.,%?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
+			// rule has schema starting & not finishing at the same frame => pushing
+			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?): ~%(?,('[',(*f,.)))
 				in : push : . // pruning
 					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
-				// output last schema event, providing it's not also starting
+				// output current schema's last event, providing it's not also starting
 				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
 					do :< send, push >:<( TAKE, %(*f:(.,?)) ), %? >
 				else do : send : ( IN, %? )
+			// s has sibling starting and not finishing at s's finishing frame
+			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
+				// output current schema's last event, providing it's not also starting
+				in : push : . // pruning
+				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
+					do : send : ( TAKE, %(*f:(.,?)) )
+				do : s : %?
+			// s has sibling starting and not finishing at s's post-finishing frame, unconsumed
+			else in ?: ((.,('[',(*f,.))), *r ): ~%(?,('[',(*f,.))): ~*s
+				// output current schema's last event, providing it's not also starting
+				in : push : . // pruning
+				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
+					do >&"TAKE 5: %_\n": %(*f:(.,?))
+					do : send : ( TAKE, %(*f:(.,?)) )
+				do : s : %?
 			else do : pop : %?
 
 		else in ( *s, ?:(.,*f)) // this frame is s's last frame => popping
-			in %?:(.,(record,*)) // special case: null-schema
-				do : pop : %?
 			// s has sibling starting and not finishing at s's finishing frame
-			else in ?: ( (.,%?), *r ): ~%(?,%?): ~*s
+			in ?: ((.,%?), *r ): ~%(?,%?): ~*s
 				// output current schema's last event, if consumed
 				in : push : . // pruning
-				else in (*s:(((.,~'\0'),.),.), (']',.))
-					do : send : ( TAKE, %(*f:(.,?)) )
+				else in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
+					do : send : ( TAKE, %(%?:(.,?)) )
 				do : s : %?
 			else do : pop : %?
 

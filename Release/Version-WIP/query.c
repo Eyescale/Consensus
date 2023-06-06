@@ -441,7 +441,9 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	if ((data->stack.scope) || (data->stack.base)) {
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
 		exit( -1 ); }
+#if 0
 	fprintf( stderr, "xp_verify:........} success=%d\n", success );
+#endif
 #endif
 	return success;
 }

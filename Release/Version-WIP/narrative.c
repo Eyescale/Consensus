@@ -35,7 +35,7 @@ bm_read( BMReadMode mode, ... )
 	1. CNStory *story = bm_read( BM_STORY, (char*) path );
 */
 {
-	char *path;
+	char *path = NULL;
 	FILE *stream;
 	int type;
 	BMContext *ctx;
@@ -44,7 +44,7 @@ bm_read( BMReadMode mode, ... )
 	switch ( mode ) {
 	case BM_INPUT:
 		stream = va_arg( ap, FILE * );
-		type = IOStreamStdin;
+		type = IOStreamInput;
 		break;
 	case BM_LOAD:
 		ctx = va_arg( ap, BMContext * );
@@ -61,7 +61,7 @@ bm_read( BMReadMode mode, ... )
 	va_end( ap );
 
 	CNIO io;
-	io_init( &io, stream, type );
+	io_init( &io, stream, path, type );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
@@ -85,9 +85,6 @@ bm_read( BMReadMode mode, ... )
 	} while ( strcmp( data.state, "" ) && !data.errnum );
 
 	//-----------------------------------------------------------------
-	if ( !data.errnum && ( io.control.stack )) {
-		io.errnum = IOErrIfUnterminated;
-		data.errnum = io_report( &io ); }
 	union { int value; void *ptr; } retval;
 	switch ( mode ) {
 	case BM_LOAD:

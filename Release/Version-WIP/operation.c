@@ -352,6 +352,9 @@ do_output( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "do_output bgn: %s\n", expression );
 #endif
+	if ( !strcmp( expression, ">:." ) )
+		expression = ">:~%(?,.):~%(.,?)";
+
 	// extracts fmt and args:{ expression(s) }
 	char *p = expression + 1; // skipping the leading '>'
 	FILE *stream;

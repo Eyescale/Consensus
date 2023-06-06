@@ -9,67 +9,58 @@
 #	Assumed to be used in conjunction with yak.story, e.g.
 #	from ./EyeScale/Consensus/Release/Version-WIP/Examples/4_Yak
 #		../../B% -f Schemes/space yak.story
-# Caveats
-#	all the following 'space' variations are passthrough filters,
-#	therefore one of the following output
-#		%base:{}
-#		%base:{%s:{}}
-#		%base:{%space:{}}
-#	will be produced when the corresponding schema is used at base
-#	level, and the input is neither ' ' nor '\t'
 
-# base rule definitions - enable only one among the following
 
-#	(( Rule, base ), ( Schema, (:%space:)) )
-#	(( Rule, base ), ( Schema, (:%s:)) )
+# base rule definitions - enable only one of the following
+// #define SPACE
+#define TERM
+// #define S_TERM
+
+#ifdef SPACE
 #	(( Rule, base ), ( Schema, (: :)) )
-	(( Rule, base ), ( Schema, (:%term:)) )
-
-# space rule definitions
+#	(( Rule, base ), ( Schema, (:%s:)) )
+	(( Rule, base ), ( Schema, (:%space:)) )
 
 #	(( Rule, space ), ( Schema, (: :) ))	// recommended - if must be
 	(( Rule, space ), ( Schema, (:%s:) ))	// functional
 
-# s rule definition (left-recursive alternative to ' ' using null-schema)
+#eldef TERM
+	(( Rule, base ), ( Schema, {
+		(: %term :)
+	} ))
+	(( Rule, term ), ( Schema, {
+#		(:\i:)
+		(:%int:)
+		(:\( %term \):)	
+	} ))
 
+#eldef S_TERM
+	(( Rule, base ), ( Schema, {
+		(:%s%term%s:)
+	} ))
+	(( Rule, term ), ( Schema, {
+#		(:\i:)
+		(:%int:)
+		(:\(%s%term%s\):)
+	} ))
+
+#endif
+
+# s rule definitions
+#define NULL
+#ifndef NULL
+	(( Rule, s ), ( Schema, (: :)) )
+#else // testing null-schema
 	(( Rule, s ), ( Schema, {
 		(::)
-		(:%s\ :), (:%s\t:)	// recommended - if must be
-#		(:%s :)			// double pass-through - functional
-	} ) )
-
-# term rule (involving space) definitions
-
-#	(( Rule, term0 ), ( Schema, {
-	(( Rule, term ), ( Schema, {
-		(:\i:)
-#		(:%int:)
-		(: %term :)
-		(:\(%term\):)		// recommended
-#		(:\( %term \):)		// functional
-#		(:\(%term \):)		// functional
-	} ) )
-
-	(( Rule, term1 ), ( Schema, {
-#	(( Rule, term ), ( Schema, {
-		(:\i:)
-#		(:%int:)
-		(: %term:), (:%term :)	// functional
-		(:\(%term\):)
-	} ) )
-
-	(( Rule, term2 ), ( Schema, {
-#	(( Rule, term ), ( Schema, {
-		(:\i:)
-#		(:%int:)
-		(:%s%term%s:)		// functional
-		(:\(%term\):)
-	} ) )
-
+#		(:%s\ :), (:%s\t:)
+		(:%s :)	
+	} ))
+#endif
 
 # int rule definition (alternative to \i)
-
 	(( Rule, int ), ( Schema, {
 		(:\d:)
-		(:%int\d:) } ))
+		(:%int\d:)
+	} ))
 

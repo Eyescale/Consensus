@@ -13,11 +13,9 @@
 			// default Scheme: dot-terminated number
 			do : yak : !! Yak(
 				(( Rule, base ), ( Schema, (:%term:)))
-				(( Rule, term ), ( Schema, (:%test.:)))
-				(( Rule, test ), ( Schema, {
-					(:\d:)
-					(:%test\d:)	} ))
-				)
+				(( Rule, term ), ( Schema, (:%int.:)))
+				(( Rule, int ), ( Schema, {
+					(:\d:), (:%int\d:) } )) )
 		do : INPUT
 
 	else on exit < *yak
@@ -66,12 +64,13 @@
 			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < *yak
 			/* yak either returning to input mode or exiting */
+			do > "}"
 			do : INPUT
 		else on ~(( %%, CARRY ), ? ) < *yak
 			/* last event unconsumed - e.g. \i completing on fail
 			   yak then either returns to input mode or exits
 			   without further notification */
-			do > "%s": %<?>
+			do > "}%s": %<?>
 			do : INPUT
 		else on ~( %%, ERR ) < *yak
 			do : ERR

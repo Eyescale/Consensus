@@ -1,0 +1,16 @@
+
+	(( Rule, base ), ( Schema, {
+		(:%multiplication:)
+		(:%addition:)
+	} ))
+	(( Rule, multiplication ), ( Schema, {
+		(:%number*%number:)
+		(:%multiplication*%number:)
+	} ))
+	(( Rule, addition ), ( Schema, {
+		(:%number+%number:)
+		(:%addition+%number:)
+		(:%multiplication+%number:)
+	} ))
+	(( Rule, number ), ( Schema, (:\i:) ))
+//	(( Rule, s ), ( Schema, (: :) ))

@@ -1,12 +1,22 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. BM_INPUT / BM_LOAD: don't need term_CB !
-	. implement calculator { add, mult, mem } using yak.mod
+	. implement 4_Yak/calculator-ui.story
+		. finish 4_Yak/Schemes/calculator => addition/multiplication + space
+	. implement calculator { add, mult, mem } using yak.bm
 		[WIP] just parser [./Examples/4_Yak/calculator-ui.story] => test Scheme
 		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
+	. MISC:
+		. finish variable stack - might answer issue below
+			1. in .::expression << check we don't have (*,.) >> %. ?
+			2. possibly implement .locale: expression (?)
+		. Yak: investigate (: %term :), (:\(%term\):) kinda race condition
 
 DONE
+	. operation.c - do >:. now does >:~%(?,.):~%(.,?) // hardcoded
+	. made vector assignment truly distributive
+		do :< a, b, c >:< d, e, f >
+	. BM_INPUT / BM_LOAD: traverse_mode|=CLEAN => no call to p_filtered()
 	. allow contrary assignment occurrence, e.g.
 		in~.::variable:value
 		in~.::state

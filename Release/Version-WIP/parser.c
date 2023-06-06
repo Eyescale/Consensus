@@ -172,6 +172,10 @@ CB_if_( NarrativeTake, mode, data ) {
 					do_( "§$" )	s_take
 							f_set( INFORMED ) }
 			end
+		in_( "§$" ) bgn_
+			on_separator	do_( "§" )	REENTER
+			on_other	do_( same )	s_take
+			end
 		in_( "§%" ) bgn_
 			on_( '%' )	do_( "§" )	s_take
 							f_set( INFORMED )
@@ -238,11 +242,6 @@ CB_if_( NarrativeTake, mode, data ) {
 				on_separator	; // err
 				on_other	do_( "§" )	REENTER
 				end
-		in_( "§$" ) bgn_
-			on_separator	do_( "§" )	REENTER
-			on_other	do_( same )	s_take
-							f_set( INFORMED )
-			end
 	in_( "def$_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )

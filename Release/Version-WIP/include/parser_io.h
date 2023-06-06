@@ -7,13 +7,12 @@
 #define IO_ACTIVE	1
 #define IO_SILENT	2
 #define IO_ELSE		4
-#define IO_ACTIVE_ELSE	(IO_ACTIVE|IO_ELSE)
-#define IO_SILENT_ELSE	(IO_SILENT|IO_ELSE)
+#define IO_ELIF		8
 
 typedef enum {
 	IOBuffer,
 	IOStreamFile,
-	IOStreamStdin
+	IOStreamInput
 } IOType;
 typedef enum {
 	IOErrNone = 1000,
@@ -27,7 +26,7 @@ typedef enum {
 	IOErrElseWithoutIf,
 	IOErrEndifWithoutIf,
 	IOErrElseAgain,
-	IOErrIfUnterminated,
+	IOErrUnterminatedIf,
 	IOErrSyntaxError
 } IOErr;
 typedef enum {
@@ -35,17 +34,21 @@ typedef enum {
 	IOEventPragma,
 	IOEventPass,
 	IOEventQueue,
-	IOEventFlush
+	IOEventRestore
 } IOEventAction;
 typedef enum {
 	IOPragmaNone = 0,
-	IOIncludeFile,
-	IODefine,
-	IOUndef,
-	IOIfdef,
-	IOIfndef,
-	IOElse,
-	IOEndif
+	IOPragmaUnary,
+	IOPragmaNary,
+	IOPragma_include,
+	IOPragma_define,
+	IOPragma_undef,
+	IOPragma_ifdef,
+	IOPragma_ifndef,
+	IOPragma_eldef,
+	IOPragma_elndef,
+	IOPragma_else,
+	IOPragma_endif
 } IOControlPragma;
 
 typedef struct {
@@ -67,7 +70,7 @@ typedef struct {
 	} control;
 } CNIO;
 
-void	io_init( CNIO *, void *, IOType );
+void	io_init( CNIO *, void *, char *, IOType );
 void	io_exit( CNIO * );
 int	io_getc( CNIO *, int );
 IOErr	io_report( CNIO * );
