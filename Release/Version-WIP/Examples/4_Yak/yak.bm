@@ -4,20 +4,8 @@
 |
 +==========================================================================*/
 : Yak
-	on init
-		// base rule definition must exist and have non-null schema
-		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, %% >:< (record,*), IN >
-		else
-			do >&"Error: Yak: base rule not found or invalid\n"
-			do exit
-
-	else in : IN  // input
-		on : . // start base rule instance - feeding base
-			do (((rule,base), (']',*record)) | {
-				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
-				.( %|, base ) } )
-		else in .( ?, base )
+	in : IN  // input
+		in .( ?, base )
 			%( . )
 			in ~.: .READY
 				in (.,%?): ~%(?,DONE)
@@ -45,17 +33,14 @@
 		else on ~( ., base ) // FAIL
 			do ( .., OUT ) // notify failure
 			do : OUT
+		else on : . // start base rule instance - feeding base
+			do (((rule,base), (']',*record)) | {
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+				.( %|, base ) } )
 
 	else in : OUT  // traversal
 		.s .f .r
-		on : .
-			in : record : (record,*)
-				do >&"(nop)\n"
-				do exit
-			else
-				do :< s, f >:< base, (record,*) >
-
-		else in : send : ?
+		in : send : ?
 +
 		on %! // sending notification to parent(=driver)
 			in %?:( TAKE, ? )
@@ -204,14 +189,21 @@
 				do : s : %?
 			else do : pop : %?
 
-		else // moving on
-			in ?:( *f, . ) // there is a next frame
-				// output event, unless *f is a first ']' schema frame
-				in : push : . // pruning
-				else in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
-					do : send : ( TAKE, %? )
-				do : f : %?
-			else do : pop : OUT
+		else in ?:( *f, . ) // there is a next frame
+			// output event, unless *f is a first ']' schema frame
+			in : push : . // pruning
+			else in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
+				do : send : ( TAKE, %? )
+			do : f : %?
+
+		else on : .
+			in : record : (record,*)
+				do >&"(nop)\n"
+				do exit
+			else
+				do :< s, f >:< base, (record,*) >
+		else
+			do : pop : OUT
 
 	else on : ~.
 		// destroy the whole record structure, including rule
@@ -223,4 +215,12 @@
 	else on ~( record ) // next input-traversal cycle
 		// reset: we do not want base rule to catch this event
 		do :< record, %% >:< (record,*), IN >
+
+	else on init
+		// base rule definition must exist and have non-null schema
+		in (( Rule, base ), ( Schema, ~'\0' ))
+			do :< record, %% >:< (record,*), IN >
+		else
+			do >&"Error: Yak: base rule not found or invalid\n"
+			do exit
 

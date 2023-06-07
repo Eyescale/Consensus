@@ -80,6 +80,19 @@ bm_context_init( BMContext *ctx )
 	update_active( BMContextActive(ctx) );
 	db_init( db );
 }
+static inline void
+update_active( ActiveRV *active )
+{
+	CNInstance *proxy;
+	listItem **current = &active->value;
+	listItem **buffer = &active->buffer->deactivated;
+	while (( proxy = popListItem(buffer) ))
+		removeIfThere( current, proxy );
+	buffer = &active->buffer->activated;
+	while (( proxy = popListItem(buffer) ))
+		addIfNotThere( current, proxy );
+}
+
 int
 bm_context_update( CNEntity *this, BMContext *ctx )
 {
@@ -113,18 +126,6 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif
 	return DBExitOn( db );
-}
-static inline void
-update_active( ActiveRV *active )
-{
-	CNInstance *proxy;
-	listItem **current = &active->value;
-	listItem **buffer = &active->buffer->deactivated;
-	while (( proxy = popListItem(buffer) ))
-		removeIfThere( current, proxy );
-	buffer = &active->buffer->activated;
-	while (( proxy = popListItem(buffer) ))
-		addIfNotThere( current, proxy );
 }
 
 //===========================================================================

@@ -119,7 +119,7 @@ CND_ifn( mode==BM_STORY, EXPR_BGN )
 							*type = LOCALE;
 							TAB_CURRENT += TAB_SHIFT;
 							f_set( INFORMED )
-			on_( ':' ) if (!( *type==LOCALE || TAB_CURRENT )) {
+			on_( ':' ) if ( !(*type==LOCALE) && !TAB_CURRENT ) {
 					do_( ".id:" )	s_take
 							TAB_SHIFT = 0; }
 			end
@@ -271,31 +271,43 @@ CB_if_( ProtoSet, mode, data ) {
 				do_( "else" )	REENTER *type = ELSE; }
 		on_other	do_( same )	s_take
 		end
-	in_( "else" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "_expr" )	REENTER
-						TAB_CURRENT += TAB_SHIFT;
-						f_set( INFORMED )
-						s_reset( CNStringAll )
-		on_separator	; // err
-		on_other	do_( "cmd" )	REENTER
-						s_reset( CNStringAll )
-		end
-	in_( "%_" ) bgn_
-		on_( '(' )	do_( "_expr" )	s_take
-						f_push( stack )
-						f_reset( FIRST|SUB_EXPR, 0 )
-						TAB_CURRENT += TAB_SHIFT;
-						*type |= EN;
-		on_other	; // err
-		end
-	in_( "cmd_" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	; // err
-		on_other	do_( "_expr" )	REENTER
-						TAB_CURRENT += TAB_SHIFT;
-						s_reset( CNStringAll )
-		end
+		in_( "%_" ) bgn_
+			on_( '(' )	do_( "_expr" )	s_take
+							f_push( stack )
+							f_reset( FIRST|SUB_EXPR, 0 )
+							TAB_CURRENT += TAB_SHIFT;
+							*type |= EN;
+			on_other	; // err
+			end
+		in_( "cmd_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	; // err
+			on_other	do_( "_expr" )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+			end
+		in_( "else" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '.' )	do_( "else." )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+			on_( '\n' )	do_( "_expr" )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+							f_set( INFORMED )
+			on_separator	; // err
+			on_other	do_( "cmd" )	REENTER
+							s_reset( CNStringAll )
+			end
+		in_( "else." )
+CB_if_( OccurrenceAdd, mode, data ) {
+			bgn_
+				on_any	do_( "^." )	s_add( "." )
+							TAB_LAST = TAB_CURRENT;
+							TAB_CURRENT -= TAB_SHIFT;
+							TAB_CURRENT++;
+							TAB_BASE++;
+				end }
 	in_( "_expr" )
 CB_if_( OccurrenceAdd, mode, data ) {
 		bgn_

@@ -17,6 +17,7 @@ typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
 //===========================================================================
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
 static CNInstance * query_assignment( int, char *, BMQueryData * );
+static inline CNInstance * dotnext( CNDB *, listItem ** );
 static XPTraverseCB bm_verify;
 
 CNInstance *
@@ -47,16 +48,26 @@ bm_query( int type, char *expression, BMContext *ctx,
 
 	int privy = data.privy = ( type==BM_RELEASED ? 1 : 0 );
 	if ( !pivot_query( privy, expression, &data, bm_verify, NULL ) ) {
+		CNInstance *e;
 		listItem *s = NULL;
 		switch ( type ) {
 		case BM_CONDITION:
-			for ( CNInstance *e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
+			e = BMContextSelf( ctx );
+			if ( !db_private( 0, e, db ) ) {
+				listItem *i = newItem( e );
+				for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
+					if ( bm_verify( e, expression, &data )==BM_DONE ) {
+						freeListItem( &s );
+						freeItem( i );
+						return e; }
+				freeItem( i ); }
+			for ( e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
 				if ( bm_verify( e, expression, &data )==BM_DONE ) {
 					freeListItem( &s );
 					return e; }
 			return NULL;
 		default:
-			for ( CNInstance *e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
+			for ( e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
 					freeListItem( &s );
 					return e; }
@@ -85,6 +96,25 @@ bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 			return BM_DONE; } }
 	return BM_CONTINUE;
 }
+
+static inline CNInstance *
+dotnext( CNDB *db, listItem **stack ) {
+	if ( !*stack ) return NULL;
+	listItem *i = (*stack)->ptr;
+	CNInstance *e = i->ptr;
+	for ( i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
+		e = i->ptr;
+		if ( !db_private( 0, e, db ) ) {
+			addItem( stack, i );
+			return e; } }
+	while (( i = popListItem( stack ) ))
+		if (( i->next )) {
+			i = i->next;
+			e = i->ptr;
+			if ( !db_private( 0, e, db ) ) {
+				addItem( stack, i );
+				return e; } }
+	return NULL; }
 
 //===========================================================================
 //	pivot_query

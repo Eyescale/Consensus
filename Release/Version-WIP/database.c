@@ -517,12 +517,11 @@ CNInstance *
 DBNext( CNDB *db, CNInstance *e, listItem **stack )
 {
 	if ( e == NULL ) return NULL;
-	if (( e->as_sub[ 0 ] )) {
-		for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-			e = i->ptr;
-			if ( !db_private( 0, e, db ) ) {
-				addItem( stack, i );
-				return e; } } }
+	for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
+		e = i->ptr;
+		if ( !db_private( 0, e, db ) ) {
+			addItem( stack, i );
+			return e; } }
 	listItem *i = popListItem( stack );
 	for ( ; ; ) {
 		if (( i->next )) {
@@ -591,8 +590,8 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 		else {
 			if ( e==nil )
 				fprintf( stream, "\\(nil)" );
-			else if (( e->sub[0] ))
-				fprintf( stream, "@@@" ); // proxy
+			else if (( e->sub[0] )) // proxy
+				fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
 			else
 				fprintf( stream, "%s", DBIdentifier(e,db) );
 			return 0; } }
@@ -608,8 +607,8 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
-		else if (( e->sub[ 0 ] )) {
-			fprintf( stream, "@@@" ); } // proxy
+		else if (( e->sub[ 0 ] )) // proxy
+			fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
 		else {
 			char *p = DBIdentifier( e, db );
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))

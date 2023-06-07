@@ -50,10 +50,11 @@ Consensus B% Version-WIP
 		def	.id:
 			def$_
 			def$	def$_	base
-		cmd	_expr
+		cmd	%_	_expr
+			cmd_	_expr
 			else	cmd
 				_expr
-			cmd_	_expr
+				else.	^.
 		_expr	expr
 	expr	expr_	base
 			""

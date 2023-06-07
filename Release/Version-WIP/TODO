@@ -1,20 +1,18 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. calculator issue w/space => integrate in yak.story.NOTAKE
-	. implement 4_Yak/calculator-ui.story
-		. finish 4_Yak/Schemes/calculator => addition/multiplication + space
-	. implement calculator { add, mult, mem } using yak.bm
-		[WIP] just parser [./Examples/4_Yak/calculator-ui.story] => test Scheme
-		[TODO] then the real thing [./Examples/5_Maths/calculator.story]
+	. implement 4_Yak/calculator-ui.story { add, mult, mem } using yak.bm
+	. then the real thing [./Examples/5_Maths/calculator.story]
 	. interactive B% Grammar
-	. MISC:
-		. finish variable stack - might answer issue below
-			1. in .::expression << check we don't have (*,.) >> %. ?
-			2. possibly implement .locale: expression (?)
-		. Yak: investigate (: %term :), (:\(%term\):) kinda race condition
 
 DONE
-	. operation.c - do >:. now does >:~%(?,.):~%(.,?) // hardcoded
+	. implemented proxy Self traversal in query.c (not instantiate.c)
+	. allowed .locale declaration after else statement - cf yak.story
+		else .event
+			// processing
+	. in operation.c (hardcoded)
+		do >: .
+	  now does
+		do >: ~%(?,.):~%(.,?)
 	. made vector assignment truly distributive
 		do :< a, b, c >:< d, e, f >
 	. BM_INPUT / BM_LOAD: traverse_mode|=CLEAN => no call to p_filtered()
@@ -177,8 +175,12 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
-	. OPT: occurrence meta-characters ?:~ => ExpressionTake post-processing
-		meaning, per Term: Ternary, Filtered, Unmarked, Coupled
+	. on ~( %%, ?:TAKE ) < *yak
+		     ^---------- considered filtered!	
+	. finish variable stack - might answer issue below
+		1. in .::expression << check we don't have (*,.) >> %. ?
+		2. possibly implement .locale: expression (?)
+	  issue: Yak: investigate (: %term :), (:\(%term\):) kinda race condition
 	. Implement
 		in .:expression	// e.g. in .:: OUT
 			=> rebase perso for locale definition
@@ -196,39 +198,20 @@ NICE TO HAVE
 	. .locale: expression // initialization - use cases to be determined
 		on ~.				// == inactive
 		    =>	on/per ~. < src		// src can be determined
-	. yak.story optimization - e.g. null-schema DONE thread instances elimination
-	. yak.drive carry implementation
-	. on ~( %%, ?:TAKE ) < *yak
-		     ^---------- considered filtered!	
+	. OPT: occurrence meta-characters ?:~ => ExpressionTake post-processing
+		meaning, per Term: Ternary, Filtered, Unmarked, Coupled
 	. parser.c / narrative.c
 		NarrativeTake: on empty narrative: return Warning and just ignore
 		ProtoSet: set errnum on double-def / already registered
 	. locale variables: only on 'in_' and then attached to %?
-	. active/idle: want to be specific (e.g. just Take and Yak processes, not parent )
-	. implement in/on/do :: state
-		<=> in/on/do : %% : state
-	. DBFirst() DBNext() do not currently traverse any %(proxy,...)
-		Implementable by passing s=newItem(this) or s=newItem(self)
-		instead of s=NULL as argument - but is it something we want?
-	  Note that (proxy,.) are automatically deprecated (for proxy!=Self)
-		Still DBFirst() DBNext() traverse no proxy nor %(Self,...)
 	. do : var : %?	when %? is NULL
 		=> should it be equivalent to do : var : ~.
 		=> currently assignment fails
-	. support per ~.: . < ?
-		to identify all inactive cells among connections
-		currently only passes if ALL connected cells are inactive
 	. support per condition
 		complements per event < %%
 		but then we'd want to allow variable names in condition
 	. allow !! inside of expression instead of assignment only
 		requires changes in parser.c and instantiate.c
-	. do >: expression(s)
-		default format currently '_' but should it be 's'
-			would allow do >:'a' without SCE existing
-		could output only highest-level expression results
-			~%(?,.):~%(.,?)
-		could output proxy as (%@:*var) when assigned
 	. OPT verify_traversal
 		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
 		but actually we do have a pivot.e inside LIST_EXPR (?)

@@ -12,43 +12,16 @@
 #ifdef YAK_DRIVE
 #include "yak.bm"
 #else
-// #define DEFAULT
 // #define DEBUG
 :
-	on init
-		// base rule definition must exist and have non-null schema
-		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, %% >:< (record,*), IN >
-#ifdef DEFAULT
-		else
-			// default Scheme: dot-terminated number
-			do {
-				(( Rule, base ), ( Schema, (:%term:)))
-				(( Rule, term ), ( Schema, (:%int.:)))
-				(( Rule, int ), ( Schema, {
-					(:\d:), (:%int\d:) } )) }
-			do :< record, %% >:< (record,*), IN >
-#else
-		else
-			do >"Error: Yak: base rule not found or invalid\n"
-			do exit
-#endif
-
-	//--------------------------------------------------
-	//	INPUT
-	//--------------------------------------------------
-	else in : IN
-		on : . // start base rule instance - feeding base, also as subscriber schema
-			do (((rule,base), (']',*record)) | {
-				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
-				.( %|, base ) } )
-		else in .( ?, base )
+	in : IN
+		in .( ?, base )
 			%( . )
 			in ~.: .READY // sync based on rule schemas
 				in (.,%?): ~%(?,DONE)
 					in (.,%?): ~%(?,DONE): ~%(?,READY)
 					else do .READY // all feeder schemas ready
-				else on ~.: . < { ~(..), %% }
+				else on ~.: .
 					in ((.,%?),(']',(record,*)))
 						do ~( %?, base )
 					else in ((.,%?),('[',((record,*),.)))
@@ -84,22 +57,14 @@
 				do : record : %(*record:(?,.))
 				do : carry : %(*record:(.,?))
 			do : OUT
-
-	//--------------------------------------------------
-	//	OUTPUT
-	//--------------------------------------------------
+		else on : .
+			// start base rule instance - feeding base, also as subscriber schema
+			do (((rule,base), (']',*record)) | {
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+				.( %|, base ) } )
 	else in : OUT
 		.s .f .r
-		on : .
-			in : record : (record,*)
-				do >"(nop)\n"
-				do exit
-			else
-				do :< s, f >:< base, (record,*) >
-				in : carry : . // trim record
-					do ~( *record, . )
-
-		else on : pop : ? // popping argument = s's finishing frame, or OUT
+		on : pop : ? // popping argument = s's finishing frame, or OUT
 			in %?: OUT
 				in *f: (.,?:~EOF): ~(record,*)
 					do >"%s": %?
@@ -181,18 +146,23 @@
 				do : s : %?
 			else do : pop : %?
 
-		else // moving on
-			in ?:( *f, . ) // there is a next frame
-				// output event, unless *f is a first ']' schema frame
-				in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
-					do >"%s": %(*f:(.,?))
-				do : f : %?
-			else
-				do : pop : OUT
+		else in ?:( *f, . ) // there is a next frame
+			// output event, unless *f is a first ']' schema frame
+			in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
+				do >"%s": %(*f:(.,?))
+			do : f : %?
 
-	//--------------------------------------------------
-	//	TRANSITION
-	//--------------------------------------------------
+		else on : .
+			in : record : (record,*)
+				do >"(nop)\n"
+				do exit
+			else
+				do :< s, f >:< base, (record,*) >
+				in : carry : . // trim record
+					do ~( *record, . )
+		else
+			do : pop : OUT
+
 	else on : ~.
 		// destroy the whole record structure, including rule
 		// and schema instances - all in ONE Consensus cycle
@@ -204,13 +174,21 @@
 		// reset: we do not want base rule to catch this frame
 		do :< record, %% >:< (record,*), IN >
 
+	else on init
+		// base rule definition must exist and have non-null schema
+		in (( Rule, base ), ( Schema, ~'\0' ))
+			do :< record, %% >:< (record,*), IN >
+		else
+			do >"Error: Yak: base rule not found or invalid\n"
+			do exit
+
 #endif // YAK_DRIVE
 
-/*===========================================================================
+/*---------------------------------------------------------------------------
 |
 |	yak.story input schema threads sub-narrative definition
 |
-+==========================================================================*/
++--------------------------------------------------------------------------*/
 // #define MEMOPT
 
 .s: ((( schema, .p ), .f ), .r )
@@ -222,12 +200,8 @@
 	else in ~.: (r,.) // all r subscribers failed
 		do ~( r )
 #endif
-	else
-	//--------------------------------------------------
-	//	s PENDING ON RULE
-	//--------------------------------------------------
-+	.q
-	in .( ?, s ) // s is pending on rule
+	else .q
++	in .( ?, s ) // s is pending on rule
 		on ~.: .
 			do >&"Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 			do .EXIT
@@ -251,13 +225,10 @@
 					else do .READY // all non-cyclic rule schemas ready
 				else // all non-cyclic rule schemas complete or non-existing
 					do ( .CYCLIC ? .EXIT : .(.,r) ? .DONE : .EXIT )
-
 	else on ~( .(.,s) ) // feeder rule failed
 		do .EXIT
-	//--------------------------------------------------
-	//	s TERMINATED
-	//--------------------------------------------------
-	else in .DONE
+
+	else in .DONE // s is terminated
 #ifdef MEMOPT
 		on (((.,'\0'),.),r:%((.,f),?)) // r's completion guaranteed and
 			do .EXIT // r has other feeder started at same start frame
@@ -272,15 +243,11 @@
 					do .EXIT // defunct
 		else on ( (r,base) ? ( (?,r):~%(?,(.,r)):~s, DONE ) :)
 			do .EXIT // redundant
+	else on .( /[[\]]/, . )
+		do .DONE // terminating
 
-	else on .( /[[\]]/, . ) // s terminated
-		do .DONE
-	else
-	//--------------------------------------------------
-	//	s PENDING ON EVENTS
-	//--------------------------------------------------
-+	.event
-	in .READY
+	else .event
++	in .READY // s is pending on user input = event
 		on : record : (.,?)
 			do ~( .READY )
 			do : event : %?
@@ -356,11 +323,9 @@
 				do >"Error: Yak: rule '%_' not found or invalid\n": %?
 				do .EXIT
 		else do .READY
-	else
-	//--------------------------------------------------
-	//	s INIT
-	//--------------------------------------------------
-+	on ( s )
+
+	// s init
+	else on ( s )
 		// schema is in null position AND has predecessor
 		in ( p:'\0' ? ((.,r), s ) :)
 			do .( f ) // TAKE as-is
