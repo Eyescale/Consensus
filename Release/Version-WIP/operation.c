@@ -343,7 +343,7 @@ do_output( char *expression, BMContext *ctx )
 		>:
 		>: expression
 		>: < expression1, expression2, ... >
-	resp.	>& instead of >
+	resp. >& instead of >
 
 	then outputs expression(s) to stdout resp. stderr
 	according to fmt

@@ -136,9 +136,12 @@ CB_ModCharacterCB			f_cls; p++; break; }
 					f_next |= is_f(SET|SUB_EXPR|MARKED);
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
-					p++;
-CB_TermCB				if ( *p==':' ) p++;
-					break; }
+					if ( p[1]==':' ) {
+						p+=2;
+						break; }
+					else {
+						p++;
+CB_TermCB					break; } }
 			case ':':
 				if ( p[1]=='<' ) {
 					f_clr( NEGATED|INFORMED|FILTERED )

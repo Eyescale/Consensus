@@ -14,5 +14,7 @@
 		(:%number + %number:)
 		(:%addition + %number:)
 		(:%multiplication + %number:)
+		(:%number + %multiplication :)
+		(:%multiplication + %multiplication :)
 	} ))
 	(( Rule, number ), ( Schema, (:\i:) ))

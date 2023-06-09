@@ -2,5 +2,5 @@
 	on init
 		do (( a, ... ), <b,c>)
 	else
-		do >: ~%(?,.):~%(.,?)
+		do >: .
 		do exit

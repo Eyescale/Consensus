@@ -215,6 +215,20 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 			fprintf( stream, "%c", q.value );
 		return 0; }
 
+#ifdef SUBSTITUTION
+	if ( !strncmp(arg,"%/",2) ) {
+		we have arg: %/expr1/expr2/
+
+		1. resolve expr1 (already deternarized)
+		2. for each result (reordered)
+			context_mark / result
+			deternarize expr2
+			call bm_output() on deternarized expression
+			context_unmark ( result )
+		   end for
+	}
+#endif
+
 	OutputData data = { stream, type, 1, NULL };
 
 	// special case: EEnoRV as-is

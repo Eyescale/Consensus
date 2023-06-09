@@ -4,35 +4,47 @@
 |
 +==========================================================================*/
 : Yak
-	in : IN  // input
+	on init
+		// base rule definition must exist and have non-null schema
+		in (( Rule, base ), ( Schema, ~'\0' ))
+			do :< record, %% >:< (record,*), IN >
+		else
+			do >&"Error: Yak: base rule not found or invalid\n"
+			do ( .., ERR )
+
+	else on exit < ..
+		do exit
+
+	else in : IN  // input
 		in .( ?, base )
 			%( . )
-			in ~.: .READY
-				in (.,%?): ~%(?,DONE)
-					in (.,%?): ~%(?,DONE): ~%(?,READY)
-					else do .READY // all feeder schemas ready
-				else on ~.: . < { ~(..), %% }
-					in ((.,%?),(']',(record,*)))
-						do ~( %?, base )
-					else in ((.,%?),('[',((record,*),.)))
-						do ~( %?, base )
-					else in ~.: ((.,%?),(/[[\]]/,.))
-						do ~( %?, base )
-					else
-						do ( .., IN ) // notify traversal
-						do : OUT
-			else on .READY
-				do ( .., READY )
-			else on : input : ? < ..
-				// could do some preprocessing here
-				do : record : (*record,%<?>)
-			else on : input : ~. < ..
-				do : record : (*record,EOF)
-			else on : record : .
-				do ~( .READY )
+			in .READY
+				on ~( %%, ? ) < ..
+					do : record : (*record,%<?>)
+				else on : record : .
+					do ~( .READY )
+			else in (.,%?): ~%(?,DONE)
+				in (.,%?): ~%(?,DONE): ~%(?,READY)
+				else // all feeder schemas ready
+					do ( .., READY ) // notify ready
+					do .READY
+			else on ~.: . < { %%, .. }
+				in ((.,%?),(']',(record,*)))
+					do ~( %?, base )
+				else in ((.,%?),('[',((record,*),.)))
+					do ~( %?, base )
+				else in ~.: ((.,%?),(/[[\]]/,*record))
+					do ~( %?, base )
+				else
+					do ( .., IN ) // notify traversal
+					do :< %%, pending >:< OUT, READY >
 		else on ~( ., base ) // FAIL
-			do ( .., OUT ) // notify failure
-			do : OUT
+			in : record : (record,*)
+				do >&"(nop)\n"
+				do ( .., ERR )	// nop
+			else
+				do ( .., OUT ) // notify failure
+				do : REC
 		else on : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
@@ -40,44 +52,36 @@
 
 	else in : OUT  // traversal
 		.s .f .r
-		in : send : ?
+		on : .
+			do :< s, f >:< base, (record,*) >
+
+		else in : pending : ?
 +
-		on %! // sending notification to parent(=driver)
-			in %?:( TAKE, ? )
-				do (( .., TAKE ), %? )
-			else in %?:( IN, ? )
-				do (( .., IN ), %(((.,?),.):%(%?:(.,?))) )
-			else in %?:( OUT, ? )
-				do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
-			else in %?: OUT
-				do ( .., OUT )
-				// in this case, not waiting for response
-				do :< f, send >: ~.
-				do : pop : OUT
-			else in %?: ( CARRY, . )
-				do (( .., CARRY ), %(%?:(.,?)) )
-				// in this case, not waiting for response
-				do : f : ~.
-				do ~( %? ) // releases send condition
-				do : pop : OUT
-		else on ~( %%, ? ) < .. // on parent(=driver)'s response
+		on ~( %%, ? ) < .. // on parent(=driver)'s signal
 			in %<?:( DONE )> // no matter what
-				do :< f, send >: ~.
-				do : pop : OUT
+				do ~( OUT, . )
+				do ~( IN, . )
+				do : ~.
+			else in %?: READY // ready to start
+				in %<?:( FLUSH )>
+					do ( .., OUT )
+					do : REC
+			else in %?: OUT
+			else in %?: ( CARRY, . )
 			else in %?:( TAKE, . ) // after take notification
 				in : pop : ? // popping anyway
-					do : send : ((%?:OUT) ?: (OUT,%?))
+					do : pending : ((%?:OUT) ?: (OUT,%?))
 					do : pop : ~.
 				else in : push : OUT // leaving anyway
-					do : send : OUT
+					do : pending : OUT
 					do : push : ~.
 				else in : push : ?
 					in %<?:( CONTINUE )>
-						do : send : (IN,%?)
+						do : pending : (IN,%?)
 						do : push : ~.
 					else
 						do :< s, r >:< %?, %(%?:(.,?)) >
-						do : push : (OUT,OUT)
+						do : push : ( OUT, OUT )
 				else in %<?:( PRUNE )>
 					do : push : OUT
 			else in %?:( IN, ? ) // after push notification
@@ -89,18 +93,25 @@
 				in %<?:( PRUNE )>
 					do : push : OUT
 			do ~( %? )
+		else on %! // send pending notification to parent(=driver)
+			in %?:( TAKE, ? )
+				do (( .., TAKE ), %? )
+			else in %?:( IN, ? )
+				do (( .., IN ), %(((.,?),.):%(%?:(.,?))) )
+			else in %?:( OUT, ? )
+				do (( .., OUT ), %(((.,?),.):%(%?:(.,?))) )
+			else in %?: OUT
+				do ( .., OUT )
+			else in %?: ( CARRY, . )
+				do (( .., CARRY ), %(%?:(.,?)) )
 -
 		else on : pop : ? // argument = s terminating frame, or OUT
 			in %?: OUT
-				in *f: (.,?:~EOF): ~(record,*)
-					in : push : . // pruning
-						do : send : OUT
-					else
-						do :< send, push >:<( TAKE, %? ), OUT >
-				else
-					do :< push, %% >: ~.
-					do ~( OUT, . )
-					do ~( IN, . )
+				in : push : . // pruning
+					do : pending : OUT
+				else in *f: (.,?:~EOF): ~(record,*)
+					do :< pending, push >:<( TAKE, %? ), OUT >
+				else do : pending : OUT
 				do : pop : ~.
 			else in ~.: ( *r, base )
 				/* set s to the successor of the schema which the current r
@@ -116,9 +127,9 @@
 						do : push : ~.
 						// output current schema's last event, if consumed
 						in ( *s:(((.,~'\0'),.),.), (']',~(record,*)) )
-							do :< send, pop >:<( TAKE, %(*f:(.,?)) ), %? >
+							do :< pending, pop >:<( TAKE, %(*f:(.,?)) ), %? >
 						else
-							do : send : ( OUT, %? )
+							do : pending : ( OUT, %? )
 							do : pop : ~.
 				else // no such successor: we should have (*r,base)
 					do >&" *** Error: Yak: rule '%_': "
@@ -129,16 +140,16 @@
 				// output current schema's last event, if consumed
 				in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
 					in : push : . // pruning
-						do : send : OUT
-					else do :< send, pop >:<( TAKE, %? ), OUT >
+						do : pending : OUT
+					else do :< pending, pop >:<( TAKE, %? ), OUT >
 				else in %?: ('[',.) // completed unconsumed
 					in : f : (.,?:~EOF)
-						do :< send, pop >:<( CARRY, %? ), OUT >
-					else do : send : OUT
+						do : pending : ( CARRY, %? )
+					else do : pending : OUT
 				else in ( *f, ?:~EOF )
 					//right-recusive case: completes on failing next frame
-					do :< send, pop >:<( CARRY, %? ), OUT >
-				else do : send : OUT
+					do : pending : ( CARRY, %? )
+				else do : pending : OUT
 
 		// s has rule with event to-be-consumed starting this frame => pushing or popping
 		else in ( (.,?:('[',*f)):~*r, *s )
@@ -146,7 +157,7 @@
 			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
 				in : push : . // pruning
 					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
-				else do : send : ( IN, %? )
+				else do : pending : ( IN, %? )
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
 				do : s : %?
@@ -160,22 +171,21 @@
 					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
 				// output current schema's last event, providing it's not also starting
 				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
-					do :< send, push >:<( TAKE, %(*f:(.,?)) ), %? >
-				else do : send : ( IN, %? )
+					do :< pending, push >:<( TAKE, %(*f:(.,?)) ), %? >
+				else do : pending : ( IN, %? )
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
 				// output current schema's last event, providing it's not also starting
 				in : push : . // pruning
 				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
-					do : send : ( TAKE, %(*f:(.,?)) )
+					do : pending : ( TAKE, %(*f:(.,?)) )
 				do : s : %?
 			// s has sibling starting and not finishing at s's post-finishing frame, unconsumed
 			else in ?: ((.,('[',(*f,.))), *r ): ~%(?,('[',(*f,.))): ~*s
 				// output current schema's last event, providing it's not also starting
 				in : push : . // pruning
 				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
-					do >&"TAKE 5: %_\n": %(*f:(.,?))
-					do : send : ( TAKE, %(*f:(.,?)) )
+					do : pending : ( TAKE, %(*f:(.,?)) )
 				do : s : %?
 			else do : pop : %?
 
@@ -185,7 +195,7 @@
 				// output current schema's last event, if consumed
 				in : push : . // pruning
 				else in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
-					do : send : ( TAKE, %(%?:(.,?)) )
+					do : pending : ( TAKE, %(%?:(.,?)) )
 				do : s : %?
 			else do : pop : %?
 
@@ -193,34 +203,37 @@
 			// output event, unless *f is a first ']' schema frame
 			in : push : . // pruning
 			else in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
-				do : send : ( TAKE, %? )
+				do : pending : ( TAKE, %? )
 			do : f : %?
-
-		else on : .
-			in : record : (record,*)
-				do >&"(nop)\n"
-				do exit
-			else
-				do :< s, f >:< base, (record,*) >
 		else
 			do : pop : OUT
 
+	else in : REC  // traverse record
+		.f
+		in : pending : ?
+			on ~( %%, ? ) < .. // on parent(=driver)'s signal
+				in %<?:( CONTINUE )>
+					in %?: READY
+						do : f : %((record,*), . )
+						do : pending : ~.
+					else in ?: ( *f, . )
+						do : f : %?
+						do : pending : ~.
+					else
+						do ( .., OUT )
+						do : pending : READY
+				else do :< pending, %% >: ~.
+		else on : f : ( ., ? )
+			do (( .., TAKE ), %? )
+			do : pending : TAKE
+		else on : .
+			do : pending : READY
 	else on : ~.
 		// destroy the whole record structure, including rule
 		// and schema instances - all in ONE Consensus cycle
-		in : record : ~(.,EOF)
-			do ~( record )
-		else do exit
+		do ~( record )
 
 	else on ~( record ) // next input-traversal cycle
 		// reset: we do not want base rule to catch this event
 		do :< record, %% >:< (record,*), IN >
-
-	else on init
-		// base rule definition must exist and have non-null schema
-		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, %% >:< (record,*), IN >
-		else
-			do >&"Error: Yak: base rule not found or invalid\n"
-			do exit
 

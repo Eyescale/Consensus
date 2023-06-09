@@ -13,7 +13,7 @@
 		do >"Self-assigned: %_\n": %(:?)
 		do :( %(:1) ? 2 : 3 )
 	else on :2
-		do >"Bye\n"
+		do >"all good - Bye\n"
 		do exit
 	else
 		do >"failed\n"

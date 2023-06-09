@@ -14,7 +14,15 @@
 #else
 // #define DEBUG
 :
-	in : IN
+	on init
+		// base rule definition must exist and have non-null schema
+		in (( Rule, base ), ( Schema, ~'\0' ))
+			do :< record, %% >:< (record,*), IN >
+		else
+			do >"Error: Yak: base rule not found or invalid\n"
+			do exit
+
+	else in : IN
 		in .( ?, base )
 			%( . )
 			in ~.: .READY // sync based on rule schemas
@@ -174,13 +182,6 @@
 		// reset: we do not want base rule to catch this frame
 		do :< record, %% >:< (record,*), IN >
 
-	else on init
-		// base rule definition must exist and have non-null schema
-		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, %% >:< (record,*), IN >
-		else
-			do >"Error: Yak: base rule not found or invalid\n"
-			do exit
 
 #endif // YAK_DRIVE
 
@@ -202,7 +203,7 @@
 #endif
 	else .q
 +	in .( ?, s ) // s is pending on rule
-		on ~.: .
+		on ~.: . < { %%, .. }
 			do >&"Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 			do .EXIT
 		else in .DONE

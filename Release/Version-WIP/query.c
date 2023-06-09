@@ -471,9 +471,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	if ((data->stack.scope) || (data->stack.base)) {
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
 		exit( -1 ); }
-#if 0
 	fprintf( stderr, "xp_verify:........} success=%d\n", success );
-#endif
 #endif
 	return success;
 }
@@ -623,7 +621,7 @@ case_( open_CB )
 	if ( f_next & ASSIGN ) {
 		listItem **stack = &data->stack.exponent;
 		xpn_add( stack, AS_SUB, 0 );
-		switch ( match( data->instance, p+1, data->base, data ) ) {
+		switch ( match( data->instance, p, data->base, data ) ) {
 		case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
 			_prune( BM_PRUNE_FILTER ) }
