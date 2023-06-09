@@ -1,7 +1,7 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. implement 4_Yak/calculator-ui.story { add, mult, mem } using yak.bm
-	. then the real thing [./Examples/5_Maths/calculator.story]
+	. complete calculator scheme - missing: parentheses, mem
+	. implement ./Examples/5_Maths/calculator.story
 	. interactive B% Grammar
 
 DONE

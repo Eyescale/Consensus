@@ -211,18 +211,20 @@
 	else in : REC  // traverse record
 		.f
 		in : pending : ?
-			on ~( %%, ? ) < .. // on parent(=driver)'s signal
-				in %<?:( CONTINUE )>
-					in %?: READY
-						do : f : %((record,*), . )
-						do : pending : ~.
-					else in ?: ( *f, . )
-						do : f : %?
-						do : pending : ~.
-					else
-						do ( .., OUT )
-						do : pending : READY
-				else do :< pending, %% >: ~.
++
+		on ~( %%, ? ) < .. // on parent(=driver)'s signal
+			in %<?:( CONTINUE )>
+				in %?: READY
+					do : f : %((record,*), . )
+					do : pending : ~.
+				else in ?: ( *f, . )
+					do : f : %?
+					do : pending : ~.
+				else
+					do ( .., OUT )
+					do : pending : READY
+			else do :< pending, %% >: ~.
+-
 		else on : f : ( ., ? )
 			do (( .., TAKE ), %? )
 			do : pending : TAKE

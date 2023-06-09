@@ -50,10 +50,8 @@
 			// yak failed to recognize input
 			in check
 				do : FLUSH
-			else in : input : '\n'
-				do : %(:?) // reenter
+			else
 				do ( *yak, DONE )
-			do ~( check )
 		else on ~( %%, ERR ) < *yak
 			do exit
 
@@ -99,28 +97,26 @@
 	else in : FLUSH
 		on : . // output error
 			in check
-//				do >"yak-drive >"
-				do >"           "
-			else
 				do >"\x1B[1;33m"
 				    "~~~~~~~~~~~"
+			else	do >"           "
+//				do >"yak-drive >"
 			do ( *yak, CONTINUE )
 		else on ~( %%, TAKE ) < ?:*yak
-			do >"%s": ( check ? ' ' : '~' )
+			do >"%s": ( check ? '~' : ' ' )
 			do ( %<, CONTINUE )
 		else on ~( %%, OUT ) < *yak
 			in check
-				in : input : '\n'
+				do >"^\n"
+				do ~( check )
+				do : %(:?) // reenter
+			else in : input : ?
+				in %?: '\n'
 					do >"  incomplete"
 					    "\x1B[0m\n"
 				else	do >"  ?"
 					    "\x1B[0m\n"
-				do : input : *input
-				do ~( check )
-			else
-				do >"^\n"
-				do check
-				do : %(:?) // reenter
+				do : input : %?
 		else on : input : ?
 			in : input : ~'\n'
 				do input : "%c" <
