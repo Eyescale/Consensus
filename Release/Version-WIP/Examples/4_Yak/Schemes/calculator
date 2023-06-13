@@ -1,20 +1,39 @@
+/*---------------------------------------------------------------------------
+|
+|			caculator Scheme
+|
++---------------------------------------------------------------------------/
+/*
+	instantiates the following hierarchy (from left to right):
 
+				     number -> \i
+				   /
+		              term -> ( sum )	     number -> \i
+			    /                      /
+	base -> sum -> part -> mult -> term * term -> ( sum )
+			    +                      *
+		              part                   term
+			           +                      *
+		                     ...                    ...
+*/
 	(( Rule, base ), ( Schema, {
-		(: %operation :)
+		(: %sum :)
 	} ))
-	(( Rule, operation ), ( Schema, {
-		(:%multiplication:)
-		(:%addition:)
+	(( Rule, sum ), ( Schema, {
+		(:%part:)
+		(:%sum + %part:)
 	} ))
-	(( Rule, multiplication ), ( Schema, {
-		(:%number * %number:)
-		(:%multiplication * %number:)
+	(( Rule, part ), ( Schema, {
+		(:%mult:)
+		(:%term:)
 	} ))
-	(( Rule, addition ), ( Schema, {
-		(:%number + %number:)
-		(:%addition + %number:)
-		(:%multiplication + %number:)
-		(:%number + %multiplication :)
-		(:%multiplication + %multiplication :)
+	(( Rule, mult ), ( Schema, {
+		(:%term * %term:)
+		(:%mult * %term:)
+	} ))
+	(( Rule, term ), ( Schema, {
+		(:%number:)
+		(:\( %sum \):)
 	} ))
 	(( Rule, number ), ( Schema, (:\i:) ))
+

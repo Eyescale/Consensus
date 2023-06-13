@@ -1,123 +1,13 @@
-:
-	on init
-		do : dial : !! Dial((:0123456789:),OPT)
-		do : X : ((X,...):1230456:)
-		do : Y : ((Y,...):9870654:)
-		do : Z : ((Z,...)::)
-		do : INIT
-	else in : INIT
-		do : MULT
-		in (((X,*),.),.)
-			do :< P, q >:< *X, *Y >
-		else	do :< P, q >:< *Y, *X >
-	else in : MULT
-		on ~( %%, MULT ) < ?  // read operation's results
-			do :< c, v >: %<(!,?:...)>
-		else on : v : ?
-			do : r : ( *r, %? )	// inform r
-			in : p : ( ?:~(.,*), . )
-				do : p : %?
-			else
-				do : p : ~.
-		else on : p : (.,?)  // dial next digit(s) operation
-			do (( *dial, ... ),< MULT, %?, %(*q:(.,?)), *c >)
-		else on : p : ~.
-			in : c : (?:~0)
-				do : r : ( *r, %? )
-			do : MSUM
-		else on : .
-			do :< p, c, r >:< *P, 0, (r,*) >
-	else in : MSUM
-		/* we have
-			: r : (( r, * ), ... )	// input
-			: s : (( s, * ), ... )  // done digits
-			: t : (( t|u, * ), ... ) // in construction
-			: u : ( u|t, * ) // ... t and u alternating
-		*/
-		on ~( %%, MSUM ) < ?  // read digit-sum operation's results
-			do :< c, v >: %<(!,?:...)>
-		else on : v : ?
-			in : r : ((.,*),.) // first digit-sum result goes to s
-				do : s : ( *s, %? )
-				do ~( *u, . )  // clear (u,*)
-			else
-				do : u : ( *u, %? ) // build new u
-
-			in ?:( *r, . )
-				do : r : %?
-				// Note: r may have one more digit than t (but not more)
-				in ?:( *t, . )
-					do : t : %?
-				else
-					do (( *dial, ... ),< MSUM, %(%?:(.,?)), 0, *c >)
-			else
-				do : r : ~.
-		else on : r : ~.
-			do ~((r,*),.)  // clear (r,*)
-			in : q : ( ?:~(.,*), . )
-				in : c : (?:~0)  // finish u
-					do : u : ( *u, %? )
-				do : MULT
-				do : q : %?
-			else
-				do ~( %((.,*):%((?,...):*t)) )
-				in : c : (?:~0)
-					do : t : ( *u, %? )
-				else do : t : *u
-				do : FORMAT
-		else on : t : ?
-			do (( *dial, ... ),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
-		else on : .
-			do : c : 0
-			in ~.: u  // very first round: separate r into s and u
-				in ?:((r,*),.)
-					do : s : ((s,*),%(%?:(.,?)))
-					do : t : (t,*)
-					in ( %?, . )  // r has more than one digit
-						do : u : (((u,*),...),%(%?,?:...))
-						do : r : ~.
-					else  // both X and Y are one digit - and no carry
-						do : FORMAT
-						do ~( %? )
-			else
-				// swap t and u from last round
-				do : t : %(((.,*),.):%((?,...):*u))
-				do : u : %((.,*):%((?,...):*t))
-				do : r : %(( r, * ), . )
-	else in : FORMAT
-		on : r : ?
-			in %?: ~(.,*)  // inform Z from t then s
-				do : Z : ( *Z, %(%?:(.,?)) )
-				do : r : %(%?:(?,.))
-			else in %?: ~(s,.)
-				do ~( %? )
-				do : r : *s
-			else
-				do ~( %? )
-				do : OUTPUT
-		else on : .
-			do : r : *t
-	else in : OUTPUT
-		on : p : (.,?)
-			do > "%s" : %?
-			in ?: ( *p, . )
-				do : p : %?
-			else in : q : X
-				do > " x "
-				do : p : %((Y,*), . )
-				do : q : Y
-			else in : q : Y
-				do > " = "
-				do : p : %((Z,*), . )
-				do : q : Z
-			else
-				do > "\n"
-				do exit
-		else on : .
-			do >"\t"
-			do : p : %((X,*), . )
-			do : q : X
-
+/*
+	Uses pre-instantiated literal - aka. dial - e.g.
+		(:0123456789:)	==	0 --+---v
+					    1 --+---v
+						2 --+---v
+						    3 --+---v
+							... +---v
+							    9 --+--\0
+	to perform arithmetic operations
+*/
 : Dial
 	in : MSUM	// add q to p via n
 		on : n : ? 
@@ -233,11 +123,20 @@
 		on : r : ?
 			in ( X ? (%?:*X) : (%?:*p) ) // r reaches X=neg(p) resp. p before i reaches center
 				in ( X )
+#ifdef DEBUG
+					do >"_"
+#endif
 					do : MAXX
 					do : t : %(?,(%?,.))	// t is MAXX's argument to MSUB
 				else
+#ifdef DEBUG
+					do >"|"
+#endif
 					do : MADD	// as is
 			else in : i : *n  // i reaches center
+#ifdef DEBUG
+				do >"%s": ( X ? '-' : '!' )
+#endif
 				do : MCEN
 				do : t : %(?,(%?,.))	// t is MCEN's argument to MADD/MSUB
 				do : r : 0		// r is MCEN's alternator
@@ -247,6 +146,9 @@
 				do : n : %(?,(*n,.))	// decrement n
 		else on : i : ?
 			in %?: *n			// center reached
+#ifdef DEBUG
+				do >"."
+#endif
 				do : MCEN
 			else in %?: *p			// p reached
 				do : r : 1
@@ -270,14 +172,26 @@
 			else do : i : %(%?,(?,.))
 		else on : .
 			in ((*p:0)?:(*q:0))
+#ifdef DEBUG
+				in ( OPT ? (*q:~0:~1:~%(?,'\0')) :)
+					do >" "
+#endif
 				do (( .., ... ),< MULT, 0, *c >) // notify result
 				do : ~.
 			else in *p: %(?,'\0')
+#ifdef DEBUG
+				in ( OPT ? (*q:~1:~%(?,'\0')) :)
+					do >" "
+#endif
 				do : p : *q
 				do : MAXX
 			else in *q: %(?,'\0')
 				do : MAXX
 			else in *p: 1
+#ifdef DEBUG
+				in ( OPT ? (*q:~1) :)
+					do >" "
+#endif
 				do : p : *q
 				do : MADD
 				do : i : 0

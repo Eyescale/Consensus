@@ -4,15 +4,13 @@
 |
 +==========================================================================*/
 /*
-	Usage
-		../../B% -f Schemes/file yak.story < input
-	 or
-		as driver interface - see yak-drive.story
+   Usage
+	../../B% -f Schemes/file yak.story < input
+   Purpose
+	general Scheme testing
 */
-#ifdef YAK_DRIVE
-#include "yak.bm"
-#else
 // #define DEBUG
+#define PROMPT
 :
 	on init
 		// base rule definition must exist and have non-null schema
@@ -46,6 +44,10 @@
 					do : input : %?
 					do : carry : ~.
 				else
+#ifdef PROMPT
+					in ~.: : input : ~'\n'
+						do >&"yak > "
+#endif
 					do input:"%c"<
 			else on : input : ?
 #ifdef DEBUG
@@ -176,162 +178,21 @@
 		// and schema instances - all in ONE Consensus cycle
 		in : record : ~(.,EOF)
 			do ~( record )
-		else do exit
+		else
+#ifdef PROMPT
+			do >&"  \n" // wipe out ^D
+#endif
+			do exit
 
 	else on ~( record ) // next input-traversal cycle
 		// reset: we do not want base rule to catch this frame
 		do :< record, %% >:< (record,*), IN >
 
-
-#endif // YAK_DRIVE
-
 /*---------------------------------------------------------------------------
 |
-|	yak.story input schema threads sub-narrative definition
+|	yak input schema threads sub-narrative definition
 |
 +--------------------------------------------------------------------------*/
-// #define MEMOPT
-
-.s: ((( schema, .p ), .f ), .r )
-	on .EXIT
-		in ~.: (.,r): ~%(?,EXIT) // all r feeder schemas failed
-			do ~( r )
-		else do ~( s )
-#ifdef MEMOPT
-	else in ~.: (r,.) // all r subscribers failed
-		do ~( r )
-#endif
-	else .q
-+	in .( ?, s ) // s is pending on rule
-		on ~.: . < { %%, .. }
-			do >&"Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
-			do .EXIT
-		else in .DONE
-			on ~( .(.,r) )
-				in .(.,r) // s still has successor
-				else do .EXIT // defunct
-		else in .READY
-			on : record : .
-				do ~( .READY )
-		else	// expecting TAKE from rule schemas
-			on ((.,%?), ?:('[',.)) // TAKE: launch successor schema(s)
-				do .(((schema, %(*q:(.,?))), %? ), r )
-				on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
-					do .(((schema, %(*q:(.,?))), %? ), r )
-			else on ((.,%?), ?:(']',.)) // TAKE: launch successor schema
-				do .(((schema, %(*q:(.,?))), %? ), r )
-			else // sync based on rule schemas
-				in (.,%?): ~%(?,CYCLIC): ~%(?,DONE)
-					in (.,%?): ~%(?,CYCLIC): ~%(?,DONE): ~%(?,READY)
-					else do .READY // all non-cyclic rule schemas ready
-				else // all non-cyclic rule schemas complete or non-existing
-					do ( .CYCLIC ? .EXIT : .(.,r) ? .DONE : .EXIT )
-	else on ~( .(.,s) ) // feeder rule failed
-		do .EXIT
-
-	else in .DONE // s is terminated
-#ifdef MEMOPT
-		on (((.,'\0'),.),r:%((.,f),?)) // r's completion guaranteed and
-			do .EXIT // r has other feeder started at same start frame
-		else on ~( %(r,?), . ) // r's subscribers connections changed
-#else
-		on ~( %(r,?), . ) // r's subscribers connections changed
-#endif
-			in ( %(r,?), ((.,%(.?)),.) )
-			else // none of r's subscribers has a successor starting at s's finish frame
-				in ((.,%(.?)), r ) :~s
-				else // r has no feeder other than s starting at s's finish frame
-					do .EXIT // defunct
-		else on ( (r,base) ? ( (?,r):~%(?,(.,r)):~s, DONE ) :)
-			do .EXIT // redundant
-	else on .( /[[\]]/, . )
-		do .DONE // terminating
-
-	else .event
-+	in .READY // s is pending on user input = event
-		on : record : (.,?)
-			do ~( .READY )
-			do : event : %?
-	else on : event : .
-		in : q : '\0'
-			do .( '[', *record ) // terminate, unconsumed
-		else in : q : (?,.) // expected @ current, not terminating position
-			in %?: ( %, ? )
-				in (( Rule, %? ), ( Schema, ~'\0' ))
-					in ?: ((rule,%?), ('[',*record)) // rule already instantiated
-						do .( %?, s )
-						do ( %?:r ? .CYCLIC :)
-					else do ( ((rule,%?), ('[',*record)) | {
-						(((schema, %((Rule,%?),(Schema,?))), %(%|:(.,?))), %| ),
-						.( %|, s ) } )
-				else
-					do >"Error: Yak: rule '%_' not found or invalid\n": %?
-					do .EXIT
-			else in %?: ( '\\', ? )
-				in %?: i
-					in : event : /[0-9]/
-						do .check
-						do .READY
-					else in .check
-						do ~( .check )
-						do : event : *event // REENTER
-						do : q : %(*q:(.,?))
-					else do .EXIT // FAIL
-				else in %?: d
-					in : event : /[0-9]/
-						do : q : %(*q:(.,?))
-					else do .EXIT // FAIL
-				else in %?: w
-					in : event : /[A-Za-z0-9_]/
-						do .check
-						do .READY
-					else in .check
-						do ~( .check )
-						do : event : *event // REENTER
-						do : q : %(*q:(.,?))
-					else do .EXIT // FAIL
-				else in %?: 0
-					in : event : '\0'
-						do : q : %(*q:(.,?))
-					else do .EXIT // FAIL
-				else in : event : %?
-					do : q : %(*q:(.,?))
-				else do .EXIT // FAIL
-			else in %?: ' '
-				in : event : /[ \t]/
-					do .READY
-				else
-					do : event : *event // REENTER
-					do : q : %(*q:(.,?))
-			else in : event : %?
-				do : q : %(*q:(.,?))
-			else do .EXIT // FAIL
-		else // *q is a base entity (singleton) other than '\0'
-			do >"Error: Yak: %_-terminated schema not supported\n": *q
-			do .EXIT // FAIL
-	else on : q : ?
-		in %?: '\0'
-			do .( ']', *record ) // terminate, consumed
-		else in %?: (( %, ? ), . )
-			in (( Rule, %? ), ( Schema, ~'\0' ))
-				in ?: ((rule,%?), (']',*record)) // rule already instantiated
-					do .( %?, s )
-					do ( %?:r ? .CYCLIC :)
-				else do ( ((rule,%?), (']',*record)) | {
-					(((schema, %((Rule,%?),(Schema,?))), %(%|:(.,?))), %| ),
-					.( %|, s ) } )
-			else
-				do >"Error: Yak: rule '%_' not found or invalid\n": %?
-				do .EXIT
-		else do .READY
-
-	// s init
-	else on ( s )
-		// schema is in null position AND has predecessor
-		in ( p:'\0' ? ((.,r), s ) :)
-			do .( f ) // TAKE as-is
-		else
-			do : q : p
-			in f: ('[',(.,?)) // event to be consumed
-				do : event : %?
+#define YAK_STORY
+#include "yak.bm"
 

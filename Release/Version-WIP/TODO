@@ -1,10 +1,25 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. complete calculator scheme - missing: parentheses, mem
+	. complete calculator scheme
+		[DONE]	parentheses
+		[TODO]	*/+ number
+		[TODO]	mem
 	. implement ./Examples/5_Maths/calculator.story
+	. BUG: parser_io.c => could not open file: "(null)"
+	. BUG: when I tried to load sub-narrative before main in yak.story
+		=> segmentation fault
 	. interactive B% Grammar
+CHECK
+	. SOLVE MYSTERY
+	. do : proxy : !! Class // <=> Class()	=> 5_Maths/ !!DPU
+	. implement relative path in #include
+	. do { .... }	<<<< ANY expression - assignment, release, etc.
 
 DONE
+	. modified yak-drive.story /
+		on push: ( next, current ) or ( base )
+		on pop: ( current, next ) or ( base, carry ) or ( base )
+
 	. implemented proxy Self traversal in query.c (not instantiate.c)
 	. allowed .locale declaration after else statement - cf yak.story
 		else .event

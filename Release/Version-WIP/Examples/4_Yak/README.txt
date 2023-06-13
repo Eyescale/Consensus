@@ -99,19 +99,19 @@ Schema Thread Exit Conditions
 	
 	    1. all r feeder schemas fail, alt. all r subscriber schemas fail
 
-	    [ if s is DONE and was pending on rule ]
+	  if s was pending on rule
 
 	    2. feeder rule complete - that is: all its non-cyclic schema
 	       threads are DONE - and all s's successor schemas failed
 
-	    [ else if s is DONE and terminated ]
+	  else if s is terminated
 
 	    3. none of r's subscribers has a successor starting at s's finish
 	       frame - and r has no feeder other than s starting at that frame
 
 	    4. s feeds base and another base-feeding schema thread terminates
 
-	    [ endif ]
+	  endif
 
 	    5. s's feeder rule failed
 

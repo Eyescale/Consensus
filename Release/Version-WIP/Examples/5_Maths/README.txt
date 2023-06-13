@@ -1,5 +1,42 @@
+calculator.story
+    Accumulator operations
+	1. push	
+		in : A : ? // current accumulator address
+			do : A : (( %?, A ) | ((%|,%?),*op))
+			do : op : new_op
 
-Objective
+		The current accumulator address is *A
+		The next accumulator address is ( *A, A )
+		Note: the current op is pushed along as
+			  (( (*A,A), *A), *op )
+		      so as to be performed on pop
+	2. pop	
+		in : A : ( ?, A ) // previous accumulator address
+			do :< A, op >:< %?, %((*A,%?),?) >
+			do ~( %?, A )
+	3. assignment
+		in ( *A, * ) // inform ((*,*A),(((*A,*),...),digit(s)))
+			do : *A : ( **A, digit )
+		else	do : *A : (( *A, * ), digit )
+	   <=>
+		in : A : ? // current accumulator address
+			do : %? : ((%?,*) ? (*%?,%<?>) : ((%?,*),%<?>))
+
+		The accumulator value is **A: (((*A,*), ... ), digits )
+
+    DPU interface
+	do ( *dpu, GET )
+		on ~( %%, GET ) < ?:*dpu
+			do (( *A, * ), ... ), %<(!,?:...)>
+	do ((( *dpu, SET ), ... ), digit(s) )
+		on ~( %%, SET ) // sync
+	do ((( *dpu, ADD ), ... ), digit(s) )
+		on ~( %%, ADD ) // sync
+	do ((( *dpu, MULT ), ... ), digit(s) )
+		on ~( %%, MULT ) // sync
+
+dial.bm
+    MULT Optimization
 	Asumming that
 		1. p or q in { 0, 1, base-1 } are dealt with separately
 		2. base is even (e.g. 10 or 16)
@@ -26,7 +63,7 @@ Objective
 		p: E				return Fq-q
 		p: F				return Fq
 
-Algorithm
+    Algorithm
 	eval n=neg(p)
 			0	       	    p	   base
 			x - - - - - - + - - + - - - x
@@ -49,7 +86,7 @@ Algorithm
 		else
 			compute p x q as: X x q - [ p, X ] x q
 
-Results - as per table.story
+    Results - as per mult-table.story
 
   0   0    0    0    0    0    0    0    0    0    0    0    0    0    0   0 
   0   1    2    3    4    5    6    7    8    9    A    B    C    D    E   F 
@@ -67,5 +104,4 @@ Results - as per table.story
   0   D _ 1A _ 27 _ 34 _ 41 _ 4E _ 5B _ 68 _ 75 _ 82 _ 8F _ 9C _ A9 _ B6  C3 
   0   E _ 1C _ 2A _ 38 _ 46 _ 54 _ 62 _ 70 _ 7E _ 8C _ 9A _ A8 _ B6 _ C4  D2 
   0   F   1E   2D   3C   4B   5A   69   78   87   96   A5   B4   C3   D2  E1 
-
 
