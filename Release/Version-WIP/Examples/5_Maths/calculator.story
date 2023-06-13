@@ -68,11 +68,11 @@
 				in ?: ( *A, * )
 					in .SET
 						do ((( *dpu, SET ), ... ), %(%?,?:...))
-						do ~( .SET )
+						do ~( .SET ) // no sync needed
 					else 
 						do ((( *dpu, *op ), ... ), %(%?,?:...))
+						do .SYNC
 					do ~( %? )
-					do .SYNC
 			else in ~.: %<?:( ~sum: ~mult )>
 				in : A : ( ?, A ) // previous A
 					do :< A, op >:< %?, %((*A,%?),?) >
