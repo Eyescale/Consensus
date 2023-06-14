@@ -7,8 +7,6 @@ TODO
 		[TODO]	mem / identifiers
 	. interactive B% Grammar
 CHECK
-	. BUG: when I tried to load sub-narrative before main in yak.story
-		=> segmentation fault
 	. implement relative path in #include
 	. align yak-proper.story with latest yak.story
 		[TODO]	no separate Take
