@@ -1,11 +1,15 @@
+
 /*
 	Uses pre-instantiated literal - aka. dial - e.g.
-		(:0123456789:)	==	0 --+---v
-					    1 --+---v
-						2 --+---v
-						    3 --+---v
-							... +---v
-							    9 --+--\0
+		(:0123456789:)	== 	   +
+					  / \
+					0    +
+					    / \
+					   1   +
+					      / \
+					    ...  +
+						/ \
+					       9  \0
 	to perform arithmetic operations
 */
 : Dial

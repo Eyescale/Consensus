@@ -363,10 +363,10 @@ A:CND_else_( B )
 		ons( " \t" )	do_( same )
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
 				do_( "@" )	s_take }
-		on_( '~' ) if ( *type&DO && is_f(INFORMED) ) {
-				do_( "@" )	s_take }
-			else if ( !is_f(INFORMED) ) {
+		on_( '~' ) if ( !is_f(INFORMED) ) {
 				do_( "~" ) }
+			else if ( *type&DO ) {
+				do_( "@" )	s_take }
 		on_( '.' ) if ( is_f(INFORMED) )
 				; // err
 			else if ( is_f(EENOV) ) {
@@ -728,9 +728,7 @@ CND_ifn( mode==BM_STORY, C )
 			on_other	do_( "!!$" )	s_take
 			end
 		in_( "!!$" ) bgn_
-			ons( " \t" )	do_( "!!$_" )
-			on_( '(' )	do_( "!!$_" )	REENTER
-			on_separator	; // err
+			on_separator	do_( "!!$_" )	REENTER
 			on_other	do_( same )	s_take
 			end
 		in_( "!!$_" ) bgn_
@@ -738,6 +736,8 @@ CND_ifn( mode==BM_STORY, C )
 			on_( '(' )	do_( "expr" )	s_take
 							f_push( stack )
 							f_reset( FIRST|CARRY, 0 )
+			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED|COMPOUND )
 			end
 	in_( "@" ) bgn_
 		on_( '<' )	do_( "@<" )	s_take
@@ -749,16 +749,14 @@ CND_ifn( mode==BM_STORY, C )
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '~' )	do_( "expr" )
-		on_( '.' ) if ( s_empty ) {
+		on_( '.' ) if ( !is_f(EENOV) ) {
 				do_( "~." ) }
-			else { do_( "expr" )	REENTER
-						s_add( "~" ) }
 		on_( '(' ) if ( s_empty && *type&(ON|DO) ) {
 				do_( "expr" )	REENTER
 						s_add( "~" ) }
 			else {	do_( "expr" )	REENTER
 						s_add( "~" )
-						f_set( NEGATED ) } // object is to prevent MARK
+						f_set( NEGATED ) } // to prevent MARK
 		ons( "{}?" )	; //err
 		on_other	do_( "expr" )	REENTER
 						s_add( "~" )
@@ -766,10 +764,24 @@ CND_ifn( mode==BM_STORY, C )
 		end
 	in_( "~." ) bgn_
 		ons( " \t" )	do_( same )
-		on_( ':' )	do_( "expr" )	s_add( "~.:" )
-		on_other	do_( "expr" )	REENTER
-						s_add( "~." )
+		on_( '.' )	do_( "expr" )	s_add( "~.." )
 						f_set( INFORMED )
+		on_( '(' )	do_( "expr" )	REENTER
+						s_add( "~." )
+		on_( '?' ) 	; // err
+		on_( ':' ) if ( is_f(TERNARY) ) {
+				do_( "expr" )	REENTER
+						s_add( "~." )
+						f_set( INFORMED ) }
+			else if ( s_empty && !(*type&DO) ) {
+				do_( "expr" )	s_add( "~.:" ) }
+		on_separator if ( is_f(TERNARY) || ( !is_f(SUB_EXPR|CARRY) &&
+				 ( !is_f(LEVEL) || (*type&DO && !is_f(FIRST)) ) )) {
+				do_( "expr" )	REENTER
+						s_add( "~." )
+						f_set( INFORMED ) }
+		on_other	do_( "term" )	s_add( "~." )
+						s_take
 		end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
@@ -1011,6 +1023,9 @@ else {				do_( "base" )	f_reset( FIRST, 0 );
 	BMParseDefault
 		on_( EOF )		errnum = ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState;
+		in_( "def$" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( "def$_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
 		in_( "§..." ) bgn_
 			on_( ')' )	errnum = ErrEllipsisLevel;
 			on_other	errnum = ErrSyntaxError;
@@ -1079,6 +1094,9 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		fprintf( stderr, "l%dc%d: ", l, c );
 		switch ( data->errnum ) {
 		err_case( ErrUnexpectedEOF, "unexpected EOF\n" )_narg
+		err_case( ErrNarrativeEmpty, "narrative empty\n" )_narg
+		err_case( ErrNarrativeNoEntry, "sub-narrative has no story entry\n" )_narg
+		err_case( ErrNarrativeDoubleDef, "narrative already defined\n" )_narg
 		err_case( ErrUnexpectedCR, "statement incomplete\n" )_narg
 		err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg
 		err_case( ErrSpace, "unexpected ' '\n" )_narg

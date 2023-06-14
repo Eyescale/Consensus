@@ -150,6 +150,24 @@ deprecatable( CNInstance *e, CNDB *db )
 }
 
 //===========================================================================
+//	db_clear
+//===========================================================================
+void
+db_clear( listItem *instances, CNDB *db )
+/*
+	deprecates ( instances, . )
+*/
+{
+	for ( listItem *i=instances; i!=NULL; i=i->next ) {
+		CNInstance *e = i->ptr;
+		if ( db_deprecated( e, db ) ) continue;
+		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
+			e = j->ptr;
+			if ( !db_deprecated( e, db ) )
+				db_deprecate( e, db ); } }
+}
+
+//===========================================================================
 //	db_signal
 //===========================================================================
 static inline int flareable( CNInstance *, CNDB * );
@@ -316,13 +334,7 @@ FAIL:
 //===========================================================================
 //	db_instantiate
 //===========================================================================
-static inline int concurrent( CNInstance *e, CNDB *db ) {
-	CNInstance *nil = db->nil, *f;
-	if (( f=cn_instance( e, nil, 1 ) )) {
-		if (( f->as_sub[ 0 ] )) return 1; } // newborn
-	if (( f=cn_instance( nil, e, 0 ) )) {
-		if (( f->as_sub[ 1 ] )) return 1; } // to-be-manifested
-	return 0; }
+static inline int concurrent( CNInstance *, CNDB * );
 
 CNInstance *
 db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
@@ -376,6 +388,17 @@ ERR:
 		"B%%::Warning: concurrent reassignment :%_:%_->%_ not authorized\n",
 		e->sub[1], candidate->sub[1], f );
 	return NULL;
+}
+
+static inline int
+concurrent( CNInstance *e, CNDB *db )
+{
+	CNInstance *nil = db->nil, *f;
+	if (( f=cn_instance( e, nil, 1 ) )) {
+		if (( f->as_sub[ 0 ] )) return 1; } // newborn
+	if (( f=cn_instance( nil, e, 0 ) )) {
+		if (( f->as_sub[ 1 ] )) return 1; } // to-be-manifested
+	return 0;
 }
 
 //===========================================================================

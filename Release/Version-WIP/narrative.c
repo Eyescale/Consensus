@@ -101,15 +101,14 @@ bm_read( BMReadMode mode, ... )
 	case BM_STORY:
 		fclose( stream );
 		freeListItem( &data.stack.occurrences );
-		if ( data.errnum )
+		switch ( data.errnum ) {
+		case 0: // last take
+			if ( read_CB( NarrativeTake, 0, &data ) ) {
+				retval.ptr = data.story;
+				break; }
+			fprintf( stderr, "Error: read_narrative: unexpected EOF\n" );
+		default: // no break
 			retval.ptr = NULL;
-		else if ( read_CB( NarrativeTake, 0, &data ) )
-			retval.ptr = data.story;
-		else {
-			retval.ptr = NULL;
-			fprintf( stderr, "Error: read_narrative: unexpected EOF\n" ); }
-
-		if ( !retval.ptr ) {
 			freeNarrative( data.narrative );
 			freeStory( data.story ); } }
 
@@ -132,32 +131,33 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data )
 	case NarrativeTake: ; // Assumption: mode==BM_STORY or, if last take, 0
 		CNNarrative *narrative = data->narrative;
 		char *proto = narrative->proto;
-		Pair *entry = data->entry;
 #ifdef DEBUG
 fprintf( stderr, "end narrative: %s\n", proto );
 #endif
-		if ( !narrative->root->sub ) // narrative is empty (may be first)
-			return ( mode && !entry );
+		Pair *entry = data->entry;
+		if ( !narrative->root->sub ) {
+			if ( !mode || entry ) {
+				data->errnum = ErrNarrativeEmpty;
+				return 0; }
+			else break; } // first take
 		// register narrative
 		narrative_reorder( narrative );
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
 			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
 		else if ( is_separator( *proto ) ) {
-			if ( !entry ) entry = data->entry =
-				registryRegister( data->story, "", newItem(narrative) );
-			addItem((listItem **) &entry->value, narrative ); }
+			addItem((listItem **) &entry->value, narrative );
+			if ( !mode ) // last take
+				reorderListItem((listItem **) &entry->value ); }
 		else {
-			narrative->proto = NULL; // first in class
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->story, proto, newItem(narrative) ); }
+			data->entry = registryRegister( data->story, proto, newItem(narrative) );
+			narrative->proto = NULL; } // first in class
 		// allocate new narrative
 		if ( mode ) {
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); }
-		else if (( proto ) && is_separator( *proto ) ) { // last take
-			reorderListItem((listItem **) &entry->value ); }
 		break;
 	case ProtoSet:
 		narrative = data->narrative;
@@ -166,15 +166,21 @@ fprintf( stderr, "end narrative: %s\n", proto );
 #ifdef DEBUG
 fprintf( stderr, "bgn narrative: %s\n", proto );
 #endif
-		if ( !proto ) {
-			if (( registryLookup( data->story, "" ) ))
-				return 0; } // main already registered
-		else if ( is_separator( *proto ) )
-			narrative->proto = proto; // accept double-def
-		else {
-			if (( registryLookup( data->story, proto ) )) {
-				free(proto); return 0; } // double-def
-			narrative->proto = proto; }
+		if ( !proto ) { // main narrative definition start
+			if (( registryLookup( data->story, "" ) )) {
+				data->errnum = ErrNarrativeDoubleDef;
+				return 0; } } // main already registered
+		else if ( is_separator( *proto ) ) {
+			if ( !data->entry ) {
+				data->errnum = ErrNarrativeNoEntry;
+				return 0; }
+			else narrative->proto = proto; } // double-def accepted
+		else if ( !registryLookup( data->story, proto ) )
+			narrative->proto = proto;
+		else { 
+			data->errnum = ErrNarrativeDoubleDef;
+			free(proto);
+			return 0; }
 		break;
 	case OccurrenceAdd: ;
 		int *tab = data->tab;

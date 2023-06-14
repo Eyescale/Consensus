@@ -27,7 +27,6 @@ io_exit( CNIO *io )
 {
 	freeRegistry( io->control.registry, NULL );
 	freeListItem( &io->control.stack );
-	free( io->control.param );
 	freeListItem( &io->buffer );
 	freeString( io->string );
 	while (( io->stack )) io_pop( io );
@@ -123,8 +122,9 @@ static int
 io_pragma_execute( CNIO *io )
 {
 	union { void *ptr; int value; } parent_mode;
+	CNString *s = io->string;
+	char *param = StringFinish( s, 0 );
 	int pragma = io->control.pragma;
-	char *param = io->control.param;
 	int mode = io->control.mode;
 	int errnum = 0;
 	Pair *entry;
@@ -133,16 +133,13 @@ io_pragma_execute( CNIO *io )
 		case IOPragma_include:
 		case IOPragma_define:
 		case IOPragma_undef:
-			free( param );
 			break;
 		case IOPragma_ifdef:
 		case IOPragma_ifndef:
-			free( param );
 			add_item( &io->control.stack, mode );
 			io->control.mode = IO_SILENT;
 			break;
 		case IOPragma_eldef:
-			free( param );
 			parent_mode.ptr = io->control.stack->ptr;
 			if ( mode & IO_ELSE )
 				errnum = IOErrElseAgain;
@@ -152,7 +149,6 @@ io_pragma_execute( CNIO *io )
 				io->control.mode = IO_ACTIVE|IO_ELIF;
 			break;
 		case IOPragma_elndef:
-			free( param );
 			parent_mode.ptr = io->control.stack->ptr;
 			if ( mode & IO_ELSE )
 				errnum = IOErrElseAgain;
@@ -178,29 +174,25 @@ io_pragma_execute( CNIO *io )
 		switch ( pragma ) {
 		case IOPragma_include:
 			errnum = io_push( io, IOStreamFile, param );
-			if ( errnum ) free( param );
+			if ( !errnum ) StringReset( s, CNStringMode );
 			break;
 		case IOPragma_define:
 			entry = registryRegister( io->control.registry, param, NULL );
-			if ( !entry ) {
-				errnum = IOErrAlreadyDefined;
-				free( param ); }
+			if ( !entry ) errnum = IOErrAlreadyDefined;
+			else StringReset( s, CNStringMode );
 			break;
 		case IOPragma_undef:
 			registryDeregister( io->control.registry, param );
-			free( param );
 			break;
 		case IOPragma_ifdef:
 			entry = registryLookup( io->control.registry, param );
 			add_item( &io->control.stack, mode );
 			io->control.mode = ((entry) ? IO_ACTIVE : IO_SILENT );
-			free( param );
 			break;
 		case IOPragma_ifndef:
 			entry = registryLookup( io->control.registry, param );
 			add_item( &io->control.stack, mode );
 			io->control.mode = ((entry) ? IO_SILENT : IO_ACTIVE );
-			free( param );
 			break;
 		case IOPragma_eldef:
 		case IOPragma_elndef:
@@ -210,7 +202,6 @@ io_pragma_execute( CNIO *io )
 				errnum = IOErrElseAgain;
 			else
 				io->control.mode = IO_SILENT|IO_ELIF;
-			free( param );
 			break;
 		case IOPragma_else:
 			if ( !mode )
@@ -221,12 +212,10 @@ io_pragma_execute( CNIO *io )
 				io->control.mode = IO_SILENT|IO_ELSE;
 			break;
 		case IOPragma_endif:
-			if ( !mode )
-				errnum = IOErrEndifWithoutIf;
-			else
-				io->control.mode = pop_item( &io->control.stack );
+			if ( mode ) io->control.mode = pop_item( &io->control.stack );
+			else errnum = IOErrEndifWithoutIf;
 			break; } }
-	io->control.param = NULL;
+	if ( !errnum ) StringReset( s, CNStringAll );
 	io->control.pragma = 0;
 	io->errnum = errnum;
 	return errnum;
@@ -443,8 +432,6 @@ preprocess( CNIO *io, int event )
 				end
 			in_( "#_//" ) bgn_
 				on_( '\n' )	do_( "" )	action = IOEventPragma;
-								io->control.param = StringFinish( s, 0 );
-								s_reset( CNStringMode )
 				on_other	do_( same )	action = IOEventPass;
 				end
 	BMParseEnd
@@ -472,8 +459,8 @@ io_push( CNIO *io, IOType type, char *path )
 		return 0;
 	case IOStreamFile: ;
 		FILE *stream = fopen( path, "r" );
-		if ( !stream ) {
-			return IOErrFileNotFound; }
+		if ( !stream )
+			return IOErrFileNotFound;
 		else {
 			io->line++;
 			io->column = 0;

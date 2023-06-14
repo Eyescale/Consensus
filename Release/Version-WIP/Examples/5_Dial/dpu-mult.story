@@ -1,7 +1,7 @@
 #include "dpu.bm"
 :
 	on init
-		do : dpu : !! DPU()
+		do : dpu : !! DPU
 		do : X : ((X,...):1230456:)
 		do : Y : ((Y,...):9870654:)
 		do : MULT

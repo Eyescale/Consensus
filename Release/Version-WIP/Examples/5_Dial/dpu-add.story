@@ -1,7 +1,7 @@
 #include "dpu.bm"
 :
 	on init
-		do : dpu : !! DPU()
+		do : dpu : !! DPU
 #		do : X : ((X,...):123:)	// no carry
 		do : X : ((X,...):189:)
 		do : Y : ((Y,...):13234:)

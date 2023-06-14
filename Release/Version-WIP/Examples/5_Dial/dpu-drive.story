@@ -7,7 +7,7 @@
 #include "dpu.bm"
 :
 	on init
-		do : dpu : !! DPU( )
+		do : dpu : !! DPU
 		do : yak : !! Yak(
 			(( Rule, base ), ( Schema, {
 				(: %sum :)
@@ -30,8 +30,7 @@
 			} ))
 			(( Rule, number ), ( Schema, {
 				(:\i:)
-			} ))
-		)
+			} )) )
 		do : INPUT
 
 	else in : INPUT
@@ -68,15 +67,15 @@
 				in ?: ( *A, * )
 					in .SET
 						do ((( *dpu, SET ), ... ), %(%?,?:...))
-						do ~( .SET ) // no sync needed
+						do ~( .SET ) // sync not required here
 					else 
 						do ((( *dpu, *op ), ... ), %(%?,?:...))
 						do .SYNC
 					do ~( %? )
 			else in ~.: %<?:( ~sum: ~mult )>
 				in : A : ( ?, A ) // previous A
-					do :< A, op >:< %?, %((*A,%?),?) >
 					do ~( %?, A )
+					do :< A, op >:< %?, %((*A,%?),?) >
 					in ( %?, * )
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
 						do .SYNC

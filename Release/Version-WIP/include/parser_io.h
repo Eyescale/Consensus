@@ -65,7 +65,6 @@ typedef struct {
 		int mode;
 		listItem *stack;
 		IOControlPragma pragma;
-		void *param;
 		Registry *registry;
 	} control;
 } CNIO;

@@ -1,33 +1,52 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. complete ./Examples/5_Dial/dpu-drive.story (was: calculator.story)
 	. complete calculator scheme
 		[DONE]	parentheses
 		[TODO]	*/+ number
-		[TODO]	mem
-	. implement ./Examples/5_Maths/calculator.story
-	. BUG: parser_io.c => could not open file: "(null)"
-	. BUG: when I tried to load sub-narrative before main in yak.story
-		=> segmentation fault
+		[TODO]	mem / identifiers
 	. interactive B% Grammar
 CHECK
-	. SOLVE MYSTERY
-	. do : proxy : !! Class // <=> Class()	=> 5_Maths/ !!DPU
+	. BUG: when I tried to load sub-narrative before main in yak.story
+		=> segmentation fault
 	. implement relative path in #include
-	. do { .... }	<<<< ANY expression - assignment, release, etc.
+	. align yak-proper.story with latest yak.story
+		[TODO]	no separate Take
+		[TODO]	output traversal
 
 DONE
+	. renamed 5_Maths into 5_Dial
+	. implemented do ((list,~.)|(%|,expr)) // pipe RV is set to list
+		allows to clear list and reassign new values in one frame
+	  DESCRIPTION
+	  The following relies on sequential execution of the do instructions.
+	  It works in current implementation, but contradicts Consensus design
+	  principle - i.e. fails if inverting the do's order:
+		on init
+			do : A : ((A,*),1)
+		else on A
+			in ?:(A,*)
+				do ~( %?, . ) // clear A list
+				do : A : ((A,*),1) // reassign
+		else do exit
+	  The proper way to clear and reassign A list in one frame is
+		...
+		else on A
+			do (((A,*),~.)|((*,A),(%|,1)))
+		...
+	  SEE ALSO
+		dpu.bm / SET operation
+	. allowed do : proxy : !! Class <=> do : proxy : !! Class()
 	. modified yak-drive.story /
 		on push: ( next, current ) or ( base )
 		on pop: ( current, next ) or ( base, carry ) or ( base )
 
-	. implemented proxy Self traversal in query.c (not instantiate.c)
+	. implemented proxy Self traversal in query.c (NOT in instantiate.c)
 	. allowed .locale declaration after else statement - cf yak.story
 		else .event
 			// processing
 	. in operation.c (hardcoded)
-		do >: .
-	  now does
-		do >: ~%(?,.):~%(.,?)
+		do >: .  now does do >: ~%(?,.):~%(.,?)
 	. made vector assignment truly distributive
 		do :< a, b, c >:< d, e, f >
 	. BM_INPUT / BM_LOAD: traverse_mode|=CLEAN => no call to p_filtered()
@@ -47,12 +66,11 @@ DONE
 			      %(:currentN) ? nextN :)
 	. allowed \cr in expressions (so long as LEVEL is set)
 	. implemented in/on/do : expression // same as in/on/do : %% : expression
-	. Modified literal format: ( MUST be backslashed in sequence,
+	. Modified literal format: '(' MUST be backslashed in sequence,
 		e.g. do (:\(whatever\):)
 	. modified parser.c, so that SET, CARRY or VECTOR always start from
 	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
 	  and then exit via f_pop( state, INFORMED )
-	. yak-drive.story updated
 	. implemented preprocessing directives #define #ifdef, #ifndef, etc.
 	. yak.story
 		. implemented \i (integer) + fixed double-passthrough issue
@@ -190,6 +208,7 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. do { .... }	<<<< ANY expression - assignment, release, etc.
 	. on ~( %%, ?:TAKE ) < *yak
 		     ^---------- considered filtered!	
 	. finish variable stack - might answer issue below

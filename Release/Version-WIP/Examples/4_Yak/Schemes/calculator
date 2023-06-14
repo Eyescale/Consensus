@@ -35,5 +35,7 @@
 		(:%number:)
 		(:\( %sum \):)
 	} ))
-	(( Rule, number ), ( Schema, (:\i:) ))
+	(( Rule, number ), ( Schema, {
+		(:\i:)
+	} ))
 

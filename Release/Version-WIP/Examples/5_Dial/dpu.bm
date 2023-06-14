@@ -20,8 +20,7 @@
 				do ((( .., GET ), ... ), %(%?,?:...) )
 			else	do (( .., GET ), 0 )
 		else on ~( %%, SET ) < ?:..
-			do ~((A,*),.) // clear (A,*)
-			do : A : (((A,*), ... ), %<(!,?:...)> )
+			do (((A,*),~.)|((*,A),((%|,...),%<(!,?:...)>)))
 			do ( .., SET )
 		else on ~( %%, ADD ) < ?:..
 			in ~.: (A,*)
@@ -32,7 +31,7 @@
 				do : ADD
 		else on ~( %%, MULT ) < ?:..
 			in ?:((A,*),.)
-				in (%?,.)
+				in (%?,.) // A has more than one digit
 					do : P : *A
 					do : q : (((X,*), ... ), %<(!,?:...)> )
 				else
@@ -58,9 +57,9 @@
 				do (( *dial, ... ),< MSUM, %?, 0, *c >)
 			else
 				do : FORMAT
-				do .MSUM
 		else on : .
 			do :< p, q, r, c >:< *A, *X, (r,*), 0 >
+			do .MSUM
 
 	else in : MULT
 		in .MSUM // after each round of multiplying P by one q-digit
@@ -106,7 +105,7 @@
 						do : u : (((u,*),...),%(%?,?:...))
 						do : r : ~.
 					else  // both P and q are one digit - and no carry
-						do ~( %? )
+						do ~( %? ) // s informed
 						do ~( .MSUM )
 						do : FORMAT
 		else
@@ -156,7 +155,7 @@
 		else on : .
 			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )
 			in ?: (A,*)
-				do ~(%?,.) // clear (A,*)
+				do ~( %?, . )
 				do : A : %?
 			do ~( X )
 

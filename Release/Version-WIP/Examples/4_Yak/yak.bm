@@ -90,10 +90,10 @@
 			in %?:( TAKE, ? )
 				do (( .., TAKE ), %? )
 			else in %?:( IN, ? )
-				do ( *r ?	// notify next, current rule id
-				((( .., IN ), %(((.,?),.):%(%?:(.,?)))), %(*r:(.,?),.)) :
-				(( .., IN ), %(((.,?),.):%(%?:(.,?)))) )
-			else in %?:( OUT, ? )	// notify current, next rule id
+				in *r // notify next, from current rule id
+					do ((( .., IN ), %(((.,?),.):%(%?:(.,?)))), %(*r:(.,?),.))
+				else	do (( .., IN ), %(((.,?),.):%(%?:(.,?))))
+			else in %?:( OUT, ? )	// notify current, to next rule id
 				do (((( .., OUT )), %(*r:(.,?),.)), %(((.,?),.):%(%?:(.,?))))
 			else in %?: ( CARRY, . )
 				do ((( .., OUT ), base ), %(%?:(.,?)) )

@@ -5,7 +5,7 @@
 +==========================================================================*/
 /*
    Usage
-	../../B% calculator-ui.story
+	../../B% yak-drive.story
    Purpose
 	Testing calculator User Interface and Scheme - cf. Schemes/calculator
 	see yak.story for general Scheme testing.
@@ -36,8 +36,9 @@
 				(:%number:)
 				(:\( %sum \):)
 			} ))
-			(( Rule, number ), ( Schema, (:\i:) ))
-		)
+			(( Rule, number ), ( Schema, {
+				(:\i:)
+			} )) )
 		do : INPUT
 
 	else in : INPUT

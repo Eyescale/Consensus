@@ -48,14 +48,14 @@
 
 # s rule definitions
 #define NULL
-#ifndef NULL
-	(( Rule, s ), ( Schema, (: :)) )
-#else // testing null-schema
+#ifdef NULL // testing null-schema
 	(( Rule, s ), ( Schema, {
 		(::)
 #		(:%s\ :), (:%s\t:)
 		(:%s :)	
 	} ))
+#else
+	(( Rule, s ), ( Schema, (: :)) )
 #endif
 
 # int rule definition (alternative to \i)

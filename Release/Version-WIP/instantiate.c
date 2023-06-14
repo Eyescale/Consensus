@@ -114,18 +114,19 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	BMContext *carry = BMCellContext( new );
 	// inform new cell's context
 	data->carry = carry;
-	p++; // skipping opening '('
-	if ( *p==')' ) p++;
-	else do {
-		char *q = p;
-		traverse_data->done = INFORMED|LITERAL;
-		p = instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 ) {
-			cleanup( data, ctx );
-			traverse_data->done = 1;
-			p = p_prune( PRUNE_TERM, q ); }
-		freeListItem( &data->sub[ 0 ] ); }
-	while ( *p++!=')' );
+	if ( *p=='(' ) {
+		p++; // skipping opening '('
+		if ( *p==')' ) p++;
+		else do {
+			char *q = p;
+			traverse_data->done = INFORMED|LITERAL;
+			p = instantiate_traversal( p, traverse_data, FIRST );
+			if ( traverse_data->done==2 ) {
+				cleanup( data, ctx );
+				traverse_data->done = 1;
+				p = p_prune( PRUNE_TERM, q ); }
+			freeListItem( &data->sub[ 0 ] ); }
+		while ( *p++!=')' ); }
 	// carry new and return proxy
 	return bm_cell_carry( cell, new, !(*p=='~') );
 }
@@ -142,7 +143,9 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 
 BMTraverseCBSwitch( instantiate_traversal )
 case_( term_CB )
-	if ( !strncmp(p,"(:",2) ) {
+	if ( !strncmp(p,"~.)",3) ) {
+		_prune( BM_PRUNE_TERM ) }
+	else if ( !strncmp(p,"(:",2) ) {
 		/*		(:_sequence_:)
 		   start p -----^             ^
 			return p=*q ----------
@@ -277,6 +280,9 @@ case_( close_CB )
 	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	if ( is_f( FIRST ) )
 		instances = data->sub[ 0 ];
+	else if ( !data->sub[ 1 ] ) { // case do ( expr, ~. )
+		instances = data->sub[ 0 ];
+		db_clear( instances, db ); }
 	else {
 		instances = is_f(ELLIPSIS) ?
 			instantiate_xpan( data->sub, db ) :
@@ -342,6 +348,7 @@ case_( signal_CB )
 	db_signal( e, ((carry) ? BMContextDB(carry) : data->db ));
 	_break
 BMTraverseCBEnd
+
 
 //---------------------------------------------------------------------------
 //	instantiate_couple
