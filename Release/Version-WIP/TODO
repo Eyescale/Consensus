@@ -7,12 +7,12 @@ TODO
 		[TODO]	mem / identifiers
 	. interactive B% Grammar
 CHECK
-	. implement relative path in #include
 	. align yak-proper.story with latest yak.story
 		[TODO]	no separate Take
 		[TODO]	output traversal
 
 DONE
+	. made #include path relative to current file path
 	. renamed 5_Maths into 5_Dial
 	. implemented do ((list,~.)|(%|,expr)) // pipe RV is set to list
 		allows to clear list and reassign new values in one frame

@@ -148,14 +148,14 @@
 				do ~( %? )
 				do : r : *s
 			else
-				do ( .., ( .MSUM ? ADD : MULT ))
-				do ~( .MSUM )
 				do ~( %? )
+				in .MSUM
+					do ~( .MSUM )
+					do ( .., ADD )
+				else do ( .., MULT )
 				do : READY
 		else on : .
 			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )
-			in ?: (A,*)
-				do ~( %?, . )
-				do : A : %?
+			do (((A,*),~.)|((*,A),%|))
 			do ~( X )
 

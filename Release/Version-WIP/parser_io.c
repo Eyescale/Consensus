@@ -444,6 +444,8 @@ preprocess( CNIO *io, int event )
 //---------------------------------------------------------------------------
 //	io_push / io_pop
 //---------------------------------------------------------------------------
+static inline FILE * io_open( CNIO *io, char **path );
+
 static int
 io_push( CNIO *io, IOType type, char *path )
 {
@@ -458,7 +460,7 @@ io_push( CNIO *io, IOType type, char *path )
 		io->buffer = NULL;
 		return 0;
 	case IOStreamFile: ;
-		FILE *stream = fopen( path, "r" );
+		FILE *stream = io_open( io, &path );
 		if ( !stream )
 			return IOErrFileNotFound;
 		else {
@@ -475,6 +477,41 @@ io_push( CNIO *io, IOType type, char *path )
 			return 0; }
 	default:
 		return 0; }
+}
+
+static inline FILE *
+io_open( CNIO *io, char **path )
+/*
+	make path relative to current file path
+*/
+{
+	FILE *file;
+	if ( **path=='/' )
+		file = fopen( *path, "r" );
+	else {
+		CNString *s = newString();
+		if ( io->type==IOStreamFile ) {
+			char *p = io->path;
+			char *q = p;
+			for ( char *r=p; *r; r++ )
+				switch ( *r ) {
+				case '\\': r++; break;
+				case '/': q=r; break; }
+			if ( *q=='/' ) {
+				while ( p!=q ) StringAppend( s, *p++ );
+				StringAppend( s, '/' ); } }
+		if ( s_empty ) {
+			freeString( s );
+			file = fopen( *path, "r" ); }
+		else {
+			s_add( *path );
+			char *p = StringFinish( s, 0 );
+			file = fopen( p, "r" );
+			if (( file )) {
+				free( *path ); *path = p;
+				s_reset(CNStringMode); }
+			freeString( s ); } }
+	return file;
 }
 
 static int

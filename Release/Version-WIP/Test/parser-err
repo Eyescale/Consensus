@@ -1,0 +1,12 @@
+// #define DONT
+#ifdef DONT
+:( toto, titi )
+	do >"hello, world\n"
+:
+	on init
+		do exit
+#else
+:
+:(toto, titi )
+	do exit
+#endif

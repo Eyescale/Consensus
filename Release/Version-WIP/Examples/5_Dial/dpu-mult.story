@@ -12,7 +12,7 @@
 			do ((( *dpu, MULT ), ... ), %((Y,*),?:...) )
 		else on ~( %%, MULT ) < *dpu
 			do ( *dpu, GET )
-		on ~( %%, GET ) < ?:*dpu
+		else on ~( %%, GET ) < ?:*dpu
 			do : Z : (((Z,*), ... ), %<(!,?:...)> )
 			do : OUTPUT
 	else in : OUTPUT
