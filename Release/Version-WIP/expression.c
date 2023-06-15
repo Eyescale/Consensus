@@ -208,8 +208,8 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 	note that we rely on bm_query to eliminate doublons
 */
 {
-	// special case: single quote / format "%s" - output as-is
-	if ( *arg=='\'' && type=='s' ) {
+	// special case: single quote & type 's' or '$'
+	if ( *arg=='\'' && type!=DEFAULT_TYPE ) {
 		char_s q;
 		if ( charscan( arg+1, &q ) )
 			fprintf( stream, "%c", q.value );
@@ -239,24 +239,28 @@ bm_out_put( OutputData *data, CNInstance *e, CNDB *db )
 {
 	if (( data->last )) {
 		FILE *stream = data->stream;
-		char *s = ( data->first ?
-				(data->type=='s') ?
-					"\\{" : "{" : "," );
-		data->first = 0;
-		fprintf( stream, "%s", s );
-		db_outputf( stream, db, " %_", data->last ); }
+		if ( data->type=='$' )
+			db_outputf( stream, db, "%_", data->last );
+		else {
+			if ( data->first ) {
+				switch ( data->type ) {
+				case 's': fprintf( stream, "\\{" ); break;
+				default: fprintf( stream, "{" ); }
+				data->first = 0; }
+			else fprintf( stream, "," );
+			db_outputf( stream, db, " %_", data->last ); } }
 	data->last = e;
 }
 int
 bm_out_flush( OutputData *data, CNDB *db )
 {
 	FILE *stream = data->stream;
-	if ( data->first ) {
-		char_s fmt;
-		fmt.value = 0;
-		sprintf( fmt.s, "%%%c", (data->type=='s'?'s':'_') );
-		db_outputf( stream, db, fmt.s, data->last ); }
-	else
+	if ( data->type=='$' )
+		db_outputf( stream, db, "%_", data->last );
+	else if ( !data->first )
 		db_outputf( stream, db, ", %_ }", data->last );
+	else if ( data->type=='s' )
+		db_outputf( stream, db, "%s", data->last );
+	else	db_outputf( stream, db, "%_", data->last );
 	return 0;
 }

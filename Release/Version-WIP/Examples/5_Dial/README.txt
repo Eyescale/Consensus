@@ -1,21 +1,21 @@
-calculator.story
+dpu-drive.story
     Accumulator operations
 	1. push	
 		in : A : ? // current accumulator address
-			do : A : (( %?, A ) | ((%|,%?),*op))
+			do : A : ((O,%?)|((%|,%?),*op))
 			do : op : new_op
 
 		The current accumulator address is *A
-		The next accumulator address is ( *A, A )
+		The next accumulator address is (O,*A)
 		Note: the current op is pushed along as
-			  (( (*A,A), *A), *op )
+			  (( (O,*A), *A), *op )
 		      so as to be performed on pop
 	2. pop	
-		in : A : ( ?, A ) // previous accumulator address
+		in : A : ( O, ?:~O ) // previous accumulator address
 			do :< A, op >:< %?, %((*A,%?),?) >
-			do ~( %?, A )
+			do ~( O, %? )
 	3. assignment
-		in ( *A, * ) // inform ((*,*A),(((*A,*),...),digit(s)))
+		in ( *A, * )
 			do : *A : ( **A, digit )
 		else	do : *A : (( *A, * ), digit )
 	   <=>
@@ -27,13 +27,15 @@ calculator.story
     DPU interface
 	do ( *dpu, GET )
 		on ~( %%, GET ) < ?:*dpu
-			do (( *A, * ), ... ), %<(!,?:...)>
+			do (((*A,*), ... ), %<(!,?:...)> )
 	do ((( *dpu, SET ), ... ), digit(s) )
-		on ~( %%, SET ) // sync
+		on ~( %%, SET ) // sync - optional
 	do ((( *dpu, ADD ), ... ), digit(s) )
 		on ~( %%, ADD ) // sync
+			do (((*A,*), ... ), %<(!,?:...)> )
 	do ((( *dpu, MULT ), ... ), digit(s) )
 		on ~( %%, MULT ) // sync
+			do (((*A,*), ... ), %<(!,?:...)> )
 
 dial.bm
     MULT Optimization

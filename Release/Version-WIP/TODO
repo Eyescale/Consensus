@@ -1,21 +1,23 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. complete ./Examples/5_Dial/dpu-drive.story (was: calculator.story)
-	. complete calculator scheme
+	. complete ./Examples/5_Dial/dpu-drive.story
 		[DONE]	parentheses
 		[TODO]	*/+ number
 		[TODO]	mem / identifiers
 	. interactive B% Grammar
 CHECK
+	. dpu: remove leading zero's - if there are
 	. align yak-proper.story with latest yak.story
 		[TODO]	no separate Take
-		[TODO]	output traversal
+		[TODO]	update output traversal
 
 DONE
+	. implemented $ output format, e.g.
+		do >"%$\n": %<(!,?:...)> // output concatenated
 	. made #include path relative to current file path
-	. renamed 5_Maths into 5_Dial
+	. renamed 5_Maths into 5_Dial, calculator into dpu-drive.story
 	. implemented do ((list,~.)|(%|,expr)) // pipe RV is set to list
-		allows to clear list and reassign new values in one frame
+		allows to clear list and reassign new values in one cycle
 	  DESCRIPTION
 	  The following relies on sequential execution of the do instructions.
 	  It works in current implementation, but contradicts Consensus design
@@ -36,18 +38,18 @@ DONE
 		dpu.bm / SET operation
 	. allowed do : proxy : !! Class <=> do : proxy : !! Class()
 	. modified yak-drive.story /
-		on push: ( next, current ) or ( base )
-		on pop: ( current, next ) or ( base, carry ) or ( base )
+		on push - ie. IN: ( next, current ) or ( base )
+		on pop - ie. OUT: ( current, next ) or ( base, carry ) or ( base )
 
-	. implemented proxy Self traversal in query.c (NOT in instantiate.c)
+	. added Self proxy traversal to query.c (NOT to instantiate.c)
 	. allowed .locale declaration after else statement - cf yak.story
 		else .event
 			// processing
-	. in operation.c (hardcoded)
-		do >: .  now does do >: ~%(?,.):~%(.,?)
+	. do >: .  now does do >: ~%(?,.):~%(.,?) // hardcoded in operation.c
 	. made vector assignment truly distributive
 		do :< a, b, c >:< d, e, f >
-	. BM_INPUT / BM_LOAD: traverse_mode|=CLEAN => no call to p_filtered()
+	. instantiate.c: no story => traverse_mode&CLEAN (BM_INPUT or BM_LOAD)
+		=> no call to p_filtered() in traverse.c
 	. allow contrary assignment occurrence, e.g.
 		in~.::variable:value
 		in~.::state
@@ -65,7 +67,7 @@ DONE
 	. allowed \cr in expressions (so long as LEVEL is set)
 	. implemented in/on/do : expression // same as in/on/do : %% : expression
 	. Modified literal format: '(' MUST be backslashed in sequence,
-		e.g. do (:\(whatever\):)
+		e.g. do (:\(whatever\):) // required for p_prune()
 	. modified parser.c, so that SET, CARRY or VECTOR always start from
 	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
 	  and then exit via f_pop( state, INFORMED )
@@ -101,7 +103,7 @@ DONE
 	. implemented db_fire( proxy, db ) - note that we no longer have restrictions
 	  concerning newborn entities
 	. Now manifest proxies upon creation
-	. new Register Variable %@ (for active connections)
+	. new Register Variable %@ (represents active connections)
 	. implemented per event < src
 	  => query.h: redefined
 			#define BM_EVENT	1
@@ -113,11 +115,11 @@ DONE
 			#define BM_INSTANTIATED	(BM_VISIBLE|BM_EVENT)
 	  CAVEATS:
 		per . < . not to be mistaken with per ( . ) < .
-			per . < . <=> for all active cells
 			per ( . ) < .  <=> for all cells on which instantiation just happened
+			per . < . <=> for all active cells
 		also
-			per ~. < .  accepted but will never pass
 			per ~( . ) < . <=> for all cells on which deprecation just happened
+			per ~. < .  accepted but will never pass
 		whereas
 			per ~.: _ NOT ACCEPTED (parser)
 			on ~.: event < src passes iff NONE among src verifies event (tricky)
@@ -127,7 +129,7 @@ DONE
 		=> %! always available when %? is
 	. support vector assignment - e.g.
 		do :< a, b, c >:< 1, 2, 3 >
-	. allowed %% in §
+	. allowed %% in proto
 	. extended do identifier~ in case identifier is not base entity
 	  (i.e. identifier is sub-narrative param or locale), so that
 		  identifier's subs get deprecated if

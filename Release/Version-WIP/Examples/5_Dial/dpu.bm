@@ -25,7 +25,7 @@
 		else on ~( %%, ADD ) < ?:..
 			in ~.: (A,*)
 				do : A : (((A,*), ... ), %<(!,?:...)> )
-				do ( .., ADD )
+				do ((( .., ADD ), ... ), %<(!,?:...)> )
 			else
 				do : X : (((X,*), ... ), %<(!,?:...)> )
 				do : ADD
@@ -39,7 +39,7 @@
 					do : q : *A
 				do : MULT
 			else
-				do ( .., MULT )
+				do (( .., MULT ), 0 )
 
 	else in : ADD
 		on ~( %%, MSUM ) < ?:*dial // read digit-sum operation results
@@ -150,9 +150,11 @@
 			else
 				do ~( %? )
 				in .MSUM
+					do ((( .., ADD ), ... ), %((A,*),?:...))
 					do ~( .MSUM )
-					do ( .., ADD )
-				else do ( .., MULT )
+				else
+					do ((( .., MULT ), ... ), %((A,*),?:...))
+					do ~( u )
 				do : READY
 		else on : .
 			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )

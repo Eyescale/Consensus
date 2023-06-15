@@ -388,7 +388,7 @@ A:CND_else_( B )
 		on_( ':' ) if ( s_empty || !s_cmp( "~.:" ) ) {
 				do_( same )	s_take
 						f_set( ASSIGN ) }
-			else if ( !is_f(INFORMED) || is_f(EENOV) || ( *type&PER && !s_cmp("~.") ) )
+			else if ( !is_f(INFORMED) || is_f(EENOV) || ((*type&PER)&&!s_cmp("~.")) )
 				; // err
 			else if ( is_f(ASSIGN) ) {
 				if ( !is_f(FILTERED|LEVEL|SUB_EXPR) ) {
@@ -493,8 +493,7 @@ B:CND_endif
 						f_pop( stack, 0 )
 						f_tag( stack, COMPOUND )
 						f_set( INFORMED|COMPOUND ) }
-		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
-				!is_f(ASSIGN|FILTERED|SUB_EXPR|NEGATED|VECTOR) ) {
+		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) && !is_f(SUB_EXPR) ) {
 				do_( "|" )	s_take
 						f_tag( stack, COMPOUND )
 						f_clr( INFORMED ) }
@@ -991,7 +990,7 @@ CND_ifn( mode==BM_STORY, C )
 			on_other	do_( same )	s_take
 			end
 		in_( ">\"%" ) bgn_
-			ons( "%s_" )	do_( ">\"" )	s_take
+			ons( "%$s_" )	do_( ">\"" )	s_take
 			on_other	do_( ">\"" )	s_add( "_" )
 							bm_parse_caution( data, WarnOutputFormat, mode );
 			end

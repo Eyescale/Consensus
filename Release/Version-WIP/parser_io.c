@@ -444,7 +444,7 @@ preprocess( CNIO *io, int event )
 //---------------------------------------------------------------------------
 //	io_push / io_pop
 //---------------------------------------------------------------------------
-static inline FILE * io_open( CNIO *io, char **path );
+static FILE * io_open( CNIO *io, char **path );
 
 static int
 io_push( CNIO *io, IOType type, char *path )
@@ -479,39 +479,46 @@ io_push( CNIO *io, IOType type, char *path )
 		return 0; }
 }
 
-static inline FILE *
+static FILE *
 io_open( CNIO *io, char **path )
 /*
 	make path relative to current file path
 */
 {
-	FILE *file;
 	if ( **path=='/' )
-		file = fopen( *path, "r" );
+		return fopen( *path, "r" );
 	else {
-		CNString *s = newString();
-		if ( io->type==IOStreamFile ) {
-			char *p = io->path;
+		char *p = io->path;
+		if ( io->type!=IOStreamFile ) {
+			p = NULL;
+			for ( listItem *i=io->stack; i!=NULL; i=i->next->next ) {
+				union { IOType value; void *ptr; } type;
+				type.ptr = ((Pair *) i->ptr )->name;
+				if ( type.value==IOStreamFile ) {
+					p = ((Pair *) i->next->ptr )->value;
+					break; } } }
+		if ( !p )
+			return fopen( *path, "r" );
+		else {
 			char *q = p;
 			for ( char *r=p; *r; r++ )
 				switch ( *r ) {
 				case '\\': r++; break;
 				case '/': q=r; break; }
-			if ( *q=='/' ) {
-				while ( p!=q ) StringAppend( s, *p++ );
-				StringAppend( s, '/' ); } }
-		if ( s_empty ) {
-			freeString( s );
-			file = fopen( *path, "r" ); }
-		else {
-			s_add( *path );
-			char *p = StringFinish( s, 0 );
-			file = fopen( p, "r" );
-			if (( file )) {
-				free( *path ); *path = p;
-				s_reset(CNStringMode); }
-			freeString( s ); } }
-	return file;
+			if ( *q!='/' )
+				return fopen( *path, "r" );
+			else {
+				CNString *s = newString();
+				s_append( p, q )
+				s_put( '/' )
+				s_add( *path )
+				p = StringFinish( s, 0 );
+				FILE *file = fopen( p, "r" );
+				if (( file )) {
+					free( *path ); *path = p;
+					s_reset( CNStringMode ) }
+				freeString( s );
+				return file; } } }
 }
 
 static int

@@ -1,6 +1,6 @@
 /*===========================================================================
 |
-|			calculator story
+|			DPU story main
 |
 +==========================================================================*/
 #include "../4_Yak/yak.bm"
@@ -9,80 +9,129 @@
 	on init
 		do : dpu : !! DPU
 		do : yak : !! Yak(
-			(( Rule, base ), ( Schema, {
-				(: %sum :)
-			} ))
-			(( Rule, sum ), ( Schema, {
-				(:%part:)
-				(:%sum + %part:)
-			} ))
-			(( Rule, part ), ( Schema, {
-				(:%mult:)
-				(:%term:)
-			} ))
-			(( Rule, mult ), ( Schema, {
-				(:%term * %term:)
-				(:%mult * %term:)
-			} ))
-			(( Rule, term ), ( Schema, {
-				(:%number:)
-				(:\( %sum \):)
-			} ))
-			(( Rule, number ), ( Schema, {
-				(:\i:)
-			} )) )
+#include "../4_Yak/Schemes/calculator"
+			)
 		do : INPUT
 
 	else in : INPUT
-		...
-			do : TRAVERSE
-		...
-
-
-	else in : TRAVERSE
-		in .SYNC
-			on ~( %%, . ) < *dpu
-				do ~( .SYNC )
+		in .READY
+			on : input : ?
+				do ( *yak, %? )
+				do ~( .READY )
+				in %?: ~'\n'
+					do check
+			else on : input : ~.
+				do > "  \n" // wipe out ^D
+				do exit
+		else on ~( %%, READY ) < *yak
+			// prompt based on last input, none included
+			in ~.: : input : ~'\n'
+				do >&"dpu-drive > "
+			// input next character
+			do input: "%c" <
+			do .READY
+		else on ~( %%, IN ) < *yak
+			// yak recognized input and traverses results
+			in : input : ~'\n'
+				do ( *yak, FLUSH )
+			else
+				do ~( check )
+				do : PROCESS
 				do ( *yak, CONTINUE )
+		else on ~( %%, OUT ) < *yak
+			// yak failed to recognize input
+			in check
+				do : FLUSH
+			else do ( *yak, DONE )
+		else on ~( %%, ERR ) < *yak
+			do exit
+
+	else in : PROCESS
+		in .SYNC // pending on dpu response
+			on ~( %%, . ) < ?:*dpu
+				do (((*A,*),~.)|((%|,...),%<(!,?:...)>))
+				do ( *yak, CONTINUE )
+				do ~( .SYNC )
 		else on ~(( %%, TAKE ), ? ) < *yak
-			in .A // accumulator assignment
-				in : A : ?  // inform ((*,*A),(((*A,*),...),digit(s)))
-					do : %? : ((%?,*) ? (*%?,%<?>) : ((%?,*),%<?>))
+			in .N
+				do : *A : ((*A,*) ? (**A,%<?>) : ((*A,*),%<?>))
 			do ( %<, CONTINUE )
 		else on ~(( %%, IN ), ? ) < *yak
-			in %<?:( number )>
-				do .A // turn on accumulator assignment
-			else in %<?:( sum )>
+			in %<?:number>
+				do .N
+				in ~.: .SET
+					do ~(*A,*)
+			else in %<?:mult>
+				do .SET
+				do :< A, op >:< ((O,*A)|((%|,*A),*op)), MULT >
+			else in %<?:sum>
+				do .SET
 				in : A : ?
-					do :< A, op >:< ((%?,A)|((%|,%?),*op)), ADD >
-				else	do :< A, op >:< A, ADD >
-				do .SET
-			else in %<?:( mult )>
-				do :< A, op >:< ((*A,A)|((%|,*A),*op)), MULT >
-				do .SET
+					do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
+				else	do :< A, op >:< (O,O), ADD >
 			do ( %<, CONTINUE )
 		else on ~(( %%, OUT ), ? ) < *yak
-			in %<?:( number )>
-				do ~( .A ) // turn off accumulator assignment
-				in ?: ( *A, * )
-					in .SET
-						do ((( *dpu, SET ), ... ), %(%?,?:...))
-						do ~( .SET ) // sync not required here
-					else 
-						do ((( *dpu, *op ), ... ), %(%?,?:...))
-						do .SYNC
-					do ~( %? )
-			else in ~.: %<?:( ~sum: ~mult )>
-				in : A : ( ?, A ) // previous A
-					do ~( %?, A )
+			in %<?:number>
+				do ~( .N )
+				in ~.: .SET
+					do ((( *dpu, *op ), ... ), %((*A,*),?:...))
+					do .SYNC
+				else
+					do ((( *dpu, SET ), ... ), %((*A,*),?:...))
+					do ( %<, CONTINUE )
+					do ~( .SET )
+			else in ( %<?:sum> ?: %<?:mult> )
+				in : A : ( O, ?:~O ) // pop < A, op >
+					do ~( O, %? )
 					do :< A, op >:< %?, %((*A,%?),?) >
-					in ( %?, * )
+					in ( %?, * ) // operate if informed
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
 						do .SYNC
-					else do ( %<, CONTINUE )
-			else in %<?:( base )>
-				=> en sortie, il n'y a plus qu'a recuperer la valeur courante du dpu
+					else
+						do (((%?,*),...),%((*A,*),?:...))
+						do ( %<, CONTINUE )
+				else
+					do ~( O )
+					do ( %<, CONTINUE )
+			else in %<?:base>
+				do ( *dpu, GET )
+				do : OUTPUT
 			else
 				do ( %<, CONTINUE )
 		else on ~( %%, ERR ) < *yak
 			do exit
+
+	else in : OUTPUT
+		on ~( %%, . ) < ?:*dpu
+			do >"%$\n": %<(!,?:...)>
+			do ( *yak, DONE )
+			do : INPUT
+
+	else in : FLUSH
+		on : . // output error msg
+			in check
+				do >"\x1B[1;33m"
+				    "~~~~~~~~~~~"
+			else	do >"           "
+//				do >"dpu-drive >"
+			do ( *yak, CONTINUE )
+		else on ~( %%, TAKE ) < ?:*yak
+			do >"%s": ( check ? '~' : ' ' )
+			do ( %<, CONTINUE )
+		else on ~( %%, OUT ) < *yak
+			in check
+				do >"^\n"
+				do ~( check )
+				do : %(:?) // reenter
+			else in : input : ?
+				in %?: '\n'
+					do >"  incomplete"
+				else	do >"  ?"
+				do : input : %?
+		else on : input : ?
+			in : input : ~'\n'
+				do input : "%c" <
+			else
+				do >"\x1B[0m\n"
+				do ( *yak, DONE )
+				do : INPUT

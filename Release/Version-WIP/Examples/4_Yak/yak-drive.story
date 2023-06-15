@@ -7,38 +7,18 @@
    Usage
 	../../B% yak-drive.story
    Purpose
-	Testing calculator User Interface and Scheme - cf. Schemes/calculator
-	see yak.story for general Scheme testing.
+	Testing calculator User Interface using calculator scheme
    Note
-	this implementation relies on completion occurring, when it does,
-	on the next event unconsumed (presumably '\n').
+	This implementation relies on completion occurring, when it does, on
+	the next event unconsumed (presumably '\n').
+	See yak.story for general Scheme testing.
 */
 #include "yak.bm"
 :
 	on init
 		do : yak : !! Yak(
-			(( Rule, base ), ( Schema, {
-				(: %sum :)
-			} ))
-			(( Rule, sum ), ( Schema, {
-				(:%part:)
-				(:%sum + %part:)
-			} ))
-			(( Rule, part ), ( Schema, {
-				(:%mult:)
-				(:%term:)
-			} ))
-			(( Rule, mult ), ( Schema, {
-				(:%term * %term:)
-				(:%mult * %term:)
-			} ))
-			(( Rule, term ), ( Schema, {
-				(:%number:)
-				(:\( %sum \):)
-			} ))
-			(( Rule, number ), ( Schema, {
-				(:\i:)
-			} )) )
+#include "Schemes/calculator"
+			)
 		do : INPUT
 
 	else in : INPUT
