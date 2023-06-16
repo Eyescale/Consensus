@@ -10,16 +10,20 @@
 		do : dpu : !! DPU
 		do : yak : !! Yak(
 #include "../4_Yak/Schemes/calculator"
+			(( Rule, base ), ( Schema, (:%op:) ))
+			(( Rule, op ), ( Schema, {
+				(:+ %sum :)
+				(:* %sum :) } ))
 			)
 		do : INPUT
 
 	else in : INPUT
-		in .READY
+		in .READY // pending on user input
 			on : input : ?
-				do ( *yak, %? )
-				do ~( .READY )
 				in %?: ~'\n'
 					do check
+				do ( *yak, %? )
+				do ~( .READY )
 			else on : input : ~.
 				do > "  \n" // wipe out ^D
 				do exit
@@ -35,9 +39,9 @@
 			in : input : ~'\n'
 				do ( *yak, FLUSH )
 			else
-				do ~( check )
-				do : PROCESS
 				do ( *yak, CONTINUE )
+				do : PROCESS
+				do ~( check )
 		else on ~( %%, OUT ) < *yak
 			// yak failed to recognize input
 			in check
@@ -55,6 +59,11 @@
 		else on ~(( %%, TAKE ), ? ) < *yak
 			in .N
 				do : *A : ((*A,*) ? (**A,%<?>) : ((*A,*),%<?>))
+			else in  ( *op ? ~. : .op )
+				in %<?:'*'>
+					do : op : MULT
+				else in %<?:'+'>
+					do : op : ADD
 			do ( %<, CONTINUE )
 		else on ~(( %%, IN ), ? ) < *yak
 			in %<?:number>
@@ -65,10 +74,18 @@
 				do .SET
 				do :< A, op >:< ((O,*A)|((%|,*A),*op)), MULT >
 			else in %<?:sum>
-				do .SET
-				in : A : ?
-					do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
-				else	do :< A, op >:< (O,O), ADD >
+				in .op
+					do ~( .op )
+				else
+					do .SET
+					in : A : ?
+						do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
+					else	do :< A, op >:< (O,O), ADD >
+			else in %<?:op>
+				do .op
+				do :< A, op >:< (O,O), ~. >
+				do ( *dpu, GET )
+				do .SYNC
 			do ( %<, CONTINUE )
 		else on ~(( %%, OUT ), ? ) < *yak
 			in %<?:number>
@@ -87,7 +104,7 @@
 					in ( %?, * ) // operate if informed
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
 						do .SYNC
-					else
+					else // pass current value down
 						do (((%?,*),...),%((*A,*),?:...))
 						do ( %<, CONTINUE )
 				else
