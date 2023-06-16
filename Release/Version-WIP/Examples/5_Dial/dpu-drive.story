@@ -70,9 +70,11 @@
 				do .N
 				in ~.: .SET
 					do ~(*A,*)
+				do ( %<, CONTINUE )
 			else in %<?:mult>
 				do .SET
 				do :< A, op >:< ((O,*A)|((%|,*A),*op)), MULT >
+				do ( %<, CONTINUE )
 			else in %<?:sum>
 				in .op
 					do ~( .op )
@@ -81,12 +83,14 @@
 					in : A : ?
 						do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
 					else	do :< A, op >:< (O,O), ADD >
+				do ( %<, CONTINUE )
 			else in %<?:op>
 				do .op
 				do :< A, op >:< (O,O), ~. >
 				do ( *dpu, GET )
 				do .SYNC
-			do ( %<, CONTINUE )
+			else
+				do ( %<, CONTINUE )
 		else on ~(( %%, OUT ), ? ) < *yak
 			in %<?:number>
 				do ~( .N )
