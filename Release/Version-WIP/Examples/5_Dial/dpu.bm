@@ -15,20 +15,18 @@
 		do exit
 
 	else in : READY
-		on ~( %%, GET ) < ..
-			in ?: (A,*)
-				do ((( .., GET ), ... ), %(%?,?:...) )
-			else	do (( .., GET ), 0 )
-		else on ~( %%, SET ) < ?:..
+		on ~( %%, SET ) < ?:..
 			do (((A,*),~.)|((*,A),((%|,...),%<(!,?:...)>)))
 			do ( .., SET )
+		else on ~( %%, GET ) < ..
+			in (?:(A,*),.)
+				do ((( .., GET ), ... ), %(%?,?:...) )
+			else	do (( .., GET ), 0 )
 		else on ~( %%, ADD ) < ?:..
-			in ~.: (A,*)
-				do : A : (((A,*), ... ), %<(!,?:...)> )
-				do ((( .., ADD ), ... ), %<(!,?:...)> )
-			else
-				do : X : (((X,*), ... ), %<(!,?:...)> )
-				do : ADD
+			in ~.: ((A,*), . )
+				do : A : ((A,*), 0 )
+			do : X : (((X,*), ... ), %<(!,?:...)> )
+			do : ADD
 		else on ~( %%, MULT ) < ?:..
 			in ?:((A,*),.)
 				in (%?,.) // A has more than one digit
@@ -142,19 +140,34 @@
 		*/
 		on : r : ?
 			in %?: ~(.,*)
-				do : A : ( *A, %(%?:(.,?)) )
+				in .check
+					do : A : ( *A, %(%?:(.,?)) )
+				else in %?:(.,?:~0)
+					do .check
+					do : A : ( *A, %? )
 				do : r : %(%?:(?,.))
 			else in %?: ~(s,.): ~(r,.)
 				do ~( %? )
 				do : r : *s
-			else
-				do ~( %? )
-				in .MSUM
+			else in .MSUM
+				do ~( .MSUM )
+				in .check
 					do ((( .., ADD ), ... ), %((A,*),?:...))
-					do ~( .MSUM )
+					do ~( .check )
 				else
+					do (( .., ADD ), 0 )
+					do ~( A, * )
+				do ~( %? )
+				do : READY
+			else
+				do ~( u )
+				in .check
 					do ((( .., MULT ), ... ), %((A,*),?:...))
-					do ~( u )
+					do ~( .check )
+				else
+					do (( .., MULT ), 0 )
+					do ~( A, * )
+				do ~( %? )
 				do : READY
 		else on : .
 			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )

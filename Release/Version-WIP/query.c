@@ -217,7 +217,6 @@ db_outputf( stderr, db, "%_, exponent=", e );
 xpn_out( stderr, exponent );
 fprintf( stderr, "\n" );
 #endif
-
 	CNInstance *success = NULL;
 	listItem *trail = NULL;
 	if ( !data->list ) {
@@ -242,6 +241,11 @@ POP_stack:		POP( stack, exponent, PUSH_stack )
 		for ( ; ; ) {
 PUSH_xpn:		PUSH( stack[ XPN_id ], xpn, POP_xpn )
 PUSH_list:		LUSH( stack[ LIST_id ], lm, POP_list )
+			if ( lm==1 ) { // ward off doublons Here
+				if ( !lookupIfThere( trail, e ) ) {
+					addIfNotThere( &trail, e );
+					e = e->sub[ 1 ]; }
+				else goto POP_list; }
 PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 			if ( lm==1 ) { // Here we do NOT ward off doublons
 				if ( traverse_CB( e, expression, data )==BM_DONE ) {

@@ -45,14 +45,13 @@ Entities
 			. at (%,rule) position, when all non-cyclic rule schemas are DONE
 	    EXIT	See Schema Thread Exit Condition section below
 
-	Note that the only reason for the relationship instances of the type ( r, s ) to be
-	dotted - e.g. do .( %|, s ) - is for optimizing e.g. in .( ., s )
+	Note that the only reason for the relationship instances of the type ( r, s ) to
+	be dotted - e.g. do .( %|, s ) - is for optimizing access e.g. in .( ., s )
 
-	The difference between yak.proper and yak.story is that, for optimization purpose,
-	the latter uses the schema thread instead of the schema instance to establish
-	connections, e.g.
-		do .( ((schema,position),frame), r )		// yak.story
-	   vs.  do ( ((schema,position),frame) | ( %|,r) )	// yak.proper
+	This is also the reason why we use schema threads and not schema instances as our
+	working entities, e.g.
+		do (((schema,position),frame), r )	// yak.story
+	   vs.  do (((schema,position),frame)|( %|,r))	// ../1_Schematize/yak.proper
 
 Behavior
 	The story alternates between
@@ -62,7 +61,7 @@ Behavior
 
 	During the INPUT phase, rule and schema instances are created and released
 	(see Schema Thread Exit Conditions section below) based on user input and the
-	(( Rule,.),(Schema,.)) scheme definition, resulting in the following schema
+	((Rule,.),(Schema,.)) scheme definition, resulting in the following schema
 	thread organization:
 
 		r4				     .====.

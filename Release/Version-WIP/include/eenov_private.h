@@ -48,7 +48,7 @@ typedef enum {
 			i = j; e = j->ptr; } \
 		else goto POP; }
 
-#define POP( stack, exponent, PUSH, NEXT ) \
+#define POP( stack, exponent, PUSH ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
@@ -58,7 +58,7 @@ typedef enum {
 		else if (( stack )) { \
 			POP_XPi( stack, exponent ) } \
 		else break; } \
-	if ( !NEXT ) break;
+	break;
 
 #define POP_XPi( stack, exponent ) { \
 	exponent = popListItem( &stack ); \
@@ -70,8 +70,6 @@ typedef enum {
 //---------------------------------------------------------------------------
 //	LUSH and LOP	- PUSH and POP list
 //---------------------------------------------------------------------------
-// Same here as in query_private.h
-
 #define LUSH( stack, LOP ) \
 	addItem( &stack, i ); \
 	for ( i=e->as_sub[0]; i!=NULL; i=i->next ) \
@@ -84,7 +82,7 @@ typedef enum {
 		i = popListItem( &stack ); \
 		goto LOP; }
 
-#define LOP( stack, LUSH, NEXT ) \
+#define LOP( stack, LUSH ) \
 	for ( ; ; ) { \
 		if (( i->next )) { \
 			i = i->next; \
@@ -93,8 +91,7 @@ typedef enum {
 				goto LUSH; } } \
 		else if (( stack )) \
 			i = popListItem( &stack ); \
-		else break; } \
-	if ( !NEXT ) break;
+		else break; }
 
 
 #endif // EENOV_PRIVATE_H

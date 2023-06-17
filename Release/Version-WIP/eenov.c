@@ -139,6 +139,8 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 //---------------------------------------------------------------------------
 //	eenov_traversal
 //---------------------------------------------------------------------------
+#define LIST	2
+
 BMTraverseCBSwitch( eenov_traversal )
 case_( identifier_CB )
 	CNInstance *x = data->instance;
@@ -178,7 +180,7 @@ case_( wildcard_CB )
 	if ( *p=='?' ) {
 		data->result = data->instance;
 		if (!strncmp(p+1,":...",4))
-			_return( 2 ) }
+			_return( LIST ) }
 	data->success = !is_f( NEGATED );
 	_break
 case_( end_CB )
@@ -223,36 +225,31 @@ PUSH_xpn:	PUSH( stack[ XPN_id ], xpn, POP_xpn )
 		data->instance = e;
 		traverse_data.done = 0;
 		eenov_traversal( p, &traverse_data, FIRST );
-		if (( data->success )) {
-			if ( traverse_data.done==2 ) {
-				/* we have %<(_!_,?:...)>
-		               	             ^    ^----- current traverse_data.p
-					      ---------- current data->stack.instance
-				*/
-				// Here we do NOT ward off doublons
-				if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
-					success = data->result;
-					goto RETURN; }
-				e = popListItem( &data->stack.instance );
-				popListItem( &data->stack.flags ); // flush
-				for ( ; ; ) {
-PUSH_list:				LUSH( stack[ LIST_id ], POP_list )
-					if ( eenov_op( op, e, db, data )==BM_DONE ) {
-						success = data->result;
-						goto RETURN; }
-					i = popListItem( &stack[ LIST_id ] );
-					e = i->ptr; goto PUSH_list;
-POP_list:				LOP( stack[ LIST_id ], PUSH_list, NULL ) }
-				if (( stack[ XPN_id ] ))
-					POP_XPi( stack[ XPN_id ], xpn )
-				else goto RETURN; }
-			else {
-				if ( !lookupIfThere( trail, e ) ) { // ward off doublons
-					addIfNotThere( &trail, e );
-					if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
-						success = data->result;
-						goto RETURN; } } } }
-POP_xpn:	POP( stack[ XPN_id ], xpn, PUSH_xpn, NULL ) }
+		if ( !data->success || lookupIfThere( trail, e ))
+			goto POP_xpn; // ward off doublons Here
+		addIfNotThere( &trail, e );
+		if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
+			success = data->result;
+			goto RETURN; }
+		if ( traverse_data.done==LIST ) {
+			/* we have %<(_!_,?:...)>
+		              	     ^    ^----- current traverse_data.p
+				      ---------- current data->stack.instance
+			*/
+			e = popListItem( &data->stack.instance );
+			popListItem( &data->stack.flags ); // flush
+PUSH_list:		LUSH( stack[ LIST_id ], POP_list )
+			// Here we do NOT ward off doublons
+			if ( eenov_op( op, e, db, data )==BM_DONE ) {
+				success = data->result;
+				goto RETURN; }
+			i = popListItem( &stack[ LIST_id ] );
+			e = i->ptr; goto PUSH_list;
+POP_list:		LOP( stack[ LIST_id ], PUSH_list )
+			if ( !stack[ XPN_id ] )
+				goto RETURN;
+			POP_XPi( stack[ XPN_id ], xpn ) }
+POP_xpn:	POP( stack[ XPN_id ], xpn, PUSH_xpn ) }
 RETURN:
 	POP_ALL( stack[ XPN_id ], xpn );
 	freeListItem( &stack[ LIST_id ] );

@@ -1,17 +1,12 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. complete ./Examples/5_Dial/dpu-drive.story
-		[DONE]	parentheses
-		[TODO]	*/+ number
-		[TODO]	mem / identifiers
 	. interactive B% Grammar
-CHECK
-	. dpu: remove leading zero's - if there are
-	. align yak-proper.story with latest yak.story
-		[TODO]	no separate Take
-		[TODO]	update output traversal
 
 DONE
+	. dpu.bm: removed leading zero's in FORMAT
+	. complete ./Examples/5_Dial/dpu-drive.story
+		[DONE]	*/+ number
+		[DONE]	yak integration
 	. implemented $ output format, e.g.
 		do >"%$\n": %<(!,?:...)> // output concatenated
 	. made #include path relative to current file path
@@ -40,7 +35,6 @@ DONE
 	. modified yak-drive.story /
 		on push - ie. IN: ( next, current ) or ( base )
 		on pop - ie. OUT: ( current, next ) or ( base, carry ) or ( base )
-
 	. added Self proxy traversal to query.c (NOT to instantiate.c)
 	. allowed .locale declaration after else statement - cf yak.story
 		else .event
@@ -208,6 +202,8 @@ DONE
 	. Branched Version-2.0
 
 NICE TO HAVE
+	. dpu-drive.story
+		: mem (variable assignment & usage in formulas)
 	. do { .... }	<<<< ANY expression - assignment, release, etc.
 	. on ~( %%, ?:TAKE ) < *yak
 		     ^---------- considered filtered!	

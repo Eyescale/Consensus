@@ -70,8 +70,7 @@
 		if (( j )) { \
 			addItem( &stack, i ); \
 			addItem( &stack, j ); \
-			i = j; e = i->ptr; \
-			if ( lm==1 ) e = e->sub[ 1 ]; } \
+			i = j; e = i->ptr; } \
 		else { lm=NEG(lm); goto LOP; } } \
 
 #define LOP( stack, lm, LUSH, NEXT ) \
