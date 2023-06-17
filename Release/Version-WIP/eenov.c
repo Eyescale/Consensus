@@ -221,34 +221,36 @@ eenov_query_op( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
 	enum { XPN_id, LIST_id };
 	for ( ; ; ) {
 PUSH_xpn:	PUSH( stack[ XPN_id ], xpn, POP_xpn )
+		if ( lookupIfThere( trail, e ) ) // ward off doublons Here
+			goto POP_xpn;
+		addIfNotThere( &trail, e );
 		data->result = e;
 		data->instance = e;
 		traverse_data.done = 0;
 		eenov_traversal( p, &traverse_data, FIRST );
-		if ( !data->success || lookupIfThere( trail, e ))
-			goto POP_xpn; // ward off doublons Here
-		addIfNotThere( &trail, e );
-		if ( eenov_op( op, data->result, db, data )==BM_DONE ) {
-			success = data->result;
-			goto RETURN; }
-		if ( traverse_data.done==LIST ) {
-			/* we have %<(_!_,?:...)>
-		              	     ^    ^----- current traverse_data.p
-				      ---------- current data->stack.instance
-			*/
-			e = popListItem( &data->stack.instance );
-			popListItem( &data->stack.flags ); // flush
-PUSH_list:		LUSH( stack[ LIST_id ], POP_list )
-			// Here we do NOT ward off doublons
+		if ( data->success ) {
+			e = data->result;
 			if ( eenov_op( op, e, db, data )==BM_DONE ) {
-				success = data->result;
+				success = e;
 				goto RETURN; }
-			i = popListItem( &stack[ LIST_id ] );
-			e = i->ptr; goto PUSH_list;
-POP_list:		LOP( stack[ LIST_id ], PUSH_list )
-			if ( !stack[ XPN_id ] )
-				goto RETURN;
-			POP_XPi( stack[ XPN_id ], xpn ) }
+			if ( traverse_data.done==LIST ) {
+				/* we have %<(_!_,?:...)>
+			              	     ^    ^----- current traverse_data.p
+					      ---------- current data->stack.instance
+				*/
+				e = popListItem( &data->stack.instance );
+				popListItem( &data->stack.flags ); // flush
+PUSH_list:			LUSH( stack[ LIST_id ], POP_list )
+				// Here we do NOT ward off doublons
+				if ( eenov_op( op, e, db, data )==BM_DONE ) {
+					success = e;
+					goto RETURN; }
+				i = popListItem( &stack[ LIST_id ] );
+				e = i->ptr; goto PUSH_list;
+POP_list:			LOP( stack[ LIST_id ], PUSH_list )
+				if ( !stack[ XPN_id ] )
+					goto RETURN;
+				POP_XPi( stack[ XPN_id ], xpn ) } }
 POP_xpn:	POP( stack[ XPN_id ], xpn, PUSH_xpn ) }
 RETURN:
 	POP_ALL( stack[ XPN_id ], xpn );
