@@ -36,12 +36,11 @@
 			do .READY
 		else on ~( %%, IN ) < *yak
 			// yak recognized input and traverses results
-			in : input : ~'\n'
-				do ( *yak, FLUSH )
-			else
-				do ( *yak, CONTINUE )
+			in : input : '\n'
 				do : PROCESS
+				do ( *yak, CONTINUE )
 				do ~( check )
+			else do ( *yak, FLUSH )
 		else on ~( %%, OUT ) < *yak
 			// yak failed to recognize input
 			in check
@@ -68,21 +67,19 @@
 		else on ~(( %%, IN ), ? ) < *yak
 			in %<?:number>
 				do .N
-				in ~.: .SET
-					do ~(*A,*)
+				do ( .SET ? ~. : ~(*A,*) )
 				do ( %<, CONTINUE )
 			else in %<?:mult>
 				do .SET
 				do :< A, op >:< ((O,*A)|((%|,*A),*op)), MULT >
 				do ( %<, CONTINUE )
 			else in %<?:sum>
-				in .op
-					do ~( .op )
-				else
+				in ~.: .op
 					do .SET
 					in : A : ?
 						do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
 					else	do :< A, op >:< (O,O), ADD >
+				else do ~( .op )
 				do ( %<, CONTINUE )
 			else in %<?:op>
 				do .op

@@ -176,8 +176,6 @@ DONE
 	. implemented db_fire_proxy( proxy, db )
 		. called in bm_context_update() before db_update()
 		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
-	. db_proxy() no longer manifests new proxies [rev-2.0]
-		<=> proxy instantiation does not trigger any event
 	. extended do >: expression // appends '\n' to the resulting output [rev-2.0]
 	. %<(expression)> done, using ! as pivot in expression, e.g.
 		on (%%,.) < ?
@@ -242,9 +240,6 @@ NICE TO HAVE
 		but then we'd want to allow variable names in condition
 	. allow !! inside of expression instead of assignment only
 		requires changes in parser.c and instantiate.c
-	. OPT verify_traversal
-		in pivot.p=='%(' and pivot.e==current xp_traverse'd (?)
-		but actually we do have a pivot.e inside LIST_EXPR (?)
 	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
 	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
 		~%(?,.)		== %(^.) == en ^.
