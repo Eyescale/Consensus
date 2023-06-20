@@ -19,6 +19,7 @@
 				(:%term:)
 				(:%mult:) } ))
 			)
+		do (((A,A),*),0)
 		do : A : ~.
 		do : INPUT
 
@@ -97,7 +98,7 @@
 					in ( %?, * ) // operate if informed
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
 						do .SYNC
-					else // pass current value down
+					else // pass down current value
 						do (((%?,*),...),%((*A,*),?:...))
 						do ( %<, CONTINUE )
 				else do ( %<, CONTINUE )
