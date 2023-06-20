@@ -19,6 +19,7 @@
 				(:%term:)
 				(:%mult:) } ))
 			)
+		do : A : ~.
 		do : INPUT
 
 	else in : INPUT
@@ -50,11 +51,9 @@
 			in check
 				do : FLUSH
 			else do ( *yak, DONE )
-		else on ~( %%, ERR ) < *yak
-			do exit
 
 	else in : PROCESS
-		in .SYNC // pending on dpu response
+		in .SYNC // pending on dpu's return value
 			on ~( %%, . ) < ?:*dpu
 				do (((*A,*),~.)|((%|,...),%<(!,?:...)>))
 				do ( *yak, CONTINUE )
@@ -62,45 +61,35 @@
 		else on ~(( %%, TAKE ), ? ) < *yak
 			in .N
 				do : *A : ((*A,*) ? (**A,%<?>) : ((*A,*),%<?>))
-			else in  ( *op ? ~. : .op )
+			else in : A : ~.
 				in %<?:'*'>
-					do : op : MULT
+					do :< A, op >:< (A,A), MULT >
 				else in %<?:'+'>
-					do : op : ADD
+					do :< A, op >:< (A,A), ADD >
 			do ( %<, CONTINUE )
 		else on ~(( %%, IN ), ? ) < *yak // pushing rule
 			in %<?:number>
-				do .N
 				do ( .SET ? ~. : ~(*A,*) )
-				do ( %<, CONTINUE )
+				do .N
 			else in %<?:mult>
 				do .SET
 				do :< A, op >:< ((A,*A)|((%|,*A),*op)), MULT >
-				do ( %<, CONTINUE )
 			else in %<?:sum>
 				do .SET
 				in : A : ?
 					do :< A, op >:< ((A,%?)|((%|,%?),*op)), ADD >
-				else
-					do :< A, op >:< (A,A), ADD >
-				do ( %<, CONTINUE )
-			else in %<?:op>
-				do .op
-				do :< A, op >:< (A,A), ~. >
-				do ( *dpu, GET )
-				do .SYNC
-			else
-				do ( %<, CONTINUE )
+				else	do :< A, op >:< ((A,A),~.), ADD >
+			do ( %<, CONTINUE )
 		else on ~(( %%, OUT ), ? ) < *yak // popping rule
 			in %<?:number>
-				do ~( .N )
-				in ~.: .SET
-					do ((( *dpu, *op ), ... ), %((*A,*),?:...))
-					do .SYNC
-				else
+				in .SET
 					do ((( *dpu, SET ), ... ), %((*A,*),?:...))
 					do ( %<, CONTINUE )
 					do ~( .SET )
+				else
+					do ((( *dpu, *op ), ... ), %((*A,*),?:...))
+					do .SYNC
+				do ~( .N )
 			else in ( %<?:sum> ?: %<?:mult> )
 				in : A : ( A, ?:~A ) // pop < A, op >
 					do ~( A, %? )
@@ -111,27 +100,20 @@
 					else // pass current value down
 						do (((%?,*),...),%((*A,*),?:...))
 						do ( %<, CONTINUE )
-				else
-					do ( %<, CONTINUE )
+				else do ( %<, CONTINUE )
 			else in %<?:sf>
-				do ~( .op )
 				do : op : ADD
 				do ( %<, CONTINUE )
 			else in %<?:base>
-				do ~( .op )
-				do ~( A )
-				do ( *dpu, GET )
+				do : A : ~.
 				do : OUTPUT
 			else
 				do ( %<, CONTINUE )
-		else on ~( %%, ERR ) < *yak
-			do exit
 
 	else in : OUTPUT
-		on ~( %%, . ) < ?:*dpu
-			do >"%$\n": %<(!,?:...)>
-			do ( *yak, DONE )
-			do : INPUT
+		do >"%$\n": %(((A,A),*),?:...)
+		do ( *yak, DONE )
+		do : INPUT
 
 	else in : FLUSH
 		on : . // output error msg
