@@ -19,6 +19,7 @@
 				(:%term:)
 				(:%mult:) } ))
 			)
+		// initialize accumulator value and stack
 		do (((A,A),*),0)
 		do : A : ~.
 		do : INPUT
