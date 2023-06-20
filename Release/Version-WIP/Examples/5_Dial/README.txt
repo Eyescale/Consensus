@@ -1,19 +1,19 @@
 dpu-drive.story
     Accumulator operations
-	1. push*
+	1. push
 		in : A : ? // current accumulator address
-			do : A : ((O,%?)|((%|,%?),*op))
+			do : A : ((A,%?)|((%|,%?),*op))
 			do : op : new_op
 
 		The current accumulator address is *A
-		The next accumulator address is (O,*A)
+		The next accumulator address is (A,*A)
 		Note: the current op is pushed along as
-			  (( (O,*A), *A), *op )
+			  (( (A,*A), *A), *op )
 		      so as to be performed on pop
-	2. pop*
-		in : A : ( O, ?:~O ) // previous accumulator address
+	2. pop
+		in : A : ( A, ?:~A ) // previous accumulator address
 			do :< A, op >:< %?, %((*A,%?),?) >
-			do ~( O, %? )
+			do ~( A, %? )
 	3. assignment
 		in ( *A, * )
 			do : *A : ( **A, digit )
@@ -23,8 +23,6 @@ dpu-drive.story
 			do : %? : ((%?,*) ? (*%?,%<?>) : ((%?,*),%<?>))
 
 		The accumulator value is **A: (((*A,*), ... ), digits )
-
-	*Note: A could be used instead of O, to the same effect.
 
     DPU interface
 	do ( *dpu, GET )

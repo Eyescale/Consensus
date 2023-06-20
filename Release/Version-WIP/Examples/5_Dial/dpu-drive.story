@@ -13,7 +13,11 @@
 			(( Rule, base ), ( Schema, (:%op:) ))
 			(( Rule, op ), ( Schema, {
 				(:+ %sum :)
-				(:* %sum :) } ))
+				(:* %sf :)
+				(:* %sf + %sum :) } ))
+			(( Rule, sf ), ( Schema, {
+				(:%term:)
+				(:%mult:) } ))
 			)
 		do : INPUT
 
@@ -64,31 +68,30 @@
 				else in %<?:'+'>
 					do : op : ADD
 			do ( %<, CONTINUE )
-		else on ~(( %%, IN ), ? ) < *yak
+		else on ~(( %%, IN ), ? ) < *yak // pushing rule
 			in %<?:number>
 				do .N
 				do ( .SET ? ~. : ~(*A,*) )
 				do ( %<, CONTINUE )
 			else in %<?:mult>
 				do .SET
-				do :< A, op >:< ((O,*A)|((%|,*A),*op)), MULT >
+				do :< A, op >:< ((A,*A)|((%|,*A),*op)), MULT >
 				do ( %<, CONTINUE )
 			else in %<?:sum>
-				in ~.: .op
-					do .SET
-					in : A : ?
-						do :< A, op >:< ((O,%?)|((%|,%?),*op)), ADD >
-					else	do :< A, op >:< (O,O), ADD >
-				else do ~( .op )
+				do .SET
+				in : A : ?
+					do :< A, op >:< ((A,%?)|((%|,%?),*op)), ADD >
+				else
+					do :< A, op >:< (A,A), ADD >
 				do ( %<, CONTINUE )
 			else in %<?:op>
 				do .op
-				do :< A, op >:< (O,O), ~. >
+				do :< A, op >:< (A,A), ~. >
 				do ( *dpu, GET )
 				do .SYNC
 			else
 				do ( %<, CONTINUE )
-		else on ~(( %%, OUT ), ? ) < *yak
+		else on ~(( %%, OUT ), ? ) < *yak // popping rule
 			in %<?:number>
 				do ~( .N )
 				in ~.: .SET
@@ -99,8 +102,8 @@
 					do ( %<, CONTINUE )
 					do ~( .SET )
 			else in ( %<?:sum> ?: %<?:mult> )
-				in : A : ( O, ?:~O ) // pop < A, op >
-					do ~( O, %? )
+				in : A : ( A, ?:~A ) // pop < A, op >
+					do ~( A, %? )
 					do :< A, op >:< %?, %((*A,%?),?) >
 					in ( %?, * ) // operate if informed
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
@@ -109,9 +112,14 @@
 						do (((%?,*),...),%((*A,*),?:...))
 						do ( %<, CONTINUE )
 				else
-					do ~( O )
 					do ( %<, CONTINUE )
+			else in %<?:sf>
+				do ~( .op )
+				do : op : ADD
+				do ( %<, CONTINUE )
 			else in %<?:base>
+				do ~( .op )
+				do ~( A )
 				do ( *dpu, GET )
 				do : OUTPUT
 			else

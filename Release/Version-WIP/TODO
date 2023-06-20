@@ -178,7 +178,7 @@ DONE
 		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
 	. extended do >: expression // appends '\n' to the resulting output [rev-2.0]
 	. %<(expression)> done, using ! as pivot in expression, e.g.
-		on (%%,.) < ?
+		on ~(%%,.) < ?
 			do >: %<(!,?:...)>
 	  	does output all newly instantiated %((%%,.),?:...) in %<
 	. %( list, ?:... ) implementation done

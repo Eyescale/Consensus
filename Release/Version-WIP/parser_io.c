@@ -485,9 +485,7 @@ io_open( CNIO *io, char **path )
 	make path relative to current file path
 */
 {
-	if ( **path=='/' )
-		return fopen( *path, "r" );
-	else {
+	if ( **path!='/' ) {
 		char *p = io->path;
 		if ( io->type!=IOStreamFile ) {
 			p = NULL;
@@ -497,17 +495,13 @@ io_open( CNIO *io, char **path )
 				if ( type.value==IOStreamFile ) {
 					p = ((Pair *) i->next->ptr )->value;
 					break; } } }
-		if ( !p )
-			return fopen( *path, "r" );
-		else {
+		if (( p )) {
 			char *q = p;
 			for ( char *r=p; *r; r++ )
 				switch ( *r ) {
 				case '\\': r++; break;
 				case '/': q=r; break; }
-			if ( *q!='/' )
-				return fopen( *path, "r" );
-			else {
+			if ( *q=='/' ) {
 				CNString *s = newString();
 				s_append( p, q )
 				s_put( '/' )
@@ -519,6 +513,7 @@ io_open( CNIO *io, char **path )
 					s_reset( CNStringMode ) }
 				freeString( s );
 				return file; } } }
+	return fopen( *path, "r" );
 }
 
 static int
