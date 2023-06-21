@@ -23,7 +23,7 @@
 				do ((( .., GET ), ... ), %(%?,?:...) )
 			else	do (( .., GET ), 0 )
 		else on ~( %%, ADD ) < ?:..
-			in ~.: ((A,*), . )
+			in ~.: ((A,*), . ) // format input
 				do : A : ((A,*), 0 )
 			do : X : (((X,*), ... ), %<(!,?:...)> )
 			do : ADD
@@ -54,10 +54,10 @@
 			else in : q : (.,?)
 				do (( *dial, ... ),< MSUM, %?, 0, *c >)
 			else
+				do .MSUM
 				do : FORMAT
 		else on : .
 			do :< p, q, r, c >:< *A, *X, (r,*), 0 >
-			do .MSUM
 
 	else in : MULT
 		in .MSUM // after each round of multiplying P by one q-digit
@@ -136,37 +136,29 @@
 	else in : FORMAT
 		/* inform A either
 			in .MSUM  - from *r resp. (*r,*c)
-			in ~.MSUM - from *t then *s, via *r
+			otherwise - from *t then *s, via *r
 		*/
 		on : r : ?
 			in %?: ~(.,*)
-				in .check
+				in .check // eliminate leading 0
 					do : A : ( *A, %(%?:(.,?)) )
 				else in %?:(.,?:~0)
 					do .check
 					do : A : ( *A, %? )
 				do : r : %(%?:(?,.))
-			else in %?: ~(s,.): ~(r,.)
+			else in %?: ~(r,.): ~(s,.) // (t,*) or (u,*)
+				do ~( u )
 				do ~( %? )
 				do : r : *s
-			else in .MSUM
-				do ~( .MSUM )
-				in .check
-					do ((( .., ADD ), ... ), %((A,*),?:...))
-					do ~( .check )
-				else
-					do (( .., ADD ), 0 )
-					do ~( A, * )
-				do ~( %? )
-				do : READY
 			else
-				do ~( u )
-				in .check
-					do ((( .., MULT ), ... ), %((A,*),?:...))
-					do ~( .check )
-				else
-					do (( .., MULT ), 0 )
-					do ~( A, * )
+				in ?:( .MSUM ? ADD : MULT )
+					in .check
+						do ((( .., %? ), ... ), %((A,*),?:...))
+						do ~( .check )
+					else
+						do (( .., %? ), 0 )
+						do ~( A, * )
+				do ~( .MSUM )
 				do ~( %? )
 				do : READY
 		else on : .

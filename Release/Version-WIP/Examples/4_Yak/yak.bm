@@ -31,7 +31,7 @@
 				else
 					do ( .., IN ) // notify traversal
 					do :< %%, pending >:< OUT, READY >
-		else on ~( ., base ) // FAIL
+		else on ~( ?, base ) // FAIL
 			in : record : (record,*)
 				do >&"(nop)\n"
 				do ( .., ERR )	// nop
@@ -299,9 +299,9 @@
 			in ( %(r,?), ((.,%(.?)),.) )
 			else // none of r's subscribers has a successor starting at s's finish frame
 				in ((.,%(.?)), r ) :~s
-				else // r has no feeder other than s starting at s's finish frame
+				else // r has no feeder starting at s's finish frame
 					do .EXIT // defunct
-		else on ( (r,base) ? ( (?,r):~%(?,(.,r)):~s, DONE ) :)
+		else on ((r,base) ? ((.,r):~%(((rule,.),.),?):~s,DONE) :)
 			do .EXIT // redundant
 	else on .( /[[\]]/, . )
 		do .DONE // terminating

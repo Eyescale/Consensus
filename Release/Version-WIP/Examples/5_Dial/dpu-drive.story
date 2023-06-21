@@ -10,8 +10,8 @@
 		do : dpu : !! DPU
 		do : yak : !! Yak(
 #include "../4_Yak/Schemes/calculator"
-			(( Rule, base ), ( Schema, (:%op:) ))
-			(( Rule, op ), ( Schema, {
+			// add schemas to base rule
+			(( Rule, base ), ( Schema, {
 				(:+ %sum :)
 				(:* %sf :)
 				(:* %sf + %sum :) } ))
@@ -131,8 +131,8 @@
 		else on ~( %%, OUT ) < *yak
 			in check
 				do >"^\n"
-				do ~( check )
 				do : %(:?) // reenter
+				do ~( check )
 			else in : input : ?
 				in %?: '\n'
 					do >"  incomplete"
