@@ -31,7 +31,7 @@
 				else
 					do ( .., IN ) // notify traversal
 					do :< %%, pending >:< OUT, READY >
-		else on ~( ?, base ) // FAIL
+		else on ~( ., base ) // FAIL
 			in : record : (record,*)
 				do >&"(nop)\n"
 				do ( .., ERR )	// nop
