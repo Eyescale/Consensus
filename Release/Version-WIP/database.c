@@ -156,7 +156,7 @@ RETURN:
 //===========================================================================
 //	db_clear
 //===========================================================================
-static inline void deprecate_as_sub( CNInstance *, int as_sub, CNDB * );
+static inline void deprecate_as_sub( CNInstance *, int ndx, CNDB * );
 void
 db_clear( listItem *instances, CNDB *db )
 {
@@ -164,9 +164,9 @@ db_clear( listItem *instances, CNDB *db )
 		deprecate_as_sub( i->ptr, 0, db );
 }
 static inline void
-deprecate_as_sub( CNInstance *e, int as_sub, CNDB *db )
+deprecate_as_sub( CNInstance *e, int ndx, CNDB *db )
 {
-	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
+	for ( listItem *j=e->as_sub[ndx]; j!=NULL; j=j->next )
 		db_deprecate( j->ptr, db );
 }
 
