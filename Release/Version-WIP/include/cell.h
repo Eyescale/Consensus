@@ -7,7 +7,7 @@
 
 typedef CNEntity CNCell;
 
-CNCell * newCell( Pair *entry, CNEntity *parent );
+CNCell * newCell( Pair *entry );
 void releaseCell( CNCell * );
 
 int bm_cell_operate( CNCell *, listItem **new, CNStory * );

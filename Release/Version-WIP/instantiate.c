@@ -108,12 +108,11 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 {
 	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	CNEntity *cell = BMContextCell( ctx );
 	// instantiate new cell
-	CNCell *new = newCell( entry, cell );
-	BMContext *carry = BMCellContext( new );
-	// inform new cell's context
-	data->carry = carry;
+	CNEntity *parent = BMContextCell( ctx );
+	CNCell *child = newCell( entry );
+	// inform child's context
+	data->carry = BMCellContext( child );;
 	if ( *p=='(' ) {
 		p++; // skipping opening '('
 		if ( *p==')' ) p++;
@@ -127,8 +126,8 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 				p = p_prune( PRUNE_TERM, q ); }
 			freeListItem( &data->sub[ 0 ] ); }
 		while ( *p++!=')' ); }
-	// carry new and return proxy
-	return bm_cell_carry( cell, new, !(*p=='~') );
+	// carry child and return proxy
+	return bm_cell_carry( parent, child, (*p!='~') );
 }
 
 //---------------------------------------------------------------------------

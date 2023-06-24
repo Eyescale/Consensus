@@ -12,12 +12,11 @@
 //	newContext / freeContext
 //===========================================================================
 BMContext *
-newContext( CNEntity *cell, CNEntity *p )
+newContext( CNEntity *cell )
 {
 	CNDB *db = newCNDB();
 	CNInstance *self = db_proxy( NULL, cell, db );
-	CNInstance *parent = (( p ) ? db_proxy( cell, p, db ) : NULL );
-	Pair *id = newPair( self, parent );
+	Pair *id = newPair( self, NULL );
 	Pair *active = newPair( newPair( NULL, NULL ), NULL );
 	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
 

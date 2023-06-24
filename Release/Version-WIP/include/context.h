@@ -5,7 +5,7 @@
 
 typedef Registry BMContext;
 
-BMContext *	newContext( CNEntity *cell, CNEntity *parent );
+BMContext *	newContext( CNEntity *cell );
 void		freeContext( BMContext * );
 void		bm_context_init( BMContext *ctx );
 int		bm_context_update( CNEntity *this, BMContext *ctx );

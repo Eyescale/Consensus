@@ -94,7 +94,6 @@
 				do ~( .N )
 			else in ( %<?:sum> ?: %<?:mult> )
 				in : A : ( A, ?:~A ) // pop < A, op >
-					do ~( A, %? )
 					do :< A, op >:< %?, %((*A,%?),?) >
 					in ( %?, * ) // operate if informed
 						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
@@ -102,6 +101,7 @@
 					else // pass down current value
 						do (((%?,*),...),%((*A,*),?:...))
 						do ( %<, CONTINUE )
+					do ~( A, %? )
 				else do ( %<, CONTINUE )
 			else in %<?:sf>
 				do : op : ADD

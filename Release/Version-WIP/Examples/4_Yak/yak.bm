@@ -21,7 +21,7 @@
 				else // all feeder schemas ready
 					do ( .., READY ) // notify ready
 					do .READY
-			else on ~.: . < { %%, .. }
+			else on ~.: . // all feeder schemas done
 				in ((.,%?),(']',(record,*)))
 					do ~( %?, base )
 				else in ((.,%?),('[',((record,*),.)))
@@ -262,7 +262,7 @@
 #endif
 	else .q
 +	in .( ?, s ) // s is pending on rule
-		on ~.: . < { %%, .. }
+		on ~.: . < { %%, .. } // system deadlock
 			do >&"Warning: Yak: unlocking rule '%_'\n": %(r:((.,?),.))
 			do .EXIT
 		else in .DONE

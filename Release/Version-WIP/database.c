@@ -93,17 +93,35 @@ db_register( char *p, CNDB *db )
 //	db_deprecate
 //===========================================================================
 static inline int deprecatable( CNInstance *e, CNDB *db );
+static inline void deprecate( CNInstance *x, CNDB *db );
 
 void
 db_deprecate( CNInstance *x, CNDB *db )
 /*
-	Assumption: x is deprecatable
 	deprecate (ie. set "to-be-released") x and all its ascendants,
 	proceeding top-down
 */
 {
-	if ( !x ) return;
-
+	if (( x ) && deprecatable(x,db) )
+		deprecate( x, db );
+}
+static inline int
+deprecatable( CNInstance *e, CNDB *db )
+/*
+	returns 0 if e is either released or to-be-released,
+		which we assume applies to all its ascendants
+	returns 1 otherwise.
+*/
+{
+	CNInstance *nil = db->nil;
+	if ( cn_hold( e, nil ) )
+		return 0;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
+}
+static inline void
+deprecate( CNInstance *x, CNDB *db )
+{
 	listItem * stack = NULL,
 		 * i = newItem( x ),
 		 * j;
@@ -134,37 +152,22 @@ db_deprecate( CNInstance *x, CNDB *db )
 RETURN:
 	freeItem( i );
 }
-static inline int
-deprecatable( CNInstance *e, CNDB *db )
-/*
-	returns 0 if e is either released or to-be-released,
-		which we assume applies to all its ascendants
-	returns 1 otherwise.
-*/
-{
-	CNInstance *nil = db->nil;
-	if ( cn_hold( e, nil ) )
-		return 0;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
-}
 
 //===========================================================================
 //	db_clear
 //===========================================================================
+static inline void deprecate_as_sub( CNInstance *, int as_sub, CNDB * );
 void
 db_clear( listItem *instances, CNDB *db )
-/*
-	deprecates ( instances, . )
-*/
 {
-	for ( listItem *i=instances; i!=NULL; i=i->next ) {
-		CNInstance *e = i->ptr;
-		if ( db_deprecated( e, db ) ) continue;
-		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
-			e = j->ptr;
-			if ( !db_deprecated( e, db ) )
-				db_deprecate( e, db ); } }
+	for ( listItem *i=instances; i!=NULL; i=i->next )
+		deprecate_as_sub( i->ptr, 0, db );
+}
+static inline void
+deprecate_as_sub( CNInstance *e, int as_sub, CNDB *db )
+{
+	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
+		db_deprecate( j->ptr, db );
 }
 
 //===========================================================================
@@ -190,10 +193,10 @@ db_signal( CNInstance *x, CNDB *db )
 {
 	if isBase( x ) {
 		if ( flareable( x, db ) )
-			db_deprecate( x, db ); }
+			deprecate( x, db ); }
 	else if ( deprecatable( x, db ) ) {
 		// deprecate x and all its ascendants
-		db_deprecate( x, db );
+		deprecate( x, db );
 		// deprecate x's subs, proceeding top-down
 		listItem * stack = NULL;
 		int ndx = 0;
@@ -263,12 +266,9 @@ db_fire( CNInstance *proxy, CNDB *db )
 */
 {
 	if ( deprecatable( proxy, db ) ) {
-		if (( DBProxyThat( proxy ) )) {
-			for ( listItem *i=proxy->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-				CNInstance *e = i->ptr;
-				if ( deprecatable( e, db ) )
-					db_deprecate( e, db ); } }
-		else db_deprecate( proxy, db ); }
+		if (( DBProxyThat( proxy ) ))
+			deprecate_as_sub( proxy, 0, db );
+		else deprecate( proxy, db ); }
 }
 
 //===========================================================================
@@ -367,8 +367,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 			candidate = i->ptr;
 			if ( candidate->sub[ 1 ]==f )
 				instance = candidate;
-			else if ( deprecatable( candidate, db ) )
-				db_deprecate( candidate, db ); }
+			else db_deprecate( candidate, db ); }
 		if (( instance )) {
 			db_op( DB_REASSIGN_OP, instance, db );
 			return instance; } }
@@ -430,8 +429,7 @@ db_unassign( CNInstance *x, CNDB *db )
 			continue;
 		for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next ) {
 			CNInstance *f = j->ptr;
-			if ( deprecatable(f,db) )
-				db_deprecate( f, db ); }
+			db_deprecate( f, db ); }
 		db_op( DB_REASSIGN_OP, e, db );
 		return e; }
 	e = cn_new( star, x );

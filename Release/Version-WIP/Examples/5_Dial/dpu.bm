@@ -129,7 +129,6 @@
 						do : u : ( *u, %? )
 					do :< p, q, r, c >:< *P, %?, (r,*), 0 >
 				else
-					do ~( %((.,*):%((?,...):*t)) )
 					do : t : ((*c:0) ? *u : (*u,*c))
 					do : FORMAT
 
@@ -140,7 +139,7 @@
 		*/
 		on : r : ?
 			in %?: ~(.,*)
-				in .check // eliminate leading 0
+				in .check // leading 0 eliminated
 					do : A : ( *A, %(%?:(.,?)) )
 				else in %?:(.,?:~0)
 					do .check
@@ -148,7 +147,7 @@
 				do : r : %(%?:(?,.))
 			else in %?: ~(r,.): ~(s,.) // (t,*) or (u,*)
 				do ~( u )
-				do ~( %? )
+				do ~( t )
 				do : r : *s
 			else
 				in ?:( .MSUM ? ADD : MULT )
@@ -158,8 +157,8 @@
 					else
 						do (( .., %? ), 0 )
 						do ~( A, * )
-				do ~( .MSUM )
 				do ~( %? )
+				do ~( .MSUM )
 				do : READY
 		else on : .
 			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )

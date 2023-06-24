@@ -3,6 +3,8 @@ TODO
 	. interactive B% Grammar
 
 DONE
+	. database.c - code cleanup
+	  integrated deprecatable() into db_deprecate()
 	. dpu.bm: removed leading zero's in FORMAT
 	. complete ./Examples/5_Dial/dpu-drive.story
 		[DONE]	*/+ number

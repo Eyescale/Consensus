@@ -18,7 +18,7 @@ newProgram( CNStory *story, char *inipath )
 	if ( !entry || !entry->value ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL; }
-	CNCell *cell = newCell( entry, NULL );
+	CNCell *cell = newCell( entry );
 	if ( !cell ) {
 		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
 		return NULL; }

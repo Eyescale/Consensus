@@ -11,11 +11,11 @@
 //	newCell / releaseCell
 //===========================================================================
 CNCell *
-newCell( Pair *entry, CNEntity *parent )
+newCell( Pair *entry )
 {
 	CNCell *cell = cn_new( NULL, NULL );
 	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
-	cell->sub[ 1 ] = (CNEntity *) newContext( cell, parent );
+	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
 	return cell;
 }
 
@@ -147,31 +147,30 @@ free_CB( Registry *warden, Pair *entry )
 //	bm_cell_carry
 //===========================================================================
 CNInstance *
-bm_cell_carry( CNCell *cell, CNCell *new, int subscribe )
+bm_cell_carry( CNCell *cell, CNCell *child, int connect )
 /*
 	invoked by conceive() - cf. instantiate.c
 */
 {
-	addItem( BMCellCarry(cell), new );
-
 	CNInstance *proxy = NULL;
-	BMContext *carry = BMCellContext( new );
-	Pair *id = BMContextId( carry );
-	if ( subscribe ) {
-		// activate connection from new to parent cell
-		ActiveRV *active = BMContextActive( carry );
-		addIfNotThere( &active->buffer->activated, id->value );
+	if ( connect ) {
+		// create proxy and activate connection from child to parent cell
+		BMContext *ctx = BMCellContext( child );
+		proxy = db_proxy( child, cell, BMContextDB(ctx) );
+		ActiveRV *active = BMContextActive( ctx );
+		addIfNotThere( &active->buffer->activated, proxy );
 
-		// create proxy and activate connection from parent cell to new
-		BMContext *ctx = BMCellContext( cell );
-		proxy = db_proxy( cell, new, BMContextDB(ctx) );
+		// assign child's parent RV
+		Pair *id = BMContextId( ctx );
+		id->value = proxy;
+
+		// create proxy and activate connection from parent cell to child
+		ctx = BMCellContext( cell );
+		proxy = db_proxy( cell, child, BMContextDB(ctx) );
 		active = BMContextActive( ctx );
 		addIfNotThere( &active->buffer->activated, proxy ); }
-	else {
-		// deprecate parent proxy and nullify parent in new
-		db_deprecate( id->value, BMContextDB(carry) );
-		id->value = NULL; }
 
+	addItem( BMCellCarry(cell), child );
 	return proxy;
 }
 
