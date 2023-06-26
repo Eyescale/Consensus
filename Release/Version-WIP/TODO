@@ -3,8 +3,11 @@ TODO
 	. interactive B% Grammar
 
 DONE
-	. database.c - code cleanup
-	  integrated deprecatable() into db_deprecate()
+	. parser.c - forbid :? in expression ("?:" has to be leading)
+	  include/traversal.h - fixed BMTermCB implementation so that
+		on ~( %%, ?:TAKE ) < *yak
+			  ^---------- is not considered filtered
+	. database.c - integrated deprecatable() into db_deprecate()
 	. dpu.bm: removed leading zero's in FORMAT
 	. complete ./Examples/5_Dial/dpu-drive.story
 		[DONE]	*/+ number
@@ -205,8 +208,6 @@ NICE TO HAVE
 	. dpu-drive.story
 		: mem (variable assignment & usage in formulas)
 	. do { .... }	<<<< ANY expression - assignment, release, etc.
-	. on ~( %%, ?:TAKE ) < *yak
-		     ^---------- considered filtered!	
 	. finish variable stack - might answer issue below
 		1. in .::expression << check we don't have (*,.) >> %. ?
 		2. possibly implement .locale: expression (?)
@@ -246,7 +247,7 @@ NICE TO HAVE
 	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
 		~%(?,.)		== %(^.) == en ^.
 		~%(.,?)		== %(.$) == en .$
-	. extend do !!identifier( ) to support do !!expression( )
+	. extend do !!identifier( ) to do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
 		on %<_> < .
@@ -301,7 +302,7 @@ TODOC
 		entities being born as released; furthermore, released entities can be
 		reborn as released, using the new combination (e,nil) x ((nil,e),nil)
 	. CAVEAT: tricky usage of ~ esp. in EENO
-		e.g. on ?:~toto < .be
+		e.g. on ?:~toto < src
 		does not mean that anything other than toto will pass
 		it means that anything matching *what the caller has*
 		other than toto will pass -- note that in this case we
@@ -317,5 +318,4 @@ TODOC
 		   query expression is non-pivotable
 		=> Not a problem in Version-2.1 (currently WIP) as these will
 		   only be created as DB_SIGNAL_OP
-	. CAVEAT: proxies are NOT manifested on creation
 

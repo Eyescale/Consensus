@@ -160,9 +160,9 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 //	on_event_x
 //===========================================================================
 typedef int ProxyTest( CNInstance *proxy );
-static inline void * _test( int, ProxyTest *, listItem ** );
-static inline void * _feel( char *, int, listItem **, BMContext * );
-static inline void _release( int, void * );
+static inline void * test( int, ProxyTest *, listItem ** );
+static inline void * feel( char *, int, listItem **, BMContext * );
+static inline void release( int, void * );
 
 static int
 on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
@@ -187,25 +187,25 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 
 	Pair *found = NULL;
 	if ( !strncmp( expression, "init<", 5 ) ) {
-		found = _test( pre, bm_proxy_in, &proxies );
+		found = test( pre, bm_proxy_in, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp( expression, "exit<", 5 ) ) {
-		found = _test( pre, bm_proxy_out, &proxies );
+		found = test( pre, bm_proxy_out, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
-		found = _test( pre, bm_proxy_active, &proxies );
+		found = test( pre, bm_proxy_active, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,"~(",2) ) {
 		expression++;
-		found = _feel( expression, pre|BM_RELEASED, &proxies, ctx );
+		found = feel( expression, pre|BM_RELEASED, &proxies, ctx );
 		if (( found )) success = 2; }
 	else {
-		found = _feel( expression, pre|BM_INSTANTIATED, &proxies, ctx );
+		found = feel( expression, pre|BM_INSTANTIATED, &proxies, ctx );
 		if (( found )) success = 2; }
 
 	if ( negated ) {
 		success = !success;
-		_release( pre, found ); }
+		release( pre, found ); }
 	else if (( mark )) switch ( success ) {
 		case 1: *mark = bm_mark( pre, NULL, src, found ); break;
 		case 2: *mark = bm_mark( pre, expression, src, found ); break; }
@@ -216,7 +216,7 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 }
 
 static inline void *
-_test( int pre, ProxyTest *func, listItem **proxies )
+test( int pre, ProxyTest *func, listItem **proxies )
 {
 	CNInstance *proxy;
 	if ( pre & BM_AS_PER ) {
@@ -233,7 +233,7 @@ _test( int pre, ProxyTest *func, listItem **proxies )
 		return NULL; }
 }
 static inline void *
-_feel( char *p, int type, listItem **proxies, BMContext *ctx )
+feel( char *p, int type, listItem **proxies, BMContext *ctx )
 {
 	CNInstance *proxy;
 	void *found;
@@ -254,7 +254,7 @@ _feel( char *p, int type, listItem **proxies, BMContext *ctx )
 		return NULL; }
 }
 static inline void
-_release( int type, void *found )
+release( int type, void *found )
 {
 	Pair *batch;
 	if (( found )) {

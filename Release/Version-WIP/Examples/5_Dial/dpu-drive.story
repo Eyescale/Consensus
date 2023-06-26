@@ -19,7 +19,7 @@
 				(:%term:)
 				(:%mult:) } ))
 			)
-		// initialize accumulator value and stack
+		// initialize accumulator value and stack pointer
 		do (((A,A),*),0)
 		do : A : ~.
 		do : INPUT

@@ -78,7 +78,7 @@
 
 #ifdef BMTermCB
 #define CB_TermCB \
-	if ( !(mode&CLEAN) && p_filtered( p ) ) \
+	if ( !(mode&CLEAN) && p_filtered( !strncmp(p,"?:",2)?p+2:p ) ) \
 		f_set( FILTERED ) \
 	_CB( BMTermCB )
 #else

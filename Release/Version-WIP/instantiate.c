@@ -112,7 +112,7 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	CNEntity *parent = BMContextCell( ctx );
 	CNCell *child = newCell( entry );
 	// inform child's context
-	data->carry = BMCellContext( child );;
+	data->carry = BMCellContext( child );
 	if ( *p=='(' ) {
 		p++; // skipping opening '('
 		if ( *p==')' ) p++;

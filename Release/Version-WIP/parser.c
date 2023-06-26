@@ -871,9 +871,13 @@ CND_ifn( mode==BM_STORY, C )
 				do_( "_," )	REENTER }
 		on_( '\"' ) if ( *type&DO && !is_f(LEVEL|SUB_EXPR|SET|ASSIGN) ) {
 				do_( "_," )	REENTER }
-		on_( ')' )	do_( "expr" )	REENTER
+		on_( ')' ) if ( are_f(TERNARY|FILTERED) ) {
+				do_( "expr" )	REENTER
 						s_add( ":" )
-		if are_f( TERNARY|FILTERED ) {	f_set( INFORMED ) }
+						f_set( INFORMED ) }
+			else {	do_( "expr" )	REENTER
+						s_add( ":" ) }
+		on_( '?' )	; // err
 		on_other	do_( "expr" )	REENTER
 						s_add( ":" )
 		end
