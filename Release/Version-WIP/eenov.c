@@ -120,7 +120,6 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 		else if ( p[3]=='>' )
 			return EEnovInstanceType;
 		else {
-
 			BMTraverseData traverse_data;
 			traverse_data.user_data = data;
 			traverse_data.stack = &data->stack.flags;

@@ -124,46 +124,47 @@ static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB *, void * )
 static int
 pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, void *user_data )
 {
-	int traversed = 0;
-	CNInstance *e = NULL;
-	listItem *exponent = NULL;
-	char *p = bm_locate_pivot( expression, &exponent );
-	if (( p )) {
-		BMContext *ctx = data->ctx;
-		CNDB *db = data->db;
-		switch ( *p ) {
-		case '%':
-			switch ( p[1] ) {
-			case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
-				Pair *list = popListItem( &exponent );
-				// list_p = list->name;
-				// mark_p = list->value;
-				listItem *xpn = NULL;
-				p = strncmp(p+2,"(?",2) ?
-					bm_locate_pivot( p+2, &xpn ) :
-					bm_locate_pivot( p+10, &xpn );
-				if ((p) && strncmp(p,"%(",2))
-					data->list = newPair( list, xpn );
-				else {
-					freeListItem( &xpn );
-					freePair( list );
-					goto RETURN; }
-				break;
-			case '|':
-				data->privy = 2; }
-				// no break
-		default:
-			e = bm_lookup( ctx, p, db, privy ); } }
+	data->instance = NULL;
+	char *p = bm_locate_pivot( expression, &data->exponent );
+	if ( !p ) return 0;
+
+	if ( *p=='%' ) {
+		switch ( p[1] ) {
+		case '|':
+			data->privy = 2;
+			break;
+		case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
+			Pair *list = popListItem( &data->exponent );
+			// list_p = list->name;
+			// mark_p = list->value;
+			listItem *xpn = NULL;
+			p += strncmp(p+2,"(?",2) ? 2 : 10;
+			p = bm_locate_pivot( p, &xpn );
+			if ( p && strncmp(p,"%(",2) )
+				data->list = newPair( list, xpn );
+			else {
+				freePair( list );
+				freeListItem( &xpn );
+				freeListItem( &data->exponent );
+				return 0; } } }
+
+	CNInstance *e = bm_lookup( data->ctx, p, data->db, privy );
 	if (( e )) {
-		data->exponent = exponent;
 		data->pivot = newPair( p, e );
 		if ( !xp_traverse( expression, data, CB, user_data ) )
 			data->instance = NULL;
 		freePair( data->pivot );
-		traversed = 1; }
-RETURN:
-	freeListItem( &exponent );
-	return traversed;
+		data->pivot = NULL; }
+
+	data->privy = privy;
+	freeListItem( &data->exponent );
+	if (( data->list )) {
+		freePair( data->list->name );
+		freeListItem((listItem **) &data->list->value );
+		freePair( data->list );
+		data->list = NULL; }
+
+	return 1;
 }
 
 //---------------------------------------------------------------------------
@@ -263,10 +264,7 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 			break; }
 		POP_ALL( stack[ XPN_id ] )
 		POP_ALL( stack[ EXP_id ] )
-		freeListItem( &stack[ LIST_id ] );
-		freeListItem( &xpn );
-		freePair( list );
-		freePair( data->list ); }
+		freeListItem( &stack[ LIST_id ] ); }
 #ifdef DEBUG
 	fprintf( stderr, "XP_TRAVERSE: end, success=%d\n", !!success );
 #endif
@@ -763,7 +761,6 @@ query_assignment( int type, char *expression, BMQueryData *data )
 				return NULL; } } }
 	else {
 		if ( !pivot_query( 0, expression, data, verify_value, value ) ) {
-			data->instance = NULL;
 			if ( !pivot_query( 0, value, data, verify_variable, expression ) ) {
 				switch ( type ) {
 				case BM_CONDITION: ;
