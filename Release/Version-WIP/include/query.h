@@ -43,6 +43,4 @@ typedef struct {
 int xp_verify( CNInstance *, char *, BMQueryData * );
 
 
-
-
 #endif	// QUERY_H

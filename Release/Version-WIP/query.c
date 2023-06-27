@@ -729,18 +729,19 @@ query_assignment( int type, char *expression, BMQueryData *data )
 	expression++; // skip leading ':'
 	if ( !strcmp(expression,"~.") ) {
 		CNInstance *e = cn_instance( star, BMContextSelf(ctx), 0 );
-		if (( e ) && !db_private(0,e,db) && !assignment(e,db) )
-			return ( type==BM_CONDITION ? e : db_manifested(e,db) ? e : NULL ); }
+		return (( e ) && !db_private(0,e,db) && !assignment(e,db)) ?
+			type==BM_CONDITION || db_manifested(e,db) ? e : NULL :
+			NULL; }
 
 	char *value = p_prune( PRUNE_FILTER, expression );
 	if ( *value++=='\0' ) { // moving past ',' aka. ':' if there is
-		// we have :expression, which is equivalent to :%%:expression
+		// Here we have :expression, which is equivalent to :%%:expression
 		CNInstance *e = cn_instance( star, BMContextSelf(ctx), 0 ), *f;
-		if (( e ) && (f=assignment(e,db)) )
-			return ( xp_verify( f->sub[1], expression, data ) ?
-				type==BM_CONDITION ? f : db_manifested(f,db) ? f : NULL :
-				NULL ); }
-	else if ( !strncmp( value, "~.", 2 ) ) {
+		return (( e ) && (f=assignment(e,db)) && xp_verify(f->sub[1],expression,data)) ?
+			type==BM_CONDITION || db_manifested(f,db) ? f : NULL :
+			NULL; }
+
+	if ( !strncmp( value, "~.", 2 ) ) {
 		if ( !pivot_query( 0, expression, data, verify_unassigned, NULL ) ) {
 			switch ( type ) {
 			case BM_CONDITION: ;
@@ -760,28 +761,28 @@ query_assignment( int type, char *expression, BMQueryData *data )
 						return e; } } // return (*,.)
 				return NULL; } } }
 	else {
-		if ( !pivot_query( 0, expression, data, verify_value, value ) ) {
-			if ( !pivot_query( 0, value, data, verify_variable, expression ) ) {
-				switch ( type ) {
-				case BM_CONDITION: ;
-					for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
-						CNInstance *e = i->ptr, *f;
-						if ( db_private(0,e,db) || !(f=assignment(e,db)) )
-							continue;
-						if ( xp_verify( e->sub[1], expression, data ) &&
-						     xp_verify( f->sub[1], value, data ) )
-							return f; } // return ((*,.),.)
-					return NULL;
-				default: ;
-					listItem *s = NULL;
-					for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
-						CNInstance *f = CNSUB( e, 0 );
-						if ( !f || f->sub[0]!=star ) continue;
-						if ( xp_verify( f->sub[1], expression, data ) &&
-						     xp_verify( e->sub[1], value, data ) ) {
-							freeListItem( &s );
-							return e; } } // return ((*,.),.)
-					return NULL; } } } }
+		if ( !pivot_query( 0, expression, data, verify_value, value ) &&
+		     !pivot_query( 0, value, data, verify_variable, expression ) ) {
+			switch ( type ) {
+			case BM_CONDITION: ;
+				for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
+					CNInstance *e = i->ptr, *f;
+					if ( db_private(0,e,db) || !(f=assignment(e,db)) )
+						continue;
+					if ( xp_verify( e->sub[1], expression, data ) &&
+					     xp_verify( f->sub[1], value, data ) )
+						return f; } // return ((*,.),.)
+				return NULL;
+			default: ;
+				listItem *s = NULL;
+				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
+					CNInstance *f = CNSUB( e, 0 );
+					if ( !f || f->sub[0]!=star ) continue;
+					if ( xp_verify( f->sub[1], expression, data ) &&
+					     xp_verify( e->sub[1], value, data ) ) {
+						freeListItem( &s );
+						return e; } } // return ((*,.),.)
+				return NULL; } } }
 	return data->instance;
 }
 static int
