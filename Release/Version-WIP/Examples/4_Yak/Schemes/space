@@ -12,8 +12,8 @@
 
 
 # base rule definitions - enable only one of the following
-// #define SPACE
-#define TERM
+#define SPACE
+// #define TERM
 // #define S_TERM
 
 #ifdef SPACE

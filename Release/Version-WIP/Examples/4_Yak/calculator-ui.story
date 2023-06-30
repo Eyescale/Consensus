@@ -3,20 +3,22 @@
 |			yak-drive story main
 |
 +==========================================================================*/
+/*
+   Usage
+	../../B% calculator-ui.story
+   Purpose
+	Testing calculator User Interface using calculator scheme
+   Note
+	This implementation relies on completion occurring, when it does, on
+	the next event unconsumed (presumably '\n').
+	See yak-drive.story or yak.story for general Scheme testing.
+*/
 #include "yak.bm"
 :
 	on init
-		in ( Rule, . ) // Scheme from file.ini
-			do : yak : !! Yak( %((Rule,.),(Schema,.)) )
-		else
-			// default Scheme: dot-terminated number
-			do : yak : !! Yak(
-				(( Rule, base ), ( Schema, (:%term:)))
-				(( Rule, term ), ( Schema, (:%test.:)))
-				(( Rule, test ), ( Schema, {
-					(:\d:)
-					(:%test\d:)	} ))
-				)
+		do : yak : !! Yak(
+#include "Schemes/calculator"
+			)
 		do : INPUT
 
 	else in : INPUT
@@ -38,12 +40,17 @@
 			do .READY
 		else on ~( %%, IN ) < *yak
 			// yak recognized input and traverses results
-			do : TRAVERSE
-			do ( *yak, CONTINUE )
+			in : input : ~'\n'
+				do ( *yak, FLUSH )
+			else
+				do ~( check )
+				do : TRAVERSE
+				do ( *yak, CONTINUE )
 		else on ~( %%, OUT ) < *yak
-			// yak failed to recognize and flushes input
-			do : OUT
-			do ( *yak, CONTINUE )
+			// yak failed to recognize input
+			in check
+				do : FLUSH
+			else do ( *yak, DONE )
 		else on ~( %%, ERR ) < *yak
 			do exit
 
@@ -67,7 +74,7 @@
 			do ( %<, CONTINUE )
 		else on ~(( %%, OUT ), ? ) < *yak
 			/* %<?> current rule id
-			   %<(!,?)> target rule id or, in case %<?:base>, carry
+			   %<(!,?)> target rule id - unused here
 			   yak pending on response, which can be either
 				CONTINUE - pop current and continue previous rule
 				PRUNE - pop and skip to the end of previous rule
@@ -84,14 +91,32 @@
 		else on ~( %%, ERR ) < *yak
 			do exit
 
-	else // in : OUT
-		on ~(( %%, TAKE ), ? ) < *yak
-			do > "%s": %<?>
+	else in : FLUSH
+		on : . // output error msg
+			in check
+				do >"\x1B[1;33m"
+				    "~~~~~~~~~~~"
+			else	do >"           "
+//				do >"yak-drive >"
+			do ( *yak, CONTINUE )
+		else on ~( %%, TAKE ) < ?:*yak
+			do >"%s": ( check ? '~' : ' ' )
 			do ( %<, CONTINUE )
-		else on ~( %%, OUT ) < ?:*yak
-			/* anything other than DONE here and yak will replay
-			   input sequence
-			*/
-			do ( %<, DONE )
-			do : INPUT
+		else on ~( %%, OUT ) < *yak
+			in check
+				do >"^\n"
+				do ~( check )
+				do : %(:?) // reenter
+			else in : input : ?
+				in %?: '\n'
+					do >"  incomplete"
+				else	do >"  ?"
+				do : input : %?
+		else on : input : ?
+			in : input : ~'\n'
+				do input : "%c" <
+			else
+				do >"\x1B[0m\n"
+				do ( *yak, DONE )
+				do : INPUT
 

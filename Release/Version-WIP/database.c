@@ -243,7 +243,8 @@ uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
 	to-be-released - so that we can release y
 */
 {
-	if ( !y || isProxy(y) ) // proxies are kept untouched
+//	if ( !y || isProxy(y) ) // proxies are kept untouched
+	if ( !y || isBase(y) ) // base are kept untouched
 		return 0;
 	CNInstance *nil = db->nil;
 	for ( int ndx=0; ndx<2; ndx++ )

@@ -193,6 +193,5 @@
 |	yak input schema threads sub-narrative definition
 |
 +--------------------------------------------------------------------------*/
-#define YAK_STORY
-#include "yak.bm"
+#include "yak-take.bm"
 
