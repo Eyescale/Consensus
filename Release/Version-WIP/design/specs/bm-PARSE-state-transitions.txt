@@ -72,7 +72,7 @@ Consensus B% Version-WIP
 				,..	expr
 					,...	expr
 						,...)	(:
-		<({_,
+		{_,
 		@	@<	expr
 		~	expr
 			~.	expr
