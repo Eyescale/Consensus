@@ -68,23 +68,25 @@ bm_read( BMReadMode mode, ... )
         data.io = &io;
 	bm_parse_init( &data, mode );
 
-	if ( mode==BM_LOAD ) {
-		data.ctx = ctx; }
+	if ( mode==BM_LOAD )
+		data.ctx = ctx;
 	else if ( mode==BM_STORY ) {
 		data.narrative = newNarrative();
 		data.occurrence = data.narrative->root;
 		data.story = newRegistry( IndexedByCharacter );
 		addItem( &data.stack.occurrences, data.occurrence ); }
-	//-----------------------------------------------------------------
 
+	//-----------------------------------------------------------------
+	char * (*parse)( int, BMParseMode, BMParseData *, BMParseCB );
+	parse = ( mode==BM_STORY ) ? bm_parse : bm_load;
 	int event = 0;
 	do {
 		event = io_getc( &io, event );
 		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse( event, mode, &data, read_CB );
+		else data.state = parse( event, mode, &data, read_CB );
 	} while ( strcmp( data.state, "" ) && !data.errnum );
-
 	//-----------------------------------------------------------------
+
 	union { int value; void *ptr; } retval;
 	switch ( mode ) {
 	case BM_LOAD:

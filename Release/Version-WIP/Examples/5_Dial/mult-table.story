@@ -31,7 +31,7 @@
 					do >:
 					in : p : F
 						do exit
-					else do : p : (
+					else do : p : ( \
 						(*p:0) ? 1 :
 						(*p:1) ? 2 :
 						(*p:2) ? 3 :
@@ -51,7 +51,7 @@
 				in solo
 					do > "%s%s\nPress enter_ ":< *c:~0, *r >
 					do :<
-				do : q : (
+				do : q : ( \
 					(*q:0) ? 1 :
 					(*q:1) ? 2 :
 					(*q:2) ? 3 :
@@ -77,7 +77,7 @@
 					do >:
 					in : p : 9
 						do exit
-					else do : p : (
+					else do : p : ( \
 						(*p:0) ? 1 :
 						(*p:1) ? 2 :
 						(*p:2) ? 3 :
@@ -91,7 +91,7 @@
 				in solo
 					do > "%s%s\nPress enter_ ":< *c:~0, *r >
 					do :<
-				do : q : (
+				do : q : ( \
 					(*q:0) ? 1 :
 					(*q:1) ? 2 :
 					(*q:2) ? 3 :

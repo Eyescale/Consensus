@@ -27,7 +27,8 @@ typedef struct {
 // bm_parse() only
 	char *		state;
 	int		errnum;
-	int		flags, opt;
+	int		flags;
+	int		opt;
 } BMParseData;
 
 // tab data informed by bm_parse
@@ -50,18 +51,21 @@ typedef enum {
 	WarnInputFormat,
 	ErrUnknownState,
 	ErrUnexpectedEOF,
+	ErrUnexpectedCR,
+	ErrUnexpectedSpace,
 	ErrNarrativeEmpty,
 	ErrNarrativeNoEntry,
 	ErrNarrativeDoubleDef,
 	ErrEllipsisLevel,
-	ErrSpace,
-	ErrInstantiationFiltered,
-	ErrUnexpectedCR,
 	ErrIndentation,
 	ErrSyntaxError,
 	ErrExpressionSyntaxError,
 	ErrInputScheme,
 	ErrOutputScheme,
+	ErrMarkDo,
+	ErrMarkOn,
+	ErrMarkGuard,
+	ErrMarkTernary,
 	ErrMarkMultiple,
 	ErrMarkNegated,
 	ErrEMarked,
@@ -73,6 +77,7 @@ typedef enum {
 
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
 char *	bm_parse( int event, BMParseMode, BMParseData *, BMParseCB );
+char *	bm_load( int event, BMParseMode, BMParseData *, BMParseCB );
 void	bm_parse_init( BMParseData *, BMParseMode mode );
 void	bm_parse_exit( BMParseData * );
 void	bm_parse_caution( BMParseData *, BMParseErr, BMParseMode );

@@ -1,5 +1,8 @@
 See Also: design/new-features-and-additions.txt
 TODO
+	. Back to !! => design: rewrite algo with latest understanding of !! and
+	  EVVA grammar => make design document, and then decide: 2.2 or as-is?
+
 	. cleanup
 		[DONE] extract yak-take.bm from yak.bm
 		[DONE] move yak-drive.story into calculator-ui.story
@@ -11,11 +14,34 @@ TODO
 	. interactive B% Grammar
 
 DONE
-	. parser.c - forbid :? in expression ("?:" has to be leading)
+	. do expressions and on ~( expressions no longer markable (unless EENO)
+	. parser.c: code cleanup - cf. design/specs/bm-PARSE_implementation.txt
+		. implemented f_ternary_markable(stack)
+		. mark negated - all cases handled properly, e.g. %( ~a:(?), . )
+		. renamed FILTERED into PRIMED => ASSIGN|PRIMED, TERNARY|PRIMED
+		. implemented FILTERED operations as it should
+		. implemented STARRED operations => f_actionable() finalized
+	. parser.c: case !BM_STORY handled in bm_load()
+	. parser.c: no longer accept \n inside (_) expressions EXCEPT
+	   	after (_? and (_?_: in TERNARY expressions
+	   idea is to facilitate error detection / statement incomplete
+	. parser.c: no longer use f_tag for passing MARKED and EMARKED flags
+	   implementation now passes these flags naturally down upon ')'
+	. parser.c: ternary expressions
+	  1. fixed f_ternary_signalable() implementation to allow e.g.
+		   do ( a ? b ? c~ : d~ :)
+			  ^--- stack pushed internally upon every ternary operator
+	  2. only allow '?' in ternary terms if expression is SUB_EXPR, e.g.
+		    %( guard ? (b,?) : (c,?) )
+	     Note the multiple marks => MARKED cleared upon ternary separator ':'
+	     The restriction is due to the fact that not every term may be marked
+	  3. no longer allow '?' in ternary guard
+	     => detected either upon ternary operator or in guard if already MARKED
+	. parser.c: forbid :? in expression - "?:" has to be leading
 	  include/traversal.h - fixed BMTermCB implementation so that
 		on ~( %%, ?:TAKE ) < *yak
 			  ^---------- is not considered filtered
-	. database.c - integrated deprecatable() into db_deprecate()
+	. database.c: integrated deprecatable() into db_deprecate()
 	. dpu.bm: removed leading zero's in FORMAT
 	. complete ./Examples/5_Dial/dpu-drive.story
 		[DONE]	*/+ number

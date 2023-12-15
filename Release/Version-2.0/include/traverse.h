@@ -74,21 +74,32 @@ traverse_tag( int flags, listItem **stack, int flag )
 		break; }
 }
 
+
 inline int
 f_signal_authorize( listItem **stack )
 /*
-	Assumption: TERNARY is set all the way
-	prevents signal from being used in TERNARY guard, where
- 		ternary:( guard ?_:_)
- 	in other words, only the very base level of the current
- 	flags stack should be tagged FIRST
+	Special case: authorize the usage of signal~ as term
+	in ternary do ( guard ? term : term ) expression
+	Note that stack is pushed (in parser.c)
+	  . first upon entering the expression - therefore
+	    before the TERNARY flag is set,
+	  . and then again only upon encountering a second,
+	    third, etc. ternary operator - at which point
+	    the FIRST flag is cleared
+		do ( guard ? guard ? term : term : term )
+		   ^---- 1st push  ^---- 2nd push: FIRST cleared
+	We could make the 2nd push on the first ternary operator
+	for the very same effect - and we wouldn't have to test
+	!next_i below
 */
 {
 	union { void *ptr; int value; } icast;
-	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
+	for ( listItem *i=*stack, *next_i; i!=NULL; i=next_i ) {
+		next_i = i->next;
 		icast.ptr = i->ptr;
 		int flags = icast.value;
-		if is_f( FIRST ) return !(i->next); }
+		if is_f( FIRST ) {
+			return ( !next_i || !next_i->next ); } }
 	return 1;
 }
 
