@@ -32,12 +32,14 @@ LEVEL vs. SUB_EXPR flags
 			ASSIGN
 			TERNARY
 			ELLIPSIS
-			EENO
 	on )
 		if LEVEL is set
 			. bm_parse passes MARKED down the stack
 		otherwise
 			. bm_parse just pops stack
+
+	Note that EENOV|SUB_EXPR characterizes a %<(_)> typed EENOV
+	- which must be EMARKED
 
 ASSIGN and PRIMED flags
 	The ASSIGN flag is set upon ':' when INFORMED is not set
