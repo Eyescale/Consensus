@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// #define DEBUG
 #include "parser_private.h"
 #include "traverse.h"
 #include "parser.h"
@@ -503,7 +504,6 @@ CND_ifn( mode==BM_STORY, C )
 			ons( " \t" )	do_( same )
 			on_( ':' )	do_( "expr" )	s_take
 							f_clr( INFORMED )
-							f_set( FILTERED )
 			ons( ",)>" )	do_( "expr" )	REENTER
 			end
 	in_( ":" ) bgn_

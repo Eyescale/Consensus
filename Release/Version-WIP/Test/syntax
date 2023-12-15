@@ -35,6 +35,7 @@
 		do (:titi:)
 		do ( titi, (( toto, ... ):asdlkjasd:) )
 		in ( toto ? tata ? titi : roro : titi )
+		else in ( toto ? tata ? titi : roro )
 		else in ( toto ? tata ? titi ? tutu :)
 		else do : ~titi : ~( tutu, tata )
 		do ( { tata, toto }, titi )
@@ -42,6 +43,7 @@
 	else on ~( signal )
 	else in ( titi ?: tata )
 	else in ( expr1 ? expr2 ? expr3 :: expr4 )
+		do ( titi ? tutu ? a~ : b~ )
 	else on ~.:((*,titi),toto)
 		do >"~.: gotcha\n"
 	else in : titi : ~.

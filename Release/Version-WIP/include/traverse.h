@@ -95,7 +95,7 @@ f_ternary_markable_( int flags, listItem **stack )
 	union { void *ptr; int value; } icast;
 	listItem *i, *next_i=*stack;
 	for ( ; ; ) {
-		if ( is_f(SUB_EXPR) && !is_f(LEVEL) )
+		if ( is_f(SUB_EXPR|EENOV) && !is_f(LEVEL) )
 			return 1;
 		else if are_f( FIRST|TERNARY )
 			return 0;
@@ -109,7 +109,6 @@ f_ternary_markable_( int flags, listItem **stack )
 inline int
 f_ternary_signalable_( int flags, listItem **stack )
 /*
-	ASSUMPTION: TERNARY is set
 	Authorize the usage of signal~ as term in mono-level ternary
 	expression do ( guard ? term : term )
 	Note that stack is pushed,
@@ -140,8 +139,7 @@ f_restore_( int bits, int *f, listItem **stack )
 		union { void *ptr; int value; } icast;
 		icast.ptr = (*stack)->ptr;
 		*f = (*f&~bits)|(icast.value&bits); }
-	else if is_f( VECTOR|SET|CARRY|SUB_EXPR ) {
-		// clear flags bits
+	else {	// clear flags bits
 		*f &= ~bits; }
 }
 

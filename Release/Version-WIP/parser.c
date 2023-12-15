@@ -308,7 +308,7 @@ EXPR_BGN:CND_endif
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|EENOV) &&
 				  !( is_f(MARKED) && *type&DO ) &&
 				  !( is_f(MARKED) && *type&ON && opt(RELEASED) ) &&
-				  !( *type&PER && !*type&ON_X ) ) {
+				  !( *type&PER && !(*type&ON_X) ) ) {
 				do_( "expr_" )	REENTER }
 		on_( '~' ) if ( !is_f(INFORMED) ) {
 				do_( "~" ) }
@@ -368,10 +368,11 @@ EXPR_BGN:CND_endif
 				     ( !is_f(MARKED) || ( is_f(LEVEL) && f_parent_marked(stack) ) ) ) {
 					do_( "(_?" )	s_take
 							f_restore( NEGATED|FILTERED|STARRED )
-							f_set( TERNARY )
+							f_set( TERNARY );
+				if ( is_f(FIRST) ) {	f_set( PRIMED ); }
 							f_push( stack )
 							f_clr( FIRST|INFORMED|PRIMED ) } }
-			else if ( ( is_f(SUB_EXPR) || !( opt(CONTRARY) || *type&DO ) ) &&
+			else if ( ( is_f(SUB_EXPR|EENOV) || ( !(*type&DO) && !opt(CONTRARY) ) ) &&
 				  !is_f(MARKED|NEGATED) && f_ternary_markable(stack) ) {
 				if ( is_f(EENOV) ) {
 					do_( same )	s_take

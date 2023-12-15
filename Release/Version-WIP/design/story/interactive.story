@@ -41,12 +41,12 @@ Data Model
 						...		...
 		...		...
 	    where
-		trigger:{ [ [ occurrence, ON|OFF ], cosystem ] }
-		guard:	{ [ [ occurrence, ON|OFF ], cosystem ] }
+		trigger: { [ [ occurrence, ON|OFF ], cosystem ] }
+		guard:	 { [ [ occurrence, ON|OFF ], cosystem ] }
 
 	Cosystem
 	    maps
-		Action	Occurrence	type	Trigger	Guard	Status
+		Action	Occurrence	Type	Trigger	Guard	Status
 		action	occurrenceUID 	ON|OFF	trigger	guard	status
 							guard	status
 							...	...
@@ -54,8 +54,8 @@ Data Model
 			...
 		...
 	    where
-		trigger:{ [ [ occurrenceUID, ON|OFF ], proxy ] }
-		guard:  { [ [ occurrenceUID, ON|OFF ], proxy ] }
+		trigger: { [ [ occurrenceUID, ON|OFF ], proxy ] }
+		guard:   { [ [ occurrenceUID, ON|OFF ], proxy ] }
 
 Execution Model
 	Once launched, we want our System to execute the following, which
@@ -63,9 +63,9 @@ Execution Model
 
 	        for each action
 	            done = 0
-	            for each action.trigger barring done
+	            for each action->trigger barring done==1
 	                if all trigger events are verified
-	                    for each guard in trigger.guard barring done
+	                    for each guard in trigger->guard barring done==1
 	                        if all gard conditions are verified
 	                            perform action
 	                            done = 1
@@ -80,13 +80,13 @@ Execution Model
 
 	Furthermore, we do not want each cosystem to keep track of all the other
 	cosystems conditions (although we could), but rather: each cosystem will
-	keep & update each of its own action->trigger->guard->status according
+	keep & update each of its own action->trigger->guard.status according
 	to system events.
 
 	: Cosystem
 		per this->action // action: [ occurrence, ON|OFF ]
-			in ( there is one guard among action->guard verifying
-			     . guard->status is clear, AND
+			in ( there is one guard among action->trigger->guard verifying
+			     . guard.status is clear, AND
 			     . there is one trigger among guard->trigger for which
 			       all trigger->event are occurring )
 
@@ -108,7 +108,7 @@ Execution Model
 			where complementary := [ [ %<?>, ~%<!:(.,?)> ], %< ]
 
 Implementation
-	We use the keywords Action, Guard, Status and Trigger, so that
+	We use the keywords Action, Trigger, Guard and Status so that
 		%( ?, Action ) is the list of actions registered in current CNDB
 		%( ?, ( %?, Trigger ) ) is the list of triggers of the action %?
 			%( ?, %? ) is the list of events of the trigger %?
@@ -123,7 +123,7 @@ Implementation
 		on init
 			...
 		else
-			// enable actions according to action->trigger->{ guard->status and event EVVA }
+			// enable actions according to action->trigger->{ guard.status and event EVVA }
 			%( .:~%(.,(?,Status)), ( .:~%( ?:%(.:~%<.>,?), (?:%(?,Action),Trigger)), Guard ) )
 			// ^---- guard           ^---- trigger          ^---- action
 
@@ -154,7 +154,7 @@ Implementation
 
 New Feature Requirements
     1. Unnamed base entities
-	To save us the hassle of managing our own pool of free Trigger and
+	To spare us the hassle of managing our own pool of free Trigger and
 	Guard entities, we shall allocate each Trigger or Guard instance as
 	unnamed base entity.
 
@@ -171,12 +171,12 @@ New Feature Requirements
 		the newly allocated entity will be instantly and quietly removed.
 
 	Release
-		Either directly by user or automatically when dangling - in
+		Either directly by user or automatically when left dangling - in
 		which case no release event is issued
 
 	Usage
-		The record verifying [ field, value ] and [ f, v ] conditions
-		is given by
+		In the last example above, the record verifying [ field, value ]
+		and [ f, v ] conditions is given by
 			%((?,field),value):%((?,f),v):%((?,f),v)
 
 		The "field" value of the record verifying [f,v] conditions is
@@ -191,19 +191,18 @@ New Feature Requirements
 		conditions to be given by
 			%(((.,field),?)^((?,.),.):( %((?,f),v):%((?,f),v) ))
 
-
     2. Expression terms conditional EENO
 	We want to use conditional EENO %<< event < src >> inside expressions,
 	so that
 		.:%<< event < src >> passes <=> the EENO is verified
 		.:~%<< event < src >> passes <=> no such EENO
 
-	The symbol '^' can be used inside of EENO to represent the entity
-	corresponding to the current term
+	The symbol '^' can be used inside the EENO to represent the entity
+	corresponding to the current expression term
 
 	Example:
-		to verify that the current term matches an external variable
-		value assignment (EVVA) event, in the form
+		to verify that the current expression term matches an external
+		variable value assignment (EVVA) event, in the form
 			 : a : b < c
 		such that 
 			^((?,.),.): a	// current.sub[0].sub[0]
@@ -211,13 +210,13 @@ New Feature Requirements
 			^(.,?): c	// current.sub[1]
 		we would write
 			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
-	Shortcut:
-		%<.> stands for the above-described conditional EENO
-			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 	Note:
 		We use the syntax ^((?,.),.) instead of e.g. %(%.:((?,.),.) as
 		%. representing the entities matching the expression's current
 		term may hold more than one result, and therefore %(%.:((?,.),.))
 		and %(%.:((.,?),.)) might not relate to the same entity
+	Shortcut:
+		%<.> stands for the above-described conditional EENO
+			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
 
