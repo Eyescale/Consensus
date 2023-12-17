@@ -1,55 +1,29 @@
 
 Consensus B% Version-WIP
 
-    parser.c: bm_parse() - state transitions for mode!=STORY
-
-	base	""
-		expr
-	expr	expr_
-		(	(:
-			expr
-		,	expr
-			_\\n
-			,.	.
-				,..	,...	,...)	(:
-		term	expr
-		char	char_	expr
-			char\\	char_	expr
-				char\\x	char\\x_ char_ expr
-		(:	expr
-			(:\\	(:
-				(:\\x	(:\\x_	(:
-			(:%	(:
-				(:%$	(:
-					(:%$'	(:
-			(::	(:
-				expr
-		|	expr
-	expr_	base
-		""
-
-
-    parser.c: bm_parse() - state transitions for mode==STORY
-
+    parser.c: bm_parse()
 	base	""
 		+	base
 		-	base
 		^.	^.$ 	^.$_	^.
 					_expr
-					.id:	§	def$_
-							§%	§
-							§$	§
-							§.	§
-								§..	§
-									§...	§
-								§.$	§.$_	§.$:	§
-										§.$,	§
-											§.$,.	§
-												§.$
-												§.$,..	§
+
 		def	.id:
-			def$_
-			def$	def$_	base
+			def$	def$_
+		.id:	§
+			.id:%	§
+		§	def$_
+			§%	§
+			§$	§
+			§.	§
+				§..	§
+					§...	§
+				§.$	§.$_	§.$:	§
+						§.$,	§
+							§.$,.	§
+								§.$
+								§.$,..	§
+		def$_	base
 		cmd	%_	_expr
 			cmd_	_expr
 			else	cmd
@@ -58,65 +32,50 @@ Consensus B% Version-WIP
 		_expr	expr
 	expr	expr_	base
 			""
-		_\\n	expr
+		~	expr
+			~.	expr
+				term
+		%	expr
+			%(	expr
+			%?_	expr
+				term~
+			%<	expr
+				%<?	expr
 		(	expr
 			(:
 		,	expr
-			_\\n
+			,.	.
+				,..	expr
+					,...	expr
+						,...)	(:
+							,...),	expr
 			,?	expr
 				,?:	expr
 					,?:.	.
 						,?:..	expr
 							,?:...	expr
-			,.	.
-				,..	expr
-					,...	expr
-						,...)	(:
-		{_,
-		@	@<	expr
-		~	expr
-			~.	expr
-				term
-		.	expr
-			term
-		*	expr
-			term
-		%	expr
-			%(
-			%?_	expr
-				term~
-			%<	expr
-				%<?	expr
 		:	expr
 			/
 			:~	:
 				~
-		_,	_<
-			_,\"	_,\"%	_,\"
-				_,\"\\	_,\"
-				_,_	_<
-		_<	expr
-		/	expr
-			/\\	/
-				/\\x	/\\x_	/
-			/[	/
-				/[\\	/[
-					/[\\x	/[\\x_	/[
-		(_?	expr
-			(_?:	expr
-		(_?_:	expr
-		>	>:	expr
-			>\"	>\"%	>\"
-				>\"\\	>\"
-				>_	expr
-		!	!!	!!$	!!$_	expr
+			_,
+		:_	expr
+			:<	expr
+			!
+			~
+		.	expr
+			term
+		*	expr
+			term
 		term	expr
 		term_	expr
 			term~	expr
-				@<
 		char	char_	expr
 			char\\	char_
 				char\\x	char\\x_ char_
+		(_?	expr
+			(_?:	expr
+		(_?_:	expr
 		(:	expr
 			(:\\	(:
 				(:\\x	(:\\x_	(:
@@ -125,5 +84,55 @@ Consensus B% Version-WIP
 					(:%$'	(:
 			(::	(:
 				expr
+		!	!!	!!$	!!$_	expr
+		@	@<	expr
+		/	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
+		>	>:	expr
+			>&	>:
+				>\"
+			>\"	>\"%	>\"
+				>\"\\	>\"
+				>_	expr
+					>_:	expr
+		_,	_<
+			_,\"	_,\"%	_,\"
+				_,\"\\	_,\"
+				_,_	_<
+		_<	expr
 		|	expr
+		{_,	expr
+			_\\n
+		_\\n	expr
+
+    parser.c: bm_load()
+	base	""
+		expr
+	expr	expr_
+		(	expr
+			(:	expr
+				(:\\	(:
+					(:\\x	(:\\x_	(:
+				(:%	(:
+					(:%$	(:
+						(:%$'	(:
+				(::	(:
+		,	expr
+			,.	.
+				,..	,...	,...)	(:
+							expr
+		term	expr
+		char	char_	expr
+			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
+		|	expr
+		{_,	expr
+			_\\n
+		_\\n	expr
+	expr_	base
+		""
 

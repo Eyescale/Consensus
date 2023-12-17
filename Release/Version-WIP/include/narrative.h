@@ -18,7 +18,6 @@
 #define INPUT		(1<<6)
 #define OUTPUT		(1<<7)
 #define LOCALE		(1<<8)
-
 #define PER		(1<<9)
 #define PER_X		(ON_X|PER)
 

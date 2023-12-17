@@ -114,6 +114,8 @@ CND_if_( data->opt, EXPR_BGN )
 		on_( '\n' )	do_( "def$" )	REENTER
 		on_( '(' )	do_( ".id:" )	REENTER
 						s_add( ".this:" )
+		on_( '%' )	do_( ".id:" )	REENTER
+						s_add( ".this:" )
 		on_separator	; // err
 		on_other	do_( "def$" )	s_take
 		end
@@ -126,32 +128,44 @@ CB_if_( NarrativeTake, mode, data ) {
 		end
 	in_( ".id:" ) bgn_
 		ons( " \t" )	do_( same )
+		on_( '%' )	do_( ".id:%" )	s_take
 		on_( '(' )
 CB_if_( NarrativeTake, mode, data ) {
 				do_( "§" )	REENTER }
 		end
+		in_( ".id:%" ) bgn_
+			on_( '(' )
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "§" )	s_take
+						f_push( stack )
+						f_set( SUB_EXPR|FIRST ) }
+			end
 		in_( "§" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
 					do_( "def$_" )	REENTER
-							f_clr( INFORMED ) }
+							f_reset( FIRST, 0 ) }
 			on_( '(' ) if ( !is_f(INFORMED) ) {
 					do_( same )	s_take
 							f_push( stack )
 							f_clr( INFORMED )
-							f_set( FIRST|LEVEL ) }
-			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+							f_set( LEVEL|FIRST ) }
+			on_( '?' ) if ( is_f(SUB_EXPR) && !is_f(INFORMED|MARKED) ) {
+					do_( same )	s_take
+							f_set( INFORMED|MARKED ) }
+			on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
 					do_( "§." )	}
-			on_( ',' ) if ( are_f(INFORMED|FIRST|LEVEL) ) {
+			on_( ',' ) if ( is_f(LEVEL|SUB_EXPR) && are_f(INFORMED|FIRST) ) {
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
-			on_( ')' ) if ( are_f(INFORMED|LEVEL) ) {
+			on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && is_f(INFORMED) ) {
 					do_( same )	s_take
-							f_pop( stack, INFORMED ) }
-			on_( '%' )	do_( "§%" )	s_take
+							f_pop( stack, INFORMED|MARKED ) }
+			on_( '%' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+					do_( "§%" )	s_take }
 			on_separator	; // err
 			on_other
-				if ( is_f(LEVEL) && !is_f(INFORMED) ) {
+				if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
 					do_( "§$" )	s_take
 							f_set( INFORMED ) }
 			end
@@ -168,14 +182,21 @@ CB_if_( NarrativeTake, mode, data ) {
 			on_separator	do_( "§" )	REENTER
 							s_add( "." )
 							f_set( INFORMED )
-			on_other	do_( "§.$" )	REENTER
+			on_other if ( is_f(SUB_EXPR) ) {
+					do_( "§" )	REENTER
 							s_add( "." )
+							f_set( INFORMED ) }
+				else {	do_( "§.$" )	REENTER
+							s_add( "." ) }
 			end
 			in_( "§.." ) bgn_
 				on_( '.' ) if ( !is_f(FIRST) ) {
-						do_( "§..." )	s_add( "..." )
-								f_pop( stack, 0 )
-								f_set( INFORMED ) }
+						if ( is_f(SUB_EXPR) && !is_f(LEVEL)) {
+							do_( "§" )	s_add( "..." )
+									f_set( INFORMED ) }
+						else {	do_( "§..." )	s_add( "..." )
+									f_pop( stack, 0 )
+									f_set( INFORMED ) } }
 				on_other	do_( "§" )	REENTER
 								s_add( ".." )
 								f_set( INFORMED )
@@ -303,12 +324,12 @@ EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '\n' ) if ( is_f(VECTOR|SET|CARRY) ) { // allow \nl inside <> {} and carry()
-				do_( "_\\n" ) }
+		on_( '\n' ) if ( is_f(VECTOR|SET|CARRY) && !is_f(LEVEL) ) {
+				do_( "_\\n" ) } // allow \nl inside <> {} and carry()
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|EENOV) &&
 				  !( is_f(MARKED) && *type&DO ) &&
 				  !( is_f(MARKED) && *type&ON && opt(RELEASED) ) &&
-				  !( *type&PER && !(*type&ON_X) ) ) {
+				     !( *type&PER && !(*type&ON_X) ) ) {
 				do_( "expr_" )	REENTER }
 		on_( '~' ) if ( !is_f(INFORMED) ) {
 				do_( "~" ) }
@@ -552,12 +573,12 @@ EXPR_BGN:CND_endif
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
 			end
-		in_( "%<?" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '>' )	do_( "expr" )	REENTER
-			on_( ':' )	do_( "expr" )	s_take
-							f_clr( INFORMED )
-			end
+			in_( "%<?" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '>' )	do_( "expr" )	REENTER
+				on_( ':' )	do_( "expr" )	s_take
+								f_clr( INFORMED )
+				end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' ) if ( *type&DO ) {
@@ -733,23 +754,6 @@ EXPR_BGN:CND_endif
 						f_set( INFORMED )
 		on_other	do_( "term" )	s_take
 		end
-	in_( "(_?" ) bgn_ // Assumption: TERNARY is set, not INFORMED
-		ons( " \t\n" )	do_( same )
-		on_( ':' )	do_( "(_?:" )	s_take
-						f_set( PRIMED )
-		on_other	do_( "expr" )	REENTER
-		end
-		in_( "(_?:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ')' )	; // err
-			on_other	do_( "expr" )	REENTER
-			end
-	in_( "(_?_:" ) bgn_ // Assumption: TERNARY|PRIMED are set, not INFORMED
-		ons( " \t\n" )	do_( same )
-		on_( ':' )	do_( "expr" )	REENTER
-						f_set( INFORMED )
-		on_other	do_( "expr" )	REENTER
-		end
 	in_( "term" ) bgn_
 		on_( '~' ) 	; // err
 		on_separator	do_( "expr" )	REENTER
@@ -787,6 +791,23 @@ EXPR_BGN:CND_endif
 			on_( '\'' )	do_( "expr" )	s_take
 							f_set( INFORMED )
 			end
+	in_( "(_?" ) bgn_ // Assumption: TERNARY is set, not INFORMED
+		ons( " \t\n" )	do_( same )
+		on_( ':' )	do_( "(_?:" )	s_take
+						f_set( PRIMED )
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( "(_?:" ) bgn_
+			ons( " \t\n" )	do_( same )
+			on_( ')' )	; // err
+			on_other	do_( "expr" )	REENTER
+			end
+	in_( "(_?_:" ) bgn_ // Assumption: TERNARY|PRIMED are set, not INFORMED
+		ons( " \t\n" )	do_( same )
+		on_( ':' )	do_( "expr" )	REENTER
+						f_set( INFORMED )
+		on_other	do_( "expr" )	REENTER
+		end
 	in_( "(:" ) bgn_
 		ons( "(\n" )	; // err
 		on_( ')' ) if ( is_f(LITERAL) ) { // otherwise list
@@ -890,6 +911,52 @@ EXPR_BGN:CND_endif
 		in_( "/[\\x_" ) bgn_
 			on_xdigit	do_( "/[" )	s_take
 			end
+	in_( ">" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '&' )	do_( ">&" )	s_take
+		on_( ':' )	do_( ">:" )	s_take
+		on_( '\"' )	do_( ">\"" )	s_take
+		end
+		in_( ">&" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( ':' )	do_( ">:" )	s_take
+			on_( '\"' )	do_( ">\"" )	s_take
+			end
+		in_( ">:" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			on_other	do_( "expr" )	REENTER
+			end
+		in_( ">\"" ) bgn_
+			on_( '\t' )	do_( same )	s_add( "\\t" )
+			on_( '\n' )	do_( same )	s_add( "\\n" )
+			on_( '%' )	do_( ">\"%" )	s_take
+			on_( '\\' )	do_( ">\"\\" )	s_take
+			on_( '\"' )	do_( ">_" )	s_take
+			on_other	do_( same )	s_take
+			end
+			in_( ">\"%" ) bgn_
+				ons( "%$s_" )	do_( ">\"" )	s_take
+				on_other	do_( ">\"" )	s_add( "_" )
+								bm_parse_caution( data, WarnOutputFormat, mode );
+				end
+			in_( ">\"\\" ) bgn_
+				on_any		do_( ">\"" )	s_take
+				end
+			in_( ">_" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ':' )	do_( ">_:" )	s_take
+				on_( '\n' )	do_( "expr" )	REENTER
+								f_set( INFORMED )
+				end
+			in_( ">_:" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '<' )	do_( "expr" )	s_take
+								f_push( stack )
+								f_reset( FIRST|VECTOR, 0 )
+				on_other	do_( "expr" )	REENTER
+				end
 	in_( "_," ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '<' )	do_( "_<" )	s_take
@@ -916,58 +983,12 @@ EXPR_BGN:CND_endif
 				ons( " \t" )	do_( same )
 				on_( '<' )	do_( "_<" )	s_take
 				end
-		in_( "_<" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr" )	REENTER
-							*type = (*type&ELSE)|INPUT;
-							f_set( INFORMED )
-			end
-	in_( ">" ) bgn_
+	in_( "_<" ) bgn_
 		ons( " \t" )	do_( same )
-		on_( '&' )	do_( ">&" )	s_take
-		on_( ':' )	do_( ">:" )	s_take
-		on_( '\"' )	do_( ">\"" )	s_take
+		on_( '\n' )	do_( "expr" )	REENTER
+						*type = (*type&ELSE)|INPUT;
+						f_set( INFORMED )
 		end
-		in_( ">&" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ':' )	do_( ">:" )	s_take
-			on_( '\"' )	do_( ">\"" )	s_take
-			end
-		in_( ">:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "expr" )	REENTER
-							f_set( INFORMED )
-			on_other	do_( "expr" )	REENTER
-			end
-		in_( ">\"" ) bgn_
-			on_( '\t' )	do_( same )	s_add( "\\t" )
-			on_( '\n' )	do_( same )	s_add( "\\n" )
-			on_( '%' )	do_( ">\"%" )	s_take
-			on_( '\\' )	do_( ">\"\\" )	s_take
-			on_( '\"' )	do_( ">_" )	s_take
-			on_other	do_( same )	s_take
-			end
-		in_( ">\"%" ) bgn_
-			ons( "%$s_" )	do_( ">\"" )	s_take
-			on_other	do_( ">\"" )	s_add( "_" )
-							bm_parse_caution( data, WarnOutputFormat, mode );
-			end
-		in_( ">\"\\" ) bgn_
-			on_any		do_( ">\"" )	s_take
-			end
-		in_( ">_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( ':' )	do_( ">_:" )	s_take
-			on_( '\n' )	do_( "expr" )	REENTER
-							f_set( INFORMED )
-			end
-		in_( ">_:" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '<' )	do_( "expr" )	s_take
-							f_push( stack )
-							f_reset( FIRST|VECTOR, 0 )
-			on_other	do_( "expr" )	REENTER
-			end
 	in_( "|" ) bgn_
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
@@ -1238,6 +1259,14 @@ bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
 		end
+	in_( "{_," ) bgn_ // Assumption: INFORMED is set
+		ons( " \t" )	do_( same )
+		on_( '\n' )	do_( "_\\n" )	// allow \nl inside {} as comma
+		on_( '}' )	do_( "expr" )	REENTER // ignore trailing comma
+		on_other	do_( "expr" )	REENTER
+						s_add( "," )
+						f_clr( INFORMED )
+		end
 	in_( "_\\n" ) bgn_ // \nl allowed inside {}
 		ons( " \t\n" )	do_( same )
 		ons( "})>" )	do_( "expr" )	REENTER
@@ -1249,25 +1278,17 @@ bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						f_clr( INFORMED ) }
 			else {	do_( "expr" )	REENTER }
 		end
-	in_( "{_," ) bgn_ // Assumption: INFORMED is set
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "_\\n" )	// allow \nl inside {} as comma
-		on_( '}' )	do_( "expr" )	REENTER // ignore trailing comma
-		on_other	do_( "expr" )	REENTER
-						s_add( "," )
-						f_clr( INFORMED )
-		end
 	//----------------------------------------------------------------------
 	// bm_load:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 CB_( ExpressionTake, mode, data )
-		if ( mode==BM_INPUT ) {
+		if ( mode==BM_LOAD ) {
 			bgn_ on_any
-				do_( "" )
+				do_( "base" )	f_reset( FIRST, 0 )
 				end }
 		else {	bgn_ on_any
-				do_( "base" )	f_reset( FIRST, 0 )
+				do_( "" )
 				end }
 	//----------------------------------------------------------------------
 	// bm_load:	Error Handling

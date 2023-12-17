@@ -84,11 +84,11 @@ Execution Model
 	to system events.
 
 	: Cosystem
-		per this->action // action: [ occurrence, ON|OFF ]
-			in ( there is one guard among action->trigger->guard verifying
-			     . guard.status is clear, AND
-			     . there is one trigger among guard->trigger for which
-			       all trigger->event are occurring )
+		per this->action:[ occurrence, ON|OFF ] such that
+		    there is one guard among action->trigger->guard verifying
+		    . guard.status is clear, AND
+		    . there is one trigger among guard->trigger for which
+		      all trigger->event are occurring
 
 				execute action // do : occurrence : ON|OFF
 
@@ -109,7 +109,7 @@ Execution Model
 
 Implementation
 	We use the keywords Action, Trigger, Guard and Status so that
-		%( ?, Action ) is the list of actions registered in current CNDB
+		%( ?, Action ) is the list of actions in current CNDB
 		%( ?, ( %?, Trigger ) ) is the list of triggers of the action %?
 			%( ?, %? ) is the list of events of the trigger %?
 		%( ?, ( %?, Guard ) ) is the list of guards of the trigger %?
@@ -124,14 +124,14 @@ Implementation
 			...
 		else
 			// enable actions according to action->trigger->{ guard.status and event EVVA }
-			%( .:~%(.,(?,Status)), ( .:~%( ?:%(.:~%<.>,?), (?:%(?,Action),Trigger)), Guard ) )
-			// ^---- guard           ^---- trigger          ^---- action
+			%( .:~%(.,(?,Status)), ( .:~%( ?:%(.:~%<.>,?), ( ?, Trigger )), Guard ))
+			// ^---- guard           ^---- trigger           ^---- action
 
 			// update all guard status from EENO - for next frame
 			per : ? : . < .
 				// remove condition from all guard.status
 				in ?: (( %<?>, %<!:(.,?)> ), %< )
-					do ~( %?, ( ., Status ) )
+					do ~( %?, ( ., Status ))
 
 				// add complementary condition to the status of the guards
 				// for which it is a condition
@@ -139,18 +139,35 @@ Implementation
 					//--- guard ----v       v---- trigger
 					do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
 
-	:( .action, Action )
+	.action: %( ?, Action )	// alt. %(.,( ?, Trigger ))
 		// execute action - assuming action:[ occurrence, ON|OFF ]
 		do : %(action:(?,.)): %(action:(.,?))
 
 		// remove action's corresponding condition from all guard.status
-		do ~( (action,%%), (.,Status) )
+		in ?: ( action, %% ) // %? is condition
+			do ~( %?, ( ., Status ))
 
 		// add complementary condition to the status of the guards
-		// for which complementary condition is a term
+		// for which it is a condition
 		in ?: (( %(action:(?,.)), (action:(.,ON)?OFF:ON) ), %% )
 			//--- guard ----v       v---- trigger
 			do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
+
+Performance
+	The condition .:~(.,(?,Status)) above, being negated, does not yield
+	any pivot.
+
+	Flagging guards CLEAR upon their last condition being removed would
+	allow the EN expression above to traverse all %(?,CLEAR) guards rather
+	than all %(.,(?,Trigger)). Furthermore it would be consistent with
+	the cellular automaton execution principle
+
+		in state*
+			on event
+				do action
+
+ 	*a cosystem's "current" state being here defined as the set of its
+	CLEAR'd guard conditions.
 
 New Feature Requirements
     1. Unnamed base entities
@@ -218,5 +235,4 @@ New Feature Requirements
 	Shortcut:
 		%<.> stands for the above-described conditional EENO
 			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
-
 

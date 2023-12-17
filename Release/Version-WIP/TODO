@@ -1,14 +1,21 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. update bm-PARSE-state-transitions.txt
+	. write down Version-2.1/README.txt
 	. cleanup Examples
 		. integrate Examples/1_Schematize and Examples/4_Yak into Examples/1_Yak
 		. move Examples/5_Dial into Examples/4_Dial
 	. branch Version-WIP -> Version-2.1
-		. write down Version-2.1/README.txt
 	. interactive B% Grammar
 
+TOFIX
+	. on ~(_?_) < %% is allowed (as EENO)
+		=> %<?> resp %<!> could be deprecated
+		=> must verify when instantiating EENOV and %< is %%
+
 DONE
+	. implemented support for sub-narrative SUB_EXPR prototype, e.g.
+		.action: %( ?, Action )
+	. updated bm-PARSE-state-transitions.txt
 	. published design/story/interactive.story
 	. do expressions and on ~( expressions no longer markable (unless EENO)
 	. parser.c: code cleanup - cf. design/specs/bm-PARSE_implementation.txt
