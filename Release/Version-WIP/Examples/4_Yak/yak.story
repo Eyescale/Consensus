@@ -15,13 +15,17 @@
 	on init
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
-			do :< record, %% >:< (record,*), IN >
+			do : record : (record,*)
+			do : IN
 		else
 			do >"Error: Yak: base rule not found or invalid\n"
 			do exit
-
 	else in : IN
-		in .( ?, base )
+		on : . // start base rule instance - feeding base also as subscriber schema
+			do (((rule,base), (']',*record)) | {
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+				.( %|, base ) } )
+		else in .( ?, base )
 			%( . )
 			in ~.: .READY // sync based on rule schemas
 				in (.,%?): ~%(?,DONE)
@@ -34,8 +38,7 @@
 						do ~( %?, base )
 					else in ~.: ((.,%?),(/[[\]]/,.))
 						do ~( %?, base )
-					else
-						do : OUT
+					else do : OUT
 			else on .READY
 				in : carry : ?
 #ifdef DEBUG
@@ -67,14 +70,17 @@
 				do : record : %(*record:(?,.))
 				do : carry : %(*record:(.,?))
 			do : OUT
-		else on : .
-			// start base rule instance - feeding base, also as subscriber schema
-			do (((rule,base), (']',*record)) | {
-				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
-				.( %|, base ) } )
 	else in : OUT
 		.s .f .r
-		on : pop : ? // popping argument = s's finishing frame, or OUT
+		on : .
+			in : record : (record,*)
+				do >"(nop)\n"
+				do exit
+			else
+				do :< s, f >:< base, (record,*) >
+				in : carry : . // trim record
+					do ~( *record, . )
+		else on : pop : ? // %? = s's finishing frame, or OUT
 			in %?: OUT
 				in *f: (.,?:~EOF): ~(record,*)
 					do >"%s": %?
@@ -161,32 +167,22 @@
 			in *f: (.,?): ~(record,*): ~%(*s:((.,(']',?)),.))
 				do >"%s": %(*f:(.,?))
 			do : f : %?
-
-		else on : .
-			in : record : (record,*)
-				do >"(nop)\n"
-				do exit
-			else
-				do :< s, f >:< base, (record,*) >
-				in : carry : . // trim record
-					do ~( *record, . )
 		else
 			do : pop : OUT
-
-	else on : ~.
-		// destroy the whole record structure, including rule
-		// and schema instances - all in ONE Consensus cycle
-		in : record : ~(.,EOF)
-			do ~( record )
-		else
+	else
+		on : ~.
+			// destroy the whole record structure, including rule
+			// and schema instances - all in ONE Consensus cycle
+			in : record : ~(.,EOF)
+				do ~( record )
+			else
+				do exit
 #ifdef PROMPT
-			do >&"  \n" // wipe out ^D
+				do >&"  \n" // wipe out ^D
 #endif
-			do exit
-
-	else on ~( record ) // next input-traversal cycle
-		// reset: we do not want base rule to catch this frame
-		do :< record, %% >:< (record,*), IN >
+		else on ~( record ) // next input-traversal cycle
+			// reset: we do not want base rule to catch this frame
+			do :< record, %% >:< (record,*), IN >
 
 /*---------------------------------------------------------------------------
 |
