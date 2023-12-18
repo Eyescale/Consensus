@@ -116,14 +116,14 @@ Implementation
 			%( ?, %? ) is the list of conditions of the guard %?
 			%( ?, ( %?, Status ) ) is the list of conditions of the guard %?'s status
 	Also
-		%<.> represents External Variable Value Assignment (EVVA) hard-coded
+		%<.> represents External Event Variable Assignment (EEVA) hard-coded
 		     aka. %<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
 	: Cosystem
 		on init
 			...
 		else
-			// enable actions according to action->trigger->{ guard.status and event EVVA }
+			// enable actions based on guard->status and trigger->event EEVA
 			%( .:~%(.,(?,Status)), ( .:~%( ?:%(.:~%<.>,?), ( ?, Trigger )), Guard ))
 			// ^---- guard           ^---- trigger           ^---- action
 
@@ -219,7 +219,7 @@ New Feature Requirements
 
 	Example:
 		to verify that the current expression term matches an external
-		variable value assignment (EVVA) event, in the form
+		variable value assignment (EEVA) event, in the form
 			 : a : b < c
 		such that 
 			^((?,.),.): a	// current.sub[0].sub[0]

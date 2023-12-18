@@ -3,7 +3,7 @@ Name
 
 Purpose
 	Yak .bm file, aka. behavior model, aka. narrative definition
-		for inclusion, e.g. yak-drive.story
+		for inclusion, e.g. by yak-drive.story
 
 Package dependencies
 	yak-drive.story
@@ -15,7 +15,7 @@ Package dependencies
 		yak-take.bm
 			yak input schema threads sub-narrative definition
 		../../B% -f Schemes/scheme-file yak-drive.story
-			Test Yak narrative interface - in yak.bm
+			Test schematization as per Yak narrative interface
 		../../B% -f Schemes/scheme-file yak-original.story
 			Test schematization as per ../1_Schematize/yak.story
 

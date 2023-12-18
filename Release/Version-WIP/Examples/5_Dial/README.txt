@@ -25,6 +25,17 @@ Package dependencies
 		< dial.bm
 	sub.story
 
+Usage
+	../../B% dpu-drive.story
+	prompts
+		dpu-drive > _
+	expecting the user to enter numbers and or +/* operations,
+	parentheses and spaces supported
+
+	The other stories, while functional, are intended as programming
+	examples - but can be launched as-is, e.g.
+		../../B% sub.story
+
 About dpu-drive.story
     DPU interface
 	do ( *dpu, GET )
