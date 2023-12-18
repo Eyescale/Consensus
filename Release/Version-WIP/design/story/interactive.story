@@ -124,8 +124,8 @@ Implementation
 			...
 		else
 			// enable actions based on guard->status and trigger->event EEVA
-			%( .:~%(.,(?,Status)), ( .:~%( ?:%(.:~%<.>,?), ( ?, Trigger )), Guard ))
-			// ^---- guard           ^---- trigger           ^---- action
+			%( %( .:~%(.,(?,Status)), ( ?:~%(~%<.>,?), Guard )), ( ?, Trigger ))
+			//    ^---- guard           ^---- trigger   action ----^
 
 			// update all guard status from EENO - for next frame
 			per : ? : . < .
