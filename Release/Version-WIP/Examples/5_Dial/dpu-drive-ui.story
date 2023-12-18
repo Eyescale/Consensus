@@ -1,23 +1,22 @@
 /*===========================================================================
 |
-|			yak-drive story main
+|			dpu-drive-ui story main
 |
 +==========================================================================*/
+#include "../4_Yak/yak.bm"
 /*
    Usage
-	../../B% calculator-ui.story
+	../../B% dpu-drive-ui.story
    Purpose
-	Testing calculator User Interface using calculator scheme
+	Test dpu-drive User Interface using ../4_Yak/calculator scheme
    Note
 	This implementation relies on completion occurring, when it does, on
 	the next event unconsumed (presumably '\n').
-	See yak-drive.story or yak.story for general Scheme testing.
 */
-#include "yak.bm"
 :
 	on init
 		do : yak : !! Yak(
-#include "Schemes/calculator"
+#include "../4_Yak/Schemes/calculator"
 			)
 		do : INPUT
 
@@ -34,7 +33,7 @@
 		else on ~( %%, READY ) < *yak
 			// prompt based on last input, none included
 			in ~.: : input : ~'\n'
-				do >&"yak-drive > "
+				do >&"dpu-drive > "
 			// input next character
 			do input: "%c" <
 			do .READY
@@ -97,7 +96,7 @@
 				do >"\x1B[1;33m"
 				    "~~~~~~~~~~~"
 			else	do >"           "
-//				do >"yak-drive >"
+//				do >"dpu-drive >"
 			do ( *yak, CONTINUE )
 		else on ~( %%, TAKE ) < ?:*yak
 			do >"%s": ( check ? '~' : ' ' )

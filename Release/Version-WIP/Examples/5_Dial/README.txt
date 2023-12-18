@@ -1,4 +1,44 @@
-dpu-drive.story
+Name
+	Consensus/Release/Version-WIP/Examples/5_Dial/dpu-drive.story
+
+Purpose
+	A calculator - aka. dial processing unit - using pre-instantiated dial
+	to perform basic arithmetic operations, and demonstrating
+
+	A complete yak-based B% story implementation using multiple external
+	B% service packages - here ../4_Yak/yak.bm and dpu.bm - to process
+	user input and interaction
+
+Package dependencies
+	carry.story
+	cmp.story
+	dpu-add.story
+		< dpu.bm
+			< dial.bm
+	dpu-drive-ui.story
+		< ../4_Yak/yak.bm
+	dpu-drive.story
+		< ../4_Yak/yak.bm
+		< dpu.bm
+			< dial.bm
+	mult-table.story
+		< dial.bm
+	sub.story
+
+About dpu-drive.story
+    DPU interface
+	do ( *dpu, GET )
+		on ~( %%, GET ) < ?:*dpu
+			do (((*A,*), ... ), %<(!,?:...)> )
+	do ((( *dpu, SET ), ... ), digit(s) )
+		on ~( %%, SET ) // sync - optional
+	do ((( *dpu, ADD ), ... ), digit(s) )
+		on ~( %%, ADD ) // sync
+			do (((*A,*), ... ), %<(!,?:...)> )
+	do ((( *dpu, MULT ), ... ), digit(s) )
+		on ~( %%, MULT ) // sync
+			do (((*A,*), ... ), %<(!,?:...)> )
+
     Accumulator operations
 	1. push
 		in : A : ? // current accumulator address
@@ -24,20 +64,12 @@ dpu-drive.story
 
 		The accumulator value is **A: (((*A,*), ... ), digits )
 
-    DPU interface
-	do ( *dpu, GET )
-		on ~( %%, GET ) < ?:*dpu
-			do (((*A,*), ... ), %<(!,?:...)> )
-	do ((( *dpu, SET ), ... ), digit(s) )
-		on ~( %%, SET ) // sync - optional
-	do ((( *dpu, ADD ), ... ), digit(s) )
-		on ~( %%, ADD ) // sync
-			do (((*A,*), ... ), %<(!,?:...)> )
-	do ((( *dpu, MULT ), ... ), digit(s) )
-		on ~( %%, MULT ) // sync
-			do (((*A,*), ... ), %<(!,?:...)> )
+About dpu.bm
+    Perform number operations - using dial.bm for single-digit operations
 
-dial.bm
+About dial.bm
+    Perform single-digit operations - interface example in mult-table.story
+
     MULT Optimization
 	Asumming that
 		1. p or q in { 0, 1, base-1 } are dealt with separately

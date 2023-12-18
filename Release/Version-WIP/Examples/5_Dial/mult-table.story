@@ -1,3 +1,8 @@
+/*===========================================================================
+|
+|			mult-table story main
+|
++==========================================================================*/
 #define DEBUG
 #include "dial.bm"
 :
@@ -14,13 +19,13 @@
 		else	do : dial : !! Dial((:0123456789:),OPT)
 		do : MULT
 	else in : MULT
-		on ~( %%, MULT ) < ?:*dial
-			do :< c, r >: %<(!,?:...)>
-			do : OUTPUT
-		else on : . // dial operation on next digit(s)
+		on : . // dial operation on next digit(s)
 			do (( *dial, ... ),< MULT, *p, *q, 0 >)
 			in solo
 				do > "%s x %s = ":< *p, *q >
+		else on ~( %%, MULT ) < ?:*dial
+			do :< c, r >: %<(!,?:...)>
+			do : OUTPUT
 	else in : OUTPUT
 		in : base : 16
 			on : q : ?

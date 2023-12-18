@@ -1,10 +1,26 @@
 Name
-	Consensus/Release/Version-WIP/Examples/4_Yak/yak.story
+	Consensus/Release/Version-WIP/Examples/4_Yak/yak.bm
 
-Usage
-	../../B% -f Schemes/scheme-file yak.story
+Purpose
+	Yak .bm file, aka. behavior model, aka. narrative definition
+		for inclusion, e.g. yak-drive.story
 
-Entities
+Package dependencies
+	yak-drive.story
+		< yak.bm
+			< yak-take.bm
+	yak-original.story
+		< yak-take.bm
+	Where
+		yak-take.bm
+			yak input schema threads sub-narrative definition
+		../../B% -f Schemes/scheme-file yak-drive.story
+			Test Yak narrative interface - in yak.bm
+		../../B% -f Schemes/scheme-file yak-original.story
+			Test schematization as per ../1_Schematize/yak.story
+
+Entity Behaviour Relationship Model
+    Entities
 	a schema instance is entirely defined as
 		.s:(( schema, .position ), .start )
 	    where
@@ -53,7 +69,7 @@ Entities
 		do (((schema,position),frame), r )	// yak.story
 	   vs.  do (((schema,position),frame)|( %|,r))	// ../1_Schematize/yak.proper
 
-Behavior
+    Behavior
 	The story alternates between
 
 		: IN state - IN stands for INPUT phase

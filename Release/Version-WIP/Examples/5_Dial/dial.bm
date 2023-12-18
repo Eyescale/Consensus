@@ -1,6 +1,6 @@
 /*===========================================================================
 |
-|			dial Interface narrative definition
+|			Dial narrative definition
 |
 +==========================================================================*/
 /*
@@ -14,7 +14,7 @@
 					   ...  +
 					       / \
 					      9  \0
-	to perform arithmetic operations
+	to perform single-digit arithmetic operations
 */
 : Dial
 	in : MSUM	// add q to p via n
