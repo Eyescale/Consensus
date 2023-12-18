@@ -2,8 +2,14 @@ Name
 	Consensus/Release/Version-WIP/Examples/4_Yak/yak.bm
 
 Purpose
-	Yak .bm file, aka. behavior model, aka. narrative definition
+	Yak .bm, aka. behavior model, aka. narrative definition file
 		for inclusion, e.g. by yak-drive.story
+
+Usage
+	../../B% -f Schemes/scheme-file yak-drive.story
+		Test schematization as per Yak narrative interface
+	../../B% -f Schemes/scheme-file yak-original.story
+		Test schematization as per ../1_Schematize/yak.story
 
 Package dependencies
 	yak-drive.story
@@ -12,12 +18,7 @@ Package dependencies
 	yak-original.story
 		< yak-take.bm
 	Where
-		yak-take.bm
-			yak input schema threads sub-narrative definition
-		../../B% -f Schemes/scheme-file yak-drive.story
-			Test schematization as per Yak narrative interface
-		../../B% -f Schemes/scheme-file yak-original.story
-			Test schematization as per ../1_Schematize/yak.story
+		yak-take.bm holds yak input schema threads sub-narrative definition
 
 Entity Behaviour Relationship Model
     Entities
