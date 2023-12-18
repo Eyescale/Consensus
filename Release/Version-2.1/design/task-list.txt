@@ -1,8 +1,9 @@
-See Also: design/new-features-and-additions.txt
 TODO
-	. write down Version-2.1/README.txt
-	. branch Version-WIP -> Version-2.1
-	. interactive B% Grammar
+	. Documentation
+		. write Consensus B% Version-2.1 Programming Guide
+		  Reminder: instantiation may do half a job, as
+		 	 we do not pre-check with bm_void
+
 
 TOFIX
 	. on ~(_?_) < %% is allowed (as EENO)
@@ -10,6 +11,7 @@ TOFIX
 		=> must verify when instantiating EENOV and %< is %%
 
 DONE
+	. branched Version-WIP -> Version-2.1
 	. implemented support for sub-narrative SUB_EXPR prototype, e.g.
 		.action: %( ?, Action )
 	. updated bm-PARSE-state-transitions.txt
