@@ -1,0 +1,355 @@
+See Also: design/new-features-and-additions.txt
+TODO
+	. write down Version-2.1/README.txt
+	. branch Version-WIP -> Version-2.1
+	. interactive B% Grammar
+
+TOFIX
+	. on ~(_?_) < %% is allowed (as EENO)
+		=> %<?> resp %<!> could be deprecated
+		=> must verify when instantiating EENOV and %< is %%
+
+DONE
+	. implemented support for sub-narrative SUB_EXPR prototype, e.g.
+		.action: %( ?, Action )
+	. updated bm-PARSE-state-transitions.txt
+	. published design/story/interactive.story
+	. do expressions and on ~( expressions no longer markable (unless EENO)
+	. parser.c: code cleanup - cf. design/specs/bm-PARSE_implementation.txt
+		. implemented f_ternary_markable(stack)
+		. mark negated - all cases handled properly, e.g. %( ~a:(?), . )
+		. renamed FILTERED into PRIMED => ASSIGN|PRIMED, TERNARY|PRIMED
+		. implemented FILTERED operations as it should
+		. implemented STARRED operations => f_actionable() finalized
+	. parser.c: case !BM_STORY handled in bm_load()
+	. parser.c: no longer accept \n inside (_) expressions EXCEPT
+	   	after (_? and (_?_: in TERNARY expressions
+	   idea is to facilitate error detection / statement incomplete
+	. parser.c: no longer use f_tag for passing MARKED and EMARKED flags
+	   implementation now passes these flags naturally down upon ')'
+	. parser.c: ternary expressions
+	  1. fixed f_ternary_signalable() implementation to allow e.g.
+		   do ( a ? b ? c~ : d~ :)
+			  ^--- stack pushed internally upon every ternary operator
+	  2. only allow '?' in ternary terms if expression is SUB_EXPR, e.g.
+		    %( guard ? (b,?) : (c,?) )
+	     Note the multiple marks => MARKED cleared upon ternary separator ':'
+	     The restriction is due to the fact that not every term may be marked
+	  3. no longer allow '?' in ternary guard
+	     => detected either upon ternary operator or in guard if already MARKED
+	. parser.c: forbid :? in expression - "?:" has to be leading
+	  include/traversal.h - fixed BMTermCB implementation so that
+		on ~( %%, ?:TAKE ) < *yak
+			  ^---------- is not considered filtered
+	. database.c: integrated deprecatable() into db_deprecate()
+	. dpu.bm: removed leading zero's in FORMAT
+	. complete ./Examples/5_Dial/dpu-drive.story
+		[DONE]	*/+ number
+		[DONE]	yak integration
+	. implemented $ output format, e.g.
+		do >"%$\n": %<(!,?:...)> // output concatenated
+	. made #include path relative to current file path
+	. renamed 5_Maths into 5_Dial, calculator into dpu-drive.story
+	. implemented do ((list,~.)|(%|,expr)) // pipe RV is set to list
+		allows to clear list and reassign new values in one cycle
+	  DESCRIPTION
+	  The following relies on sequential execution of the do instructions.
+	  It works in current implementation, but contradicts Consensus design
+	  principle - i.e. fails if inverting the do's order:
+		on init
+			do : A : ((A,*),1)
+		else on A
+			in ?:(A,*)
+				do ~( %?, . ) // clear A list
+				do : A : ((A,*),1) // reassign
+		else do exit
+	  The proper way to clear and reassign A list in one frame is
+		...
+		else on A
+			do (((A,*),~.)|((*,A),(%|,1)))
+		...
+	  SEE ALSO
+		dpu.bm / SET operation
+	. allowed do : proxy : !! Class <=> do : proxy : !! Class()
+	. modified yak-drive.story /
+		on push - ie. IN: ( next, current ) or ( base )
+		on pop - ie. OUT: ( current, next ) or ( base, carry ) or ( base )
+	. added Self proxy traversal to query.c (NOT to instantiate.c)
+	. allowed .locale declaration after else statement - cf yak.story
+		else .event
+			// processing
+	. do >: .  now does do >: ~%(?,.):~%(.,?) // hardcoded in operation.c
+	. made vector assignment truly distributive
+		do :< a, b, c >:< d, e, f >
+	. instantiate.c: no story => traverse_mode&CLEAN (BM_INPUT or BM_LOAD)
+		=> no call to p_filtered() in traverse.c
+	. allow contrary assignment occurrence, e.g.
+		in~.::variable:value
+		in~.::state
+	. implemented in/on (:expression) resp. in/on ~(:expression)
+	  Rules:
+	  . in instantiation mode, (:expression) represents literal
+	  . in query mode, (:expression) represents %((*,%%),expression)
+	  Example Usages
+		on ((:state)?~(:previous):) // transition event
+		on event
+			do :( %(:current1) ? next1 : // could be %(:?):current1
+			      %(:current2) ? next2 :
+				...
+			      %(:currentN) ? nextN :)
+	. allowed \cr in expressions (so long as LEVEL is set)
+	. implemented in/on/do : expression // same as in/on/do : %% : expression
+	. Modified literal format: '(' MUST be backslashed in sequence,
+		e.g. do (:\(whatever\):) // required for p_prune()
+	. modified parser.c, so that SET, CARRY or VECTOR always start from
+	  a clean slate, e.g. f_push( stack ) / f_reset( FIRST|VECTOR, 0 )
+	  and then exit via f_pop( state, INFORMED )
+	. implemented preprocessing directives #define #ifdef, #ifndef, etc.
+	. yak.story
+		. implemented \i (integer) + fixed double-passthrough issue
+		. implemented yak blank space in schema definition e.g. (: %term :)
+		. new (functional) null-schema implementation
+		. cf. ./Examples/4_Yak/Schemes/space
+	. implemented preprocessing directive #include
+	. support output to stderr
+		do >&"fmt":< arg(s) >
+	. parser.c: %identifier' in literal or list MUST be followed by non-separator
+		e.g.	(%titi',whatever)	FAILS on the comma
+			(%titi,whatever)	PASSES -> (%,titi) ',' w h a t e v e r
+			(%titi\',whatever)	PASSES -> (%,titi) '\'' ',' w h a t e v e r
+			(:%titi''toto)		FAILS on the second quote
+			(:%titi'toto)		PASSES -> (%,titi) t o t o
+			(:%titi\'toto)		PASSES -> (%,titi) '\'' t o t o
+	  Rationale:
+		parser_io assumes quoted expressions to be either '.' or '\.' or '\x..'
+		=> in e.g. (:whatever') the following character is assumed to be '\''
+		   and therefore would miss e.g. (:whatever')//comment
+	. parser.c / parser_macros.h
+		[DONE]	. rewrite preprocess using parsing MACROS
+			. extend preprocessor -> push/pop io
+		[DONE] moved all string macros into Base/string_util.c
+		[DONE] extracted CNIO/io_getc -> io.c
+		[DONE] renamed parser_private.h into parser_macros.h
+	. published updated ./design/specs/db-update.txt specs
+	  . new combination (e,nil) x ((nil,e),nil) = deprecated to-be-deprecated
+	  . documented db_update() assumption and counter-measure wrt. entities order
+	. implemented db_fire( proxy, db ) - note that we no longer have restrictions
+	  concerning newborn entities
+	. Now manifest proxies upon creation
+	. new Register Variable %@ (represents active connections)
+	. implemented per event < src
+	  => query.h: redefined
+			#define BM_EVENT	1
+			#define BM_VISIBLE	2
+			#define BM_AS_PER	4
+
+			#define BM_RELEASED	BM_EVENT
+			#define BM_CONDITION	BM_VISIBLE
+			#define BM_INSTANTIATED	(BM_VISIBLE|BM_EVENT)
+	  CAVEATS:
+		per . < . not to be mistaken with per ( . ) < .
+			per ( . ) < .  <=> for all cells on which instantiation just happened
+			per . < . <=> for all active cells
+		also
+			per ~( . ) < . <=> for all cells on which deprecation just happened
+			per ~. < .  accepted but will never pass
+		whereas
+			per ~.: _ NOT ACCEPTED (parser)
+			on ~.: event < src passes iff NONE among src verifies event (tricky)
+
+	. do >:< a, b >	// output results are separated by cr
+	. Now use only one registry for %? and %! [it's a pair]
+		=> %! always available when %? is
+	. support vector assignment - e.g.
+		do :< a, b, c >:< 1, 2, 3 >
+	. allowed %% in proto
+	. extended do identifier~ in case identifier is not base entity
+	  (i.e. identifier is sub-narrative param or locale), so that
+		  identifier's subs get deprecated if
+			these are not referenced elsewhere
+		  	these are not base entities
+	  further extended to allow
+		do %?~
+		do %!~
+	  cf. Test/33_untrace
+	. implement en for enable, so that the two following commands are equivalent
+		en expression
+		%( expression )
+	. support ellipsis at any level in proto, e.g.
+		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
+		   e.g.	-------------------------------------^-------^
+
+	  => context.c: param_CB is called on any .identifier p
+		if p_prune(PRUNE_TERM,p) verifies ",..." then
+			. ignore exponent
+			. set param to instances.sub[0]^MAX
+	  CAVEATS
+	  1. as we do not [yet] support e.g. %(( a, ? ), ... ) in proto
+	     we only support inner ( .param, ... ) and/or terminating ellipsis
+	  2. when proto is ellipsis-terminated, then the sub-narrative perso
+	     is changed to (%%,this) - consequently all .locale(s) will be
+	     instantiated as ((%%,this), locale(s)), etc.
+	. support %<(!,?)> supposed to be used in association with e.g.
+		on ~( %%, func ) < ?:src
+			do : value : %<(!,?)>
+	  Note: in %<(!,?)> does in fact read the src's CNDB, but design-wise
+	  does not break the model consisting of only catching events: since
+	  %<!> does refer to a new or released event, so does %<(!,?)> which
+	  here we just claim has been caught along.
+	. supported ellipsis / vector
+		do (( list, ... ), < expression(s) > )
+	. supported %((?,...):expression)
+		representing ALL expression.sub[0]^n (n>=0)
+	  starting from expression itself
+		so for expression: (func,...)
+			we have func:
+				%((?,...):expression):~(.,.)
+			and params:
+				%(func,?):%((?,...):expression)
+				%((func,.),?):%((?,...):expression)
+				%(((func,.),.),?):%((?,...):expression)
+				%((((func,.),.),.),?):%((?,...):expression)
+	. supported do (( list, ... ), xpan )
+		instantiates xpan if needed, then
+		instantiates ((((list,a),b),...),z) where xpan is {a,b,...,z}
+	. implemented db_fire_proxy( proxy, db )
+		. called in bm_context_update() before db_update()
+		. performs db_op( DB_SIGNAL_OP, e, db ) on all e:(proxy,.)
+	. extended do >: expression // appends '\n' to the resulting output [rev-2.0]
+	. %<(expression)> done, using ! as pivot in expression, e.g.
+		on ~(%%,.) < ?
+			do >: %<(!,?:...)>
+	  	does output all newly instantiated %((%%,.),?:...) in %<
+	. %( list, ?:... ) implementation done
+	  representing ALL %((list,...),?,?,?,...) - cf. Test/23_list-exp
+	. REV-2.0 ASSIGNMENT rules
+	  in/on : variable : value [ < src ]
+		  %? (resp.%<?>) represents whatever is marked in expression
+		  %! (resp.%<!>) ALWAYS represents the whole expression: ((*,.),.)
+	  e.g. in/on : variable : value < ?
+		  %<?> same as %< - but w/o mark neither %<?> nor %<!> are informed
+		  %<!> same as %<!:((*,variable),value)>
+	  Test/script for all assignment cases
+	. REV-2.0 SIGNAL handling
+	  identifier~ only supported during INSTANTIATION
+	  on signal~ < src
+		should therefore become on ~( signal ) < src
+		otherwise generate ERROR
+	  cf. ./Examples/3_TM.multi/TM_head-cell.story
+	. Branched Version-2.0
+
+NICE TO HAVE
+	. dpu-drive.story
+		: mem (variable assignment & usage in formulas)
+	. do { .... }	<<<< ANY expression - assignment, release, etc.
+	. finish variable stack - might answer issue below
+		1. in .::expression << check we don't have (*,.) >> %. ?
+		2. possibly implement .locale: expression (?)
+	  issue: Yak: investigate (: %term :), (:\(%term\):) kinda race condition
+	. Implement
+		in .:expression	// e.g. in .:: OUT
+			=> rebase perso for locale definition
+			=> %. new registry variable
+			=> now perso should be %[ perso, registry ]
+		and any identifier lookup may go through the whole stack of registries
+		Requirement
+			expression:~( *, . )
+		Example
+			in .:: state	// pushes [ perso, registry ] where perso=%.:((*,%%),state)
+				.locale	// instantiates ( %., locale )
+		Benefit
+		. locale will be released automatically on state changes
+		. Eventually of course we may want to support
+	. .locale: expression // initialization - use cases to be determined
+		on ~.				// == inactive
+		    =>	on/per ~. < src		// src can be determined
+	. OPT: occurrence meta-characters ?:~ => ExpressionTake post-processing
+		meaning, per Term: Ternary, Filtered, Unmarked, Coupled
+	. parser.c / narrative.c
+		NarrativeTake: on empty narrative: return Warning and just ignore
+		ProtoSet: set errnum on double-def / already registered
+	. locale variables: only on 'in_' and then attached to %?
+	. do : var : %?	when %? is NULL
+		=> should it be equivalent to do : var : ~.
+		=> currently assignment fails
+	. support per condition
+		complements per event < %%
+		but then we'd want to allow variable names in condition
+	. allow !! inside of expression instead of assignment only
+		requires changes in parser.c and instantiate.c
+	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
+	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
+		~%(?,.)		== %(^.) == en ^.
+		~%(.,?)		== %(.$) == en .$
+	. extend do !!identifier( ) to do !!expression( )
+	. Other EEnoRV as-is
+		on ~( %<_> )
+		on %<_> < .
+		do !! Narrative( %<_> )
+	. improve >>>> B%%: Error / Warning handling - vs. exit(-1) or repeat
+	. parser.c
+		. more & better error messages
+		. extract bm_parser_report from parser.c => error.c ?
+	. support multiple args in do input
+		do < arg1, arg2, ..., argN > : "format" <
+	. Design document: formalize the internal data structures, e.g.
+		cell:[ [ entry:[ name, narratives:{} ], carry ], ctx:[ this, registry ] ]
+	. optimization
+		. Remodel occurrence->data->expression from char * to TBD
+		. do_enable: without building string?
+	. bm_void() - should bm_instantiate() verify expression?
+		. Pros: instantiate all or nothing
+		. Cons: performances
+		. Alternative:
+		  1. propose special execution mode (like Debug)
+		  2. special do - e.g. do$ - where bm_void() is enforced
+	  Current status & Decision
+		. bm_instantiate() does not invoke bm_void()
+		  => bm_instantiate() may do half a job (user responsibility)
+	. multi-threading (pthreads)
+	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
+
+TODOC
+	. %identifier' in literal or list MUST be followed by non-separator
+	. write Consensus B% Version-2.0 Programming Guide
+		. Reminder: instantiation may do half a job, as
+		  we do not pre-check with bm_void
+	. update Consensus B% Version-1.x programming guide to
+		  include Version-1.2 features - as Addendum (?)
+	. Version-2.0 Announcement
+		. Next Step: Version-2.1 (now Version-WIP)
+		  building up on 1_Schematize/yak.new example
+	. Version-2.0 README.txt - document output changes
+		. multiple output format supported - with vector
+			e.g. do >"%s%s":<*alpha,*beta>
+		. default format ("%_") appends '\n' to the resulting output
+			e.g. do >: expression
+			  or do >:< expression(s) >
+		. format %s allows single quote to be used without requiring
+		  the corresponding SCE to be instantiated
+			e.g do >"%s\n":'h'	// will always work
+	. CAVEAT: in Version-2.0 implementation (db_op.c)
+		signals as newborn entities become to-be-released => immediately visible
+		whereas released entities cannot become signals => not repeatable
+	    whereas
+		in Version-WIP entities can be both newborn and to-be-released, these
+		entities being born as released; furthermore, released entities can be
+		reborn as released, using the new combination (e,nil) x ((nil,e),nil)
+	. CAVEAT: tricky usage of ~ esp. in EENO
+		e.g. on ?:~toto < src
+		does not mean that anything other than toto will pass
+		it means that anything matching *what the caller has*
+		other than toto will pass -- note that in this case we
+		do not have pivot, and that the expression, since it is
+		negated, will be dereferenced first in the caller
+		in other words: ~instance does not mean "not this instance",
+		but the set of instances other than this instance in the CNDB
+		Therefore it has to be dereferenced in the caller's CNDB first,
+		as EENO are external *event* occurrences, and are not supposed to
+		give access to the contents of the external CNDB
+	. CAVEAT: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
+		=> These instances will not be found in Version-2.0 when the
+		   query expression is non-pivotable
+		=> Not a problem in Version-2.1 (currently WIP) as these will
+		   only be created as DB_SIGNAL_OP
+

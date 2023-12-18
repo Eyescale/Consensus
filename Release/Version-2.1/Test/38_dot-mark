@@ -1,0 +1,15 @@
+
+	%( . )
+	on init
+		do ( titi, toto )
+	else on ~( . )
+		do exit
+
+:( titi, toto )
+	on this
+		do .mark
+	else in ?:%(.?)
+		do >"FOUND: %_\n": %?
+		do ~( this )
+	else
+		do ~( this )

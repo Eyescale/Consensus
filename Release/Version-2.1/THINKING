@@ -1,0 +1,50 @@
+
+
+Question:
+
+	do >"%$":%((cmd,*),?:...)<
+		 ^----------------------this is read as action expression
+
+	in >"%$":%((cmd,*),?:...)<
+		 ^----------------------this is read as condition expression
+
+
+	on ~( %%, ?:DO ) < .
+		do >"%$":%<(!,?:...)><
+
+	do >"(%$,%$)":< expr1, expr2 ><
+
+Q: what name to give this new occurrence ?
+A: INTRO (?) - for introspect
+Q: Queries ?
+A:	do >"(result,%$)":%((query,*),?:...) <
+	do >".variable:%$":%((query,*),?:...) <	// TBD
+
+Now if all I am allowed is do > format : <variables> <
+	=> All I can do is
+		instantiate / assign / release
+	=> How do I query?
+	A: as described above: assign variable or local entity
+		Then I can do "on" / "in" / "per" that variable resp. locale
+
+Next question: how do I build - and execute - narratives/sub-narratives?
+
+===========================================================================
+
+	I want to execute B% command from string
+
+		do (($,...), %((string,*),?:...))
+					  ^---------- my command
+
+	in : state
+		on : .
+			do (( proxy, ... ):xxxxxxxxxx:)
+		else on ~( %%, ? )  < proxy
+			do >"%$":%<(!,?)>	<<<< return
+Proxy
+	on ~( %%, ? ) < ..
+		do (( $, ... ), %<(!,?:...)> )
+	else on ~( %%, ? ) < $	<<<<< return from B%
+		do (( .., ... ), %<(!,?:...)> )
+
+===========================================================================

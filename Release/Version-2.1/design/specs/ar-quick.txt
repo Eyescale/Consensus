@@ -1,0 +1,13 @@
+Synopsis
+	ar -rcvus library.a objet.o [object.o ...]
+	    ^^^^^-------- symbol - generate table (required for static library)
+	    |||+--------- update - replace archive's objects only if newer
+	    ||+---------- verbose
+	    |+----------- create - create archive file if needed
+	    +------------ replace - as opposed to e.g. x, d or t
+				where
+					x: extract
+					d: delete
+					t: tell (list contents)
+Reference
+	man ar

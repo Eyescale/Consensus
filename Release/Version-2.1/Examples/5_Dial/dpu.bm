@@ -1,0 +1,167 @@
+/*===========================================================================
+|
+|	DPU - Dial Processing Unit - narrative definition
+|
++==========================================================================*/
+#include "dial.bm"
+: DPU
+	on init
+		in ~.: hex // default
+			do : dial : !! Dial((:0123456789:),OPT)
+		else	do : dial : !! Dial((:0123456789ABCDEF:),OPT)
+		do : READY
+
+	else on exit < ..
+		do exit
+
+	else in : READY
+		on ~( %%, SET ) < ?:..
+			do (((A,*),~.)|((*,A),((%|,...),%<(!,?:...)>)))
+			do ( .., SET )
+		else on ~( %%, GET ) < ..
+			in (?:(A,*),.)
+				do ((( .., GET ), ... ), %(%?,?:...) )
+			else	do (( .., GET ), 0 )
+		else on ~( %%, ADD ) < ?:..
+			in ~.: ((A,*), . ) // format input
+				do : A : ((A,*), 0 )
+			do : X : (((X,*), ... ), %<(!,?:...)> )
+			do : ADD
+		else on ~( %%, MULT ) < ?:..
+			in ?:((A,*),.)
+				in (%?,.) // A has more than one digit
+					do : P : *A
+					do : q : (((X,*), ... ), %<(!,?:...)> )
+				else
+					do : P : (((X,*), ... ), %<(!,?:...)> )
+					do : q : *A
+				do : MULT
+			else
+				do (( .., MULT ), 0 )
+
+	else in : ADD
+		on ~( %%, MSUM ) < ?:*dial // read digit-sum operation results
+			do :< c, v >: %<(!,?:...)>
+		else on : v : ?
+			do : r : ( *r, %? )
+			in : p : (?,.)
+				do : p : ( %?:(.,*) ? ~. : %? )
+			in : q : (?,.)
+				do : q : ( %?:(.,*) ? ~. : %? )
+		else on : r : .
+			in : p : (.,?)
+				do (( *dial, ... ),< MSUM, %?, (*q?%(*q:(.,?)):0), *c >)
+			else in : q : (.,?)
+				do (( *dial, ... ),< MSUM, %?, 0, *c >)
+			else
+				do .MSUM
+				do : FORMAT
+		else on : .
+			do :< p, q, r, c >:< *A, *X, (r,*), 0 >
+
+	else in : MULT
+		in .MSUM // after each round of multiplying P by one q-digit
+			on ~( %%, MSUM ) < ?:*dial // read digit-sum operation results
+				do :< c, v >: %<(!,?:...)>
+			else on : v : ?
+				/* we have
+					: r : (( r, * ), ... )	// input
+					: s : (( s, * ), ... )  // done digits
+					: t : (( t|u, * ), ... ) // in construction
+					: u : ( u|t, * ) // ... t and u alternating
+				*/
+				in : r : ((.,*),.) // first digit-sum result goes to s
+					do : s : ( *s, %? )
+					do ~( *u, . )  // clear (u,*)
+				else	do : u : ( *u, %? ) // build new u
+
+				// Note: r may have one more digit than t (but not more)
+				in ?:( *r, . )
+					do : r : %?
+					in ?:( *t, . )
+						do : t : %?
+					else do (( *dial, ... ),< MSUM, %(%?:(.,?)), 0, *c >)
+				else do : r : ~.
+			else on : r : ~.
+				do ~((r,*),.) // clear (r,*)
+				do : %(:?) // REENTER
+				do ~( .MSUM )
+			else on : t : ?
+				do (( *dial, ... ),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
+			else on : .
+				do : c : 0
+				in u
+					// swap t and u from last round
+					do : t : %(((.,*),.):%((?,...):*u))
+					do : u : %((.,*):%((?,...):*t))
+					do : r : %(( r, * ), . )
+				else in ?:((r,*),.)
+					// very first round: separate r into s and u
+					do : s : ((s,*),%(%?:(.,?)))
+					do : t : (t,*)
+					in ( %?, . )  // r has more than one digit
+						do : u : (((u,*),...),%(%?,?:...))
+						do : r : ~.
+					else  // both P and q are one digit - and no carry
+						do ~( %? ) // s informed
+						do ~( .MSUM )
+						do : FORMAT
+		else
+			on ~( %%, MULT ) < ?:*dial // read digit-mult operation's results
+				do :< c, v >: %<(!,?:...)>
+			else on : v : ?
+				do : r : ( *r, %? )  // inform r
+				in : p : ( ?:~(.,*), . )
+					do : p : %?
+				else	do : p : ~.
+			else on : p : (.,?)  // dial next digit(s) operation
+				do (( *dial, ... ),< MULT, %?, %(*q:(.,?)), *c >)
+			else on : p : ~.
+				in : c : (?:~0)
+					do : r : ( *r, %? )
+				do : %(:?) // REENTER
+				do .MSUM
+			else on : .
+				in ~.: u
+					do :< p, r, c >:< *P, (r,*), 0 >
+				else in : q : ( ?:~(.,*), . )
+					in : c : (?:~0)  // finish u
+						do : u : ( *u, %? )
+					do :< p, q, r, c >:< *P, %?, (r,*), 0 >
+				else
+					do : t : ((*c:0) ? *u : (*u,*c))
+					do : FORMAT
+
+	else in : FORMAT
+		/* inform A either
+			in .MSUM  - from *r resp. (*r,*c)
+			otherwise - from *t then *s, via *r
+		*/
+		on : r : ?
+			in %?: ~(.,*)
+				in .check // leading 0 eliminated
+					do : A : ( *A, %(%?:(.,?)) )
+				else in %?:(.,?:~0)
+					do .check
+					do : A : ( *A, %? )
+				do : r : %(%?:(?,.))
+			else in %?: ~(r,.): ~(s,.) // (t,*) or (u,*)
+				do ~( u )
+				do ~( t )
+				do : r : *s
+			else
+				in ?:( .MSUM ? ADD : MULT )
+					in .check
+						do ((( .., %? ), ... ), %((A,*),?:...))
+						do ~( .check )
+					else
+						do (( .., %? ), 0 )
+						do ~( A, * )
+				do ~( %? )
+				do ~( .MSUM )
+				do : READY
+		else on : .
+			do : r : ( .MSUM ? (*c:1) ? (*r,1) : *r : *t )
+			do (((A,*),~.)|((*,A),%|))
+			do ~( X )
+

@@ -1,0 +1,11 @@
+:
+	%(.)
+	on init
+		do (((list,a),b),c)
+	else
+		do >: %(list,...)
+		do exit
+
+:( ( .passthrough, ... ), ... )
+	do >"hi from ( %_,...) as %_\n": < passthrough, this >
+	do exit

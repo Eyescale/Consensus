@@ -1,0 +1,32 @@
+
+// #define TERM
+// #define SPACE
+#define DEADLOCK
+#ifdef TERM
+	(( Rule, base ), ( Schema, (:%term:) ))
+#else
+//	(( Rule, base ), ( Schema, (: :) ))
+	(( Rule, base ), ( Schema, (:%s:) ))
+#endif
+
+
+#ifdef TERM
+	((Rule,term), (Schema, {
+		(:a:)
+		(:%s%term%s:) } ))
+//		(: %term :) } ))
+#endif
+
+#ifdef SPACE
+	(( Rule, s ), ( Schema, {
+		(::)
+		(:%s\ :)
+		(:%s\t:) } ))
+#eldef BLANK
+	(( Rule, s ), ( Schema, {
+		(: :) } ))
+#eldef DEADLOCK
+	(( Rule, s ), ( Schema, (:%t:) ))
+	(( Rule, t ), ( Schema, (:%s:) ))
+#endif
+		

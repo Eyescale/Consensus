@@ -1,0 +1,9 @@
+:
+	on init
+		do ( toto, titi )
+	else
+		%(.)
+
+.who: %( ?, titi )
+	do >: who
+	do exit

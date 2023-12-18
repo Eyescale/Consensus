@@ -1,0 +1,10 @@
+#	Assumed to be used in conjunction with yak.story, as in
+#		../../B% -f Schemes/right-recursive yak.story
+
+	(( Rule, eee ), ( Schema, {
+		(:e:)
+		(:e%eee:)	#right-recursive
+	}))
+	(( Rule, g ), ( Schema, (:%eee.:)) )
+	(( Rule, base ), ( Schema, (:%g:)) )
+#	(( Rule, base ), ( Schema, (:%eee:)) )

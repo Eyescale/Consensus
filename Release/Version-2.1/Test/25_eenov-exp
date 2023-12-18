@@ -1,0 +1,13 @@
+
+	on init
+		do !! func()
+	else on hello < ?
+#		do >: %<!>
+#		do >: %<((!,.),?)>
+		do >: %<(!,?:...)>
+		do exit
+: func
+	on init
+		do (( hello, world ), tti )
+		do exit
+

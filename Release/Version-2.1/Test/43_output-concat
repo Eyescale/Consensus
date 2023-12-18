@@ -1,0 +1,6 @@
+
+	on init
+		do (( a, ... ),< 1, 2, 3 >)
+	else
+		do >"%$\n": %(a,?:...)
+		do exit

@@ -1,0 +1,40 @@
+:
+	on init
+		do (( Rule, really ), ( Schema, (:very:)) )
+		do (( Rule, pass ), ( Schema, (:%really good:)) )
+		do (( Rule, base ), ( Schema, (:%pass:)) )
+		do INPUT
+	else
+		%( . )
+		on ( INPUT ) // start base rule instance - feeding base
+			do ( schema, %((Rule,base),(Schema,?)) )
+		else on ~( schema, . )
+			in ~.: ( schema, . )
+				do > "all done...\n"
+				do exit
+
+.s: ( schema, .position )
+	on ( s )
+		do >"new schema thread.....\n"
+		do : s : !! Take( ((*,p), .position ) )
+	else on ( TAKE, ? ) < *s
+		do > ">>>>>>>>>>>>>>>>>>>> TAKING rule: %_\n": %<?>
+		do ( schema, %((Rule,%<?>),(Schema,?)))
+	else on exit < *s
+		do > "exiting too...\n"
+		do ~( s )
+
+: Take
+	on : p : ?
+		do >"Take CNDB: %_\n": .
+		in %?: (( %, ? ), . )
+			do > "TAKE rule: %_\n": %?
+			do ( TAKE, %? )
+		else
+			do READY
+	else on ( TAKE, . )
+		do >"EXITING\n"
+		do exit
+	else on READY
+		do exit
+

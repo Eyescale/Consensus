@@ -1,0 +1,8 @@
+#define INCLUDE
+#ifdef INCLUDE
+#include "Test/37_include.file"
+#endif
+	else
+		do exit
+
+

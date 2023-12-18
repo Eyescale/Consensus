@@ -1,4 +1,12 @@
+Name
+	Consensus Programming Language (B%) version WIP
 
+Usage
+	./B% program.story
+	./B% -p program.story
+	./B% -f file.ini program.story
+
+Description
 
 			-- Work In Progress --
 

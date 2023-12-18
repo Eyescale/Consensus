@@ -1,0 +1,26 @@
+/*
+	on init
+		do : titi : toto
+		do : tata : tutu
+	else
+		per : . : ? < %%
+			do >"BINGO %_\n": %<?>
+		do exit
+*/
+/**/
+	on init
+		do !! Test()
+	else on : . : . < .	// catch the right event
+		per : . : ? < .
+			do >": %_ : %_\n":< %<!:((.,?),.)>, %<!:(.,?)> >
+			do >"\tBINGO %_\n": %<?>
+			do >"\tBINGY %_\n": %<?>
+		do exit
+
+: Test
+	on init
+		do : titi : toto
+		do : tata : tutu
+	else on exit < ..
+		do exit
+/**/

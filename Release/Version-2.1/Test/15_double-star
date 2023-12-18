@@ -1,0 +1,11 @@
+
+	on init
+		do : toto : titi
+//		do ( hello, . )		// should fail: CNDB empty
+	else on : toto : .
+		do ( hello, . )		// should pass
+		do : *toto : tata
+	else
+		do >"all: %_\n": ~%(?,.):~%(.,?)
+		do >"double star: %s\n": %(**toto)
+		do exit

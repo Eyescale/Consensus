@@ -1,0 +1,8 @@
+:
+	on init
+		do : list : (( base, toto ), titi )
+		do ((( algae, plancton ), lichen ), garbage )
+	else
+		do > "list: %_\n": %((?,...):*list)
+		do > "root: %_\n": %((?,...):*list):~(.,.)
+		do exit

@@ -1,0 +1,120 @@
+Synopsis
+	Consensus B% Version-1.2 Software Packages
+
+Contents
+
+	1.	narrative.c
+	1.1.		parser.c
+	2.	program.c
+	2.1.		cell.c
+	2.2.		context.c
+	2.2.1.			database.c
+	2.2.2.			db_op.c
+	2.2.3.			locate_param.c
+	2.3.		operation.c
+	2.3.1.			traverse.c
+	2.3.2.			deternarize.c
+	2.3.3.			instantiate.c
+	2.3.3.1.			eenov.c
+	2.3.4.			expression.c
+	2.3.4.1.			scour.c
+	2.3.4.2.			query.c
+	2.3.4.2.1.				locate_pivot.c
+	2.3.5.			proxy.c
+
+Description
+			File				API
+
+	1.	narrative.c				readStory
+							freeStory
+							cnStoryOutput
+							bm_read
+	1.1.		parser.c			cn_parser_init
+							cn_parser_getc
+							bm_parse
+							bm_parse_init
+							bm_parse_report
+	2.	program.c				newProgram
+							freeProgram
+							cnUpdate
+							cnOperate
+	2.1.		cell.c				newCell
+							releaseCell
+							BMCellEntry
+							BMCellCarry
+							BMCellContext
+							cellInit
+							cellUpdate
+							cellOperate
+	2.2.		context.c			newContext
+							freeContext
+							bm_context_finish
+							bm_context_activate
+							bm_context_init
+							bm_context_update
+							bm_context_set
+							bm_declare
+							bm_context_clear
+							bm_context_pipe_flush
+							bm_context_mark
+							bm_context_mark_x
+							bm_context_unmark
+							bm_push_mark
+							bm_pop_mark
+							bm_context_lookup
+							bm_lookup
+							bm_lookup_x
+							bm_register
+							bm_inform
+							bm_inform_context
+							BMContextId
+							BMContextSelf
+							BMContextParent
+							BMContextDB
+							BMContextActive
+							BMContextPerso
+							BMContextCell
+	2.2.1.			database.c		db_...	// data management
+							newCNDB
+							freeCNDB
+							DBFirst
+							DBNext
+							DBIdentifier
+							isProxy
+							DBProxyThis
+							DBProxyThat
+							isProxySelf
+	2.2.2.			db_op.c			db_...	// nil operations
+							DBStar
+							DBInitOn
+							DBExitOn
+							DBActive
+	2.2.3.			locate-param.c		bm_locate_param
+							bm_locate_mark
+	2.3.		operation.c			bm_operate
+	2.3.1.			traverse.c		bm_traverse
+							xpn_add
+							xpn_set
+							xpn_out
+	2.3.2.			deternarize.c		bm_deternarize
+	2.3.3.			instantiate.c		bm_instantiate
+	2.3.3.1.			eenov.c		eenov_output
+							eenov_inform
+							eenov_lookup
+							eenov_match
+	2.3.4.			expression.c		bm_feel
+							bm_scan
+							bm_release
+							bm_void
+							bm_inputf
+							bm_outputf
+	2.3.4.1.			scour.c		bm_scour
+	2.3.4.2.			query.c		bm_query
+							bm_verify
+	2.3.4.2.1.			 locate_pivot.c	bm_locate_pivot
+	2.3.5.			proxy.c			bm_proxy_scan
+							bm_proxy_active
+							bm_proxy_in
+							bm_proxy_out
+							bm_proxy_feel
+

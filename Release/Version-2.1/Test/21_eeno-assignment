@@ -1,0 +1,18 @@
+:
+	on init
+		do : child : !! Partner( hello, world )
+	else on init < *child
+		do : toto : ( titi, tata )
+	else on titi
+		do exit
+
+: Partner
+	on init
+		do > "child: init - %_\n" : .
+	else on : toto : . < ?
+		in %<: ..
+			do > "child: << toto assigned %_\n": %<!:(.,?)>
+			do %<!>
+	else on exit < ..
+		do > "child: exit - %_\n": ~%(.,?):~%(?,.)
+		do exit

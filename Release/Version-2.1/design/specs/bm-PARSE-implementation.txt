@@ -1,0 +1,221 @@
+About
+	This document gathers notes about B% parser implementation
+	References: parser.c, include/{parser.h,traverse.h}
+	It is not intended as a complete specification
+
+LEVEL vs. SUB_EXPR flags
+	on (
+		in "expr"
+			bm_parse pushes current flags on its stack
+			and then
+			. sets LEVEL and FIRST
+			. clears TERNARY|ASSIGN|PRIMED
+			. carries all other flags
+
+		in "!!$_"
+			bm_parse pushes current flags on its stack
+			and then
+			. sets CARRY and FIRST
+			. clears all other flags
+
+		in "%" // => %(
+			bm_parse pushes current flags on its stack
+			and then
+			. sets SUB_EXPR and FIRST
+			. clears all other flags
+
+		Note: the SUB_EXPR condition therefore preempts
+			LEVEL
+			SET
+			VECTOR
+			CARRY
+			ASSIGN
+			TERNARY
+			ELLIPSIS
+	on )
+		if LEVEL is set
+			. bm_parse passes MARKED down the stack
+		otherwise
+			. bm_parse just pops stack
+
+	Note that EENOV|SUB_EXPR characterizes a %<(_)> typed EENOV
+	- which must be EMARKED
+
+ASSIGN and PRIMED flags
+	The ASSIGN flag is set upon ':' when INFORMED is not set
+
+	The PRIMED flag is set upon ':' or ',' when ASSIGN is set
+	and !LEVEL|SUB_EXPR
+			       v------------- PRIMED
+		in/on/do/per :_,_
+		in/on/do/per :_:_
+
+	If ASSIGN, PRIMED must be set for the expression to complete
+
+	The ASSIGN flag is cleared upon '(' and EENO '<'
+
+	Exception
+		in "(" and *type&DO - ASSIGN is NOT set on ':'
+			(:_)	represents LITERAL
+	Notes
+		in "(" and !*type&DO
+			(:_)	represents ((*,%%),state)
+		in "%(" // => %(:
+			%(:_)	represents ((*,%%),state)
+
+Markability
+	Assuming expression is not CONTRARY and mark is not NEGATED
+
+		DO expressions are only markable in SUB_EXPR
+		IN expressions are markable
+		EENO expressions are markable
+		ON and PER expression
+			if EENO: event < src
+				are markable
+			else if RELEASED - i.e. on ~( expression )
+				only markable in SUB_EXPR [1]
+
+	1. We do not want %? to hold deprecated entities, as
+	   db_instantiate( e, f ) assumes neither e nor f are deprecated
+	   and db_op( REHABILITATE_OP, e ) does not rehabilitate subs
+
+NEGATED flag
+	The main purpose* of the NEGATED flag is to authorize
+	usage of the '?' signus in expressions
+
+	logics
+		~ before expression
+			must set NEGATED
+		(_)
+		^	must pass NEGATED value onto next level
+		  ^	parent's value restored on pop
+		%(_)
+		 ^	must clear NEGATED after push
+		   ^	parent's value restored on pop
+		%(_:_,_)
+		   ^ ^	must clear NEGATED
+		(_:_,_)
+		  ^ ^	must reset NEGATED to parent's value
+		%(_?_:_)
+		   ^ ^	must clear NEGATED
+		(_?_:_)
+		  ^ ^	must reset NEGATED to parent's value
+		:_:_
+		  ^	must clear NEGATED
+
+	pseudo-code	// cf. include/traverse.c:f_restore( flags )
+		ons( ":," )
+			if is_f( LEVEL )
+				set NEGATED to parent's value
+			else is_f( VECTOR|SET|CARRY|SUB_EXPR )
+				f_clr( NEGATED )
+
+	*see Actionability section below for other purposes
+
+Actionability
+	Expression is actionable if
+		. has DO type
+		. is not EENOV		check
+		. is not SUB_EXPR	check
+		. is not NEGATED	check
+		. is not FILTERED	must implement
+		. is not STARRED	must implement
+
+	bm_parser requires the following expressions to be actionable,
+	as bm_verify() does not know how to process them:
+
+		VECTOR		<_>
+		SET		{_}
+		PIPELINE	|
+		LITERAL		(:
+		LIST, ...	Any ELLIPSIS outside SUB_EXPR
+		signal		identifier~ or %?~ or %!~
+
+	Implementation
+		VECTOR
+			from ":_"	'<' must be first and only after ':'
+			from ",...),"	'<' requires f_actionable
+					    Note: handled in ",.."
+		SET
+			from "expr"
+			. as EENO src 	'{' must be first and only after '<'
+			. otherwise	'{' requires f_actionable
+		PIPELINE
+			from "expr"	'|' requires f_actionable
+		LITERAL
+			from "("
+			. if *type&DO	':' requires f_actionable
+					    Note: '%(:' handled from "%("
+		LIST
+			from ",.."
+			. if !SUB_EXPR	'.' requires f_actionable
+		ELLIPSIS
+			from ",.."
+			. if !SUB_EXPR	'.' requires f_actionable
+		signal
+			from "%?_"	'~' requires f_actionable
+			from "expr"	non-separator event
+					    will transition to "term_" if f_actionable
+					    will transition to "term" otherwise
+
+	The FILTERED and STARRED flags are carried along the expression's
+	levels following the same logic as the NEGATED flag above - see
+		include/traverse.h:f_restore( flags )
+
+PROTECTED flag
+	bm_parser sets the PROTECTED flag after detecting DO operations which
+	are specific to db_instantiate() and therefore cannot be subsequently
+	FILTERED nor used as TERNARY guards
+
+		>_		OUTPUT
+		<_>		VECTOR
+		{_}		SET	// accepted as EENO src
+		|		PIPELINE
+		(:		LITERALS
+		((_,...):_)	LIST
+		((_,...),.)	ELLIPSIS outside of SUB_EXPR
+		!!_()		CARRY	// could set PROTECTED on !!
+		_~		signal
+
+	bm_parser tests the PROTECTED flag on '?' and ':'
+
+TERNARY flag and expressions
+	The TERNARY flag is set upon the first '?' following
+		an INFORMED and un-MARKED term of that expression
+
+	A ternary expression is an expression in the form of either
+		( guard ? term : term )
+	       %( guard ? term : term )
+	where
+		guard and term can be ternary expressions as well,
+		with or without parentheses
+
+	Note that the flags stack is pushed
+	  . first upon entering the expression - therefore
+	    before the TERNARY flag is set
+	  . and then again upon each ternary operator '?'
+		do ( guard ? guard ? term : term : term )
+		   ^---- 1st push, where
+				. the FIRST flag is set
+				. the TERNARY flag is cleared
+			   ^---- 2nd push, where
+				. the FIRST flag is cleared
+		    		. the TERNARY flag is set
+
+	Ternary expression guards can never be MARKED
+		bm_parse will throw an error upon encountering ternary
+		operator '?' when the guard expression is MARKED
+
+	Other terms can only be MARKED if SUB_EXPR is set at the base
+	of the encompassing ternary expression
+	       %( guard ? term : term )
+
+CLEAN and LISTABLE flags
+	((_ is CLEAN	((_ is LISTABLE
+	%(( is CLEAN	%((_ is LISTABLE
+
+	%((( is not CLEAN - but it is LISTABLE
+	so that we can uniquely identify
+		%((?,...),_)
+		    ^-- are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED)
+

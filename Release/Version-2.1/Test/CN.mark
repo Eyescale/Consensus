@@ -1,0 +1,10 @@
+:
+	.local .titi
+	on init
+		do ((*,toto),titi)
+	else on ?:((*,toto),titi)
+		do >:%((.,?):%?)
+	else in ?:%((*,?),titi)
+		do >"%_\n":%?
+		do >:%((.,%?),?)
+		do exit
