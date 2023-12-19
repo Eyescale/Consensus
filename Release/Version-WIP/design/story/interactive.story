@@ -300,19 +300,27 @@ New Features
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
 				do ( %?, ( %(%?,?):%(?,(.,Guard))|^guard~, Status ))
 
-Note
+    Note
    	Special cases: action has no trigger, resp. trigger has no guard
 
-	What we call "action" here are simply the setting and unsetting of certain
+	What we call "actions" here are simply the setting and unsetting of certain
 	System's condition, aka. occurrence.
 
 	. An action which has no trigger means that the corresponding System's
-	  condition is set resp. unset only once at init - which would be a
+	  condition is set resp. unset only once at init - which btw would be a
 	  trigger - after which it no longer changes.
 
 	. A trigger always has a guard - as unnamed base entity - which may not have
-	  any conditions, in which case, whether we do or not have a ( guard, Status )
+	  any conditions, in which case, whether or not we have a ( guard, Status )
 	  relationship instance, that guard will always verify ~%(.,(?,Status)) - it
 	  is therefore only a matter of proper %tag list initialization.
+
+	Needless to say list variables are risky business, not to be generalized, as
+	it is left to the programmer to ensure that the entities they are referencing
+	are actually accessible - esp. not released.
+
+	But our Use Case here justifies their usage, as in reality things just change,
+	they do, in one go, and this is as close as we can get to reflecting reality
+	with the tools at our disposal.
 
 
