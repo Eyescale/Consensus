@@ -1,6 +1,5 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. write down Version-2.1/README.txt
 	. interactive B% Grammar & story
 
 TOFIX
@@ -9,6 +8,7 @@ TOFIX
 		=> must verify when instantiating EENOV and %< is %%
 
 DONE
+	. write down Version-2.1/README.txt
 	. branched Version-WIP -> Version-2.1
 	. implemented support for sub-narrative SUB_EXPR prototype, e.g.
 		.action: %( ?, Action )

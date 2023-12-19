@@ -115,9 +115,13 @@ Implementation
 		%( ?, ( %?, Guard ) ) is the list of guards of the trigger %?
 			%( ?, %? ) is the list of conditions of the guard %?
 			%( ?, ( %?, Status ) ) is the list of conditions of the guard %?'s status
+
+		Note that this convention relies on neither action nor trigger nor 
+		guard being proxy - otherwise we should use the same convention as per
+			(( *, variable ), value )
 	Also
-		%<.> represents External Event Variable Assignment (EEVA) hard-coded
-		     aka. %<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+		%<.> is the built-in conditional External Event Variable Assignment (EEVA)
+		     %<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
 	: Cosystem
 		on init
@@ -136,10 +140,10 @@ Implementation
 				// add complementary condition to the status of the guards
 				// for which it is a condition
 				in ?: (( %<?>, (%<!:(.,ON)>?OFF:ON) ), %< )
-					//--- guard ----v       v---- trigger
 					do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
+					//--- guard ----^       ^---- trigger
 
-	.action: %( ?, Action )	// alt. %(.,( ?, Trigger ))
+	.action: %( ?, Action )
 		// execute action - assuming action:[ occurrence, ON|OFF ]
 		do : %(action:(?,.)): %(action:(.,?))
 
@@ -150,27 +154,15 @@ Implementation
 		// add complementary condition to the status of the guards
 		// for which it is a condition
 		in ?: (( %(action:(?,.)), (action:(.,ON)?OFF:ON) ), %% )
-			//--- guard ----v       v---- trigger
 			do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
+			//--- guard ----^       ^---- trigger
 
-Performance
-	The condition .:~(.,(?,Status)) above, being negated, does not yield
-	any pivot.
+New Features
+	1. !! Unnamed Base Entities
+    	2. %<.> External Event Variable Assignment (EEVA)
+    	2. %identifier list variables [Optimization]
 
-	Flagging guards CLEAR upon their last condition being removed would
-	allow the EN expression above to traverse all %(?,CLEAR) guards rather
-	than all %(.,(?,Trigger)). Furthermore it would be consistent with
-	the cellular automaton execution principle
-
-		in state*
-			on event
-				do action
-
- 	*a cosystem's "current" state being here defined as the set of its
-	CLEAR'd guard conditions.
-
-New Feature Requirements
-    1. Unnamed base entities
+    1. !! Unnamed Base Entities
 	To spare us the hassle of managing our own pool of free Trigger and
 	Guard entities, we shall allocate each Trigger or Guard instance as
 	unnamed base entity.
@@ -186,10 +178,6 @@ New Feature Requirements
 		Note that if not coupled by the end of the do operation - e.g.
 			do !! | toto
 		the newly allocated entity will be instantly and quietly removed.
-
-	Release
-		Either directly by user or automatically when left dangling - in
-		which case no release event is issued
 
 	Usage
 		In the last example above, the record verifying [ field, value ]
@@ -208,31 +196,123 @@ New Feature Requirements
 		conditions to be given by
 			%(((.,field),?)^((?,.),.):( %((?,f),v):%((?,f),v) ))
 
-    2. Expression terms conditional EENO
-	We want to use conditional EENO %<< event < src >> inside expressions,
-	so that
-		.:%<< event < src >> passes <=> the EENO is verified
-		.:~%<< event < src >> passes <=> no such EENO
+	Release
+		Either directly by user or automatically when left dangling - in
+		which case no release event is issued
 
-	The symbol '^' can be used inside the EENO to represent the entity
-	corresponding to the current expression term
+    2. %<.> External Event Variable Assignment (EEVA)
+	We shall implement %<.> to represent the conditional EENOV
 
-	Example:
-		to verify that the current expression term matches an external
-		variable value assignment (EEVA) event, in the form
-			 : a : b < c
-		such that 
-			^((?,.),.): a	// current.sub[0].sub[0]
-			^((.,?),.): b	// current.sub[0].sub[1]
-			^(.,?): c	// current.sub[1]
-		we would write
-			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
-	Note:
-		We use the syntax ^((?,.),.) instead of e.g. %(%.:((?,.),.) as
-		%. representing the entities matching the expression's current
-		term may hold more than one result, and therefore %(%.:((?,.),.))
-		and %(%.:((.,?),.)) might not relate to the same entity
-	Shortcut:
-		%<.> stands for the above-described conditional EENO
-			%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+		%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+
+	Where
+		A conditional EENOV (CEENOV) is an EENOV in the form
+			%<< event < src >>
+		such that
+			%<< event < src >> passes iff the EENO
+				event < src
+			is verified
+
+	The symbol '^' when used inside the CEENOV represents the entity
+	corresponding to the current expression term, e.g. the CEENOV
+
+		%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+
+	expresses that, in order to pass, the current expression term
+	must match an external event in the form
+		 : a : b < c
+	such that 
+		^((?,.),.): a	// current.sub[0].sub[0]
+		^((.,?),.): b	// current.sub[0].sub[1]
+		^(.,?): c	// current.sub[1]
+
+	Note that we use the syntax ^((?,.),.) instead of %(%.:((?,.),.)
+	as %. representing the expression's current term could hold more
+	than one entity, and therefore %(%.:((?,.),.)) and %(%.:((.,?),.))
+	might not relate to the same entity
+
+    3. %identifier list variables [Optimization]
+	The expression .:~(.,(?,Status)) does not yield any pivot as it is
+	negated.
+
+	Tagging guards CLEAR upon their last condition being removed would
+	allow the EN expression above to traverse the list of CLEAR guards
+	rather than all %(?,Action), which would improve performances
+
+	It would be furthermore consistent with the execution principle of
+	cellular automata:
+		in state
+			on event
+				do action
+	Where
+		a cosystem's "current" state is hereby defined as the set
+		of its CLEAR guard conditions
+
+	Implementation is illustrated by the pseudo-code below, where
+	the %tag and %guard list variables are used to maintain our list
+	of CLEAR guards, using
+
+		|^list	adds current entity to list
+		|^list~	removes current entity from list
+		.%list~:{ expression }
+			flushes list while performing expression, in which
+			^. references each previously held list element
+
+		Note that pre-frame execution is guaranteed for
+			.%tag~:{ ^.:~%(.,(?,Status))|^guard }
+		which is not the case for
+			do ( %tag~|{ %|:~%(.,(?,Status))|^guard } )
+
+	:Cosystem
+		on init
+			...
+			// %tag init: scout state guard candidates
+			...
+		else
+	+	// %tag update: flush tag list & enrol state guards, pre-frame
+		.%tag~:{ ^.:~%(.,(?,Status))|^guard }
+
+		// execute actions according to state guards and trigger EEVA
+		per ( %( %guard, ( ?:~%(~%<.>,?), Guard )), ( ?, Trigger ))
+
+			// execute action - assuming %?:[ occurrence, ON|OFF ]
+			do : %(%?:(?,.)) : %(%?:(.,?))
+
+			// remove action's corresponding condition from the status of
+			// all guards for which it is a condition & tag guard
+			in ?: ( %?, %% ) // action's corresponding condition
+				do ~( %?, ( %(%?,?):%(?,(.,Guard))|^tag, Status ))
+
+			// add complementary condition to the status of all guards
+			// for which it is a condition & remove guard from state
+			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
+				do ( %?, ( %(%?,?):%(?,(.,Guard))|^guard~, Status ))
+
+		// update all guard status from EENO - for next frame
+		per : ? : . < .
+			// remove condition from the status of all guards for which
+			// it is a condition & tag guard
+			in ?: (( %<?>, %<!:(.,?)> ), %< )
+				do ~( %?, ( %(%?,?):%(?,(.,Guard))|^tag, Status ))
+
+			// add complementary condition to the status of all guards
+			// for which it is a condition & remove guard from state
+			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
+				do ( %?, ( %(%?,?):%(?,(.,Guard))|^guard~, Status ))
+
+Note
+   	Special cases: action has no trigger, resp. trigger has no guard
+
+	What we call "action" here are simply the setting and unsetting of certain
+	System's condition, aka. occurrence.
+
+	. An action which has no trigger means that the corresponding System's
+	  condition is set resp. unset only once at init - which would be a
+	  trigger - after which it no longer changes.
+
+	. A trigger always has a guard - as unnamed base entity - which may not have
+	  any conditions, in which case, whether we do or not have a ( guard, Status )
+	  relationship instance, that guard will always verify ~%(.,(?,Status)) - it
+	  is therefore only a matter of proper %tag list initialization.
+
 

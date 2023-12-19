@@ -52,7 +52,7 @@
 			// or return request
 			// or ...
 
-// Server func - Service - implementation
+// Server func - aka. Service - implementation
 :((( func, .arg1 ), .arg2 ), .arg3 )
 
 	// return results - ideally:

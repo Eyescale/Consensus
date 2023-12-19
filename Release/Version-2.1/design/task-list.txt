@@ -15,7 +15,6 @@ DONE
 	. implemented support for sub-narrative SUB_EXPR prototype, e.g.
 		.action: %( ?, Action )
 	. updated bm-PARSE-state-transitions.txt
-	. published design/story/interactive.story
 	. do expressions and on ~( expressions no longer markable (unless EENO)
 	. parser.c: code cleanup - cf. design/specs/bm-PARSE_implementation.txt
 		. implemented f_ternary_markable(stack)
@@ -99,7 +98,6 @@ DONE
 			      %(:current2) ? next2 :
 				...
 			      %(:currentN) ? nextN :)
-	. allowed \cr in expressions (so long as LEVEL is set)
 	. implemented in/on/do : expression // same as in/on/do : %% : expression
 	. Modified literal format: '(' MUST be backslashed in sequence,
 		e.g. do (:\(whatever\):) // required for p_prune()
