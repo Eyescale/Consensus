@@ -84,9 +84,6 @@ New Features
 			identifier's subs get deprecated iff
 				these are not referenced elsewhere
 			  	these are not proxies
-		  e.g.	per ?:%(( list, . ), ... )
-				do %?~
-			will leave no list element dangling
 
     3. per event < src
 	generalizes EENO on event < src
