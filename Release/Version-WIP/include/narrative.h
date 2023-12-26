@@ -50,5 +50,11 @@ void		freeStory( CNStory * );
 int		cnStoryOutput( FILE *, CNStory * );
 void *		bm_read( BMReadMode, ... );
 
+inline Pair *CNStoryMain( CNStory *story ) {
+	if ( !story ) return NULL;
+	Pair *entry = registryLookup( story, "" );
+	return (( entry )&&( entry->value )) ?
+		entry : NULL; }
+
 
 #endif	// NARRATIVE_H

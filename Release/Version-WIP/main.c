@@ -40,10 +40,9 @@ main( int argc, char *argv[] )
 	if ( printout )
 		cnStoryOutput( stdout, story );
 	else {
-		CNProgram *program = newProgram( story, path[1] );
-		do { cnUpdate( program ); }
-		while ( cnOperate( program ) );
-		freeProgram( program ); }
+		CNProgram *threads = newProgram( story, path[1] );
+		do cnSync( threads ); while ( cnOperate( threads ) );
+		freeProgram( threads ); }
 	freeStory( story );
 }
 

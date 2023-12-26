@@ -11,11 +11,18 @@
 //	newCell / releaseCell
 //===========================================================================
 CNCell *
-newCell( Pair *entry )
+newCell( Pair *entry, char *inipath )
 {
 	CNCell *cell = cn_new( NULL, NULL );
 	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
 	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
+	if (( inipath )) {
+		union { void *ptr; int value; } errnum;
+		errnum.ptr = bm_read( BM_LOAD, BMCellContext(cell), inipath );
+		if ( errnum.value ) {
+			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
+			releaseCell( cell );
+			return NULL; } }
 	return cell;
 }
 

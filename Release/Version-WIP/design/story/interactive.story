@@ -66,7 +66,7 @@ Execution Model
 	            for each action->trigger barring done==1
 	                if all trigger events are verified
 	                    for each guard in trigger->guard barring done==1
-	                        if all gard conditions are verified
+	                        if all guard conditions are verified
 	                            perform action
 	                            done = 1
 	                        end if
@@ -157,6 +157,23 @@ Implementation
 			do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
 			//--- guard ----^       ^---- trigger
 
+Performance
+	The expression .:~(.,(?,Status)) does not yield any pivot as it is
+	negated.
+
+	Tagging guards CLEAR upon their last condition being removed would
+	allow the EN expression above to traverse the list of CLEAR guards
+	rather than all %(?,Action), which would improve performances.
+
+	It would be furthermore consistent with the execution principle of
+	cellular automata:
+		in state
+			on event
+				do action
+	Where
+		a cosystem's "current" state is hereby defined as the set
+		of its CLEAR guard conditions
+
 New Features
 	1. !! Unnamed Base Entities
     	2. %<.> External Event Variable Assignment (EEVA)
@@ -232,35 +249,16 @@ New Features
 	might not relate to the same entity
 
     3. %identifier list variables [Optimization]
-	The expression .:~(.,(?,Status)) does not yield any pivot as it is
-	negated.
-
-	Tagging guards CLEAR upon their last condition being removed would
-	allow the EN expression above to traverse the list of CLEAR guards
-	rather than all %(?,Action), which would improve performances
-
-	It would be furthermore consistent with the execution principle of
-	cellular automata:
-		in state
-			on event
-				do action
-	Where
-		a cosystem's "current" state is hereby defined as the set
-		of its CLEAR guard conditions
-
-	Implementation is illustrated by the pseudo-code below, where
-	the %tag and %guard list variables are used to maintain our list
-	of CLEAR guards, using
-
-		|^list	adds current entity to list
-		|^list~	removes current entity from list
-		.%list~:{ expression }
-			flushes list while performing expression, in which
-			^. references each previously held list element
+	The pseudo-code below addresses the performance issue discussed above,
+	using
+		|^list		adds current entity to list
+		|^list~		removes current entity from list
+		.%list~:{_}	flushes list while performing expression, in
+				which ^. references the current list element
 
 		Note that pre-frame execution is guaranteed for
 			.%tag~:{ ^.:~%(.,(?,Status))|^guard }
-		which is not the case for
+		as opposed to
 			do ( %tag~|{ %|:~%(.,(?,Status))|^guard } )
 
 	:Cosystem
@@ -315,12 +313,11 @@ New Features
 	  relationship instance, that guard will always verify ~%(.,(?,Status)) - it
 	  is therefore only a matter of proper %tag list initialization.
 
-	Needless to say list variables are risky business, not to be generalized, as
-	it is left to the programmer to ensure that the entities they are referencing
-	are actually accessible - esp. not released.
+	Needless to say list variables are a risky business, not to be generalized,
+	as it is left to the programmer to ensure that the referenced entities are
+	actually accessible - esp. not released.
 
-	But our Use Case here justifies their usage, as in reality things just change,
-	they do, in one go, and this is as close as we can get to reflecting reality
-	with the tools at our disposal.
-
+	But our Use Case justifies their usage, as in reality changes propagate,
+	they do, all in one go, and this is as close as we can get to reflecting
+	reality with the tools at our disposal.
 

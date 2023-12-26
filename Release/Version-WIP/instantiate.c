@@ -110,7 +110,7 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 	BMContext *ctx = data->ctx;
 	// instantiate new cell
 	CNEntity *parent = BMContextCell( ctx );
-	CNCell *child = newCell( entry );
+	CNCell *child = newCell( entry, NULL );
 	// inform child's context
 	data->carry = BMCellContext( child );
 	if ( *p=='(' ) {

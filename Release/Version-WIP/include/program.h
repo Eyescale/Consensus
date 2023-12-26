@@ -14,7 +14,7 @@ typedef struct {
 
 CNProgram *newProgram( CNStory *, char *inipath );
 void	freeProgram( CNProgram * );
-void	cnUpdate( CNProgram * );
+void	cnSync( CNProgram * );
 int	cnOperate( CNProgram * );
 
 

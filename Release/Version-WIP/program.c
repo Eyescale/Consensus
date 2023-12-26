@@ -13,24 +13,16 @@
 CNProgram *
 newProgram( CNStory *story, char *inipath )
 {
-	if ( !story ) return NULL;
-	Pair *entry = registryLookup( story, "" );
-	if ( !entry || !entry->value ) {
+	Pair *entry = CNStoryMain( story );
+	if ( !entry ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );
 		return NULL; }
-	CNCell *cell = newCell( entry );
-	if ( !cell ) {
-		fprintf( stderr, "B%%: Error: unable to allocate Cell\n" );
-		return NULL; }
-	if (( inipath )) {
-		union { void *ptr; int value; } errnum;
-		errnum.ptr = bm_read( BM_LOAD, BMCellContext(cell), inipath );
-		if ( errnum.value ) {
-			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-			releaseCell( cell ); return NULL; } }
+	CNCell *cell = newCell( entry, inipath );
+	if ( !cell ) return NULL;
+	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );
 	// threads->new is a list of lists
-	Pair *threads = newPair( NULL, newItem(newItem(cell)) );
-	return (CNProgram *) newPair( story, threads );
+	program->threads->new = newItem( newItem( cell ) );
+	return program;
 }
 
 void
@@ -57,13 +49,13 @@ freeProgram( CNProgram *program )
 }
 
 //===========================================================================
-//	cnUpdate
+//	cnSync
 //===========================================================================
 void
-cnUpdate( CNProgram *program )
+cnSync( CNProgram *program )
 {
 #ifdef DEBUG
-	fprintf( stderr, "cnUpdate: bgn\n" );
+	fprintf( stderr, "cnSync: bgn\n" );
 #endif
 	if ( !program ) return;
 	CNCell *cell;
@@ -87,7 +79,7 @@ cnUpdate( CNProgram *program )
 	while (( cell = popListItem(&out) ))
 		*BMCellCarry( cell ) = (void *) cell;
 #ifdef DEBUG
-	fprintf( stderr, "cnUpdate: end\n" );
+	fprintf( stderr, "cnSync: end\n" );
 #endif
 }
 

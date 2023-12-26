@@ -50,7 +50,8 @@ New Features
 		by client,
 
 	the request and response details being transmitted together
-	with the ((proxy,request), ... ) list entities
+	with the (( proxy, request ), ... ) list entity, usually
+	using %<(!,?:...)> to extract individual components
 
     2. list operations
 	    Construction
@@ -75,15 +76,15 @@ New Features
 		. do >"%$\n": %(list,?:...) // output concatenated
 		. do >"%$\n": %<(!,?:...)>
 	    Release
-		. do identifier~ usage extended to support the following
-		  identifiers:
-			locale
-			sub-narrative param
+		. do identifier~ usage extended to support:
+			locale identifier
+			sub-narrative param identifier
 			register variables %? or %!
-		  In case identifier represents a non-base entity
-			identifier's subs get deprecated iff
-				these are not referenced elsewhere
-			  	these are not proxies
+
+		  In case identifier represents a non-base entity,
+		  identifier's subs get deprecated iff
+			these are not referenced elsewhere
+		  	these are not proxies
 
     3. per event < src
 	generalizes EENO on event < src
@@ -94,12 +95,13 @@ New Features
 
     5. EN and sub-narrative definition
 	. en expression <=> %( expression )
-		simplifies %( ~(_) ) EN expression into en ~(_)
+		en ~(_) <=> %( ~(_) )
 	. support %% in proto and en expression
 	. support ellipsis at any level in proto, e.g.
 		:( .return:(( %%, .server ), .request:(.func,...) ), ... )
 	. support %(_) as proto, e.g.
 		.action:%( ?, Action )
+
 	  Note that B% internally builds the string "proto:expression"
 	  to query matching entities, which may influence the query's
 	  pivot selection - and therefore performances
@@ -149,29 +151,32 @@ Extensions
 	. do >&_			// output to stderr
 
     4. parser
-	a. now supports preprocessing directives
-		#include _	// path relative unless leading /
+	a. now supports the following preprocessing directives
+		#include "_"	// _ path, relative unless with leading /
+		#define _
+		#undef _
 		#ifdef _
 		#ifndef _
-		#elifdef _
-		#elifndef _
+		#eldef _
+		#elndef _
 		#else
 		#endif
-	   error on \nl#identifier	// otherwise considered as comment
+	   error on \nl#identifier	// otherwise #_ considered comment
 	b. in/on/per signal~ no longer supported - REV 2.0
 		must use in/on/per ~( signal )
 	c. expression in the following narrative occurrences can no longer
 	   be marked:
 		do expression
-		do ~( expression
-		on ~( expression
+		do ~( expression )
+		on ~( expression )	// not EENO
 	d. :? generally not accepted - ?: has to be leading in terms
 		allows ?:_ not to be considered filtered in EENO
 			on ~( a, ?:b ) < .
 	e. Ternary expressions
 		guards not markable
-		terms markable if %(_?_:_) as not every term may be marked
 		terms signalable if mono-level e.g. (_?_?a~:b~:c~)
+		terms markable iff %(_?_:_) - as
+			not every term may be marked
 	f. inside literals and lists
 	   '(' and ')' must now be backslashed, e.g.
 		do (:\(whatever\):)	// required for p_prune()
@@ -180,17 +185,17 @@ Extensions
 		(:%titi'toto) correctly translates as ((%,titi),toto)
 		(:%identifier':) or (:%identifier') generates error
 	g. do : proxy : !! identifier
-		<=> do : proxy : !!identifier()
+		same as do : proxy : !!identifier()
 	h. \n accepted inside
 		{_} <_> and carry(_) 
 	   as well as after
 		(_? and (_?_:
 	i. locale declaration allowed as part of ELSE narrative occurrences,
 	   e.g.
-			...
-		else .locale	<=>	else
-			...			.locale
-						...
+		else .locale
+	   same as
+		else
+			.locale
 		
 
 
