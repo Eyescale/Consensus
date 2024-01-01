@@ -1,4 +1,7 @@
-About
+Usage
+	./B% -i
+
+Description
 	Our goal is to allow the user to, interactively
 
 	. specify systems simply in terms of cosystems and occurrences,
@@ -6,8 +9,6 @@ About
 
 	. navigate their system status and dependencies both statically
 	  and dynamically, that is: when the system is in action
-
-	The challenge will be the interaction design
 
 Requirement Specification
 	Requirement Specifications can be reduced to short statements, which
@@ -22,40 +23,37 @@ Requirement Specification
 	for each occurrence
 		. the referent, i.e. the cosystem for which this occurrence
 		  represents a condition ON|OFF
-		. the ON set of triggers, each trigger composed of
-			its triggering set of occurrences ON|OFF (events)
-			its enabling set of guards, each guard composed of
-				its defining set of occurrences ON|OFF (conditions)
-		. the OFF set of triggers, each trigger composed of
+		. the ON|OFF set of triggers, each trigger composed of
 			its triggering set of occurrences ON|OFF (events)
 			its enabling set of guards, each guard composed of
 				its defining set of occurrences ON|OFF (conditions)
 
 Data Model
-	System
-	    maps
-		Occurrence	Referent	      ON	      OFF
-		occurrence	cosystem	trigger	guard	trigger	guard
-							guard		guard
-							...		...
-						...		...
-		...		...
-	    where
-		trigger: { [ [ occurrence, ON|OFF ], cosystem ] }
-		guard:	 { [ [ occurrence, ON|OFF ], cosystem ] }
+	We use the following Data Model when the System is in execution,
 
-	Cosystem
-	    maps
-		Action	Occurrence	Type	Trigger	Guard	Status
-		action	occurrenceUID 	ON|OFF	trigger	guard	status
-							guard	status
-							...	...
-						...
-			...
-		...
-	    where
-		trigger: { [ [ occurrenceUID, ON|OFF ], proxy ] }
-		guard:   { [ [ occurrenceUID, ON|OFF ], proxy ] }
+			         .------------- Guard
+			         v                ^
+			 .-------+----- Trigger   |
+			 v		   ^      |
+	              Action               |      |
+		         |----------------- 	  |
+			  ------------------------
+	where
+		Action: ((occurrence,ON|OFF),cosystem)
+
+	. Occurrences are statements representing cosystem conditions
+	. Each occurrence actually doubles as (occurrence,{ON,OFF}) to allow 
+	  the user to specify negated conditions, and is paired with cosystem
+	  to allow the same statement to originate from multiple cosystems
+
+	hence
+		Occurrence:	%(?,ON|OFF)
+		Cosystem:	%((.,ON|OFF),?)
+		Action:		%(.,?:((.,ON|OFF),.))
+		Trigger:	%(?,((.,ON|OFF),.))
+		Guard:		%(?,(.,((.,ON|OFF),.)))
+		Event:		%(?:((.,ON|OFF),.),%(?,((.,ON|OFF),.)))
+		Condition:	%(?:((.,ON|OFF),.),%(?,(.,((.,ON|OFF),.))))
 
 Execution Model
 	Once launched, we want our System to execute the following, which
@@ -63,9 +61,9 @@ Execution Model
 
 	        for each action
 	            done = 0
-	            for each action->trigger barring done==1
+	            for each action<-trigger barring done==1
 	                if all trigger events are verified
-	                    for each guard in trigger->guard barring done==1
+	                    for each guard in trigger<-guard barring done==1
 	                        if all guard conditions are verified
 	                            perform action
 	                            done = 1
@@ -74,120 +72,148 @@ Execution Model
 	                end if
 	            end for
 	        end for
-				
-	In Consensus terms, all cosystems run in parallel, and we want all actions
-	to also (at least conceptually) execute in parallel, all in one frame.
+
+
+	In Consensus terms, as in reality, all cosystems run in parallel,
+	and we want all actions to also (at least conceptually) execute in
+	parallel, all in one frame.
 
 	Furthermore, we do not want each cosystem to keep track of all the other
-	cosystems conditions (although we could), but rather: each cosystem will
-	keep & update each of its own action->trigger->guard.status according
+	cosystems conditions - although we could - but rather: each cosystem will
+	keep & update each of its own action<-trigger<-guard.status according
 	to system events.
 
 	: Cosystem
 		per this->action:[ occurrence, ON|OFF ] such that
-		    there is one guard among action->trigger->guard verifying
+		    there is one guard among action<-trigger<-guard verifying
 		    . guard.status is clear, AND
-		    . there is one trigger among guard->trigger for which
-		      all trigger->event are occurring
+		    . there is one trigger among guard<-trigger for which
+		      all trigger<-event are occurring
 
 				execute action // do : occurrence : ON|OFF
 
 				remove action's corresponding condition from all
-				action->guard.status // for next frame
+				action<-guard.status // for next frame
 
-				add complementary condition to all action->guard.status
+				add complementary condition to all action<-guard.status
 				for which this complementary condition is required,
-				where complementary := [ [ occurrence, ~ON|OFF ], %% ]
+				where complementary := (( occurrence, ~ON|OFF ), %% )
 
 		per : ? : . < .	// update next frame's conditions
 			remove EENO's corresponding condition from all
-			action->guard.status [EENO is condition's notification]
+			action<-guard.status [EENO is condition's notification]
 
-			add complementary condition to all action->guard.status
+			add complementary condition to all action<-guard.status
 			for which this complementary condition is required,
-			where complementary := [ [ %<?>, ~%<!:(.,?)> ], %< ]
-
-Implementation
-	We use the keywords Action, Trigger, Guard and Status so that
-		%( ?, Action ) is the list of actions in current CNDB
-		%( ?, ( %?, Trigger ) ) is the list of triggers of the action %?
-			%( ?, %? ) is the list of events of the trigger %?
-		%( ?, ( %?, Guard ) ) is the list of guards of the trigger %?
-			%( ?, %? ) is the list of conditions of the guard %?
-			%( ?, ( %?, Status ) ) is the list of conditions of the guard %?'s status
-
-		Note that this convention relies on neither action nor trigger nor 
-		guard being proxy - otherwise we should use the same convention as per
-			(( *, variable ), value )
-	Also
-		%<.> is the built-in conditional External Event Variable Assignment (EEVA)
-		     %<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
-
-	: Cosystem
-		on init
-			...
-		else
-			// enable actions based on guard->status and trigger->event EEVA
-			%( %( .:~%(.,(?,Status)), ( ?:~%(~%<.>,?), Guard )), ( ?, Trigger ))
-			//    ^---- guard           ^---- trigger   action ----^
-
-			// update all guard status from EENO - for next frame
-			per : ? : . < .
-				// remove condition from all guard.status
-				in ?: (( %<?>, %<!:(.,?)> ), %< )
-					do ~( %?, ( ., Status ))
-
-				// add complementary condition to the status of the guards
-				// for which it is a condition
-				in ?: (( %<?>, (%<!:(.,ON)>?OFF:ON) ), %< )
-					do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
-					//--- guard ----^       ^---- trigger
-
-	.action: %( ?, Action )
-		// execute action - assuming action:[ occurrence, ON|OFF ]
-		do : %(action:(?,.)): %(action:(.,?))
-
-		// remove action's corresponding condition from all guard.status
-		in ?: ( action, %% ) // %? is condition
-			do ~( %?, ( ., Status ))
-
-		// add complementary condition to the status of the guards
-		// for which it is a condition
-		in ?: (( %(action:(?,.)), (action:(.,ON)?OFF:ON) ), %% )
-			do ( %?, ( %(%?,?):%(?,(.,Guard)), Status ))
-			//--- guard ----^       ^---- trigger
+			where complementary := (( %<?>, ~%<!:(.,?)> ), %< )
 
 Performance
-	The expression .:~(.,(?,Status)) does not yield any pivot as it is
+	The expression ~(.,(?,Status)) does not yield any pivot as it is
 	negated.
 
-	Tagging guards CLEAR upon their last condition being removed would
-	allow the EN expression above to traverse the list of CLEAR guards
-	rather than all %(?,Action), which would improve performances.
-
-	It would be furthermore consistent with the execution principle of
-	cellular automata:
-		in state
+	Tagging guards CLEAR upon their last condition being removed will
+	allow us to use the CLEAR guards list as a pivot, which not only
+	benefits performances but also is consistent with the cellular
+	automata execution principle:
+		in state*
 			on event
 				do action
-	Where
-		a cosystem's "current" state is hereby defined as the set
-		of its CLEAR guard conditions
+
+	Further performance consideration motivate our shared arena [_]
+	usage and '&' data access by reference, which are described in
+	the New Features section
+
+	*whereby a cosystem's "current" state is defined as its set of
+	CLEAR guard conditions
+
+Implementation
+	Each cosystem implements the following narrative - that is: each
+	cosystem is effectively a class of its own, subclass of Cosystem
+
+	using
+		|^list		adds current entity to list
+		|^list~		removes current entity from list
+		.%list~ {_}	flushes list while performing expression, in
+				which ^. references the current list element
+
+: Cosystem
+	en %(*?:ON) // enable cosystem occurrence's sub-narratives
+	on init
+		// initialize ( &condition, ( Status, &guard )), and
+		// enrol condition-free guards into %guard list
+		per [( ?, ( ., ((.,ON|OFF),%(*?:%%)) ))]
+			do ( [(.,%<?>)] ? // guard has condition(s)
+				( &%[(?,%<?>)], ( Status, &%<?> )) :
+				( &%<?>|^guard ) )
+	else
+		// flush %tag list & enrol condition-free guards, pre-frame
+		.%tag~ { ^.:~%(.,(Status,?))|^guard }
+
+		// see the New Features section for EEVA definition
+		per [( %guard, ( ~%(~EEVA,?), (?,%(*?:%%)) ))]
+
+			// execute action - assuming %<?:( occurrence, ON|OFF )>
+			do : &%<?:(?,.)> : %<?:(.,?)>
+
+			// remove action-corresponding condition from relevant guard
+			// Status, and tag these guards
+			in [ ?:( %<?>, %(*?:%%) ) ] // action-corresponding condition
+				do ~( &%<?>, %( Status, .|^tag ))
+
+			// add action-complementary condition to relevant guard
+			// Status, and decommission these guards
+			in [ ?:(( %<?:(?,.)>, ~%<?:(.,?)> ), %(*?:%%)) ]
+				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
+
+		// update all guard status from EENO - for next frame
+		per : ? : . < .
+			// remove eeno-corresponding condition from relevant guard
+			// Status, and tag these guards
+			in [ ?:(( %<?>, %<!:(.,?)> ), %(*?:%<)) ]
+				do ~( &%<?>, %( Status, .|^tag ))
+
+			// add eeno-complementary condition to relevant guard
+			// Status, and decommission these guards
+			in [ ?:(( %<?>, ~%<!:(.,?)> ), %(*?:%<)) ]
+				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
+
+: cosystemA : Cosystem
+	...
+:&[ "occurrence" ]
+	...
+:&[ "occurrence" ]
+	...
+:&[ "occurrence" ]
+	...
+
+: cosystemB : Cosystem
+	...
+
+...
+
+	Notes
+	1. guards matching %( Status, ? ) refer to local actions - no check needed
+	2. guards with no condition have no Status - but are enrolled permanently
+	3. if a trigger has no event ~%(~EEVA,?) always passes - as intended
+	4. B% current implementation will issue warning if second term is void in
+		do ( &%<?>, %( Status, &[(%<?>,?)]|^guard~ ))
 
 New Features
 	1. !! Unnamed Base Entities
-    	2. %<.> External Event Variable Assignment (EEVA)
-    	2. %identifier list variables [Optimization]
+    	2. %identifier list variables
+	3. [_] shared arena - aka. partition
+	4. & access by reference
+    	5. <<_>> EENO Condition (EENOC) and EEVA
 
     1. !! Unnamed Base Entities
 	To spare us the hassle of managing our own pool of free Trigger and
-	Guard entities, we shall allocate each Trigger or Guard instance as
-	unnamed base entity.
+	Guard entities, we want the capability to allocate each Trigger and
+	Guard instance as unnamed base entity.
 
 	Allocation
 		Unnamed base entities are allocated using the operator NEW (!!)
-		possibly followed by | and relevant %| relationship instances
-		Examples
+		as standalone, possibly followed by | and relevant %| relationship
+		instances, e.g.
 			do : trigger : !!
 			do : trigger : !! | (%|,(*action,Trigger))
 			do !! | { ((%|,field),value), ((%|,f),v), ((%|,f),v), ... }
@@ -217,107 +243,112 @@ New Features
 		Either directly by user or automatically when left dangling - in
 		which case no release event is issued
 
-    2. %<.> External Event Variable Assignment (EEVA)
-	We shall implement %<.> to represent the conditional EENOV
+    2. %identifier list variables
 
-		%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+	|^list		adds current entity to list
+	|^list~		removes current entity from list
+	.%list~ {_}	flushes list while performing expression, in
+			which ^. references the current list element
+
+	Note that pre-frame execution is guaranteed for
+		.%tag~ { ^.:~%(.,(?,Status))|^guard }
+
+    3. [_] shared arena - aka. partition
+
+	[_] signifies "in the shared arena" - data shared across System
+	Note: [_,_] is not allowed => must use [(_,_)]
+
+	%[_] matching entities, when marked, are accessed via %<_>
+
+    4. & access by reference
+
+	'&' in &%<_> and &%[_] resp. &[_] specifies "as-is" - i.e.
+	accessed by reference
+
+    5. <<_>> EENO Condition (EENOC) and EEVA
+	In the code above, EEVA represents the following EENO Condition
+
+		<< : &[^((?,.),.)] :^((.,?),.) < [*^(.,?)] >>
 
 	Where
-		A conditional EENOV (CEENOV) is an EENOV in the form
-			%<< event < src >>
-		such that
-			%<< event < src >> passes iff the EENO
-				event < src
-			is verified
+		1. << event < src >> passes iff event < src is verified
 
-	The symbol '^' when used inside the CEENOV represents the entity
-	corresponding to the current expression term, e.g. the CEENOV
+		2. The symbol '^' represents the entity corresponding to
+		the current expression term, e.g.
 
-		%<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
+			<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
-	expresses that, in order to pass, the current expression term
-	must match an external event in the form
-		 : a : b < c
-	such that 
-		^((?,.),.): a	// current.sub[0].sub[0]
-		^((.,?),.): b	// current.sub[0].sub[1]
-		^(.,?): c	// current.sub[1]
+		expresses that, in order to pass, the current expression
+		term must match an external event in the form
+			: a : b < c
+		such that 
+			a: ^((?,.),.)	// current.sub[0].sub[0]
+			b: ^((.,?),.)	// current.sub[0].sub[1]
+			c: ^(.,?)	// current.sub[1]
 
 	Note that we use the syntax ^((?,.),.) instead of %(%.:((?,.),.)
 	as %. representing the expression's current term could hold more
 	than one entity, and therefore %(%.:((?,.),.)) and %(%.:((.,?),.))
 	might not relate to the same entity
 
-    3. %identifier list variables [Optimization]
-	The pseudo-code below addresses the performance issue discussed above,
-	using
-		|^list		adds current entity to list
-		|^list~		removes current entity from list
-		.%list~:{_}	flushes list while performing expression, in
-				which ^. references the current list element
+Task List
+	./B% -i
+	> support do expression // including output
+	> allow to create System: ON|OFF relationship instances
+		need support for unnamed entity
+		need support for do "occurrence"
+		want to use %system / do { ON|^system, OFF|^system }
+	> allow	to output System definition [to stdout and/or file]
 
-		Note that pre-frame execution is guaranteed for
-			.%tag~:{ ^.:~%(.,(?,Status))|^guard }
-		as opposed to
-			do ( %tag~|{ %|:~%(.,(?,Status))|^guard } )
+		: cosystem : Cosystem
+		:&[ "occurrence" ]
+			ON|OFF
+				: "occurrence" : ON|OFF < cosystem
+				...
+			/
+				: "occurrence" : ON|OFF < cosystem
+		:&[ "occurrence" ]
+			ON|OFF
+				: "occurrence" : ON|OFF < cosystem
+			/
+				: "occurrence" : ON|OFF < cosystem
+		etc.
 
-	:Cosystem
-		on init
+		: cosystem : Cosystem
+		etc.
+
+	  Note that the above represents the overall System definition,
+	  aka. data structure, and not the cosystem sub-class definitions,
+	  aka. narratives and sub-narratives, which are kept in separate
+	  cosystem.bm files using the same template
+
+		: cosystem : Cosystem
 			...
-			// %tag init: scout state guard candidates
+		:&[ "occurrence" ]	// invoked in/on : this : ON
 			...
-		else
-	+	// %tag update: flush tag list & enrol state guards, pre-frame
-		.%tag~:{ ^.:~%(.,(?,Status))|^guard }
+		:&[ "occurrence" ]	// invoked in/on : this : ON
+			...
+		:&[ "occurrence" ]	// invoked in/on : this : ON
+			...
 
-		// execute actions according to state guards and trigger EEVA
-		per ( %( %guard, ( ?:~%(~%<.>,?), Guard )), ( ?, Trigger ))
+	  but where
+		... represents user B% code - possibly including
+		do : this : OFF
 
-			// execute action - assuming %?:[ occurrence, ON|OFF ]
-			do : %(%?:(?,.)) : %(%?:(.,?))
+	> allow to launch system
+			>>>>> launch from files <<<<<
 
-			// remove action's corresponding condition from the status of
-			// all guards for which it is a condition & tag guard
-			in ?: ( %?, %% ) // action's corresponding condition
-				do ~( %?, ( %(%?,?):%(?,(.,Guard))|^tag, Status ))
+		=> must be able to
+			load system definition from file
+			load Cosystem class definition from file
+			load each cosystem.bm sub-class definition from file
 
-			// add complementary condition to the status of all guards
-			// for which it is a condition & remove guard from state
-			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
-				do ( %?, ( %(%?,?):%(?,(.,Guard))|^guard~, Status ))
+		need support for sub-class execution
+			need support for shared memory access
+			need support for access by address
+			need support for EENOC
+			need support for %list
 
-		// update all guard status from EENO - for next frame
-		per : ? : . < .
-			// remove condition from the status of all guards for which
-			// it is a condition & tag guard
-			in ?: (( %<?>, %<!:(.,?)> ), %< )
-				do ~( %?, ( %(%?,?):%(?,(.,Guard))|^tag, Status ))
-
-			// add complementary condition to the status of all guards
-			// for which it is a condition & remove guard from state
-			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
-				do ( %?, ( %(%?,?):%(?,(.,Guard))|^guard~, Status ))
-
-    Note
-   	Special cases: action has no trigger, resp. trigger has no guard
-
-	What we call "actions" here are simply the setting and unsetting of certain
-	System's condition, aka. occurrence.
-
-	. An action which has no trigger means that the corresponding System's
-	  condition is set resp. unset only once at init - which btw would be a
-	  trigger - after which it no longer changes.
-
-	. A trigger always has a guard - as unnamed base entity - which may not have
-	  any conditions, in which case, whether or not we have a ( guard, Status )
-	  relationship instance, that guard will always verify ~%(.,(?,Status)) - it
-	  is therefore only a matter of proper %tag list initialization.
-
-	Needless to say list variables are a risky business, not to be generalized,
-	as it is left to the programmer to ensure that the referenced entities are
-	actually accessible - esp. not released.
-
-	But our Use Case justifies their usage, as in reality changes propagate,
-	they do, all in one go, and this is as close as we can get to reflecting
-	reality with the tools at our disposal.
+	Eventually also support:
+	./B% -launch path/system.bm
 

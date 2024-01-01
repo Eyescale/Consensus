@@ -1,13 +1,17 @@
 See Also: design/new-features-and-additions.txt
 TODO
-	. unnamed entities
+	. see Task List section in design/story/interactive.story
 
-ISSUE
-	. do < a, b >: ({1,2},3)
+OPEN ISSUES
+	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. on ~(_?_) < %% is allowed (as EENO)
 		=> %<?> resp %<!> could be deprecated
 		=> must verify when instantiating EENOV and %< is %%
+	. instantiate.c
+		scream if partial instantiation did occur
+	. instantiate.c: term_CB
+		no need to test filtered if ~_ or %_ or *_
 
 DONE
 	. branched Version-2.1
@@ -15,12 +19,16 @@ DONE
 NICE TO HAVE
 	. make %(_) mandatory condition to use filters in do expressions
 	  e.g. do ( a:b, c ) generates error, vs. do ( %(a:b), c )
-	  => this way no need to look ahead for filter in
-	     bm_instantiate traversal, nor in bm_parse/actionable
+	  pro: no need to check filtered in bm_instantiate traversal, nor
+	       in bm_parse/actionable
+	  con: makes instantiation expressions possibly a bit heavier
 
+	. B%-struct: about reading / executing commands
+		supposedly also about typedef (mostly on Remarkable)
+	. NTH: see design/specs/bm-LITERAL.txt ( ..., <a,b,c> ) etc.
 	. dpu-drive.story
 		: mem (variable assignment & usage in formulas)
-	. do { .... }	<<<< ANY expression - assignment, release, etc.
+	. do { _ }	<<<< ANY expression - assignment, release, etc.
 	. finish variable stack - might answer issue below
 		1. in .::expression << check we don't have (*,.) >> %. ?
 		2. possibly implement .locale: expression (?)
@@ -38,7 +46,6 @@ NICE TO HAVE
 				.locale	// instantiates ( %., locale )
 		Benefit
 		. locale will be released automatically on state changes
-		. Eventually of course we may want to support
 	. .locale: expression // initialization - use cases to be determined
 		on ~.				// == inactive
 		    =>	on/per ~. < src		// src can be determined
@@ -57,9 +64,6 @@ NICE TO HAVE
 	. allow !! inside of expression instead of assignment only
 		requires changes in parser.c and instantiate.c
 	. ( a, b, c, ... ) translates into ((( a, b ), c ), ... )
-	. en ~%(.,?):~%(?,.)	== %(^$) == en ^$
-		~%(?,.)		== %(^.) == en ^.
-		~%(.,?)		== %(.$) == en .$
 	. extend do !!identifier( ) to do !!expression( )
 	. Other EEnoRV as-is
 		on ~( %<_> )
