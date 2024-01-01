@@ -1,7 +1,7 @@
 Usage
 	./B% -i
 
-Description
+Objective
 	Our goal is to allow the user to, interactively
 
 	. specify systems simply in terms of cosystems and occurrences,
@@ -10,7 +10,7 @@ Description
 	. navigate their system status and dependencies both statically
 	  and dynamically, that is: when the system is in action
 
-Requirement Specification
+Description
 	Requirement Specifications can be reduced to short statements, which
 	which we call occurrences, describing the System's conditions, events,
 	and actions, according to the syntax
@@ -153,7 +153,7 @@ Implementation
 		per [( %guard, ( ~%(~EEVA,?), (?,%(*?:%%)) ))]
 
 			// execute action - assuming %<?:( occurrence, ON|OFF )>
-			do : &%<?:(?,.)> : %<?:(.,?)>
+			do : &%<?:(?,.)> : &%<?:(.,?)>
 
 			// remove action-corresponding condition from relevant guard
 			// Status, and tag these guards
@@ -192,10 +192,11 @@ Implementation
 ...
 
 	Notes
-	1. guards matching %( Status, ? ) refer to local actions - no check needed
-	2. guards with no condition have no Status - but are enrolled permanently
-	3. if a trigger has no event ~%(~EEVA,?) always passes - as intended
-	4. B% current implementation will issue warning if second term is void in
+	1. action performs local assignment of shared variable and value entities
+	2. guards matching %( Status, ? ) refer to local actions - no check needed
+	3. guards with no condition have no Status - but are enrolled permanently
+	4. if a trigger has no event ~%(~EEVA,?) always passes - as intended
+	5. B% current implementation will issue warning if second term is void in
 		do ( &%<?>, %( Status, &[(%<?>,?)]|^guard~ ))
 
 New Features
@@ -258,7 +259,7 @@ New Features
 	[_] signifies "in the shared arena" - data shared across System
 	Note: [_,_] is not allowed => must use [(_,_)]
 
-	%[_] matching entities, when marked, are accessed via %<_>
+	[_] matching entities, when marked, are accessed via %<_>
 
     4. & access by reference
 
@@ -268,7 +269,7 @@ New Features
     5. <<_>> EENO Condition (EENOC) and EEVA
 	In the code above, EEVA represents the following EENO Condition
 
-		<< : &[^((?,.),.)] :^((.,?),.) < [*^(.,?)] >>
+		<< : &[^((?,.),.)] : &[^((.,?),.)] < [*^(.,?)] >>
 
 	Where
 		1. << event < src >> passes iff event < src is verified
