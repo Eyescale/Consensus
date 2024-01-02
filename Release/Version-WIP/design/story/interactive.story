@@ -166,8 +166,8 @@ Execution Model
 			on event
 				do action
 
-		whereby a cosystem's state is defined as "current" by
-		its set of CLEAR guard conditions
+		whereby a cosystem's "current" state is defined as its set
+		of CLEAR guard conditions
 
 	   This will be implemented through the new %identifier list variables
 	   B% capability, featuring
