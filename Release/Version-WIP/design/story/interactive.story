@@ -184,7 +184,7 @@ Implementation
 	cosystem is effectively a class of its own, subclass of Cosystem
 
 : Cosystem
-	en %(*?:ON) // enable cosystem occurrence's sub-narratives
+	en %(*?:&[ON]) // enable cosystem occurrence's sub-narratives
 	on init
 		// initialize ( &condition, ( Status, &guard )), and
 		// enrol condition-free guards into %guard list
