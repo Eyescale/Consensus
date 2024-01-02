@@ -99,17 +99,17 @@ Execution Model
 				execute action // do : occurrence : ON|OFF
 
 				remove action's corresponding condition from all
-				relevant action<-guard.status // for next frame
+				relevant cosystem guard.status // for next frame
 
 				add complementary condition (( occurrence, ~ON|OFF ), %% )
-				to all relevant action<-guard.status
+				to all relevant cosystem guard.status
 
 		per : ? : . < .	// update next frame's conditions
 			remove EENO's corresponding condition (( %<?>, %<!:(.,?)> ), %< )
-			from all relevant action<-guard.status
+			from all relevant cosystem guard.status
 
 			add complementary condition (( %<?>, ~%<!:(.,?)> ), %< )
-			to all relevant action<-guard.status
+			to all relevant cosystem guard.status
 
 	Which, in B% - and assuming for now that all system's data are accessible
 	from cosystem's local memory - translates as
@@ -280,17 +280,7 @@ New Features
 	than one entity, and therefore %(%.:((?,.),.)) and %(%.:((.,?),.))
 	might not relate to the same entity
 
-    2. %identifier list variables
-
-	|^list		adds current entity to list
-	|^list~		removes current entity from list
-	.%list~ {_}	flushes list while performing expression, in
-			which ^. references the current list element
-
-	Note that pre-frame execution is guaranteed for
-		.%tag~ { ^.:~%(.,(?,Status))|^guard }
-
-    3. [_] shared arena and '&' access-by-reference
+    2. [_] shared arena and '&' access-by-reference
 
 	. [_] represents "in the shared arena" - data shared within
 	  System, also known as system's partition - and may in the
@@ -302,6 +292,16 @@ New Features
 
 	. '&' in &%<_> and &%[_] resp. &[_] represents "as-is" - i.e.
 	  accessed by reference vs. local copy
+
+    3. %identifier list variables
+
+	|^list		adds current entity to list
+	|^list~		removes current entity from list
+	.%list~ {_}	flushes list while performing expression, in
+			which ^. references the current list element
+
+	Note that pre-frame execution is guaranteed for
+		.%tag~ { ^.:~%(.,(?,Status))|^guard }
 
     4. !! Unnamed Base Entities
 	To spare us the hassle of managing our own pool of free Trigger and
