@@ -93,7 +93,7 @@ Execution Model
 		    there is one guard among action<-trigger<-guard
 		    verifying BOTH
 		    . guard.status is clear, AND
-		    . there is one trigger among guard<-trigger for which
+		    . there is one trigger among guard->trigger for which
 		      ALL trigger<-event are occurring
 
 				execute action // do : occurrence : ON|OFF
@@ -112,7 +112,7 @@ Execution Model
 			to all relevant action<-guard.status
 
 	Which, in B% - and assuming for now that all system's data are accessible
-	from cosystem's local memory - translates as follow
+	from cosystem's local memory - translates as
 
 	: Cosystem
 		on init
