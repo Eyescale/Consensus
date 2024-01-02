@@ -10,8 +10,8 @@ Objective
 	. navigate their system status and dependencies both statically
 	  and dynamically, that is: when the system is in action
 
-	and further bridge the gap between natural language and software
-	development.
+	further bridging the gap between natural language and applications
+	software development.
 
 Description
 	Requirement Specifications can be reduced to short statements, which
@@ -400,9 +400,6 @@ Task List
 			need support for EENOC
 			need support for %list
 
-	Eventually also support:
-	./B% -launch path/system.bm
-
 Example Usage - targeted
 ./B% -i
 > do : occurrence : "whatever"
@@ -433,5 +430,8 @@ Example Usage - targeted
 	(!!,%|) |{
 		... }
 	... }
+> do exit
 
+Eventually also support:
+./B% -launch path/system.bm
 
