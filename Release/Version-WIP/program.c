@@ -59,25 +59,17 @@ cnSync( CNProgram *program )
 #endif
 	if ( !program ) return;
 	CNCell *cell;
-	listItem **active = &program->threads->active;
-	listItem **new = &program->threads->new;
-	listItem *carry, *out = NULL;
 	// update active cells
+	listItem **active = &program->threads->active;
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		cell = i->ptr;
-		int over = bm_cell_update( cell );
-		if (( carry = *BMCellCarry(cell) )) {
-			*BMCellCarry( cell ) = NULL;
-			addItem( new, carry ); }
-		if ( over ) addItem( &out, cell ); }
+		bm_cell_update( cell ); }
 	// activate new cells
-	while (( carry = popListItem(new) ))
+	listItem **new = &program->threads->new;
+	for ( listItem *carry;( carry = popListItem(new) ); )
 		while (( cell = popListItem(&carry) )) {
-			addItem( active, cell );
-			bm_cell_init( cell ); }
-	// mark exiting cells
-	while (( cell = popListItem(&out) ))
-		*BMCellCarry( cell ) = (void *) cell;
+			bm_cell_init( cell );
+			addItem( active, cell ); }
 #ifdef DEBUG
 	fprintf( stderr, "cnSync: end\n" );
 #endif
@@ -97,18 +89,23 @@ cnOperate( CNProgram *program )
 	CNStory *story = program->story;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
-	listItem *released = NULL;
+	listItem *carry, *out=NULL;
 	// operate active cells
 	listItem *last_i = NULL, *next_i;
 	for ( listItem *i=*active; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		cell = i->ptr;
-		if ( !bm_cell_operate( cell, new, story ) ) {
-			addItem( &released, cell );
-			clipListItem( active, i, last_i, next_i ); }
-		else last_i = i; }
-	// release deactivated cells
-	while (( cell = popListItem(&released) ))
+		if ( bm_cell_out(cell) ) {
+			clipListItem( active, i, last_i, next_i );
+			addItem( &out, cell ); }
+		else {
+			bm_cell_operate( cell, story );
+			if (( carry = *BMCellCarry(cell) )) {
+				addItem( new, carry );
+				bm_cell_reset( cell ); }
+			last_i = i; } }
+	// release out cells
+	while (( cell = popListItem(&out) ))
 		releaseCell( cell );
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: end\n" );

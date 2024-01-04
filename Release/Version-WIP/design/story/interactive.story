@@ -121,7 +121,7 @@ Execution Model
 				do ( %(?,%?), ( Status, %? ))
 			...
 		else
-+		per ( .:~%(.,(Status,?)), ( .:~%(~EEVA,?), ?:((.,ON|OFF),%%) ))
++		per ( .:~%(.,(Status,?)), ( .:~%(~EEVA,?), (?:(.,ON|OFF),%%) ))
 			// execute action
 			do : %(%?:(?,.)): %(%?:(.,?))
 
@@ -183,70 +183,70 @@ Implementation
 	Each cosystem implements the following narrative - that is: each
 	cosystem is effectively a class of its own, subclass of Cosystem
 
-: Cosystem
-	en %(*?:&[ON]) // enable cosystem occurrence's sub-narratives
-	on init
-		// initialize ( &condition, ( Status, &guard )), and
-		// enrol condition-free guards into %guard list
-		per [( ?, ( ., ((.,ON|OFF),%(*?:%%)) ))]
-			do ( [(.,%<?>)] ? // guard has condition(s)
-				( &%[(?,%<?>)], ( Status, &%<?> )) :
-				( &%<?>|^guard ) )
-	else
-		// flush %tag list & enrol condition-free guards, pre-frame
+	: Cosystem
+		en %(*?:&[ON]) // enable cosystem occurrence's sub-narratives
+		on init
+			// initialize ( &condition, ( Status, &guard )), and
+			// enrol condition-free guards into %guard list
+			per [( ?, ( ., ((.,ON|OFF),%(*?:%%)) ))]
+				do ( [(.,%<?>)] ? // guard has condition(s)
+					( &%[(?,%<?>)], ( Status, &%<?> )) :
+					( &%<?>|^guard ) )
+		else
+	+	// flush %tag list & enrol condition-free guards, pre-frame
 		.%tag~ { ^.:~%(.,(Status,?))|^guard }
-
+	
 		// see the New Features section for EEVA definition
 		per [( %guard, ( ~%(~EEVA,?), (?,%(*?:%%)) ))]
-
+	
 			// execute action - assuming %<?:( occurrence, ON|OFF )>
 			do : &%<?:(?,.)> : &%<?:(.,?)>
-
+	
 			// remove action-corresponding condition from relevant guard
 			// Status, and tag these guards
 			in [ ?:( %<?>, %(*?:%%) ) ] // action-corresponding condition
 				do ~( &%<?>, %( Status, .|^tag ))
-
+	
 			// add action-complementary condition to relevant guard
 			// Status, and decommission these guards
 			in [ ?:(( %<?:(?,.)>, ~%<?:(.,?)> ), %(*?:%%)) ]
 				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
-
+	
 		// update all guard status from EENO - for next frame
 		per : ? : . < .
 			// remove eeno-corresponding condition from relevant guard
 			// Status, and tag these guards
 			in [ ?:(( %<?>, %<!:(.,?)> ), %(*?:%<)) ]
 				do ~( &%<?>, %( Status, .|^tag ))
-
+	
 			// add eeno-complementary condition to relevant guard
 			// Status, and decommission these guards
 			in [ ?:(( %<?>, ~%<!:(.,?)> ), %(*?:%<)) ]
 				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
-
-: cosystemA : Cosystem	// note the sub-classing
+	
+	: cosystemA : Cosystem	// note the sub-classing
+		...
+	:&[ "occurrence" ]	// invoked when occurrence is ON
+		...
+	:&[ "occurrence" ]	// invoked when occurrence is ON
+		...
+	:&[ "occurrence" ]	// invoked when occurrence is ON
+		...
+	
+	: cosystemB : Cosystem	// note the sub-classing
+		...
+	
 	...
-:&[ "occurrence" ]	// invoked when occurrence is ON
-	...
-:&[ "occurrence" ]	// invoked when occurrence is ON
-	...
-:&[ "occurrence" ]	// invoked when occurrence is ON
-	...
-
-: cosystemB : Cosystem	// note the sub-classing
-	...
-
-...
 
 	Notes
 	1. Cosystem's actions consist of performing local assignment of system's
-	   occurrence and ON|OFF value entities, both by reference, which will
-	   allow cosystems to handle multiple systems in the future
+	   occurrence and ON|OFF entities, both by reference, which will allow
+	   cosystems to handle multiple systems in the future
 	2. guards matching %( Status, ? ) refer to local actions - no check needed
 	3. guards with no condition have no Status - but are enrolled permanently
 	4. if a trigger has no event ~%(~EEVA,?) always passes - as intended
 	5. B% current implementation will issue warning if second term is void in
-		do ( &%<?>, %( Status, &[(%<?>,?)]|^guard~ ))
+		do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
 
 New Features
     	1. <<_>> EENO Condition (EENOC) and EEVA definition
@@ -319,7 +319,6 @@ New Features
 		Note that if not coupled by the end of the do operation - e.g.
 			do !! | toto
 		the newly allocated entity will be instantly and quietly removed.
-
 	Usage
 		In the last example above, the record verifying [ field, value ]
 		and [ f, v ] conditions is given by
@@ -336,7 +335,6 @@ New Features
 		This would allow the "field" value of the record verifying [f,v]
 		conditions to be given by
 			%(((.,field),?)^((?,.),.):( %((?,f),v):%((?,f),v) ))
-
 	Release
 		Either directly by user or automatically when left dangling - in
 		which case no release event is issued
@@ -356,14 +354,26 @@ Task List
 		:&[ "occurrence" ]
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
-				...
+				etc.
 			/
 				: "occurrence" : ON|OFF < cosystem
+				etc.
+			/
+				: "occurrence" : ON|OFF < cosystem
+				etc.
+			etc.
+			ON|OFF
+				: "occurrence" : ON|OFF < cosystem
+				etc.
+			/
+				: "occurrence" : ON|OFF < cosystem
+			etc.
 		:&[ "occurrence" ]
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
 			/
 				: "occurrence" : ON|OFF < cosystem
+			etc.
 		etc.
 
 		: cosystemB : Cosystem
@@ -371,8 +381,8 @@ Task List
 
 	  Note that the above represents the overall System definition,
 	  aka. data structure, and not the cosystem sub-class definitions,
-	  aka. narratives and sub-narratives, which are kept in separate
-	  cosystem.bm files using the same template
+	  aka. narratives and sub-narratives. These are kept in separate
+	  individual cosystem.bm files using the same template
 
 		: cosystem : Cosystem
 			...
@@ -384,7 +394,7 @@ Task List
 			...
 
 	  but where
-		... represents user B% code - including do : this : OFF
+		... represents user B% code - including do : this :&[OFF]
 
 	> allow to launch system
 			>>>>> launch from files <<<<<
@@ -401,37 +411,40 @@ Task List
 			need support for %list
 
 Example Usage - targeted
-./B% -i
-> do : occurrence : "whatever"
-> do (( *occurrence, {ON,OFF} ), cosystem )
-> do : action : ((*occurrence,ON),.)
-> do : trigger : !! | ( %(?,Event), %| ) // assuming we have informed (.,Event)
-> do : guard : !! | { ( %|, ( *trigger, *action ) ), ( %(Condition,?), %| ) }
+	./B% -i
+	> do : occurrence : "whatever"
+	> do (( *occurrence, {ON,OFF} ), cosystem )
+	> do : action : ((*occurrence,ON),.)
+	// assuming we have informed (.,Event) and (.,Condition)
+	> do : trigger : !! | ( %(?,Event), %| )
+	> do : guard : !! | {
+		( %|, ( *trigger, *action ) )
+		( %(?,Condition), %| ) }
 
-// to access trigger matching both action and list of events:
-// %( %(?,*action):~(~%(%(Event,?),?)) )
+	// to access trigger matching both action and list of events:
+	// %( %(?,*action):~(~%(%(Event,?),?)) )
 
-// to create a whole ( action, ( trigger(s), guard(s) )) record in one go
+	// to create a whole ( action, ( trigger(s), guard(s) )) record in one go
 
-> do (( "occurrence", ON|OFF ), cosystem ) |{
-	(!!,%|) |{	// new trigger
-		((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-		((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-		...
-		(!!,%|) |{	// new guard
+	> do (( "occurrence", ON|OFF ), cosystem ) |{
+		(!!,%|) |{	// new trigger
 			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
 			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+			...
+			(!!,%|) |{	// new guard
+				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				... }
+			(!!,%|) |{	// new guard
+				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				... }
 			... }
-		(!!,%|) |{	// new guard
-			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+		(!!,%|) |{
 			... }
 		... }
-	(!!,%|) |{
-		... }
-	... }
-> do exit
-
-Eventually also support:
-./B% -launch path/system.bm
+	> do exit
+	
+	Eventually we also want to support:
+	./B% -launch path/system.bm
 

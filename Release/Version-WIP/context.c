@@ -105,7 +105,7 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 	ActiveRV *active = BMContextActive( ctx );
 	update_active( active );
 
-	// fire [resp. deprecate dangling] connections
+	// fire - resp. deprecate dangling - connections
 	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
 		CNEntity *connection = i->ptr;
 		db_fire( connection->as_sub[0]->ptr, db ); }
@@ -121,6 +121,7 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
+
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif

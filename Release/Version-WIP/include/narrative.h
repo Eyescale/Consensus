@@ -56,5 +56,8 @@ inline Pair *CNStoryMain( CNStory *story ) {
 	return (( entry )&&( entry->value )) ?
 		entry : NULL; }
 
+CNNarrative *	newNarrative( void );
+void		freeNarrative( CNNarrative * );
+
 
 #endif	// NARRATIVE_H

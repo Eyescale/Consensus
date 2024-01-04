@@ -330,6 +330,6 @@ int
 bm_proxy_out( CNInstance *proxy )
 {
 	CNEntity *cell = DBProxyThat( proxy );
-	return ((cell) && *BMCellCarry(cell)==(void *)cell );
+	return ((cell) && bm_cell_out(cell) );
 }
 

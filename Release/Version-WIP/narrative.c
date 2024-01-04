@@ -21,8 +21,6 @@ readStory( char *path )
 //	bm_read
 //===========================================================================
 static int read_CB( BMParseOp, BMParseMode, void * );
-static CNNarrative * newNarrative( void );
-static void freeNarrative( CNNarrative * );
 
 void *
 bm_read( BMReadMode mode, ... )
@@ -276,14 +274,14 @@ narrative_reorder( CNNarrative *narrative )
 //---------------------------------------------------------------------------
 //	newNarrative / freeNarrative
 //---------------------------------------------------------------------------
-static CNNarrative *
+CNNarrative *
 newNarrative( void )
 {
 	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) );
 }
 
 static void freeOccurrence( CNOccurrence * );
-static void
+void
 freeNarrative( CNNarrative *narrative )
 {
 	if (( narrative )) {

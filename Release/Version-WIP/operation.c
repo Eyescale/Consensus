@@ -16,7 +16,7 @@ static int in_condition( char *, BMContext *, Pair **mark );
 static int on_event( char *, BMContext *, Pair **mark );
 static int on_event_x( char *, int pre, BMContext *, Pair **mark );
 static int do_action( char *, BMContext *, CNStory *story );
-static int do_enable( Registry *, listItem *, char *, BMContext * );
+static int do_enable( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 
@@ -24,13 +24,12 @@ static int do_output( char *, BMContext * );
 //	bm_operate
 //===========================================================================
 void
-bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
-	Registry *subs, listItem *narratives, CNStory *story )
+bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
+	listItem *narratives, Registry *subs )
 {
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
-	bm_context_actualize( ctx, narrative->proto, instance );
 	listItem *i = newItem( narrative->root );
 	listItem *stack = NULL;
 	Pair *marked = NULL;
@@ -55,7 +54,7 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 				case DO: do_action( expression, ctx, story ); break;
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
-				case EN: do_enable( subs, narratives, expression, ctx ); break;
+				case EN: do_enable( expression, ctx, narratives, subs ); break;
 				case LOCALE: bm_register_locale( ctx, expression ); break; }
 				if (( deternarized )) free( expression ); }
 			// pushing down
@@ -80,7 +79,6 @@ bm_operate( CNNarrative *narrative, CNInstance *instance, BMContext *ctx,
 			else goto RETURN; } }
 RETURN:
 	freeItem( i );
-	bm_context_release( ctx );
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
@@ -396,7 +394,7 @@ typedef struct {
 } EnableData;
 
 static int
-do_enable( Registry *subs, listItem *narratives, char *expression, BMContext *ctx )
+do_enable( char *expression, BMContext *ctx, listItem *narratives, Registry *subs )
 {
 	EnableData data;
 	data.subs = subs;

@@ -41,7 +41,7 @@ main( int argc, char *argv[] )
 		cnStoryOutput( stdout, story );
 	else {
 		CNProgram *threads = newProgram( story, path[1] );
-		do cnSync( threads ); while ( cnOperate( threads ) );
+		do cnSync(threads); while ( cnOperate(threads) );
 		freeProgram( threads ); }
 	freeStory( story );
 }

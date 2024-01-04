@@ -3,8 +3,8 @@
 
 #include "program.h"
 
-void bm_operate( CNNarrative *, CNInstance *, BMContext *,
-	Registry *subs, listItem *narratives, CNStory *story );
+void bm_operate( CNNarrative *, BMContext *, CNStory *,
+	listItem *narratives, Registry *subs );
 
 
 #endif	// OPERATION_H

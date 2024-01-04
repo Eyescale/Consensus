@@ -69,9 +69,16 @@ releaseCell( CNCell *cell )
 //===========================================================================
 static void enlist( Registry *subs, Registry *index, Registry *warden );
 static void free_CB( Registry *, Pair *entry );
+static inline int SWAP( Registry *index[ 2 ] ) {
+	if (( index[ 1 ]->entries )) {
+		Registry *swap = index[ 0 ];
+		index[ 0 ] = index[ 1 ];
+		index[ 1 ] = swap;
+		return 1; }
+	return 0; }
 
 int
-bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
+bm_cell_operate( CNCell *cell, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: bgn\n" );
@@ -80,10 +87,11 @@ bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
 	CNDB *db = BMContextDB( ctx );
 	if ( DBExitOn(db) ) return 0;
 
-	Registry *warden, *index[ 2 ], *swap;
+	Registry *warden, *index[ 2 ], *subs;
 	warden = newRegistry( IndexedByAddress );
 	index[ 0 ] = newRegistry( IndexedByAddress );
 	index[ 1 ] = newRegistry( IndexedByAddress );
+	subs = newRegistry( IndexedByAddress );
 
 	listItem *narratives = BMCellEntry( cell )->value;
 	CNNarrative *base = narratives->ptr; // base narrative
@@ -92,26 +100,25 @@ bm_cell_operate( CNCell *cell, listItem **new, CNStory *story )
 		listItem **active = &index[ 0 ]->entries; // narratives to be operated
 		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
 			CNNarrative *narrative = entry->name;
-			for ( listItem **instances = (listItem **) &entry->value; (*instances); ) {
+			listItem **instances = (listItem **) &entry->value;
+			while (( *instances )) {
 				CNInstance *instance = popListItem( instances );
-				Registry *subs = newRegistry( IndexedByAddress );
-				bm_operate( narrative, instance, ctx, subs, narratives, story );
-				enlist( index[ 1 ], subs, warden );
-				freeRegistry( subs, NULL ); } }
-		swap = index[ 0 ];
-		index[ 0 ] = index[ 1 ];
-		index[ 1 ] = swap;
-	} while (( index[ 0 ]->entries ));
+				bm_context_actualize( ctx, narrative->proto, instance );
+				bm_operate( narrative, ctx, story, narratives, subs );
+				bm_context_release( ctx );
+				enlist( subs, index[ 1 ], warden ); } }
+	} while ( SWAP(index) );
 	freeRegistry( warden, free_CB );
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
+	freeRegistry( subs, NULL );
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: end\n" );
 #endif
 	return 1;
 }
 static void
-enlist( Registry *index, Registry *subs, Registry *warden )
+enlist( Registry *subs, Registry *index, Registry *warden )
 /*
 	enlist subs:{[ narrative, instances:{} ]} into index of same type,
 	under warden supervision: we rely on registryRegister() to return

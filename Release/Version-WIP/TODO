@@ -14,6 +14,7 @@ OPEN ISSUES
 		no need to test filtered if ~_ or %_ or *_
 
 DONE
+	. cleaned up cnSync()/cnUpdate() cf. design/specs/bm-MAIN.txt
 	. branched Version-2.1
 
 NICE TO HAVE
