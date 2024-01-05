@@ -12,10 +12,12 @@ About main
 		cnSync() performs
 			for all active cells
 				invoke bm_context_update( cell )
-					mark cell out if DBExitOn()
+				add cell to out if DBExitOn()
 			for all new cells
 				invoke bm_context_init( cell )
 				move cell to active
+			for all out cells
+				mark cell out
 
 		cnOperate() performs
 			for all active cells

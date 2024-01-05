@@ -59,17 +59,22 @@ cnSync( CNProgram *program )
 #endif
 	if ( !program ) return;
 	CNCell *cell;
+	listItem *out = NULL;
 	// update active cells
 	listItem **active = &program->threads->active;
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
 		cell = i->ptr;
-		bm_cell_update( cell ); }
+		if ( bm_cell_update( cell ) )
+			addItem( &out, cell ); }
 	// activate new cells
 	listItem **new = &program->threads->new;
 	for ( listItem *carry;( carry = popListItem(new) ); )
 		while (( cell = popListItem(&carry) )) {
 			bm_cell_init( cell );
 			addItem( active, cell ); }
+	// mark out cells
+	while (( cell = popListItem(&out) ))
+		bm_cell_mark_out( cell );
 #ifdef DEBUG
 	fprintf( stderr, "cnSync: end\n" );
 #endif

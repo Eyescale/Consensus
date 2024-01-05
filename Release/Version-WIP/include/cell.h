@@ -27,9 +27,8 @@ inline BMContext * BMCellContext( CNCell *cell )
 
 inline void bm_cell_init( CNCell *cell ) {
 	bm_context_init( BMCellContext(cell) ); }
-inline void bm_cell_update( CNCell *cell ) {
-	if ( bm_context_update( cell, BMCellContext(cell) ) )
-		bm_cell_mark_out( cell ); }
+inline int bm_cell_update( CNCell *cell ) {
+	return bm_context_update( cell, BMCellContext(cell) ); }
 
 void bm_cell_operate( CNCell *, CNStory * );
 CNInstance *bm_cell_carry( CNCell *, CNCell *, int );
