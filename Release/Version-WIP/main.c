@@ -5,8 +5,7 @@
 #include "narrative.h"
 
 void
-usage( void )
-{
+usage( void ) {
 	fprintf( stderr, "B%%: Usage\n"
 		"\t./B%% file.story\n"
 		"\t./B%% -f file.ini file.story\n"
@@ -15,12 +14,10 @@ usage( void )
 		"\t./B%% file.bm -i\n"
 		"\t./B%% -f file.ini -i\n"
 		"\t./B%% -f file.ini file.bm -i\n" );
-	exit(-1);
-}
+	exit(-1); }
 
 int
-main( int argc, char *argv[] )
-{
+main( int argc, char *argv[] ) {
 #define bar_i( n ) \
 	if ( argc==n+1 && !strncmp( argv[n], "-i", 2 ) ) \
 		interactive = n; \
@@ -72,9 +69,8 @@ main( int argc, char *argv[] )
 		occurrence->data->expression = s;
 		cnOperate( threads );
 
-		occurrence->data->expression = NULL;
-
 		// That's all Folks!
+		occurrence->data->expression = NULL;
 		freeProgram( threads );
 		freeStory( story ); }
 	else {
@@ -82,6 +78,5 @@ main( int argc, char *argv[] )
 		CNProgram *threads = newProgram( story, path[1] );
 		do cnSync(threads); while ( cnOperate(threads) );
 		freeProgram( threads );
-		freeStory( story ); }
-}
+		freeStory( story ); } }
 
