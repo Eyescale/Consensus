@@ -1,7 +1,7 @@
 #ifndef NARRATIVE_H
 #define	NARRATIVE_H
 
-#include "registry.h"
+#include "list.h"
 
 //===========================================================================
 //	Occurrence, Narrative, Story types
@@ -21,12 +21,6 @@
 #define PER		(1<<9)
 #define PER_X		(ON_X|PER)
 
-typedef enum {
-	BM_LOAD = 1,
-	BM_INPUT,
-	BM_STORY,
-} BMReadMode;
-
 typedef struct {
 	struct {
 		int type;
@@ -40,24 +34,17 @@ typedef struct {
 	CNOccurrence *root;
 } CNNarrative;
 
-typedef Registry CNStory;
-
 //===========================================================================
 //	Public Interface
 //===========================================================================
-CNStory *	readStory( char *path );
-void		freeStory( CNStory * );
-int		cnStoryOutput( FILE *, CNStory * );
-void *		bm_read( BMReadMode, ... );
-
-inline Pair *CNStoryMain( CNStory *story ) {
-	if ( !story ) return NULL;
-	Pair *entry = registryLookup( story, "" );
-	return (( entry )&&( entry->value )) ?
-		entry : NULL; }
-
 CNNarrative *	newNarrative( void );
 void		freeNarrative( CNNarrative * );
+
+CNOccurrence *	newOccurrence( int type );
+void		freeOccurrence( CNOccurrence * );
+
+void		narrative_reorder( CNNarrative * );
+int		narrative_output( FILE *, CNNarrative *, int level );
 
 
 #endif	// NARRATIVE_H

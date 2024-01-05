@@ -2,6 +2,7 @@
 #define DETERNARIZE_H
 
 #include "context.h"
+#include "narrative.h"
 
 char * bm_deternarize( char **expression, int type, BMContext * );
 

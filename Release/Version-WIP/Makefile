@@ -3,7 +3,8 @@ SHELL = /bin/sh
 
 .SUFFIXES: .c .o
 
-SRCS =	narrative.c \
+SRCS =	story.c \
+		narrative.c \
 		parser.c \
 		parser_io.c \
 	program.c \

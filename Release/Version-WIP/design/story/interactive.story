@@ -415,11 +415,11 @@ Example Usage - targeted
 	> do : occurrence : "whatever"
 	> do (( *occurrence, {ON,OFF} ), cosystem )
 	> do : action : ((*occurrence,ON),.)
-	// assuming we have informed (.,Event) and (.,Condition)
-	> do : trigger : !! | ( %(?,Event), %| )
+	// assuming we have informed (Event,.) and (Condition,.)
+	> do : trigger : !! | ( %(Event,?), %| )
 	> do : guard : !! | {
 		( %|, ( *trigger, *action ) )
-		( %(?,Condition), %| ) }
+		( %(Condition,?), %| ) }
 
 	// to access trigger matching both action and list of events:
 	// %( %(?,*action):~(~%(%(Event,?),?)) )
@@ -428,16 +428,16 @@ Example Usage - targeted
 
 	> do (( "occurrence", ON|OFF ), cosystem ) |{
 		(!!,%|) |{	// new trigger
-			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-			((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+			((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
+			((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
 			...
 			(!!,%|) |{	// new guard
-				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
+				((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
 				... }
 			(!!,%|) |{	// new guard
-				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
-				((( "occurrence", ON|OFF ), cosystem ), %|^(?,.))
+				((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
+				((( "occurrence", ON|OFF ), cosystem ), %(%|:(?,.)))
 				... }
 			... }
 		(!!,%|) |{

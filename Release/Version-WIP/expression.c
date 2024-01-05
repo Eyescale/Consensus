@@ -6,7 +6,7 @@
 #include "traverse.h"
 #include "expression.h"
 #include "instantiate.h"
-#include "narrative.h"
+#include "story.h"
 #include "eenov.h"
 
 // #define DEBUG
@@ -144,7 +144,7 @@ bm_input( int type, char *arg, BMContext *ctx )
 			else asprintf( &input, "'\\x%.2X'", event ); }
 		break;
 	default:
-		input = bm_read( BM_INPUT, stdin );
+		input = bm_read( stdin );
 		if ( !input ) return EOF; }
 
 	bm_instantiate_input( input, arg, ctx );
@@ -262,3 +262,4 @@ bm_out_flush( OutputData *data, CNDB *db )
 	else	db_outputf( stream, db, "%_", data->last );
 	return 0;
 }
+

@@ -12,7 +12,7 @@
 #define opt(a)		(data->opt&(a))
 
 //===========================================================================
-//	bm_parse, bm_load
+//	bm_parse
 //===========================================================================
 /*
 		 B% Narrative File Format Interface
@@ -31,9 +31,9 @@
 	>		output
 */
 char *
-bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
+bm_parse_cmd( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 /*
-	Assumption: mode==BM_STORY
+	Assumption: mode==BM_STORY, data->opt==0
 */
 {
 	CNIO *io = data->io;
@@ -51,11 +51,10 @@ bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	int		line	= io->line;
 	int		column	= io->column;
 
-	BMParseBegin( "bm_parse", state, event, line, column )
+	BMParseBegin( "bm_parse_cmd", state, event, line, column )
 	//----------------------------------------------------------------------
-	// bm_parse:	Parser Begin
+	// bm_parse_cmd:	Parser Begin
 	//----------------------------------------------------------------------
-CND_if_( data->opt, EXPR_BGN )
 	in_( "base" )
 		bgn_
 			on_( EOF )	do_( "" )
@@ -107,7 +106,7 @@ CND_if_( data->opt, EXPR_BGN )
 							TAB_SHIFT = 0; }
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative Declaration
+	// bm_parse_cmd:	Narrative Declaration
 	//----------------------------------------------------------------------
 	in_( "def" ) bgn_
 		ons( " \t" )	do_( same )
@@ -254,7 +253,7 @@ CB_if_( ProtoSet, mode, data ) {
 						TAB_LAST = -1; }
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Narrative en / in / on / do / per / else Command
+	// bm_parse_cmd:	Narrative en / in / on / do / per / else
 	//----------------------------------------------------------------------
 	in_( "cmd" ) bgn_
 		on_( '%' )	do_( "%_" )	s_take
@@ -314,13 +313,59 @@ CB_if_( OccurrenceAdd, mode, data ) {
 	in_( "_expr" )
 CB_if_( OccurrenceAdd, mode, data ) {
 		bgn_ on_any
-			do_( "expr" )	REENTER
-					TAB_LAST = TAB_CURRENT;
+			do_( "expr" )	TAB_LAST = TAB_CURRENT;
 					data->opt = 1;
 			end }
-EXPR_BGN:CND_endif
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression
+	// bm_parse_cmd:	Error Handling
+	//----------------------------------------------------------------------
+	BMParseDefault
+		on_( EOF )		errnum = ErrUnexpectedEOF;
+		in_none_sofar		errnum = ErrUnknownState; data->state = state;
+		in_( "def$" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( "def$_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( "§..." ) bgn_
+			on_( ')' )	errnum = ErrEllipsisLevel;
+			on_other	errnum = ErrSyntaxError;
+			end
+		in_( "cmd" )		errnum = ErrUnknownCommand;
+		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
+		in_other		errnum = ErrSyntaxError;
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Parser End
+	//----------------------------------------------------------------------
+	BMParseEnd
+	data->errnum = errnum;
+	data->flags = flags;
+	if ( errnum ) bm_parse_report( data, mode, line, column );
+	return state;
+}
+
+char *
+bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
+/*
+	Assumption: mode==BM_STORY, data->opt!=0
+*/
+{
+	CNIO *io = data->io;
+
+	// shared by reference
+	listItem **	stack	= &data->stack.flags;
+	CNString *	s	= data->string;
+	int *		tab	= data->tab;
+	int *		type	= &data->type;
+
+	// shared by copy
+	char *		state	= data->state;
+	int		flags	= data->flags;
+	int		errnum	= 0;
+	int		line	= io->line;
+	int		column	= io->column;
+
+	BMParseBegin( "bm_parse_expr", state, event, line, column )
+	//----------------------------------------------------------------------
+	// bm_parse_expr:	Parser Begin
 	//----------------------------------------------------------------------
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
@@ -489,7 +534,7 @@ EXPR_BGN:CND_endif
 			else {	do_( "term" )	s_take }
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression sub-states
+	// bm_parse_expr:	Expression sub-states
 	//----------------------------------------------------------------------
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
@@ -1014,7 +1059,7 @@ EXPR_BGN:CND_endif
 						f_clr( INFORMED )
 		end
 	//----------------------------------------------------------------------
-	// bm_parse:	Expression End
+	// bm_parse_expr:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 CB_( ExpressionTake, mode, data )
@@ -1025,20 +1070,11 @@ CB_( ExpressionTake, mode, data )
 					*type = 0;
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Error Handling
+	// bm_parse_expr:	Error Handling
 	//----------------------------------------------------------------------
 	BMParseDefault
 		on_( EOF )		errnum = ErrUnexpectedEOF;
-		in_none_sofar		errnum = ErrUnknownState;
-		in_( "def$" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( "def$_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( "§..." ) bgn_
-			on_( ')' )	errnum = ErrEllipsisLevel;
-			on_other	errnum = ErrSyntaxError;
-			end
-		in_( "cmd" )		errnum = ErrUnknownCommand;
-		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
+		in_none_sofar		errnum = ErrUnknownState; data->state = state;
 		in_( ",_" ) 		errnum = ErrInputScheme;
 		in_( "_<" ) 		errnum = ErrInputScheme;
 		in_( ">" )		errnum = ErrOutputScheme;
@@ -1069,7 +1105,7 @@ CB_( ExpressionTake, mode, data )
 			on_other	errnum = ErrSyntaxError;
 			end
 	//----------------------------------------------------------------------
-	// bm_parse:	Parser End
+	// bm_parse_expr:	Parser End
 	//----------------------------------------------------------------------
 	BMParseEnd
 	data->errnum = errnum;
@@ -1079,7 +1115,7 @@ CB_( ExpressionTake, mode, data )
 }
 
 char *
-bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
+bm_parse( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 /*
 	Assumption: mode==BM_LOAD or mode==BM_INPUT => do not involve
 	. VECTOR, CARRY, SUB_EXPR, MARKED, EENOV, ASSIGN, PROTECTED, TERNARY,
@@ -1101,9 +1137,9 @@ bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	int		line	= io->line;
 	int		column	= io->column;
 
-	BMParseBegin( "bm_load", state, event, line, column )
+	BMParseBegin( "bm_parse", state, event, line, column )
 	//----------------------------------------------------------------------
-	// bm_load:	Expression states
+	// bm_parse:	Expression states
 	//----------------------------------------------------------------------
 	in_( "base" ) bgn_
 		on_( EOF )	do_( "" )
@@ -1151,7 +1187,7 @@ bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				do_( "term" )	s_take }
 		end
 	//----------------------------------------------------------------------
-	// bm_load:	Expression sub-states
+	// bm_parse:	Expression sub-states
 	//----------------------------------------------------------------------
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
@@ -1279,7 +1315,7 @@ bm_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			else {	do_( "expr" )	REENTER }
 		end
 	//----------------------------------------------------------------------
-	// bm_load:	Expression End
+	// bm_parse:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
 CB_( ExpressionTake, mode, data )
@@ -1291,11 +1327,11 @@ CB_( ExpressionTake, mode, data )
 				do_( "" )
 				end }
 	//----------------------------------------------------------------------
-	// bm_load:	Error Handling
+	// bm_parse:	Error Handling
 	//----------------------------------------------------------------------
 	BMParseDefault
 		on_( EOF )		errnum = ErrUnexpectedEOF;
-		in_none_sofar		errnum = ErrUnknownState;
+		in_none_sofar		errnum = ErrUnknownState; data->state = state;
 		in_other bgn_
 			on_( '\n' )	errnum = ErrUnexpectedCR;
 			on_( ' ' )	errnum = ErrUnexpectedSpace;
@@ -1324,7 +1360,7 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 {
 	CNIO *io = data->io;
 	char *src = (mode==BM_STORY) ? "bm_parse" :
-		    (mode==BM_INPUT) ? "bm_input" : "bm_load";
+		    (mode==BM_INPUT) ? "bm_read" : "bm_load";
 	char *stump = StringFinish( data->string, 0 );
 
 	fprintf( stderr, data->errnum==ErrUnknownState ? ">>>>> B%%::%s: " : "Error: %s: ", src );

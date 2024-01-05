@@ -17,9 +17,8 @@ newCell( Pair *entry, char *inipath )
 	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
 	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
 	if (( inipath )) {
-		union { void *ptr; int value; } errnum;
-		errnum.ptr = bm_read( BM_LOAD, BMCellContext(cell), inipath );
-		if ( errnum.value ) {
+		int errnum = bm_load( inipath, BMCellContext(cell) );
+		if ( errnum ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			releaseCell( cell );
 			return NULL; } }
@@ -65,38 +64,40 @@ releaseCell( CNCell *cell )
 }
 
 //===========================================================================
+//	bm_cell_init, bm_cell_update
+//===========================================================================
+// see cell.h
+
+//===========================================================================
 //	bm_cell_operate
 //===========================================================================
 static void enlist( Registry *subs, Registry *index, Registry *warden );
 static void free_CB( Registry *, Pair *entry );
 static inline int SWAP( Registry *index[ 2 ] ) {
 	if (( index[ 1 ]->entries )) {
-		Registry *swap = index[ 0 ];
+		void *swap = index[ 0 ];
 		index[ 0 ] = index[ 1 ];
 		index[ 1 ] = swap;
 		return 1; }
-	return 0; }
+	else return 0; }
 
-int
+void
 bm_cell_operate( CNCell *cell, CNStory *story )
 {
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: bgn\n" );
 #endif
-	BMContext *ctx = BMCellContext( cell );
-	CNDB *db = BMContextDB( ctx );
-	if ( DBExitOn(db) ) return 0;
-
 	Registry *warden, *index[ 2 ], *subs;
 	warden = newRegistry( IndexedByAddress );
 	index[ 0 ] = newRegistry( IndexedByAddress );
 	index[ 1 ] = newRegistry( IndexedByAddress );
 	subs = newRegistry( IndexedByAddress );
 
+	BMContext *ctx = BMCellContext( cell );
 	listItem *narratives = BMCellEntry( cell )->value;
 	CNNarrative *base = narratives->ptr; // base narrative
-	registryRegister( index[ 0 ], base, newItem( NULL ) );
-	do {
+	registryRegister( index[ 1 ], base, newItem( NULL ) );
+	while ( SWAP(index) ) {
 		listItem **active = &index[ 0 ]->entries; // narratives to be operated
 		for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {
 			CNNarrative *narrative = entry->name;
@@ -105,9 +106,8 @@ bm_cell_operate( CNCell *cell, CNStory *story )
 				CNInstance *instance = popListItem( instances );
 				bm_context_actualize( ctx, narrative->proto, instance );
 				bm_operate( narrative, ctx, story, narratives, subs );
-				bm_context_release( ctx );
-				enlist( subs, index[ 1 ], warden ); } }
-	} while ( SWAP(index) );
+				enlist( subs, index[ 1 ], warden );
+				bm_context_release( ctx ); } } }
 	freeRegistry( warden, free_CB );
 	freeRegistry( index[ 0 ], NULL );
 	freeRegistry( index[ 1 ], NULL );
@@ -115,7 +115,6 @@ bm_cell_operate( CNCell *cell, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: end\n" );
 #endif
-	return 1;
 }
 static void
 enlist( Registry *subs, Registry *index, Registry *warden )

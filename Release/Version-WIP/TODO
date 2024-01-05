@@ -1,6 +1,23 @@
-See Also: design/new-features-and-additions.txt
+See Also: design/story/interactive.story
 TODO
-	. see Task List section in design/story/interactive.story
+	. options
+		./B% -i
+		./B% file.bm -i
+		./B% -f file.ini -i
+		./B% -f file.ini file.bm -i
+	. interactive - basic
+		. extend main.c to support -i [see above]
+		  read input
+			on "do": invoke bm_parse_expr with proper setup
+				=> edit Main narrative
+				=> execute action
+		  Q: what if Main specified and option -i?
+		. [DONE] separated readStory() and bm_read()
+		. [DONE] parser.c/story.c: separate bm_parse_expr and bm_parse_cmd
+		. [DONE] extract [NEW] story.c/story.h from narrative.c/narrative.h
+		. [DONE] update design/specs/bm-Main.txt - add About interactive section
+	. interactive - advanced
+		. as per bm-Main.txt#interactive, design/story/interactive.story#TaskList
 
 OPEN ISSUES
 	. do :< a, b >: ({1,2},3)
@@ -14,7 +31,8 @@ OPEN ISSUES
 		no need to test filtered if ~_ or %_ or *_
 
 DONE
-	. cleaned up cnSync()/cnUpdate() cf. design/specs/bm-MAIN.txt
+	. program.c: clean up cnSync()/cnUpdate()
+		cf. design/specs/bm-Main.txt
 	. branched Version-2.1
 
 NICE TO HAVE

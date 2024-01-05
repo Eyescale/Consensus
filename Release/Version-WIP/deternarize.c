@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "narrative.h"
+#include "story.h"
 #include "traverse.h"
 #include "deternarize.h"
 #include "deternarize_private.h"

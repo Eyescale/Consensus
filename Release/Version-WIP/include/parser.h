@@ -3,6 +3,7 @@
 
 #include "context.h"
 #include "narrative.h"
+#include "story.h"
 #include "string_util.h"
 #include "parser_io.h"
 
@@ -20,10 +21,10 @@ typedef struct {
 	int		tab[4], type;
 // bm_read() only
 	BMContext *	ctx;
-	CNStory *	story;
-	CNNarrative *	narrative;
-	Pair *		entry;
 	CNOccurrence *	occurrence;
+	CNNarrative *	narrative;
+	CNStory *	story;
+	Pair *		entry;
 // bm_parse() only
 	char *		state;
 	int		errnum;
@@ -76,8 +77,12 @@ typedef enum {
 } BMParseErr;
 
 typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
-char *	bm_parse( int event, BMParseMode, BMParseData *, BMParseCB );
-char *	bm_load( int event, BMParseMode, BMParseData *, BMParseCB );
+typedef char * (*BMParseFunc)( int event, BMParseMode, BMParseData *, BMParseCB );
+
+char * bm_parse_cmd( int event, BMParseMode, BMParseData *, BMParseCB );
+char * bm_parse_expr( int event, BMParseMode, BMParseData *, BMParseCB );
+char * bm_parse( int event, BMParseMode, BMParseData *, BMParseCB );
+
 void	bm_parse_init( BMParseData *, BMParseMode mode );
 void	bm_parse_exit( BMParseData * );
 void	bm_parse_caution( BMParseData *, BMParseErr, BMParseMode );

@@ -2,7 +2,7 @@
 #define PROGRAM_H
 
 #include "context.h"
-#include "narrative.h"
+#include "story.h"
 
 typedef struct {
 	CNStory *story;

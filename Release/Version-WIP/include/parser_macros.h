@@ -2,9 +2,9 @@
 #define PARSER_MACROS_H
 
 #define CB_( op, mode, data ) \
-	cb( op, mode, data );
+	if ((cb)) cb( op, mode, data );
 #define CB_if_( op, mode, data ) \
-	if ( cb( op, mode, data ) )
+	if ((!cb) || cb( op, mode, data ))
 
 //===========================================================================
 //	bm_parse State Machine utilities - macros
