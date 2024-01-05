@@ -1,17 +1,16 @@
 See Also: design/story/interactive.story
 TODO
-	. options
-		./B% -i
-		./B% file.bm -i
-		./B% -f file.ini -i
-		./B% -f file.ini file.bm -i
 	. interactive - basic
-		. extend main.c to support -i [see above]
-		  read input
+		. read input
 			on "do": invoke bm_parse_expr with proper setup
 				=> edit Main narrative
 				=> execute action
 		  Q: what if Main specified and option -i?
+		. [DONE] extend main.c to support
+			./B% -i
+			./B% file.bm -i
+			./B% -f file.ini -i
+			./B% -f file.ini file.bm -i
 		. [DONE] separated readStory() and bm_read()
 		. [DONE] parser.c/story.c: separate bm_parse_expr and bm_parse_cmd
 		. [DONE] extract [NEW] story.c/story.h from narrative.c/narrative.h
