@@ -8,7 +8,7 @@
 
 typedef CNEntity CNCell;
 
-void bm_read_command( CNCell **, CNStory * );
+void bm_cell_read( CNCell **, CNStory * );
 
 CNCell * newCell( Pair *entry, char *inipath );
 void releaseCell( CNCell * );

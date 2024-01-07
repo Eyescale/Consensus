@@ -92,7 +92,7 @@ cnOperate( CNProgram *program, CNCell **this )
 
 	CNCell *cell = *this;
 	CNStory *story = program->story;
-	if (( cell )) bm_read_command( this, story );
+	if (( cell )) bm_cell_read( this, story );
 
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;

@@ -1,6 +1,5 @@
 See Also: design/story/interactive.story
 TODO
-	. BUG: do ~(.) also releases %% !?!?!?
 	. design/story/interactive.story#TaskList
 		. unnamed base entity
 		. string entities "_" => in CNDB or base narrative?
@@ -28,7 +27,13 @@ TODO
 		   . can also disable original code dynamically
 
 		3. set breakpoint - using sub-narrative (?)
+	. bm_cell_read() can be split between cell.c and story.c using callbacks
+		=> cell.c does not #include parser.c
+		=> story.c does not #include cell.c
 DONE
+	. NOTE: do ~(.) also releases %% !?!?!?
+	  actually it's a FEATURE (!), as do %% will rehabilitate %%,
+	  which was released - but not removed.
 	. interactive - basic, see cell.c:bm_read_command()
 		. support user input "do expression" => execute action
 		. support graceful exit via "do exit" or ^D (EOF)

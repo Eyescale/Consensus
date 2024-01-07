@@ -49,11 +49,17 @@ main( int argc, char *argv[] ) {
 		CNStory *story = readStory( path[0], 0 );
 		cnStoryOutput( stdout, story );
 		freeStory( story ); }
-	else {
-		CNStory *story = readStory( path[0], interactive );
+	else if ( interactive ) {
+		CNStory *story = readStory( path[0], 1 );
 		CNProgram *threads = newProgram( story, path[1] );
-		CNCell *this = interactive ? CNProgramSeed( threads ) : NULL;
+		CNCell *this = CNProgramSeed( threads );
 		do cnSync(threads); while ( cnOperate( threads, &this ) );
+		freeProgram( threads );
+		freeStory( story ); }
+	else {
+		CNStory *story = readStory( path[0], 0 );
+		CNProgram *threads = newProgram( story, path[1] );
+		do cnSync(threads); while ( cnOperate( threads, NULL ) );
 		freeProgram( threads );
 		freeStory( story ); } }
 

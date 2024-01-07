@@ -9,10 +9,10 @@
 // #define DEBUG
 
 //===========================================================================
-//	bm_read_command
+//	bm_cell_read
 //===========================================================================
 void
-bm_read_command( CNCell **this, CNStory *story )
+bm_cell_read( CNCell **this, CNStory *story )
 {
 	if ( bm_cell_out(*this) ) {
 		*this = NULL;

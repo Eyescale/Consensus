@@ -16,9 +16,8 @@
 static int read_CB( BMParseOp, BMParseMode, void * );
 
 CNStory *
-readStory( char *path, int interactive ) {
-	if ( !path )
-		return ( interactive ? newStory() : NULL );
+readStory( char *path, int seed ) {
+	if ( !path ) return ( seed ? newStory() : NULL );
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
 		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
@@ -54,7 +53,7 @@ readStory( char *path, int interactive ) {
 		freeNarrative( data.narrative );
 		freeStory( data.story );
 		data.story = NULL; }
-	else if ( interactive && !CNStoryMain( data.story ) ) {
+	else if ( seed && !CNStoryMain( data.story ) ) {
 		CNNarrative *base = newNarrative();
 		registryRegister( data.story, "", newItem( base ) ); }
 
