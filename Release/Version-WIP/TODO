@@ -31,16 +31,17 @@ TODO
 		=> cell.c does not #include parser.c
 		=> story.c does not #include cell.c
 DONE
-	. NOTE: ./B% Examples/3_TM-multi/TM-head_cell.story -i
-		Main has only one frame -- exit on init!
-	  => try Examples/2_TM-single/TM-single.story if any
 	. NOTE: do ~(.) also releases %% !?!?!?
 	  actually it's a FEATURE (!), as do %% will rehabilitate %%,
 	  which was released - but not removed.
 	. interactive - basic, see cell.c:bm_read_command()
 		. support user input "do expression" => execute action
-		. support graceful exit via "do exit" or ^D (EOF)
 		. cnSync() except on do >_ output commands or err
+		. support graceful exit via "do exit" or ^D (EOF)
+		  NOTE: The Main in Examples/3_TM-multi/TM-head_cell.story
+		  exits on init => ^D or "do exit" will do nothing, as
+		  other cells are running. "/" however does cut.
+		  Examples/2_TM-single/TM-single.story has only one cell.
 	  Example:
 		./B% -i
 		> do toto

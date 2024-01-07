@@ -1068,9 +1068,7 @@ CB_( ExpressionTake, mode, data )
 					TAB_CURRENT = 0;
 					data->expr = 0;
 					*type = 0; }
-		else {	do_( "" )	f_reset( FIRST, 0 );
-					TAB_CURRENT = 0;
-					data->expr = 0; }
+		else { 	do_( "" ) }
 			end
 	//----------------------------------------------------------------------
 	// bm_parse_expr:	Error Handling
@@ -1372,12 +1370,16 @@ bm_parse_ui( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		on_( EOF )	do_( "" )
 		on_( '\n' )	do_( "" )
 		ons( " \t" )	do_( same )
+		on_( '/' )	do_( "/" )	s_take
 		on_separator	; // err
 		on_other	do_( "cmd" )	s_take
 		end
+	in_( "/" ) bgn_
+		on_( '\n' )	do_( "" )
+		end
 	in_( "cmd" ) bgn_
 		ons( " \t" ) if ( !s_cmp("do" ) ) {
-				do_( "" )	s_reset( CNStringAll )
+				do_( "expr" )	s_reset( CNStringAll )
 						data->expr = 1; }
 		on_separator	; // err
 		on_other	do_( same )	s_take
@@ -1503,6 +1505,7 @@ bm_parse_init( BMParseData *data, BMParseMode mode )
 	data->TAB_LAST = -1;
 	data->flags = FIRST;
 	data->type = ( mode==BM_STORY ) ? 0 : DO;
+	data->expr = 0;
 }
 void
 bm_parse_exit( BMParseData *data )

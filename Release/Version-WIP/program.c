@@ -7,47 +7,6 @@
 // #define DEBUG
 
 //===========================================================================
-//	newProgram / freeProgram
-//===========================================================================
-CNProgram *
-newProgram( CNStory *story, char *inipath )
-{
-	Pair *entry = CNStoryMain( story );
-	if ( !entry ) {
-		fprintf( stderr, "B%%: Error: story has no main\n" );
-		return NULL; }
-	CNCell *cell = newCell( entry, inipath );
-	if ( !cell ) return NULL;
-	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );
-	// threads->new is a list of lists
-	program->threads->new = newItem( newItem( cell ) );
-	return program;
-}
-
-void
-freeProgram( CNProgram *program )
-/*
-	Note that in the normal course of execution both
-	program->threads->active and program->threads->new
-	should be NULL.
-	Here we make provision to support other cases as well
-*/
-{
-	if ( !program ) return;
-	CNCell *cell;
-	listItem **active = &program->threads->active;
-	listItem **new = &program->threads->new;
-	while (( cell = popListItem(active) )) {
-		freeListItem( BMCellCarry(cell) );
-		releaseCell( cell ); }
-	while (( cell = popListItem(new) )) {
-		freeListItem( BMCellCarry(cell) );
-		releaseCell( cell ); }
-	freePair((Pair *) program->threads );
-	freePair((Pair *) program );
-}
-
-//===========================================================================
 //	cnSync
 //===========================================================================
 void
@@ -91,7 +50,9 @@ cnOperate( CNProgram *program, CNCell **this )
 	if ( !program ) return 0;
 	CNStory *story = program->story;
 	CNCell *cell = ((this) ? *this : NULL );
-	if (( cell )) bm_cell_read( this, story );
+	if (( cell )) {
+		int cut = bm_cell_read( this, story );
+		if ( cut ) return 0; }
 
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
@@ -117,5 +78,38 @@ cnOperate( CNProgram *program, CNCell **this )
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new));
+}
+
+//===========================================================================
+//	newProgram / freeProgram
+//===========================================================================
+CNProgram *
+newProgram( CNStory *story, char *inipath )
+{
+	Pair *entry = CNStoryMain( story );
+	if ( !entry ) {
+		fprintf( stderr, "B%%: Error: story has no main\n" );
+		return NULL; }
+	CNCell *cell = newCell( entry, inipath );
+	if ( !cell ) return NULL;
+	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );
+	// threads->new is a list of lists
+	program->threads->new = newItem( newItem( cell ) );
+	return program;
+}
+
+void
+freeProgram( CNProgram *program )
+{
+	if ( !program ) return;
+	CNCell *cell;
+	listItem **active = &program->threads->active;
+	listItem **new = &program->threads->new;
+	while (( cell = popListItem(active) )) {
+		releaseCell( cell ); }
+	while (( cell = popListItem(new) )) {
+		releaseCell( cell ); }
+	freePair((Pair *) program->threads );
+	freePair((Pair *) program );
 }
 
