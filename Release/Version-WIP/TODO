@@ -1,22 +1,57 @@
 See Also: design/story/interactive.story
 TODO
-	. interactive - basic
-		. read input
-			on "do": invoke bm_parse_expr with proper setup
-				=> edit Main narrative
-				=> execute action
-		  Q: what if Main specified and option -i?
-		. [DONE] extend main.c to support
-			./B% -i
-			./B% file.bm -i
-			./B% -f file.ini -i
-			./B% -f file.ini file.bm -i
-		. [DONE] separated readStory() and bm_read()
-		. [DONE] parser.c/story.c: separate bm_parse_expr and bm_parse_cmd
-		. [DONE] extract [NEW] story.c/story.h from narrative.c/narrative.h
-		. [DONE] update design/specs/bm-Main.txt - add About interactive section
-	. interactive - advanced
-		. as per bm-Main.txt#interactive, design/story/interactive.story#TaskList
+	. BUG: do ~(.) also releases %% !?!?!?
+	. design/story/interactive.story#TaskList
+		. unnamed base entity
+		. string entities "_" => in CNDB or base narrative?
+		. %identifier list variables
+		. [_] and & shared arena
+		. <<_>> EENOC
+	. interactive - advanced / as per bm-Main.txt#interactive [NTH?]
+		1. import frame narrative (for execution only)
+			allows to bundle multiple do actions
+	 	   would use bm_parse_cmd and read_CB instead of bm_parse_ui
+		   > in .
+			_ <<<< bm_parse_cmd takes over
+		   => user must enter tabs (?) (except first one)
+		   => user must enter done to execute
+
+		2. import narrative or narrative sections (for registration and execution)
+		   => use existing Main + insert sub-root => output:
+			:
+			#!<sr>
+				code from interactive
+			#!</>
+				original code
+		   Options:
+		   . name sub-root => enable/disable sections dynamically
+		   . can also disable original code dynamically
+
+		3. set breakpoint - using sub-narrative (?)
+DONE
+	. interactive - basic, see cell.c:bm_read_command()
+		. support user input "do expression" => execute action
+		. support graceful exit via "do exit" or ^D (EOF)
+		. cnSync() except on do >_ output commands or err
+	  Example:
+		./B% -i
+		> do toto
+		> do >:.
+		{ %%, toto }
+		> ^D
+	. extended main.c to support
+		./B% -i
+		./B% file.bm -i
+		./B% -f file.ini -i
+		./B% -f file.ini file.bm -i
+	. parser.c/story.c:
+		. separated bm_parse_expr and bm_parse_cmd
+		. separated readStory() and bm_read()
+	. extracted [NEW] story.c/story.h from narrative.c/narrative.h
+	. updated design/specs/bm-Main.txt - add About interactive section
+	. program.c: cleaned up cnSync()/cnUpdate()
+		cf. design/specs/bm-Main.txt
+	. branched Version-2.1
 
 OPEN ISSUES
 	. do :< a, b >: ({1,2},3)
@@ -28,11 +63,6 @@ OPEN ISSUES
 		scream if partial instantiation did occur
 	. instantiate.c: term_CB
 		no need to test filtered if ~_ or %_ or *_
-
-DONE
-	. program.c: clean up cnSync()/cnUpdate()
-		cf. design/specs/bm-Main.txt
-	. branched Version-2.1
 
 NICE TO HAVE
 	. make %(_) mandatory condition to use filters in do expressions

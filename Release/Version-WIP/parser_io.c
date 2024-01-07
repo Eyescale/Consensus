@@ -10,8 +10,7 @@
 static int io_pop( CNIO * );
 
 void
-io_init( CNIO *io, void *stream, char *path, IOType type )
-{
+io_init( CNIO *io, void *stream, char *path, IOType type ) {
 	memset( io, 0, sizeof(CNIO) );
 	io->control.registry = newRegistry( IndexedByName );
 	io->string = newString();
@@ -19,28 +18,41 @@ io_init( CNIO *io, void *stream, char *path, IOType type )
 	io->path = path;
 	io->type = type;
 	io->state = "";
-	io->line = 1;
-}
+	io->line = 1; }
 
 void
-io_exit( CNIO *io )
-{
+io_exit( CNIO *io ) {
 	freeRegistry( io->control.registry, NULL );
 	freeListItem( &io->control.stack );
 	freeListItem( &io->buffer );
 	freeString( io->string );
-	while (( io->stack )) io_pop( io );
-}
+	while (( io->stack )) io_pop( io ); }
+
+void
+io_reset( CNIO *io, int l, int c ) {
+	io->line=l; io->column=c; }
 
 //===========================================================================
 //	io_getc
+//===========================================================================
+int
+io_getc( CNIO *io, int last_event )
+{
+	if ( last_event=='\n' ) { io->line++; io->column = 0; }
+	int event = fgetc( io->stream );
+	io->column++;
+	return event;
+}
+
+//===========================================================================
+//	io_read
 //===========================================================================
 static IOEventAction preprocess( CNIO *, int event );
 static int io_push( CNIO *, IOType, char * );
 static int io_pragma_execute( CNIO * );
 
 int
-io_getc( CNIO *io, int last_event )
+io_read( CNIO *io, int last_event )
 /*
 	filters out comments and \cr line continuation from input
 */

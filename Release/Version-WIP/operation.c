@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "cell.h"
 #include "operation.h"
 #include "deternarize.h"
 #include "deparameterize.h"
@@ -19,6 +18,19 @@ static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
+
+//===========================================================================
+//	bm_op
+//===========================================================================
+void
+bm_op( int type, char *expression, BMContext *ctx, CNStory *story )
+{
+	switch ( type ) {
+	case DO: do_action( expression, ctx, story ); break;
+	case INPUT: do_input( expression, ctx ); break;
+	case OUTPUT: do_output( expression, ctx ); break;
+	default: fprintf( stderr, "B%%: Warning: operation not supported\n" ); }
+}
 
 //===========================================================================
 //	bm_operate

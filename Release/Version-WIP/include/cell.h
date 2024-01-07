@@ -8,6 +8,8 @@
 
 typedef CNEntity CNCell;
 
+void bm_read_command( CNCell **, CNStory * );
+
 CNCell * newCell( Pair *entry, char *inipath );
 void releaseCell( CNCell * );
 
@@ -32,6 +34,5 @@ inline int bm_cell_update( CNCell *cell ) {
 
 void bm_cell_operate( CNCell *, CNStory * );
 CNInstance *bm_cell_carry( CNCell *, CNCell *, int );
-
 
 #endif	// CELL_H

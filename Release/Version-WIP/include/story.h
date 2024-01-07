@@ -9,24 +9,21 @@
 //===========================================================================
 typedef Registry CNStory;
 
-typedef enum {
-	BM_LOAD = 1,
-	BM_INPUT,
-	BM_STORY,
-} BMReadMode;
-
 //===========================================================================
 //	Public Interface
 //===========================================================================
-CNStory *	readStory( char *path );
+CNStory *	readStory( char *path, int interactive );
 int		bm_load( char *path, BMContext *ctx );
 char *		bm_read( FILE *stream );
+CNStory *	newStory( void );
 void		freeStory( CNStory * );
 int		cnStoryOutput( FILE *, CNStory * );
+void *		newStoryRoot( CNStory * );
 
 inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;
 	Pair *entry = registryLookup( story, "" );
+	// we have entry:[ "", {[ proto, root ]} ]
 	return (( entry )&&( entry->value )) ?
 		entry : NULL; }
 

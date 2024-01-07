@@ -1,8 +1,8 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
-#include "context.h"
 #include "story.h"
+#include "cell.h"
 
 typedef struct {
 	CNStory *story;
@@ -15,7 +15,10 @@ typedef struct {
 CNProgram *newProgram( CNStory *, char *inipath );
 void	freeProgram( CNProgram * );
 void	cnSync( CNProgram * );
-int	cnOperate( CNProgram * );
+int	cnOperate( CNProgram *, CNCell ** );
+
+static inline CNCell * CNProgramSeed( CNProgram *p ) {
+	return ((listItem*)p->threads->new->ptr)->ptr; }
 
 
 #endif	// PROGRAM_H

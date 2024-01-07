@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "program.h"
-#include "narrative.h"
 
 void
 usage( void ) {
@@ -47,36 +46,14 @@ main( int argc, char *argv[] ) {
 	// execute B% command
 
 	if ( printout ) {
-		CNStory *story = readStory( path[0] );
+		CNStory *story = readStory( path[0], 0 );
 		cnStoryOutput( stdout, story );
 		freeStory( story ); }
-	else if ( interactive ) {
-		// build story with single narrative
-		CNStory *story = newRegistry( IndexedByCharacter );
-		CNNarrative *narrative = newNarrative();
-		registryRegister( story, "", newItem(narrative) );
-
-		// add occurrence to Narrative
-		CNOccurrence *occurrence = newOccurrence( DO );
-		addItem( &narrative->root->sub, occurrence );
-
-		// create program & run one frame
-		CNProgram *threads = newProgram( story, NULL );
-		char *s = ">\"hello, world\n\"";
-
-		cnSync( threads );
-		occurrence->data->type = OUTPUT;
-		occurrence->data->expression = s;
-		cnOperate( threads );
-
-		// That's all Folks!
-		occurrence->data->expression = NULL;
-		freeProgram( threads );
-		freeStory( story ); }
 	else {
-		CNStory *story = readStory( path[0] );
+		CNStory *story = readStory( path[0], interactive );
 		CNProgram *threads = newProgram( story, path[1] );
-		do cnSync(threads); while ( cnOperate(threads) );
+		CNCell *this = interactive ? CNProgramSeed( threads ) : NULL;
+		do cnSync(threads); while ( cnOperate( threads, &this ) );
 		freeProgram( threads );
 		freeStory( story ); } }
 

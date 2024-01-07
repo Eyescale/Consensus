@@ -8,6 +8,7 @@
 #include "instantiate.h"
 #include "narrative.h"
 #include "story.h"
+#include "cell.h"
 
 //===========================================================================
 //	readStory
@@ -15,8 +16,9 @@
 static int read_CB( BMParseOp, BMParseMode, void * );
 
 CNStory *
-readStory( char *path )
-{
+readStory( char *path, int interactive ) {
+	if ( !path )
+		return ( interactive ? newStory() : NULL );
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
 		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
@@ -37,13 +39,12 @@ readStory( char *path )
 #define PARSE( event, func ) \
 	data.state = func( event, BM_STORY, &data, read_CB );
 	int event = 0;
-	do {
-		event = io_getc( &io, event );
+	do {	event = io_read( &io, event );
 		if ( !io.errnum ) {
-			if ( !data.opt ) PARSE( event, bm_parse_cmd )
-			if ( data.opt )  PARSE( event, bm_parse_expr ) }
+			if ( !data.expr ) PARSE( event, bm_parse_cmd )
+			if ( data.expr )  PARSE( event, bm_parse_expr ) }
 		else data.errnum = io_report( &io );
-	} while ( strcmp( data.state, "" ) && !data.errnum );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
 	freeListItem( &data.stack.occurrences );
 	if ( !data.errnum && !read_CB( NarrativeTake, 0, &data ) ) // last take
@@ -53,17 +54,18 @@ readStory( char *path )
 		freeNarrative( data.narrative );
 		freeStory( data.story );
 		data.story = NULL; }
+	else if ( interactive && !CNStoryMain( data.story ) ) {
+		CNNarrative *base = newNarrative();
+		registryRegister( data.story, "", newItem( base ) ); }
 
 	bm_parse_exit( &data );
 	io_exit( &io );
-
 	fclose( stream );
-	return data.story;
-}
+	
+	return data.story; }
 
 static int
-read_CB( BMParseOp op, BMParseMode mode, void *user_data )
-{
+read_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
 	CNNarrative *narrative;
 	char *proto;
@@ -167,8 +169,7 @@ fprintf( stderr, "end narrative: %s\n", proto );
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); } }
-	return 1;
-}
+	return 1; }
 
 //===========================================================================
 //	bm_load
@@ -176,8 +177,7 @@ fprintf( stderr, "end narrative: %s\n", proto );
 static int load_CB( BMParseOp, BMParseMode, void * );
 
 int
-bm_load( char *path, BMContext *ctx )
-{
+bm_load( char *path, BMContext *ctx ) {
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
 		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
@@ -192,36 +192,31 @@ bm_load( char *path, BMContext *ctx )
 	bm_parse_init( &data, BM_LOAD );
 	//-----------------------------------------------------------------
 	int event = 0;
-	do {
-		event = io_getc( &io, event );
+	do {	event = io_read( &io, event );
 		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse( event, BM_LOAD, &data, load_CB );
-	} while ( strcmp( data.state, "" ) && !data.errnum );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, load_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
 	bm_parse_exit( &data );
 	io_exit( &io );
 
 	fclose( stream );
-	return data.errnum;
-}
+	return data.errnum; }
 
 static int
-load_CB( BMParseOp op, BMParseMode mode, void *user_data )
-{
+load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
 	if ( op==ExpressionTake ) {
 		char *expression = StringFinish( data->string, 0 );
 		bm_instantiate( expression, data->ctx, NULL );
 		StringReset( data->string, CNStringAll ); }
-	return 1;
-}
+	return 1; }
 
 //===========================================================================
 //	bm_read
 //===========================================================================
 char *
-bm_read( FILE *stream )
-{
+bm_read( FILE *stream ) {
 	CNIO io;
 	io_init( &io, stream, NULL, IOStreamInput );
 
@@ -231,38 +226,39 @@ bm_read( FILE *stream )
 	bm_parse_init( &data, BM_INPUT );
 	//-----------------------------------------------------------------
 	int event = 0;
-	do {
-		event = io_getc( &io, event );
+	do {	event = io_read( &io, event );
 		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse( event, BM_INPUT, &data, NULL );
-	} while ( strcmp( data.state, "" ) && !data.errnum );
+		else data.state = bm_parse_load( event, BM_INPUT, &data, NULL );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
-	char *retval;
+	char *input;
 	if ( !data.errnum ) {
-		retval = StringFinish( data.string, 0 );
+		input = StringFinish( data.string, 0 );
 		StringReset( data.string, CNStringMode ); }
-	else retval = NULL;
+	else input = NULL;
 
 	bm_parse_exit( &data );
 	io_exit( &io );
-	return retval;
-}
+	return input; }
 
 //===========================================================================
-//	freeStory
+//	newStory, freeStory
 //===========================================================================
+CNStory *
+newStory( void ) {
+	CNStory *story = newRegistry( IndexedByCharacter );
+	CNNarrative *base = newNarrative();
+	registryRegister( story, "", newItem( base ) );
+	return story; }
+
 static void free_CB( Registry *, Pair * );
-
 void
-freeStory( CNStory *story )
-{
+freeStory( CNStory *story ) {
 	if ( story == NULL ) return;
-	freeRegistry( story, free_CB );
-}
+	freeRegistry( story, free_CB ); }
 
 static void
-free_CB( Registry *registry, Pair *entry )
-{
+free_CB( Registry *registry, Pair *entry ) {
 	char *def = entry->name;
 	if ( strcmp( def, "" ) ) free( def );
 	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
@@ -271,15 +267,13 @@ free_CB( Registry *registry, Pair *entry )
 		if (( proto ) && strcmp(proto,""))
 			free( proto );
 		freeOccurrence( narrative->root ); }
-	freeListItem((listItem **) &entry->value );
-}
+	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
 //	cnStoryOutput
 //===========================================================================
 int
-cnStoryOutput( FILE *stream, CNStory *story )
-{
+cnStoryOutput( FILE *stream, CNStory *story ) {
 	if ( story == NULL ) return 0;
 	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
@@ -288,6 +282,5 @@ cnStoryOutput( FILE *stream, CNStory *story )
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );
 			fprintf( stream, "\n" ); } }
-	return 1;
-}
+	return 1; }
 

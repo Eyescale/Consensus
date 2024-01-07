@@ -52,15 +52,16 @@ typedef enum {
 } IOControlPragma;
 
 typedef struct {
+	void *	stream;
+	char *	path;
+	IOType	type;
+	IOErr	errnum;
+	int	line, column;
+// private:
+	char *	state;
 	CNString *string;
 	listItem *stack;
 	listItem *buffer;
-	char *	state;
-	IOType	type;
-	void *	stream;
-	char *	path;
-	int	line, column;
-	IOErr	errnum;
 	struct {
 		int mode;
 		listItem *stack;
@@ -69,9 +70,11 @@ typedef struct {
 	} control;
 } CNIO;
 
+void	io_reset( CNIO *, int l, int c );
 void	io_init( CNIO *, void *, char *, IOType );
 void	io_exit( CNIO * );
 int	io_getc( CNIO *, int );
+int	io_read( CNIO *, int );
 IOErr	io_report( CNIO * );
 
 

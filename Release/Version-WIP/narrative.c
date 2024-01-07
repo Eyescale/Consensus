@@ -9,36 +9,29 @@
 //	newNarrative / freeNarrative
 //===========================================================================
 CNNarrative *
-newNarrative( void )
-{
-	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) );
-}
+newNarrative( void ) {
+	return (CNNarrative *) newPair( NULL, newOccurrence( ROOT ) ); }
 
 void
-freeNarrative( CNNarrative *narrative )
-{
+freeNarrative( CNNarrative *narrative ) {
 	if (( narrative )) {
 		char *proto = narrative->proto;
 		if (( proto )) free( proto );
 		freeOccurrence( narrative->root );
-		freePair((Pair *) narrative ); }
-}
+		freePair((Pair *) narrative ); } }
 
 //===========================================================================
 //	newOccurrence / freeOccurrence
 //===========================================================================
 CNOccurrence *
-newOccurrence( int type )
-{
+newOccurrence( int type ) {
 	union { int value; void *ptr; } icast;
 	icast.value = type;
 	Pair *data = newPair( icast.ptr, NULL );
-	return (CNOccurrence *) newPair( data, NULL );
-}
+	return (CNOccurrence *) newPair( data, NULL ); }
 
 void
-freeOccurrence( CNOccurrence *occurrence )
-{
+freeOccurrence( CNOccurrence *occurrence ) {
 	if ( !occurrence ) return;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
@@ -59,15 +52,13 @@ freeOccurrence( CNOccurrence *occurrence )
 				freeListItem( &occurrence->sub ); }
 			else {
 				freeItem( i );
-				return; } } }
-}
+				return; } } } }
 
 //===========================================================================
 //	narrative_reorder
 //===========================================================================
 void
-narrative_reorder( CNNarrative *narrative )
-{
+narrative_reorder( CNNarrative *narrative ) {
 	if ( !narrative ) return;
 	CNOccurrence *occurrence = narrative->root;
 	listItem *i = newItem( occurrence ), *stack = NULL;
@@ -85,15 +76,13 @@ narrative_reorder( CNNarrative *narrative )
 				reorderListItem( &occurrence->sub ); }
 			else {
 				freeItem( i );
-				return; } } }
-}
+				return; } } } }
 
 //===========================================================================
 //	narrative_output
 //===========================================================================
 int
-narrative_output( FILE *stream, CNNarrative *narrative, int level )
-{
+narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	if ( narrative == NULL ) {
 		fprintf( stderr, "Error: narrative_output: No narrative\n" );
 		return 0; }
@@ -141,6 +130,5 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level )
 				level--; }
 			else {
 				freeItem( i );
-				return 0; } } }
-}
+				return 0; } } } }
 

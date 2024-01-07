@@ -10,6 +10,13 @@
 //===========================================================================
 //	bm_read - bm_parse interface
 //===========================================================================
+typedef enum {
+	BM_LOAD = 1,
+	BM_INPUT,
+	BM_STORY,
+	BM_CMD
+} BMParseMode;
+
 typedef struct {
 // shared between parser and bm_read()
 	struct {
@@ -29,7 +36,7 @@ typedef struct {
 	char *		state;
 	int		errnum;
 	int		flags;
-	int		opt;
+	int		expr;
 } BMParseData;
 
 // tab data informed by bm_parse
@@ -39,7 +46,6 @@ typedef struct {
 #define TAB_SHIFT	tab[2]
 #define TAB_BASE	tab[3]
 
-typedef BMReadMode BMParseMode;
 typedef enum {
 	NarrativeTake = 1,
 	ProtoSet,
@@ -81,7 +87,8 @@ typedef char * (*BMParseFunc)( int event, BMParseMode, BMParseData *, BMParseCB 
 
 char * bm_parse_cmd( int event, BMParseMode, BMParseData *, BMParseCB );
 char * bm_parse_expr( int event, BMParseMode, BMParseData *, BMParseCB );
-char * bm_parse( int event, BMParseMode, BMParseData *, BMParseCB );
+char * bm_parse_load( int event, BMParseMode, BMParseData *, BMParseCB );
+char * bm_parse_ui( int event, BMParseMode, BMParseData *, BMParseCB );
 
 void	bm_parse_init( BMParseData *, BMParseMode mode );
 void	bm_parse_exit( BMParseData * );

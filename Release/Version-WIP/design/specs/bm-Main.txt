@@ -1,5 +1,4 @@
 About main
-
 	Intuitively we would expect the code to read
 
 		do cnOperate(threads); while ( cnSync(threads) );

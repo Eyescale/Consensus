@@ -4,8 +4,62 @@
 #include "traverse.h"
 #include "cell.h"
 #include "operation.h"
+#include "parser.h"
 
 // #define DEBUG
+
+//===========================================================================
+//	bm_read_command
+//===========================================================================
+void
+bm_read_command( CNCell **this, CNStory *story )
+{
+	if ( bm_cell_out(*this) ) {
+		*this = NULL;
+		return; }
+	CNIO io;
+	memset( &io, 0, sizeof(CNIO) );
+	io.stream = stdin;
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+	data.io = &io;
+	int event = 0;
+	for ( int done=0; !done; ) {
+		// prompt
+		printf( "> " );
+		io_reset( &io, 1, 2 );
+		bm_parse_init( &data, BM_CMD );
+		// read command
+		event = 0;
+		do {	event = io_getc( &io, event );
+			data.state = bm_parse_ui( event, BM_CMD, &data, NULL );
+			} while ( strcmp(data.state,"") && !data.errnum );
+		if ( data.errnum )
+			fpurge( stdin );
+		else if ( data.expr ) {
+			// read expression
+			data.state = "expr";
+			do {	event = io_getc( &io, event );
+				data.state = bm_parse_expr( event, BM_CMD, &data, NULL );
+				} while ( strcmp(data.state,"") && !data.errnum );
+			if ( data.errnum )
+				fpurge( stdin );
+			else {
+				char *action = StringFinish( data.string, 0 );
+				CNCell *cell = *this;
+				BMContext *ctx = BMCellContext(cell);
+				BMContextCurrent(ctx)->name = BMContextSelf(ctx);
+				bm_op( data.type, action, ctx, story );
+				done = ( data.type!=OUTPUT ); } }
+		else ; // execute cmd
+		if ( event==EOF ) {
+			printf( "  \n" ); // overwrite ^D
+			CNCell *cell = *this;
+			BMContext *ctx = BMCellContext(cell);
+			BMContextCurrent(ctx)->name = BMContextSelf(ctx);
+			bm_op( DO, "exit", ctx, story );
+			done = 1; }
+		bm_parse_exit( &data ); } }
 
 //===========================================================================
 //	newCell / releaseCell

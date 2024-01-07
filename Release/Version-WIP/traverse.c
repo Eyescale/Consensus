@@ -7,8 +7,7 @@ static BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
 	char **, int *, int );
 
 static char *
-bm_traverse( char *expression, BMTraverseData *traverse_data, int flags )
-{
+bm_traverse( char *expression, BMTraverseData *traverse_data, int flags ) {
 	int f_next, mode = traverse_data->done;
 	traverse_data->done = 0;
 
@@ -249,12 +248,13 @@ CB_SignalCB					p++; }
 			"in expression: %s, at %s\n", expression, p ); }
 	traverse_data->flags = flags;
 	traverse_data->p = p;
-	return p;
-}
+	return p; }
 
+//---------------------------------------------------------------------------
+//	traverse_CB
+//---------------------------------------------------------------------------
 static inline BMCBTake
-traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_ptr, int f_next )
-{
+traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_ptr, int f_next ) {
 	BMCBTake take = cb( traverse_data, p, *f_ptr, f_next );
 	switch ( take ) {
 	case BM_CONTINUE:
@@ -299,8 +299,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 #endif
 #endif
 		*p = p_prune( PRUNE_TERM, *p );
-		return BM_DONE; }
-}
+		return BM_DONE; } }
 
 
 #endif	// TRAVERSAL_H

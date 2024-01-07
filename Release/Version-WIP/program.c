@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
+//#include "traverse.h"
 #include "program.h"
-#include "cell.h"
 
 // #define DEBUG
 
@@ -84,14 +83,17 @@ cnSync( CNProgram *program )
 //	cnOperate
 //===========================================================================
 int
-cnOperate( CNProgram *program )
+cnOperate( CNProgram *program, CNCell **this )
 {
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: bgn\n" );
 #endif
 	if ( !program ) return 0;
-	CNCell *cell;
+
+	CNCell *cell = *this;
 	CNStory *story = program->story;
+	if (( cell )) bm_read_command( this, story );
+
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
 	listItem *carry, *out=NULL;
