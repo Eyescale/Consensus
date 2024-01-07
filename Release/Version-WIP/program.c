@@ -89,9 +89,8 @@ cnOperate( CNProgram *program, CNCell **this )
 	fprintf( stderr, "cnOperate: bgn\n" );
 #endif
 	if ( !program ) return 0;
-
-	CNCell *cell = *this;
 	CNStory *story = program->story;
+	CNCell *cell = ((this) ? *this : NULL );
 	if (( cell )) bm_cell_read( this, story );
 
 	listItem **active = &program->threads->active;
