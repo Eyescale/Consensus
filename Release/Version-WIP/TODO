@@ -16,7 +16,7 @@ TODO
 		   => user must enter done to execute
 
 		2. import narrative or narrative sections (for registration and execution)
-		   => use existing Main + insert sub-root => output:
+		   => use Main if existing + insert sub-root => output:
 			:
 			#!<sr>
 				code from interactive
@@ -31,6 +31,9 @@ TODO
 		=> cell.c does not #include parser.c
 		=> story.c does not #include cell.c
 DONE
+	. NOTE: ./B% Examples/3_TM-multi/TM-head_cell.story -i
+		Main has only one frame -- exit on init!
+	  => try Examples/2_TM-single/TM-single.story if any
 	. NOTE: do ~(.) also releases %% !?!?!?
 	  actually it's a FEATURE (!), as do %% will rehabilitate %%,
 	  which was released - but not removed.

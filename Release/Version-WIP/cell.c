@@ -26,8 +26,8 @@ bm_cell_read( CNCell **this, CNStory *story )
 	int event = 0;
 	for ( int done=0; !done; ) {
 		// prompt
-		printf( "> " );
-		io_reset( &io, 1, 2 );
+		printf( "B%% " );
+		io_reset( &io, 1, 3 );
 		bm_parse_init( &data, BM_CMD );
 		// read command
 		event = 0;
@@ -51,7 +51,7 @@ bm_cell_read( CNCell **this, CNStory *story )
 				BMContextCurrent(ctx)->name = BMContextSelf(ctx);
 				bm_op( data.type, action, ctx, story );
 				done = ( data.type!=OUTPUT ); } }
-		else ; // execute cmd
+		else done = 1; // execute cmd (which is nop but does force sync)
 		if ( event==EOF ) {
 			printf( "  \n" ); // overwrite ^D
 			CNCell *cell = *this;
