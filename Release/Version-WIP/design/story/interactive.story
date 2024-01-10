@@ -78,16 +78,16 @@ System Execution
 	            end for
 	        end for
 
+	In Consensus terms, as in reality, all cosystems run in parallel,
+	and we want all actions to likewise (if only conceptually) execute
+	in parallel, all in one frame.
+
 	Note that a centralized execution model implementation is also
 	feasible, whereby
 		. system notifies cosystems of their expected actions
 		. cosystems notify system of their actually performed actions
 		  (whereupon system updates status)
 	but that is not our immediate target here.
-
-	In Consensus terms, as in reality, all cosystems run in parallel,
-	and we want all actions to also (if only conceptually) execute in
-	parallel, all in one frame.
 
 	Furthermore, we do not want each cosystem to keep track of all other
 	cosystems conditions - although we could - but rather: each cosystem
@@ -108,14 +108,14 @@ System Execution
 				relevant cosystem guard.status // for next frame
 
 				add complementary condition (( occurrence, ~ON|OFF ), %% )
-				to all relevant cosystem guard.status
+				to all relevant cosystem guard.status // for next frame
 
 		per : ? : . < .	// update next frame's conditions
 			remove EENO's corresponding condition (( %<?>, %<!:(.,?)> ), %< )
-			from all relevant cosystem guard.status
+			from all relevant cosystem guard.status // for next frame
 
 			add complementary condition (( %<?>, ~%<!:(.,?)> ), %< )
-			to all relevant cosystem guard.status
+			to all relevant cosystem guard.status // for next frame
 
 	Which, in B%, translates as follow:
 
@@ -245,10 +245,11 @@ System launch
 		( ., trigger )	// events - for selected triggers
 		( ., guard )	// conditions - for selected guards
 
-	Additionally all connections with event cosystems must be accessible in
-	system images, where we want cosystem identifiers to be replaced by their
-	proxies. This requires all proxies to be created beforehand, which leads
-	us to the following System launch expression:
+	Additionally all connections with event cosystems must be established,
+	and we want proxies to replace cosystem identifiers in system images -
+	which requires all proxies to be created beforehand.
+
+	This leads us to the following System launch expression:
 
 	do : %cosystem : !! Cosystem(
 		// foreach action instantiate same (with proxy vs. cosystem) for which
@@ -273,12 +274,12 @@ System launch
 					?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
 				} )
 	where
-		the expression do : %cosystem : !! Cosystem(_) is bufferized
+		do : %cosystem : !! Cosystem(_) is internally bufferized
 		^@ represents the current child proxy in the carry buffer
 		?:_ _ in one line is made separable using ?:_{_}
-		_^ means mark if new, and ?^: means "iff marked"
+		_^ means "mark if new", and ?^: means "iff marked"
 
-New Features
+Feature List
     	1. %identifier list variables
     	2. <<_>> EENO Condition (EENOC) and EEVA definition
 	3. !! Unnamed Base Entities (UBE)
