@@ -11,7 +11,7 @@ typedef CNEntity CNCell;
 int bm_cell_read( CNCell **, CNStory * );
 
 CNCell * newCell( Pair *entry, char *inipath );
-void releaseCell( CNCell * );
+void freeCell( CNCell * );
 
 inline Pair * BMCellEntry( CNCell *cell )
 	{ return (Pair *) ((Pair *) cell->sub[ 0 ] )->name; }
@@ -38,5 +38,6 @@ inline int bm_cell_update( CNCell *cell ) {
 
 void bm_cell_operate( CNCell *, CNStory * );
 CNInstance *bm_cell_carry( CNCell *, CNCell *, int );
+
 
 #endif	// CELL_H

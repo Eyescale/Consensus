@@ -25,7 +25,7 @@ int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
 void *		bm_inform( int, BMContext *, void *, CNDB * );
 CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
 
-static inline void * bm_context_lookup( BMContext *ctx, char *p ) {
+inline void * bm_context_lookup( BMContext *ctx, char *p ) {
 	return bm_lookup( ctx, p, NULL, 0 ); }
 
 typedef struct {
@@ -38,27 +38,27 @@ typedef struct {
 	CNInstance *src;
 } EEnoRV;
 
-static inline CNDB * BMContextDB( BMContext *ctx ) {
+inline CNDB * BMContextDB( BMContext *ctx ) {
 	return registryLookup( ctx, "" )->value; }
-static inline Pair * BMContextId( BMContext *ctx ) {
+inline Pair * BMContextId( BMContext *ctx ) {
 	return registryLookup( ctx, "%" )->value; }
-static inline CNInstance * BMContextSelf( BMContext *ctx ) {
+inline CNInstance * BMContextSelf( BMContext *ctx ) {
 	return BMContextId( ctx )->name; }
-static inline CNInstance * BMContextParent( BMContext *ctx ) {
+inline CNInstance * BMContextParent( BMContext *ctx ) {
 	return BMContextId( ctx )->value; }
-static inline CNEntity * BMContextCell( BMContext *ctx ) {
+inline CNEntity * BMContextCell( BMContext *ctx ) {
 	return DBProxyThat( BMContextSelf(ctx) ); }
-static inline ActiveRV * BMContextActive( BMContext *ctx ) {
+inline ActiveRV * BMContextActive( BMContext *ctx ) {
 	return registryLookup( ctx, "@" )->value; }
-static inline void * BMContextEENOVCurrent( BMContext *ctx ) {
+inline void * BMContextEENOVCurrent( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "<" );
         return (( entry->value ) ? ((listItem *) entry->value )->ptr : NULL ); }
 
-static inline Pair * BMContextCurrent( BMContext *ctx ) {
+inline Pair * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
-static inline CNInstance * BMContextPerso( BMContext *ctx ) {
+inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->name; }
-static inline Registry *BMContextLocales( BMContext *ctx ) {
+inline Registry *BMContextLocales( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->value; }
 
 //===========================================================================
@@ -68,7 +68,7 @@ static inline void bm_context_pipe_flush( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "|" );
 	freeListItem((listItem **) &entry->value ); }
 
-static inline void context_rebase( BMContext *ctx ) {
+inline void context_rebase( BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *self = BMContextSelf( ctx );
 	Pair *entry = BMContextCurrent( ctx );

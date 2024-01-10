@@ -14,25 +14,24 @@
 //	readStory
 //===========================================================================
 static int read_CB( BMParseOp, BMParseMode, void * );
+static void free_CB( Registry *, Pair * );
 
 CNStory *
-readStory( char *path, int seed ) {
-	if ( !path ) return ( seed ? newStory() : NULL );
+readStory( char *path, int ignite ) {
+	if ( !path ) return ( ignite ? newStory() : NULL );
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
 		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 		return NULL; }
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
-
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
         data.io = &io;
 	bm_parse_init( &data, BM_STORY );
-
 	data.narrative = newNarrative();
 	data.occurrence = data.narrative->root;
-	data.story = newRegistry( IndexedByCharacter );
+	data.narratives = newRegistry( IndexedByCharacter );
 	addItem( &data.stack.occurrences, data.occurrence );
 	//-----------------------------------------------------------------
 #define PARSE( event, func ) \
@@ -48,20 +47,19 @@ readStory( char *path, int seed ) {
 	freeListItem( &data.stack.occurrences );
 	if ( !data.errnum && !read_CB( NarrativeTake, 0, &data ) ) // last take
 		fprintf( stderr, "B%%: Error: read_narrative: unexpected EOF\n" );
-
 	if ( data.errnum ) {
 		freeNarrative( data.narrative );
-		freeStory( data.story );
-		data.story = NULL; }
-	else if ( seed && !CNStoryMain( data.story ) ) {
+		freeRegistry( data.narratives, free_CB );
+		data.narratives = NULL; }
+	else if ( !registryLookup( data.narratives, "" ) && ignite ) {
 		CNNarrative *base = newNarrative();
-		registryRegister( data.story, "", newItem( base ) ); }
-
+		registryRegister( data.narratives, "", newItem( base ) ); }
 	bm_parse_exit( &data );
 	io_exit( &io );
 	fclose( stream );
-	
-	return data.story; }
+	return data.narratives ?
+		(CNStory *) newPair( data.narratives, NULL ) :
+		NULL; }
 
 static int
 read_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
@@ -77,7 +75,7 @@ read_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 fprintf( stderr, "bgn narrative: %s\n", proto );
 #endif
 		if ( !proto ) { // main narrative definition start
-			if (( registryLookup( data->story, "" ) )) {
+			if (( registryLookup( data->narratives, "" ) )) {
 				data->errnum = ErrNarrativeDoubleDef;
 				return 0; } } // main already registered
 		else if ( is_separator( *proto ) ) {
@@ -85,7 +83,7 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 				data->errnum = ErrNarrativeNoEntry;
 				return 0; }
 			else narrative->proto = proto; } // double-def accepted
-		else if ( !registryLookup( data->story, proto ) )
+		else if ( !registryLookup( data->narratives, proto ) )
 			narrative->proto = proto;
 		else {
 			data->errnum = ErrNarrativeDoubleDef;
@@ -154,14 +152,14 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		narrative_reorder( narrative );
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
+			data->entry = registryRegister( data->narratives, "", newItem(narrative) ); }	
 		else if ( is_separator( *proto ) ) {
 			addItem((listItem **) &entry->value, narrative );
 			if ( !mode ) // last take
 				reorderListItem((listItem **) &entry->value ); }
 		else {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->story, proto, newItem(narrative) );
+			data->entry = registryRegister( data->narratives, proto, newItem(narrative) );
 			narrative->proto = NULL; } // first in class
 		// allocate new narrative
 		if ( mode ) {
@@ -169,6 +167,18 @@ fprintf( stderr, "end narrative: %s\n", proto );
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); } }
 	return 1; }
+
+static void
+free_CB( Registry *registry, Pair *entry ) {
+	char *def = entry->name;
+	if ( strcmp( def, "" ) ) free( def );
+	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		char *proto = narrative->proto;
+		if (( proto ) && strcmp(proto,""))
+			free( proto );
+		freeOccurrence( narrative->root ); }
+	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
 //	bm_load
@@ -245,28 +255,23 @@ bm_read( FILE *stream ) {
 //===========================================================================
 CNStory *
 newStory( void ) {
-	CNStory *story = newRegistry( IndexedByCharacter );
+	Registry *narratives = newRegistry( IndexedByCharacter );
 	CNNarrative *base = newNarrative();
-	registryRegister( story, "", newItem( base ) );
-	return story; }
+	registryRegister( narratives, "", newItem( base ) );
+	return (CNStory *) newPair( narratives, NULL ); }
 
-static void free_CB( Registry *, Pair * );
+static void free_arena_CB( Registry *, Pair * );
 void
 freeStory( CNStory *story ) {
-	if ( story == NULL ) return;
-	freeRegistry( story, free_CB ); }
+	if (( story )) {
+		freeRegistry( story->narratives, free_CB );
+		if (( story->arena ))
+			freeRegistry( story->arena, free_arena_CB );
+		freePair((Pair *) story ); } }
 
 static void
-free_CB( Registry *registry, Pair *entry ) {
-	char *def = entry->name;
-	if ( strcmp( def, "" ) ) free( def );
-	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
-		CNNarrative *narrative = i->ptr;
-		char *proto = narrative->proto;
-		if (( proto ) && strcmp(proto,""))
-			free( proto );
-		freeOccurrence( narrative->root ); }
-	freeListItem((listItem **) &entry->value ); }
+free_arena_CB( Registry *registry, Pair *entry ) {
+	} // TBD
 
 //===========================================================================
 //	cnStoryOutput
@@ -274,7 +279,8 @@ free_CB( Registry *registry, Pair *entry ) {
 int
 cnStoryOutput( FILE *stream, CNStory *story ) {
 	if ( story == NULL ) return 0;
-	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
+	Registry *narratives = story->narratives;
+	for ( listItem *i=narratives->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		fprintf( stream, ": %s\n", (char *) entry->name );
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {

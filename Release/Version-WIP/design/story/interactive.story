@@ -60,7 +60,7 @@ Data Model
 
 	A System is entirely defined by its ON|OFF relationship instances
 
-Execution Model
+System Execution
 	Once launched, we want our System to execute the following, which
 	we call System frame, over and over again:
 
@@ -78,6 +78,12 @@ Execution Model
 	            end for
 	        end for
 
+	Note that a centralized execution model implementation is also
+	feasible, whereby
+		. system notifies cosystems of their expected actions
+		. cosystems notify system of their actually performed actions
+		  (whereupon system updates status)
+	but that is not our immediate target here.
 
 	In Consensus terms, as in reality, all cosystems run in parallel,
 	and we want all actions to also (if only conceptually) execute in
@@ -89,7 +95,7 @@ Execution Model
 	the following pseudo-code:
 
 	: Cosystem
-		per action (( occurrence, ON|OFF ), %% ) SUCH THAT
+		per action: (( occurrence, ON|OFF ), %% ) SUCH THAT
 		    there is one guard among action<-trigger<-guard
 		    verifying BOTH
 		    . guard.status is clear, AND
@@ -111,8 +117,7 @@ Execution Model
 			add complementary condition (( %<?>, ~%<!:(.,?)> ), %< )
 			to all relevant cosystem guard.status
 
-	Which, in B% - and assuming for now that all system's data are accessible
-	from cosystem's local memory - translates as
+	Which, in B%, translates as follow:
 
 	: Cosystem
 		on init
@@ -130,7 +135,7 @@ Execution Model
 
 			// add complementary condition to relevant guard.status
 			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
-				do ( %?, %( Status, %(%?,?):%(?,(.,((.,ON|OFF),%%))) ))
+				do ( %?, %( Status, %(%?,?) ))
 
 		per : ? : . < .
 			// remove eeno's corresponding condition from all guard.status
@@ -139,28 +144,18 @@ Execution Model
 
 			// add complementary condition to relevant guard.status
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
-				do ( %?, %( Status, %(%?,?):%(?,(.,((.,ON|OFF),%%))) ))
-
+				do ( %?, %( Status, %(%?,?) ))
 	where
-	1. EEVA stands for External Event Variable Assignment and is fully
-	   defined in the New Features section below
+		. Cosystem-relevant System data have been made accessible
+		  to cosystem at System's launch time (see below)
+		. EEVA stands for External Event Variable Assignment and is
+		  fully defined in the New Features section below
+		. The expression ~(.,(Status,?)) does not yield any pivot as
+		  it is negated.
 
-	2. Cosystems will be granted access to System's data through the new
-	   [_] shared arena and '&' access-by-reference B% features
-
-	   Note that a centralized execution model implementation is also
-	   feasible - and would not require these B% extensions - whereby
-		. system notifies cosystems of their expected actions
-		. cosystems notify system of their actually performed actions
-		  (whereupon system updates status)
-	   but that is not our immediate target here.
-
-	3. The expression ~(.,(Status,?)) does not yield any pivot as it is
-	   negated.
-
-	   Tagging guards CLEAR upon their last condition being removed will
-	   allow us to use the CLEAR guards list as a pivot, AND is further
-	   consistent with the cellular automata execution principle
+	Tagging guards CLEAR upon their last condition being removed will
+	allow us to use the CLEAR guards list as a pivot, AND is further
+	consistent with the cellular automata execution principle
 
 		in state
 			on event
@@ -169,68 +164,64 @@ Execution Model
 		whereby a cosystem's "current" state is defined as its set
 		of CLEAR guard conditions
 
-	   This will be implemented through the new %identifier list variables
-	   B% capability, featuring
+	This will be implemented through the new %identifier list variables
+	B% capability, featuring
 
 		|^list		adds current entity to list
 		|^list~		removes current entity from list
 		.%list~ {_}	flushes list while performing expression, in
 				which ^. references the current list element
 
-	   as per the following final target Implementation
-
-Implementation
-	Each cosystem implements the following narrative - that is: each
-	cosystem is effectively a class of its own, subclass of Cosystem
+	as per the following, final target Implementation:
 
 	: Cosystem
-		en %(*?:&[ON]) // enable cosystem occurrence's sub-narratives
+		en %(*?:ON) // enable cosystem occurrence's sub-narratives
 		on init
 			// initialize ( &condition, ( Status, &guard )), and
 			// enrol condition-free guards into %guard list
-			per [( ?, ( ., ((.,ON|OFF),%(*?:%%)) ))]
-				do ( [(.,%<?>)] ? // guard has condition(s)
-					( &%[(?,%<?>)], ( Status, &%<?> )) :
-					( &%<?>|^guard ) )
+			per ( ?, ( ., ((.,ON|OFF),%%) ))
+				do ( (.,%?) ? // guard has condition(s)
+					( %(?,%?), ( Status, %? )) :
+					( %?|^guard ) )
 		else
 	+	// flush %tag list & enrol condition-free guards, pre-frame
 		.%tag~ { ^.:~%(.,(Status,?))|^guard }
 	
 		// see the New Features section for EEVA definition
-		per [( %guard, ( ~%(~EEVA,?), (?,%(*?:%%)) ))]
+		per ( %guard, ( ~%(~EEVA,?), (?,%%) ))
 	
-			// execute action - assuming %<?:( occurrence, ON|OFF )>
-			do : &%<?:(?,.)> : &%<?:(.,?)>
+			// execute action
+			do : %(%?:(?,.)) : %(%?:(.,?))
 	
 			// remove action-corresponding condition from relevant guard
 			// Status, and tag these guards
-			in [ ?:( %<?>, %(*?:%%) ) ] // action-corresponding condition
-				do ~( &%<?>, %( Status, .|^tag ))
+			do ~( (%?,%%), %( Status, .|^tag ))
 	
 			// add action-complementary condition to relevant guard
 			// Status, and decommission these guards
-			in [ ?:(( %<?:(?,.)>, ~%<?:(.,?)> ), %(*?:%%)) ]
-				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
-	
+			// add complementary condition to relevant guard.status
+			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
+				do ( %?, %( Status, %(%?,?)|^guard~ ))
+
 		// update all guard status from EENO - for next frame
 		per : ? : . < .
 			// remove eeno-corresponding condition from relevant guard
 			// Status, and tag these guards
-			in [ ?:(( %<?>, %<!:(.,?)> ), %(*?:%<)) ]
-				do ~( &%<?>, %( Status, .|^tag ))
+			in ?: (( %<?>, %<!:(.,?)> ), %< )
+				do ~( %?, %( Status, .|^tag ))
 	
 			// add eeno-complementary condition to relevant guard
 			// Status, and decommission these guards
-			in [ ?:(( %<?>, ~%<!:(.,?)> ), %(*?:%<)) ]
-				do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
+			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
+				do ( %?, %( Status, %(%?,?)|^guard~ ))
 	
 	: cosystemA : Cosystem	// note the sub-classing
 		...
-	:&[ "occurrence" ]	// invoked when occurrence is ON
+	:"occurrence" // invoked when occurrence is ON
 		...
-	:&[ "occurrence" ]	// invoked when occurrence is ON
+	:"occurrence" // invoked when occurrence is ON
 		...
-	:&[ "occurrence" ]	// invoked when occurrence is ON
+	:"occurrence" // invoked when occurrence is ON
 		...
 	
 	: cosystemB : Cosystem	// note the sub-classing
@@ -239,31 +230,80 @@ Implementation
 	...
 
 	Notes
-	1. Cosystem's actions consist of performing local assignment of system's
-	   occurrence and ON|OFF entities, both by reference, which will allow
-	   cosystems to handle multiple systems in the future
+	1. each cosystem is effectively a class of its own, subclass of Cosystem
 	2. guards matching %( Status, ? ) refer to local actions - no check needed
 	3. guards with no condition have no Status - but are enrolled permanently
 	4. if a trigger has no event ~%(~EEVA,?) always passes - as intended
 	5. B% current implementation will issue warning if second term is void in
-		do ( &%<?>, %( Status, &%[(%<?>,?)]|^guard~ ))
+		do ( %?, %( Status, %(%?,?)|^guard~ ))
+
+System launch
+	Each cosystem needs a local system image integrating everything leading
+	to cosystems action, that is:
+		( guard, ( trigger, ((occurrence,ON|OFF),cosystem:%(*?:%%)) ) )
+	as well as
+		( ., trigger )	// events - for selected triggers
+		( ., guard )	// conditions - for selected guards
+
+	Additionally all connections with event cosystems must be accessible in
+	system images, where we want cosystem identifiers to be replaced by their
+	proxies. This requires all proxies to be created beforehand, which leads
+	us to the following System launch expression:
+
+	do : %cosystem : !! Cosystem(
+		// foreach action instantiate same (with proxy vs. cosystem) for which
+		?: ((.,ON|OFF),%(*?:^@)) ( %(%?:(?,.)), ^@ ) |
+			// foreach (trigger, action) instantiate same, for which
+			?: ( ., %? ) ( %(%?:(?,.))^, %| ) | {
+				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
+				?^: ( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				// foreach (guard,(trigger,action)) instantiate same, for which
+				?: ( ., %? ) ( %(%?:(?,.))^, %| ) |
+					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
+					?^: ( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				} )
+
+	That is, without the comments:
+
+	do : %cosystem : !! Cosystem(
+		?:(( ., ON|OFF ), %(*?:^@) ) ( %(%?:(?,.)), ^@ ) |
+			?:( ., %? ) ( %(%?:(?,.))^, %| ) | {
+				?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				?:( ., %? ) ( %(%?:(?,.))^, %| ) |
+					?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				} )
+	where
+		the expression do : %cosystem : !! Cosystem(_) is bufferized
+		^@ represents the current child proxy in the carry buffer
+		?:_ _ in one line is made separable using ?:_{_}
+		_^ means mark if new, and ?^: means "iff marked"
 
 New Features
-    	1. <<_>> EENO Condition (EENOC) and EEVA definition
-	2. [_] shared arena and '&' access-by-reference
-    	3. %identifier list variables
-	4. !! Unnamed Base Entities
+    	1. %identifier list variables
+    	2. <<_>> EENO Condition (EENOC) and EEVA definition
+	3. !! Unnamed Base Entities (UBE)
+	4. Shared Entities and Shared Arena implementation
 
-    1. <<_>> EENO Condition (EENOC) and EEVA definition
+    1. %identifier list variables
+
+	|^list		adds current entity to list
+	|^list~		removes current entity from list
+	.%list~ {_}	flushes list while performing expression, in
+			which ^. references the current list element
+
+	Note that pre-frame execution is guaranteed for
+		.%tag~ { ^.:~%(.,(?,Status))|^guard }
+
+    2. <<_>> EENO Condition (EENOC) and EEVA definition
 	In the code above, EEVA represents the following EENO Condition
 
-		<< : &[^((?,.),.)] : &[^((.,?),.)] < [*^(.,?)] >>
+		<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
 	Where
 		1. << event < src >> passes iff event < src is verified
 
 		2. The symbol '^' represents the entity corresponding to
-		the current expression term, e.g.
+		the current expression term, hence
 
 			<< : ^((?,.),.) : ^((.,?),.) < ^(.,?) >>
 
@@ -280,33 +320,10 @@ New Features
 	than one entity, and therefore %(%.:((?,.),.)) and %(%.:((.,?),.))
 	might not relate to the same entity
 
-    2. [_] shared arena and '&' access-by-reference
-
-	. [_] represents "in the shared arena" - data shared within
-	  System, also known as system's partition - and may in the
-	  future be extended to (system)[_]
-
-	  Note: [_,_] is not allowed => must use [(_,_)]
-
-	. [_] matching entities, when marked, are accessed via %<_>
-
-	. '&' in &%<_> and &%[_] resp. &[_] represents "as-is" - i.e.
-	  accessed by reference vs. local copy
-
-    3. %identifier list variables
-
-	|^list		adds current entity to list
-	|^list~		removes current entity from list
-	.%list~ {_}	flushes list while performing expression, in
-			which ^. references the current list element
-
-	Note that pre-frame execution is guaranteed for
-		.%tag~ { ^.:~%(.,(?,Status))|^guard }
-
-    4. !! Unnamed Base Entities
+    3. !! Unnamed Base Entities (UBE)
 	To spare us the hassle of managing our own pool of free Trigger and
 	Guard entities, we want the capability to allocate each Trigger and
-	Guard instance as unnamed base entity.
+	Guard instance as unnamed base entity (UBE).
 
 	Allocation
 		Unnamed base entities are allocated using the operator NEW (!!)
@@ -339,19 +356,71 @@ New Features
 		Either directly by user or automatically when left dangling - in
 		which case no release event is issued
 
+    4. Share Entities and Shared Arena implementation
+    4.1. Shared Entities
+	We need to be able to access entities by address in order to
+	1. optimize string memory usage AND comparison mechanism across system
+	2. allow multiple references to the same unnamed base entity - here a
+	   trigger or a guard - in cosystems' system images
+
+	Implementation: instead of
+		CNDB.entry:[ identifier, e:(NULL,identifier) ]
+	we will have
+		CNDB.entry:[ identifier, e:(NULL,entry) ]
+	so that: if e->sub[1]->value!=e then
+		e is a reference to an external entity => in shared arena,
+		as we cannot have several entries with the same identifier
+		in the same CNDB
+
+    4.2. Shared Arena
+	We have
+		CNStory:[ Registry *narratives, Registry *arena ]
+	where
+		arena: { [ "",  (Registry *) string-arena ],
+			 [ "$", (listItem *) UBE-arena ] }
+		string-arena.entry: [ identifier, {[ CNDB, entity ]} ]
+			where entity: CNDB-specific ( NULL, entry )
+		UBE-arena.entry: [ NULL, {[ CNDB, entity ]} ]
+			where entity: CNDB-specific ( NULL, item )
+
+	Note: as entry->name is used to differentiate between UBE and
+	string arenas, there is no way around using NULL as item->name
+	in UBE-arena
+
+	string-arena is indexed by identifier, whereas UBE-arena is
+	organized by address - of the entry
+
+	UBE-arena items are created either:
+	1. using !! => NEW UBE, associated with BMContextDB(ctx)
+	2. exporting existing UBE from one CNDB to another, via carry
+	   <=> making another CNDB-specific ( NULL, item ) version
+	3. importing existing UBE from one CNDB to another, via EENO
+	   <=> making another CNDB-specific ( NULL, item ) version
+
+	string-arena entries are created either:
+	1. using do "_" => NEW string, associated with BMContextDB(ctx)
+	2. exporting existing string from one CNDB to another, via carry
+	   <=> making another CNDB-specific ( NULL, entry ) version
+	3. importing existing string from one CNDB to another, via EENO
+	   <=> making another CNDB-specific ( NULL, entry ) version
+
+	Shared entities are released in context, whereupon
+	. the BMContextDB(ctx)-specific version is removed from the relevant
+	  entry in the relevant arena
+	. if no version is left: the whole entry is removed from the arena
+
 Task List
 	./B% -i
 	> support do expression // including output
 	> allow to create System: ON|OFF relationship instances
-		. need support for unnamed entity
-		. need support for do "occurrence" - registered as base entities?
-		  => issue: we don't want to strcmp every occurrence every frame
+		. need support for unnamed entities
+		. need support for string entities
 		. need support for do { ON|^system, OFF|^system }
 		  => for %system to represent ON|OFF
 	> allow	to output System definition [to stdout and/or file] as follow
 
 		: cosystemA : Cosystem
-		:&[ "occurrence" ]
+		:"occurrence"
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
 				etc.
@@ -368,7 +437,7 @@ Task List
 			/
 				: "occurrence" : ON|OFF < cosystem
 			etc.
-		:&[ "occurrence" ]
+		:"occurrence"
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
 			/
@@ -386,11 +455,11 @@ Task List
 
 		: cosystem : Cosystem
 			...
-		:&[ "occurrence" ]	// invoked when occurrence is ON
+		:"occurrence" // invoked when occurrence is ON
 			...
-		:&[ "occurrence" ]	// invoked when occurrence is ON
+		:"occurrence" // invoked when occurrence is ON
 			...
-		:&[ "occurrence" ]	// invoked when occurrence is ON
+		:"occurrence" // invoked when occurrence is ON
 			...
 
 	  but where

@@ -31,317 +31,6 @@
 	>		output
 */
 char *
-bm_parse_cmd( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
-/*
-	Assumption: mode==BM_STORY, data->expr==0
-*/
-{
-	CNIO *io = data->io;
-
-	// shared by reference
-	listItem **	stack	= &data->stack.flags;
-	CNString *	s	= data->string;
-	int *		tab	= data->tab;
-	int *		type	= &data->type;
-
-	// shared by copy
-	char *		state	= data->state;
-	int		flags	= data->flags;
-	int		errnum	= 0;
-	int		line	= io->line;
-	int		column	= io->column;
-
-	BMParseBegin( "bm_parse_cmd", state, event, line, column )
-	//----------------------------------------------------------------------
-	// bm_parse_cmd:	Parser Begin
-	//----------------------------------------------------------------------
-	in_( "base" ) bgn_
-			on_( EOF )	do_( "" )
-			on_( '\t' )	do_( same )	TAB_CURRENT++;
-			on_( '\n' )	do_( same )	TAB_CURRENT = 0;
-			on_( '.' ) 	do_( "^." )	s_take
-							TAB_BASE = column;
-			on_( '+' ) if ( !TAB_CURRENT ) {
-					do_( "+" )	TAB_SHIFT++; }
-			on_( '-' ) if ( !TAB_CURRENT ) {
-					do_( "-" )	TAB_SHIFT--; }
-			on_( ':' ) if ( !TAB_CURRENT ) {
-					do_( "def" )	TAB_SHIFT = 0; }
-			on_( '%' )	do_( "cmd" )	REENTER
-							TAB_BASE = column;
-			on_separator	; // err
-			on_other	do_( "cmd" )	s_take
-							TAB_BASE = column;
-			end
-	in_( "+" ) bgn_
-		on_( '+' )	do_( same )	TAB_SHIFT++;
-		on_other	do_( "base" )	REENTER
-		end
-	in_( "-" ) bgn_
-		on_( '-' )	do_( same )	TAB_SHIFT--;
-		on_other	do_( "base" )	REENTER
-		end
-	in_( "^." ) bgn_
-		on_separator	; // err
-		on_other	do_( "^.$" )	s_take
-		end
-		in_ ( "^.$" ) bgn_
-			ons( " \t" )	do_( "^.$_" )
-			ons( "\n:" )	do_( "^.$_" )	REENTER
-			on_separator	; // err
-			on_other	do_( same )	s_take
-			end
-		in_( "^.$_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '.' )	do_( "^." )	s_add( " " )
-							s_take
-							*type = LOCALE;
-			on_( '\n' )	do_( "_expr" )	REENTER
-							*type = LOCALE;
-							TAB_CURRENT += TAB_SHIFT;
-							f_set( INFORMED )
-			on_( ':' ) if ( !(*type==LOCALE) && !TAB_CURRENT ) {
-					do_( ".id:" )	s_take
-							TAB_SHIFT = 0; }
-			end
-	//----------------------------------------------------------------------
-	// bm_parse_cmd:	Narrative Declaration
-	//----------------------------------------------------------------------
-	in_( "def" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )	do_( "def$" )	REENTER
-		on_( '(' )	do_( ".id:" )	REENTER
-						s_add( ".this:" )
-		on_( '%' )	do_( ".id:" )	REENTER
-						s_add( ".this:" )
-		on_separator	; // err
-		on_other	do_( "def$" )	s_take
-		end
-	in_( "def$" ) bgn_
-		ons( " \t\n" )
-CB_if_( NarrativeTake, mode, data ) {
-				do_( "def$_" )	REENTER }
-		on_separator	; // err
-		on_other	do_( same )	s_take
-		end
-	in_( ".id:" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '%' )	do_( ".id:%" )	s_take
-		on_( '(' )
-CB_if_( NarrativeTake, mode, data ) {
-				do_( "§" )	REENTER }
-		end
-		in_( ".id:%" ) bgn_
-			on_( '(' )
-CB_if_( NarrativeTake, mode, data ) {
-				do_( "§" )	s_take
-						f_push( stack )
-						f_set( SUB_EXPR|FIRST ) }
-			end
-		in_( "§" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
-					do_( "def$_" )	REENTER
-							f_reset( FIRST, 0 ) }
-			on_( '(' ) if ( !is_f(INFORMED) ) {
-					do_( same )	s_take
-							f_push( stack )
-							f_clr( INFORMED )
-							f_set( LEVEL|FIRST ) }
-			on_( '?' ) if ( is_f(SUB_EXPR) && !is_f(INFORMED|MARKED) ) {
-					do_( same )	s_take
-							f_set( INFORMED|MARKED ) }
-			on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( "§." )	}
-			on_( ',' ) if ( is_f(LEVEL|SUB_EXPR) && are_f(INFORMED|FIRST) ) {
-					do_( same )	s_take
-							f_clr( FIRST|INFORMED ) }
-			on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && is_f(INFORMED) ) {
-					do_( same )	s_take
-							f_pop( stack, INFORMED|MARKED ) }
-			on_( '%' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( "§%" )	s_take }
-			on_separator	; // err
-			on_other
-				if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( "§$" )	s_take
-							f_set( INFORMED ) }
-			end
-		in_( "§$" ) bgn_
-			on_separator	do_( "§" )	REENTER
-			on_other	do_( same )	s_take
-			end
-		in_( "§%" ) bgn_
-			on_( '%' )	do_( "§" )	s_take
-							f_set( INFORMED )
-			end
-		in_( "§." ) bgn_
-			on_( '.' )	do_( "§.." )
-			on_separator	do_( "§" )	REENTER
-							s_add( "." )
-							f_set( INFORMED )
-			on_other if ( is_f(SUB_EXPR) ) {
-					do_( "§" )	REENTER
-							s_add( "." )
-							f_set( INFORMED ) }
-				else {	do_( "§.$" )	REENTER
-							s_add( "." ) }
-			end
-			in_( "§.." ) bgn_
-				on_( '.' ) if ( !is_f(FIRST) ) {
-						if ( is_f(SUB_EXPR) && !is_f(LEVEL)) {
-							do_( "§" )	s_add( "..." )
-									f_set( INFORMED ) }
-						else {	do_( "§..." )	s_add( "..." )
-									f_pop( stack, 0 )
-									f_set( INFORMED ) } }
-				on_other	do_( "§" )	REENTER
-								s_add( ".." )
-								f_set( INFORMED )
-				end
-			in_( "§..." ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ')' ) if ( !is_f(LEVEL) ) {
-						do_( "§" ) 	s_take }
-				end
-		in_( "§.$" ) bgn_
-			ons( " \t:,)" )	do_( "§.$_" )	REENTER
-			on_separator	; // err
-			on_other	do_( same )	s_take
-			end
-			in_( "§.$_" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( ',' ) if ( is_f(FIRST) ) {
-						do_( "§.$," )	s_take
-								f_clr( FIRST ) }
-				on_( ':' )	do_( "§.$:" )	s_take
-				on_( ')' )	do_( "§" )	REENTER
-								f_set( INFORMED )
-				end
-			in_( "§.$," ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '.' )	do_( "§.$,." )
-				on_other	do_( "§" )	REENTER
-				end
-				in_( "§.$,." ) bgn_
-					on_( '.' )	do_( "§.$,.." )
-					on_separator	do_( "§" )	REENTER
-									s_add( "." )
-									f_set( INFORMED )
-					on_other	do_( "§.$" )	REENTER
-									s_add( "." )
-					end
-				in_( "§.$,.." ) bgn_
-					on_( '.' )	do_( "§" )	s_add( "..." )
-									f_set( INFORMED )
-					on_other	do_( "§" )	REENTER
-									s_add( ".." )
-									f_set( INFORMED )
-					end
-			in_( "§.$:" ) bgn_
-				ons( " \t" )	do_( same )
-				on_( '(' )	do_( "§" )	REENTER
-				on_separator	; // err
-				on_other	do_( "§" )	REENTER
-				end
-	in_( "def$_" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '\n' )
-CB_if_( ProtoSet, mode, data ) {
-				do_( "base" )	TAB_CURRENT = 0;
-						TAB_LAST = -1; }
-		end
-	//----------------------------------------------------------------------
-	// bm_parse_cmd:	Narrative en / in / on / do / per / else
-	//----------------------------------------------------------------------
-	in_( "cmd" ) bgn_
-		on_( '%' )	do_( "%_" )	s_take
-		on_( '\n' ) if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
-				do_( "else" )	REENTER
-						*type = ELSE; }
-		on_separator if ( !s_cmp( "en" ) ) {
-				do_( "cmd_" )	REENTER *type |= EN; }
-			else if ( !s_cmp( "in" ) ) {
-				do_( "cmd_" )	REENTER *type |= IN; }
-			else if ( !s_cmp( "on" ) ) {
-				do_( "cmd_" )	REENTER *type |= ON; }
-			else if ( !s_cmp( "do" ) ) {
-				do_( "cmd_" )	REENTER *type |= DO; }
-			else if ( !s_cmp( "per" ) ) {
-				do_( "cmd_" )	REENTER *type |= PER|ON; }
-			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
-				do_( "else" )	REENTER *type = ELSE; }
-		on_other	do_( same )	s_take
-		end
-		in_( "%_" ) bgn_
-			on_( '(' )	do_( "_expr" )	s_take
-							f_push( stack )
-							f_reset( FIRST|SUB_EXPR, 0 )
-							TAB_CURRENT += TAB_SHIFT;
-							*type |= EN;
-			end
-		in_( "cmd_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	; // err
-			on_other	do_( "_expr" )	REENTER
-							TAB_CURRENT += TAB_SHIFT;
-							s_reset( CNStringAll )
-			end
-		in_( "else" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '.' )	do_( "else." )	REENTER
-							TAB_CURRENT += TAB_SHIFT;
-							s_reset( CNStringAll )
-			on_( '\n' )	do_( "_expr" )	REENTER
-							TAB_CURRENT += TAB_SHIFT;
-							s_reset( CNStringAll )
-							f_set( INFORMED )
-			on_separator	; // err
-			on_other	do_( "cmd" )	REENTER
-							s_reset( CNStringAll )
-			end
-		in_( "else." )
-CB_if_( OccurrenceAdd, mode, data ) {
-			bgn_ on_any
-				do_( "^." )	s_add( "." )
-						TAB_LAST = TAB_CURRENT;
-						TAB_CURRENT -= TAB_SHIFT;
-						TAB_CURRENT++;
-						TAB_BASE++;
-				end }
-	in_( "_expr" )
-CB_if_( OccurrenceAdd, mode, data ) {
-		bgn_ on_any
-			do_( "expr" )	TAB_LAST = TAB_CURRENT;
-					data->expr = 1;
-			end }
-	//----------------------------------------------------------------------
-	// bm_parse_cmd:	Error Handling
-	//----------------------------------------------------------------------
-	BMParseDefault
-		on_( EOF )		errnum = ErrUnexpectedEOF;
-		in_none_sofar		errnum = ErrUnknownState; data->state = state;
-		in_( "def$" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( "def$_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( "§..." ) bgn_
-			on_( ')' )	errnum = ErrEllipsisLevel;
-			on_other	errnum = ErrSyntaxError;
-			end
-		in_( "cmd" )		errnum = ErrUnknownCommand;
-		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
-		in_other		errnum = ErrSyntaxError;
-	//----------------------------------------------------------------------
-	// bm_parse_cmd:	Parser End
-	//----------------------------------------------------------------------
-	BMParseEnd
-	data->errnum = errnum;
-	data->flags = flags;
-	if ( errnum ) bm_parse_report( data, mode, line, column );
-	return state;
-}
-
-char *
 bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 /*
 	Assumption: data->expr!=0
@@ -1112,8 +801,7 @@ CB_( ExpressionTake, mode, data )
 	data->errnum = errnum;
 	data->flags = flags;
 	if ( errnum ) bm_parse_report( data, mode, line, column );
-	return state;
-}
+	return state; }
 
 char *
 bm_parse_load( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
@@ -1342,8 +1030,317 @@ CB_( ExpressionTake, mode, data )
 	data->errnum = errnum;
 	data->flags = flags;
 	if ( errnum ) bm_parse_report( data, mode, line, column );
-	return state;
-}
+	return state; }
+
+char *
+bm_parse_cmd( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
+/*
+	Assumption: mode==BM_STORY, data->expr==0
+*/
+{
+	CNIO *io = data->io;
+
+	// shared by reference
+	listItem **	stack	= &data->stack.flags;
+	CNString *	s	= data->string;
+	int *		tab	= data->tab;
+	int *		type	= &data->type;
+
+	// shared by copy
+	char *		state	= data->state;
+	int		flags	= data->flags;
+	int		errnum	= 0;
+	int		line	= io->line;
+	int		column	= io->column;
+
+	BMParseBegin( "bm_parse_cmd", state, event, line, column )
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Parser Begin
+	//----------------------------------------------------------------------
+	in_( "base" ) bgn_
+			on_( EOF )	do_( "" )
+			on_( '\t' )	do_( same )	TAB_CURRENT++;
+			on_( '\n' )	do_( same )	TAB_CURRENT = 0;
+			on_( '.' ) 	do_( "^." )	s_take
+							TAB_BASE = column;
+			on_( '+' ) if ( !TAB_CURRENT ) {
+					do_( "+" )	TAB_SHIFT++; }
+			on_( '-' ) if ( !TAB_CURRENT ) {
+					do_( "-" )	TAB_SHIFT--; }
+			on_( ':' ) if ( !TAB_CURRENT ) {
+					do_( "def" )	TAB_SHIFT = 0; }
+			on_( '%' )	do_( "cmd" )	REENTER
+							TAB_BASE = column;
+			on_separator	; // err
+			on_other	do_( "cmd" )	s_take
+							TAB_BASE = column;
+			end
+	in_( "+" ) bgn_
+		on_( '+' )	do_( same )	TAB_SHIFT++;
+		on_other	do_( "base" )	REENTER
+		end
+	in_( "-" ) bgn_
+		on_( '-' )	do_( same )	TAB_SHIFT--;
+		on_other	do_( "base" )	REENTER
+		end
+	in_( "^." ) bgn_
+		on_separator	; // err
+		on_other	do_( "^.$" )	s_take
+		end
+		in_ ( "^.$" ) bgn_
+			ons( " \t" )	do_( "^.$_" )
+			ons( "\n:" )	do_( "^.$_" )	REENTER
+			on_separator	; // err
+			on_other	do_( same )	s_take
+			end
+		in_( "^.$_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '.' )	do_( "^." )	s_add( " " )
+							s_take
+							*type = LOCALE;
+			on_( '\n' )	do_( "_expr" )	REENTER
+							*type = LOCALE;
+							TAB_CURRENT += TAB_SHIFT;
+							f_set( INFORMED )
+			on_( ':' ) if ( !(*type==LOCALE) && !TAB_CURRENT ) {
+					do_( ".id:" )	s_take
+							TAB_SHIFT = 0; }
+			end
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Narrative Declaration
+	//----------------------------------------------------------------------
+	in_( "def" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' )	do_( "def$" )	REENTER
+		on_( '(' )	do_( ".id:" )	REENTER
+						s_add( ".this:" )
+		on_( '%' )	do_( ".id:" )	REENTER
+						s_add( ".this:" )
+		on_separator	; // err
+		on_other	do_( "def$" )	s_take
+		end
+	in_( "def$" ) bgn_
+		ons( " \t\n" )
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "def$_" )	REENTER }
+		on_separator	; // err
+		on_other	do_( same )	s_take
+		end
+	in_( ".id:" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '%' )	do_( ".id:%" )	s_take
+		on_( '(' )
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "§" )	REENTER }
+		end
+		in_( ".id:%" ) bgn_
+			on_( '(' )
+CB_if_( NarrativeTake, mode, data ) {
+				do_( "§" )	s_take
+						f_push( stack )
+						f_set( SUB_EXPR|FIRST ) }
+			end
+		in_( "§" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
+					do_( "def$_" )	REENTER
+							f_reset( FIRST, 0 ) }
+			on_( '(' ) if ( !is_f(INFORMED) ) {
+					do_( same )	s_take
+							f_push( stack )
+							f_clr( INFORMED )
+							f_set( LEVEL|FIRST ) }
+			on_( '?' ) if ( is_f(SUB_EXPR) && !is_f(INFORMED|MARKED) ) {
+					do_( same )	s_take
+							f_set( INFORMED|MARKED ) }
+			on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+					do_( "§." )	}
+			on_( ',' ) if ( is_f(LEVEL|SUB_EXPR) && are_f(INFORMED|FIRST) ) {
+					do_( same )	s_take
+							f_clr( FIRST|INFORMED ) }
+			on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && is_f(INFORMED) ) {
+					do_( same )	s_take
+							f_pop( stack, INFORMED|MARKED ) }
+			on_( '%' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+					do_( "§%" )	s_take }
+			on_separator	; // err
+			on_other
+				if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+					do_( "§$" )	s_take
+							f_set( INFORMED ) }
+			end
+		in_( "§$" ) bgn_
+			on_separator	do_( "§" )	REENTER
+			on_other	do_( same )	s_take
+			end
+		in_( "§%" ) bgn_
+			on_( '%' )	do_( "§" )	s_take
+							f_set( INFORMED )
+			end
+		in_( "§." ) bgn_
+			on_( '.' )	do_( "§.." )
+			on_separator	do_( "§" )	REENTER
+							s_add( "." )
+							f_set( INFORMED )
+			on_other if ( is_f(SUB_EXPR) ) {
+					do_( "§" )	REENTER
+							s_add( "." )
+							f_set( INFORMED ) }
+				else {	do_( "§.$" )	REENTER
+							s_add( "." ) }
+			end
+			in_( "§.." ) bgn_
+				on_( '.' ) if ( !is_f(FIRST) ) {
+						if ( is_f(SUB_EXPR) && !is_f(LEVEL)) {
+							do_( "§" )	s_add( "..." )
+									f_set( INFORMED ) }
+						else {	do_( "§..." )	s_add( "..." )
+									f_pop( stack, 0 )
+									f_set( INFORMED ) } }
+				on_other	do_( "§" )	REENTER
+								s_add( ".." )
+								f_set( INFORMED )
+				end
+			in_( "§..." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ')' ) if ( !is_f(LEVEL) ) {
+						do_( "§" ) 	s_take }
+				end
+		in_( "§.$" ) bgn_
+			ons( " \t:,)" )	do_( "§.$_" )	REENTER
+			on_separator	; // err
+			on_other	do_( same )	s_take
+			end
+			in_( "§.$_" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( ',' ) if ( is_f(FIRST) ) {
+						do_( "§.$," )	s_take
+								f_clr( FIRST ) }
+				on_( ':' )	do_( "§.$:" )	s_take
+				on_( ')' )	do_( "§" )	REENTER
+								f_set( INFORMED )
+				end
+			in_( "§.$," ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '.' )	do_( "§.$,." )
+				on_other	do_( "§" )	REENTER
+				end
+				in_( "§.$,." ) bgn_
+					on_( '.' )	do_( "§.$,.." )
+					on_separator	do_( "§" )	REENTER
+									s_add( "." )
+									f_set( INFORMED )
+					on_other	do_( "§.$" )	REENTER
+									s_add( "." )
+					end
+				in_( "§.$,.." ) bgn_
+					on_( '.' )	do_( "§" )	s_add( "..." )
+									f_set( INFORMED )
+					on_other	do_( "§" )	REENTER
+									s_add( ".." )
+									f_set( INFORMED )
+					end
+			in_( "§.$:" ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '(' )	do_( "§" )	REENTER
+				on_separator	; // err
+				on_other	do_( "§" )	REENTER
+				end
+	in_( "def$_" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' )
+CB_if_( ProtoSet, mode, data ) {
+				do_( "base" )	TAB_CURRENT = 0;
+						TAB_LAST = -1; }
+		end
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Narrative en / in / on / do / per / else
+	//----------------------------------------------------------------------
+	in_( "cmd" ) bgn_
+		on_( '%' )	do_( "%_" )	s_take
+		on_( '\n' ) if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
+				do_( "else" )	REENTER
+						*type = ELSE; }
+		on_separator if ( !s_cmp( "en" ) ) {
+				do_( "cmd_" )	REENTER *type |= EN; }
+			else if ( !s_cmp( "in" ) ) {
+				do_( "cmd_" )	REENTER *type |= IN; }
+			else if ( !s_cmp( "on" ) ) {
+				do_( "cmd_" )	REENTER *type |= ON; }
+			else if ( !s_cmp( "do" ) ) {
+				do_( "cmd_" )	REENTER *type |= DO; }
+			else if ( !s_cmp( "per" ) ) {
+				do_( "cmd_" )	REENTER *type |= PER|ON; }
+			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
+				do_( "else" )	REENTER *type = ELSE; }
+		on_other	do_( same )	s_take
+		end
+		in_( "%_" ) bgn_
+			on_( '(' )	do_( "_expr" )	s_take
+							f_push( stack )
+							f_reset( FIRST|SUB_EXPR, 0 )
+							TAB_CURRENT += TAB_SHIFT;
+							*type |= EN;
+			end
+		in_( "cmd_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	; // err
+			on_other	do_( "_expr" )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+			end
+		in_( "else" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '.' )	do_( "else." )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+			on_( '\n' )	do_( "_expr" )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							s_reset( CNStringAll )
+							f_set( INFORMED )
+			on_separator	; // err
+			on_other	do_( "cmd" )	REENTER
+							s_reset( CNStringAll )
+			end
+		in_( "else." )
+CB_if_( OccurrenceAdd, mode, data ) {
+			bgn_ on_any
+				do_( "^." )	s_add( "." )
+						TAB_LAST = TAB_CURRENT;
+						TAB_CURRENT -= TAB_SHIFT;
+						TAB_CURRENT++;
+						TAB_BASE++;
+				end }
+	in_( "_expr" )
+CB_if_( OccurrenceAdd, mode, data ) {
+		bgn_ on_any
+			do_( "expr" )	TAB_LAST = TAB_CURRENT;
+					data->expr = 1;
+			end }
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Error Handling
+	//----------------------------------------------------------------------
+	BMParseDefault
+		on_( EOF )		errnum = ErrUnexpectedEOF;
+		in_none_sofar		errnum = ErrUnknownState; data->state = state;
+		in_( "def$" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( "def$_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_( "§..." ) bgn_
+			on_( ')' )	errnum = ErrEllipsisLevel;
+			on_other	errnum = ErrSyntaxError;
+			end
+		in_( "cmd" )		errnum = ErrUnknownCommand;
+		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
+		in_other		errnum = ErrSyntaxError;
+	//----------------------------------------------------------------------
+	// bm_parse_cmd:	Parser End
+	//----------------------------------------------------------------------
+	BMParseEnd
+	data->errnum = errnum;
+	data->flags = flags;
+	if ( errnum ) bm_parse_report( data, mode, line, column );
+	return state; }
 
 char *
 bm_parse_ui( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
@@ -1403,8 +1400,7 @@ bm_parse_ui( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	BMParseEnd
 	data->errnum = errnum;
 	if ( errnum ) bm_parse_report( data, mode, line, column );
-	return state;
-}
+	return state; }
 
 //===========================================================================
 //	bm_parse_report
@@ -1472,8 +1468,7 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrPerContrary, "per contrary not supported\n" )_narg
 		err_default( "syntax error\n" )_narg } }
 
-	if ( mode==BM_CMD ) fprintf( stderr, "\x1B[0m" );
-}
+	if ( mode==BM_CMD ) fprintf( stderr, "\x1B[0m" ); }
 
 //---------------------------------------------------------------------------
 //	bm_parse_caution
@@ -1491,8 +1486,7 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	switch ( errnum ) {
 	err_case( WarnOutputFormat, "unsupported output format - using default \"%%_\"\n" )_narg
 	err_case( WarnInputFormat, "unsupported input format - using default \"%%_\"\n" )_narg;
-	default: break; }
-}
+	default: break; } }
 
 //===========================================================================
 //	bm_parse_init / bm_parse_exit
@@ -1505,12 +1499,11 @@ bm_parse_init( BMParseData *data, BMParseMode mode )
 	data->TAB_LAST = -1;
 	data->flags = FIRST;
 	data->type = ( mode==BM_STORY ) ? 0 : DO;
-	data->expr = 0;
-}
+	data->expr = 0; }
+
 void
 bm_parse_exit( BMParseData *data )
 {
 	freeString( data->string );
-	data->expr = 0;
-}
+	data->expr = 0; }
 

@@ -9,11 +9,12 @@
 // #define NULL_TERMINATED
 
 //===========================================================================
-//	newCNDB
+//	newCNDB / freeCNDB
 //===========================================================================
+static freeRegistryCB free_CB;
+
 CNDB *
-newCNDB( void )
-{
+newCNDB( void ) {
 	CNInstance *nil = cn_new( NULL, NULL );
 #ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
@@ -22,35 +23,25 @@ newCNDB( void )
 #endif
 	CNDB *db = (CNDB *) newPair( nil, index );
 	db_init( db );
-	return db;
-}
-
-//===========================================================================
-//	freeCNDB
-//===========================================================================
-static freeRegistryCB free_CB;
+	return db; }
 
 void
 freeCNDB( CNDB *db )
 /*
 	delete all CNDB entities, proceeding top down
-*/
-{
+*/ {
 	if ( db == NULL ) return;
 	CNInstance *nil = db->nil;
 	nil->sub[ 0 ] = NULL;
 	nil->sub[ 1 ] = NULL;
 	cn_prune( nil );
 	freeRegistry( db->index, free_CB );
-	freePair((Pair *) db );
-}
+	freePair((Pair *) db ); }
 
 static void
-free_CB( Registry *registry, Pair *entry )
-{
+free_CB( Registry *registry, Pair *entry ) {
 	free( entry->name );
-	cn_prune((CNInstance *) entry->value );
-}
+	cn_prune((CNInstance *) entry->value ); }
 
 //===========================================================================
 //	db_register
@@ -60,8 +51,7 @@ db_register( char *p, CNDB *db )
 /*
 	register instance represented by p
 	manifest only if instance is new or rehabilitated
-*/
-{
+*/ {
 	if ( p == NULL ) return NULL;
 #ifdef NULL_TERMINATED
 	p = strmake( p ); // for comparison
@@ -74,20 +64,16 @@ db_register( char *p, CNDB *db )
 #ifdef NULL_TERMINATED
 		free( p );
 #endif
-	}
+		}
 	else {
 #ifndef NULL_TERMINATED
 		p = strmake( p ); // for storage
 #endif
 		e = cn_new( NULL, NULL );
-#ifdef UNIFIED
-		e->sub[ 1 ] = (CNInstance *) p;
-#endif
 		registryRegister( db->index, p, e );
-		db_op( DB_MANIFEST_OP, e, db );
-	}
-	return e;
-}
+		e->sub[ 1 ] = (CNInstance *) p;
+		db_op( DB_MANIFEST_OP, e, db ); }
+	return e; }
 
 //===========================================================================
 //	db_deprecate
@@ -100,28 +86,25 @@ db_deprecate( CNInstance *x, CNDB *db )
 /*
 	deprecate (ie. set "to-be-released") x and all its ascendants,
 	proceeding top-down
-*/
-{
+*/ {
 	if (( x ) && deprecatable(x,db) )
-		deprecate( x, db );
-}
+		deprecate( x, db ); }
+
 static inline int
 deprecatable( CNInstance *e, CNDB *db )
 /*
 	returns 0 if e is either released or to-be-released,
 		which we assume applies to all its ascendants
 	returns 1 otherwise.
-*/
-{
+*/ {
 	CNInstance *nil = db->nil;
 	if ( cn_hold( e, nil ) )
 		return 0;
 	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || ( f->as_sub[0] && !f->as_sub[1] ));
-}
+	return ( !f || ( f->as_sub[0] && !f->as_sub[1] )); }
+
 static inline void
-deprecate( CNInstance *x, CNDB *db )
-{
+deprecate( CNInstance *x, CNDB *db ) {
 	listItem * stack = NULL,
 		 * i = newItem( x ),
 		 * j;
@@ -150,25 +133,22 @@ deprecate( CNInstance *x, CNDB *db )
 				else { ndx=1; break; } }
 			else goto RETURN; } }
 RETURN:
-	freeItem( i );
-}
+	freeItem( i ); }
 
 //===========================================================================
 //	db_clear
 //===========================================================================
 static inline void deprecate_as_sub( CNInstance *, int ndx, CNDB * );
+
 void
-db_clear( listItem *instances, CNDB *db )
-{
+db_clear( listItem *instances, CNDB *db ) {
 	for ( listItem *i=instances; i!=NULL; i=i->next )
-		deprecate_as_sub( i->ptr, 0, db );
-}
+		deprecate_as_sub( i->ptr, 0, db ); }
+
 static inline void
-deprecate_as_sub( CNInstance *e, int ndx, CNDB *db )
-{
+deprecate_as_sub( CNInstance *e, int ndx, CNDB *db ) {
 	for ( listItem *j=e->as_sub[ndx]; j!=NULL; j=j->next )
-		db_deprecate( j->ptr, db );
-}
+		db_deprecate( j->ptr, db ); }
 
 //===========================================================================
 //	db_signal
@@ -189,8 +169,7 @@ db_signal( CNInstance *x, CNDB *db )
 			these are not referenced anywhere else
 			these are not proxies
 	proceeding top-down
-*/
-{
+*/ {
 	if isBase( x ) {
 		if ( flareable( x, db ) )
 			deprecate( x, db ); }
@@ -211,8 +190,8 @@ db_signal( CNInstance *x, CNDB *db )
 				x = popListItem( &stack );
 				ndx = pop_item( &stack ); }
 			if ( !ndx ) ndx = 1;
-			else return; } }
-}
+			else return; } } }
+
 static inline int
 flareable( CNInstance *e, CNDB *db )
 /*
@@ -221,8 +200,7 @@ flareable( CNInstance *e, CNDB *db )
 	returns 1 if e is neither to-be-released nor flared
 	returns 0 otherwise - which we assume applies to all e's ascendants
 	Note that released entities are flareable (vs. deprecatable)
-*/
-{
+*/ {
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( e, nil, 1 );
 	if (( f )) {
@@ -233,16 +211,15 @@ flareable( CNInstance *e, CNDB *db )
 		f = cn_instance( nil, e, 0 );
 		if (( f ) && ( f->as_sub[0] ))
 			return 0; }
-	return 2; // deprecatable
-}
+	return 2; /* deprecatable */ }
+
 static inline int
 uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
 /*
 	check all connections other than x to and from y=x's sub, and
 	make sure that all these connections are either released or
 	to-be-released - so that we can release y
-*/
-{
+*/ {
 	if ( !y || isProxy(y) ) // proxies are kept untouched
 		return 0;
 	CNInstance *nil = db->nil;
@@ -253,8 +230,7 @@ uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
 				continue;
 			if ( !cn_instance( e, nil, 1 ) )
 				return 0; }
-	return 1;
-}
+	return 1; }
 
 //===========================================================================
 //	db_fire
@@ -263,13 +239,11 @@ void
 db_fire( CNInstance *proxy, CNDB *db )
 /*
 	deprecates either all e:(proxy,.) or, if dangling, proxy
-*/
-{
+*/ {
 	if ( deprecatable( proxy, db ) ) {
 		if (( DBProxyThat( proxy ) ))
 			deprecate_as_sub( proxy, 0, db );
-		else deprecate( proxy, db ); }
-}
+		else deprecate( proxy, db ); } }
 
 //===========================================================================
 //	db_proxy
@@ -278,12 +252,10 @@ CNInstance *
 db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 /*
 	Assumptions: proxy not already created, and that!=NULL
-*/
-{
+*/ {
 	CNInstance *e = cn_new( cn_new(this,that), NULL );
 	db_op( DB_MANIFEST_OP, e, db );
-	return e;
-}
+	return e; }
 
 //===========================================================================
 //	db_match
@@ -293,8 +265,7 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 /*
 	Assumption: x!=NULL
 	Note that we use y to lead the traversal - but works either way
-*/
-{
+*/ {
 	if ( !y ) return 0;
 	if ( db_x==db_y ) return ( x==y );
 	listItem *stack = NULL;
@@ -328,8 +299,7 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 				{ ndx=1; break; } } }
 FAIL:
 	freeListItem( &stack );
-	return 0;
-}
+	return 0; }
 
 //===========================================================================
 //	db_instantiate
@@ -346,8 +316,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 		the current (either to-be-released or reassigned) and
 		the new (either newborn, reassigned, or released-to-be-manifested)
 	assignments.
-*/
-{
+*/ {
 #ifdef DEBUG
 	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
@@ -386,30 +355,25 @@ ERR:
 	db_outputf( stderr, db,
 		"B%%::Warning: concurrent reassignment :%_:%_->%_ not authorized\n",
 		e->sub[1], candidate->sub[1], f );
-	return NULL;
-}
+	return NULL; }
 
 static inline int
-concurrent( CNInstance *e, CNDB *db )
-{
+concurrent( CNInstance *e, CNDB *db ) {
 	CNInstance *nil = db->nil, *f;
 	if (( f=cn_instance( e, nil, 1 ) )) {
 		if (( f->as_sub[ 0 ] )) return 1; } // newborn
 	if (( f=cn_instance( nil, e, 0 ) )) {
 		if (( f->as_sub[ 1 ] )) return 1; } // to-be-manifested
-	return 0;
-}
+	return 0; }
 
 //===========================================================================
 //	db_assign
 //===========================================================================
 CNInstance *
-db_assign( CNInstance *variable, CNInstance *value, CNDB *db )
-{
+db_assign( CNInstance *variable, CNInstance *value, CNDB *db ) {
 	CNInstance *star = db_register( "*", db );
 	variable = db_instantiate( star, variable, db );
-	return db_instantiate( variable, value, db );
-}
+	return db_instantiate( variable, value, db ); }
 
 //===========================================================================
 //	db_unassign
@@ -419,8 +383,7 @@ db_unassign( CNInstance *x, CNDB *db )
 /*
 	deprecate ((*,x),.) and force manifest (*,x) if it exists
 	otherwise instantiate (*,x)
-*/
-{
+*/ {
 	CNInstance *star = db_register( "*", db );
 	CNInstance *e;
 	for ( listItem *i=x->as_sub[1]; i!=NULL; i=i->next ) {
@@ -434,15 +397,13 @@ db_unassign( CNInstance *x, CNDB *db )
 		return e; }
 	e = cn_new( star, x );
 	db_op( DB_MANIFEST_OP, e, db );
-	return e;
-}
+	return e; }
 
 //===========================================================================
 //	db_lookup
 //===========================================================================
 CNInstance *
-db_lookup( int privy, char *p, CNDB *db )
-{
+db_lookup( int privy, char *p, CNDB *db ) {
 	if ( !p ) return NULL;
 #ifdef NULL_TERMINATED
 	p = strmake( p );
@@ -452,30 +413,12 @@ db_lookup( int privy, char *p, CNDB *db )
 	Pair *entry = registryLookup( db->index, p );
 #endif
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
-		entry->value : NULL;
-}
+		entry->value : NULL; }
 
 //===========================================================================
 //	DBIdentifier, DBStarMatch
 //===========================================================================
-#ifndef UNIFIED
-char *
-DBIdentifier( CNInstance *e, CNDB *db )
-/*
-	Assumption: e->sub[0]==e->sub[1]==NULL
-*/
-{
-	Pair *entry = registryLookup( db->index, NULL, e );
-	return ( entry ) ? entry->name : NULL;
-}
-int DBStarMatch( CNInstance *e, CNDB *db )
-{
-	if ( (e) && !e->sub[0] ) {
-		char *identifier = DBIdentifier(e,db);
-		if (( identifier )) return *identifier=='*'; }
-	return 0;
-}
-#endif	// UNIFIED
+// see database.h
 
 //===========================================================================
 //	db_traverse, DBFirst, DBNext
@@ -485,8 +428,7 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 /*
 	traverses whole CNDB applying user_CB to each entity
 	Note: does not traverse any %(proxy,...), Self included
-*/
-{
+*/ {
 	listItem *stack = NULL;
 	listItem *n = ( privy ? newItem( db->nil ) : NULL );
 	listItem *i = ( privy ? n : db->index->entries );
@@ -521,22 +463,20 @@ db_traverse( int privy, CNDB *db, DBTraverseCB user_CB, void *user_data )
 				i = db->index->entries;
 				break; }
 			else i = NULL; } }
-	return 0;
-}
+	return 0; }
+
 CNInstance *
-DBFirst( CNDB *db, listItem **stack )
-{
+DBFirst( CNDB *db, listItem **stack ) {
 	for ( listItem *i=db->index->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		CNInstance *e = entry->value;
 		if ( !db_private( 0, e, db ) ) {
 			addItem( stack, i );
 			return e; } }
-	return NULL;
-}
+	return NULL; }
+
 CNInstance *
-DBNext( CNDB *db, CNInstance *e, listItem **stack )
-{
+DBNext( CNDB *db, CNInstance *e, listItem **stack ) {
 	if ( e == NULL ) return NULL;
 	for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
 		e = i->ptr;
@@ -558,8 +498,7 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack )
 				return e; } }
 		else if (( *stack ))
 			i = popListItem( stack );
-		else return NULL; }
-}
+		else return NULL; } }
 
 //===========================================================================
 //	db_outputf
@@ -567,8 +506,7 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack )
 static int outputf( FILE *, CNDB *, int type, CNInstance * );
 
 int
-db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
-{
+db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 	CNInstance *e;
 	va_list ap;
 	va_start( ap, fmt );
@@ -592,8 +530,7 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... )
 			fprintf( stream, "%c", *p );
 		}
 	va_end( ap );
-	return 0;
-}
+	return 0; }
 
 static int
 outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
@@ -601,8 +538,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 	type is either 's' or '_', the main difference being that,
 	in the former case, we insert a backslash at the start of
 	non-base entity expressions
-*/
-{
+*/ {
 	if ( e == NULL ) return 0;
 	CNInstance *nil = db->nil;
 	if ( type=='s' ) {
@@ -651,6 +587,5 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 				if (( ndx = pop_item( &stack ) )) {
 					fprintf( stream, ")" ); }
 				else { ndx=1; break; } }
-			else return 0; } }
-}
+			else return 0; } } }
 

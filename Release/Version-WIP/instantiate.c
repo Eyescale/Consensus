@@ -84,7 +84,7 @@ static void
 instantiate_new( char *expression, CNStory *story, BMTraverseData *data, listItem **per )
 {
 	char *p = expression + 2; // skip '!!'
-	Pair *entry = registryLookup( story, p );
+	Pair *entry = registryLookup( story->narratives, p );
 	if (( entry )) {
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		if (( per )) {

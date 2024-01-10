@@ -13,7 +13,7 @@
 //===========================================================================
 int
 bm_cell_read( CNCell **this, CNStory *story ) {
-	if ( bm_cell_out(*this) ) { *this=NULL; return 0; }
+	if ( bm_cell_out(*this) ) { *this=NULL; return 1; }
 	CNIO io;
 	memset( &io, 0, sizeof(CNIO) );
 	io.stream = stdin;
@@ -47,7 +47,7 @@ bm_cell_read( CNCell **this, CNStory *story ) {
 			done = ( StringCompare(data.string,"/") ? 1 : 2 ); }
 		bm_parse_exit( &data );
 	} while ( !done );
-	return ( done==2 ); }
+	return done; }
 
 //===========================================================================
 //	bm_cell_init, bm_cell_update
@@ -68,8 +68,7 @@ static inline int SWAP( Registry *index[ 2 ] ) {
 	else return 0; }
 
 void
-bm_cell_operate( CNCell *cell, CNStory *story )
-{
+bm_cell_operate( CNCell *cell, CNStory *story ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: bgn\n" );
 #endif
@@ -101,7 +100,8 @@ bm_cell_operate( CNCell *cell, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "bm_cell_operate: end\n" );
 #endif
-}
+	}
+
 static void
 enlist( Registry *subs, Registry *index, Registry *warden )
 /*
@@ -134,13 +134,11 @@ enlist( Registry *subs, Registry *index, Registry *warden )
 			Under( index, narrative, instances )
 			for ( listItem *i=sub->value; i!=NULL; i=i->next )
 				addItem( instances, i->ptr ); }
-		freePair( sub ); }
-}
+		freePair( sub ); } }
+
 static void
-free_CB( Registry *warden, Pair *entry )
-{
-	freeListItem((listItem **) &entry->value );
-}
+free_CB( Registry *warden, Pair *entry ) {
+	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
 //	bm_cell_carry
@@ -170,15 +168,13 @@ bm_cell_carry( CNCell *cell, CNCell *child, int connect )
 		addIfNotThere( &active->buffer->activated, proxy ); }
 
 	addItem( BMCellCarry(cell), child );
-	return proxy;
-}
+	return proxy; }
 
 //===========================================================================
-//	newCell / releaseCell
+//	newCell / freeCell
 //===========================================================================
 CNCell *
-newCell( Pair *entry, char *inipath )
-{
+newCell( Pair *entry, char *inipath ) {
 	CNCell *cell = cn_new( NULL, NULL );
 	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
 	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
@@ -186,13 +182,12 @@ newCell( Pair *entry, char *inipath )
 		int errnum = bm_load( inipath, BMCellContext(cell) );
 		if ( errnum ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-			releaseCell( cell );
+			freeCell( cell );
 			return NULL; } }
-	return cell;
-}
+	return cell; }
 
 void
-releaseCell( CNCell *cell )
+freeCell( CNCell *cell )
 /*
 	. prune CNDB proxies & release cell's input connections (cell,.)
 	  this includes Parent connection & associated proxy if set
@@ -226,6 +221,5 @@ releaseCell( CNCell *cell )
 
 	freePair((Pair *) cell->sub[ 0 ] );
 	freeContext((BMContext *) cell->sub[ 1 ] );
-	cn_free( cell );
-}
+	cn_free( cell ); }
 

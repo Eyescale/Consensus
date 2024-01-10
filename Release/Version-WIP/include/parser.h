@@ -30,7 +30,7 @@ typedef struct {
 	BMContext *	ctx;
 	CNOccurrence *	occurrence;
 	CNNarrative *	narrative;
-	CNStory *	story;
+	Registry *	narratives;
 	Pair *		entry;
 // bm_parse() only
 	char *		state;

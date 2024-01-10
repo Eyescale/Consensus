@@ -6,6 +6,11 @@ Usage
 	./B% -p program.story
 	./B% -f file.ini program.story
 
+	./B% -i
+	./B% file.bm -i
+	./B% -f file.ini -i
+	./B% -f file.ini file.bm -i
+
 Description
 
 			-- Work In Progress --

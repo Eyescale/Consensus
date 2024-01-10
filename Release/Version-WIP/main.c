@@ -52,7 +52,7 @@ main( int argc, char *argv[] ) {
 	else if ( interactive ) {
 		CNStory *story = readStory( path[0], 1 );
 		CNProgram *threads = newProgram( story, path[1] );
-		CNCell *this = CNProgramSeed( threads );
+		CNCell *this = CNProgramStem( threads );
 		do cnSync(threads); while ( cnOperate( threads, &this ) );
 		freeProgram( threads );
 		freeStory( story ); }

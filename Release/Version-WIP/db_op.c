@@ -220,10 +220,8 @@ db_remove( CNInstance *e, CNDB *db )
 				cn_release( e ); // remove proxy
 				cn_release( connection ); } } }
 	else {
-#ifdef UNIFIED
 		// Assumption: e->sub[1] is not NULL
 		e->sub[1] = NULL;
-#endif
 		cn_release( e );
 		// deregister e from db->index
 		Registry *index = db->index;

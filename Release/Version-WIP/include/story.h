@@ -7,7 +7,10 @@
 //===========================================================================
 //	Story types
 //===========================================================================
-typedef Registry CNStory;
+typedef struct {
+	Registry *narratives;
+	Registry *arena;
+} CNStory;
 
 //===========================================================================
 //	Public Interface
@@ -22,10 +25,9 @@ void *		newStoryRoot( CNStory * );
 
 inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;
-	Pair *entry = registryLookup( story, "" );
+	Pair *entry = registryLookup( story->narratives, "" );
 	// we have entry:[ "", {[ proto, root ]} ]
-	return (( entry )&&( entry->value )) ?
-		entry : NULL; }
+	return (( entry )&&( entry->value )) ? entry : NULL; }
 
 
 #endif	// STORY_H

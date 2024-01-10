@@ -12,8 +12,7 @@
 //	newContext / freeContext
 //===========================================================================
 BMContext *
-newContext( CNEntity *cell )
-{
+newContext( CNEntity *cell ) {
 	CNDB *db = newCNDB();
 	CNInstance *self = db_proxy( NULL, cell, db );
 	Pair *id = newPair( self, NULL );
@@ -28,18 +27,16 @@ newContext( CNEntity *cell )
 	registryRegister( ctx, "?", NULL ); // aka. %?
 	registryRegister( ctx, "|", NULL ); // aka. %|
 	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
-	return ctx;
-}
+	return ctx; }
 
 void
 freeContext( BMContext *ctx )
 /*
-	Assumptions - cf releaseCell()
+	Assumptions - cf freeCell()
 		. CNDB is free from any proxy attachment
 		. id Self and Parent proxies have been released
 		. ctx registry all flushed out
-*/
-{
+*/ {
 	// free active connections register
 	ActiveRV *active = BMContextActive( ctx );
 	freeListItem( &active->buffer->activated );
@@ -61,8 +58,7 @@ freeContext( BMContext *ctx )
 	// free CNDB & context registry
 	CNDB *db = BMContextDB( ctx );
 	freeCNDB( db );
-	freeRegistry( ctx, NULL );
-}
+	freeRegistry( ctx, NULL ); }
 
 //===========================================================================
 //	bm_context_init / bm_context_update
@@ -70,18 +66,16 @@ freeContext( BMContext *ctx )
 static inline void update_active( ActiveRV * );
 
 void
-bm_context_init( BMContext *ctx )
-{
+bm_context_init( BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	// integrate cell's init conditions
 	db_update( db, NULL );
 	// activate parent connection, if there is
 	update_active( BMContextActive(ctx) );
-	db_init( db );
-}
+	db_init( db ); }
+
 static inline void
-update_active( ActiveRV *active )
-{
+update_active( ActiveRV *active ) {
 	CNInstance *proxy;
 	listItem **current = &active->value;
 	listItem **buffer = &active->buffer->deactivated;
@@ -89,12 +83,10 @@ update_active( ActiveRV *active )
 		removeIfThere( current, proxy );
 	buffer = &active->buffer->activated;
 	while (( proxy = popListItem(buffer) ))
-		addIfNotThere( current, proxy );
-}
+		addIfNotThere( current, proxy ); }
 
 int
-bm_context_update( CNEntity *this, BMContext *ctx )
-{
+bm_context_update( CNEntity *this, BMContext *ctx ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: bgn\n" );
 #endif
@@ -125,8 +117,7 @@ bm_context_update( CNEntity *this, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif
-	return DBExitOn( db );
-}
+	return DBExitOn( db ); }
 
 //===========================================================================
 //	bm_context_actualize
@@ -138,11 +129,10 @@ typedef struct {
 	BMContext *ctx;
 	listItem *exponent, *level;
 	struct { listItem *flags, *level; } stack;
-} ActualizeData;
+	} ActualizeData;
 
 void
-bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance )
-{
+bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 	Pair *current = BMContextCurrent( ctx );
 	if (( instance )) {
 		current->name = instance;
@@ -165,7 +155,7 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance )
 	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
 #endif		
-}
+	}
 
 //---------------------------------------------------------------------------
 //	actualize_traversal
@@ -224,8 +214,7 @@ BMTraverseCBEnd
 static inline int inand( listItem *i, int operand );
 
 static void
-actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx )
-{
+actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx ) {
 	// Special case: ( .identifier, ... )
 	if ( inand( exponent, 1 ) ) {
 		char *q = p;
@@ -241,10 +230,10 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 	int exp;
 	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
 RETURN:
-	registryRegister( BMContextLocales(ctx), p, instance );
-}
+	registryRegister( BMContextLocales(ctx), p, instance ); }
 
-static inline int inand( listItem *i, int operand ) {
+static inline int
+inand( listItem *i, int operand ) {
 	if (( i )) {
 		union { void *ptr; int value; } icast;
 		icast.ptr = i->ptr; return !( icast.value & operand ); }
@@ -259,8 +248,7 @@ void
 bm_context_release( BMContext *ctx )
 /*
 	Assumption: ActiveRV dealt with separately
-*/
-{
+*/ {
 	listItem **stack;
 	listItem **entries = &ctx->entries;
 	listItem *last_i = NULL, *next_i;
@@ -292,12 +280,10 @@ bm_context_release( BMContext *ctx )
 			case '.':
 				flush_perso( entry->value );
 				break; }
-			last_i = i; } }
-}
+			last_i = i; } } }
 
 static inline void
-flush_perso( listItem *stack )
-{
+flush_perso( listItem *stack ) {
 	Pair *current = stack->ptr;
 	for ( listItem *i=stack->next; i!=NULL; i=i->next ) {
 		Pair *next = i->ptr;
@@ -305,8 +291,7 @@ flush_perso( listItem *stack )
 		freePair( next ); }
 	freeListItem( &stack->next );
 	freeRegistry((Registry *) current->value, NULL );
-	current->value = newRegistry( IndexedByCharacter );
-}
+	current->value = newRegistry( IndexedByCharacter ); }
 
 //===========================================================================
 //	bm_mark
@@ -320,8 +305,7 @@ bm_mark( int pre, char *expression, char *src, void *user_data )
 	otherwise: narrative on/per expression < src
 		called from on_event_x, with pre==0 or pre==BM_AS_PER
 		returns [ [ type, xpn ], user_data ]
-*/
-{
+*/ {
 	union { void *ptr; int value; } type;
 	type.value = 0;
 	listItem *xpn = NULL;
@@ -356,8 +340,7 @@ bm_mark( int pre, char *expression, char *src, void *user_data )
 		else user_data = newPair( user_data, NULL );
 		mark = newPair( newPair( type.ptr, xpn ), user_data ); }
 
-	return mark;
-}
+	return mark; }
 
 //===========================================================================
 //	bm_context_mark / bm_context_unmark
@@ -370,7 +353,7 @@ typedef struct {
 	union {
 		listItem *list;
 		Pair *record; } match;
-} MarkData;
+	} MarkData;
 
 void
 bm_context_mark( BMContext *ctx, void *user_data )
@@ -382,8 +365,7 @@ bm_context_mark( BMContext *ctx, void *user_data )
 		[ mark:[ type, xpn ], match.list:{ batch:[ NULL, proxy ] } ]
 	otherwise
 		[ mark:[ type, xpn ], match.record:[ instance, proxy ] ]
-*/
-{
+*/ {
 	CNInstance *instance, *proxy;
 	if (( user_data )) {
 		MarkData *data = user_data;
@@ -406,11 +388,10 @@ bm_context_mark( BMContext *ctx, void *user_data )
 			if (( proxy ))
 				bm_push_mark( ctx, "<", newPair( event, proxy ) );
 			else
-				bm_push_mark( ctx, "?", event ); } }
-}
+				bm_push_mark( ctx, "?", event ); } } }
+
 Pair *
-bm_context_unmark( BMContext *ctx, void *user_data )
-{
+bm_context_unmark( BMContext *ctx, void *user_data ) {
 	if (( user_data )) {
 		MarkData *data = user_data;
 		bm_pop_mark( ctx, (( data->mark->type.value&EENOK ) ? "<" : "?" ) );
@@ -419,8 +400,7 @@ bm_context_unmark( BMContext *ctx, void *user_data )
 			freePair((Pair *) data->mark );
 			freePair((Pair *) data );
 			user_data = NULL; } }
-	return user_data;
-}
+	return user_data; }
 
 //---------------------------------------------------------------------------
 //	mark_prep
@@ -436,8 +416,7 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 			on init < ?
 			on exit < ?
 	Note: we may have type.value==EENOK and x not NULL
-*/
-{
+*/ {
 	union { void *ptr; int value; } type;
 	type.ptr = mark->name;
 	listItem *xpn = mark->value;
@@ -461,8 +440,7 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 			"unknown mark type\n" );
 		exit( -1 ); }
 
-	return newPair( x, y );
-}
+	return newPair( x, y ); }
 
 static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
@@ -477,16 +455,14 @@ static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 //	bm_push_mark / bm_pop_mark
 //===========================================================================
 listItem *
-bm_push_mark( BMContext *ctx, char *mark, void *value )
-{
+bm_push_mark( BMContext *ctx, char *mark, void *value ) {
 	Pair *entry = registryLookup( ctx, mark );
 	if (( entry ))
 		return addItem((listItem **) &entry->value, value );
-	return NULL;
-}
+	return NULL; }
+
 void
-bm_pop_mark( BMContext *ctx, char *p )
-{
+bm_pop_mark( BMContext *ctx, char *p ) {
 	Pair *entry = registryLookup( ctx, p );
 	Pair *mark;
 	if (( entry ))
@@ -501,8 +477,7 @@ bm_pop_mark( BMContext *ctx, char *p )
 			freePair( mark );
 			break;
 		default:
-			popListItem((listItem**) &entry->value ); }
-}
+			popListItem((listItem**) &entry->value ); } }
 
 //===========================================================================
 //	bm_register / bm_register_locale
@@ -511,8 +486,7 @@ CNInstance *
 bm_register( BMContext *ctx, char *p, CNDB *db )
 /*
 	Special case: ctx==NULL => p assumed identifier
-*/
-{
+*/ {
 	if ( *p == '\'' ) {
 		// registering single character identifier instance
 		char_s q;
@@ -524,12 +498,10 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 		Pair *entry = registryLookup( locales, p );
 		if (( entry )) return entry->value; }
 
-	return db_register( p, db );
-}
+	return db_register( p, db ); }
 
 int
-bm_register_locale( BMContext *ctx, char *p )
-{
+bm_register_locale( BMContext *ctx, char *p ) {
 	Pair *entry = BMContextCurrent( ctx );
 	CNInstance *perso = entry->name;
 	Registry *locales = entry->value;
@@ -552,8 +524,7 @@ bm_register_locale( BMContext *ctx, char *p )
 
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
-	return 1;
-}
+	return 1; }
 
 //===========================================================================
 //	bm_lookup / bm_match
@@ -561,8 +532,7 @@ bm_register_locale( BMContext *ctx, char *p )
 static inline void * lookup_rv( BMContext *, char *, int *rv );
 
 void *
-bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy )
-{
+bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
 	// lookup first in ctx registry
 	int rv = 1;
 	void *rvv = lookup_rv( ctx, p, &rv );
@@ -588,12 +558,10 @@ bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy )
 			return NULL;
 		default:
 			return db_lookup( privy, p, db ); } }
-	return NULL;
-}
+	return NULL; }
 
 static inline void *
-lookup_rv( BMContext *ctx, char *p, int *rv )
-{
+lookup_rv( BMContext *ctx, char *p, int *rv ) {
 	Pair *entry;
 	listItem *i;
 	switch ( *p ) {
@@ -630,17 +598,16 @@ lookup_rv( BMContext *ctx, char *p, int *rv )
 
 	*rv = 0; // not a register variable
 RETURN:
-	return NULL;
-}
+	return NULL; }
 
 //---------------------------------------------------------------------------
 //	bm_match
 //---------------------------------------------------------------------------
-static inline int match_rv( char *, BMContext *, CNDB *, CNInstance *, CNDB *, int * );
+static inline int
+match_rv( char *, BMContext *, CNDB *, CNInstance *, CNDB *, int * );
 
 int
-bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x )
-{
+bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 	// lookup & match first in ctx registry
 	int rv = 1;
 	int rvm = match_rv( p, ctx, db, x, db_x, &rv );
@@ -674,12 +641,10 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x )
 		default:
 			return !strcomp( p, identifier, 1 ); } }
 
-	return 0; // not a base entity
-}
+	return 0; /* not a base entity */ }
 
 static inline int
-match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv )
-{
+match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv ) {
 	void *candidate = lookup_rv( ctx, p, rv );
 	switch ( *rv ) {
 	case 1: return db_match( x, db_x, candidate, db );
@@ -688,8 +653,7 @@ match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv 
 		for ( listItem *i=candidate; i!=NULL; i=i->next )
 			if ( db_match( x, db_x, i->ptr, db ) )
 				return 1; }
-	return 0;
-}
+	return 0; }
 
 //===========================================================================
 //	bm_inform
@@ -697,8 +661,7 @@ match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv 
 static inline CNInstance * inform( BMContext *, CNInstance *, CNDB * );
 
 void *
-bm_inform( int list, BMContext *dst, void *data, CNDB *db_src )
-{
+bm_inform( int list, BMContext *dst, void *data, CNDB *db_src ) {
 	if ( list ) {
 		listItem **instances = data;
 		listItem *results = NULL;
@@ -707,13 +670,11 @@ bm_inform( int list, BMContext *dst, void *data, CNDB *db_src )
 			if (( e )) addItem( &results, e ); }
 		return results; }
 	else
-		return inform( dst, data, db_src );
-}
+		return inform( dst, data, db_src ); }
 
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 static inline CNInstance *
-inform( BMContext *dst, CNInstance *e, CNDB *db_src )
-{
+inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
 	if ( !e ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
 	if ( db_dst==db_src ) return e;
@@ -746,15 +707,14 @@ inform( BMContext *dst, CNInstance *e, CNDB *db_src )
 FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
-	return NULL;
-}
+	return NULL; }
+
 static inline CNInstance *
 proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 /*
 	look for proxy: (( this, that ), NULL ) where
 		this = BMContextCell( ctx )
-*/
-{
+*/ {
 	if ( !that ) return NULL;
 
 	CNEntity *this = BMContextCell( ctx );
@@ -767,15 +727,13 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 		if ( connection->sub[ 1 ]==that )
 			return connection->as_sub[ 0 ]->ptr; }
 
-	return ( inform ? db_proxy(this,that,db) : NULL );
-}
+	return ( inform ? db_proxy(this,that,db) : NULL ); }
 
 //===========================================================================
 //	bm_intake
 //===========================================================================
 CNInstance *
-bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x )
-{
+bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
 	if ( !x ) return NULL;
 	if ( db_dst==db_x ) return x;
 
@@ -808,6 +766,5 @@ bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x )
 FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
-	return NULL;
-}
+	return NULL; }
 

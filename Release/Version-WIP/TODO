@@ -1,39 +1,20 @@
 See Also: design/story/interactive.story
 TODO
-	. design/story/interactive.story#TaskList
-		. unnamed base entity
-		. string entities "_" => in CNDB or base narrative?
-		. %identifier list variables
-		. [_] and & shared arena
-		. <<_>> EENOC
-	. interactive - advanced / as per bm-Main.txt#interactive [NTH?]
-		1. import frame narrative (for execution only)
-			allows to bundle multiple do actions
-	 	   would use bm_parse_cmd and read_CB instead of bm_parse_ui
-		   > in .
-			_ <<<< bm_parse_cmd takes over
-		   => user must enter tabs (?) (except first one)
-		   => user must enter done to execute
+	. implement shared entities & shared arenas
+		=> Test UBE & strings B% interface
+	. implement System launch
+		. bufferize instantiate_new()
+		. allow a|b inside of carry - LEVEL
+		. allow \n after '|'
+	. NTH: output: { => \n and level++
+	. EENOC & EEVA
+	. %identifier list variables
+	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 
-		2. import narrative or narrative sections (for registration and execution)
-		   => use Main if existing + insert sub-root => output:
-			:
-			#!<sr>
-				code from interactive
-			#!</>
-				original code
-		   Options:
-		   . name sub-root => enable/disable sections dynamically
-		   . can also disable original code dynamically
-
-		3. set breakpoint - using sub-narrative (?)
-	. bm_cell_read() can be split between cell.c and story.c using callbacks
-		=> cell.c does not #include parser.c
-		=> story.c does not #include cell.c
 DONE
-	. NOTE: do ~(.) also releases %% !?!?!?
-	  actually it's a FEATURE (!), as do %% will rehabilitate %%,
-	  which was released - but not removed.
+	. revised design/story/interactive.story: no more [_] and '&' stuff
+	. removed #ifdef UNIFIED from this version - this is here to stay
+	. redefined CNStory type to [ Registry *narratives, Registry *arena ]
 	. interactive - basic, see cell.c:bm_read_command()
 		. support user input "do expression" => execute action
 		. cnSync() except on do >_ output commands or err
@@ -48,6 +29,8 @@ DONE
 		> do >:.
 		{ %%, toto }
 		> ^D
+	  Note: do ~(.) also releases %% - actually it's a FEATURE (!), as
+	 	do %% will rehabilitate %%, which was released - but not removed
 	. extended main.c to support
 		./B% -i
 		./B% file.bm -i
@@ -74,6 +57,27 @@ OPEN ISSUES
 		no need to test filtered if ~_ or %_ or *_
 
 NICE TO HAVE
+	. interactive - advanced / as per bm-Main.txt#interactive
+	  1. import frame narrative (for execution only)
+		allowing to bundle multiple do actions
+	     would use bm_parse_cmd and read_CB instead of bm_parse_ui
+		> in .
+			_ <<<< bm_parse_cmd takes over
+	     => user must enter tabs (?) (except first one)
+	     => user must enter done to execute
+	  2. import narrative or narrative sections (for registration and execution)
+	     => use Main if existing + insert sub-root => output:
+		:
+		#!<sr>
+			code from interactive
+		#!</>
+			original code
+	     Options:
+	     . name sub-root => enable/disable sections dynamically
+	     . can also disable original code dynamically
+	  3. set breakpoint
+		using sub-narrative (?)
+	. assignment could use %% instead of '*'
 	. make %(_) mandatory condition to use filters in do expressions
 	  e.g. do ( a:b, c ) generates error, vs. do ( %(a:b), c )
 	  pro: no need to check filtered in bm_instantiate traversal, nor
