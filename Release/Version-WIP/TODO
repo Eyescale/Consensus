@@ -1,7 +1,8 @@
 See Also: design/story/interactive.story
 TODO
 	. implement shared entities & shared arenas
-		=> Test UBE & strings B% interface
+		. strings implementation - instantiate.c
+		=> Test B% UBE & strings interface
 	. implement System launch
 		. bufferize instantiate_new()
 		. allow a|b inside of carry - LEVEL
@@ -12,6 +13,12 @@ TODO
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 
 DONE
+	. strings implementation - parser.c // cf. Test/48_string
+		do "_"
+		do : variable : "_"
+		: "_"
+	  Note: we only allow base-level instantiation and sub-narrative
+	  definition, so we don't have to handle "_" in traverse.c
 	. revised design/story/interactive.story: no more [_] and '&' stuff
 	. removed #ifdef UNIFIED from this version - this is here to stay
 	. redefined CNStory type to [ Registry *narratives, Registry *arena ]
@@ -46,6 +53,10 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
+	. NOTE: bm_instantiate_input
+		instantiate_traversal is used for arg
+		but why considered INFORMED|LITERAL|CLEAN?
+	  OPT: assignment: should use expression=Pair *
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. on ~(_?_) < %% is allowed (as EENO)

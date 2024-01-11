@@ -1,37 +1,10 @@
 
 Consensus B% Version-WIP
 
-    parser.c: bm_parse()
-	base	""
-		+	base
-		-	base
-		^.	^.$ 	^.$_	^.
-					_expr
-
-		def	.id:
-			def$	def$_
-		.id:	§
-			.id:%	§
-		§	def$_
-			§%	§
-			§$	§
-			§.	§
-				§..	§
-					§...	§
-				§.$	§.$_	§.$:	§
-						§.$,	§
-							§.$,.	§
-								§.$
-								§.$,..	§
-		def$_	base
-		cmd	%_	_expr
-			cmd_	_expr
-			else	cmd
-				_expr
-				else.	^.
-		_expr	expr
+    parser.c: bm_parse_expr()
 	expr	expr_	base
 			""
+		\"	expr
 		~	expr
 			~.	expr
 				term
@@ -60,6 +33,7 @@ Consensus B% Version-WIP
 				~
 			_,
 		:_	expr
+			\"
 			:<	expr
 			!
 			~
@@ -135,4 +109,37 @@ Consensus B% Version-WIP
 		_\\n	expr
 	expr_	base
 		""
+
+    parser.c: bm_parse_cmd()
+	base	""
+		+	base
+		-	base
+		.	.$ 	.$_	.
+					_expr
+		:	.id:
+			def	def_
+		.id:	:%	:_
+			:_	def_
+				:%_	:_
+				:$	:_
+				:.	:_
+					:..	:_
+						:...	:_
+					:.$	:.$_	:.$:	:_
+							:.$,	:_
+								:.$,.	:_
+									:.$
+									:.$,..	:_
+		def_	base
+		cmd	%_	_expr
+			cmd_	_expr
+			else	cmd
+				_expr
+				else.	.
+		_expr	expr
+
+    parser.c: bm_parse_ui()
+	base	""
+		/	""
+		cmd	expr
 

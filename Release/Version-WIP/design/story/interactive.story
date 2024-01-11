@@ -78,21 +78,12 @@ System Execution
 	            end for
 	        end for
 
-	In Consensus terms, as in reality, all cosystems run in parallel,
-	and we want all actions to likewise (if only conceptually) execute
-	in parallel, all in one frame.
-
-	Note that a centralized execution model implementation is also
-	feasible, whereby
-		. system notifies cosystems of their expected actions
-		. cosystems notify system of their actually performed actions
-		  (whereupon system updates status)
-	but that is not our immediate target here.
-
+	In Consensus terms, as in reality, all cosystems run in parallel, and
+	we want all actions to likewise execute in parallel, all in one frame.
 	Furthermore, we do not want each cosystem to keep track of all other
 	cosystems conditions - although we could - but rather: each cosystem
 	will maintain its own action<-trigger<-guard.status, according to
-	the following pseudo-code:
+	the following pseudo-code*:
 
 	: Cosystem
 		per action: (( occurrence, ON|OFF ), %% ) SUCH THAT
@@ -130,26 +121,26 @@ System Execution
 			// execute action
 			do : %(%?:(?,.)): %(%?:(.,?))
 
-			// remove action's corresponding condition from guard.status
+			// remove action-corresponding condition from guard.status
 			do ~( (%?,%%), %( Status, . ))
 
-			// add complementary condition to relevant guard.status
+			// add action-complementary condition to relevant guard.status
 			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
 				do ( %?, %( Status, %(%?,?) ))
 
 		per : ? : . < .
-			// remove eeno's corresponding condition from all guard.status
+			// remove eeno-corresponding condition from all guard.status
 			in ?: (( %<?>, %<!:(.,?)> ), %< )
 				do ~( %?, %( ., Status ))
 
-			// add complementary condition to relevant guard.status
+			// add eeno-complementary condition to relevant guard.status
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
 				do ( %?, %( Status, %(%?,?) ))
 	where
 		. Cosystem-relevant System data have been made accessible
 		  to cosystem at System's launch time (see below)
 		. EEVA stands for External Event Variable Assignment and is
-		  fully defined in the New Features section below
+		  fully defined in the Feature List section below
 		. The expression ~(.,(Status,?)) does not yield any pivot as
 		  it is negated.
 
@@ -187,7 +178,7 @@ System Execution
 	+	// flush %tag list & enrol condition-free guards, pre-frame
 		.%tag~ { ^.:~%(.,(Status,?))|^guard }
 	
-		// see the New Features section for EEVA definition
+		// see the Feature List section below for EEVA definition
 		per ( %guard, ( ~%(~EEVA,?), (?,%%) ))
 	
 			// execute action
@@ -199,7 +190,6 @@ System Execution
 	
 			// add action-complementary condition to relevant guard
 			// Status, and decommission these guards
-			// add complementary condition to relevant guard.status
 			in ?: (( %(%?:(?,.)), ~%(%?:(.,?)) ), %% )
 				do ( %?, %( Status, %(%?,?)|^guard~ ))
 
@@ -226,7 +216,6 @@ System Execution
 	
 	: cosystemB : Cosystem	// note the sub-classing
 		...
-	
 	...
 
 	Notes
@@ -237,9 +226,15 @@ System Execution
 	5. B% current implementation will issue warning if second term is void in
 		do ( %?, %( Status, %(%?,?)|^guard~ ))
 
+	*A centralized execution model implementation is also feasible, whereby
+		. system notifies cosystems of their expected actions
+		. cosystems notify system of their actually performed actions
+		  (whereupon system updates status)
+	but that is not our immediate target here.
+
 System launch
 	Each cosystem needs a local system image integrating everything leading
-	to cosystems action, that is:
+	to the cosystem's actions, that is:
 		( guard, ( trigger, ((occurrence,ON|OFF),cosystem:%(*?:%%)) ) )
 	as well as
 		( ., trigger )	// events - for selected triggers
@@ -357,7 +352,7 @@ Feature List
 		Either directly by user or automatically when left dangling - in
 		which case no release event is issued
 
-    4. Share Entities and Shared Arena implementation
+    4. Shared Entities and Shared Arena implementation
     4.1. Shared Entities
 	We need to be able to access entities by address in order to
 	1. optimize string memory usage AND comparison mechanism across system
@@ -377,8 +372,8 @@ Feature List
 	We have
 		CNStory:[ Registry *narratives, Registry *arena ]
 	where
-		arena: { [ "",  (Registry *) string-arena ],
-			 [ "$", (listItem *) UBE-arena ] }
+		arena: { [ "",  (Registry *) UBE-arena ],
+			 [ "$", (listItem *) string-arena ] }
 		string-arena.entry: [ identifier, {[ CNDB, entity ]} ]
 			where entity: CNDB-specific ( NULL, entry )
 		UBE-arena.entry: [ NULL, {[ CNDB, entity ]} ]
@@ -388,8 +383,8 @@ Feature List
 	string arenas, there is no way around using NULL as item->name
 	in UBE-arena
 
-	string-arena is indexed by identifier, whereas UBE-arena is
-	organized by address - of the entry
+	string-arena is sorted by identifier, whereas UBE-arena is
+	sorted by address - of the entry
 
 	UBE-arena items are created either:
 	1. using !! => NEW UBE, associated with BMContextDB(ctx)
@@ -408,7 +403,8 @@ Feature List
 	Shared entities are released in context, whereupon
 	. the BMContextDB(ctx)-specific version is removed from the relevant
 	  entry in the relevant arena
-	. if no version is left: the whole entry is removed from the arena
+	. if no version is left in that entry after that removal: the whole
+	  entry is removed from the arena and freed
 
 Task List
 	./B% -i

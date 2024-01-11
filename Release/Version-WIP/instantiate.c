@@ -24,11 +24,10 @@ typedef struct {
 	BMContext *ctx, *carry;
 	CNDB *db;
 } InstantiateData;
-static void cleanup( InstantiateData *, BMContext * );
+static void cleanup( InstantiateData * );
 
 void
-bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
-{
+bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_instantiate: %s ........{\n", expression );
 #endif
@@ -41,10 +40,12 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	if ( *expression=='!' ) {
-		instantiate_new( expression, story, &traverse_data, NULL ); }
-	else if ( *expression==':' )
+	if ( *expression==':' )
 		instantiate_assignment( expression, &traverse_data, story );
+	else if ( *expression=='"' ) {
+		fprintf( stderr, "WIP..." ); return; }
+	else if ( *expression=='!' )
+		instantiate_new( expression, story, &traverse_data, NULL );
 	else {
 		traverse_data.done = INFORMED|LITERAL;
 		if ( !story ) traverse_data.done |= CLEAN;
@@ -53,7 +54,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 	if ( traverse_data.done==2 ) {
 		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantiation\n"
                         "\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data.p );
-		cleanup( &data, ctx ); }
+		cleanup( &data ); }
 #ifdef DEBUG
 	if (( data.sub[ 0 ] )) {
 		fprintf( stderr, "bm_instantiate:........} " );
@@ -61,19 +62,144 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story )
 		else db_outputf( stderr, data.db, "first=%_\n", data.sub[0]->ptr ); }
 	else fprintf( stderr, "bm_instantiate: } no result\n" );
 #endif
-	freeListItem( &data.sub[ 0 ] );
-}
+	freeListItem( &data.sub[ 0 ] ); }
+
 static void
-cleanup( InstantiateData *data, BMContext *ctx )
-{
+cleanup( InstantiateData *data ) {
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->sub[ 1 ] );
 	listItem *instances;
 	listItem **results = &data->results;
 	while (( instances = popListItem(results) ))
 		freeListItem( &instances );
-	bm_context_pipe_flush( ctx );
-}
+	bm_context_pipe_flush( data->ctx ); }
+
+//---------------------------------------------------------------------------
+//	instantiate_assignment
+//---------------------------------------------------------------------------
+static inline int v_assign( char *, BMTraverseData * );
+#define bm_assign( sub, db ) \
+	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
+		db_assign( i->ptr, j->ptr, db ); \
+	freeListItem( &sub[ 0 ] ); \
+	freeListItem( &sub[ 1 ] );
+
+static void
+instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
+/*
+	Note that the number of assignments actually performed is
+		INF( cardinal(sub[0]), cardinal(sub[1]) )
+	And that nothing is done with the excess, if there is -
+		case sub[1]==NULL excepted
+*/ {
+	/* handle special cases
+		:< variables >:< expressions >
+		:~.
+	*/
+	char *q, *p = expression+1; // skip leading ':'
+	if ( *p=='<' && v_assign( p, traverse_data ) )
+		return;
+	else if ( !strcmp( p, "~." ) ) {
+		InstantiateData *data = traverse_data->user_data;
+		CNInstance *self = BMContextSelf( data->ctx );
+		db_unassign( self, data->db );
+		return; }
+	/* here we have either one of the following
+		: state
+		: variable(s) : ~.
+		:< variables >: ~.
+		: variable(s) : !! expression
+		:< variables >: !! expression
+		: variable(s) :< expressions >
+		: variable(s) : expression(s)
+		:< variables >: expression(s)
+	*/
+	InstantiateData *data = traverse_data->user_data;
+	traverse_data->done = INFORMED|LITERAL;
+	listItem *sub[ 2 ];
+	p = instantiate_traversal( p, traverse_data, FIRST );
+	if ( traverse_data->done==2 || !data->sub[ 0 ] )
+		return;
+	sub[ 0 ] = data->sub[ 0 ];
+	data->sub[ 0 ] = NULL;
+
+	CNDB *db = data->db;
+	CNInstance *e;
+	if ( *p++=='\0' ) { // moving past ',' aka. ':' if there is
+		BMContext *ctx = data->ctx;
+		CNInstance *self = BMContextSelf( ctx );
+		while (( e = popListItem( &sub[0] ) ))
+			db_assign( self, e, db ); }
+	else if ( *p=='"' ) {
+		fprintf( stderr, "WIP...\n" );
+		freeListItem( &sub[ 0 ] ); }
+	else if ( !strncmp( p, "~.", 2 ) ) {
+		while (( e = popListItem( &sub[0] ) ))
+			db_unassign( e, db ); }
+	else if ( *p=='!' ) {
+		instantiate_new( p, story, traverse_data, &sub[ 0 ] ); }
+	else if ( *p=='<' ) {
+		for ( listItem *i=sub[ 0 ]; (i) && *p++!='>'; i=i->next ) {
+			if ( !strncmp( p, "~.", 2 ) ) {
+				db_unassign( i->ptr, db );
+				p+=2; continue; }
+			traverse_data->done = INFORMED|LITERAL;
+			q = instantiate_traversal( p, traverse_data, FIRST );
+			if ( traverse_data->done!=2 && ( data->sub[0] )) {
+				p = q;
+				sub[ 1 ] = data->sub[ 0 ];
+				db_assign( i->ptr, sub[ 1 ]->ptr, db );
+				freeListItem( &sub[ 1 ] ); }
+			else p = p_prune( PRUNE_TERM, p ); }
+		freeListItem( &sub[ 0 ] ); }
+	else {
+		traverse_data->done = INFORMED|LITERAL;
+		p = instantiate_traversal( p, traverse_data, FIRST );
+		if ( traverse_data->done!=2 && ( data->sub[0] )) {
+			sub[ 1 ] = data->sub[ 0 ];
+			data->sub[ 0 ] = NULL;
+			bm_assign( sub, db ); }
+		else freeListItem( &sub[ 0 ] ); } }
+
+static inline int
+v_assign( char *p, BMTraverseData *traverse_data ) {
+	char *q;
+	listItem *vector[ 2 ] = { NULL, NULL };
+	for ( q=p; *q++!='>'; q=p_prune(PRUNE_TERM,q) )
+		addItem( &vector[ 0 ], q );
+	if ( q[1]=='<' ) {
+		for ( q++; *q++!='>'; q=p_prune(PRUNE_TERM,q) )
+			addItem( &vector[ 1 ], q ); }
+	else {	freeListItem( &vector[ 0 ] );
+		return 0; }
+
+	InstantiateData *data = traverse_data->user_data;
+	CNDB *db = data->db;
+	listItem *sub[ 2 ];
+	CNInstance *e;
+	while (( p=popListItem( &vector[0] ) )&&( q=popListItem(&vector[1]) )) {
+		traverse_data->done = INFORMED|LITERAL;
+		instantiate_traversal( p, traverse_data, FIRST );
+		if ( traverse_data->done==2 || !data->sub[ 0 ] )
+			continue;
+
+		sub[ 0 ] = data->sub[ 0 ];
+		data->sub[ 0 ] = NULL;
+		if ( !strncmp( q, "~.", 2 ) ) {
+			while (( e = popListItem( &sub[0] ) ))
+				db_unassign( e, db ); }
+		else {
+			traverse_data->done = INFORMED|LITERAL;
+			instantiate_traversal( q, traverse_data, FIRST );
+			if ( traverse_data->done==2 || !data->sub[ 0 ] )
+				freeListItem( &sub[ 0 ] );
+			else {
+				sub[ 1 ] = data->sub[ 0 ];
+				data->sub[ 0 ] = NULL;
+				bm_assign( sub, db ); } } }
+	freeListItem( &vector[ 0 ] );
+	freeListItem( &vector[ 1 ] );
+	return 1; }
 
 //---------------------------------------------------------------------------
 //	instantiate_new
@@ -81,8 +207,7 @@ cleanup( InstantiateData *data, BMContext *ctx )
 static CNInstance * conceive( Pair *entry, char *, BMTraverseData * );
 
 static void
-instantiate_new( char *expression, CNStory *story, BMTraverseData *data, listItem **per )
-{
+instantiate_new( char *expression, CNStory *story, BMTraverseData *data, listItem **per ) {
 	char *p = expression + 2; // skip '!!'
 	Pair *entry = registryLookup( story->narratives, p );
 	if (( entry )) {
@@ -97,15 +222,13 @@ instantiate_new( char *expression, CNStory *story, BMTraverseData *data, listIte
 	else {
 		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
 			"\tdo !! %s <<<<<\n", p );
-		if (( per )) freeListItem( per ); }
-}
+		if (( per )) freeListItem( per ); } }
 
 static CNInstance *
 conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 /*
 	Assumption: *p=='('
-*/
-{
+*/ {
 	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
 	// instantiate new cell
@@ -120,15 +243,14 @@ conceive( Pair *entry, char *p, BMTraverseData *traverse_data )
 			char *q = p;
 			traverse_data->done = INFORMED|LITERAL;
 			p = instantiate_traversal( p, traverse_data, FIRST );
-			if ( traverse_data->done==2 ) {
-				cleanup( data, ctx );
-				traverse_data->done = 1;
+			if ( traverse_data->done!=2 )
+				freeListItem( &data->sub[ 0 ] );
+			else {
+				cleanup( data );
 				p = p_prune( PRUNE_TERM, q ); }
-			freeListItem( &data->sub[ 0 ] ); }
-		while ( *p++!=')' ); }
+			} while ( *p++!=')' ); }
 	// carry child and return proxy
-	return bm_cell_carry( parent, child, (*p!='~') );
-}
+	return bm_cell_carry( parent, child, (*p!='~') ); }
 
 //---------------------------------------------------------------------------
 //	instantiate_traversal
@@ -359,8 +481,7 @@ static listItem *
 instantiate_couple( listItem *sub[2], CNDB *db )
 /*
 	Instantiates and/or returns all ( sub[0], sub[1] )
-*/
-{
+*/ {
 	listItem *results=NULL, *trail=NULL;
 	if ( sub[0]->ptr == NULL ) {
 		if ( sub[1]->ptr == NULL ) {
@@ -384,17 +505,14 @@ instantiate_couple( listItem *sub[2], CNDB *db )
 		for ( listItem *j=sub[1]; j!=NULL; j=j->next )
 			couple( i->ptr, j->ptr, db, &trail, &results ); }
 	freeListItem( &trail );
-	return results;
-}
+	return results; }
 
 static inline void
-couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **results )
-{
+couple( CNInstance *e, CNInstance *f, CNDB *db, listItem **trail, listItem **results ) {
 	CNInstance *g = db_instantiate( e, f, db );
 	if ((g) && !lookupIfThere( *trail, g ) ) {
 		addIfNotThere( trail, g );
-		addItem( results, g ); }
-}
+		addItem( results, g ); } }
 
 //---------------------------------------------------------------------------
 //	instantiate_xpan
@@ -405,8 +523,7 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 	Assuming we had expression:((sub[0],...),sub[1])
 		where sub[1] is { a, b, ..., z }
 	converts into ((((sub[0],a),b),...),z)
-*/
-{
+*/ {
 	listItem *results = NULL;
 	if ( !sub[ 0 ] ) {
 		results = sub[ 1 ];
@@ -424,8 +541,7 @@ instantiate_xpan( listItem *sub[2], CNDB *db )
 					e = db_instantiate( e, j->ptr, db );
 				addItem( &results, e ); } }
 		freeListItem( &trail ); }
-	return results;
-}
+	return results; }
 
 //---------------------------------------------------------------------------
 //	instantiate_literal, instantiate_list
@@ -439,8 +555,7 @@ instantiate_literal( char **position, CNDB *db )
 	where
 		_sequence_ = ab...yz
 	converts into (a,(b,...(y,z))) resp. (a,(b,...(z,'\0')))
-*/
-{
+*/ {
 	listItem *stack = NULL;
 	CNInstance *work_instance[ 3 ] = { NULL, NULL, NULL };
 	CNInstance *e, *f;
@@ -460,12 +575,10 @@ instantiate_literal( char **position, CNDB *db )
 		default:
 			p = sequence_step( p, work_instance, db );
 			e = work_instance[ 2 ]; }
-		if (( e )) addItem( &stack, e );
-	}
+		if (( e )) addItem( &stack, e ); }
 RETURN:
 	*position = p+1;
-	return e;
-}
+	return e; }
 
 static listItem *
 instantiate_list( char **position, listItem **sub, CNDB *db )
@@ -477,8 +590,7 @@ instantiate_list( char **position, listItem **sub, CNDB *db )
 		_sequence_ = ab...yz
 	converts into (((((expression,*),a),b)...,y),z)
 	  inserting star -------------^
-*/
-{
+*/ {
 	if ( !sub[0] ) {
 		*position = p_prune( PRUNE_LIST, *position );
 		return NULL; }
@@ -498,8 +610,7 @@ instantiate_list( char **position, listItem **sub, CNDB *db )
 			if (( f )) e = db_instantiate( e, f, db ); }
 		addItem( &results, e ); }
 	*position = p+1;
-	return results;
-}
+	return results; }
 
 static char *
 sequence_step( char *p, CNInstance **wi, CNDB *db )
@@ -508,8 +619,7 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 	wi[ 0 ]	represents Mod (%)
 	wi[ 1 ] represents Backslash (\\)
 	wi[ 2 ]	represents return value
-*/
-{
+*/ {
 	CNInstance *e;
 	char_s q;
 	int len;
@@ -551,136 +661,13 @@ sequence_step( char *p, CNInstance **wi, CNDB *db )
 		e = db_register( q.s, db );
 		p++; }
 	wi[ 2 ] = e;
-	return p;
-}
-
-//---------------------------------------------------------------------------
-//	instantiate_assignment
-//---------------------------------------------------------------------------
-#define bm_assign( sub, db ) \
-	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
-		db_assign( i->ptr, j->ptr, db ); \
-	freeListItem( &sub[ 0 ] ); \
-	freeListItem( &sub[ 1 ] );
-
-static void
-instantiate_assignment( char *expression, BMTraverseData *traverse_data, CNStory *story )
-/*
-	Note that the number of assignments actually performed is
-		INF( cardinal(sub[0]), cardinal(sub[1]) )
-	And that nothing is done with the excess, if there is -
-		case sub[1]==NULL excepted
-*/
-{
-	InstantiateData *data = traverse_data->user_data;
-	CNDB *db = data->db;
-	listItem *sub[ 2 ], *vector[ 2 ];
-	CNInstance *e;
-
-	char *p = expression+1, *q; // skip leading ':'
-	if ( !strcmp( p, "~." ) ) {
-		BMContext *ctx = data->ctx;
-		CNInstance *self = BMContextSelf( ctx );
-		db_unassign( self, db );
-		return; }
-	else if ( *p=='<' ) {
-		vector[ 0 ] = NULL;
-		for ( q=p; *q++!='>'; q=p_prune(PRUNE_TERM,q) )
-			addItem( &vector[ 0 ], q );
-		if ( q[1]=='<' ) {
-//------------------
-
-	/* here we have :< variables >:< expressions >
-	*/
-	vector[ 1 ] = NULL;
-	for ( q++; *q++!='>'; q=p_prune(PRUNE_TERM,q) )
-		addItem( &vector[ 1 ], q );
-	while (( p=popListItem( &vector[0] ) )&&( q=popListItem(&vector[1]) )) {
-		traverse_data->done = INFORMED|LITERAL;
-		instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 || !data->sub[ 0 ] )
-			continue;
-
-		sub[ 0 ] = data->sub[ 0 ];
-		data->sub[ 0 ] = NULL;
-		if ( !strncmp( q, "~.", 2 ) ) {
-			while (( e = popListItem( &sub[0] ) ))
-				db_unassign( e, db ); }
-		else {
-			traverse_data->done = INFORMED|LITERAL;
-			instantiate_traversal( q, traverse_data, FIRST );
-			if ( traverse_data->done==2 || !data->sub[ 0 ] )
-				freeListItem( &sub[ 0 ] );
-			else {
-				sub[ 1 ] = data->sub[ 0 ];
-				data->sub[ 0 ] = NULL;
-				bm_assign( sub, db ); } } }
-	freeListItem( &vector[ 0 ] );
-	freeListItem( &vector[ 1 ] );
-	return; }
-
-//------------------
-		else freeListItem( &vector[0] ); }
-
-	/* here we have either one of the following
-		: state
-		: variable(s) : ~.
-		:< variables >: ~.
-		: variable(s) : !! expression
-		:< variables >: !! expression
-		: variable(s) :< expressions >
-		: variable(s) : expression(s)
-		:< variables >: expression(s)
-	*/
-	traverse_data->done = INFORMED|LITERAL;
-	p = instantiate_traversal( p, traverse_data, FIRST );
-	if ( traverse_data->done==2 || !data->sub[ 0 ] )
-		return;
-
-	sub[ 0 ] = data->sub[ 0 ];
-	data->sub[ 0 ] = NULL;
-	if ( *p++=='\0' ) { // moving past ',' aka. ':' if there is
-		BMContext *ctx = data->ctx;
-		CNInstance *self = BMContextSelf( ctx );
-		while (( e = popListItem( &sub[0] ) ))
-			db_assign( self, e, db ); }
-	else if ( !strncmp( p, "~.", 2 ) ) {
-		while (( e = popListItem( &sub[0] ) ))
-			db_unassign( e, db ); }
-	else if ( *p=='!' ) {
-		instantiate_new( p, story, traverse_data, &sub[ 0 ] ); }
-	else if ( *p=='<' ) {
-		for ( listItem *i=sub[ 0 ]; (i) && *p++!='>'; i=i->next ) {
-			if ( !strncmp( p, "~.", 2 ) ) {
-				db_unassign( i->ptr, db );
-				p+=2; continue; }
-			traverse_data->done = INFORMED|LITERAL;
-			q = instantiate_traversal( p, traverse_data, FIRST );
-			if ( traverse_data->done==2 || !data->sub[ 0 ] )
-				p = p_prune( PRUNE_TERM, p );
-			else {
-				p = q;
-				sub[ 1 ] = data->sub[ 0 ];
-				db_assign( i->ptr, sub[ 1 ]->ptr, db );
-				freeListItem( &sub[ 1 ] ); } }
-		freeListItem( &sub[ 0 ] ); }
-	else {
-		traverse_data->done = INFORMED|LITERAL;
-		p = instantiate_traversal( p, traverse_data, FIRST );
-		if ( traverse_data->done==2 || !data->sub[ 0 ] )
-			freeListItem( &sub[ 0 ] );
-		else {
-			sub[ 1 ] = data->sub[ 0 ];
-			data->sub[ 0 ] = NULL;
-			bm_assign( sub, db ); } }
-}
+	return p; }
 
 //===========================================================================
 //	bm_instantiate_input
 //===========================================================================
 void
-bm_instantiate_input( char *input, char *arg, BMContext *ctx )
-{
+bm_instantiate_input( char *input, char *arg, BMContext *ctx ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_instantiate_input: %s, arg=%s ........{\n",
 		( (input) ? input : "EOF" ), arg );
@@ -725,7 +712,6 @@ FAIL:
 		fprintf( stderr, ">>>>> B%%: Warning: input instantiation failed\n"
 			"\t<<<<< arg=%s, input=%s, failed on '%s'\n", arg,
 			( (input) ? input : "EOF" ), traverse_data.p );
-		cleanup( &data, ctx ); }
-	freeListItem( &data.sub[ 0 ] );
-}
+		cleanup( &data ); }
+	freeListItem( &data.sub[ 0 ] ); }
 

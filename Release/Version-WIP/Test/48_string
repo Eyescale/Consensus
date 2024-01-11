@@ -1,0 +1,8 @@
+
+	on init
+		%(.)
+		do : toto : "hello, world"
+		do exit
+
+:"hello, world"
+	do exit
