@@ -15,7 +15,7 @@ typedef struct {
 CNProgram *newProgram( CNStory *, char *inipath );
 void	freeProgram( CNProgram * );
 void	cnSync( CNProgram * );
-int	cnOperate( CNProgram *, CNCell ** );
+int	cnOperate( CNCell **, CNProgram * );
 
 static inline CNCell * CNProgramStem( CNProgram *p ) {
 	return ((listItem*) p->threads->new->ptr )->ptr; }

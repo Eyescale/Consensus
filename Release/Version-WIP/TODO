@@ -53,10 +53,6 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
-	. NOTE: bm_instantiate_input
-		instantiate_traversal is used for arg
-		but why considered INFORMED|LITERAL|CLEAN?
-	  OPT: assignment: should use expression=Pair *
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. on ~(_?_) < %% is allowed (as EENO)
@@ -68,6 +64,7 @@ OPEN ISSUES
 		no need to test filtered if ~_ or %_ or *_
 
 NICE TO HAVE
+	. OPT: assignment: should use expression=Pair *
 	. interactive - advanced / as per bm-Main.txt#interactive
 	  1. import frame narrative (for execution only)
 		allowing to bundle multiple do actions

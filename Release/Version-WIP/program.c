@@ -41,7 +41,7 @@ cnSync( CNProgram *program ) {
 //	cnOperate
 //===========================================================================
 int
-cnOperate( CNProgram *program, CNCell **this ) {
+cnOperate( CNCell **this, CNProgram *program ) {
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: bgn\n" );
 #endif

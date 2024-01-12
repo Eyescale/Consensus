@@ -53,13 +53,13 @@ main( int argc, char *argv[] ) {
 		CNStory *story = readStory( path[0], 1 );
 		CNProgram *threads = newProgram( story, path[1] );
 		CNCell *this = CNProgramStem( threads );
-		do cnSync(threads); while ( cnOperate( threads, &this ) );
+		do cnSync(threads); while ( cnOperate( &this, threads ) );
 		freeProgram( threads );
 		freeStory( story ); }
 	else {
 		CNStory *story = readStory( path[0], 0 );
 		CNProgram *threads = newProgram( story, path[1] );
-		do cnSync(threads); while ( cnOperate( threads, NULL ) );
+		do cnSync(threads); while ( cnOperate( NULL, threads ) );
 		freeProgram( threads );
 		freeStory( story ); } }
 

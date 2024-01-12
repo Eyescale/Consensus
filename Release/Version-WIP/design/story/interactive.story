@@ -230,7 +230,7 @@ System Execution
 		. system notifies cosystems of their expected actions
 		. cosystems notify system of their actually performed actions
 		  (whereupon system updates status)
-	but that is not our immediate target here.
+	but that is not our focus here.
 
 System launch
 	Each cosystem needs a local system image integrating everything leading
@@ -248,15 +248,15 @@ System launch
 
 	do : %cosystem : !! Cosystem(
 		// foreach action instantiate same (with proxy vs. cosystem) for which
-		?: ((.,ON|OFF),%(*?:^@)) ( %(%?:(?,.)), ^@ ) |
+		?:((.,ON|OFF),%(*?:^@)) ( %(%?:(?,.)), ^@ ) |
 			// foreach (trigger, action) instantiate same, for which
-			?: ( ., %? ) ( %(%?:(?,.))^, %| ) | {
+			?:( ., %? ) ( %(%?:(?,.))^, %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
-				?^: ( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
 				// foreach (guard,(trigger,action)) instantiate same, for which
-				?: ( ., %? ) ( %(%?:(?,.))^, %| ) |
+				?:( ., %? ) ( %(%?:(?,.))^, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					?^: ( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+					?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
 				} )
 
 	That is, without the comments:
@@ -332,6 +332,9 @@ Feature List
 		Note that if not coupled by the end of the do operation - e.g.
 			do !! | toto
 		the newly allocated entity will be instantly and quietly removed.
+	Release
+		Either directly by user or automatically when left dangling - in
+		which case no release event is issued
 	Usage
 		In the last example above, the record verifying [ field, value ]
 		and [ f, v ] conditions is given by
@@ -348,9 +351,6 @@ Feature List
 		This would allow the "field" value of the record verifying [f,v]
 		conditions to be given by
 			%(((.,field),?)^((?,.),.):( %((?,f),v):%((?,f),v) ))
-	Release
-		Either directly by user or automatically when left dangling - in
-		which case no release event is issued
 
     4. Shared Entities and Shared Arena implementation
     4.1. Shared Entities
@@ -374,10 +374,10 @@ Feature List
 	where
 		arena: { [ "",  (Registry *) UBE-arena ],
 			 [ "$", (listItem *) string-arena ] }
-		string-arena.entry: [ identifier, {[ CNDB, entity ]} ]
-			where entity: CNDB-specific ( NULL, entry )
 		UBE-arena.entry: [ NULL, {[ CNDB, entity ]} ]
 			where entity: CNDB-specific ( NULL, item )
+		string-arena.entry: [ identifier, {[ CNDB, entity ]} ]
+			where entity: CNDB-specific ( NULL, entry )
 
 	Note: as entry->name is used to differentiate between UBE and
 	string arenas, there is no way around using NULL as item->name
@@ -403,8 +403,8 @@ Feature List
 	Shared entities are released in context, whereupon
 	. the BMContextDB(ctx)-specific version is removed from the relevant
 	  entry in the relevant arena
-	. if no version is left in that entry after that removal: the whole
-	  entry is removed from the arena and freed
+	. if no version is left in that entry after that removal, then
+	  the whole entry is removed from the arena and freed
 
 Task List
 	./B% -i
@@ -460,7 +460,7 @@ Task List
 			...
 
 	  but where
-		... represents user B% code - including do : this :&[OFF]
+		... represents B% user code - including do : this : OFF
 
 	> allow to launch system
 			>>>>> launch from files <<<<<
