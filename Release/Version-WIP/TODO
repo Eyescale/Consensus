@@ -1,16 +1,27 @@
 See Also: design/story/interactive.story
 TODO
-	. implement shared entities & shared arenas
-		. strings implementation - instantiate.c
+	. shared entities & shared arenas
+	  [DONE] retyped base entities into ( NULL, entry )
+	 	. [DONE] cell.c: bm_cell_update( cell, story )
+	  [DONE] context.c: bm_context_update( ctx, story )
+	  [DONE] db_op.c: db_update( db, parent, arena )
+	  [DONE] [NEW] arena.c / arena.h <= story.c, instantiate.c
+	  [DONE] instantiate.c: assign_string()
+	  [WIP]  UBE implementation
+		=> instantiate.c: assign_new()
+		=> parser.c: !! | ... => instantiate.c (+ term_CB opt)
 		=> Test B% UBE & strings interface
+		=> Test string sub-narratives
 	. implement System launch
 		. bufferize instantiate_new()
 		. allow a|b inside of carry - LEVEL
 		. allow \n after '|'
+	. NTH: do "occurrence" | ...
 	. NTH: output: { => \n and level++
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
+	. errors / warnings => ALL should be in color...
 
 DONE
 	. strings implementation - parser.c // cf. Test/48_string

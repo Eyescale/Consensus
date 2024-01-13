@@ -23,22 +23,19 @@ static int do_output( char *, BMContext * );
 //	bm_op
 //===========================================================================
 void
-bm_op( int type, char *expression, BMContext *ctx, CNStory *story )
-{
+bm_op( int type, char *expression, BMContext *ctx, CNStory *story ) {
 	switch ( type ) {
 	case DO: do_action( expression, ctx, story ); break;
 	case INPUT: do_input( expression, ctx ); break;
 	case OUTPUT: do_output( expression, ctx ); break;
-	default: fprintf( stderr, "B%%: Warning: operation not supported\n" ); }
-}
+	default: fprintf( stderr, "B%%: Warning: operation not supported\n" ); } }
 
 //===========================================================================
 //	bm_operate
 //===========================================================================
 void
 bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
-	listItem *narratives, Registry *subs )
-{
+	listItem *narratives, Registry *subs ) {
 #ifdef DEBUG
 	fprintf( stderr, "operate bgn\n" );
 #endif
@@ -94,7 +91,7 @@ RETURN:
 #ifdef DEBUG
 	fprintf( stderr, "operate end\n" );
 #endif
-}
+	}
 
 //===========================================================================
 //	in_condition
@@ -103,8 +100,7 @@ static int
 in_condition( char *expression, BMContext *ctx, Pair **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
-*/
-{
+*/ {
 #ifdef DEBUG
 	fprintf( stderr, "in condition bgn: %s\n", expression );
 #endif
@@ -123,8 +119,7 @@ in_condition( char *expression, BMContext *ctx, Pair **mark )
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
-	return success;
-}
+	return success; }
 
 //===========================================================================
 //	on_event
@@ -133,8 +128,7 @@ static int
 on_event( char *expression, BMContext *ctx, Pair **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
-*/
-{
+*/ {
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
@@ -163,8 +157,7 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
-	return success;
-}
+	return success; }
 
 //===========================================================================
 //	on_event_x
@@ -180,8 +173,7 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 	Assumptions:
 		pre is either 0 or BM_AS_PER
 		if (( mark )) then *mark==NULL to begin with
-*/
-{
+*/ {
 #ifdef DEBUG
 	if ( pre ) fprintf( stderr, "on_event_x bgn: per %s\n", expression );
 	else fprintf( stderr, "on_event_x bgn: on %s\n", expression );
@@ -222,12 +214,10 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
-	return success;
-}
+	return success; }
 
 static inline void *
-test( int pre, ProxyTest *func, listItem **proxies )
-{
+test( int pre, ProxyTest *func, listItem **proxies ) {
 	CNInstance *proxy;
 	if ( pre & BM_AS_PER ) {
 		listItem *results = NULL;
@@ -240,11 +230,10 @@ test( int pre, ProxyTest *func, listItem **proxies )
 			if ( func( proxy ) ) {
 				freeListItem( proxies );
 				return newPair( NULL, proxy ); } }
-		return NULL; }
-}
+		return NULL; } }
+
 static inline void *
-feel( char *p, int type, listItem **proxies, BMContext *ctx )
-{
+feel( char *p, int type, listItem **proxies, BMContext *ctx ) {
 	CNInstance *proxy;
 	void *found;
 	if ( type & BM_AS_PER ) {
@@ -261,26 +250,23 @@ feel( char *p, int type, listItem **proxies, BMContext *ctx )
 			if (( found )) {
 				freeListItem( proxies );
 				return newPair( found, proxy ); } }
-		return NULL; }
-}
+		return NULL; } }
+
 static inline void
-release( int type, void *found )
-{
+release( int type, void *found ) {
 	Pair *batch;
 	if (( found )) {
 		if ( type & BM_AS_PER ) {
 			while (( batch=popListItem((listItem **)&found) )) {
 				freeListItem((listItem **) &batch->name );
 				freePair( batch ); } }
-		else freePair( found ); }
-}
+		else freePair( found ); } }
 
 //===========================================================================
 //	do_action
 //===========================================================================
 static int
-do_action( char *expression, BMContext *ctx, CNStory *story )
-{
+do_action( char *expression, BMContext *ctx, CNStory *story ) {
 #ifdef DEBUG
 	fprintf( stderr, "do_action: %s\n", expression );
 #endif
@@ -293,8 +279,7 @@ do_action( char *expression, BMContext *ctx, CNStory *story )
 #ifdef DEBUG
 	fprintf( stderr, "do_action end\n" );
 #endif
-	return 1;
-}
+	return 1; }
 
 //===========================================================================
 //	do_input
@@ -307,8 +292,7 @@ do_input( char *expression, BMContext *ctx )
 		arg <
 		arg, fmt <
 	reads input from stdin and assign arg according to fmt
-*/
-{
+*/ {
 #ifdef DEBUG
 	fprintf( stderr, "do_input bgn: %s\n", expression );
 #endif
@@ -337,8 +321,7 @@ do_input( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "do_input end\n" );
 #endif
-	return retval;
-}
+	return retval; }
 
 //===========================================================================
 //	do_output
@@ -357,8 +340,7 @@ do_output( char *expression, BMContext *ctx )
 
 	then outputs expression(s) to stdout resp. stderr
 	according to fmt
-*/
-{
+*/ {
 #ifdef DEBUG
 	fprintf( stderr, "do_output bgn: %s\n", expression );
 #endif
@@ -392,8 +374,7 @@ do_output( char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "do_output end\n" );
 #endif
-	return retval;
-}
+	return retval; }
 
 //===========================================================================
 //	do_enable
@@ -403,11 +384,10 @@ typedef struct {
 	CNNarrative *narrative;
 	Registry *subs;
 	Pair *entry;
-} EnableData;
+	} EnableData;
 
 static int
-do_enable( char *expression, BMContext *ctx, listItem *narratives, Registry *subs )
-{
+do_enable( char *expression, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	EnableData data;
 	data.subs = subs;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
@@ -428,17 +408,15 @@ do_enable( char *expression, BMContext *ctx, listItem *narratives, Registry *sub
 		data.entry = NULL;
 		bm_query( BM_CONDITION, p, ctx, enable_CB, &data );
 		freeString( s ); }
-	return 1;
-}
+	return 1; }
+
 static BMCBTake
-enable_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	Pair *entry;
 	EnableData *data = user_data;
 	if (!( entry = data->entry )) {
 		entry = registryRegister( data->subs, data->narrative, NULL );
 		data->entry = entry; }
 	addIfNotThere((listItem **) &entry->value, e );
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 

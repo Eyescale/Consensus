@@ -4,11 +4,24 @@
 
 #include "traverse.h"
 #include "parser.h"
-#include "expression.h"
-#include "instantiate.h"
 #include "narrative.h"
 #include "story.h"
-#include "cell.h"
+
+//===========================================================================
+//	cnStoryOutput
+//===========================================================================
+int
+cnStoryOutput( FILE *stream, CNStory *story ) {
+	if ( story == NULL ) return 0;
+	Registry *narratives = story->narratives;
+	for ( listItem *i=narratives->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		fprintf( stream, ": %s\n", (char *) entry->name );
+		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
+			CNNarrative *n = j->ptr;
+			narrative_output( stream, n, 0 );
+			fprintf( stream, "\n" ); } }
+	return 1; }
 
 //===========================================================================
 //	readStory
@@ -57,8 +70,8 @@ readStory( char *path, int ignite ) {
 	bm_parse_exit( &data );
 	io_exit( &io );
 	fclose( stream );
-	return data.narratives ?
-		(CNStory *) newPair( data.narratives, NULL ) :
+	return ( data.narratives ) ?
+		(CNStory *) newPair( data.narratives, newArena() ) :
 		NULL; }
 
 static int
@@ -181,76 +194,6 @@ free_CB( Registry *registry, Pair *entry ) {
 	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
-//	bm_load
-//===========================================================================
-static int load_CB( BMParseOp, BMParseMode, void * );
-
-int
-bm_load( char *path, BMContext *ctx ) {
-	FILE *stream = fopen( path, "r" );
-	if ( !stream ) {
-		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
-		return -1; }
-	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
-
-	BMParseData data;
-	memset( &data, 0, sizeof(BMParseData) );
-        data.io = &io;
-	data.ctx = ctx;
-	bm_parse_init( &data, BM_LOAD );
-	//-----------------------------------------------------------------
-	int event = 0;
-	do {	event = io_read( &io, event );
-		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse_load( event, BM_LOAD, &data, load_CB );
-		} while ( strcmp( data.state, "" ) && !data.errnum );
-	//-----------------------------------------------------------------
-	bm_parse_exit( &data );
-	io_exit( &io );
-
-	fclose( stream );
-	return data.errnum; }
-
-static int
-load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
-	BMParseData *data = user_data;
-	if ( op==ExpressionTake ) {
-		char *expression = StringFinish( data->string, 0 );
-		bm_instantiate( expression, data->ctx, NULL );
-		StringReset( data->string, CNStringAll ); }
-	return 1; }
-
-//===========================================================================
-//	bm_read
-//===========================================================================
-char *
-bm_read( FILE *stream ) {
-	CNIO io;
-	io_init( &io, stream, NULL, IOStreamInput );
-
-	BMParseData data;
-	memset( &data, 0, sizeof(BMParseData) );
-        data.io = &io;
-	bm_parse_init( &data, BM_INPUT );
-	//-----------------------------------------------------------------
-	int event = 0;
-	do {	event = io_read( &io, event );
-		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse_load( event, BM_INPUT, &data, NULL );
-		} while ( strcmp( data.state, "" ) && !data.errnum );
-	//-----------------------------------------------------------------
-	char *input;
-	if ( !data.errnum ) {
-		input = StringFinish( data.string, 0 );
-		StringReset( data.string, CNStringMode ); }
-	else input = NULL;
-
-	bm_parse_exit( &data );
-	io_exit( &io );
-	return input; }
-
-//===========================================================================
 //	newStory, freeStory
 //===========================================================================
 CNStory *
@@ -258,34 +201,12 @@ newStory( void ) {
 	Registry *narratives = newRegistry( IndexedByCharacter );
 	CNNarrative *base = newNarrative();
 	registryRegister( narratives, "", newItem( base ) );
-	return (CNStory *) newPair( narratives, NULL ); }
+	return (CNStory *) newPair( narratives, newArena() ); }
 
-static void free_arena_CB( Registry *, Pair * );
 void
 freeStory( CNStory *story ) {
 	if (( story )) {
 		freeRegistry( story->narratives, free_CB );
-		if (( story->arena ))
-			freeRegistry( story->arena, free_arena_CB );
+		freeArena( story->arena );
 		freePair((Pair *) story ); } }
-
-static void
-free_arena_CB( Registry *registry, Pair *entry ) {
-	} // TBD
-
-//===========================================================================
-//	cnStoryOutput
-//===========================================================================
-int
-cnStoryOutput( FILE *stream, CNStory *story ) {
-	if ( story == NULL ) return 0;
-	Registry *narratives = story->narratives;
-	for ( listItem *i=narratives->entries; i!=NULL; i=i->next ) {
-		Pair *entry = i->ptr;
-		fprintf( stream, ": %s\n", (char *) entry->name );
-		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
-			CNNarrative *n = j->ptr;
-			narrative_output( stream, n, 0 );
-			fprintf( stream, "\n" ); } }
-	return 1; }
 

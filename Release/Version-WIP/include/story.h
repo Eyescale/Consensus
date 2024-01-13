@@ -2,7 +2,6 @@
 #define	STORY_H
 
 #include "registry.h"
-#include "context.h"
 
 //===========================================================================
 //	Story types
@@ -16,12 +15,9 @@ typedef struct {
 //	Public Interface
 //===========================================================================
 CNStory *	readStory( char *path, int interactive );
-int		bm_load( char *path, BMContext *ctx );
-char *		bm_read( FILE *stream );
+int		cnStoryOutput( FILE *, CNStory * );
 CNStory *	newStory( void );
 void		freeStory( CNStory * );
-int		cnStoryOutput( FILE *, CNStory * );
-void *		newStoryRoot( CNStory * );
 
 inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;

@@ -17,7 +17,7 @@ typedef struct {
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;
-} LocatePivotData;
+	} LocatePivotData;
 
 char *
 bm_locate_pivot( char *expression, listItem **xpn )
@@ -25,8 +25,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 	returns first term (according to prioritization) which
 	is not a wildcard and is not negated, with corresponding
 	exponent (in reverse order).
-*/
-{
+*/ {
 	LocatePivotData data;
 	memset( &data, 0, sizeof(data) );
 	data.expression = expression;
@@ -56,8 +55,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 			return p; } }
 
 	xpn_free( xpn, NULL );
-	return NULL;
-}
+	return NULL; }
 
 //---------------------------------------------------------------------------
 //	locate_pivot_traversal

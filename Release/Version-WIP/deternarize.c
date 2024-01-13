@@ -29,8 +29,7 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 
    Note
 	only ternary-operated sequences are pushed on stack.sequence
-*/
-{
+*/ {
 	if ( type&LOCALE ) return NULL;
 
 	char *expression = *candidate;
@@ -87,22 +86,18 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 			free_deternarized( sequence[ 0 ] );
 			free_deternarized( sequence[ 1 ] ); } }
 
-	return ( !!deternarized ? ((*candidate=deternarized),expression) : NULL );
-}
+	return ( !!deternarized ? ((*candidate=deternarized),expression) : NULL ); }
 
 static int
-pass_CB( char *guard, void *user_data )
-{
+pass_CB( char *guard, void *user_data ) {
 	BMContext *ctx = user_data;
-	return !!bm_feel( BM_CONDITION, guard, ctx );
-}
+	return !!bm_feel( BM_CONDITION, guard, ctx ); }
 
 //===========================================================================
 //	deternarize
 //===========================================================================
 static char *
-deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression )
-{
+deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression ) {
 	DeternarizeData *data = traverse_data->user_data;
 	data->segment = newPair( p, NULL );
 
@@ -127,8 +122,7 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 		else freePair( segment );
 		reorderListItem( sequence );
 		if (( s )) *s = *sequence; }
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	deternarize_traversal
@@ -229,15 +223,13 @@ static char *
 optimize( Pair *segment, char *p )
 /*
 	remove ternary expression's result's enclosing parentheses if possible
-*/
-{
+*/ {
 	segment = segment->name;
 	char *bgn = segment->name;
 	char *end = segment->value; // segment ended after '('
 	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
 		{ segment->value--; return p+1; }
-	else return p;
-}
+	else return p; }
 
 //===========================================================================
 //	free_deternarized
@@ -252,8 +244,7 @@ free_deternarized( listItem *sequence )
 		}
 	where
 		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-*/
-{
+*/ {
 	listItem *stack = NULL;
 	listItem *i = sequence;
 	while (( i )) {
@@ -285,8 +276,7 @@ free_deternarized( listItem *sequence )
 			}
 			while ( !i && (stack) ); }
 		else break; }
-	freeListItem( &sequence );
-}
+	freeListItem( &sequence ); }
 
 //===========================================================================
 //	s_scan
@@ -303,8 +293,7 @@ s_scan( CNString *s, listItem *sequence )
 		where
 			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
 	into CNString
-*/
-{
+*/ {
 	listItem *stack = NULL;
 	listItem *i = sequence;
 	for ( ; ; ) {
@@ -324,6 +313,5 @@ s_scan( CNString *s, listItem *sequence )
 			i = i->next;
 		else if (( stack ))
 			i = popListItem( &stack );
-		else break; }
-}
+		else break; } }
 

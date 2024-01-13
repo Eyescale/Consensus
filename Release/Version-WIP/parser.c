@@ -220,8 +220,8 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				; // err
 			else if ( !is_f(ASSIGN) && *type&DO && f_actionable(stack) &&
 				  ( !is_f(LEVEL) || f_ternary_signalable(stack) ) ) {
-				do_( "term_" )	s_take } // signalable
-			else {	do_( "term" )	s_take }
+				do_( "term" )	s_take } // signalable
+			else {	do_( "_term" )	s_take }
 		end
 	//----------------------------------------------------------------------
 	// bm_parse_expr:	Expression sub-states
@@ -273,7 +273,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 					do_( "expr" )	REENTER
 							s_add( "~." )
 							f_set( INFORMED ) }
-			on_other	do_( "term" )	s_add( "~." )
+			on_other	do_( "_term" )	s_add( "~." )
 							s_take
 			end
 	in_( "%" ) bgn_
@@ -491,7 +491,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				do_( "expr" )	REENTER }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
-		on_other	do_( "term" )	s_take
+		on_other	do_( "_term" )	s_take
 		end
 	in_( "*" ) bgn_
 		ons( " \t" )	do_( same )
@@ -500,15 +500,16 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		ons( "~{" )	; //err
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
-		on_other	do_( "term" )	s_take
+		on_other	do_( "_term" )	s_take
 		end
-	in_( "term" ) bgn_
-		on_( '~' ) 	; // err
+	in_( "_term" ) bgn_
+		on_( '~' ) 	do_( "@" )	s_take
+						f_set( INFORMED )
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other 	do_( same )	s_take
 		end
-	in_( "term_" ) bgn_
+	in_( "term" ) bgn_
 		on_( '~' ) 	do_( "term~" )	s_take
 						f_set( INFORMED )
 		on_separator	do_( "expr" )	REENTER
@@ -517,7 +518,9 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		end
 		in_( "term~" ) bgn_
 			ons( " \t" )	do_( same )
-			ons( "?<" )	; // err
+			on_( '<' )	do_( "@<" )	s_take
+							bm_parse_caution( data, WarnUnsubscribe, mode );
+			on_( '?' )	; // err
 			on_other	do_( "expr" )	REENTER
 							f_set( PROTECTED )
 			end
@@ -1442,12 +1445,12 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		    (mode==BM_LOAD) ? "bm_load" : "bm_read";
 	char *stump = StringFinish( data->string, 0 );
 
+	fprintf( stderr, "\x1B[1;33m" );
 	if ( data->errnum==ErrUnknownState )
 		fprintf( stderr, ">>>>> B%%::%s: ", src );
 	else if ( mode!=BM_CMD )
 		fprintf( stderr, "Error: %s: ", src );
 	else {
-		fprintf( stderr, "\x1B[1;33m" );
 		for (int i=1; i<c; i++ ) fprintf( stderr, "~" );
 		fprintf( stderr, data->errnum==ErrSyntaxError ?
 			"^\nB%%: " : "^\nB%%: error: " ); }
@@ -1488,7 +1491,7 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrPerContrary, "per contrary not supported\n" )_narg
 		err_default( "syntax error\n" )_narg } }
 
-	if ( mode==BM_CMD ) fprintf( stderr, "\x1B[0m" ); }
+	fprintf( stderr, "\x1B[0m" ); }
 
 //---------------------------------------------------------------------------
 //	bm_parse_caution
@@ -1500,13 +1503,22 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 */
 {
 	CNIO *io = data->io;
-	fprintf( stderr, "Warning: bm_parse: " );
-	if (( io->path )) fprintf( stderr, "in %s, ", io->path );
-	fprintf( stderr, "l%dc%d: ", io->line, io->column );
+	int l=io->line, c=io->column;
+	fprintf( stderr, "\x1B[1;33m" );
+	if ( mode!=BM_CMD ) {
+		fprintf( stderr, "Warning: bm_parse: " );
+		if (( io->path )) fprintf( stderr, "in %s, ", io->path );
+		fprintf( stderr, "l%dc%d: ", l, c ); }
+	else {
+		for (int i=1; i<c; i++ ) fprintf( stderr, "~" );
+		fprintf( stderr, data->errnum==ErrSyntaxError ?
+			"^\nB%%: " : "^\nB%%: warning: " ); }
 	switch ( errnum ) {
 	err_case( WarnOutputFormat, "unsupported output format - using default \"%%_\"\n" )_narg
 	err_case( WarnInputFormat, "unsupported input format - using default \"%%_\"\n" )_narg;
-	default: break; } }
+	err_case( WarnUnsubscribe, "'do term~<' results in instantiation\n" )_narg;
+	default: break; }
+	fprintf( stderr, "\x1B[0m" ); }
 
 //===========================================================================
 //	bm_parse_init / bm_parse_exit

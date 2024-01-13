@@ -13,7 +13,7 @@ typedef struct {
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
-} LocateMarkData;
+	} LocateMarkData;
 
 char *
 bm_locate_mark( char *expression, listItem **exponent )
@@ -22,8 +22,7 @@ bm_locate_mark( char *expression, listItem **exponent )
 	Assumption: negated mark is ruled out at expression creation time
 	Note that we do not enter %(...) sub-sub-expressions
 	Note also that the caller is expected to reorder the list of exponents
-*/
-{
+*/ {
 	LocateMarkData data;
 	memset( &data, 0, sizeof(data) );
 	data.exponent = exponent;
@@ -42,8 +41,7 @@ bm_locate_mark( char *expression, listItem **exponent )
 		return p;
 	default:
 		freeListItem( exponent );
-		return NULL; }
-}
+		return NULL; } }
 
 //---------------------------------------------------------------------------
 //	locate_mark_traversal

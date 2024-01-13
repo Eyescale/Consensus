@@ -7,6 +7,7 @@ SRCS =	story.c \
 		narrative.c \
 		parser.c \
 		parser_io.c \
+		arena.c \
 	program.c \
 		cell.c \
 			context.c \

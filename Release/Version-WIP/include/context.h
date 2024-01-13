@@ -2,13 +2,13 @@
 #define CONTEXT_H
 
 #include "database.h"
+#include "story.h"
 
 typedef Registry BMContext;
 
-BMContext *	newContext( CNEntity *cell );
-void		freeContext( BMContext * );
-void		bm_context_init( BMContext *ctx );
-int		bm_context_update( CNEntity *this, BMContext *ctx );
+int		bm_context_load( BMContext *ctx, char *path );
+void		bm_context_init( BMContext * );
+int		bm_context_update( BMContext *, CNStory * );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
@@ -24,6 +24,9 @@ void *		bm_lookup( BMContext *, char *, CNDB *, int );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
 void *		bm_inform( int, BMContext *, void *, CNDB * );
 CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
+
+BMContext *	newContext( CNEntity *cell );
+void		freeContext( BMContext * );
 
 inline void * bm_context_lookup( BMContext *ctx, char *p ) {
 	return bm_lookup( ctx, p, NULL, 0 ); }

@@ -16,14 +16,13 @@ static freeRegistryCB free_CB;
 CNDB *
 newCNDB( void ) {
 	CNInstance *nil = cn_new( NULL, NULL );
+	nil->sub[ 0 ] = nil; // set init condition
 #ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
 #else
 	Registry *index = newRegistry( IndexedByCharacter );
 #endif
-	CNDB *db = (CNDB *) newPair( nil, index );
-	db_init( db );
-	return db; }
+	return (CNDB *) newPair( nil, index ); }
 
 void
 freeCNDB( CNDB *db )
@@ -42,6 +41,31 @@ static void
 free_CB( Registry *registry, Pair *entry ) {
 	free( entry->name );
 	cn_prune((CNInstance *) entry->value ); }
+
+//===========================================================================
+//	new_proxy / free_proxy
+//===========================================================================
+CNInstance *
+new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
+/*
+	Assumptions: proxy not already created, and that!=NULL
+*/ {
+	CNInstance *e = cn_new( cn_new(this,that), NULL );
+	db_op( DB_MANIFEST_OP, e, db );
+	return e; }
+
+void
+free_proxy( CNEntity *e )
+/*
+	Assumption: e is proxy:( connection:(this,that), NULL )
+	where this==NULL denotes current cell's Self proxy
+	cn_release( connection ) will remove connection
+	from this->as_sub[ 0 ] and from that->as_sub[ 1 ]
+*/ {
+	CNEntity *connection = e->sub[ 0 ];
+	if (( connection->sub[ 0 ] )) { // !this
+		cn_release( e ); // remove proxy
+		cn_release( connection ); } }
 
 //===========================================================================
 //	db_register
@@ -70,11 +94,39 @@ db_register( char *p, CNDB *db )
 		p = strmake( p ); // for storage
 #endif
 		e = cn_new( NULL, NULL );
-		registryRegister( db->index, p, e );
-		e->sub[ 1 ] = (CNInstance *) p;
+		entry = registryRegister( db->index, p, e );
+		e->sub[ 1 ] = (CNInstance *) entry;
 		db_op( DB_MANIFEST_OP, e, db ); }
 	return e; }
 
+//===========================================================================
+//	db_deregister
+//===========================================================================
+void
+db_deregister( CNInstance *e, CNDB *db )
+/*
+	Assumption: e->sub[0]==NULL
+*/ {
+	// remove entry from db->index
+	Pair *entry = (Pair *) e->sub[ 1 ];
+	Registry *index = db->index;
+	listItem *next_i, *last_i=NULL;
+	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
+		Pair *r = i->ptr;
+		next_i = i->next;
+		if ( r!=entry ) last_i = i;
+		else {
+			freeItem( i );
+			if (( last_i )) last_i->next = next_i;
+			else index->entries = next_i;
+			break; } }
+	// free entry
+	free( entry->name );
+	freePair( entry );
+	// release e
+	e->sub[1] = NULL;
+	cn_release( e ); }
+	
 //===========================================================================
 //	db_deprecate
 //===========================================================================
@@ -246,18 +298,6 @@ db_fire( CNInstance *proxy, CNDB *db )
 		else deprecate( proxy, db ); } }
 
 //===========================================================================
-//	db_proxy
-//===========================================================================
-CNInstance *
-db_proxy( CNEntity *this, CNEntity *that, CNDB *db )
-/*
-	Assumptions: proxy not already created, and that!=NULL
-*/ {
-	CNInstance *e = cn_new( cn_new(this,that), NULL );
-	db_op( DB_MANIFEST_OP, e, db );
-	return e; }
-
-//===========================================================================
 //	db_match
 //===========================================================================
 int
@@ -287,8 +327,8 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 		else {
 			if (( x->sub[ 0 ] ))
 				goto FAIL;
-			char *p_x = DBIdentifier( x, db_x );
-			char *p_y = DBIdentifier( y, db_y );
+			char *p_x = DBIdentifier( x );
+			char *p_y = DBIdentifier( y );
 			if ( strcomp( p_x, p_y, 1 ) )
 				goto FAIL; }
 		for ( ; ; ) {
@@ -321,7 +361,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL, *candidate;
-	if ( DBStarMatch( e->sub[0], db ) ) {
+	if ( DBStarMatch( e->sub[0] ) ) {
 		/* Assignment case - as we have e:( *, . )
 		*/
 		// ward off concurrent reassignment case
@@ -550,7 +590,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			else if (( e->sub[0] )) // proxy
 				fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
 			else
-				fprintf( stream, "%s", DBIdentifier(e,db) );
+				fprintf( stream, "%s", DBIdentifier(e) );
 			return 0; } }
 
 	listItem *stack = NULL;
@@ -567,7 +607,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 		else if (( e->sub[ 0 ] )) // proxy
 			fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
 		else {
-			char *p = DBIdentifier( e, db );
+			char *p = DBIdentifier( e );
 			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
 			else {

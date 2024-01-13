@@ -8,6 +8,7 @@
 #include "instantiate.h"
 #include "story.h"
 #include "eenov.h"
+#include "parser.h"
 
 // #define DEBUG
 
@@ -15,16 +16,14 @@
 //	bm_feel
 //===========================================================================
 CNInstance *
-bm_feel( int type, char *expression, BMContext *ctx )
-{
+bm_feel( int type, char *expression, BMContext *ctx ) {
 	switch ( type ) {
 	case BM_CONDITION: // special case: EEnoRV as-is
 		if ( !strncmp(expression,"%<",2) && !p_filtered(expression) ) {
 			return eenov_lookup( ctx, NULL, expression ); }
 		// no break
 	default:
-		return bm_query( type, expression, ctx, NULL, NULL ); }
-}
+		return bm_query( type, expression, ctx, NULL, NULL ); } }
 
 //===========================================================================
 //	bm_scan
@@ -32,20 +31,17 @@ bm_feel( int type, char *expression, BMContext *ctx )
 static BMQueryCB scan_CB;
 
 listItem *
-bm_scan( char *expression, BMContext *ctx )
-{
+bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
 	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
 	reorderListItem( &results );
-	return results;
-}
+	return results; }
+
 static BMCBTake
-scan_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
+scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	listItem **results = user_data;
 	addItem( results, e );
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 
 //===========================================================================
 //	bm_release
@@ -53,17 +49,14 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data )
 static BMQueryCB release_CB;
 
 void
-bm_release( char *expression, BMContext *ctx )
-{
+bm_release( char *expression, BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
-	bm_query( BM_CONDITION, expression, ctx, release_CB, db );
-}
+	bm_query( BM_CONDITION, expression, ctx, release_CB, db ); }
+
 static BMCBTake
-release_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
+release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	db_deprecate( e, (CNDB *) user_data );
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 
 //===========================================================================
 //	bm_inputf
@@ -76,8 +69,7 @@ int
 bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 /*
 	Assumption: fmt starts and finishes with \" or \0
-*/
-{
+*/ {
 	int event=0, delta;
 	char_s q;
 	if ( *fmt ) {
@@ -121,11 +113,11 @@ RETURN:
 			char *arg = args->ptr;
 			bm_instantiate_input( NULL, arg, ctx );
 			args = args->next; } }
-	return 0;
-}
+	return 0; }
+
+static char * bm_read( FILE *stream );
 static int
-bm_input( int type, char *arg, BMContext *ctx )
-{
+bm_input( int type, char *arg, BMContext *ctx ) {
 	char *input = NULL;
 	int event = 0;
 	switch ( type ) {
@@ -149,8 +141,37 @@ bm_input( int type, char *arg, BMContext *ctx )
 
 	bm_instantiate_input( input, arg, ctx );
 	free( input );
-	return 0;
-}
+	return 0; }
+
+//---------------------------------------------------------------------------
+//	bm_read
+//---------------------------------------------------------------------------
+static char *
+bm_read( FILE *stream ) {
+	CNIO io;
+	io_init( &io, stream, NULL, IOStreamInput );
+
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+        data.io = &io;
+	bm_parse_init( &data, BM_INPUT );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_INPUT, &data, NULL );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	char *input;
+	if ( !data.errnum ) {
+		input = StringFinish( data.string, 0 );
+		StringReset( data.string, CNStringMode ); }
+	else input = NULL;
+
+	bm_parse_exit( &data );
+	io_exit( &io );
+	return input; }
+
 
 //===========================================================================
 //	bm_outputf / bm_out_put / bm_out_flush
@@ -161,8 +182,7 @@ int
 bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 /*
 	Assumption: fmt starts and finishes with \" or \0
-*/
-{
+*/ {
 	int delta; char_s q;
 	if ( *fmt ) {
 		fmt++; // skip opening double-quote
@@ -191,8 +211,7 @@ bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 			fprintf( stream, "\n" ); } }
 	else fprintf( stream, "\n" );
 RETURN:
-	return 0;
-}
+	return 0; }
 
 //---------------------------------------------------------------------------
 //	bm_output
@@ -204,8 +223,7 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 /*
 	outputs arg-expression's results
 	note that we rely on bm_query to eliminate doublons
-*/
-{
+*/ {
 	// special case: single quote & type 's' or '$'
 	if ( *arg=='\'' && type!=DEFAULT_TYPE ) {
 		char_s q;
@@ -220,21 +238,18 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 		return eenov_output( arg, ctx, &data );
 
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
-	return bm_out_flush( &data, BMContextDB(ctx) );
-}
+	return bm_out_flush( &data, BMContextDB(ctx) ); }
+
 static BMCBTake
-output_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
+output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	bm_out_put( user_data, e, BMContextDB(ctx) );
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 
 //---------------------------------------------------------------------------
 //	bm_out_put / bm_out_flush
 //---------------------------------------------------------------------------
 void
-bm_out_put( OutputData *data, CNInstance *e, CNDB *db )
-{
+bm_out_put( OutputData *data, CNInstance *e, CNDB *db ) {
 	if (( data->last )) {
 		FILE *stream = data->stream;
 		if ( data->type=='$' )
@@ -247,11 +262,10 @@ bm_out_put( OutputData *data, CNInstance *e, CNDB *db )
 				data->first = 0; }
 			else fprintf( stream, "," );
 			db_outputf( stream, db, " %_", data->last ); } }
-	data->last = e;
-}
+	data->last = e; }
+
 int
-bm_out_flush( OutputData *data, CNDB *db )
-{
+bm_out_flush( OutputData *data, CNDB *db ) {
 	FILE *stream = data->stream;
 	if ( data->type=='$' )
 		db_outputf( stream, db, "%_", data->last );
@@ -260,6 +274,5 @@ bm_out_flush( OutputData *data, CNDB *db )
 	else if ( data->type=='s' )
 		db_outputf( stream, db, "%s", data->last );
 	else	db_outputf( stream, db, "%_", data->last );
-	return 0;
-}
+	return 0; }
 

@@ -7,61 +7,52 @@
 #include "locate_mark.h"
 #include "traverse.h"
 #include "eenov.h"
+#include "parser.h"
+#include "instantiate.h"
 
 //===========================================================================
-//	newContext / freeContext
+//	bm_context_load
 //===========================================================================
-BMContext *
-newContext( CNEntity *cell ) {
-	CNDB *db = newCNDB();
-	CNInstance *self = db_proxy( NULL, cell, db );
-	Pair *id = newPair( self, NULL );
-	Pair *active = newPair( newPair( NULL, NULL ), NULL );
-	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+static int load_CB( BMParseOp, BMParseMode, void * );
 
-	Registry *ctx = newRegistry( IndexedByCharacter );
-	registryRegister( ctx, "", db ); // BMContextDB( ctx )
-	registryRegister( ctx, "%", id ); // aka. %% and ..
-	registryRegister( ctx, "@", active ); // active connections (proxies)
-	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
-	registryRegister( ctx, "?", NULL ); // aka. %?
-	registryRegister( ctx, "|", NULL ); // aka. %|
-	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
-	return ctx; }
+int
+bm_context_load( BMContext *ctx, char *path ) {
+	FILE *stream = fopen( path, "r" );
+	if ( !stream ) {
+		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
+		return -1; }
+	CNIO io;
+	io_init( &io, stream, path, IOStreamFile );
 
-void
-freeContext( BMContext *ctx )
-/*
-	Assumptions - cf freeCell()
-		. CNDB is free from any proxy attachment
-		. id Self and Parent proxies have been released
-		. ctx registry all flushed out
-*/ {
-	// free active connections register
-	ActiveRV *active = BMContextActive( ctx );
-	freeListItem( &active->buffer->activated );
-	freeListItem( &active->buffer->deactivated );
-	freePair((Pair *) active->buffer );
-	freeListItem( &active->value );
-	freePair((Pair *) active );
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+        data.io = &io;
+	data.ctx = ctx;
+	bm_parse_init( &data, BM_LOAD );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, load_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	bm_parse_exit( &data );
+	io_exit( &io );
 
-	// free context id register value
-	Pair *id = BMContextId( ctx );
-	freePair( id );
+	fclose( stream );
+	return data.errnum; }
 
-	// free perso stack
-	listItem *stack = registryLookup( ctx, "." )->value;
-	freeRegistry(((Pair *) stack->ptr )->value, NULL );
-	freePair( stack->ptr );
-	freeItem( stack );
-
-	// free CNDB & context registry
-	CNDB *db = BMContextDB( ctx );
-	freeCNDB( db );
-	freeRegistry( ctx, NULL ); }
+static int
+load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+	BMParseData *data = user_data;
+	if ( op==ExpressionTake ) {
+		char *expression = StringFinish( data->string, 0 );
+		bm_instantiate( expression, data->ctx, NULL );
+		StringReset( data->string, CNStringAll ); }
+	return 1; }
 
 //===========================================================================
-//	bm_context_init / bm_context_update
+//	bm_context_init
 //===========================================================================
 static inline void update_active( ActiveRV * );
 
@@ -69,10 +60,9 @@ void
 bm_context_init( BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	// integrate cell's init conditions
-	db_update( db, NULL );
+	db_init( db );
 	// activate parent connection, if there is
-	update_active( BMContextActive(ctx) );
-	db_init( db ); }
+	update_active( BMContextActive(ctx) ); }
 
 static inline void
 update_active( ActiveRV *active ) {
@@ -85,11 +75,15 @@ update_active( ActiveRV *active ) {
 	while (( proxy = popListItem(buffer) ))
 		addIfNotThere( current, proxy ); }
 
+//===========================================================================
+//	bm_context_update
+//===========================================================================
 int
-bm_context_update( CNEntity *this, BMContext *ctx ) {
+bm_context_update( BMContext *ctx, CNStory *story ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: bgn\n" );
 #endif
+	CNEntity *this = BMContextCell( ctx );
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *proxy;
 
@@ -103,7 +97,8 @@ bm_context_update( CNEntity *this, BMContext *ctx ) {
 		db_fire( connection->as_sub[0]->ptr, db ); }
 
 	// invoke db_update
-	db_update( db, BMContextParent(ctx) );
+	CNInstance *parent = BMContextParent( ctx );
+	db_update( db, parent, story->arena );
 
 	// update active registry wrt deprecated connections
 	listItem **entries = &active->value;
@@ -615,7 +610,7 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 
 	if ( !strncmp( p, "(:", 2 ) ) {
 		if ( db==db_x )
-			return DBStarMatch( x->sub[ 0 ], db ) &&
+			return DBStarMatch( x->sub[ 0 ] ) &&
 				x->sub[ 1 ]==BMContextSelf( ctx );
 		else
 			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
@@ -629,7 +624,7 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 
 	// not found in ctx
 	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x, db_x );
+		char *identifier = DBIdentifier( x );
 		char_s q;
 		switch ( *p ) {
 		case '\'':
@@ -691,7 +686,7 @@ inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
 			CNEntity *that = DBProxyThat( e );
 			instance = proxy_that( that, dst, db_dst, 1 ); }
 		else {
-			char *p = DBIdentifier( e, db_src );
+			char *p = DBIdentifier( e );
 			instance = db_register( p, db_dst ); }
 		if ( !instance ) break;
 		for ( ; ; ) {
@@ -727,7 +722,7 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 		if ( connection->sub[ 1 ]==that )
 			return connection->as_sub[ 0 ]->ptr; }
 
-	return ( inform ? db_proxy(this,that,db) : NULL ); }
+	return ( inform ? new_proxy(this,that,db) : NULL ); }
 
 //===========================================================================
 //	bm_intake
@@ -750,7 +745,7 @@ bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
 			CNEntity *that = DBProxyThat( x );
 			instance = proxy_that( that, dst, db_dst, 0 ); }
 		else {
-			char *p = DBIdentifier( x, db_x );
+			char *p = DBIdentifier( x );
 			instance = db_lookup( 0, p, db_dst ); }
 		if ( !instance ) break;
 		for ( ; ; ) {
@@ -767,4 +762,56 @@ FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
 	return NULL; }
+
+//===========================================================================
+//	newContext / freeContext
+//===========================================================================
+BMContext *
+newContext( CNEntity *cell ) {
+	CNDB *db = newCNDB();
+	CNInstance *self = new_proxy( NULL, cell, db );
+	Pair *id = newPair( self, NULL );
+	Pair *active = newPair( newPair( NULL, NULL ), NULL );
+	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+
+	Registry *ctx = newRegistry( IndexedByCharacter );
+	registryRegister( ctx, "", db ); // BMContextDB( ctx )
+	registryRegister( ctx, "%", id ); // aka. %% and ..
+	registryRegister( ctx, "@", active ); // active connections (proxies)
+	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
+	registryRegister( ctx, "?", NULL ); // aka. %?
+	registryRegister( ctx, "|", NULL ); // aka. %|
+	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
+	return ctx; }
+
+void
+freeContext( BMContext *ctx )
+/*
+	Assumptions - cf freeCell()
+		. CNDB is free from any proxy attachment
+		. id Self and Parent proxies have been released
+		. ctx registry all flushed out
+*/ {
+	// free active connections register
+	ActiveRV *active = BMContextActive( ctx );
+	freeListItem( &active->buffer->activated );
+	freeListItem( &active->buffer->deactivated );
+	freePair((Pair *) active->buffer );
+	freeListItem( &active->value );
+	freePair((Pair *) active );
+
+	// free context id register value
+	Pair *id = BMContextId( ctx );
+	freePair( id );
+
+	// free perso stack
+	listItem *stack = registryLookup( ctx, "." )->value;
+	freeRegistry(((Pair *) stack->ptr )->value, NULL );
+	freePair( stack->ptr );
+	freeItem( stack );
+
+	// free CNDB & context registry
+	CNDB *db = BMContextDB( ctx );
+	freeCNDB( db );
+	freeRegistry( ctx, NULL ); }
 

@@ -15,15 +15,14 @@ typedef struct {
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
-} LocateEMarkData;
+	} LocateEMarkData;
 
 char *
 bm_locate_emark( char *expression, listItem **exponent )
 /*
 	returns position of '!' in %<(...)>, together with exponent
 		expression ----------^
-*/
-{
+*/ {
 	listItem *base = *exponent;
 
 	LocateEMarkData data;
@@ -39,8 +38,7 @@ bm_locate_emark( char *expression, listItem **exponent )
 
 	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	locate_emark_traversal

@@ -12,7 +12,7 @@
 typedef struct {
 	listItem *list;
 	struct { listItem *flags, *level; } stack;
-} DeparameterizeData;
+	} DeparameterizeData;
 
 CNString *
 bm_deparameterize( char *proto ) 
@@ -37,8 +37,7 @@ bm_deparameterize( char *proto )
 		bgn --------^ ^--------- end
 
 	which we then use to fulfill our mission
-*/
-{
+*/ {
 	DeparameterizeData data;
 	memset( &data, 0, sizeof(data) );
 	listItem *stack = NULL;
@@ -76,8 +75,7 @@ bm_deparameterize( char *proto )
 			p = ((*end==':') ? end+1 : (StringAppend(s,'.'),end));
 			break; } }
 	do StringAppend(s,*p++); while ( *p );
-	return s;
-}
+	return s; }
 
 //---------------------------------------------------------------------------
 //	deparameterize_traversal

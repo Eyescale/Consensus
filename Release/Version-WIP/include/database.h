@@ -22,6 +22,7 @@ void	freeCNDB( CNDB * );
 //	data
 //===========================================================================
 CNInstance *	db_register( char *identifier, CNDB * );
+void		db_deregister( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
 void		db_clear( listItem *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );
@@ -34,15 +35,18 @@ int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 
-inline char * DBIdentifier( CNInstance *e, CNDB *db ) {
-	return (char *) e->sub[ 1 ]; }
-inline int DBStarMatch( CNInstance *e, CNDB *db ) {
-	return ((e) && !(e->sub[0]) && *(char*)e->sub[1]=='*' ); }
+inline int DBRegistered( CNInstance *e ) {
+	return ( ((Pair*) e->sub[1])->value==e ); }
+inline char * DBIdentifier( CNInstance *e ) {
+	return (char *) ((Pair*) e->sub[ 1 ])->name; }
+inline int DBStarMatch( CNInstance *e ) {
+	return ((e) && !(e->sub[0]) && *DBIdentifier(e)=='*' ); }
 
 //===========================================================================
 //	proxy
 //===========================================================================
-CNInstance *	db_proxy( CNEntity *, CNEntity *, CNDB * );
+CNInstance *	new_proxy( CNEntity *, CNEntity *, CNDB * );
+void		free_proxy( CNEntity *e );
 void		db_fire( CNInstance *, CNDB * );
 
 //---------------------------------------------------------------------------
@@ -74,6 +78,7 @@ int	db_outputf( FILE *, CNDB *, char *fmt, ... );
 //	db_init, db_exit, DBInitOn, DBExitOn, DBActive
 //---------------------------------------------------------------------------
 inline void db_init( CNDB *db ) {
+	db_update( db, NULL, NULL );
 	db->nil->sub[ 0 ] = db->nil; }
 
 inline void db_exit( CNDB *db ) {

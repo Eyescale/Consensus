@@ -153,7 +153,7 @@ bm_cell_carry( CNCell *cell, CNCell *child, int connect )
 	if ( connect ) {
 		// create proxy and activate connection from child to parent cell
 		BMContext *ctx = BMCellContext( child );
-		proxy = db_proxy( child, cell, BMContextDB(ctx) );
+		proxy = new_proxy( child, cell, BMContextDB(ctx) );
 		ActiveRV *active = BMContextActive( ctx );
 		addIfNotThere( &active->buffer->activated, proxy );
 
@@ -163,7 +163,7 @@ bm_cell_carry( CNCell *cell, CNCell *child, int connect )
 
 		// create proxy and activate connection from parent cell to child
 		ctx = BMCellContext( cell );
-		proxy = db_proxy( cell, child, BMContextDB(ctx) );
+		proxy = new_proxy( cell, child, BMContextDB(ctx) );
 		active = BMContextActive( ctx );
 		addIfNotThere( &active->buffer->activated, proxy ); }
 
@@ -179,7 +179,7 @@ newCell( Pair *entry, char *inipath ) {
 	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
 	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
 	if (( inipath )) {
-		int errnum = bm_load( inipath, BMCellContext(cell) );
+		int errnum = bm_context_load( BMCellContext(cell), inipath );
 		if ( errnum ) {
 			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			freeCell( cell );

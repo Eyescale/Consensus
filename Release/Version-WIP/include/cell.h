@@ -33,8 +33,8 @@ inline BMContext * BMMakeCurrent( CNCell *cell ) {
 
 inline void bm_cell_init( CNCell *cell ) {
 	bm_context_init( BMCellContext(cell) ); }
-inline int bm_cell_update( CNCell *cell ) {
-	return bm_context_update( cell, BMCellContext(cell) ); }
+inline int bm_cell_update( CNCell *cell, CNStory *story ) {
+	return bm_context_update( BMCellContext(cell), story ); }
 
 void bm_cell_operate( CNCell *, CNStory * );
 CNInstance *bm_cell_carry( CNCell *, CNCell *, int );

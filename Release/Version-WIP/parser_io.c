@@ -36,13 +36,11 @@ io_reset( CNIO *io, int l, int c ) {
 //	io_getc
 //===========================================================================
 int
-io_getc( CNIO *io, int last_event )
-{
+io_getc( CNIO *io, int last_event ) {
 	if ( last_event=='\n' ) { io->line++; io->column = 0; }
 	int event = fgetc( io->stream );
 	io->column++;
-	return event;
-}
+	return event; }
 
 //===========================================================================
 //	io_read
@@ -55,8 +53,7 @@ int
 io_read( CNIO *io, int last_event )
 /*
 	filters out comments and \cr line continuation from input
-*/
-{
+*/ {
 	listItem **buffer;
 	int event;
 	do {
@@ -127,12 +124,10 @@ TAKE:
 				event = 0; } }
 	} while ( !event );
 RETURN:
-	return event;
-}
+	return event; }
 
 static int
-io_pragma_execute( CNIO *io )
-{
+io_pragma_execute( CNIO *io ) {
 	union { void *ptr; int value; } parent_mode;
 	CNString *s = io->string;
 	char *param = StringFinish( s, 0 );
@@ -230,8 +225,7 @@ io_pragma_execute( CNIO *io )
 	if ( !errnum ) StringReset( s, CNStringAll );
 	io->control.pragma = 0;
 	io->errnum = errnum;
-	return errnum;
-}
+	return errnum; }
 
 //---------------------------------------------------------------------------
 //	preprocess
@@ -240,8 +234,7 @@ io_pragma_execute( CNIO *io )
 #include "parser_macros.h"
 
 static inline IOControlPragma
-pragma_type( CNIO *io )
-{
+pragma_type( CNIO *io ) {
 	char *p;
 	CNString *s = io->string;
 	IOControlPragma type =
@@ -276,12 +269,10 @@ pragma_type( CNIO *io )
 			fprintf( stderr, "B%%: bm_preprocess: Warning: "
 			"unknown preprocessing directive #%s\n", p ); }
 	s_reset( CNStringAll )
-	return type;
-}
+	return type; }
 
 static IOEventAction
-preprocess( CNIO *io, int event )
-{
+preprocess( CNIO *io, int event ) {
 	CNString *s = io->string;
 	char *	state = io->state;
 	int	line = io->line,
@@ -450,8 +441,7 @@ preprocess( CNIO *io, int event )
 
 	io->errnum = errnum;
 	io->state = state;
-	return action;
-}
+	return action; }
 
 //---------------------------------------------------------------------------
 //	io_push / io_pop
@@ -459,8 +449,7 @@ preprocess( CNIO *io, int event )
 static FILE * io_open( CNIO *io, char **path );
 
 static int
-io_push( CNIO *io, IOType type, char *path )
-{
+io_push( CNIO *io, IOType type, char *path ) {
 	switch ( type ) {
 	case IOBuffer: ;
 		listItem **stack = &io->stack;
@@ -488,15 +477,13 @@ io_push( CNIO *io, IOType type, char *path )
 			io->column = 0;
 			return 0; }
 	default:
-		return 0; }
-}
+		return 0; } }
 
 static FILE *
 io_open( CNIO *io, char **path )
 /*
 	make path relative to current file path
-*/
-{
+*/ {
 	if ( **path!='/' ) {
 		char *p = io->path;
 		if ( io->type!=IOStreamFile ) {
@@ -525,15 +512,13 @@ io_open( CNIO *io, char **path )
 					s_reset( CNStringMode ) }
 				freeString( s );
 				return file; } } }
-	return fopen( *path, "r" );
-}
+	return fopen( *path, "r" ); }
 
 static int
 io_pop( CNIO *io )
 /*
 	Assumption: io->stack != NULL
-*/
-{
+*/ {
 	if ( !io->stack ) return EOF;
 	listItem **stack = &io->stack;
 	union { int value; char *ptr; } icast;
@@ -560,8 +545,7 @@ io_pop( CNIO *io )
 	pair = popListItem( stack );
 	io->stream = pair->name;
 	io->path = pair->value;
-	return 0;
-}
+	return 0; }
 
 //===========================================================================
 //	io_report
@@ -575,8 +559,7 @@ io_pop( CNIO *io )
 #define _narg \
 	); break;
 IOErr
-io_report( CNIO *io )
-{
+io_report( CNIO *io ) {
 	CNString *s = io->string;
 	char *stump = StringFinish( s, 0 );
 	fprintf( stderr, "Error: bm_preprocess: " );
@@ -598,5 +581,5 @@ io_report( CNIO *io )
 	err_default( "syntax error\n" )_narg }
 
 	StringReset( s, CNStringAll );
-	return io->errnum;
-}
+	return io->errnum; }
+

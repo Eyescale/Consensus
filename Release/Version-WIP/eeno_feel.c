@@ -20,11 +20,10 @@ typedef struct {
 	CNDB *db_x;
 	CNInstance *x;
 	struct { listItem *flags, *x; } stack;
-} EENOFeelData;
+	} EENOFeelData;
 
 void *
-bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
-{
+bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_eeno_feel: %s\n", expression );
 #endif
@@ -67,8 +66,7 @@ bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "bm_eeno_feel: success=%d\n", !!success );
 #endif
-	return success;
-}
+	return success; }
 
 //---------------------------------------------------------------------------
 //	eeno_feel_traversal
@@ -111,25 +109,21 @@ BMTraverseCBEnd
 
 static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
 static inline CNInstance *
-proxy_verify( char *p, EENOFeelData *data )
-{
-	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data );
-}
+proxy_verify( char *p, EENOFeelData *data ) {
+	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data ); }
+
 static BMCBTake
-proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data )
-{
+proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EENOFeelData *data = user_data;
 	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
 		return BM_DONE;
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 
 //---------------------------------------------------------------------------
 //	eeno_feel_assignment
 //---------------------------------------------------------------------------
 static void *
-eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data )
-{
+eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data ) {
 	EENOFeelData *data = traverse_data->user_data;
 	CNDB *db_x = data->db_x;
 	CNInstance *star = db_lookup( 2, "*", db_x );
@@ -247,8 +241,7 @@ eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTravers
 				freeListItem( &s );
 				success = e; // return ((*,.),.)
 				break; } } }
-	return success;
-}
+	return success; }
 
 //===========================================================================
 //	bm_proxy_scan
@@ -257,8 +250,7 @@ listItem *
 bm_proxy_scan( int type, char *expression, BMContext *ctx )
 /*
 	return all context's active connections (proxies) matching expression
-*/
-{
+*/ {
 #ifdef DEBUG
 	fprintf( stderr, "bm_proxy_scan: bgn - %s\n", expression );
 #endif
@@ -304,32 +296,27 @@ bm_proxy_scan( int type, char *expression, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "bm_proxy_scan: end\n" );
 #endif
-	return results;
-}
+	return results; }
 
 //===========================================================================
 //	bm_proxy_active / bm_proxy_in / bm_proxy_out
 //===========================================================================
 int
-bm_proxy_active( CNInstance *proxy )
-{
+bm_proxy_active( CNInstance *proxy ) {
 	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	return DBActive( db );
-}
+	return DBActive( db ); }
+
 int
-bm_proxy_in( CNInstance *proxy )
-{
+bm_proxy_in( CNInstance *proxy ) {
 	CNEntity *cell = DBProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
-	return DBInitOn( db );
-}
+	return DBInitOn( db ); }
+
 int
-bm_proxy_out( CNInstance *proxy )
-{
+bm_proxy_out( CNInstance *proxy ) {
 	CNEntity *cell = DBProxyThat( proxy );
-	return ((cell) && bm_cell_out(cell) );
-}
+	return ((cell) && bm_cell_out(cell) ); }
 

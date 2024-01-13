@@ -15,8 +15,7 @@ static EEnovType eenov_type( BMContext *, char *, EEnovData * );
 static CNInstance * eenov_query_op( EEnovQueryOp, BMContext *, char *, EEnovData * );
 
 int
-eenov_output( char *p, BMContext *ctx, OutputData *od )
-{
+eenov_output( char *p, BMContext *ctx, OutputData *od ) {
 	EEnovData data;
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
@@ -31,11 +30,10 @@ eenov_output( char *p, BMContext *ctx, OutputData *od )
 	case EEnovExprType:
 		data.param.output.od = od;
 		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );
-		return bm_out_flush( od, data.db ); }
-}
+		return bm_out_flush( od, data.db ); } }
+
 listItem *
-eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
-{
+eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst ) {
 	EEnovData data;
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
@@ -51,14 +49,13 @@ eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst )
 		data.param.inform.result = NULL;
 		eenov_query_op( EEnovInformOp, ctx, p+2, &data );
 		reorderListItem( &data.param.inform.result );
-		return data.param.inform.result; }
-}
+		return data.param.inform.result; } }
+
 CNInstance *
 eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 /*
 	Note that when db==NULL we return data.instance as is
-*/
-{
+*/ {
 	EEnovData data;
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
@@ -71,15 +68,14 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 	case EEnovExprType:
 		data.param.lookup.ctx = ctx;
 		data.param.lookup.db = db;
-		return eenov_query_op( EEnovLookupOp, ctx, p+2, &data ); }
-}
+		return eenov_query_op( EEnovLookupOp, ctx, p+2, &data ); } }
+
 int
 eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 /*
 	Note that when invoked via query.c:match() then
 		BMContextDB(ctx)==data.db==db_x
-*/
-{
+*/ {
 	EEnovData data;
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
@@ -91,8 +87,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	case EEnovExprType:
 		data.param.match.x = x;
 		data.param.match.db = db_x;
-		return !!eenov_query_op( EEnovMatchOp, ctx, p+2, &data ); }
-}
+		return !!eenov_query_op( EEnovMatchOp, ctx, p+2, &data ); } }
 
 //===========================================================================
 //	eenov_type
@@ -100,8 +95,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 #include "eenov_traversal.h"
 
 static EEnovType
-eenov_type( BMContext *ctx, char *p, EEnovData *data )
-{
+eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
 	if (( eenov )) {
 		CNInstance *src = eenov->src;
@@ -132,8 +126,7 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 			if ( data->success ) {
 				data->instance = data->result;
 				return EEnovInstanceType; } } }
-	return EEnovNone;
-}
+	return EEnovNone; }
 
 //---------------------------------------------------------------------------
 //	eenov_traversal
@@ -145,7 +138,7 @@ case_( identifier_CB )
 	CNInstance *x = data->instance;
 	int success = 0;
 	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x, data->db );
+		char *identifier = DBIdentifier( x );
 		char_s q;
 		switch ( *p ) {
 		case '/': success = !strcomp( p, identifier, 2 ); break;
@@ -198,8 +191,7 @@ eenov_query_op( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
 		invoking EEnovTraverseCB on every match
         returns current match on the callback's BM_DONE, and NULL otherwise
 	Assumption: p points to either %<?:_> or %<!:_> or %<(_)>
-*/
-{
+*/ {
 	CNDB *db = data->db;
 	CNInstance *e = data->instance;
 	int privy = db_deprecated( e, db );
@@ -256,11 +248,10 @@ RETURN:
 	freeListItem( &stack[ LIST_id ] );
 	freeListItem( &trail );
 	freeItem( i );
-	return success;
-}
+	return success; }
+
 static inline int
-eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
-{
+eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data ) {
 	switch ( op ) {
 	case EEnovOutputOp:
 		bm_out_put( data->param.output.od, e, db );
@@ -277,6 +268,5 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data )
 	case EEnovMatchOp:
 		if ( db_match( data->param.match.x, data->param.match.db,
 			e, db ) ) { data->result = e; return BM_DONE; } }
-	return BM_CONTINUE;
-}
+	return BM_CONTINUE; }
 
