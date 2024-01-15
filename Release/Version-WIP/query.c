@@ -51,19 +51,19 @@ bm_query( int type, char *expression, BMContext *ctx,
 		listItem *s = NULL;
 		switch ( type ) {
 		case BM_CONDITION:
+			for ( e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
+				if ( bm_verify( e, expression, &data )==BM_DONE ) {
+					freeListItem( &s );
+					return e; }
 			e = BMContextSelf( ctx );
 			if ( !db_private( 0, e, db ) ) {
 				listItem *i = newItem( e );
 				for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
 					if ( bm_verify( e, expression, &data )==BM_DONE ) {
 						freeListItem( &s );
-						freeItem( i );
-						return e; }
-				freeItem( i ); }
-			for ( e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
-				if ( bm_verify( e, expression, &data )==BM_DONE ) {
-					freeListItem( &s );
-					return e; }
+						break; }
+				freeItem( i );
+				return e; }
 			return NULL;
 		default:
 			for ( e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )

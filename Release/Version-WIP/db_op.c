@@ -189,7 +189,7 @@ fprintf( stderr, "db_update: 5. remove released entities\n" );
 		else if (( x->sub[0] )) {
 			if (( x->sub[ 1 ] )) cn_release( x );
 			else free_proxy( x ); }
-		else if ( !DBRegistered(x) )
+		else if ( isRef(x) )
 			bm_arena_deregister( arena, x, db );
 		else db_deregister( x, db ); }
 #ifdef DEBUG

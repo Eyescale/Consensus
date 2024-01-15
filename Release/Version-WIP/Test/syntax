@@ -6,6 +6,8 @@
 	else in %(((*,%(((*,titi),.),...):(.,(.,toto))),.),...):(.,(.,tutu)) // titi.toto.tutu
 	else in %(((*,titi),.),...):(.,(.,toto)) // titi.toto
 		do > "hello"
+		do !! | toto
+		do : titi : !! | toto
 	else in (titi,(:toto))
 	else in toto
 		do : toto : !! Toto

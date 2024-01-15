@@ -20,6 +20,30 @@
 #define BMTraverseCBEnd \
 	}
 
+static inline int is_filtered( char *term ) {
+	if ( *term=='?' ) {
+		if ( term[1]!=':' ) return 0;
+		term += 2; }
+	switch ( *term ) {
+		case '~': return 1;
+		case '*':
+		case '%':
+			// optimization
+			switch ( term[1] ) {
+			case '(':
+			case '*':
+		 		return 1;
+			case '%':
+				if ( term[0]!='%' )
+					return 1;
+				break;
+			default:
+				if (!is_separator(term[1]))
+					return 1; }
+			// no break
+		default:
+			return p_filtered( term ); } }
+
 //===========================================================================
 //	callbacks
 //===========================================================================
@@ -78,7 +102,7 @@
 
 #ifdef BMTermCB
 #define CB_TermCB \
-	if ( !(mode&CLEAN) && p_filtered( !strncmp(p,"?:",2)?p+2:p ) ) \
+	if ( !(mode&CLEAN) && is_filtered( p ) ) \
 		f_set( FILTERED ) \
 	_CB( BMTermCB )
 #else

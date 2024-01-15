@@ -21,8 +21,7 @@ char *
 p_prune( PruneType type, char *p )
 /*
 	Assumption: *p==':' => assume we start inside of TERNARY
-*/
-{
+*/ {
 	switch ( type ) {
 	case PRUNE_TERNARY:
 		return prune_ternary( p );
@@ -44,8 +43,7 @@ p_prune( PruneType type, char *p )
 		case '(':  return prune_level( p, 0 );
 		default:
 			while ( !is_separator(*p) ) p++;
-			return p; } }
-}
+			return p; } } }
 
 //---------------------------------------------------------------------------
 //	prune_ternary
@@ -65,8 +63,7 @@ prune_ternary( char *p )
 	a [potential ternary] expression, whereas p_prune proceeds from outside
 	the expression it is passed. In both cases, the syntax is assumed to
 	have been checked beforehand.
-*/
-{
+*/ {
 	char *	candidate = NULL;
 	int	start = *p++,
 		informed = 0,
@@ -118,15 +115,13 @@ prune_ternary( char *p )
 			informed = 1; } }
 RETURN:
 	if (( candidate )) return candidate;
-	else return p;
-}
+	else return p; }
 
 //---------------------------------------------------------------------------
 //	prune_base
 //---------------------------------------------------------------------------
 static char *
-prune_base( char *p, PruneType type )
-{
+prune_base( char *p, PruneType type ) {
 	int informed = 0;
 	while ( *p ) {
 		switch ( *p ) {
@@ -175,8 +170,7 @@ prune_base( char *p, PruneType type )
 				informed = 1; }
 			else {
 				return p; } } } // cases ,<>)}|
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	prune_level
@@ -186,8 +180,7 @@ prune_level( char *p, int level )
 /*
 	Assumption: *p=='(' and no format string authorized in level
 	return after closing ')'
-*/
-{
+*/ {
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
@@ -220,8 +213,7 @@ prune_level( char *p, int level )
 			// no break
 		default:
 			do p++; while ( !is_separator(*p) ); } }
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	prune_mod
@@ -230,8 +222,7 @@ static char *
 prune_mod( char *p )
 /*
 	Assumption: p[1]!='('
-*/
-{
+*/ {
 	switch ( p[1] ) {
 	case '<':
 		switch ( p[2] ) {
@@ -255,8 +246,7 @@ prune_mod( char *p )
 		p+=2; break;
 	default:
 		do p++; while ( !is_separator(*p) ); }
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	prune_format
@@ -265,8 +255,7 @@ static char *
 prune_format( char *p )
 /*
 	Assumption: *p=='"'
-*/
-{
+*/ {
 	p++; // skip opening '"'
 	while ( *p ) {
 		switch ( *p ) {
@@ -276,8 +265,7 @@ prune_format( char *p )
 			// no break
 		default:
 			p++; } }
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	prune_char
@@ -286,10 +274,8 @@ static char *
 prune_char( char *p )
 /*
 	Assumption: *p=='\''
-*/
-{
-	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 );
-}
+*/ {
+	return p + ( p[1]=='\\' ? p[2]=='x' ? 6 : 4 : 3 ); }
 
 //---------------------------------------------------------------------------
 //	prune_regex
@@ -298,8 +284,7 @@ static char *
 prune_regex( char *p )
 /*
 	Assumption: *p=='/'
-*/
-{
+*/ {
 	p++; // skip opening '/'
 	int bracket = 0;
 	while ( *p ) {
@@ -319,8 +304,7 @@ prune_regex( char *p )
 			p++; break;
 		default:
 			p++; } }
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	prune_list
@@ -334,8 +318,7 @@ prune_list( char *p )
 		^------------------------------- p (expression)
 	In the first case (Ellipsis) we return on the closing ')'
 	In the second case (expression) we return after the closing ')'
-*/
-{
+*/ {
 	if ( *p=='(' ) // not called from prune_level
 		return prune_level( p, 0 );
 	p += 5;
@@ -350,6 +333,5 @@ prune_list( char *p )
 			// no break
 		default:
 			p++; } }
-	return p;
-}
+	return p; }
 

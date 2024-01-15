@@ -608,6 +608,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		end
 		in_( "!!" ) bgn_
 			ons( " \t" )	do_( same )
+			on_( '|' )	do_( "expr" )	s_take
 			on_separator	; // err
 			on_other	do_( "!!$" )	s_take
 			end

@@ -247,32 +247,36 @@ System launch
 	This leads us to the following System launch expression:
 
 	do : %cosystem : !! Cosystem(
-		// foreach action instantiate same (with proxy vs. cosystem) for which
-		?:((.,ON|OFF),%(*?:^@)) ( %(%?:(?,.)), ^@ ) |
+		// foreach action instantiate same (with proxy vs. cosystem), for which
+		?:(( ., ON|OFF ), ^^ ) ( %(%?:(?,.)), *^^ ) |
 			// foreach (trigger, action) instantiate same, for which
 			?:( ., %? ) ( %(%?:(?,.))^, %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
-				?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+				?!:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %(%|:(?,.)) ),
 				// foreach (guard,(trigger,action)) instantiate same, for which
 				?:( ., %? ) ( %(%?:(?,.))^, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+					?!:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %(%|:(?,.)) )
 				} )
 
 	That is, without the comments:
 
 	do : %cosystem : !! Cosystem(
-		?:(( ., ON|OFF ), %(*?:^@) ) ( %(%?:(?,.)), ^@ ) |
-			?:( ., %? ) ( %(%?:(?,.))^, %| ) | {
-				?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
-				?:( ., %? ) ( %(%?:(?,.))^, %| ) |
-					?^:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *%(%?:(.,?)) ), %(%|:(?,.)) )
+		?:((.,ON|OFF),^^) ( %(%?:(?,.)), *^^ ) |
+			?:(.,%?) ( %(%?:(?,.))^, %| ) | {
+				?!:(?,%(%?:(?,.))) (( %(%?:(?,.)), *^(.,?) ), %(%|:(?,.)) ),
+				?:(.,%?) ( %(%?:(?,.))^, %| ) |
+					?!:(?,%(%?:(?,.))) (( %(%?:(?,.)), *^(.,?) ), %(%|:(?,.)) )
 				} )
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized
-		^@ represents the current child proxy in the carry buffer
-		?:_ _ in one line is made separable using ?:_{_}
-		_^ means "mark if new", and ?^: means "iff marked"
+		_^ means "mark if new", and ?!: means "iff marked" (opt)
+		^^ represents the current assignee in the assignment buffer
+		*^^ represents the current value in the assignment buffer
+		*^sub represents %(%?:sub)'s value in the assignment buffer
+
+		Note: *%(%?:sub) would represent %(%?:sub)'s value ** in CNDB **
+		Likewise *(^^) would represent ^^'s previous value if there is
 
 Feature List
     	1. %identifier list variables
@@ -421,23 +425,25 @@ Task List
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
 				etc.
-			/
+			passing
 				: "occurrence" : ON|OFF < cosystem
 				etc.
-			/
+			passing
 				: "occurrence" : ON|OFF < cosystem
 				etc.
 			etc.
+
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
 				etc.
-			/
+			passing
 				: "occurrence" : ON|OFF < cosystem
 			etc.
+
 		:"occurrence"
 			ON|OFF
 				: "occurrence" : ON|OFF < cosystem
-			/
+			passing
 				: "occurrence" : ON|OFF < cosystem
 			etc.
 		etc.
@@ -447,7 +453,7 @@ Task List
 
 	  Note that the above represents the overall System definition,
 	  aka. data structure, and not the cosystem sub-class definitions,
-	  aka. narratives and sub-narratives. These are kept in separate
+	  aka. narratives and sub-narratives. These are kept in separate,
 	  individual cosystem.bm files using the same template
 
 		: cosystem : Cosystem
@@ -472,7 +478,6 @@ Task List
 
 		need support for sub-class execution
 			need support for shared memory access
-			need support for access by address
 			need support for EENOC
 			need support for %list
 

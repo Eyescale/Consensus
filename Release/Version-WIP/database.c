@@ -575,40 +575,35 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 static int
 outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 /*
-	type is either 's' or '_', the main difference being that,
-	in the former case, we insert a backslash at the start of
-	non-base entity expressions
+	type is either 's' or '_', the difference being that,
+	in case type=='s' we start non-base entity expression
+	with backslash and we output SCE as-is
 */ {
 	if ( e == NULL ) return 0;
-	CNInstance *nil = db->nil;
-	if ( type=='s' ) {
-		if (( CNSUB(e,0) ))
-			fprintf( stream, "\\" );
-		else {
-			if ( e==nil )
-				fprintf( stream, "\\(nil)" );
-			else if (( e->sub[0] )) // proxy
-				fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
-			else
-				fprintf( stream, "%s", DBIdentifier(e) );
-			return 0; } }
+	if ( type=='s' && CNSUB(e,0) )
+		fprintf( stream, "\\" );
 
+	CNInstance *nil = db->nil;
 	listItem *stack = NULL;
 	int ndx = 0;
 	for ( ; ; ) {
 		if ( e==nil )
 			fprintf( stream, "(nil)" );
 		else if (( CNSUB(e,ndx) )) {
-			fprintf( stream, ndx==0 ? "(" : "," );
+			fprintf( stream, (ndx? "," : "(" ));
 			add_item( &stack, ndx );
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
 		else if (( e->sub[ 0 ] )) // proxy
-			fprintf( stream, ((e->sub[0]->sub[0])?"@@@":"%%%%"));
+			fprintf( stream, "%s", ((e->sub[0]->sub[0])?"@@@":"%%"));
 		else {
 			char *p = DBIdentifier( e );
-			if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
+			if ( isRef( e ) )
+				fprintf( stream, "%s", ((p)?p:"!!") );
+			else if ( type=='s' )
+				fprintf( stream, "%s", DBIdentifier(e) );
+			else if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
 				fprintf( stream, "%s", p );
 			else {
 				switch (*p) {

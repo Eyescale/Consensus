@@ -132,7 +132,8 @@ assign( char *expression, BMTraverseData *traverse_data, CNStory *story )
 		case '!': assign_new( sub, p, story, traverse_data ); break;
 		case '"': assign_string( sub, p, story, traverse_data ); break;
 		case '<': assign_one2v( sub, p, traverse_data ); break;
-		default: assign_v2one( sub, p, traverse_data, 0 ); } } }
+		default:
+			assign_v2one( sub, p, traverse_data, 0 ); } } }
 
 static int
 assign_v2v( char *p, BMTraverseData *traverse_data ) {
@@ -164,7 +165,7 @@ assign_v2v( char *p, BMTraverseData *traverse_data ) {
 	return 1; }
 
 static inline void
-assign_v2one( listItem **sub, char *p, BMTraverseData *traverse_data, int silent ) {
+assign_v2one( listItem **sub, char *p, BMTraverseData *traverse_data, int quiet ) {
 	InstantiateData *data = traverse_data->user_data;
 	CNDB *db = data->db;
 	if ( !strncmp( p, "~.", 2 ) )
@@ -173,7 +174,7 @@ assign_v2one( listItem **sub, char *p, BMTraverseData *traverse_data, int silent
 		traverse_data->done = INFORMED|LITERAL;
 		instantiate_traversal( p, traverse_data, FIRST );
 		if ( traverse_data->done==2 || !data->sub[ 0 ] ) {
-			if ( silent ) cleanup( traverse_data, NULL );
+			if ( quiet ) cleanup( traverse_data, NULL );
 			freeListItem( &sub[ 0 ] ); }
 		else {
 			sub[ 1 ] = data->sub[ 0 ];
@@ -202,42 +203,44 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traverse_data ) {
 //---------------------------------------------------------------------------
 //	assign_new
 //---------------------------------------------------------------------------
-static CNInstance * do_carry( Pair *entry, char *, BMTraverseData * );
-
 static void
-assign_new( listItem **list, char *expression, CNStory *story, BMTraverseData *data ) {
-	char *p = expression + 2; // skip '!!'
+assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_data ) {
+	p += 2; // skip '!!'
 	Pair *entry = registryLookup( story->narratives, p );
-	if (( entry )) {
-		p = p_prune( PRUNE_IDENTIFIER, p );
+	if ( !entry ) {
+		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n" );
 		if (( list )) {
-			CNDB *db = ((InstantiateData *)( data->user_data ))->db;
-			for ( CNInstance *x; (x=popListItem( list )); ) {
-				CNInstance *proxy = do_carry( entry, p, data );
-				if (( proxy )) db_assign( x, proxy, db );
-				else db_unassign( x, db ); } }
-		else do_carry( entry, p, data ); }
-	else {
-		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n"
-			"\tdo !! %s <<<<<\n", p );
-		if (( list )) freeListItem( list ); } }
+			fprintf( stderr, "\tdo :_: %s <<<<<\n", p );
+			freeListItem( list ); }
+		else fprintf( stderr, "\tdo !! %s <<<<<\n", p );
+		return; }
 
-static CNInstance *
-do_carry( Pair *entry, char *p, BMTraverseData *traverse_data )
-/*
-	Assumption: *p=='('
-*/ {
 	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
-	// instantiate new cell
-	CNEntity *parent = BMContextCell( ctx );
-	CNCell *child = newCell( entry, NULL );
-	// inform child's context
-	data->carry = BMCellContext( child );
-	if ( *p=='(' ) {
-		p++; // skipping opening '('
-		if ( *p==')' ) p++;
-		else do {
+	CNDB *db = data->db;
+	listItem *buffer = NULL;
+	CNCell *this = BMContextCell( ctx );
+	CNInstance *x = (list) ? popListItem(list) : NULL;
+	do {
+		CNCell *child = newCell( entry, NULL );
+		addItem( BMCellCarry(this), child );
+		CNInstance *proxy = new_proxy( this, child, db );
+		addItem( &buffer, newPair( proxy, child ) );
+
+		if (( x )) db_assign( x, proxy, db );
+		} while (( list )&&( x=popListItem(list) ));
+
+	p = p_prune( PRUNE_IDENTIFIER, p );
+	if ( !strncmp( p, "()", 2 ) ) p+=2;
+	char *backup = p;
+	for ( Pair *arg;( arg=popListItem(&buffer) ); p=backup ) {
+		CNInstance *proxy = arg->name; // => into ctx[ ^@ ]
+		CNCell *child = arg->value;
+		freePair( arg );
+		// inform child context
+		data->carry = BMCellContext( child );
+		if ( *p=='(' ) {
+			p++; do {
 			char *q = p;
 			traverse_data->done = INFORMED|LITERAL;
 			p = instantiate_traversal( p, traverse_data, FIRST );
@@ -246,8 +249,21 @@ do_carry( Pair *entry, char *p, BMTraverseData *traverse_data )
 				p = p_prune( PRUNE_TERM, q ); }
 			else freeListItem( &data->sub[ 0 ] );
 			} while ( *p++!=')' ); }
-	// carry child and return proxy
-	return bm_cell_carry( parent, child, (*p!='~') ); }
+		if ( *p!='~' ) {
+			// activate connection from parent to child
+			ActiveRV *active = BMContextActive( ctx );
+			addIfNotThere( &active->buffer->activated, proxy );
+
+			// activate connection from child to parent
+			BMContext *carry = data->carry;
+			proxy = new_proxy( child, this, BMContextDB(carry) );
+			active = BMContextActive( carry );
+			addIfNotThere( &active->buffer->activated, proxy );
+
+			// inform child's parent RV
+			Pair *id = BMContextId( carry );
+			id->value = proxy; }
+		else db_deprecate( proxy, db ); } }
 
 //---------------------------------------------------------------------------
 //	assign_string
@@ -701,8 +717,8 @@ bm_instantiate_input( char *input, char *arg, BMContext *ctx ) {
 	data.sub[ 0 ] = NULL;
 
 	// translate input & perform : sub : input
-	if ( input==NULL ) {
-		BM_UNASSIGN( sub, db ); }
+	if ( input==NULL )
+		BM_UNASSIGN( sub, db )
 	else {
 		traverse_data.done = INFORMED|LITERAL|CLEAN;
 		p = instantiate_traversal( input, &traverse_data, FIRST );

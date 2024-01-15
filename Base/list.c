@@ -6,40 +6,35 @@
 #include "list.h"
 
 listItem *
-newItem( void *ptr )
-{
-        return (listItem *) newPair( ptr, NULL );
-}
+newItem( void *ptr ) {
+        return (listItem *) newPair( ptr, NULL ); }
+
 void
-freeItem( listItem *item )
-{
-	freePair((Pair *) item );
-}
+freeItem( listItem *item ) {
+	freePair((Pair *) item ); }
+
 void
-clipItem( listItem **list, listItem *item )
-{
+clipItem( listItem **list, listItem *item ) {
 	listItem *last_i = NULL, *next_i;
 	for ( listItem *i=*list; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		if ( i == item ) {
 			clipListItem( list, i, last_i, next_i );
 			break; }	
-		else last_i = i; }
-}
+		else last_i = i; } }
+
 listItem *
-addItem( listItem **list, void *ptr )
-{
+addItem( listItem **list, void *ptr ) {
 	listItem *i = newItem( ptr );
 	i->next = *list;
 	*list = i;
-	return i;
-}
+	return i; }
+
 void
 removeItem( listItem **list, void *ptr )
 /*
 	Assumption: list has no doublon
-*/
-{
+*/ {
 	listItem *last_i=NULL, *next_i;
 	for ( listItem *i=*list; i!=NULL; i=next_i ) {
 		next_i = i->next;
@@ -52,25 +47,23 @@ removeItem( listItem **list, void *ptr )
 		fprintf( stderr, ">>>>> B%%: Error: removeItem(): doublon\n" );
 		exit( -1 ); }
 #endif
-}
+	}
+
 listItem *
-lookupItem( listItem *list, void *ptr )
-{
+lookupItem( listItem *list, void *ptr ) {
 	for ( listItem *i = list; i!=NULL; i=i->next )
 		if ( i->ptr == ptr )
 			return i;
-	return NULL;
-}
+	return NULL; }
+
 void
-clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *next_i )
-{
+clipListItem( listItem **list, listItem *i, listItem *last_i, listItem *next_i ) {
 	if ( last_i == NULL ) { *list = next_i; }
 	else { last_i->next = next_i; }
-	freeItem( i );
-}
+	freeItem( i ); }
+
 listItem *
-addIfNotThere( listItem **list, void *ptr )
-{
+addIfNotThere( listItem **list, void *ptr ) {
 	listItem *item, *i, *last_i = NULL;
 	for ( i=*list; i!=NULL; i=i->next ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
@@ -90,11 +83,10 @@ addIfNotThere( listItem **list, void *ptr )
 	else {
 		item->next = i;
 		last_i->next = item; }
-	return item;
-}
+	return item; }
+
 listItem *
-lookupIfThere( listItem *list, void *ptr )
-{
+lookupIfThere( listItem *list, void *ptr ) {
 	for ( listItem *i=list; i!=NULL; i=i->next ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
 		if ( comparison < 0 )
@@ -102,11 +94,10 @@ lookupIfThere( listItem *list, void *ptr )
                 else if ( comparison == 0 )
 			return i;
 		break; }
-	return NULL;
-}
+	return NULL; }
+
 int
-removeIfThere( listItem **list, void *ptr )
-{
+removeIfThere( listItem **list, void *ptr ) {
 	listItem *last_i = NULL, *next_i;
 	for ( listItem *i=*list; i!=NULL; i=next_i ) {
 		intptr_t comparison = (uintptr_t) i->ptr - (uintptr_t) ptr;
@@ -118,41 +109,37 @@ removeIfThere( listItem **list, void *ptr )
 			clipListItem( list, i, last_i, next_i );
 			return 1; }
 		break; }
-	return 0;
-}
+	return 0; }
+
 listItem *
-catListItem( listItem *list1, listItem *list2 )
-{
+catListItem( listItem *list1, listItem *list2 ) {
 	if ( list1 == NULL ) return list2;
 	if ( list2 != NULL ) {
 		listItem *j = list1;
 		while ( j->next != NULL ) j=j->next;
 		j->next = list2; }
-	return list1;
-}
+	return list1; }
+
 void *
-popListItem( listItem **list )
-{
+popListItem( listItem **list ) {
 	if ( *list == NULL ) return NULL;
 	void *ptr = (*list)->ptr;
 	listItem *next_i = (*list)->next;
 	freeItem( *list );
 	*list = next_i;
-	return ptr;
-}
+	return ptr; }
+
 void
-freeListItem( listItem **list )
-{
+freeListItem( listItem **list ) {
 	listItem *i, *next_i;
 	for ( i=*list; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		freeItem( i );
 	}
-	*list = NULL;
-}
+	*list = NULL; }
+
 int
-reorderListItem( listItem **list )
-{
+reorderListItem( listItem **list ) {
 	int count = 0;
 	listItem *i, *next_i, *last_i = NULL;
 
@@ -162,26 +149,22 @@ reorderListItem( listItem **list )
 		i->next = last_i;
 		last_i = i; }
 	*list = last_i;
-	return count;
-}
+	return count; }
+
 listItem *
-new_item( int value )
-{
+new_item( int value ) {
 	union { int value; void *ptr; } icast;
 	icast.value = value;
-	return newItem( icast.ptr );
-}
+	return newItem( icast.ptr ); }
+
 listItem *
-add_item( listItem **list, int value )
-{
+add_item( listItem **list, int value ) {
 	union { int value; void *ptr; } icast;
 	icast.value = value;
-	return addItem( list, icast.ptr );
-}
+	return addItem( list, icast.ptr ); }
+
 int
-pop_item( listItem **list )
-{
+pop_item( listItem **list ) {
 	union { int value; void *ptr; } icast;
 	icast.ptr = popListItem( list );
-	return icast.value;
-}
+	return icast.value; }

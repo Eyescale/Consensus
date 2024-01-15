@@ -141,36 +141,6 @@ free_CB( Registry *warden, Pair *entry ) {
 	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
-//	bm_cell_carry
-//===========================================================================
-CNInstance *
-bm_cell_carry( CNCell *cell, CNCell *child, int connect )
-/*
-	invoked by conceive() - cf. instantiate.c
-*/
-{
-	CNInstance *proxy = NULL;
-	if ( connect ) {
-		// create proxy and activate connection from child to parent cell
-		BMContext *ctx = BMCellContext( child );
-		proxy = new_proxy( child, cell, BMContextDB(ctx) );
-		ActiveRV *active = BMContextActive( ctx );
-		addIfNotThere( &active->buffer->activated, proxy );
-
-		// assign child's parent RV
-		Pair *id = BMContextId( ctx );
-		id->value = proxy;
-
-		// create proxy and activate connection from parent cell to child
-		ctx = BMCellContext( cell );
-		proxy = new_proxy( cell, child, BMContextDB(ctx) );
-		active = BMContextActive( ctx );
-		addIfNotThere( &active->buffer->activated, proxy ); }
-
-	addItem( BMCellCarry(cell), child );
-	return proxy; }
-
-//===========================================================================
 //	newCell / freeCell
 //===========================================================================
 CNCell *

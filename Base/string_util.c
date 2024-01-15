@@ -16,50 +16,44 @@
 //	newString, freeString
 //---------------------------------------------------------------------------
 CNString *
-newString( void )
-{
+newString( void ) {
 	union { int value; char *ptr; } icast;
 	icast.value = CNStringBytes;
-	return (CNString *) newPair( NULL, icast.ptr );
-}
+	return (CNString *) newPair( NULL, icast.ptr ); }
+
 void
-freeString( CNString *string )
-{
+freeString( CNString *string ) {
 	StringReset( string, CNStringAll );
-	freePair( (Pair *) string );
-}
+	freePair( (Pair *) string ); }
 
 //---------------------------------------------------------------------------
 //	StringStart, StringAppend, StringAffix
 //---------------------------------------------------------------------------
 int
-StringStart( CNString *string, int event )
-{
+StringStart( CNString *string, int event ) {
 #ifdef DEBUG_2
 	output( Debug, "StringStart: '%c'", (char) event );
 #endif
 	StringReset( string, CNStringAll );
 	if ( event ) StringAppend( string, event );
-	return 0;
-}
+	return 0; }
+
 int
 StringAppend( CNString *string, int event )
 /*
 	Assumption: string->mode == CNStringBytes
-*/
-{
+*/ {
 #ifdef DEBUG_2
 	output( Debug, "StringAppend: '%c'", event );
 #endif
 	add_item( (listItem**) &string->data, event );
-	return 0;
-}
+	return 0; }
+
 int
 StringAffix( CNString *string, int event )
 /*
 	Assumption: string->mode == CNStringBytes
-*/
-{
+*/ {
 #ifdef DEBUG_2
 	output( Debug, "StringAffix: '%c'", event );
 #endif
@@ -67,20 +61,17 @@ StringAffix( CNString *string, int event )
 	if ( !list ) return StringAppend( string, event );
 	while (( list->next )) list = list->next;
 	list->next = new_item( event );
-	return 0;
-}
+	return 0; }
 
 //---------------------------------------------------------------------------
 //	StringInformed, StringAt, StringCompare
 //---------------------------------------------------------------------------
 int
-StringInformed( CNString *string )
-{
-	return ( string->data != NULL );
-}
+StringInformed( CNString *string ) {
+	return ( string->data != NULL ); }
+
 int
-StringAt( CNString *string )
-{
+StringAt( CNString *string ) {
 	if (( string->data ))
 		switch ( string->mode ) {
 		case CNStringBytes: ;
@@ -89,14 +80,13 @@ StringAt( CNString *string )
 			return icast.value;
 		case CNStringText:
 			return *(char *)string->data; }
-	return 0;
-}
+	return 0; }
+
 int
 StringCompare( CNString *string, char *cmp )
 /*
 	kind of strcmp() except starts from end
-*/
-{
+*/ {
 	if ( string->mode==CNStringText )
 		return strcmp((char *) string->data, cmp );
 
@@ -110,9 +100,7 @@ StringCompare( CNString *string, char *cmp )
 		icast.ptr = i->ptr;
 		int comparison = icast.value - *cmp--;
 		if ( comparison ) return comparison; }
-	return !( j==len && !i );
-}
-
+	return !( j==len && !i ); }
 
 //---------------------------------------------------------------------------
 //	StringFinish, StringReset
@@ -120,20 +108,17 @@ StringCompare( CNString *string, char *cmp )
 static char *l2s( listItem **list, int trim );
 
 char *
-StringFinish( CNString *string, int trim )
-{
+StringFinish( CNString *string, int trim ) {
 #ifdef DEBUG_2
 	output( Debug, "StringFinish: '%c'", (char) event );
 #endif
 	if ( string->mode == CNStringBytes ) {
 		string->data = l2s((listItem **) &string->data, trim );
 		string->mode = CNStringText; }
-	return string->data;
-}
+	return string->data; }
 
 static char *
-l2s( listItem **list, int trim )
-{
+l2s( listItem **list, int trim ) {
 	if ( *list == NULL ) return NULL;
 	union { int value; void *ptr; } icast;
 	listItem *i, *next_i;
@@ -192,11 +177,10 @@ l2s( listItem **list, int trim )
 		*ptr++ = (char) icast.value; }
 	*ptr = 0;
 	freeListItem( list );
-	return str;
-}
+	return str; }
+
 void
-StringReset( CNString *string, CNStringReset target )
-{
+StringReset( CNString *string, CNStringReset target ) {
 	switch ( target ) {
 	case CNStringMode:
 		string->data = NULL;
@@ -211,8 +195,7 @@ StringReset( CNString *string, CNStringReset target )
 			free( string->data );
 			string->data = NULL;
 			string->mode = CNStringBytes;
-			break; } }
-}
+			break; } } }
 
 /*===========================================================================
 |
@@ -223,66 +206,56 @@ StringReset( CNString *string, CNStringReset target )
 //	is_separator, is_printable, is_space, is_escapable, is_xdigit
 //---------------------------------------------------------------------------
 int
-is_separator( int event )
-{
+is_separator( int event ) {
 	return  ((( event > 96 ) && ( event < 123 )) ||		/* a-z */
 		 (( event > 64 ) && ( event < 91 )) ||		/* A-Z */
 		 (( event > 47 ) && ( event < 58 )) ||		/* 0-9 */
-		  ( event == 95 )) ? 0 : 1;			/* _ */
-}
+		  ( event == 95 )) ? 0 : 1; }			/* _ */
+
 int
-is_letter( int event )
-{
+is_letter( int event ) {
 	return  ((( event > 96 ) && ( event < 123 )) ||		/* a-z */
 		 (( event > 64 ) && ( event < 91 )) ||		/* A-Z */
-		  ( event == 95 ));				/* _ */
-}
+		  ( event == 95 )); }				/* _ */
+
 int
-is_digit( int event )
-{
-	return  (( event > 47 ) && ( event < 58 ));		/* 0-9 */
-}
+is_digit( int event ) {
+	return  (( event > 47 ) && ( event < 58 )); }		/* 0-9 */
+
 int
-is_xdigit( int event )
-{
+is_xdigit( int event ) {
 	return  ((( event > 47 ) && ( event < 58 )) ||		/* 0-9 */
 		 (( event > 64 ) && ( event < 71 )) ||		/* A-F */
-		 (( event > 97 ) && ( event < 104 )));		/* a-f */
-}
+		 (( event > 97 ) && ( event < 104 ))); }	/* a-f */
+
 int
-is_printable( int event )
-{
-	return ((event > 31 ) && ( event < 127 ));
-}
+is_printable( int event ) {
+	return ((event > 31 ) && ( event < 127 )); }
+
 int
-is_space( int event )
-{
-	return ( event==9 || event==32 );
-}
+is_space( int event ) {
+	return ( event==9 || event==32 ); }
+
 int
-is_escapable( int event )
-{
+is_escapable( int event ) {
 	// Note: includes neither 'x' nor '"'
-	return strmatch( "0tn\'\\", event );
-}
+	return strmatch( "0tn\'\\", event ); }
 
 //---------------------------------------------------------------------------
 //	isanumber, charscan
 //---------------------------------------------------------------------------
 int
-isanumber( char *p )
-{
+isanumber( char *p ) {
 	if (!((p) && *p )) return 0;
 	do {
 		if (( *p > 47 ) && ( *p < 58 )) { p++; }	/* 0-9 */
 		else return 0;
-	} while ( *p );
-	return 1; 
-}
+		} while ( *p );
+	return 1; }
+
 #define HVAL(c) (c-((c<58)?48:(c<97)?55:87))
 int
-charscan( char *p, char_s *q )
-{
+charscan( char *p, char_s *q ) {
 	switch ( *p ) {
 	case '\\':
 		switch ( p[1] ) {
@@ -296,15 +269,13 @@ charscan( char *p, char_s *q )
 		default: return 0; }
 		break;
 	default:
-		q->value = p[0]; return 1; }
-}
+		q->value = p[0]; return 1; } }
 
 //---------------------------------------------------------------------------
 //	rxcmp
 //---------------------------------------------------------------------------
 int
-rxcmp( char *regex, int event )
-{
+rxcmp( char *regex, int event ) {
 	int delta, not;
 	char_s q;
 	char *r = regex;
@@ -313,7 +284,7 @@ rxcmp( char *regex, int event )
 		return 0;
 	case '[':
 		if ( r[1]=='^' ) { not=1; r++; }
-		else not=0;
+		else not = 0;
 		for ( r++; *r && *r!=']'; ) {
 			int range[ 2 ];
 			switch ( *r ) {
@@ -347,26 +318,23 @@ rxcmp( char *regex, int event )
 		return event - ( charscan(r,&q) ?
 			*(const unsigned char*)q.s : *(const unsigned char*)(r+1) );
 	default:
-		return event - *(const unsigned char*)r; }
-}
+		return event - *(const unsigned char*)r; } }
 
 //---------------------------------------------------------------------------
 //	strmake
 //---------------------------------------------------------------------------
 char *
-strmake( char *p )
-{
+strmake( char *p ) {
 	CNString *s = newString();
 	if ( is_separator(*p) )
 		StringAppend( s, *p );
 	else do {
 		StringAppend( s, *p++ );
-	} while ( !is_separator(*p) );
+		} while ( !is_separator(*p) );
 	p = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	freeString( s );
-	return p;
-}
+	return p; }
 
 //---------------------------------------------------------------------------
 //	strcomp
@@ -375,8 +343,7 @@ static int equivocal( char *regex, char *p );
 static int rxnext( char *regex, char **r );
 
 int
-strcomp( char *p, char *q, int cmptype )
-{
+strcomp( char *p, char *q, int cmptype ) {
 	switch ( cmptype ) {
 	case 0:	// both p and q are null-terminated
 		for ( ; *p; p++, q++ ) {
@@ -409,12 +376,10 @@ strcomp( char *p, char *q, int cmptype )
 			else return comparison; }
 		return 0;
 	default:
-		return 1; }
-}
+		return 1; } }
 
 static int
-equivocal( char *regex, char *p )
-{
+equivocal( char *regex, char *p ) {
 	switch ( *p ) {
 	case '.':
 	case '[':
@@ -436,17 +401,15 @@ equivocal( char *regex, char *p )
 			case 'd':
 			case 'h':
 			case 'l':
-				return 1;
-			}
+				return 1; }
 			r += ( r[1]=='x' ? 4 : 2 );
 			break;
 		default:
 			r++; } }
-	return 0;
-}
+	return 0; }
+
 static int
-rxnext( char *regex, char **p )
-{
+rxnext( char *regex, char **p ) {
 	char *r = *p;
 	if ( *r=='/' ) return 0;
 	int bracket = 0;
@@ -465,17 +428,15 @@ rxnext( char *regex, char **p )
 			break;
 		default:
 			r++; }
-	} while ( bracket );
+		} while ( bracket );
 	*p = r;
-	return 1;
-}
+	return 1; }
 
 //---------------------------------------------------------------------------
 //	strscanid
 //---------------------------------------------------------------------------
 char *
-strscanid( char *str, char **identifier )
-{
+strscanid( char *str, char **identifier ) {
 	*identifier = NULL;
 
 	// measure identifier size
@@ -491,29 +452,25 @@ strscanid( char *str, char **identifier )
 	ptr[ n ] = (char) 0;
 
 	*identifier = ptr;
-	return str + n;
-}
+	return str + n; }
 
 //---------------------------------------------------------------------------
 //	strmatch
 //---------------------------------------------------------------------------
 int
-strmatch( char *s, int event )
-{
+strmatch( char *s, int event ) {
 	if ( *s=='\0' )
 		return !event;
 	else do {
 		if ( event==*s++ ) return 1;
-	} while ( *s );
-	return 0;
-}
+		} while ( *s );
+	return 0; }
 
 //---------------------------------------------------------------------------
 //	strskip
 //---------------------------------------------------------------------------
 char *
-strskip( char *fmt, char *str )
-{
+strskip( char *fmt, char *str ) {
 	if ( str == NULL ) return NULL;
 	for ( ; *fmt; fmt++ ) {
 		switch ( *fmt ) {
@@ -563,15 +520,13 @@ strskip( char *fmt, char *str )
 				return NULL;
 			default: if ( *str++ != *fmt )
 				return NULL; } } }
-	return str;
-}
+	return str; }
 
 //---------------------------------------------------------------------------
 //	strxchange
 //---------------------------------------------------------------------------
 char *
-strxchange( char *expression, char *identifier, char *value )
-{
+strxchange( char *expression, char *identifier, char *value ) {
 	int	i, pos,
 		m = strlen( value ),
 		n = strlen( identifier ),
@@ -624,6 +579,5 @@ strxchange( char *expression, char *identifier, char *value )
 	else retval = expression;
 
 	freeString( result );
-	return retval;
-}
+	return retval; }
 

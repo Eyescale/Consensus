@@ -17,8 +17,7 @@ static int UCount = 0;
 #endif
 
 inline void *
-allocate( void ***Cache )
-{
+allocate( void ***Cache ) {
 	void **this, **cache = *Cache;
 	if (( cache ))
         	this = cache;
@@ -32,29 +31,25 @@ allocate( void ***Cache )
 			this += 2;
 			this[ 1 ] = this-2; } }
  	*Cache = this[ 1 ];
-	return this;
-}
+	return this; }
+
 inline void
-recycle( void **item, void ***Cache )
-{
+recycle( void **item, void ***Cache ) {
 	item[ 1 ] = *Cache;
-	*Cache = item;
-}
+	*Cache = item; }
 
 #else	// U_CACHE
 
 inline void *
-allocate( void ***cache )
-{
+allocate( void ***cache ) {
 	return calloc(1,2*sizeof(void*));
 //	return malloc(2*sizeof(void*));
-}
+	}
+
 inline void
-recycle( void **item, void ***Cache )
-{
+recycle( void **item, void ***Cache ) {
 	if (( item )) free((void *) item );
-	else fprintf( stderr, "***** Warning: recycle(): NULL\n" );
-}
+	else fprintf( stderr, "***** Warning: recycle(): NULL\n" ); }
 
 #endif	// U_CACHE
 
@@ -64,24 +59,20 @@ recycle( void **item, void ***Cache )
 static void **PairCache = NULL;
 
 Pair *
-newPair( void *name, void *value )
-{
+newPair( void *name, void *value ) {
         Pair *pair = (Pair *) allocate( &PairCache );
         pair->name = name;
         pair->value = value;
-        return pair;
-}
+        return pair; }
+
 void
-freePair( Pair *pair )
-{
-	recycle((void**) pair, &PairCache );
-}
+freePair( Pair *pair ) {
+	recycle((void**) pair, &PairCache ); }
+
 Pair *
-new_pair( int name, int value )
-{
+new_pair( int name, int value ) {
 	union { int value; void *ptr; } icast[ 2 ];
 	icast[ 0 ].value = name;
 	icast[ 1 ].value = value;
-	return newPair( icast[ 0 ].ptr, icast[ 1 ].ptr );
-}
+	return newPair( icast[ 0 ].ptr, icast[ 1 ].ptr ); }
 

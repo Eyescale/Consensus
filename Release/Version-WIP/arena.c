@@ -27,7 +27,7 @@ bm_arena_register( Registry *arena, char *s, CNDB *db )
 			string_arena = newRegistry( IndexedByName );
 			registryRegister( arena, "$", string_arena ); }
 
-		if (( entry = registryLookup( string_arena, s+1 ) )) {
+		if (( entry = registryLookup( string_arena, s ) )) {
 			Registry *ref = entry->value;
 			Pair *r = registryLookup( ref, db );
 			if (( r )) e = r->value;
@@ -36,7 +36,7 @@ bm_arena_register( Registry *arena, char *s, CNDB *db )
 				e->sub[ 1 ] = (CNInstance *) entry;
 				registryRegister( ref, db, e ); } }
 		else {
-			entry = registryRegister( string_arena, s+1, NULL );
+			entry = registryRegister( string_arena, s, NULL );
 			Registry *ref = newRegistry( IndexedByAddress );
 			entry->value = ref;
 			e = cn_new( NULL, NULL );
