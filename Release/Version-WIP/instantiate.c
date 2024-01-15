@@ -23,7 +23,7 @@ typedef struct {
 	BMContext *ctx, *carry;
 	CNDB *db;
 } InstantiateData;
-static void cleanup( BMTraverseData *, char * );
+static inline void cleanup( BMTraverseData *, char * );
 
 void
 bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
@@ -47,23 +47,21 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 		traverse_data.done = INFORMED|LITERAL;
 		if ( !story ) traverse_data.done |= CLEAN;
 		instantiate_traversal( expression, &traverse_data, FIRST ); }
-
-	cleanup( &traverse_data, expression ); }
-
-static void
-cleanup( BMTraverseData *traverse_data, char *expression ) {
-	InstantiateData *data = traverse_data->user_data;
-	if (( expression )) {
 #ifdef DEBUG
 	if ( !data.sub[0] )
 		fprintf( stderr, "bm_instantiate: } no result\n" );
 	else {	fprintf( stderr, "bm_instantiate:........} " );
 		if ( traverse_data.done==2 ) fprintf( stderr, "***INCOMPLETE***\n" );
-		else db_outputf( stderr, data->db, "first=%_\n", data->sub[0]->ptr ); }
+		else db_outputf( stderr, data.db, "first=%_\n", data.sub[0]->ptr ); }
 #endif
-	if ( traverse_data->done==2 ) {
+	cleanup( &traverse_data, expression ); }
+
+static inline void
+cleanup( BMTraverseData *traverse_data, char *expression ) {
+	InstantiateData *data = traverse_data->user_data;
+	if (( expression ) && traverse_data->done==2 ) {
 		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantiation\n"
-		"\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data->p ); } }
+		"\t\tdo %s\n\t<<<<< failed on '%s'\n", expression, traverse_data->p ); }
 
 	freeListItem( &data->sub[ 0 ] );
 	if ( traverse_data->done==2 ) {
@@ -203,9 +201,65 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traverse_data ) {
 //---------------------------------------------------------------------------
 //	assign_new
 //---------------------------------------------------------------------------
+#define CONNECTED( e )	((e->as_sub[0])||(e->as_sub[1]))
+
 static void
 assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_data ) {
+	InstantiateData *data = traverse_data->user_data;
+	BMContext *ctx = data->ctx;
+	CNDB *db = data->db;
+	Registry *buffer;
+
 	p += 2; // skip '!!'
+
+	//-----------------------------------------------------------
+	//	UBE assignment
+	//-----------------------------------------------------------
+	if ( !*p ) { // do :_: !!
+		Registry *arena = story->arena;
+		CNInstance *ube, *x;
+		while (( x=popListItem( list ))) {
+			ube = bm_arena_register( arena, NULL, db );
+			db_assign( x, ube, db ); }
+		return; }
+	else if ( *p=='|' ) {
+		buffer = newRegistry( IndexedByAddress );
+		Pair *current = registryRegister( ctx, "^", NULL );
+		registryRegister( ctx, "*^", buffer );
+		Registry *arena = story->arena;
+		CNInstance *ube, *x = (list) ? popListItem(list) : NULL;
+		do {	ube = bm_arena_register( arena, NULL, db );
+			registryRegister( buffer, x, ube );
+			} while (( list )&&( x=popListItem(list) ));
+
+		p++; // skip '|'
+		char *start_p = p;
+		listItem *pipe_mark = newItem( NULL );
+		bm_push_mark( ctx, "|", pipe_mark );	
+		for ( listItem *i=buffer->entries; i!=NULL; i=i->next ) {
+			Pair *entry = i->ptr;
+			current->value = entry;
+			x = entry->name;
+			ube = entry->value;
+			pipe_mark->ptr = ube;
+			traverse_data->done = INFORMED|LITERAL;
+			instantiate_traversal( p, traverse_data, FIRST );
+			if ( traverse_data->done==2 )
+				cleanup( traverse_data, NULL );
+			else freeListItem( &data->sub[ 0 ] );
+			if (( x )) db_assign( x, ube, db );
+			else if ( !CONNECTED(ube) ) {
+				fprintf( stderr, ">>>>> B%%: Warning: UBE not connected in\n" );
+				fprintf( stderr, "\tdo :_: !! | %s <<<<<\n", start_p );
+				// here we might want to issue warning
+				bm_arena_deregister( arena, ube, db ); } }
+		bm_pop_mark( ctx, "|" );
+		freeItem( pipe_mark );
+		goto RETURN; }
+
+	//-----------------------------------------------------------
+	//	new Narrative assignment
+	//-----------------------------------------------------------
 	Pair *entry = registryLookup( story->narratives, p );
 	if ( !entry ) {
 		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n" );
@@ -215,29 +269,26 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 		else fprintf( stderr, "\tdo !! %s <<<<<\n", p );
 		return; }
 
-	InstantiateData *data = traverse_data->user_data;
-	BMContext *ctx = data->ctx;
-	CNDB *db = data->db;
-	listItem *buffer = NULL;
+	buffer = newRegistry( IndexedByAddress );
+	Pair *current = registryRegister( ctx, "^", NULL );
+	registryRegister( ctx, "*^", buffer );
 	CNCell *this = BMContextCell( ctx );
-	CNInstance *x = (list) ? popListItem(list) : NULL;
-	do {
-		CNCell *child = newCell( entry, NULL );
+	CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
+	do {	CNCell *child = newCell( entry, NULL );
 		addItem( BMCellCarry(this), child );
-		CNInstance *proxy = new_proxy( this, child, db );
-		addItem( &buffer, newPair( proxy, child ) );
-
-		if (( x )) db_assign( x, proxy, db );
+		proxy = new_proxy( this, child, db );
+		registryRegister( buffer, x, proxy );
 		} while (( list )&&( x=popListItem(list) ));
 
 	p = p_prune( PRUNE_IDENTIFIER, p );
 	if ( !strncmp( p, "()", 2 ) ) p+=2;
-	char *backup = p;
-	for ( Pair *arg;( arg=popListItem(&buffer) ); p=backup ) {
-		CNInstance *proxy = arg->name; // => into ctx[ ^@ ]
-		CNCell *child = arg->value;
-		freePair( arg );
-		// inform child context
+	char *start_p = p;
+	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
+		Pair *entry = i->ptr;
+		current->value = entry;
+		x = entry->name;
+		proxy = entry->value;
+		CNCell *child = DBProxyThat( proxy );
 		data->carry = BMCellContext( child );
 		if ( *p=='(' ) {
 			p++; do {
@@ -249,21 +300,16 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 				p = p_prune( PRUNE_TERM, q ); }
 			else freeListItem( &data->sub[ 0 ] );
 			} while ( *p++!=')' ); }
-		if ( *p!='~' ) {
-			// activate connection from parent to child
-			ActiveRV *active = BMContextActive( ctx );
-			addIfNotThere( &active->buffer->activated, proxy );
-
-			// activate connection from child to parent
-			BMContext *carry = data->carry;
-			proxy = new_proxy( child, this, BMContextDB(carry) );
-			active = BMContextActive( carry );
-			addIfNotThere( &active->buffer->activated, proxy );
-
-			// inform child's parent RV
-			Pair *id = BMContextId( carry );
-			id->value = proxy; }
-		else db_deprecate( proxy, db ); } }
+		if ( *p=='~' ) {
+			if (( x )) db_unassign( x, db );
+			db_deprecate( proxy, db ); }
+		else {
+			if (( x )) db_assign( x, proxy, db );
+			bm_cell_bond( this, child, proxy ); } }
+RETURN:
+	registryDeregister( ctx, "^" );
+	registryDeregister( ctx, "*^" );
+	freeRegistry( buffer, NULL ); }
 
 //---------------------------------------------------------------------------
 //	assign_string
@@ -277,9 +323,9 @@ assign_string( listItem **list, char *s, CNStory *story, BMTraverseData *travers
 		for ( CNInstance *x;(x=popListItem( list ));)
 			db_assign( x, e, db ); } }
 
-//---------------------------------------------------------------------------
+//===========================================================================
 //	instantiate_traversal
-//---------------------------------------------------------------------------
+//===========================================================================
 static listItem *instantiate_couple( listItem *sub[2], CNDB * );
 static CNInstance *instantiate_literal( char **, CNDB * );
 static listItem *instantiate_list( char **, listItem **, CNDB * );

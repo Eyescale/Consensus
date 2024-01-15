@@ -193,3 +193,25 @@ freeCell( CNCell *cell )
 	freeContext((BMContext *) cell->sub[ 1 ] );
 	cn_free( cell ); }
 
+//===========================================================================
+//	bm_cell_bond
+//===========================================================================
+void
+bm_cell_bond( CNCell *this, CNCell *child, CNInstance *proxy ) {
+	BMContext *ctx;
+
+	// activate connection from parent to child
+	ctx = BMCellContext( this );
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, proxy );
+
+	// activate connection from child to parent
+	ctx = BMCellContext( child );
+	proxy = new_proxy( child, this, BMContextDB(ctx) );
+	active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, proxy );
+
+	// inform child's parent RV
+	Pair *id = BMContextId( ctx );
+	id->value = proxy; }
+

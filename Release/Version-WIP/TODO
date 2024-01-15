@@ -1,14 +1,5 @@
 See Also: design/story/interactive.story
 TODO
-	. TBD: should I call bm_arena_register directly from parser?
-		=> need story always: bm_read, bm_load<<<
-		benefit:
-		1. support do "occurrence" | ...
-		2. can replace "_" with "&address in expression
-		the question being: is address entry?
-		but the point is: indexed by address => no strcmp
-	. ISSUE: query.c: non-pivot case: shared entities not traversed
-		=> bug or feature?
 
 	. shared entities & shared arenas
 	  [DONE] retyped base entities into ( NULL, entry )
@@ -21,7 +12,11 @@ TODO
 	  [WIP]  UBE implementation
 		[DONE] parser.c: !! | ...
 		[DONE] instantiate.c: assign_new() => bufferize
-		=> instantiate.c: assign ^@ and implement !! | ...
+		[WIP] implement in ctx / traversal
+			^^ = current identifier / *^^ = current value
+			?:(_)(_) and ?:(_){_} and ?!:_ and _^
+			*^sub = bufferized value of %(%?:sub) (including *^.)
+			Note: *^_ NOT supported in ?:() - but ^^ is
 		=> Test B% UBE & strings interface
 		=> Test string sub-narratives
 	. System launch
@@ -79,6 +74,15 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
+	. ISSUE: query.c: non-pivot case: shared entities not traversed
+		=> bug or feature?
+	. TBD: should I call bm_arena_register directly from parser?
+		=> need story always: bm_read, bm_load<<<
+		benefit:
+		1. support do "occurrence" | ...
+		2. can replace "_" with "&address in expression
+		the question being: is address entry?
+		but the point is: indexed by address => no strcmp
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. on ~(_?_) < %% is allowed (as EENO)
@@ -88,6 +92,10 @@ OPEN ISSUES
 		scream if partial instantiation did occur
 
 NICE TO HAVE
+	. extend do :_:_ | ... to ALL assignment operations, supporting
+		^^ = current identifier / *^^ = current value
+		?:(_)(_) and ?:(_){_} and ?!:_ and _^
+		*^sub = bufferized value of %(%?:sub) (including *^.)
 	. OPT: assignment: should use expression=Pair *
 	. interactive - advanced / as per bm-Main.txt#interactive
 	  1. import frame narrative (for execution only)

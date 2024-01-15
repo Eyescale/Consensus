@@ -37,7 +37,7 @@ inline int bm_cell_update( CNCell *cell, CNStory *story ) {
 	return bm_context_update( BMCellContext(cell), story ); }
 
 void bm_cell_operate( CNCell *, CNStory * );
-CNInstance *bm_cell_carry( CNCell *, CNCell *, int );
+void bm_cell_bond( CNCell *, CNCell *, CNInstance * );
 
 
 #endif	// CELL_H
