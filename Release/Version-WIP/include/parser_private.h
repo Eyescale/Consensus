@@ -17,7 +17,7 @@
 #define f_actionable( stack ) \
 	!is_f(EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED)
 
-inline void
+static inline void
 f_tag_( int *flags, listItem **stack ) {
 	union { void *ptr; int value; } icast;
 	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
@@ -25,7 +25,7 @@ f_tag_( int *flags, listItem **stack ) {
 		icast.value |= PROTECTED;
 		i->ptr = icast.ptr; } }
 
-inline int
+static inline int
 f_parent_marked( listItem **stack )
 /*
 	Assumption: *stack != NULL
@@ -36,7 +36,7 @@ f_parent_marked( listItem **stack )
 	int flags = icast.value;
 	return is_f( MARKED ); }
 
-inline int
+static inline int
 f_ternary_markable_( int flags, listItem **stack )
 /*
 	Authorize '?' as term in possibly ternary expression
@@ -57,7 +57,7 @@ f_ternary_markable_( int flags, listItem **stack )
 		icast.ptr = i->ptr;
 		flags = icast.value; } }
 
-inline int
+static inline int
 f_ternary_signalable_( int flags, listItem **stack )
 /*
 	Authorize the usage of signal~ as term in mono-level ternary
@@ -80,7 +80,7 @@ f_ternary_signalable_( int flags, listItem **stack )
 			return !next_i->next; } }
 	return 1; }
 
-inline void
+static inline void
 f_restore_( int bits, int *f, listItem **stack ) {
 	int flags = *f;
 	if is_f( LEVEL ) {

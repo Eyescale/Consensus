@@ -35,11 +35,11 @@ int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 
-inline int isRef( CNInstance *e ) {
+static inline int isRef( CNInstance *e ) {
 	return ( ((Pair*) e->sub[1])->value!=e ); }
-inline char * DBIdentifier( CNInstance *e ) {
+static inline char * DBIdentifier( CNInstance *e ) {
 	return (char *) ((Pair*) e->sub[ 1 ])->name; }
-inline int DBStarMatch( CNInstance *e ) {
+static inline int DBStarMatch( CNInstance *e ) {
 	return ((e) && !(e->sub[0]) && *DBIdentifier(e)=='*' ); }
 
 //===========================================================================
@@ -52,16 +52,16 @@ void		db_fire( CNInstance *, CNDB * );
 //---------------------------------------------------------------------------
 //	isProxy, DBProxyThis, DBProxyThat, isProxySelf
 //---------------------------------------------------------------------------
-inline int isProxy( CNInstance *e ) {
+static inline int isProxy( CNInstance *e ) {
 	return ((e->sub[0]) && !e->sub[1]); }
 
-inline CNEntity * DBProxyThis( CNInstance *proxy ) {
+static inline CNEntity * DBProxyThis( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[0]; }
 
-inline CNEntity * DBProxyThat( CNInstance *proxy ) {
+static inline CNEntity * DBProxyThat( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[1]; }
 
-inline int isProxySelf( CNInstance *proxy ) {
+static inline int isProxySelf( CNInstance *proxy ) {
 	return !DBProxyThis(proxy); }
 
 //---------------------------------------------------------------------------
@@ -77,27 +77,27 @@ int	db_outputf( FILE *, CNDB *, char *fmt, ... );
 //---------------------------------------------------------------------------
 //	db_init, db_exit, DBInitOn, DBExitOn, DBActive
 //---------------------------------------------------------------------------
-inline void db_init( CNDB *db ) {
+static inline void db_init( CNDB *db ) {
 	db_update( db, NULL, NULL );
 	db->nil->sub[ 0 ] = db->nil; }
 
-inline void db_exit( CNDB *db ) {
+static inline void db_exit( CNDB *db ) {
 	db->nil->sub[ 1 ] = db->nil; }
 
-inline int DBInitOn( CNDB *db ) {
+static inline int DBInitOn( CNDB *db ) {
 	return !!db->nil->sub[ 0 ]; }
 
-inline int DBExitOn( CNDB *db ) {
+static inline int DBExitOn( CNDB *db ) {
 	return !!db->nil->sub[ 1 ]; }
 
-inline int DBActive( CNDB *db ) {
+static inline int DBActive( CNDB *db ) {
 	listItem **as_sub = db->nil->as_sub;
 	return ((as_sub[ 0 ]) || (as_sub[ 1 ]) || DBInitOn(db) || DBExitOn(db)); }
 
 //---------------------------------------------------------------------------
 //	db_private, db_deprecated, db_manifested
 //---------------------------------------------------------------------------
-inline int db_private( int privy, CNInstance *e, CNDB *db ) {
+static inline int db_private( int privy, CNInstance *e, CNDB *db ) {
 /*
 	called by xp_traverse() and xp_verify()
 	. if privy==0
@@ -122,12 +122,12 @@ inline int db_private( int privy, CNInstance *e, CNDB *db ) {
 		return !privy; } // released
 	return 0; }
 
-inline int db_deprecated( CNInstance *e, CNDB *db ) {
+static inline int db_deprecated( CNInstance *e, CNDB *db ) {
 	CNInstance *nil = db->nil;
 	CNInstance *f = cn_instance( e, nil, 1 );
 	return ( f && !( f->as_sub[0] && !f->as_sub[1] )); }
 
-inline int db_manifested( CNInstance *e, CNDB *db ) {
+static inline int db_manifested( CNInstance *e, CNDB *db ) {
 	CNInstance *nil = db->nil, *f;
 	if (( f=cn_instance( nil, e, 0 ) )) {
 		return !f->as_sub[ 1 ]; }

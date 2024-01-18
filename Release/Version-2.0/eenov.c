@@ -87,6 +87,7 @@ eenov_read( BMContext *ctx, char *p, EEnovData *data )
 {
 	EEnoRV *eenov = bm_context_lookup( ctx, "<" );
 	if ( !eenov ) return 0;
+	data->success = 1; // initialize
 	data->src = eenov->src;
 
 	p+=2; // skip leading "%<"

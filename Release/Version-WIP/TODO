@@ -1,8 +1,5 @@
 See Also: design/story/interactive.story
 TODO
-	. REMOVE term_CB from instantiate.c and eenov_feel.c
-		=> do expression:expression		=> must be checked? parser.c
-		=> on/per expression:expression < .	=> must be checked? parser.c
 	. shared entities & shared arenas
 	  [DONE] retyped base entities into ( NULL, entry )
  	  [DONE] cell.c: bm_cell_update( cell, story )
@@ -34,6 +31,12 @@ TODO
 		as we only want to compare what is inside "_"
 
 DONE
+	. term_CB no longer used in instantiate_traversal and eeno_feel_traversal
+	  => Warning issued at run-time - using filter_CB - in cases
+		do _:expression
+		on/per _:expression < @@@
+	. BUGFIX eenov.c / data->success now initialized
+	. declared all inline as static since we compile in library
 	. instantiate.c: restored literal_CB
 	. traverse.c: fixed NEGATED flag mishandling => no more f_cls
 	. instantiate.c, eeno_feel.c: optimized term_CB

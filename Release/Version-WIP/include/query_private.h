@@ -129,7 +129,7 @@
 		LFLUSH( list_exp, i, list_i, stack ) \
 	else
 
-inline listItem *
+static inline listItem *
 pop_list_i( listItem *i, listItem **list_i, int privy, CNDB *db ) {
 	while (( *list_i )) {
 		if (( i->next )) {
@@ -142,7 +142,7 @@ pop_list_i( listItem *i, listItem **list_i, int privy, CNDB *db ) {
 //---------------------------------------------------------------------------
 //	assignment	- query_assignment utility
 //---------------------------------------------------------------------------
-inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
+static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
 	// Assumption: e:( *, . ) -> returns first ( e, . )
 	for ( listItem *j=e->as_sub[0]; j!=NULL; j=j->next )
 		if ( !db_private( 0, j->ptr, db ) )

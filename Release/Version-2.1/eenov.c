@@ -104,6 +104,7 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data )
 {
 	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
 	if (( eenov )) {
+		data->success = 1; // initialize
 		CNInstance *src = eenov->src;
 		data->src = src;
 

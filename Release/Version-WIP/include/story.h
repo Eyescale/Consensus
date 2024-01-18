@@ -19,7 +19,7 @@ int		cnStoryOutput( FILE *, CNStory * );
 CNStory *	newStory( void );
 void		freeStory( CNStory * );
 
-inline Pair *CNStoryMain( CNStory *story ) {
+static inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;
 	Pair *entry = registryLookup( story->narratives, "" );
 	// we have entry:[ "", {[ proto, root ]} ]

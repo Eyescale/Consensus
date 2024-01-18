@@ -8,7 +8,7 @@ void		freeArena( Registry * );
 CNInstance *	bm_arena_register( Registry *, char *, CNDB * );
 void		bm_arena_deregister( Registry *, CNInstance *, CNDB * );
 
-inline Registry * newArena( void ) {
+static inline Registry * newArena( void ) {
 	return newRegistry(IndexedByCharacter); }
 
 #endif // ARENA_H

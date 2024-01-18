@@ -9,8 +9,9 @@ static BMTraversal eeno_feel_traversal;
 		EENOFeelData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
+	filter_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
 
+#define BMFilterCB		filter_CB
 #define BMNotCB			verify_CB
 #define BMDereferenceCB		verify_CB
 #define BMSubExpressionCB	verify_CB

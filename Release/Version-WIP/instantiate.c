@@ -27,19 +27,10 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 #define NDX ( is_f( FIRST ) ? 0 : 1 )
 
 BMTraverseCBSwitch( instantiate_traversal )
-case_( term_CB )
-	if ( !strncmp(p,"~.)",3) ) {
-		_continue( p+2 ) }
-	if ( p_filtered(p) ) {
-		listItem *results = bm_scan( p, data->ctx );
-		if (( results )) {
-			BMContext *carry = data->carry;
-			data->sub[ NDX ] = ( (carry) ?
-				bm_inform( 1, carry, &results, data->db ) :
-				results );
-			_prune( BM_PRUNE_TERM ) }
-		else _return( 2 ) }
-	_break
+case_( filter_CB )
+	fprintf( stderr, ">>>>> B%%: Warning: instantiation filtered in expression\n"
+		"\t\tdo _:%s\n\t<<<<< filter ignored\n", p );
+	_prune( BM_PRUNE_TERM )
 case_( collect_CB )
 	listItem *results = bm_scan( p, data->ctx );
 	if (( results )) {
@@ -87,7 +78,6 @@ case_( register_variable_CB )
 	CNInstance *e;
 	switch ( p[1] ) {
 	case '<': ;
-//		fprintf( stderr, "THERE: %s\n", p );
 		found = eenov_inform( data->ctx, data->db, p, data->carry );
 		if ( !found ) _return( 2 )
 		data->sub[ NDX ] = found;
@@ -102,7 +92,6 @@ case_( register_variable_CB )
 			for ( listItem *i=found; i!=NULL; i=i->next )
 				addItem( sub, bm_inform( 0, carry, i->ptr, db ) ); }
 		else {
-//			fprintf( stderr, "HERE: %s\n", p );
 			for ( listItem *i=found; i!=NULL; i=i->next )
 				addItem( sub, i->ptr ); }
 		break;
@@ -481,9 +470,9 @@ cleanup( BMTraverseData *traverse_data, char *expression ) {
 		bm_context_pipe_flush( data->ctx );
 		traverse_data->done = 0; } }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	bm_assign
-//===========================================================================
+//---------------------------------------------------------------------------
 static int assign_v2v( char *, BMTraverseData * );
 static inline void assign_one2v( listItem **, char *, BMTraverseData * );
 static inline void assign_v2one( listItem **, char *, BMTraverseData *, int );

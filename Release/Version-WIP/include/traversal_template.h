@@ -1,12 +1,13 @@
 /*===========================================================================
 |
-|		Template - to be included in user_traversal.h
+|		Template - to be included in (user)_traversal.h
 |
 +==========================================================================*/
 #ifndef TRAVERSAL_TEMPLATE_H
 #define TRAVERSAL_TEMPLATE_H
 
-#include "string_util.h"
+// Assumption: "traversal.h" already included
+
 #include "traversal_flags.h"
 #include "traversal_CB.h"
 
@@ -72,7 +73,8 @@ CB_ActivateCB			p+=2; break;
 				if ( p[1]=='<' ) {
 CB_ActivateCB				p+=2; }
 				else {
-CB_NotCB				f_set( NEGATED )
+CB_NotCB				if is_f( NEGATED ) f_clr( NEGATED )
+					else f_set( NEGATED )
 					p++; }
 				break;
 			case '{':

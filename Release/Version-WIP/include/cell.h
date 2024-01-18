@@ -13,13 +13,13 @@ int bm_cell_read( CNCell **, CNStory * );
 CNCell * newCell( Pair *entry, char *inipath );
 void freeCell( CNCell * );
 
-inline Pair * BMCellEntry( CNCell *cell )
+static inline Pair * BMCellEntry( CNCell *cell )
 	{ return (Pair *) ((Pair *) cell->sub[ 0 ] )->name; }
-inline listItem ** BMCellCarry( CNCell *cell )
+static inline listItem ** BMCellCarry( CNCell *cell )
 	{ return (listItem **) &((Pair *) cell->sub[ 0 ] )->value; }
-inline BMContext * BMCellContext( CNCell *cell )
+static inline BMContext * BMCellContext( CNCell *cell )
 	{ return (BMContext *) cell->sub[ 1 ]; }
-inline BMContext * BMMakeCurrent( CNCell *cell ) {
+static inline BMContext * BMMakeCurrent( CNCell *cell ) {
 	BMContext *ctx = BMCellContext(cell);
 	BMContextCurrent(ctx)->name = BMContextSelf(ctx);
 	return ctx; }
@@ -31,9 +31,9 @@ inline BMContext * BMMakeCurrent( CNCell *cell ) {
 #define bm_cell_reset( cell ) \
 	{ *BMCellCarry( cell ) = NULL; }
 
-inline void bm_cell_init( CNCell *cell ) {
+static inline void bm_cell_init( CNCell *cell ) {
 	bm_context_init( BMCellContext(cell) ); }
-inline int bm_cell_update( CNCell *cell, CNStory *story ) {
+static inline int bm_cell_update( CNCell *cell, CNStory *story ) {
 	return bm_context_update( BMCellContext(cell), story ); }
 
 void bm_cell_operate( CNCell *, CNStory * );

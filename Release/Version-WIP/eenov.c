@@ -68,7 +68,7 @@ static CNInstance * eenov_query( EEnovQueryOp, BMContext *, char *, EEnovData * 
 
 int
 eenov_output( char *p, BMContext *ctx, OutputData *od ) {
-	EEnovData data;
+	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 		return 0;
@@ -86,7 +86,7 @@ eenov_output( char *p, BMContext *ctx, OutputData *od ) {
 
 listItem *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst ) {
-	EEnovData data;
+	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 		return NULL;
@@ -108,7 +108,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 /*
 	Note that when db==NULL we return data.instance as is
 */ {
-	EEnovData data;
+	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 		return NULL;
@@ -128,7 +128,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	Note that when invoked via query.c:match() then
 		BMContextDB(ctx)==data.db==db_x
 */ {
-	EEnovData data;
+	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 		return 0;
@@ -148,6 +148,7 @@ static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
 	if (( eenov )) {
+		data->success = 1; // initialize
 		CNInstance *src = eenov->src;
 		data->src = src;
 
