@@ -1,6 +1,8 @@
 See Also: design/story/interactive.story
 TODO
-
+	. REMOVE term_CB from instantiate.c and eenov_feel.c
+		=> do expression:expression		=> must be checked? parser.c
+		=> on/per expression:expression < .	=> must be checked? parser.c
 	. shared entities & shared arenas
 	  [DONE] retyped base entities into ( NULL, entry )
  	  [DONE] cell.c: bm_cell_update( cell, story )
@@ -16,12 +18,12 @@ TODO
 			^^ = current identifier / *^^ = current value
 			?:(_)(_) and ?:(_){_} and ?!:_ and _^
 			*^sub = bufferized value of %(%?:sub) (including *^.)
-			Note: *^_ NOT supported in ?:() - but ^^ is
+			Note: *^_ NOT to be supported in ?:() - but ^^ yes
 		=> Test B% UBE & strings interface
 		=> Test string sub-narratives
 	. System launch
-		. allow a|b inside of carry - LEVEL
-		. allow \n after '|'
+		. parser.c: allow a|b inside of carry - LEVEL
+		. parser.c: allow \n after '|'
 		. output: { => \n and level++
 		. errors / warnings => ALL should be in color... => centralize?
 	. EENOC & EEVA
@@ -32,6 +34,8 @@ TODO
 		as we only want to compare what is inside "_"
 
 DONE
+	. instantiate.c: restored literal_CB
+	. traverse.c: fixed NEGATED flag mishandling => no more f_cls
 	. instantiate.c, eeno_feel.c: optimized term_CB
 		cf. include/traversal.h: is_filtered(term)
 	. strings implementation - parser.c // cf. Test/48_string
@@ -74,6 +78,8 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
+	. BUG: instantiate.c/term_CB
+		if ( p_filtered(p) ) never passes but code must remain (why?)
 	. ISSUE: query.c: non-pivot case: shared entities not traversed
 		=> bug or feature?
 	. TBD: should I call bm_arena_register directly from parser?
@@ -90,8 +96,15 @@ OPEN ISSUES
 		=> must verify when instantiating EENOV and %< is %%
 	. instantiate.c
 		scream if partial instantiation did occur
+	. eliminate term_CB - no filtering unles %_ or *_ or ~_ (parser.c)
+	  1. instantiate.c => check first how many cases there are do _:xxx
+	     special case: (_,~.) => want to handle it in traverse.c/Decouple
+	  2. eeno_feel.c => have to check somehow in parser if filtered
+		on expression:...	<<< forbidden
+	  find better word than PROTECTED => EXPOSED?
 
 NICE TO HAVE
+	. replace ... with …
 	. extend do :_:_ | ... to ALL assignment operations, supporting
 		^^ = current identifier / *^^ = current value
 		?:(_)(_) and ?:(_){_} and ?!:_ and _^

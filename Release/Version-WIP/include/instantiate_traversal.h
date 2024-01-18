@@ -1,6 +1,8 @@
 #ifndef INSTANTIATE_TRAVERSAL_H
 #define	INSTANTIATE_TRAVERSAL_H
 
+#include "traversal.h"
+
 static BMTraversal instantiate_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -9,8 +11,8 @@ static BMTraversal instantiate_traversal;
 static BMTraverseCB
 	term_CB, collect_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB,
 	dot_expression_CB, open_CB, close_CB, decouple_CB, register_variable_CB,
-	list_CB, wildcard_CB, dot_identifier_CB, identifier_CB, signal_CB,
-	end_CB, activate_CB;
+	literal_CB, list_CB, wildcard_CB, dot_identifier_CB, identifier_CB,
+	signal_CB, end_CB, activate_CB;
 
 #define BMTermCB		term_CB
 #define BMActivateCB		activate_CB
@@ -25,6 +27,7 @@ static BMTraverseCB
 #define BMStarCharacterCB	identifier_CB
 #define BMRegisterVariableCB	register_variable_CB
 #define BMDotExpressionCB	dot_expression_CB
+#define BMLiteralCB		literal_CB
 #define BMListCB		list_CB
 #define BMOpenCB		open_CB
 #define BMDecoupleCB		decouple_CB
@@ -35,7 +38,7 @@ static BMTraverseCB
 #define BMIdentifierCB		identifier_CB
 #define BMSignalCB		signal_CB
 
-#include "traversal.h"
+#include "traversal_template.h"
 
 
 #endif	// INSTANTIATE_TRAVERSAL_H

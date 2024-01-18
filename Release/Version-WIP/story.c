@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include "traverse.h"
 #include "parser.h"
 #include "narrative.h"
 #include "story.h"

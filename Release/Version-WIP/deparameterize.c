@@ -1,19 +1,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
 #include "deparameterize.h"
 
 //===========================================================================
-//	bm_deparameterize
+//	deparameterize_traversal
 //===========================================================================
+/*
+	Assumption: .identifier is followed by either one of ,:)
+	Note that we do not enter negated, starred or %(...) expressions
+	Note also that the caller is expected to reorder the resulting list
+*/
 #include "deparameterize_traversal.h"
-
 typedef struct {
 	listItem *list;
 	struct { listItem *flags, *level; } stack;
 	} DeparameterizeData;
 
+BMTraverseCBSwitch( deparameterize_traversal )
+case_( sub_expression_CB ) // provision
+	_prune( BM_PRUNE_FILTER )
+case_( open_CB )
+	Pair *segment = newPair( p, NULL );
+	addItem( &data->stack.level, segment );
+	addItem( &data->list, segment );
+	_break
+case_( close_CB )
+	Pair *current = data->list->ptr;
+	if ( !current->value ) {
+		switch ( *(char *)current->name ) {
+		case '.': current->value = p; } }
+	Pair *segment = popListItem( &data->stack.level );
+	if ( !segment->value ) segment->value = p; 
+	_break
+case_( decouple_CB )
+	Pair *current = data->list->ptr;
+	if ( !current->value ) {
+		switch ( *(char *)current->name ) {
+		case '.': current->value = p; } }
+	_break
+case_( filter_CB )
+	Pair *current = data->list->ptr;
+	if ( !current->value ) {
+		switch ( *(char *)current->name ) {
+		case '.': current->value = p; } }
+	_break
+case_( wildcard_CB )
+	if is_f( ELLIPSIS ) {
+		Pair *segment = data->stack.level->ptr;
+		segment->value = p; }
+	_break
+case_( dot_identifier_CB )
+	Pair *param = newPair( p, NULL );
+	addItem( &data->list, param );
+	_break
+BMTraverseCBEnd
+
+//===========================================================================
+//	bm_deparameterize
+//===========================================================================
 CNString *
 bm_deparameterize( char *proto ) 
 /*
@@ -76,51 +121,3 @@ bm_deparameterize( char *proto )
 			break; } }
 	do StringAppend(s,*p++); while ( *p );
 	return s; }
-
-//---------------------------------------------------------------------------
-//	deparameterize_traversal
-//---------------------------------------------------------------------------
-/*
-	Assumption: .identifier is followed by either one of ,:)
-	Note that we do not enter negated, starred or %(...) expressions
-	Note also that the caller is expected to reorder the resulting list
-*/
-BMTraverseCBSwitch( deparameterize_traversal )
-case_( sub_expression_CB ) // provision
-	_prune( BM_PRUNE_FILTER )
-case_( open_CB )
-	Pair *segment = newPair( p, NULL );
-	addItem( &data->stack.level, segment );
-	addItem( &data->list, segment );
-	_break
-case_( close_CB )
-	Pair *current = data->list->ptr;
-	if ( !current->value ) {
-		switch ( *(char *)current->name ) {
-		case '.': current->value = p; } }
-	Pair *segment = popListItem( &data->stack.level );
-	if ( !segment->value ) segment->value = p; 
-	_break
-case_( decouple_CB )
-	Pair *current = data->list->ptr;
-	if ( !current->value ) {
-		switch ( *(char *)current->name ) {
-		case '.': current->value = p; } }
-	_break
-case_( filter_CB )
-	Pair *current = data->list->ptr;
-	if ( !current->value ) {
-		switch ( *(char *)current->name ) {
-		case '.': current->value = p; } }
-	_break
-case_( wildcard_CB )
-	if is_f( ELLIPSIS ) {
-		Pair *segment = data->stack.level->ptr;
-		segment->value = p; }
-	_break
-case_( dot_identifier_CB )
-	Pair *param = newPair( p, NULL );
-	addItem( &data->list, param );
-	_break
-BMTraverseCBEnd
-

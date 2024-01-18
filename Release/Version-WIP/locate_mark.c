@@ -1,51 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
 #include "locate_mark.h"
 
 //===========================================================================
-//	bm_locate_mark
+//	locate_mark_traversal
 //===========================================================================
 #include "locate_mark_traversal.h"
-
 typedef struct {
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
 	} LocateMarkData;
-
-char *
-bm_locate_mark( char *expression, listItem **exponent )
-/*
-	returns first '?' found in sub-expression, together with exponent
-	Assumption: negated mark is ruled out at expression creation time
-	Note that we do not enter %(...) sub-sub-expressions
-	Note also that the caller is expected to reorder the list of exponents
-*/ {
-	LocateMarkData data;
-	memset( &data, 0, sizeof(data) );
-	data.exponent = exponent;
-
-	BMTraverseData traverse_data;
-	traverse_data.user_data = &data;
-	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = SUB_EXPR;
-
-	char *p = locate_mark_traversal( expression, &traverse_data, FIRST );
-
-	freeListItem( &data.stack.level );
-	freeListItem( &data.stack.flags );
-	switch ( traverse_data.done ) {
-	case 2:
-		return p;
-	default:
-		freeListItem( exponent );
-		return NULL; } }
-
-//---------------------------------------------------------------------------
-//	locate_mark_traversal
-//---------------------------------------------------------------------------
 
 BMTraverseCBSwitch( locate_mark_traversal )
 case_( dereference_CB )
@@ -94,4 +60,35 @@ case_( wildcard_CB )
 		_return( 2 )
 	_break
 BMTraverseCBEnd
+
+//===========================================================================
+//	bm_locate_mark
+//===========================================================================
+char *
+bm_locate_mark( char *expression, listItem **exponent )
+/*
+	returns first '?' found in sub-expression, together with exponent
+	Assumption: negated mark is ruled out at expression creation time
+	Note that we do not enter %(...) sub-sub-expressions
+	Note also that the caller is expected to reorder the list of exponents
+*/ {
+	LocateMarkData data;
+	memset( &data, 0, sizeof(data) );
+	data.exponent = exponent;
+
+	BMTraverseData traverse_data;
+	traverse_data.user_data = &data;
+	traverse_data.stack = &data.stack.flags;
+	traverse_data.done = SUB_EXPR;
+
+	char *p = locate_mark_traversal( expression, &traverse_data, FIRST );
+
+	freeListItem( &data.stack.level );
+	freeListItem( &data.stack.flags );
+	switch ( traverse_data.done ) {
+	case 2:
+		return p;
+	default:
+		freeListItem( exponent );
+		return NULL; } }
 

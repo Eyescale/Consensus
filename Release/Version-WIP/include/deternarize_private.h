@@ -2,6 +2,7 @@
 #define DETERNARIZE_PRIVATE_H
 
 #include "string_util.h"
+#include "traversal.h"
 
 typedef int BMTernaryCB( char *, void * );
 typedef struct {

@@ -1,6 +1,8 @@
 #ifndef LOCATE_PIVOT_TRAVERSAL_H
 #define LOCATE_PIVOT_TRAVERSAL_H
 
+#include "traversal.h"
+
 static BMTraversal locate_pivot_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -25,7 +27,7 @@ static BMTraverseCB
 #define BMDecoupleCB		decouple_CB
 #define BMCloseCB		close_CB
 
-#include "traversal.h"
+#include "traversal_template.h"
 
 
 #endif	// LOCATE_PIVOT_TRAVERSAL_H

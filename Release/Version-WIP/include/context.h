@@ -6,10 +6,10 @@
 
 typedef Registry BMContext;
 
+void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 int		bm_context_load( BMContext *ctx, char *path );
 void		bm_context_init( BMContext * );
 int		bm_context_update( BMContext *, CNStory * );
-void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
 Pair *		bm_mark( int, char *, char *, void * );
@@ -17,6 +17,7 @@ void		bm_context_mark( BMContext *, void * );
 Pair * 		bm_context_unmark( BMContext *, void * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
+void		bm_reset_mark( BMContext *, char *, void * );
 
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
 int		bm_register_locale( BMContext *, char * );

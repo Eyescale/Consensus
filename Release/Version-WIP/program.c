@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//#include "traverse.h"
 #include "program.h"
 
 // #define DEBUG

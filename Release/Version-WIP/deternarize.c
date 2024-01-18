@@ -2,16 +2,122 @@
 #include <stdlib.h>
 
 #include "story.h"
-#include "traverse.h"
 #include "deternarize.h"
 #include "deternarize_private.h"
 #include "expression.h"
 
 //===========================================================================
-//	bm_deternarize
+//	deternarize_traversal
 //===========================================================================
 #include "deternarize_traversal.h"
 
+static char *optimize( Pair *, char * );
+
+BMTraverseCBSwitch( deternarize_traversal )
+case_( open_CB )
+	data->ternary = 1;
+	Pair *segment = data->segment;
+	// finish current Sequence after '(' - without reordering,
+	// which will take place after closing
+	segment->value = p+1;
+	addItem( &data->sequence, newPair( segment, NULL ) );
+	// push current Sequence on stack.sequence and start new
+	addItem( &data->stack.sequence, data->sequence );
+	data->sequence = NULL;
+	data->segment = newPair( p+1, NULL );
+	_break
+case_( ternary_operator_CB )
+	Pair *segment = data->segment;
+	// finish sequence==guard, reordered
+	segment->value = p;
+	addItem( &data->sequence, newPair( segment, NULL ) );
+	reorderListItem( &data->sequence );
+	// convert & evaluate guard
+	CNString *s = newString();
+	s_scan( s, data->sequence );
+	char *guard = StringFinish( s, 0 );
+	int failed = !data->user_CB( guard, data->user_data );
+	freeString( s );
+	if ( failed ) {
+		// release guard sequence
+		free_deternarized( data->sequence );
+		data->sequence = NULL;
+		// proceed to alternative, i.e. ':'
+		p = *q = p_prune( PRUNE_TERNARY, p );
+		if ( p[1]==')' ) {
+			// ~. is our current candidate
+			data->segment = NULL;
+			// proceed to ")" - setting flag
+			_prune( BM_PRUNE_TERM ) }
+		else {
+			// resume past ':'
+			data->segment = newPair( p+1, NULL );
+			_break } }
+	else if ( p[1]==':' ) {
+		// sequence==guard is our current candidate
+		// sequence is already informed and completed
+		data->segment = NULL;
+		// proceed to ")"
+		_prune( BM_PRUNE_TERM ) }
+	else {
+		// release guard sequence
+		free_deternarized( data->sequence );
+		data->sequence = NULL;
+		// resume past '?'
+		data->segment = newPair( p+1, NULL );
+		_break }
+case_( filter_CB )
+	if is_f( TERNARY ) {
+		// option completed
+		data->segment->value = p;
+		// proceed to ")"
+		_prune( BM_PRUNE_TERM ) }
+	else _break
+case_( close_CB )
+	if is_f( TERNARY ) {
+		char *next_p;
+		Pair *segment = data->segment;
+		if (( data->sequence )) {
+			if (( segment )) { // sequence is not guard
+				// finish current sequence, reordered
+				if ( !segment->value ) segment->value = p;
+				addItem( &data->sequence, newPair( segment, NULL ) );
+				reorderListItem( &data->sequence );
+			}
+			// add as sub-Sequence to on-going expression
+			listItem *sub = data->sequence;
+			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
+			addItem( &data->sequence, newPair( NULL, sub ) ); }
+		else if (( segment )) {
+			if ( !segment->value ) segment->value = p;
+			// add as-is to on-going expression
+			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
+			addItem( &data->sequence, newPair( segment, NULL ) ); }
+		else { // special case: ~.
+			data->sequence = popListItem( &data->stack.sequence );
+			next_p = optimize( data->sequence->ptr, p );
+			addItem( &data->sequence, newPair( NULL, NULL ) ); }
+		data->segment = newPair( next_p, NULL ); }
+	_break
+BMTraverseCBEnd
+
+static char *
+optimize( Pair *segment, char *p )
+/*
+	remove ternary expression's result's enclosing parentheses if possible
+*/ {
+	segment = segment->name;
+	char *bgn = segment->name;
+	char *end = segment->value; // segment ended after '('
+	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
+		{ segment->value--; return p+1; }
+	else return p; }
+
+//===========================================================================
+//	bm_deternarize
+//===========================================================================
 static BMTernaryCB pass_CB;
 
 char *
@@ -124,113 +230,6 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 		if (( s )) *s = *sequence; }
 	return p; }
 
-//---------------------------------------------------------------------------
-//	deternarize_traversal
-//---------------------------------------------------------------------------
-static char *optimize( Pair *, char * );
-
-BMTraverseCBSwitch( deternarize_traversal )
-case_( open_CB )
-	data->ternary = 1;
-	Pair *segment = data->segment;
-	// finish current Sequence after '(' - without reordering,
-	// which will take place after closing
-	segment->value = p+1;
-	addItem( &data->sequence, newPair( segment, NULL ) );
-	// push current Sequence on stack.sequence and start new
-	addItem( &data->stack.sequence, data->sequence );
-	data->sequence = NULL;
-	data->segment = newPair( p+1, NULL );
-	_break
-case_( ternary_operator_CB )
-	Pair *segment = data->segment;
-	// finish sequence==guard, reordered
-	segment->value = p;
-	addItem( &data->sequence, newPair( segment, NULL ) );
-	reorderListItem( &data->sequence );
-	// convert & evaluate guard
-	CNString *s = newString();
-	s_scan( s, data->sequence );
-	char *guard = StringFinish( s, 0 );
-	int failed = !data->user_CB( guard, data->user_data );
-	freeString( s );
-	if ( failed ) {
-		// release guard sequence
-		free_deternarized( data->sequence );
-		data->sequence = NULL;
-		// proceed to alternative, i.e. ':'
-		p = *q = p_prune( PRUNE_TERNARY, p );
-		if ( p[1]==')' ) {
-			// ~. is our current candidate
-			data->segment = NULL;
-			// proceed to ")" - setting flag
-			_prune( BM_PRUNE_TERM ) }
-		else {
-			// resume past ':'
-			data->segment = newPair( p+1, NULL );
-			_break } }
-	else if ( p[1]==':' ) {
-		// sequence==guard is our current candidate
-		// sequence is already informed and completed
-		data->segment = NULL;
-		// proceed to ")"
-		_prune( BM_PRUNE_TERM ) }
-	else {
-		// release guard sequence
-		free_deternarized( data->sequence );
-		data->sequence = NULL;
-		// resume past '?'
-		data->segment = newPair( p+1, NULL );
-		_break }
-case_( filter_CB )
-	if is_f( TERNARY ) {
-		// option completed
-		data->segment->value = p;
-		// proceed to ")"
-		_prune( BM_PRUNE_TERM ) }
-	else _break
-case_( close_CB )
-	if is_f( TERNARY ) {
-		char *next_p;
-		Pair *segment = data->segment;
-		if (( data->sequence )) {
-			if (( segment )) { // sequence is not guard
-				// finish current sequence, reordered
-				if ( !segment->value ) segment->value = p;
-				addItem( &data->sequence, newPair( segment, NULL ) );
-				reorderListItem( &data->sequence );
-			}
-			// add as sub-Sequence to on-going expression
-			listItem *sub = data->sequence;
-			data->sequence = popListItem( &data->stack.sequence );
-			next_p = optimize( data->sequence->ptr, p );
-			addItem( &data->sequence, newPair( NULL, sub ) ); }
-		else if (( segment )) {
-			if ( !segment->value ) segment->value = p;
-			// add as-is to on-going expression
-			data->sequence = popListItem( &data->stack.sequence );
-			next_p = optimize( data->sequence->ptr, p );
-			addItem( &data->sequence, newPair( segment, NULL ) ); }
-		else { // special case: ~.
-			data->sequence = popListItem( &data->stack.sequence );
-			next_p = optimize( data->sequence->ptr, p );
-			addItem( &data->sequence, newPair( NULL, NULL ) ); }
-		data->segment = newPair( next_p, NULL ); }
-	_break
-BMTraverseCBEnd
-
-static char *
-optimize( Pair *segment, char *p )
-/*
-	remove ternary expression's result's enclosing parentheses if possible
-*/ {
-	segment = segment->name;
-	char *bgn = segment->name;
-	char *end = segment->value; // segment ended after '('
-	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
-		{ segment->value--; return p+1; }
-	else return p; }
-
 //===========================================================================
 //	free_deternarized
 //===========================================================================
@@ -314,4 +313,3 @@ s_scan( CNString *s, listItem *sequence )
 		else if (( stack ))
 			i = popListItem( &stack );
 		else break; } }
-

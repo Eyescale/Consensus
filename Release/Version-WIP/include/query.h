@@ -2,7 +2,7 @@
 #define QUERY_H
 
 #include "context.h"
-#include "traverse.h"
+#include "traversal.h"
 
 #define BM_EVENT	1
 #define BM_VISIBLE	2

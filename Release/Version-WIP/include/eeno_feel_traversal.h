@@ -1,6 +1,8 @@
 #ifndef EENO_FEEL_TRAVERSAL_H
 #define EENO_FEEL_TRAVERSAL_H
 
+#include "traversal.h"
+
 static BMTraversal eeno_feel_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -9,7 +11,6 @@ static BMTraversal eeno_feel_traversal;
 static BMTraverseCB
 	term_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;
 
-#define BMTermCB		term_CB
 #define BMNotCB			verify_CB
 #define BMDereferenceCB		verify_CB
 #define BMSubExpressionCB	verify_CB
@@ -25,7 +26,7 @@ static BMTraverseCB
 #define BMCharacterCB		identifier_CB
 #define BMIdentifierCB		identifier_CB
 
-#include "traversal.h"
+#include "traversal_template.h"
 
 
 #endif	// EENO_FEEL_TRAVERSAL_H

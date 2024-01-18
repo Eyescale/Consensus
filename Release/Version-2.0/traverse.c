@@ -226,6 +226,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 		if ( cb==BMTernaryOperatorCB ) {
 			*f_ptr |= TERNARY;
 			*p = p_prune( PRUNE_TERM, *p+1 ); }
+		else
 #else
 #ifdef BMDecoupleCB
 		if ( cb==BMDecoupleCB )
@@ -238,7 +239,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 		else
 #endif
 #endif
-		*p = p_prune( PRUNE_TERM, *p );
+			*p = p_prune( PRUNE_TERM, *p );
 		return BM_DONE; }
 }
 

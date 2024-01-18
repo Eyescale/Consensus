@@ -5,10 +5,128 @@
 #include "context.h"
 #include "scour.h"
 #include "locate_mark.h"
-#include "traverse.h"
 #include "eenov.h"
-#include "parser.h"
 #include "instantiate.h"
+#include "parser.h"
+
+//===========================================================================
+//	actualize_traversal
+//===========================================================================
+#include "actualize_traversal.h"
+typedef struct {
+	CNInstance *instance;
+	BMContext *ctx;
+	listItem *exponent, *level;
+	struct { listItem *flags, *level; } stack;
+	} ActualizeData;
+
+static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
+
+BMTraverseCBSwitch( actualize_traversal )
+/*
+	invokes actualize_param() on each .param found in expression, plus
+	sets context's perso to context's (self,perso) in case of varargs.
+	Note that we do not enter negated, starred or %(...) expressions
+	Note also that the caller is expected to reorder the list of exponents
+*/
+case_( sub_expression_CB ) // provision
+	_prune( BM_PRUNE_FILTER )
+case_( dot_expression_CB )
+	xpn_add( &data->exponent, SUB, 1 );
+	_break
+case_( open_CB )
+	if ( f_next & COUPLE )
+		xpn_add( &data->exponent, SUB, 0 );
+	addItem( &data->stack.level, data->level );
+	data->level = data->exponent;
+	_break
+case_( filter_CB )
+	xpn_free( &data->exponent, data->level );
+	_break
+case_( decouple_CB )
+	xpn_free( &data->exponent, data->level );
+	xpn_set( data->exponent, SUB, 1 );
+	_break
+case_( close_CB )
+	xpn_free( &data->exponent, data->level );
+	if is_f( COUPLE )
+		popListItem( &data->exponent );
+	if is_f( DOT )
+		popListItem( &data->exponent );
+	data->level = popListItem( &data->stack.level );
+	_break;
+case_( wildcard_CB )
+	if is_f( ELLIPSIS ) {
+		listItem *exponent = data->exponent;
+		union { void *ptr; int value; } exp;
+		exp.ptr = exponent->ptr;
+		if ((exp.value&1) && !exponent->next ) { // vararg
+			context_rebase( data->ctx ); } }
+	_break
+case_( dot_identifier_CB )
+	 actualize_param( p+1, data->instance, data->exponent, data->ctx );
+	_break
+BMTraverseCBEnd
+
+//---------------------------------------------------------------------------
+//	actualize_param
+//---------------------------------------------------------------------------
+static inline int inand( listItem *i, int operand );
+
+static void
+actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx ) {
+	// Special case: ( .identifier, ... )
+	if ( inand( exponent, 1 ) ) {
+		char *q = p;
+		do q++; while ( !is_separator(*q) );
+		if ( !strncmp(q,",...",4) ) {
+			CNInstance *e;
+			while (( e=CNSUB(instance,0) )) instance = e;
+			goto RETURN; } }
+	// General case
+	listItem *xpn = NULL;
+	for ( listItem *i=exponent; i!=NULL; i=i->next )
+		addItem( &xpn, i->ptr );
+	int exp;
+	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
+RETURN:
+	registryRegister( BMContextLocales(ctx), p, instance ); }
+
+static inline int
+inand( listItem *i, int operand ) {
+	if (( i )) {
+		union { void *ptr; int value; } icast;
+		icast.ptr = i->ptr; return !( icast.value & operand ); }
+	return 0; }
+
+//===========================================================================
+//	bm_context_actualize
+//===========================================================================
+void
+bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
+	Pair *current = BMContextCurrent( ctx );
+	if (( instance )) {
+		current->name = instance;
+
+		ActualizeData data;
+		memset( &data, 0, sizeof(ActualizeData) );
+		data.instance = instance;
+		data.ctx = ctx;
+
+		BMTraverseData traverse_data;
+		traverse_data.user_data = &data;
+		traverse_data.stack = &data.stack.flags;
+		traverse_data.done = FILTERED;
+
+		actualize_traversal( proto, &traverse_data, FIRST ); }
+	else {
+		current->name = BMContextSelf( ctx ); }
+
+#ifdef DEBUG
+	freeListItem( &data.stack.flags );
+	freeListItem( &data.stack.level );
+#endif		
+	}
 
 //===========================================================================
 //	bm_context_load
@@ -113,126 +231,6 @@ bm_context_update( BMContext *ctx, CNStory *story ) {
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif
 	return DBExitOn( db ); }
-
-//===========================================================================
-//	bm_context_actualize
-//===========================================================================
-#include "actualize_traversal.h"
-
-typedef struct {
-	CNInstance *instance;
-	BMContext *ctx;
-	listItem *exponent, *level;
-	struct { listItem *flags, *level; } stack;
-	} ActualizeData;
-
-void
-bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
-	Pair *current = BMContextCurrent( ctx );
-	if (( instance )) {
-		current->name = instance;
-
-		ActualizeData data;
-		memset( &data, 0, sizeof(ActualizeData) );
-		data.instance = instance;
-		data.ctx = ctx;
-
-		BMTraverseData traverse_data;
-		traverse_data.user_data = &data;
-		traverse_data.stack = &data.stack.flags;
-		traverse_data.done = FILTERED;
-
-		actualize_traversal( proto, &traverse_data, FIRST ); }
-	else {
-		current->name = BMContextSelf( ctx ); }
-
-#ifdef DEBUG
-	freeListItem( &data.stack.flags );
-	freeListItem( &data.stack.level );
-#endif		
-	}
-
-//---------------------------------------------------------------------------
-//	actualize_traversal
-//---------------------------------------------------------------------------
-static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
-
-BMTraverseCBSwitch( actualize_traversal )
-/*
-	invokes actualize_param() on each .param found in expression, plus
-	sets context's perso to context's (self,perso) in case of varargs.
-	Note that we do not enter negated, starred or %(...) expressions
-	Note also that the caller is expected to reorder the list of exponents
-*/
-case_( sub_expression_CB ) // provision
-	_prune( BM_PRUNE_FILTER )
-case_( dot_expression_CB )
-	xpn_add( &data->exponent, SUB, 1 );
-	_break
-case_( open_CB )
-	if ( f_next & COUPLE )
-		xpn_add( &data->exponent, SUB, 0 );
-	addItem( &data->stack.level, data->level );
-	data->level = data->exponent;
-	_break
-case_( filter_CB )
-	xpn_free( &data->exponent, data->level );
-	_break
-case_( decouple_CB )
-	xpn_free( &data->exponent, data->level );
-	xpn_set( data->exponent, SUB, 1 );
-	_break
-case_( close_CB )
-	xpn_free( &data->exponent, data->level );
-	if is_f( COUPLE )
-		popListItem( &data->exponent );
-	if is_f( DOT )
-		popListItem( &data->exponent );
-	data->level = popListItem( &data->stack.level );
-	_break;
-case_( wildcard_CB )
-	if is_f( ELLIPSIS ) {
-		listItem *exponent = data->exponent;
-		union { void *ptr; int value; } exp;
-		exp.ptr = exponent->ptr;
-		if ((exp.value&1) && !exponent->next ) { // vararg
-			context_rebase( data->ctx ); } }
-	_break
-case_( dot_identifier_CB )
-	 actualize_param( p+1, data->instance, data->exponent, data->ctx );
-	_break
-BMTraverseCBEnd
-
-//---------------------------------------------------------------------------
-//	actualize_param
-//---------------------------------------------------------------------------
-static inline int inand( listItem *i, int operand );
-
-static void
-actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx ) {
-	// Special case: ( .identifier, ... )
-	if ( inand( exponent, 1 ) ) {
-		char *q = p;
-		do q++; while ( !is_separator(*q) );
-		if ( !strncmp(q,",...",4) ) {
-			CNInstance *e;
-			while (( e=CNSUB(instance,0) )) instance = e;
-			goto RETURN; } }
-	// General case
-	listItem *xpn = NULL;
-	for ( listItem *i=exponent; i!=NULL; i=i->next )
-		addItem( &xpn, i->ptr );
-	int exp;
-	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
-RETURN:
-	registryRegister( BMContextLocales(ctx), p, instance ); }
-
-static inline int
-inand( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return !( icast.value & operand ); }
-	return 0; }
 
 //===========================================================================
 //	bm_context_release
@@ -447,7 +445,7 @@ static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 	return x; }
 
 //===========================================================================
-//	bm_push_mark / bm_pop_mark
+//	bm_push_mark / bm_pop_mark / bm_reset_mark
 //===========================================================================
 listItem *
 bm_push_mark( BMContext *ctx, char *mark, void *value ) {
@@ -459,20 +457,33 @@ bm_push_mark( BMContext *ctx, char *mark, void *value ) {
 void
 bm_pop_mark( BMContext *ctx, char *p ) {
 	Pair *entry = registryLookup( ctx, p );
-	Pair *mark;
-	if (( entry ))
+	if (( entry )) {
+		Pair *mark = popListItem((listItem **) &entry->value );
 		switch ( *p ) {
-		case '?':
-			mark = popListItem((listItem **) &entry->value );
-			freePair( mark );
-			break;
 		case '<':
-			mark = popListItem((listItem **) &entry->value );
 			freePair( mark->name );
+			// no break
+		case '?':
 			freePair( mark );
-			break;
+			// no break
 		default:
-			popListItem((listItem**) &entry->value ); } }
+			break; } } }
+
+void
+bm_reset_mark( BMContext *ctx, char *p, void *value ) {
+	Pair *entry = registryLookup( ctx, p );
+	if (( entry )) {
+		Pair *mark = entry->value;
+		switch ( *p ) {
+		case '<':
+			freePair( mark->name );
+			// no break
+		case '?':
+			freePair( mark );
+			// no break
+		default:
+			entry->value = value; } } }
+
 
 //===========================================================================
 //	bm_register / bm_register_locale

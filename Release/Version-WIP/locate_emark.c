@@ -1,15 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
 #include "scour.h"
 #include "locate_emark.h"
 
 //===========================================================================
-//	bm_locate_emark
+//	locate_emark_traversal
 //===========================================================================
 #include "locate_emark_traversal.h"
-
 typedef struct {
 	char *expression;
 	listItem **exponent;
@@ -17,6 +15,30 @@ typedef struct {
 	struct { listItem *flags, *level; } stack;
 	} LocateEMarkData;
 
+BMTraverseCBSwitch( locate_emark_traversal )
+case_( emark_CB )
+	_return( 2 )
+case_( open_CB )
+	if ( f_next & COUPLE )
+		xpn_add( data->exponent, AS_SUB, 0 );
+	addItem( &data->stack.level, data->level );
+	data->level = *data->exponent;
+	_break
+case_( decouple_CB )
+	xpn_free( data->exponent, data->level );
+	xpn_set( *data->exponent, AS_SUB, 1 );
+	_break
+case_( close_CB )
+	xpn_free( data->exponent, data->level );
+	if is_f( COUPLE )
+		popListItem( data->exponent );
+	data->level = popListItem( &data->stack.level );
+	_break;
+BMTraverseCBEnd
+
+//===========================================================================
+//	bm_locate_emark
+//===========================================================================
 char *
 bm_locate_emark( char *expression, listItem **exponent )
 /*
@@ -39,29 +61,4 @@ bm_locate_emark( char *expression, listItem **exponent )
 	freeListItem( &data.stack.flags );
 	freeListItem( &data.stack.level );
 	return p; }
-
-//---------------------------------------------------------------------------
-//	locate_emark_traversal
-//---------------------------------------------------------------------------
-
-BMTraverseCBSwitch( locate_emark_traversal )
-case_( emark_CB )
-	_return( 2 )
-case_( open_CB )
-	if ( f_next & COUPLE )
-		xpn_add( data->exponent, AS_SUB, 0 );
-	addItem( &data->stack.level, data->level );
-	data->level = *data->exponent;
-	_break
-case_( decouple_CB )
-	xpn_free( data->exponent, data->level );
-	xpn_set( *data->exponent, AS_SUB, 1 );
-	_break
-case_( close_CB )
-	xpn_free( data->exponent, data->level );
-	if is_f( COUPLE )
-		popListItem( data->exponent );
-	data->level = popListItem( &data->stack.level );
-	_break;
-BMTraverseCBEnd
 

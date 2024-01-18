@@ -2,9 +2,9 @@
 #include <stdlib.h>
 
 #include "parser.h"
+#include "parser_private.h"
 // #define DEBUG
 #include "parser_macros.h"
-#include "traverse.h"
 
 // these flags characterize expression as a whole
 #define CONTRARY	2

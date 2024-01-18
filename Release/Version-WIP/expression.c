@@ -3,7 +3,6 @@
 
 #include "string_util.h"
 #include "database.h"
-#include "traverse.h"
 #include "expression.h"
 #include "instantiate.h"
 #include "story.h"
@@ -111,7 +110,7 @@ RETURN:
 	if ( event==EOF ) {
 		while (( args )) {
 			char *arg = args->ptr;
-			bm_instantiate_input( NULL, arg, ctx );
+			bm_instantiate_input( arg, NULL, ctx );
 			args = args->next; } }
 	return 0; }
 
@@ -139,7 +138,7 @@ bm_input( int type, char *arg, BMContext *ctx ) {
 		input = bm_read( stdin );
 		if ( !input ) return EOF; }
 
-	bm_instantiate_input( input, arg, ctx );
+	bm_instantiate_input( arg, input, ctx );
 	free( input );
 	return 0; }
 

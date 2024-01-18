@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
 #include "cell.h"
 #include "operation.h"
 #include "parser.h"

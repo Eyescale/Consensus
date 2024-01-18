@@ -1,4 +1,14 @@
-#ifdef TRAVERSAL_H
+/*===========================================================================
+|
+|		Template - to be included in user_traversal.h
+|
++==========================================================================*/
+#ifndef TRAVERSAL_TEMPLATE_H
+#define TRAVERSAL_TEMPLATE_H
+
+#include "string_util.h"
+#include "traversal_flags.h"
+#include "traversal_CB.h"
 
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
@@ -24,12 +34,12 @@ CB_TermCB	} while ( 0 );
 			case '>':
 				if is_f( EENOV ) {
 CB_EEnovEndCB				f_clr( EENOV )
-					f_cls }
+					f_set( INFORMED ) }
 				else if is_f( VECTOR ) {
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value;
 CB_EndSetCB				f_pop( stack, 0 )
-					f_cls }
+					f_set( INFORMED ) }
 				else if ( p!=expression ) {
 					traverse_data->done = 1;
 					break; }
@@ -52,7 +62,8 @@ CB_TermCB			break;
 				if ( p[1]=='!' )
 					p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				else {
-CB_EMarkCharacterCB			f_cls; p++; }
+CB_EMarkCharacterCB			f_set( INFORMED )
+					p++; }
 				break;
 			case '@':
 				// Assumption: p[1]=='<' && p[2]=='\0'
@@ -61,8 +72,7 @@ CB_ActivateCB			p+=2; break;
 				if ( p[1]=='<' ) {
 CB_ActivateCB				p+=2; }
 				else {
-CB_NotCB				if is_f( NEGATED ) f_clr( NEGATED )	
-					else f_set( NEGATED )
+CB_NotCB				f_set( NEGATED )
 					p++; }
 				break;
 			case '{':
@@ -77,7 +87,8 @@ CB_TermCB			break;
 				icast.ptr = (*stack)->ptr;
 				f_next = icast.value;
 CB_EndSetCB			f_pop( stack, 0 )
-				f_cls; p++; break;
+				f_set( INFORMED )
+				p++; break;
 			case '|':
 				if ( !is_f(LEVEL|SET) ) {
 					traverse_data->done = 1;
@@ -92,7 +103,7 @@ CB_BgnPipeCB			f_push( stack )
 				if ( !is_separator(p[1]) || strmatch("*.%(?",p[1]) ) {
 CB_DereferenceCB			f_clr( INFORMED ) }
 				else {
-CB_StarCharacterCB			f_cls }
+CB_StarCharacterCB			f_set( INFORMED ) }
 				p++; break;
 			case '%':
 				if ( p[1]=='(' ) {
@@ -108,39 +119,37 @@ CB_OpenCB				f_push( stack )
 					if ( *++p==':' ) p++;
 					break; }
 				else if ( p[1]=='<' ) {
-CB_RegisterVariableCB			f_cls; p+=2;
+CB_RegisterVariableCB			f_set( INFORMED )
+					p+=2;
 					if ( strmatch( "?!(", *p ) ) {
 						f_set( EENOV )
 						p = p_prune( PRUNE_TERM, p ); }
 					break; }
 				else if ( strmatch( "?!%|@", p[1] ) ) {
-CB_RegisterVariableCB			f_cls; p+=2;
+CB_RegisterVariableCB			f_set( INFORMED )
+					p+=2;
 					if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
 					break; }
 				else {
-CB_ModCharacterCB			f_cls; p++; break; }
+CB_ModCharacterCB			f_set( INFORMED )
+					p++; break; }
 				break;
 			case '(':
-				if ( p[1]==':' && (mode&LITERAL) && !is_f(SUB_EXPR)) {
-					p = p_prune( PRUNE_LITERAL, p );
-					f_set( INFORMED );
-					break; }
-				else {
-					if ( p[1]==':' )
-						f_next = FIRST|LEVEL|ASSIGN;
-					else if ( !(mode&INFORMED) && !p_single(p) )
-						f_next = FIRST|LEVEL|COUPLE;
-					else f_next = FIRST|LEVEL;
-					f_next |= is_f(SET|SUB_EXPR|MARKED);
-CB_OpenCB				f_push( stack )
-					f_reset( f_next, 0 )
-					if ( p[1]==':' ) {
-						p+=2;
+				if ( p[1]==':' ) {
+					if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
+CB_LiteralCB					f_set( INFORMED )
 						break; }
-					else {
-						p++;
-CB_TermCB					break; } }
+					f_next = FIRST|LEVEL|ASSIGN; }
+				else if ( !(mode&INFORMED) && !p_single(p) )
+					f_next = FIRST|LEVEL|COUPLE;
+				else f_next = FIRST|LEVEL;
+				f_next |= is_f(SET|SUB_EXPR|MARKED);
+CB_OpenCB			f_push( stack )
+				f_reset( f_next, 0 )
+				if ( p[1]==':' ) { p+=2; break; }
+				else {	p++;
+CB_TermCB				break; }
 			case ':':
 				if ( p[1]=='<' ) {
 					f_clr( NEGATED|INFORMED|FILTERED )
@@ -155,8 +164,11 @@ CB_FilterCB				f_clr( NEGATED|INFORMED )
 					break; }
 CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				f_clr( NEGATED|FILTERED|INFORMED )
-				p++;
-CB_TermCB			break;
+				if ( !strncmp(p+1,"~.)",3) ) {
+					p+=3; break; }
+				else {
+					p++;
+CB_TermCB				break; }
 			case ')':
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					if ((*stack)) {
@@ -170,7 +182,8 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 					icast.ptr = (*stack)->ptr;
 					f_next = icast.value; }
 CB_CloseCB			f_pop( stack, 0 );
-				f_cls; p++; break;
+				f_set( INFORMED )
+				p++; break;
 			case '?':
 				if is_f( INFORMED ) {
 					if ( !is_f(SET|LEVEL|SUB_EXPR) ) {
@@ -181,7 +194,7 @@ CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED )
 				else {
 CB_WildCardCB				if ( !strncmp( p+1, ":...", 4 ) )
 						p+=4;
-					f_cls }
+					f_set( INFORMED ) }
 				p++; break;
 			case '.':
 				if ( p[1]=='(' ) {
@@ -195,10 +208,12 @@ CB_OpenCB				f_push( stack )
 CB_TermCB				break; }
 				else if ( p[1]=='?' ) {
 CB_DotIdentifierCB			p+=2;
-					f_cls; break; }
+					f_set( INFORMED )
+					break; }
 				else if ( !is_separator(p[1]) ) {
 CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
-					f_cls; break; }
+					f_set( INFORMED )
+					break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
 						/* Assumption: p[3]==')'
@@ -220,20 +235,26 @@ CB_ListCB							f_pop( stack, 0 ) }
 								f_set( ELLIPSIS )
 								f_pop( stack, ELLIPSIS )
 								p+=4; } }
-						f_cls; break; }
+						f_set( INFORMED )
+						break; }
 					else {
-CB_RegisterVariableCB				f_cls; p+=2; break; } }
+CB_RegisterVariableCB				f_set( INFORMED )
+						p+=2; break; } }
 				else {
-CB_WildCardCB				f_cls; p++; break; }
+CB_WildCardCB				f_set( INFORMED )
+					p++; break; }
 			case '"':
 CB_FormatCB			p = p_prune( PRUNE_FILTER, p );
-				f_cls; break;
+				f_set( INFORMED )
+				break;
 			case '\'':
 CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
-				f_cls; break;
+				f_set( INFORMED )
+				break;
 			case '/':
 CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
-				f_cls; break;
+				f_set( INFORMED )
+				break;
 			default:
 				if ( is_separator(*p) ) {
 					traverse_data->done = BMTraverseError; }
@@ -241,7 +262,8 @@ CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
-					f_cls; break; } } }
+					f_set( INFORMED )
+					break; } } }
 	switch ( traverse_data->done ) {
 	case BMTraverseError:
 		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
@@ -274,7 +296,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 			*p = p_prune( PRUNE_FILTER, *p+1 );
 		else
 #endif
-		*p = p_prune( PRUNE_FILTER, *p );
+			*p = p_prune( PRUNE_FILTER, *p );
 		return BM_DONE;
 
 	case BM_PRUNE_TERM:
@@ -286,6 +308,7 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 		if ( cb==BMTernaryOperatorCB ) {
 			*f_ptr |= TERNARY;
 			*p = p_prune( PRUNE_TERM, *p+1 ); }
+		else
 #else
 #ifdef BMDecoupleCB
 		if ( cb==BMDecoupleCB )
@@ -298,8 +321,8 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 		else
 #endif
 #endif
-		*p = p_prune( PRUNE_TERM, *p );
+			*p = p_prune( PRUNE_TERM, *p );
 		return BM_DONE; } }
 
 
-#endif	// TRAVERSAL_H
+#endif	// TRAVERSAL_TEMPLATE_H

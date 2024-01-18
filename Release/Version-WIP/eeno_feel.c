@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "traverse.h"
 #include "eeno_feel.h"
 #include "eenov.h"
 #include "cell.h"
@@ -10,17 +9,62 @@
 // #define DEBUG
 
 //===========================================================================
-//	bm_eeno_feel
+//	eeno_feel_traversal
 //===========================================================================
 #include "eeno_feel_traversal.h"
-
-static void * eeno_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
 	CNDB *db_x;
 	CNInstance *x;
 	struct { listItem *flags, *x; } stack;
 	} EENOFeelData;
+
+static inline CNInstance * proxy_verify( char *, EENOFeelData * );
+
+BMTraverseCBSwitch( eeno_feel_traversal )
+case_( verify_CB )
+	if ( !proxy_verify( p, data ) )
+		_return( 2 )
+	_prune( BM_PRUNE_TERM )
+case_( open_CB )
+	if ( f_next & COUPLE ) {
+		CNInstance *x = data->x;
+		if (( CNSUB( x, 0 ) )) {
+			addItem( &data->stack.x, x );
+			data->x = x->sub[ 0 ]; }
+		else _return( 2 ) }
+	_break
+case_( decouple_CB )
+	data->x = ((CNInstance *) data->stack.x->ptr )->sub[ 1 ];
+	_break
+case_( close_CB )
+	if is_f( COUPLE )
+		data->x = popListItem( &data->stack.x );
+	_break
+case_( identifier_CB )
+	BMContext *ctx = data->ctx;
+	CNDB *db = BMContextDB( ctx );
+	if ( !bm_match( ctx, db, p, data->x, data->db_x ) )
+		_return( 2 )
+	_break
+BMTraverseCBEnd
+
+static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
+static inline CNInstance *
+proxy_verify( char *p, EENOFeelData *data ) {
+	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data ); }
+
+static BMCBTake
+proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	EENOFeelData *data = user_data;
+	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
+		return BM_DONE;
+	return BM_CONTINUE; }
+
+//===========================================================================
+//	bm_eeno_feel
+//===========================================================================
+static void * eeno_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
 
 void *
 bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx ) {
@@ -67,58 +111,6 @@ bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx ) {
 	fprintf( stderr, "bm_eeno_feel: success=%d\n", !!success );
 #endif
 	return success; }
-
-//---------------------------------------------------------------------------
-//	eeno_feel_traversal
-//---------------------------------------------------------------------------
-static inline CNInstance * proxy_verify( char *p, EENOFeelData *data );
-
-BMTraverseCBSwitch( eeno_feel_traversal )
-case_( term_CB )
-	if is_f( FILTERED ) {
-		if ( !proxy_verify( p, data ) )
-			_return( 2 )
-		_prune( BM_PRUNE_TERM ) }
-	_break
-case_( verify_CB )
-	if ( !proxy_verify( p, data ) )
-		_return( 2 )
-	_prune( BM_PRUNE_TERM )
-case_( open_CB )
-	if ( f_next & COUPLE ) {
-		CNInstance *x = data->x;
-		if (( CNSUB( x, 0 ) )) {
-			addItem( &data->stack.x, x );
-			data->x = x->sub[ 0 ]; }
-		else _return( 2 ) }
-	_break
-case_( decouple_CB )
-	data->x = ((CNInstance *) data->stack.x->ptr )->sub[ 1 ];
-	_break
-case_( close_CB )
-	if is_f( COUPLE )
-		data->x = popListItem( &data->stack.x );
-	_break
-case_( identifier_CB )
-	BMContext *ctx = data->ctx;
-	CNDB *db = BMContextDB( ctx );
-	if ( !bm_match( ctx, db, p, data->x, data->db_x ) )
-		_return( 2 )
-	_break
-BMTraverseCBEnd
-
-static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
-static inline CNInstance *
-proxy_verify( char *p, EENOFeelData *data ) {
-	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data ); }
-
-static BMCBTake
-proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	EENOFeelData *data = user_data;
-	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
-		return BM_DONE;
-	return BM_CONTINUE; }
-
 //---------------------------------------------------------------------------
 //	eeno_feel_assignment
 //---------------------------------------------------------------------------

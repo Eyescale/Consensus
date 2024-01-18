@@ -1,6 +1,8 @@
 #ifndef DETERNARIZE_TRAVERSAL_H
 #define DETERNARIZE_TRAVERSAL_H
 
+#include "traversal.h"
+
 static BMTraversal deternarize_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -14,7 +16,7 @@ static BMTraverseCB
 #define BMFilterCB		filter_CB
 #define BMCloseCB		close_CB
 
-#include "traversal.h"
+#include "traversal_template.h"
 
 
 #endif	// DETERNARIZE_TRAVERSAL_H

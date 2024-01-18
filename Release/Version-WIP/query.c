@@ -10,11 +10,158 @@
 
 // #define DEBUG
 
-typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+//===========================================================================
+//	query_traversal
+//===========================================================================
+#include "query_traversal.h"
+typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
+
+static int match( CNInstance *, char *, listItem *, BMQueryData * );
+static inline int uneq( listItem *i, int operand );
+
+BMTraverseCBSwitch( query_traversal )
+case_( match_CB )
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0; break;
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
+	_break
+case_( dot_identifier_CB )
+	xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case -1: data->success = 0; break;
+	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case  1: if ( p[1]=='?' ) { // special case: .? (cannot be negated)
+			data->success = 1;
+			break; }
+		xpn_set( data->stack.exponent, AS_SUB, 1 );
+		switch ( match( data->instance, p+1, data->base, data ) ) {
+		case -1: data->success = 0; break;
+		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
+	popListItem( &data->stack.exponent );
+	_break
+case_( dereference_CB )
+	xpn_add( &data->mark_exp, SUB, 1 );
+	_return( 1 )
+case_( sub_expression_CB )
+	char *mark = bm_locate_mark( p+1, &data->mark_exp );
+	if (( data->mark_exp )) {
+		if ( !strncmp( mark, "...", 3 ) )
+			data->list_exp = 2;
+		else if ( !strncmp( mark+1, ":...", 4 ) )
+			data->list_exp = 4;
+		else if ( !strncmp( mark+1, ",...", 4 ) )
+			data->list_exp = 6;
+		_return( 1 ) }
+	_break
+case_( dot_expression_CB )
+	listItem **stack = &data->stack.exponent;
+	xpn_add( stack, AS_SUB, 0 );
+	switch ( match( data->instance, p, data->base, data ) ) {
+	case 0: if is_f( NEGATED ) {
+		data->success=1; popListItem( stack );
+		_prune( BM_PRUNE_FILTER ) }
+	case -1: // no break
+		data->success=0; popListItem( stack );
+		_prune( BM_PRUNE_TERM )
+	default: xpn_set( *stack, AS_SUB, 1 ); }
+	_break
+case_( open_CB )
+	if ( f_next & ASSIGN ) {
+		listItem **stack = &data->stack.exponent;
+		xpn_add( stack, AS_SUB, 0 );
+		switch ( match( data->instance, p, data->base, data ) ) {
+		case 0: if is_f( NEGATED ) {
+			data->success=1; popListItem( stack );
+			_prune( BM_PRUNE_FILTER ) }
+		case -1: // no break
+			data->success=0; popListItem( stack );
+			_prune( BM_PRUNE_TERM )
+		default: xpn_set( *stack, AS_SUB, 1 ); } }
+	else if ( f_next & COUPLE )
+		xpn_add( &data->stack.exponent, AS_SUB, 0 );
+	_break
+case_( filter_CB )
+	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+		_return( 1 )
+	else if ( !data->success )
+		_prune( BM_PRUNE_TERM )
+	else _break
+case_( decouple_CB )
+	if ( data->stack.flags==data->OOS ) {
+		_return( 1 ) }
+	else if ( !data->success ) {
+		_prune( BM_PRUNE_TERM ) }
+	else {
+		xpn_set( data->stack.exponent, AS_SUB, 1 );
+		_break }
+case_( close_CB )
+	if ( data->stack.flags==data->OOS )
+		_return( 1 )
+	if is_f( COUPLE ) popListItem( &data->stack.exponent );
+	else if is_f( ASSIGN ) popListItem( &data->stack.exponent );
+	if is_f( DOT ) popListItem( &data->stack.exponent );
+	if ( f_next & NEGATED ) data->success = !data->success;
+	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
+		traverse_data->done = 1; // after popping
+	_break
+case_( wildcard_CB )
+	if is_f( NEGATED ) data->success = 0;
+	else if ( !uneq( data->stack.exponent, 1 ) ) {
+		data->success = 1; } // wildcard is any or as_sub[1]
+	else switch ( match( data->instance, NULL, data->base, data ) ) {
+		case -1: // no break
+		case  0: data->success = 0; break;
+		case  1: data->success = 1; break; }
+	_break
+BMTraverseCBEnd
+
+
+static inline int uneq( listItem *i, int operand ) {
+	if (( i )) {
+		union { void *ptr; int value; } icast;
+		icast.ptr = i->ptr; return ( icast.value!=operand ); }
+	return 0; }
+
+//---------------------------------------------------------------------------
+//	match
+//---------------------------------------------------------------------------
+static int
+match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
+/*
+	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
+	is either NULL or the exponent of p as expression term
+*/ {
+	listItem *xpn = NULL;
+	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
+		addItem( &xpn, i->ptr );
+	CNInstance *y = x;
+	while (( y ) && (xpn)) {
+		int exp = pop_item( &xpn );
+		y = CNSUB( y, exp&1 ); }
+	if (( y )) {
+		if (( p )) {
+			// optimization
+			if (( data->pivot ) && p==data->pivot->name ) {
+				switch ( *p ) {
+				case '%':
+					if ( strmatch( "|@", p[1] ) )
+						break;
+				default: // no break
+					return ( y==data->pivot->value ); } }
+			return bm_match( data->ctx, data->db, p, y, data->db ); }
+		else { // wildcard
+			return 1; } }
+	else {
+		freeListItem( &xpn );
+		return -1; } }
 
 //===========================================================================
 //	bm_query
 //===========================================================================
+typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
 static CNInstance * query_assignment( int, char *, BMQueryData * );
 static inline CNInstance * dotnext( CNDB *, listItem ** );
@@ -113,9 +260,9 @@ dotnext( CNDB *db, listItem **stack ) {
 				return e; } }
 	return NULL; }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	pivot_query
-//===========================================================================
+//---------------------------------------------------------------------------
 static CNInstance * xp_traverse( char *, BMQueryData *, XPTraverseCB *, void * );
 
 static int
@@ -267,12 +414,9 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 		freeItem( i );
 	return success; }
 
-//===========================================================================
-//	xp_verify
-//===========================================================================
-#include "query_traversal.h"
-
-typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
+//---------------------------------------------------------------------------
+//	xp_verify	- also invoked by eeno_feel.c: bm_proxy_scan()
+//---------------------------------------------------------------------------
 static CNInstance * op_set( BMVerifyOp, BMQueryData *, CNInstance *, char **, int );
 typedef struct {
 	listItem *flags;
@@ -284,10 +428,10 @@ typedef struct {
 	listItem *i;
 	listItem *p;
 	} XPVerifyStack;
+
 static inline listItem * pop_as_sub( XPVerifyStack *, listItem *, listItem ** );
 static inline CNInstance * xsub( CNInstance *, listItem *, listItem * );
 static inline char * prune( char *, int );
-
 int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
 /*
@@ -465,26 +609,11 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	if ((data->stack.scope) || (data->stack.base)) {
 		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
 		exit( -1 ); }
+#endif
+#ifdef DEBUG
 	fprintf( stderr, "xp_verify:........} success=%d\n", success );
 #endif
 	return success; }
-
-static inline CNInstance *
-xsub( CNInstance *x, listItem *xpn, listItem *base ) {
-	listItem *sub_exp = NULL;
-	for ( listItem *i=xpn; i!=base; i=i->next )
-		addItem( &sub_exp, i->ptr );
-	while (( x ) && (sub_exp)) {
-		int exp = pop_item( &sub_exp );
-		x = CNSUB( x, exp&1 ); }
-	freeListItem( &sub_exp );
-	return x; }
-
-static inline char *
-prune( char *p, int success ) {
-	p = p_prune(( success ? PRUNE_FILTER : PRUNE_TERM ), p+1 );
-	if ( *p==':' ) p++;
-	return p; }
 
 static inline listItem *
 pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
@@ -505,6 +634,23 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 	freeListItem( mark_exp );
 	// return previously stacked i
 	return popListItem( &stack->i ); }
+
+static inline CNInstance *
+xsub( CNInstance *x, listItem *xpn, listItem *base ) {
+	listItem *sub_exp = NULL;
+	for ( listItem *i=xpn; i!=base; i=i->next )
+		addItem( &sub_exp, i->ptr );
+	while (( x ) && (sub_exp)) {
+		int exp = pop_item( &sub_exp );
+		x = CNSUB( x, exp&1 ); }
+	freeListItem( &sub_exp );
+	return x; }
+
+static inline char *
+prune( char *p, int success ) {
+	p = p_prune(( success ? PRUNE_FILTER : PRUNE_TERM ), p+1 );
+	if ( *p==':' ) p++;
+	return p; }
 
 //---------------------------------------------------------------------------
 //	op_set
@@ -549,150 +695,6 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		data->success = success; }
 	*q = p;
 	return x; }
-
-//---------------------------------------------------------------------------
-//	query_traversal
-//---------------------------------------------------------------------------
-static int match( CNInstance *, char *, listItem *, BMQueryData * );
-static inline int uneq( listItem *i, int operand );
-
-BMTraverseCBSwitch( query_traversal )
-case_( match_CB )
-	switch ( match( data->instance, p, data->base, data ) ) {
-	case -1: data->success = 0; break;
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
-	_break
-case_( dot_identifier_CB )
-	xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
-	case -1: data->success = 0; break;
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-	case  1: if ( p[1]=='?' ) { // special case: .? (cannot be negated)
-			data->success = 1;
-			break; }
-		xpn_set( data->stack.exponent, AS_SUB, 1 );
-		switch ( match( data->instance, p+1, data->base, data ) ) {
-		case -1: data->success = 0; break;
-		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
-	popListItem( &data->stack.exponent );
-	_break
-case_( dereference_CB )
-	xpn_add( &data->mark_exp, SUB, 1 );
-	_return( 1 )
-case_( sub_expression_CB )
-	char *mark = bm_locate_mark( p+1, &data->mark_exp );
-	if (( data->mark_exp )) {
-		if ( !strncmp( mark, "...", 3 ) )
-			data->list_exp = 2;
-		else if ( !strncmp( mark+1, ":...", 4 ) )
-			data->list_exp = 4;
-		else if ( !strncmp( mark+1, ",...", 4 ) )
-			data->list_exp = 6;
-		_return( 1 ) }
-	_break
-case_( dot_expression_CB )
-	listItem **stack = &data->stack.exponent;
-	xpn_add( stack, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
-	case 0: if is_f( NEGATED ) {
-		data->success=1; popListItem( stack );
-		_prune( BM_PRUNE_FILTER ) }
-	case -1: // no break
-		data->success=0; popListItem( stack );
-		_prune( BM_PRUNE_TERM )
-	default: xpn_set( *stack, AS_SUB, 1 ); }
-	_break
-case_( open_CB )
-	if ( f_next & ASSIGN ) {
-		listItem **stack = &data->stack.exponent;
-		xpn_add( stack, AS_SUB, 0 );
-		switch ( match( data->instance, p, data->base, data ) ) {
-		case 0: if is_f( NEGATED ) {
-			data->success=1; popListItem( stack );
-			_prune( BM_PRUNE_FILTER ) }
-		case -1: // no break
-			data->success=0; popListItem( stack );
-			_prune( BM_PRUNE_TERM )
-		default: xpn_set( *stack, AS_SUB, 1 ); } }
-	else if ( f_next & COUPLE )
-		xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	_break
-case_( filter_CB )
-	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
-		_return( 1 )
-	else if ( !data->success )
-		_prune( BM_PRUNE_TERM )
-	else _break
-case_( decouple_CB )
-	if ( data->stack.flags==data->OOS ) {
-		_return( 1 ) }
-	else if ( !data->success ) {
-		_prune( BM_PRUNE_TERM ) }
-	else {
-		xpn_set( data->stack.exponent, AS_SUB, 1 );
-		_break }
-case_( close_CB )
-	if ( data->stack.flags==data->OOS )
-		_return( 1 )
-	if is_f( COUPLE ) popListItem( &data->stack.exponent );
-	else if is_f( ASSIGN ) popListItem( &data->stack.exponent );
-	if is_f( DOT ) popListItem( &data->stack.exponent );
-	if ( f_next & NEGATED ) data->success = !data->success;
-	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
-		traverse_data->done = 1; // after popping
-	_break
-case_( wildcard_CB )
-	if is_f( NEGATED ) data->success = 0;
-	else if ( !uneq( data->stack.exponent, 1 ) ) {
-		data->success = 1; } // wildcard is any or as_sub[1]
-	else switch ( match( data->instance, NULL, data->base, data ) ) {
-		case -1: // no break
-		case  0: data->success = 0; break;
-		case  1: data->success = 1; break; }
-	_break
-BMTraverseCBEnd
-
-
-static inline int uneq( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return ( icast.value!=operand ); }
-	return 0; }
-
-//---------------------------------------------------------------------------
-//	match
-//---------------------------------------------------------------------------
-static int
-match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
-/*
-	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
-	is either NULL or the exponent of p as expression term
-*/ {
-	listItem *xpn = NULL;
-	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
-		addItem( &xpn, i->ptr );
-	CNInstance *y = x;
-	while (( y ) && (xpn)) {
-		int exp = pop_item( &xpn );
-		y = CNSUB( y, exp&1 ); }
-	if (( y )) {
-		if (( p )) {
-			// optimization
-			if (( data->pivot ) && p==data->pivot->name ) {
-				switch ( *p ) {
-				case '%':
-					if ( strmatch( "|@", p[1] ) )
-						break;
-				default: // no break
-					return ( y==data->pivot->value ); } }
-			return bm_match( data->ctx, data->db, p, y, data->db ); }
-		else { // wildcard
-			return 1; } }
-	else {
-		freeListItem( &xpn );
-		return -1; } }
 
 //===========================================================================
 //	query_assignment

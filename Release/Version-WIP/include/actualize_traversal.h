@@ -1,6 +1,8 @@
 #ifndef ACTUALIZE_TRAVERSAL_H
 #define ACTUALIZE_TRAVERSAL_H
 
+#include "traversal.h"
+
 static BMTraversal actualize_traversal;
 #define case_( CB ) \
 	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
@@ -21,7 +23,7 @@ static BMTraverseCB
 #define BMWildCardCB		wildcard_CB
 #define BMCloseCB		close_CB
 
-#include "traversal.h"
+#include "traversal_template.h"
 
 
 #endif	// ACTUALIZE_TRAVERSAL_H

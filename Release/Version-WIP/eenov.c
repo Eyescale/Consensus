@@ -5,14 +5,66 @@
 #include "eenov.h"
 #include "eenov_private.h"
 #include "locate_emark.h"
-#include "traverse.h"
 #include "cell.h"
+
+//===========================================================================
+//	eenov_traversal
+//===========================================================================
+#include "eenov_traversal.h"
+
+#define NDX 	( is_f(FIRST) ? 0 : 1 )
+
+BMTraverseCBSwitch( eenov_traversal )
+case_( identifier_CB )
+	CNInstance *x = data->instance;
+	int success = 0;
+	if ( !x->sub[0] ) {
+		char *identifier = DBIdentifier( x );
+		char_s q;
+		switch ( *p ) {
+		case '/': success = !strcomp( p, identifier, 2 ); break;
+		case '\'': success = charscan(p+1,&q) && !strcomp( q.s, identifier, 1 ); break;
+		default: success = !strcomp( p, identifier, 1 ); } }
+	data->success = is_f( NEGATED ) ? !success : success;
+	_break
+case_( open_CB )
+	if ( f_next & COUPLE ) {
+		CNInstance *x = data->instance;
+		if (( x = CNSUB(x,NDX) )) {
+			addItem( &data->stack.instance, data->instance );
+			data->instance = x; }
+		else {
+			data->success = !!is_f( NEGATED );
+			_prune( BM_PRUNE_TERM ) } }
+	_break
+case_( decouple_CB )
+	if ( !data->success )
+		_prune( BM_PRUNE_TERM )
+	else {
+		listItem *stack = data->stack.instance;
+		data->instance = ((CNInstance*)stack->ptr)->sub[ 1 ];
+		_break }
+case_( close_CB )
+	if ( is_f(COUPLE) )
+		data->instance = popListItem( &data->stack.instance );
+	if ( f_next & NEGATED ) data->success = !data->success;
+	_break
+case_( wildcard_CB )
+	if ( *p=='?' ) {
+		data->result = data->instance;
+		if (!strncmp(p+1,":...",4))
+			_return( 2 ) }
+	data->success = !is_f( NEGATED );
+	_break
+case_( end_CB )
+	_return( 1 )
+BMTraverseCBEnd
 
 //===========================================================================
 //	eenov_output / eenov_inform / eenov_lookup / eenov_match
 //===========================================================================
 static EEnovType eenov_type( BMContext *, char *, EEnovData * );
-static CNInstance * eenov_query_op( EEnovQueryOp, BMContext *, char *, EEnovData * );
+static CNInstance * eenov_query( EEnovQueryOp, BMContext *, char *, EEnovData * );
 
 int
 eenov_output( char *p, BMContext *ctx, OutputData *od ) {
@@ -29,7 +81,7 @@ eenov_output( char *p, BMContext *ctx, OutputData *od ) {
 		return db_outputf( od->stream, data.db, fmt, data.instance );
 	case EEnovExprType:
 		data.param.output.od = od;
-		eenov_query_op( EEnovOutputOp, ctx, p+2, &data );
+		eenov_query( EEnovOutputOp, ctx, p+2, &data );
 		return bm_out_flush( od, data.db ); } }
 
 listItem *
@@ -47,7 +99,7 @@ eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst ) {
 	case EEnovExprType:
 		data.param.inform.ctx = ((dst)?dst:ctx);
 		data.param.inform.result = NULL;
-		eenov_query_op( EEnovInformOp, ctx, p+2, &data );
+		eenov_query( EEnovInformOp, ctx, p+2, &data );
 		reorderListItem( &data.param.inform.result );
 		return data.param.inform.result; } }
 
@@ -68,7 +120,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 	case EEnovExprType:
 		data.param.lookup.ctx = ctx;
 		data.param.lookup.db = db;
-		return eenov_query_op( EEnovLookupOp, ctx, p+2, &data ); } }
+		return eenov_query( EEnovLookupOp, ctx, p+2, &data ); } }
 
 int
 eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
@@ -87,13 +139,11 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	case EEnovExprType:
 		data.param.match.x = x;
 		data.param.match.db = db_x;
-		return !!eenov_query_op( EEnovMatchOp, ctx, p+2, &data ); } }
+		return !!eenov_query( EEnovMatchOp, ctx, p+2, &data ); } }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	eenov_type
-//===========================================================================
-#include "eenov_traversal.h"
-
+//---------------------------------------------------------------------------
 static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
@@ -129,63 +179,12 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	return EEnovNone; }
 
 //---------------------------------------------------------------------------
-//	eenov_traversal
+//	eenov_query
 //---------------------------------------------------------------------------
-#define LIST	2
-
-BMTraverseCBSwitch( eenov_traversal )
-case_( identifier_CB )
-	CNInstance *x = data->instance;
-	int success = 0;
-	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x );
-		char_s q;
-		switch ( *p ) {
-		case '/': success = !strcomp( p, identifier, 2 ); break;
-		case '\'': success = charscan(p+1,&q) && !strcomp( q.s, identifier, 1 ); break;
-		default: success = !strcomp( p, identifier, 1 ); } }
-	data->success = is_f( NEGATED ) ? !success : success;
-	_break
-case_( open_CB )
-	if ( f_next & COUPLE ) {
-		CNInstance *x = data->instance;
-		if (( x = CNSUB( x, is_f(FIRST)?0:1 ) )) {
-			addItem( &data->stack.instance, data->instance );
-			data->instance = x; }
-		else {
-			data->success = !!is_f( NEGATED );
-			_prune( BM_PRUNE_TERM ) } }
-	_break
-case_( decouple_CB )
-	if ( !data->success )
-		_prune( BM_PRUNE_TERM )
-	else {
-		listItem *stack = data->stack.instance;
-		data->instance = ((CNInstance*)stack->ptr)->sub[ 1 ];
-		_break }
-case_( close_CB )
-	if ( is_f(COUPLE) )
-		data->instance = popListItem( &data->stack.instance );
-	if ( f_next & NEGATED ) data->success = !data->success;
-	_break
-case_( wildcard_CB )
-	if ( *p=='?' ) {
-		data->result = data->instance;
-		if (!strncmp(p+1,":...",4))
-			_return( LIST ) }
-	data->success = !is_f( NEGATED );
-	_break
-case_( end_CB )
-	_return( 1 )
-BMTraverseCBEnd
-
-//===========================================================================
-//	eenov_query_op
-//===========================================================================
 static inline int eenov_op( EEnovQueryOp, CNInstance *, CNDB *, EEnovData * );
 
 static CNInstance *
-eenov_query_op( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
+eenov_query( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
 /*
 	Traverses %<(_!_)> using data->instance==%<!> as pivot
 		invoking EEnovTraverseCB on every match
@@ -224,7 +223,7 @@ PUSH_xpn:	PUSH( stack[ XPN_id ], xpn, POP_xpn )
 			if ( eenov_op( op, e, db, data )==BM_DONE ) {
 				success = e;
 				goto RETURN; }
-			if ( traverse_data.done==LIST ) {
+			if ( traverse_data.done==2 ) {
 				/* we have %<(_!_,?:...)>
 			              	     ^    ^----- current traverse_data.p
 					      ---------- current data->stack.instance

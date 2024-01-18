@@ -43,7 +43,7 @@ B%: $(LIB) main.c ../../Base/libcn.a
 $(LIB): $(OBJDIR) $(OBJS) 
 	ar -rcvus $(LIB) $(OBJS)
 
-$(OBJS): $(OBJDIR)/%.o:%.c traverse.c
+$(OBJS): $(OBJDIR)/%.o:%.c include/traversal_template.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 $(OBJDIR):
