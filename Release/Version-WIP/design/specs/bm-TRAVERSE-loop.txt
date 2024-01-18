@@ -1,0 +1,52 @@
+Objective
+	support ?:(_)(_) and ?:(_){_} in DO expressions
+
+Design
+    Loop Bgn: in instantiate.c
+	wildcard_CB, on "?:", push data->loop:{ LoopData }
+	where
+		LoopData:{
+			struct { void *level; char *p; } *info;
+			listItem *rv; // {[ %!, %? ]}
+			}
+	and
+		loop->info->level = *traverse_data->stack
+		loop->info->p = position *past* ?:(_)_
+		loop->rv holds ?:(_) results         ^
+
+    Loop End
+	in traverse.c: We need to catch either
+		traverse_data->done==1 => outer loop
+		')' or '}' => replace
+			CB_CloseCB /
+			CB_EndSetCB	f_pop( stack, 0 )
+					f_set( INFORMED )
+					p++; break;
+		    with
+			CB_CloseCB /
+			CB_EndSetCB	f_pop( stack, 0 )
+			CB_LoopCB	f_set( INFORMED )
+					p++; break;
+    loop_CB: in instantiate.c
+	if (( data->loop ) && p[1]!='|' ) {
+		LoopData *loop = data->loop->ptr;
+		if ( *traverse_data->stack==loop->info->level ) {
+			Pair *rv = popListItem( &loop->rv );
+			if (( rv )) {
+				bm_reset_mark( data->ctx, "?", rv );
+				_continue( loop->info->p ) }
+			else {
+				bm_pop_mark( data->ctx, "?" );
+				popListItem( &data->loop ); } } }
+	_break
+
+	Notes
+	. loop_CB must be a callback because it accesses data->ctx
+	. pipe is either |(_) or |{_} AND requires ')' at the end
+	  => that's why we didn't allow it so far at base level - so
+	     that bm_traverse could call CB_EndPipeCB on closing ')'
+	  => here we don't have to worry about pipe, except
+		?:(_)(_)|...
+			^--------- same level
+	     and on traverse_data->done==1 (outer loop to be created)
+
