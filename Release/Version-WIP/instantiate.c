@@ -18,13 +18,12 @@ typedef struct {
 	BMContext *ctx, *carry;
 	CNDB *db;
 } InstantiateData;
+#define NDX ( is_f( FIRST ) ? 0 : 1 )
 
 static listItem *instantiate_couple( listItem *sub[2], CNDB * );
 static CNInstance *instantiate_literal( char **, CNDB * );
 static listItem *instantiate_list( char **, listItem **, CNDB * );
 static listItem *instantiate_xpan( listItem **, CNDB * );
-
-#define NDX ( is_f( FIRST ) ? 0 : 1 )
 
 BMTraverseCBSwitch( instantiate_traversal )
 case_( filter_CB )
