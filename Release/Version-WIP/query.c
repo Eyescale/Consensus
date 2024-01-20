@@ -5,7 +5,6 @@
 #include "locate_pivot.h"
 #include "locate_mark.h"
 #include "query.h"
-#include "query_private.h"
 #include "eenov.h"
 
 // #define DEBUG
@@ -14,10 +13,9 @@
 //	query_traversal
 //===========================================================================
 #include "query_traversal.h"
-typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
+#include "query_private.h"
 
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
-static inline int uneq( listItem *i, int operand );
 
 BMTraverseCBSwitch( query_traversal )
 case_( match_CB )
@@ -117,13 +115,6 @@ case_( wildcard_CB )
 	_break
 BMTraverseCBEnd
 
-
-static inline int uneq( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return ( icast.value!=operand ); }
-	return 0; }
-
 //---------------------------------------------------------------------------
 //	match
 //---------------------------------------------------------------------------
@@ -144,11 +135,8 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 		if (( p )) {
 			// optimization
 			if (( data->pivot ) && p==data->pivot->name ) {
-				switch ( *p ) {
-				case '%':
-					if ( strmatch( "|@", p[1] ) )
-						break;
-				default: // no break
+				// Assumption: %| no longer authorized in queries
+				if ( strncmp(p,"%@",2) ) {
 					return ( y==data->pivot->value ); } }
 			return bm_match( data->ctx, data->db, p, y, data->db ); }
 		else { // wildcard
@@ -341,7 +329,10 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
 	char *p = pivot->name;
-	int pv = (*p=='%'&&(p[1]=='|'||p[1]=='@'));
+
+	// %| no longer authorized in query expressions
+	int pv = !strncmp(p,"%@",2) ? 1 : 0;
+	
 	listItem *i, *j;
 	CNInstance *e, *f;
 	if ( pv ) {

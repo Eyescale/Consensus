@@ -6,35 +6,47 @@
 //===========================================================================
 //	private parser macros
 //===========================================================================
-#define f_tag( stack ) \
-	f_tag_( &flags, stack );
+#define f_tag( stack, b ) \
+	f_tag_( &flags, stack, (b) );
+#define f_restore( b ) \
+	f_restore_( (b), &flags, stack );
+#define f_parent( b ) \
+	f_parent_( stack, (b) )
 #define f_ternary_markable( stack ) \
 	f_ternary_markable_( flags, stack )
 #define f_ternary_signalable( stack ) \
 	f_ternary_signalable_( flags, stack )
-#define f_restore( b ) \
-	f_restore_( (b), &flags, stack );
 #define f_actionable( stack ) \
 	!is_f(EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED)
 
 static inline void
-f_tag_( int *flags, listItem **stack ) {
+f_tag_( int *f, listItem **stack, int flags ) {
+	*f |= flags;
 	union { void *ptr; int value; } icast;
 	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
 		icast.ptr = i->ptr;
-		icast.value |= PROTECTED;
+		icast.value |= flags;
 		i->ptr = icast.ptr; } }
 
+static inline void
+f_restore_( int bits, int *f, listItem **stack ) {
+	int flags = *f;
+	if is_f( LEVEL ) {
+		// set flags to parent's value
+		union { void *ptr; int value; } icast;
+		icast.ptr = (*stack)->ptr;
+		*f = (*f&~bits)|(icast.value&bits); }
+	else {	// clear flags bits
+		*f &= ~bits; } }
+
 static inline int
-f_parent_marked( listItem **stack )
+f_parent_( listItem **stack, int flags )
 /*
 	Assumption: *stack != NULL
 */ {
 	union { void *ptr; int value; } icast;
-	listItem *i = *stack;
-	icast.ptr = i->ptr;
-	int flags = icast.value;
-	return is_f( MARKED ); }
+	icast.ptr = (*stack)->ptr;
+	return ( icast.value & flags ); }
 
 static inline int
 f_ternary_markable_( int flags, listItem **stack )
@@ -79,16 +91,5 @@ f_ternary_signalable_( int flags, listItem **stack )
 		if is_f( FIRST ) {
 			return !next_i->next; } }
 	return 1; }
-
-static inline void
-f_restore_( int bits, int *f, listItem **stack ) {
-	int flags = *f;
-	if is_f( LEVEL ) {
-		// set flags to parent's value
-		union { void *ptr; int value; } icast;
-		icast.ptr = (*stack)->ptr;
-		*f = (*f&~bits)|(icast.value&bits); }
-	else {	// clear flags bits
-		*f &= ~bits; } }
 
 #endif	// PARSER_PRIVATE_H

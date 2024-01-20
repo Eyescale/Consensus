@@ -17,10 +17,10 @@ typedef struct {
 	struct { listItem *flags, *level, *premark; } stack;
 	} LocatePivotData;
 
-#define CHECK( this ) \
-	(!( data->primary & this )) { \
-		if ( !data->secondary || ( this < data->secondary )) \
-			data->secondary = this; } \
+#define CHECK( type ) \
+	(!( data->primary & type )) { \
+		if ( !data->secondary || ( type < data->secondary )) \
+			data->secondary = type; } \
 	else
 
 BMTraverseCBSwitch( locate_pivot_traversal )
@@ -66,7 +66,7 @@ case_( register_variable_CB )
 		case '%': mark = SELF; break;
 		case '@': mark = ACTIVE; break;
 		case '<': mark = EENOK; break;
-		case '|': mark = PMARK; break; }
+		default: _break; }
 		if CHECK( mark )
 			_return( 2 ) }
 	_break
@@ -153,8 +153,8 @@ BMTraverseCBEnd
 char *
 bm_locate_pivot( char *expression, listItem **xpn )
 /*
-	returns first term (according to prioritization) which
-	is not a wildcard and is not negated, with corresponding
+	returns first term (according to prioritization in scour.h)
+	which is not a wildcard and is not negated, with corresponding
 	exponent (in reverse order).
 */ {
 	LocatePivotData data;

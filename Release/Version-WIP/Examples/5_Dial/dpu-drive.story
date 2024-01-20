@@ -85,21 +85,21 @@
 		else on ~(( %%, OUT ), ? ) < *yak // popping rule
 			in %<?:number>
 				in .SET
-					do ((( *dpu, SET ), ... ), %((*A,*),?:...))
+					do (((*dpu,SET),...), %((*A,*),?:...) )
 					do ( %<, CONTINUE )
 					do ~( .SET )
 				else
-					do ((( *dpu, *op ), ... ), %((*A,*),?:...))
+					do (((*dpu,*op),...), %((*A,*),?:...) )
 					do .SYNC
 				do ~( .N )
 			else in ( %<?:sum> ?: %<?:mult> )
 				in : A : ( A, ?:~A ) // pop < A, op >
 					do :< A, op >:< %?, %((*A,%?),?) >
 					in ( %?, * ) // operate if informed
-						do ((( *dpu, %((*A,%?),?)), ... ), %((%?,*),?:...))
+						do (((*dpu,%((*A,%?),?)),...), %((%?,*),?:...) )
 						do .SYNC
 					else // pass down current value
-						do (((%?,*),...),%((*A,*),?:...))
+						do (((%?,*),...), %((*A,*),?:...) )
 						do ( %<, CONTINUE )
 					do ~( A, %? )
 				else do ( %<, CONTINUE )

@@ -20,24 +20,24 @@
 			do ( .., SET )
 		else on ~( %%, GET ) < ..
 			in (?:(A,*),.)
-				do ((( .., GET ), ... ), %(%?,?:...) )
-			else	do (( .., GET ), 0 )
+				do (((..,GET),...), %(%?,?:...) )
+			else	do ((..,GET), 0 )
 		else on ~( %%, ADD ) < ?:..
 			in ~.: ((A,*), . ) // format input
 				do : A : ((A,*), 0 )
-			do : X : (((X,*), ... ), %<(!,?:...)> )
+			do : X : (((X,*),...), %<(!,?:...)> )
 			do : ADD
 		else on ~( %%, MULT ) < ?:..
 			in ?:((A,*),.)
 				in (%?,.) // A has more than one digit
 					do : P : *A
-					do : q : (((X,*), ... ), %<(!,?:...)> )
+					do : q : (((X,*),...), %<(!,?:...)> )
 				else
-					do : P : (((X,*), ... ), %<(!,?:...)> )
+					do : P : (((X,*),...), %<(!,?:...)> )
 					do : q : *A
 				do : MULT
 			else
-				do (( .., MULT ), 0 )
+				do ((..,MULT), 0 )
 
 	else in : ADD
 		on ~( %%, MSUM ) < ?:*dial // read digit-sum operation results
@@ -50,9 +50,9 @@
 				do : q : ( %?:(.,*) ? ~. : %? )
 		else on : r : .
 			in : p : (.,?)
-				do (( *dial, ... ),< MSUM, %?, (*q?%(*q:(.,?)):0), *c >)
+				do ((*dial,...),< MSUM, %?, (*q?%(*q:(.,?)):0), *c >)
 			else in : q : (.,?)
-				do (( *dial, ... ),< MSUM, %?, 0, *c >)
+				do ((*dial,...),< MSUM, %?, 0, *c >)
 			else
 				do .MSUM
 				do : FORMAT
@@ -65,10 +65,10 @@
 				do :< c, v >: %<(!,?:...)>
 			else on : v : ?
 				/* we have
-					: r : (( r, * ), ... )	// input
-					: s : (( s, * ), ... )  // done digits
-					: t : (( t|u, * ), ... ) // in construction
-					: u : ( u|t, * ) // ... t and u alternating
+					: r : (( r, * ),...)	// input
+					: s : (( s, * ),...)  // done digits
+					: t : (( t|u, * ),...) // in construction
+					: u : ( u|t, * ) //...t and u alternating
 				*/
 				in : r : ((.,*),.) // first digit-sum result goes to s
 					do : s : ( *s, %? )
@@ -80,14 +80,14 @@
 					do : r : %?
 					in ?:( *t, . )
 						do : t : %?
-					else do (( *dial, ... ),< MSUM, %(%?:(.,?)), 0, *c >)
+					else do ((*dial,...),< MSUM, %(%?:(.,?)), 0, *c >)
 				else do : r : ~.
 			else on : r : ~.
 				do ~((r,*),.) // clear (r,*)
 				do : %(:?) // REENTER
 				do ~( .MSUM )
 			else on : t : ?
-				do (( *dial, ... ),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
+				do (( *dial,...),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
 			else on : .
 				do : c : 0
 				in u
@@ -115,7 +115,7 @@
 					do : p : %?
 				else	do : p : ~.
 			else on : p : (.,?)  // dial next digit(s) operation
-				do (( *dial, ... ),< MULT, %?, %(*q:(.,?)), *c >)
+				do ((*dial,...),< MULT, %?, %(*q:(.,?)), *c >)
 			else on : p : ~.
 				in : c : (?:~0)
 					do : r : ( *r, %? )
@@ -152,10 +152,10 @@
 			else
 				in ?:( .MSUM ? ADD : MULT )
 					in .check
-						do ((( .., %? ), ... ), %((A,*),?:...))
+						do (((..,%?),...), %((A,*),?:...))
 						do ~( .check )
 					else
-						do (( .., %? ), 0 )
+						do ((..,%?), 0 )
 						do ~( A, * )
 				do ~( %? )
 				do ~( .MSUM )

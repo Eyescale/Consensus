@@ -127,10 +127,12 @@ CB_RegisterVariableCB			f_set( INFORMED )
 						f_set( EENOV )
 						p = p_prune( PRUNE_TERM, p ); }
 					break; }
-				else if ( strmatch( "?!%|@", p[1] ) ) {
+				else if ( strmatch( "?!|%@", p[1] ) ) {
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( *p=='~' && p[1]!='<' ) {
+					if ( *p=='^' ) {
+						p = p_prune( PRUNE_TERM, p+1 ); }
+					else if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
 					break; }
 				else {

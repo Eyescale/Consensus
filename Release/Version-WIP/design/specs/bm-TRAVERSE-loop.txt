@@ -50,3 +50,95 @@ Design
 			^--------- same level
 	     and on traverse_data->done==1 (outer loop to be created)
 
+Loops and Pipes
+	Loops are only supported in pipe context - that is, after '|'
+	Pipes: We support the following DO expressions [E]
+		(_|_)
+		(_|{_})
+	Where
+		at base level only after ‘|’, we want to support
+			?:(_)(_|_) 	alt.	!?:(_)(_|_)
+			?:(_)(_|{_})		!?:(_)(_|{_})
+			?:(_){_}		!?:(_){_}
+		where
+			{_} is a list of possibly [E] elements
+
+	We want in addition to support
+		?:(_){_|_}		<=>	?:(_)(_|_)
+		?:(_){ _|_, _, ... }
+
+	which requires invoking CB_PipeEndCB on ',' and '}' from inside {_},
+	the way we do now on ')' from inside (_)
+TODO
+	=> support do { a|b } likewise in carry( a|b ) and then we're all set
+
+WIP
+	allow ?:(_)_ in parser.c - usage restricted to pipe's base level*
+	allow !?:(_)_ in parser.c - usage restricted to pipe's base level*
+			*otherwise we could have NULL results in couple
+	allow (_)^ in parser.c
+
+	=> in traverse.c:
+	    CB_CloseCB		f_pop( stack, 0 )
+				p++; // move past ')'
+	    CB_LoopCB		f_set( INFORMED )
+				if ( *p=='^' ) p++;
+				break;
+
+	 => in instantiate.c: assuming we have, in InstantiateData:
+		    struct { int current; listItem *stack; } newborn;
+
+	    #define nbset( nb ) if (!nb) { \
+		for ( listItem *i=data->sub[ NDX ]; i!=NULL; i=i->next ) \
+			if ( isNewBorn( i->ptr ) ) { nb=1; break; } }
+
+	    case_( loop_CB )
+		if ( *p=='^' ) { p++; nbset( data->newborn.current ) }
+		if (( data->loop ) && *p!='|' ) {
+			LoopData *loop = data->loop->ptr;
+			if ( *traverse_data->stack==loop->info->level ) {
+				Pair *rv = popListItem( &loop->rv );
+				if (( rv )) {
+					bm_reset_mark( data->ctx, "?", rv );
+					_continue( loop->info->p ) }
+				else {
+					bm_pop_mark( data->ctx, "?" );
+					loop_pop( &data->loop ); } } }
+		_break
+
+	    case_( bgn_pipe_CB )
+		add_item( &data->newborn.stack, data->newborn.current );
+		data->newborn.current = 0;
+		_break
+
+	    case_( end_pipe_CB )
+	    	data->newborn.current = pop_item( &data->newborn->stack );
+		_break
+
+	    case_( wildcard_CB )
+		union { void *ptr; int value; } icast;
+		listItem *results;
+		switch ( *p ) {
+		case '.':
+			data->sub[ NDX ] = newItem( NULL );
+			break;
+		case '!':
+			// Assumption: !? only authorized in pipe context
+			icast.ptr = data->newborn.stack->ptr;
+			if ( !icast.value ) {
+				p = p_prune( PRUNE_TERM, p );
+				p = p_prune( PRUNE_TERM, p );
+				_continue( p ); }
+			p++; // no break
+		case '?':
+			results = bm_scan( p, data->ctx ); <<<<< not exactly
+			must bm_push_mark( data->ctx, "?", ... );
+			if there is only one result => no need to push loop
+			p = p_prune( PRUNE_TERM, p );
+			if ( !results ) p = p_prune( PRUNE_TERM, p );
+			else {
+				listItem *level = *traverse_data->stack;
+				loop_push( &data->loop, results, p, level ); }
+			_continue( p ) }
+		_break
+

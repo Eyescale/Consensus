@@ -11,14 +11,7 @@
 //	instantiate_traversal
 //===========================================================================
 #include "instantiate_traversal.h"
-typedef struct {
-	struct { listItem *flags; } stack;
-	listItem *sub[ 2 ];
-	listItem *results;
-	BMContext *ctx, *carry;
-	CNDB *db;
-} InstantiateData;
-#define NDX ( is_f( FIRST ) ? 0 : 1 )
+#include "instantiate_private.h"
 
 static listItem *instantiate_couple( listItem *sub[2], CNDB * );
 static CNInstance *instantiate_literal( char **, CNDB * );
@@ -28,7 +21,7 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 BMTraverseCBSwitch( instantiate_traversal )
 case_( filter_CB )
 	fprintf( stderr, ">>>>> B%%: Warning: instantiation filtered in expression\n"
-		"\t\tdo _:%s\n\t<<<<< filter ignored\n", p );
+		"\t\tdo _%s\n\t<<<<< filter ignored\n", p );
 	_prune( BM_PRUNE_TERM )
 case_( collect_CB )
 	listItem *results = bm_scan( p, data->ctx );
@@ -86,13 +79,16 @@ case_( register_variable_CB )
 		found = bm_context_lookup( data->ctx, p );
 		if ( !found ) _return( 2 )
 		listItem **sub = &data->sub[ NDX ];
-		if (( carry )) {
-			CNDB *db = data->db;
+		listItem *xpn = ( p[2]=='^' ? subx(p+3) : NULL );
+		if ( !carry ) {
 			for ( listItem *i=found; i!=NULL; i=i->next )
-				addItem( sub, bm_inform( 0, carry, i->ptr, db ) ); }
+				if (( e=xsub(i->ptr,xpn) )) addItem( sub, e ); }
 		else {
-			for ( listItem *i=found; i!=NULL; i=i->next )
-				addItem( sub, i->ptr ); }
+			CNDB *db = data->db;
+			for ( listItem *i=found; i!=NULL; i=i->next ) {
+				if (( e=xsub(i->ptr,xpn) ))
+					addItem( sub, bm_inform(0,carry,e,db) ); } }
+		freeListItem( &xpn );
 		break;
 	default:
 		e = bm_context_lookup( data->ctx, p );
@@ -476,19 +472,6 @@ static int assign_v2v( char *, BMTraverseData * );
 static inline void assign_one2v( listItem **, char *, BMTraverseData * );
 static inline void assign_v2one( listItem **, char *, BMTraverseData *, int );
 
-#define ifn_instantiate_traversal( expr ) \
-	traverse_data->done = INFORMED|LITERAL; \
-	p = instantiate_traversal( expr, traverse_data, FIRST ); \
-	if ( traverse_data->done==2 || !data->sub[ 0 ] )
-#define BM_ASSIGN( sub, db ) \
-	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \
-		db_assign( i->ptr, j->ptr, db ); \
-	freeListItem( &sub[ 0 ] ); \
-	freeListItem( &sub[ 1 ] );
-#define BM_UNASSIGN( sub, db ) \
-	for (CNInstance*e;(e=popListItem( &sub[0] ));) \
-		db_unassign( e, db );
-
 static void
 bm_assign( char *expression, BMTraverseData *traverse_data, CNStory *story )
 /*
@@ -649,11 +632,10 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 			freeListItem( list ); }
 		else fprintf( stderr, "\tdo !! %s <<<<<\n", p );
 		return; }
-	registryDeregister( ctx, "^" );
+	registryDeregister( ctx, "^^" );
 	registryDeregister( ctx, "*^" );
 	freeRegistry( buffer, NULL ); }
 
-#define CONNECTED( e )	((e->as_sub[0])||(e->as_sub[1]))
 static void
 inform_ube( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse_data ) {
 	InstantiateData *data = traverse_data->user_data;
@@ -662,7 +644,7 @@ inform_ube( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse
 	char *start_p = p;
 	listItem *pipe_mark = newItem( NULL );
 	bm_push_mark( ctx, "|", pipe_mark );	
-	Pair *current = registryRegister( ctx, "^", NULL );
+	Pair *current = registryRegister( ctx, "^^", NULL );
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
 		current->value = entry;
@@ -686,7 +668,7 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traverse_
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
 	char *start_p = p;
-	Pair *current = registryRegister( ctx, "^", NULL );
+	Pair *current = registryRegister( ctx, "^^", NULL );
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
 		current->value = entry;
@@ -753,12 +735,10 @@ instantiate_( char *arg, char *input, BMTraverseData *traverse_data ) {
 	CNDB *db = data->db;
 	listItem *sub[ 2 ];
 	char *p;
-
 	ifn_instantiate_traversal( arg )
 		return -1;
 	sub[ 0 ] = data->sub[ 0 ];
 	data->sub[ 0 ] = NULL;
-
 	if ( input==NULL )
 		BM_UNASSIGN( sub, db )
 	else {

@@ -177,7 +177,28 @@ PROTECTED flag
 		!!_()		CARRY	// could set PROTECTED on !!
 		_~		signal
 
-	bm_parser tests the PROTECTED flag on '?' and ':'
+	Specifically, bm_parser sets the PROTECTED flag on
+		term~
+		do !!identifier when not followed by '('
+		carry's closing )
+		vector's closing >
+		ellipsis's following )		=> no f_tag?? should be
+		set's closing }		 	with f_tag
+		literal's closing ) or :)	with f_tag
+		pipe |			 	with f_tag
+
+	whereas bm_parser tests the PROTECTED flag on
+		?
+		:
+
+	Only the PIPED flag is in fact required to allow %| in expression
+		but both PIPED and PROTECTED must be unset on
+			*	DONE
+			%(_)	DONE
+			%<_>	DONE
+			~(_)	DONE
+		in order to allow e.g. filtering of these expressions,
+	and both must be restored on ',' when LEVEL is set
 
 TERNARY flag and expressions
 	The TERNARY flag is set upon the first '?' following

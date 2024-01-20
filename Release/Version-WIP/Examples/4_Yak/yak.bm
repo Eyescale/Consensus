@@ -39,7 +39,7 @@
 				do : REC
 		else on : . // start base rule instance - feeding base
 			do (((rule,base), (']',*record)) | {
-				(((schema, %((Rule,base),(Schema,?:~'\0'))), %(%|:(.,?))), %| ),
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %|^(.,?)), %| ),
 				.( %|, base ) } )
 
 	else in : OUT  // traversal

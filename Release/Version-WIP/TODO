@@ -1,5 +1,8 @@
 See Also: design/story/interactive.story
+DESIGN ISSUE
+
 TODO
+	. cell out => must deregister "_" and UBE from story->arena
 	. shared entities & shared arenas
 	  [DONE] retyped base entities into ( NULL, entry )
  	  [DONE] cell.c: bm_cell_update( cell, story )
@@ -8,29 +11,45 @@ TODO
 	  [DONE] [NEW] arena.c / arena.h <= story.c, instantiate.c
 	  [DONE] instantiate.c: assign_string()
 	  [DONE] database.c: db_output()
-	  [WIP]  UBE implementation
-		[DONE] parser.c: !! | ...
-		[DONE] instantiate.c: assign_new() => bufferize
-		[WIP] implement in ctx / traversal
+	  [DONE] UBE implementation: parser.c: !! | ...
+	  [DONE] instantiate.c: assign_new() => bufferized
+	  [WIP]  implement do { a|b } and carry( a|b )
+		 Note: do {a|(_)} do {a|{_}} already authorized in parser!
+		 => must call PipeEndCB on , and ) resp. }
+		 + TEST CASES for both {a|b} and carry(a|b), with multiple args
+	  [WIP]  parser.c
+	 	. allow ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and _^ in DO mode
+		  usage possibly restricted to after '|' or inside carry(_)
+		. allow \n after '|'
+		. beautify output: { => \n and level++
+		=> TEST System launch formula printout
+	  [WIP]  instantiate.c
+		 implement ?:(_)_ !?:(_)_ (_)^
+		 => cf. design/specs/bm-TRAVERSE-loop.txt (WIP)
+		 Note: usage restricted to pipe context
+		       => traverse.c: catch ^^ and *^^
 			^^ = current identifier / *^^ = current value
-			?:(_)(_) and ?:(_){_} and ?!:_ and _^
+			?:(_)(_) and ?:(_){_} and !?:_ and _^
 			*^sub = bufferized value of %(%?:sub) (including *^.)
 			Note: *^_ NOT to be supported in ?:() - but ^^ yes
-		=> Test B% UBE & strings interface
-		=> Test string sub-narratives
-	. System launch
-		. parser.c: allow a|b inside of carry - LEVEL
-		. parser.c: allow \n after '|'
-		. output: { => \n and level++
-		. errors / warnings => ALL should be in color... => centralize?
+	. Test B% UBE & strings interface
+	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: do "occurrence" | ...
 		requires own stringLookup/stringRegister in bm_arena_register()
 		as we only want to compare what is inside "_"
+	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. removed PMARK case handling in locate_pivot.c and query.c
+	. REVISION-2.2: no longer authorize e.g. %(%|:(.,?))
+	  as %| is nascent and, in case of carry, pertains to child context
+		=> use %|^(.,?) instead	[NEW]
+	  furthermore, we only allow %| when PIPED is set and we are not in
+	  a dereferencing expression
+		cf. design/specs/bm-PARSE-implementation.txt
 	. term_CB no longer used in instantiate_traversal and eeno_feel_traversal
 	  => Warning issued at run-time - using filter_CB - in cases
 		do _:expression

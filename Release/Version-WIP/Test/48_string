@@ -2,6 +2,8 @@
 	on init
 		%(.)
 		do : toto : "hello, world"
+	else on toto
+		do >: *toto
 		do exit
 
 :"hello, world"
