@@ -500,7 +500,7 @@ bm_assign( char *expression, BMTraverseData *traverse_data, CNStory *story )
 		db_unassign( self, data->db );
 		return; }
 	// other assignment cases
-	ifn_instantiate_traversal( p )
+	ifn_instantiate_traversal( p, 0 )
 		; // cleanup will be done by bm_instantiate
 	else if ( !*p++ ) { // moving past ',' aka. ':' if there is
 		CNInstance *self = BMContextSelf( data->ctx );
@@ -533,7 +533,7 @@ assign_v2v( char *p, BMTraverseData *traverse_data ) {
 	listItem *sub[ 2 ];
 	CNInstance *e;
 	while (( p=popListItem( &vector[0] ) )&&( q=popListItem(&vector[1]) )) {
-		ifn_instantiate_traversal( p ) {
+		ifn_instantiate_traversal( p, 0 ) {
 			cleanup( traverse_data, NULL );
 			continue; }
 		sub[ 0 ] = data->sub[ 0 ];
@@ -550,7 +550,7 @@ assign_v2one( listItem **sub, char *p, BMTraverseData *traverse_data, int quiet 
 	if ( !strncmp( p, "~.", 2 ) )
 		BM_UNASSIGN( sub, db )
 	else {
-		ifn_instantiate_traversal( p ) {
+		ifn_instantiate_traversal( p, 0 ) {
 			if ( quiet ) cleanup( traverse_data, NULL );
 			freeListItem( &sub[ 0 ] ); }
 		else {
@@ -567,7 +567,7 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traverse_data ) {
 			db_unassign( i->ptr, db );
 			p+=2; continue; }
 		char *q = p;
-		ifn_instantiate_traversal( p ) {
+		ifn_instantiate_traversal( p, 0 ) {
 			cleanup( traverse_data, NULL );
 			p = p_prune( PRUNE_TERM, q ); }
 		else {
@@ -651,7 +651,7 @@ inform_ube( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse
 		CNInstance *x = entry->name;
 		CNInstance *ube = entry->value;
 		pipe_mark->ptr = ube;
-		ifn_instantiate_traversal( p )
+		ifn_instantiate_traversal( p, 0 )
 			cleanup( traverse_data, NULL );
 		else freeListItem( &data->sub[ 0 ] );
 		if (( x )) db_assign( x, ube, db );
@@ -677,9 +677,10 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traverse_
 		CNCell *child = DBProxyThat( proxy );
 		data->carry = BMCellContext( child );
 		if ( *p=='(' ) {
-			p++; do {
+			p++;
+			do {
 				char *q = p;
-				ifn_instantiate_traversal( p ) {
+				ifn_instantiate_traversal( p, CARRY ) {
 					cleanup( traverse_data, NULL );
 					p = p_prune( PRUNE_TERM, q ); }
 				else freeListItem( &data->sub[ 0 ] );
@@ -735,14 +736,14 @@ instantiate_( char *arg, char *input, BMTraverseData *traverse_data ) {
 	CNDB *db = data->db;
 	listItem *sub[ 2 ];
 	char *p;
-	ifn_instantiate_traversal( arg )
+	ifn_instantiate_traversal( arg, 0 )
 		return -1;
 	sub[ 0 ] = data->sub[ 0 ];
 	data->sub[ 0 ] = NULL;
 	if ( input==NULL )
 		BM_UNASSIGN( sub, db )
 	else {
-		ifn_instantiate_traversal( input ) {
+		ifn_instantiate_traversal( input, 0 ) {
 			freeListItem( &sub[ 0 ] );
 			return -1; }
 		else {

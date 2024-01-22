@@ -83,6 +83,11 @@ CB_BgnSetCB			f_push( stack )
 				p++;
 CB_TermCB			break;
 			case '}':
+				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
+					if ((*stack)) {
+						icast.ptr = (*stack)->ptr;
+						f_next = icast.value; }
+CB_EndPipeCB				f_pop( stack, 0 ) }
 				if ( !is_f(SET) ) {
 					traverse_data->done = 1;
 					break; }
@@ -92,7 +97,7 @@ CB_EndSetCB			f_pop( stack, 0 )
 				f_set( INFORMED )
 				p++; break;
 			case '|':
-				if ( !is_f(LEVEL|SET) ) {
+				if ( !is_f(LEVEL|SET|CARRY) ) {
 					traverse_data->done = 1;
 					break; }
 				if ((*stack)) {
@@ -163,6 +168,11 @@ CB_FilterCB				f_clr( NEGATED|INFORMED )
 					p++; break; }
 				break;
 			case ',':
+				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
+					if ((*stack)) {
+						icast.ptr = (*stack)->ptr;
+						f_next = icast.value; }
+CB_EndPipeCB				f_pop( stack, 0 ) }
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
 					traverse_data->done = 1;
 					break; }

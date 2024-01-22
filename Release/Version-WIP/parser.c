@@ -210,15 +210,15 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				( *type&DO && f_actionable(stack) ) ) ) {
 					do_( same )	s_take
 							f_push( stack )
-							f_reset( FIRST|SET, PROTECTED|PIPED ) }
+							f_reset( FIRST|SET, PIPED ) }
 		on_( '}' ) if ( *type&(DO|ON_X) && are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_tag( stack, PROTECTED )
 						f_set( INFORMED ) }
-		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET) &&
+		on_( '|' ) if ( *type&DO && is_f(INFORMED) && is_f(LEVEL|SET|CARRY) &&
 				!is_f(EENOV|SUB_EXPR|FILTERED) && !f_parent(NEGATED|STARRED) ) {
-				do_( same )	s_take
+				do_( "|" )	s_take
 						f_tag( stack, PROTECTED )
 						f_set( PIPED )
 						f_clr( INFORMED ) }
@@ -529,7 +529,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_set( INFORMED ) }
 			on_other	do_( "expr" )	REENTER
 							f_push( stack )
-							f_reset( FIRST|VECTOR, PROTECTED|PIPED )
+							f_reset( FIRST|VECTOR, PIPED )
 			end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
@@ -669,7 +669,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_take
 							f_push( stack )
-							f_reset( FIRST|CARRY, PROTECTED )
+							f_reset( FIRST|CARRY|PROTECTED, 0 )
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED|PROTECTED )
 			end
@@ -755,7 +755,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				ons( " \t" )	do_( same )
 				on_( '<' )	do_( "expr" )	s_take
 								f_push( stack )
-								f_reset( FIRST|VECTOR, PROTECTED )
+								f_reset( FIRST|VECTOR, 0 )
 				on_other	do_( "expr" )	REENTER
 				end
 	in_( "_," ) bgn_
@@ -790,7 +790,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						*type = (*type&ELSE)|INPUT;
 						f_set( INFORMED )
 		end
-	in_( "_\\n" ) bgn_ // \nl allowed inside {} () <>
+	in_( "_\\n" ) bgn_ // allow \nl inside {} () <>
 		ons( " \t\n" )	do_( same )
 		ons( "})>" )	do_( "expr" )	REENTER
 		on_( ',' )	; // err
@@ -800,6 +800,10 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						s_add( "," )
 						f_clr( INFORMED ) }
 			else {	do_( "expr" )	REENTER }
+		end
+	in_( "|" ) bgn_ // allow \nl after '|'
+		ons( " \t\n" )	do_( same )
+		on_other	do_( "expr" )	REENTER
 		end
 	in_( "{_," ) bgn_ // Assumption: INFORMED is set
 		ons( " \t" )	do_( same )

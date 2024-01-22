@@ -2,7 +2,6 @@ See Also: design/story/interactive.story
 DESIGN ISSUE
 
 TODO
-	. cell out => must deregister "_" and UBE from story->arena
 	. shared entities & shared arenas
 	  [DONE] retyped base entities into ( NULL, entry )
  	  [DONE] cell.c: bm_cell_update( cell, story )
@@ -13,30 +12,31 @@ TODO
 	  [DONE] database.c: db_output()
 	  [DONE] UBE implementation: parser.c: !! | ...
 	  [DONE] instantiate.c: assign_new() => bufferized
-	  [WIP]  implement do { a|b } and carry( a|b )
-		 Note: do {a|(_)} do {a|{_}} already authorized in parser!
-		 => must call PipeEndCB on , and ) resp. }
-		 + TEST CASES for both {a|b} and carry(a|b), with multiple args
+	  [DONE] implement do { a|b } and carry( a|b )
+		 => calling PipeEndCB on , } and carry )
+		 cf Test/50_carry-piped
+	  [DONE] output: | and |{ and !!carry(...) => \n and level++
+		 cf Test/51_output-system Test/52_output-carry
+	  [DONE] allow B% to printout inifile, e.g.
+		 ./B% -f Examples/4_Yak/Schemes/calculator -p
+	  [DONE] allow \n after '|'
 	  [WIP]  parser.c
-	 	. allow ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and _^ in DO mode
-		  usage possibly restricted to after '|' or inside carry(_)
-		. allow \n after '|'
-		. beautify output: { => \n and level++
-		=> TEST System launch formula printout
+	 	. allow ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
+		  usage restricted to DO mode, PIPED or CARRY
 	  [WIP]  instantiate.c
-		 implement ?:(_)_ !?:(_)_ (_)^
+	 	 implement ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
 		 => cf. design/specs/bm-TRAVERSE-loop.txt (WIP)
-		 Note: usage restricted to pipe context
-		       => traverse.c: catch ^^ and *^^
-			^^ = current identifier / *^^ = current value
-			?:(_)(_) and ?:(_){_} and !?:_ and _^
-			*^sub = bufferized value of %(%?:sub) (including *^.)
-			Note: *^_ NOT to be supported in ?:() - but ^^ yes
+		 => traverse.c: catch ^^ and *^^
+		    ^^ = current identifier / *^^ = current value
+		    ?:(_)(_) and ?:(_){_} and !?:_ and (_)^
+		    *^sub = bufferized value of %(%?:sub) (including *^.)
+		    Note: *^_ NOT to be supported in ?:() - but ^^ yes
 	. Test B% UBE & strings interface
 	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
+	. cell out => must deregister "_" and UBE from story->arena
 	. NTH: do "occurrence" | ...
 		requires own stringLookup/stringRegister in bm_arena_register()
 		as we only want to compare what is inside "_"

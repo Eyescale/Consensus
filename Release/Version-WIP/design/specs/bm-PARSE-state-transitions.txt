@@ -82,9 +82,10 @@ Consensus B% Version-WIP
 				_,\"\\	_,\"
 				_,_	_<
 		_<	expr
+		_\\n	expr
+		|	expr
 		{_,	expr
 			_\\n
-		_\\n	expr
 
     parser.c: bm_load()
 	base	""

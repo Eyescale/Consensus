@@ -69,8 +69,6 @@ Loops and Pipes
 
 	which requires invoking CB_PipeEndCB on ',' and '}' from inside {_},
 	the way we do now on ')' from inside (_)
-TODO
-	=> support do { a|b } likewise in carry( a|b ) and then we're all set
 
 WIP
 	allow ?:(_)_ in parser.c - usage restricted to pipe's base level*

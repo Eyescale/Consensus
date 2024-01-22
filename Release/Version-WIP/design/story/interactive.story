@@ -270,13 +270,13 @@ System launch
 				} } } )
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized
-		_! means "mark if new", and !?: means "iff marked" (opt)
+		(_)^ means "mark if new", and !?: means "iff marked" (opt)
 		^^ represents the current assignee in the assignment buffer
 		*^^ represents the current value in the assignment buffer
 		*^sub represents %(%?:sub)'s value in the assignment buffer
 
 		Note: *%(%?:sub) would represent %(%?:sub)'s value ** in CNDB **
-		Likewise *(^^) would represent ^^'s previous value if there is
+		Likewise *(^^) would represent ^^'s previous value ** in CNDB **
 
 Feature List
     	1. %identifier list variables

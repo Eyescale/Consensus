@@ -3,6 +3,8 @@
 
 #include "list.h"
 
+int cnIniOutput( FILE *stream, char *path, int level );
+
 //===========================================================================
 //	Occurrence, Narrative, Story types
 //===========================================================================
