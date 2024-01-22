@@ -7,13 +7,11 @@ Consensus B% Version-WIP
 		\"	expr
 		~	expr
 			~.	expr
-				term
+				_term
 		%	expr
 			%(	expr
 			%|	expr
-				^sub	expr
-					^sub_	expr
-						^sub
+				^sub
 			%?_	expr
 				term~
 			%<	expr
@@ -38,15 +36,26 @@ Consensus B% Version-WIP
 			_,
 		:_	expr
 			\"
-			:<	expr
-			!
 			~
+			:<	expr
+			:!	!!
+		!!	!!$	!!$_	expr
 		.	expr
-			term
-		*	expr
-			term
+			_term
+		_*	*	expr
+				_term
+			*^	expr
+				^sub
+		^	expr
+		^sub	expr
+			^sub_	expr
+				^sub
+		!	!!
+			?
+		?	?:	expr
+		?:(_)	expr
+		_term	expr
 		term	expr
-		term_	expr
 			term~	expr
 		char	char_	expr
 			char\\	char_
@@ -62,7 +71,6 @@ Consensus B% Version-WIP
 					(:%$'	(:
 			(::	(:
 				expr
-		!	!!	!!$	!!$_	expr
 		@	@<	expr
 		/	expr
 			/\\	/

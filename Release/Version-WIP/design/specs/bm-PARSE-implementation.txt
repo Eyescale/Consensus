@@ -121,7 +121,7 @@ Actionability
 		. is not FILTERED	must implement
 		. is not STARRED	must implement
 
-	bm_parser requires the following expressions to be actionable,
+	bm_parser requires the following expressions to be actionable*,
 	as bm_verify() does not know how to process them:
 
 		VECTOR		<_>
@@ -161,6 +161,9 @@ Actionability
 	The FILTERED and STARRED flags are carried along the expression's
 	levels following the same logic as the NEGATED flag above - see
 		include/traverse.h:f_restore( flags )
+
+	*instead of f_actionable we actually use !is_f(byref), where we have
+		#define byref EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED
 
 PROTECTED flag
 	bm_parser sets the PROTECTED flag after detecting DO operations which

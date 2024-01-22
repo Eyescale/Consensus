@@ -127,18 +127,16 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				     ( !is_f(MARKED) || ( is_f(LEVEL) && f_parent(MARKED) ) ) ) {
 					do_( "(_?" )	s_take
 							f_restore( NEGATED|STARRED|FILTERED )
-							f_set( TERNARY );
-				if ( is_f(FIRST) ) {	f_set( PRIMED ); }
+							f_set( is_f(FIRST)?(TERNARY|PRIMED):TERNARY );
 							f_push( stack )
 							f_clr( FIRST|INFORMED|PRIMED ) } }
-			else if ( ( is_f(SUB_EXPR|EENOV) || ( !(*type&DO) && !expr(CONTRARY) ) ) &&
-				  !is_f(MARKED|NEGATED) && f_ternary_markable(stack) ) {
-				if ( is_f(EENOV) ) {
-					do_( same )	s_take
-							f_set( MARKED|INFORMED ) }
-				else if ( is_f(SUB_EXPR) || ( *type&ON_X ? !is_f(LEVEL|SET) : *type&(IN|ON) ) ) {
-					do_( same )	s_take
-							f_set( MARKED|INFORMED ) } }
+			else if ( ( is_f(EENOV|SUB_EXPR) && !is_f(MARKED|NEGATED) ) ||
+				  ( ( *type&ON_X ? !is_f(LEVEL|SET) : *type&(IN|ON) ) &&
+				    !expr(CONTRARY) && f_markable(stack) ) ) {
+				do_( same )	s_take
+						f_set( MARKED|INFORMED ) }
+			else if ( *type&DO && ( s_at('|') || !is_f(LEVEL|byref) ) ) {
+				do_( "?" ) 	s_take }
 		on_( '.' ) if ( is_f(INFORMED) )
 				; // err
 			else if ( is_f(EENOV) ) {
@@ -160,12 +158,15 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 					if ( is_f(LEVEL) ) {
 						do_( same )	s_take
 								f_pop( stack, MARKED|INFORMED ) }
+					else if ( is_f(FOR) ) {
+						do_( "?:(_)" )	s_take
+								f_pop( stack, 0 ) }
 					else {	do_( same )	s_take
 								f_pop( stack, INFORMED ) } } }
 			else if ( are_f(ELLIPSIS|INFORMED) && !is_f(VECTOR) ) {
 					do_( same )	s_take
 							f_pop( stack, INFORMED ) }
-			else if ( is_f(CARRY) ) {
+			else if ( is_f(CARRY) && !is_f(SET) ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
 							f_tag( stack, PROTECTED )
@@ -175,9 +176,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			else if ( is_f(EENOV) ) {
 				do_( same ) 	s_take
 						f_set( INFORMED ) }
-			else {	do_( "*" )	s_take
-						f_clr( PIPED|PROTECTED )
-						f_set( STARRED ) }
+			else {	do_( "_*" )	s_take }
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
 				do_( "@" )	s_take }
 		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO) || is_f(EENOV) ) ) {
@@ -200,17 +199,17 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 					do_( same )	s_take
 							f_pop( stack, INFORMED )
 							f_tag( stack, PROTECTED ) }
-		on_( '!' ) if ( *type&DO && s_empty ) {
-				do_( "!" )	s_take }
-			else if ( are_f(EENOV|SUB_EXPR) && !is_f(EMARKED|INFORMED|NEGATED) ) {
+		on_( '!' ) if ( are_f(EENOV|SUB_EXPR) && !is_f(EMARKED|INFORMED|NEGATED) ) {
 				do_( same )	s_take
 						f_set( EMARKED|INFORMED ) }
+			else if ( *type&DO && ( s_empty || ( s_at('|') || !is_f(LEVEL|INFORMED|byref) ))) {
+				do_( "!" ) }
 		on_( '{' ) if ( !is_f(INFORMED) && (
 				( *type&ON_X && s_at('<') ) ||
-				( *type&DO && f_actionable(stack) ) ) ) {
+				( *type&DO && !is_f(byref) ) ) ) {
 					do_( same )	s_take
 							f_push( stack )
-							f_reset( FIRST|SET, PIPED ) }
+							f_reset( FIRST|SET, PIPED|CARRY ) }
 		on_( '}' ) if ( *type&(DO|ON_X) && are_f(INFORMED|SET) && !is_f(LEVEL|SUB_EXPR) ) {
 				do_( same )	s_take
 						f_pop( stack, 0 )
@@ -224,12 +223,16 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						f_clr( INFORMED ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
+		on_( '^' ) if ( *type&DO ) {
+				if ( s_at(')') && are_f(INFORMED|LEVEL) && !is_f(byref) ) {
+					do_( same )	s_take }
+				else if ( is_f(PIPED|CARRY) && !is_f(INFORMED) ) {
+					do_( "^" )	s_take } }
 		on_separator	; // err
 		on_other if ( is_f(INFORMED) )
 				; // err
-			else if ( *type&DO && !is_f(ASSIGN) && f_actionable(stack) &&
-				  ( !is_f(LEVEL) || f_ternary_signalable(stack) ) ) {
-				do_( "term" )	s_take } // signalable
+			else if ( *type&DO && f_signalable(stack) ) {
+				do_( "term" )	s_take }
 			else {	do_( "_term" )	s_take }
 		end
 	//----------------------------------------------------------------------
@@ -311,34 +314,6 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_set( FIRST )
 			on_other	do_( "expr" )	REENTER
 			end
-			in_( "^sub" ) bgn_
-				on_( '.' ) if ( !is_f(LEVEL) ) {
-						do_( "expr" )	s_take
-								f_pop( stack, 0 ) }
-					else if ( !is_f(INFORMED) && (is_f(MARKED)?!is_f(FIRST):is_f(FIRST)) ) {
-						do_( same )	s_take
-								f_set( INFORMED ) }
-				on_( '(' ) if ( !is_f(MARKED) ) {
-						do_( same )	s_take
-								f_push( stack )
-								f_clr( INFORMED )
-								f_set( FIRST|LEVEL ) }
-				on_( '?' ) if ( is_f(LEVEL) && !is_f(INFORMED|MARKED) ) {
-						do_( same )	s_take
-								f_set( INFORMED|MARKED ) }
-				on_( ',' ) if ( are_f(LEVEL|FIRST) && is_f(INFORMED) ) {
-						do_( same )	s_take
-								f_clr( FIRST|INFORMED ) }
-				on_( ')' ) if ( !is_f(FIRST) ) {
-						do_( "^sub_" )	s_take
-								f_pop( stack, 0 ) }
-				end
-			in_( "^sub_" ) bgn_
-				on_any	if ( !is_f(LEVEL) ) {
-						do_( "expr" )	REENTER
-								f_pop( stack, 0 ) }
-					else {	do_( "^sub" )	REENTER }
-				end
 		in_( "%(" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '(' )	do_( "expr" )	s_add( "%((" )
@@ -350,8 +325,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							s_add( "%(" )
 			end
 		in_( "%?_" ) bgn_
-			on_( '~' ) if ( !is_f(ASSIGN) && *type&DO && f_actionable(stack) &&
-				        ( !is_f(LEVEL) || f_ternary_signalable(stack) ) ) {
+			on_( '~' ) if ( *type&DO && f_signalable(stack) ) {
 					do_( "term~" )	s_take }
 			on_other	do_( "expr" )	REENTER
 			end
@@ -377,7 +351,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' ) if ( *type&DO ) {
-				if ( f_actionable(stack) ) {
+				if ( !is_f(byref) ) {
 					do_( "(:" )	s_take
 							f_set( LITERAL ) } }
 			else if ( !is_f(EENOV) ) {
@@ -426,7 +400,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				on_( '.' ) if ( is_f(SUB_EXPR) ) {
 						do_( "expr" )	s_add( "..." )
 								f_set( INFORMED ) }
-					else if ( *type&DO && f_actionable(stack) ) {
+					else if ( *type&DO && !is_f(byref) ) {
 						do_( ",..." ) }
 				on_other	do_( "expr" )	REENTER
 								s_add( ".." )
@@ -516,7 +490,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		on_( '~' )	do_( "~" )
 		on_( '<' )	do_( ":<")	s_take	// Special: getchar()
 		on_( '!' ) if ( is_f(PRIMED) ) {
-				do_( "!" )	s_take }
+				do_( ":!" )	s_take }
 		ons( "/\")" )	; // err
 		on_other	do_( "expr" )	REENTER
 		end
@@ -529,7 +503,29 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_set( INFORMED ) }
 			on_other	do_( "expr" )	REENTER
 							f_push( stack )
-							f_reset( FIRST|VECTOR, PIPED )
+							f_reset( FIRST|VECTOR, 0 )
+			end
+		in_( ":!" ) bgn_
+			on_( '!' )	do_( "!!" )	s_take
+							f_clr( ASSIGN|PRIMED )
+			end
+	in_( "!!" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '|' )	do_( "expr" )	s_take
+		on_separator	; // err
+		on_other	do_( "!!$" )	s_take
+		end
+		in_( "!!$" ) bgn_
+			on_separator	do_( "!!$_" )	REENTER
+			on_other	do_( same )	s_take
+			end
+		in_( "!!$_" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "expr" )	s_take
+							f_push( stack )
+							f_reset( FIRST|CARRY|PROTECTED, 0 )
+			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED|PROTECTED )
 			end
 	in_( "." ) bgn_
 		ons( " \t" )	do_( same )
@@ -542,14 +538,82 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						f_set( INFORMED )
 		on_other	do_( "_term" )	s_take
 		end
-	in_( "*" ) bgn_
-		ons( " \t" )	do_( same )
-		on_( '*' )	do_( same )	s_take
-		ons( ".%(?" )	do_( "expr" )	REENTER
-		ons( "~{" )	; //err
-		on_separator	do_( "expr" )	REENTER
+	in_( "_*" ) bgn_
+		on_( '^' ) if ( is_f(PIPED|CARRY) && !is_f(INFORMED|byref) ) {
+				do_( "*^" )	s_take }
+		on_other	do_( "*" )	REENTER
+						f_clr( PIPED|PROTECTED )
+						f_set( STARRED )
+		end
+		in_( "*^" ) bgn_
+			on_( '(' )	do_( "^sub" )	REENTER
+							f_set( INFORMED )
+							f_push( stack )
+							f_clr( LEVEL|INFORMED|MARKED )
+							f_set( FIRST )
+			ons( "^." )	do_( "expr" )	s_take
+							f_set( INFORMED )
+			end
+		in_( "*" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '*' )	do_( same )	s_take
+			ons( ".%(?" )	do_( "expr" )	REENTER
+			ons( "~{" )	; //err
+			on_separator	do_( "expr" )	REENTER
+							f_set( INFORMED )
+			on_other	do_( "_term" )	s_take
+			end
+	in_( "^" ) bgn_
+		on_( '^' )	do_( "expr" )	s_take
 						f_set( INFORMED )
-		on_other	do_( "_term" )	s_take
+		end
+	in_( "^sub" ) bgn_
+		on_( '.' ) if ( !is_f(LEVEL) ) {
+				do_( "expr" )	s_take
+						f_pop( stack, 0 ) }
+			else if ( !is_f(INFORMED) && (is_f(MARKED)?!is_f(FIRST):is_f(FIRST)) ) {
+				do_( same )	s_take
+						f_set( INFORMED ) }
+		on_( '(' ) if ( !is_f(MARKED) ) {
+				do_( same )	s_take
+						f_push( stack )
+						f_clr( INFORMED )
+						f_set( FIRST|LEVEL ) }
+		on_( '?' ) if ( is_f(LEVEL) && !is_f(INFORMED|MARKED) ) {
+				do_( same )	s_take
+						f_set( INFORMED|MARKED ) }
+		on_( ',' ) if ( are_f(LEVEL|FIRST) && is_f(INFORMED) ) {
+				do_( same )	s_take
+						f_clr( FIRST|INFORMED ) }
+		on_( ')' ) if ( !is_f(FIRST) ) {
+				do_( "^sub_" )	s_take
+						f_pop( stack, 0 ) }
+		end
+	in_( "^sub_" ) bgn_
+		on_any	if ( !is_f(LEVEL) ) {
+				do_( "expr" )	REENTER
+						f_pop( stack, 0 ) }
+			else {	do_( "^sub" )	REENTER }
+		end
+	in_( "!" ) bgn_
+		on_( '!' ) if ( s_empty ) {
+				do_( "!!" )	s_add( "!!" ) }
+		on_( '?' ) if ( !s_empty ) {
+				do_( "?" )	s_add( "!?" ) }
+		end
+	in_( "?" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ':' )	do_( "?:" )	s_take
+		end
+		in_( "?:" ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '(' )	do_( "expr" )	s_take
+							f_push( stack )
+							f_reset( FIRST|SUB_EXPR|FOR, PIPED|CARRY )
+			end
+	in_( "?:(_)" ) bgn_
+		ons( " \t" )	do_( same )
+		ons( "({" )	do_( "expr" )	REENTER
 		end
 	in_( "_term" ) bgn_
 		on_( '~' ) 	do_( "@" )	s_take
@@ -650,28 +714,6 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_tag( stack, PROTECTED )
 							f_set( INFORMED )
 			on_other	do_( "(:" )	REENTER
-			end
-	in_( "!" ) bgn_
-		on_( '!' )	do_( "!!" )	s_take
-						f_clr( ASSIGN|PRIMED )
-		end
-		in_( "!!" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '|' )	do_( "expr" )	s_take
-			on_separator	; // err
-			on_other	do_( "!!$" )	s_take
-			end
-		in_( "!!$" ) bgn_
-			on_separator	do_( "!!$_" )	REENTER
-			on_other	do_( same )	s_take
-			end
-		in_( "!!$_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '(' )	do_( "expr" )	s_take
-							f_push( stack )
-							f_reset( FIRST|CARRY|PROTECTED, 0 )
-			on_other	do_( "expr" )	REENTER
-							f_set( INFORMED|PROTECTED )
 			end
 	in_( "@" ) bgn_
 		on_( '<' )	do_( "@<" )	s_take
@@ -850,8 +892,8 @@ CB_( ExpressionTake, mode, data )
 			on_( '?' )	errnum = ( is_f(NEGATED) ? ErrMarkNegated :
 						   expr(CONTRARY) ? ErrMarkNegated :
 						   is_f(INFORMED) ? ErrMarkGuard :
-						   !f_ternary_markable(stack) ? ErrMarkTernary :
 						   is_f(MARKED) ? ErrMarkMultiple :
+						   !f_markable(stack) ? ErrMarkTernary :
 						   ErrSyntaxError );
 			on_( '!' )	errnum = ( are_f(EENOV|SUB_EXPR) && !is_f(INFORMED ) ?
 							is_f(NEGATED) ? ErrEMarkNegated :

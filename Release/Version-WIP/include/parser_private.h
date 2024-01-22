@@ -12,12 +12,12 @@
 	f_restore_( (b), &flags, stack );
 #define f_parent( b ) \
 	f_parent_( stack, (b) )
-#define f_ternary_markable( stack ) \
-	f_ternary_markable_( flags, stack )
-#define f_ternary_signalable( stack ) \
-	f_ternary_signalable_( flags, stack )
-#define f_actionable( stack ) \
-	!is_f(EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED)
+#define f_markable( stack ) \
+	f_markable_( flags, stack )
+#define f_signalable( stack ) \
+	f_signalable_( flags, stack )
+#define byref \
+	EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED|FOR
 
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {
@@ -49,7 +49,7 @@ f_parent_( listItem **stack, int flags )
 	return ( icast.value & flags ); }
 
 static inline int
-f_ternary_markable_( int flags, listItem **stack )
+f_markable_( int flags, listItem **stack )
 /*
 	Authorize '?' as term in possibly ternary expression
 	by verifying, in this case, that we have %(_) e.g.
@@ -57,6 +57,7 @@ f_ternary_markable_( int flags, listItem **stack )
 */ {
 	union { void *ptr; int value; } icast;
 	listItem *i, *next_i=*stack;
+	if is_f( MARKED|NEGATED ) return 0;
 	for ( ; ; ) {
 		if ( is_f(SUB_EXPR|EENOV) && !is_f(LEVEL) )
 			return 1;
@@ -70,7 +71,7 @@ f_ternary_markable_( int flags, listItem **stack )
 		flags = icast.value; } }
 
 static inline int
-f_ternary_signalable_( int flags, listItem **stack )
+f_signalable_( int flags, listItem **stack )
 /*
 	Authorize the usage of signal~ as term in mono-level ternary
 	expression do ( guard ? term : term )
@@ -82,7 +83,8 @@ f_ternary_signalable_( int flags, listItem **stack )
 		   ^---- 1st push 
 			   ^---- 2nd push: set TERNARY, clear FIRST
 */ {
-	if ( !is_f(TERNARY) ) return 1;
+	if ( is_f(ASSIGN) || is_f(byref) ) return 0;
+	if ( !is_f(LEVEL) || !is_f(TERNARY) ) return 1;
 	union { void *ptr; int value; } icast;
 	for ( listItem *i=*stack, *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;

@@ -133,7 +133,10 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 //---------------------------------------------------------------------------
 //	fprint_expr
 //---------------------------------------------------------------------------
-#define RETAB( level )	{ fprintf( stream, "\n" ); TAB( level ) }
+#define RETAB( level )	{ \
+	fprintf( stream, level==ground?"\n\t":"\n" ); \
+	TAB( level ); }
+
 #define stacktest(t)	((stack)&&((icast.ptr=stack->ptr),(t)))
 #define add_cast(s,i)	add_item(s,-(i+1))
 #define pop_cast(s)	-(pop_item(s)+1)
@@ -165,7 +168,7 @@ fprint_expr( FILE *stream, char *expression, int type, int level )
 	if ( !(type&DO) ) { fprintf( stream, "%s", expression ); return; }
 	union { void *ptr; int value; } icast;
 	listItem *stack = NULL;
-	int count=0, carry=0;
+	int count=0, carry=0, ground=level;
 	for ( char *p=expression; *p; p++ ) {
 		switch ( *p ) {
 		case '!':
@@ -185,9 +188,10 @@ fprint_expr( FILE *stream, char *expression, int type, int level )
 			if ( p[1]=='{' ) {
 				fprintf( stream, " | {" );
 				add_item( &stack, level++ );
-				add_item( &stack, (count=0) );
-				RETAB( level ); p++; }
-			else if ( p[1]=='(' ) { 
+				add_item( &stack, count );
+				RETAB( level )
+				count=0; p++; }
+			else if ( strmatch("!?(",p[1]) ) { 
 				fprintf( stream, " |" );
 				add_item( &stack, level++ );
 				add_cast( &stack, count );
@@ -218,9 +222,16 @@ fprint_expr( FILE *stream, char *expression, int type, int level )
 			else if stacktest( icast.value==count )
 				fprintf( stream, " " );
 			break;
-		case ')': ;
-			// special case: closing |(_)
-			if ( count==1 && stacktest( icast.value < 0 )) {
+		case ')':
+			if ( strmatch("({",p[1]) ) {
+				// special case : loop bgn
+				fprintf( stream, ") " );
+				if ( p[1]=='{' && stacktest( icast.value < 0 ) ) {
+					count = pop_cast( &stack );
+					level = pop_item( &stack ); }
+				else if ( count ) count--; }
+			else if ( count==1 && stacktest( icast.value < 0 )) {
+				// special case: closing |(_)
 				int retab = 1;
 				fprintf( stream, ")" );
 				count = pop_cast( &stack );
@@ -229,8 +240,9 @@ fprint_expr( FILE *stream, char *expression, int type, int level )
 					p++;
 					if ( *p==',' ) {
 						fprintf( stream, "," );
-						if stacktest( icast.value==count )
-							fprintf( stream, " " );
+						if ( retab ) {
+							RETAB( level )
+							retab = 0; }
 						break; }
 					else if (( stack )) {
 						fprintf( stream, ")" );
@@ -253,7 +265,7 @@ fprint_expr( FILE *stream, char *expression, int type, int level )
 			else if ( carry ) {
 				fprintf( stream, " )" );
 				carry = 0; }
-			else fprintf( stderr, ")" );
+			else fprintf( stream, ")" );
 			break;
 		//--------------------------------------------------
 		//	special cases: list, literal, format

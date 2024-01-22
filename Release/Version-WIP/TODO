@@ -2,28 +2,7 @@ See Also: design/story/interactive.story
 DESIGN ISSUE
 
 TODO
-	. shared entities & shared arenas
-	  [DONE] retyped base entities into ( NULL, entry )
- 	  [DONE] cell.c: bm_cell_update( cell, story )
-	  [DONE] context.c: bm_context_update( ctx, story )
-	  [DONE] db_op.c: db_update( db, parent, arena )
-	  [DONE] [NEW] arena.c / arena.h <= story.c, instantiate.c
-	  [DONE] instantiate.c: assign_string()
-	  [DONE] database.c: db_output()
-	  [DONE] UBE implementation: parser.c: !! | ...
-	  [DONE] instantiate.c: assign_new() => bufferized
-	  [DONE] implement do { a|b } and carry( a|b )
-		 => calling PipeEndCB on , } and carry )
-		 cf Test/50_carry-piped
-	  [DONE] output: | and |{ and !!carry(...) => \n and level++
-		 cf Test/51_output-system Test/52_output-carry
-	  [DONE] allow B% to printout inifile, e.g.
-		 ./B% -f Examples/4_Yak/Schemes/calculator -p
-	  [DONE] allow \n after '|'
-	  [WIP]  parser.c
-	 	. allow ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
-		  usage restricted to DO mode, PIPED or CARRY
-	  [WIP]  instantiate.c
+	. instantiate.c
 	 	 implement ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
 		 => cf. design/specs/bm-TRAVERSE-loop.txt (WIP)
 		 => traverse.c: catch ^^ and *^^
@@ -43,6 +22,35 @@ TODO
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. parser.c
+		. allow \n after '|'
+		. allow ?:(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_} in DO mode
+		  restricted to either s_at('|') or !(LEVEL|INFORMED|byref)
+		  Note: not restricted to PIPED|CARRY - could be SET
+		. (_)^ - restricted to s_at(')') and LEVEL and !byref in DO mode
+		  Note: byref now includes condition FOR
+		  Note: not specific to PIPED|CARRY - as !?:(_)_ isn't
+		. allow ^^ and *^^ and *^sub - including *^. in DO mode
+		  restricted to PIPED|CARRY and !(INFORMED|byref)
+		. Test output System launch formula
+		  cf. Test/53_output-system-launch-formula
+	. allow B% to printout inifile, e.g.
+		 ./B% -f Examples/4_Yak/Schemes/calculator -p
+	. output: | and |{ and !!carry(...) => \n and level++
+		 cf Test/51_output-system Test/52_output-carry
+	. implement do { a|b } and carry( a|b )
+		 => calling PipeEndCB on , } and carry )
+		 cf Test/50_carry-piped
+	. shared entities & shared arenas
+		. retyped base entities into ( NULL, entry )
+		. cell.c: bm_cell_update( cell, story )
+		. context.c: bm_context_update( ctx, story )
+		. db_op.c: db_update( db, parent, arena )
+		. [NEW] arena.c / arena.h <= story.c, instantiate.c
+		. instantiate.c: assign_string()
+		. database.c: db_output()
+		. instantiate.c: assign_new() => bufferized
+		. UBE implemented: !! | ...
 	. removed PMARK case handling in locate_pivot.c and query.c
 	. REVISION-2.2: no longer authorize e.g. %(%|:(.,?))
 	  as %| is nascent and, in case of carry, pertains to child context
