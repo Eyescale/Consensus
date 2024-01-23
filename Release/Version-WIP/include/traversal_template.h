@@ -1,5 +1,5 @@
-#define TRAVERSAL_TEMPLATE_H
 #ifndef TRAVERSAL_TEMPLATE_H
+#define TRAVERSAL_TEMPLATE_H
 /*===========================================================================
 |
 |	bm_traverse template - to be included in (user)_traversal.h

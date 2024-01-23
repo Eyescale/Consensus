@@ -1,27 +1,10 @@
 #ifndef FPRINT_EXPR_H
 #define FPRINT_EXPR_H
-/*
-   General Rules
-	. carry( => level++ and RETAB
-	. |{ => push level++ and count=0 and RETAB
-	. |( => push level++ and -(count+1) and RETAB
-	. { not following | => push count and level and output '{ '
-	. } => pop count and level and
-		if inside |{_}
-			level-- and RETAB
-		else if inside {_}
- 			output ' }'
-		group process subsequent '}'
-	. , and count==base
-		if inside |{_}
-			output ',\n' and RETAB
-		else if inside {_}
-			output ', '
-	. ) => count--
-		if carry's closing ')'
-			output ' )'
-	. ( => count++
-*/
+
+static void fprint_expr( FILE *, char *, int type, int level );
+#define TAB( level ) \
+	for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
+
 // #define TEST_PIPE
 #ifdef TEST_PIPE
 #define PIPE_CND	"!?("

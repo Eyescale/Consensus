@@ -7,6 +7,7 @@
 #define BMTraverseCBSwitch( user_traversal ) \
 	static char *user_traversal( char *expression, BMTraverseData *traverse_data, int flags ) { \
 		return bm_traverse( expression, traverse_data, flags );
+
 #define _prune( take )		return ( take );
 #define _return( val )		return ( traverse_data->done=(val), BM_DONE );
 #define _continue( p )		return ( *q=(p), BM_DONE );

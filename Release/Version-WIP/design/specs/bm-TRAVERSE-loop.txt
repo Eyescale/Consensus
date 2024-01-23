@@ -59,7 +59,7 @@ Design
 
 	Notes
 	. loop_CB must be a callback because it accesses data->ctx
-	. pipe sequence can be |_ or |(_) or |{_} possibly after
+	. pipe sequence can be |_ or |(_) or |{_} possibly following
 		?:(_)(_)|...
 			^--------- same level
 	  in which case possibly at base level - in SET|CARRY

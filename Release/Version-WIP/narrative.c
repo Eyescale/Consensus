@@ -3,7 +3,8 @@
 #include <stdarg.h>
 
 #include "narrative.h"
-#include "string_util.h"
+#include "fprint_expr.h"
+#include "parser.h"
 
 //===========================================================================
 //	newNarrative / freeNarrative
@@ -79,10 +80,6 @@ narrative_reorder( CNNarrative *narrative ) {
 //===========================================================================
 //	narrative_output
 //===========================================================================
-static inline void fprint_expr( FILE *, char *, int type, int level );
-#define TAB( level ) \
-	for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
-
 int
 narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	if ( narrative == NULL ) {
@@ -90,30 +87,25 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 		return 0; }
 	char *proto = narrative->proto;
 	if (( proto )) {
-		if ( !is_separator( *proto ) )
-			fprintf( stream, ": " );
+		if ( !is_separator( *proto ) ) fprintf( stream, ": " );
 		fprintf( stream, "%s\n", proto ); }
 	CNOccurrence *occurrence = narrative->root;
-
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
-		int type = occurrence->data->type;
 		char *expression = occurrence->data->expression;
-
+		int type = occurrence->data->type;
 		TAB( level );
-		if ( type==ROOT ) ;
-		else if ( type==ELSE )
-			fprintf( stream, "else\n" );
-		else {
-			if ( type&ELSE ) fprintf( stream, "else " );
+		switch ( type ) {
+		case ROOT: break;
+		case ELSE: fprintf( stream, "else\n" ); break;
+		default: if ( type&ELSE ) fprintf( stream, "else " );
 			fprintf( stream, type&IN ? "in " :
-					 type&(ON|ON_X) ? "on " :
-					 type&(DO|INPUT|OUTPUT) ? "do " :
-					 type&PER ? "per " : "" );
+				 type&(ON|ON_X) ? "on " :
+				 type&(DO|INPUT|OUTPUT) ? "do " :
+				 type&PER ? "per " : "" );
 			fprint_expr( stream, expression, type, level );
 			fprintf( stream, "\n" ); }
-
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i=j; level++; }
 		else for ( ; ; ) {
@@ -128,17 +120,58 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 				freeItem( i );
 				return 0; } } } }
 
+//===========================================================================
+//	cnIniOutput
+//===========================================================================
+static int output_CB( BMParseOp, BMParseMode, void * );
+
+int
+cnIniOutput( FILE *output_stream, char *path, int level ) {
+	FILE *stream = fopen( path, "r" );
+	if ( !stream ) {
+		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
+		return -1; }
+	CNIO io;
+	io_init( &io, stream, path, IOStreamFile );
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+	data.entry = newPair( output_stream, cast_ptr( level ) );
+        data.io = &io;
+	bm_parse_init( &data, BM_LOAD );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, output_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	freePair( data.entry );
+	bm_parse_exit( &data );
+	io_exit( &io );
+	fclose( stream );
+	return data.errnum; }
+
+static int
+output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+	BMParseData *data = user_data;
+	FILE *stream = data->entry->name;
+	int level = cast_i( data->entry->value );
+	if ( op==ExpressionTake ) {
+		TAB( level );
+		char *expression = StringFinish( data->string, 0 );
+		fprint_expr( stream, expression, DO, level );
+		StringReset( data->string, CNStringAll );
+		fprintf( stream, "\n" ); }
+	return 1; }
+
 //---------------------------------------------------------------------------
 //	fprint_expr
 //---------------------------------------------------------------------------
-#include "fprint_expr.h"
-
-static inline void
+static void
 fprint_expr( FILE *stream, char *expression, int type, int level ) {
 	if ( !(type&DO) ) {
 		fprintf( stream, "%s", expression );
 		return; }
-
 	listItem *stack = NULL;
 	int count=0, carry=0, ground=level;
 	for ( char *p=expression; *p; p++ ) {
@@ -253,53 +286,4 @@ fprint_expr( FILE *stream, char *expression, int type, int level ) {
 			p--; break;
 		default:
 			fprintf( stream, "%c", *p ); } } }
-
-//===========================================================================
-//	cnIniOutput
-//===========================================================================
-#include "parser.h"
-static int output_CB( BMParseOp, BMParseMode, void * );
-
-int
-cnIniOutput( FILE *output_stream, char *path, int level ) {
-	FILE *stream = fopen( path, "r" );
-	if ( !stream ) {
-		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
-		return -1; }
-
-
-	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
-
-	BMParseData data;
-	memset( &data, 0, sizeof(BMParseData) );
-	data.entry = newPair( output_stream, cast_ptr( level ) );
-        data.io = &io;
-	bm_parse_init( &data, BM_LOAD );
-	//-----------------------------------------------------------------
-	int event = 0;
-	do {	event = io_read( &io, event );
-		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse_load( event, BM_LOAD, &data, output_CB );
-		} while ( strcmp( data.state, "" ) && !data.errnum );
-	//-----------------------------------------------------------------
-	freePair( data.entry );
-	bm_parse_exit( &data );
-	io_exit( &io );
-
-	fclose( stream );
-	return data.errnum; }
-
-static int
-output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
-	BMParseData *data = user_data;
-	FILE *stream = data->entry->name;
-	int level = cast_i( data->entry->value );
-	if ( op==ExpressionTake ) {
-		TAB( level );
-		char *expression = StringFinish( data->string, 0 );
-		fprint_expr( stream, expression, DO, level );
-		StringReset( data->string, CNStringAll );
-		fprintf( stream, "\n" ); }
-	return 1; }
 
