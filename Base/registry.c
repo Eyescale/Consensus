@@ -14,9 +14,7 @@ static int compare( RegistryType, Pair *entry, void *name );
 //===========================================================================
 Registry *
 newRegistry( RegistryType type ) {
-	union { RegistryType value; char *ptr; } icast;
-	icast.value = type;
-	return (Registry *) newPair( icast.ptr, NULL ); }
+	return (Registry *) newPair( cast_ptr(type), NULL ); }
 
 void
 freeRegistry( Registry *registry, freeRegistryCB callback ) {
@@ -31,14 +29,9 @@ freeRegistry( Registry *registry, freeRegistryCB callback ) {
 
 Pair *
 newRegistryEntry( RegistryType type, void *name, void *value ) {
-	union { int value; char *ptr; } icast;
-	switch ( type ) {
-		case IndexedByNumber:
-			icast.value = *(int *) name;
-			break;
-		default:
-			icast.ptr = name; }
-	return newPair( icast.ptr, value ); }
+	if ( type==IndexedByNumber )
+		return newPair( cast_ptr( *(int *)name ), value );
+	else return newPair( name, value ); }
 
 Pair *
 registryRegister( Registry *registry, void *name, void *value ) {
@@ -159,15 +152,13 @@ registryDuplicate( Registry *registry ) {
 //===========================================================================
 static int
 compare( RegistryType type, Pair *entry, void *name ) {
-	union { int value; char *ptr; } icast;
 	switch ( type ) {
 	case IndexedByName:
 		return strcomp( entry->name, (char *) name, 0 );
 	case IndexedByCharacter:
 		return strcomp( entry->name, (char *) name, 1 );
 	case IndexedByNumber:
-		icast.ptr = entry->name;
-		return ( icast.value - *(int *) name );
+		return ( cast_i(entry->name) - *(int *) name );
 	case IndexedByAddress:
 		return ( (uintptr_t) entry->name - (uintptr_t) name ); } }
 

@@ -7,19 +7,20 @@ TODO
 		    ^^ = current identifier / *^^ = current value
 		    ?:(_)(_) and ?:(_){_} and !?:_ and (_)^
 		    *^sub = bufferized value of %(%?:sub) (including *^.)
-		    Note: *^_ NOT to be supported in ?:() - but ^^ yes
+		    Note: *^_ NOT supported in ?:() - but ^^ yes
 	. Test B% UBE & strings interface
 	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
-	. cell out => must deregister "_" and UBE from story->arena
+	. cell out => must deregister cell's "_" and UBE from story->arena
 	. NTH: do "occurrence" | ...
 		requires own stringLookup/stringRegister in bm_arena_register()
 		as we only want to compare what is inside "_"
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. icast stuff moved to Base/pair.h
 	. fprint_expr completed - test cases
 		./B% -p Test/50_carry-piped
 		./B% -p Test/51_output-cosystem

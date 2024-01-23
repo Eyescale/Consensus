@@ -22,6 +22,13 @@
 			output ' )'
 	. ( => count++
 */
+// #define TEST_PIPE
+#ifdef TEST_PIPE
+#define PIPE_CND	"!?("
+#else
+#define PIPE_CND	"!?"
+#endif
+
 typedef enum { TYPE=1, LEVEL, COUNT, PIPE, PIPE_LEVEL } StackStuff;
 static inline void
 stackpush_( listItem **stack, int type, int level, int count ) {
@@ -30,45 +37,26 @@ stackpush_( listItem **stack, int type, int level, int count ) {
 	addItem( stack, record ); }
 static inline int
 stackpop_( listItem **stack, int *level, int *count ) {
-	union { void *ptr; int value; } icast;
-	int type;
 	listItem *record = popListItem( stack );
-	// inform type
-	icast.ptr = record->ptr;
-	type = icast.value;
-	// inform level
-	record = record->next;
-	icast.ptr = record->ptr;
-	*level = icast.value;
-	// inform count
-	icast.ptr = record->next;
-	*count = icast.value;
+	int type = cast_i( record->ptr );
+	*level = cast_i( record->next->ptr );
+	*count = cast_i( record->next->next );
+	freeItem( record->next );
 	freeItem( record );
 	return type; }
 static inline int
 stacktest_( listItem *stack, int what ) {
-	union { void *ptr; int value; } icast;
 	if (( stack )) {
 		listItem *record = stack->ptr;
 		switch ( what ) {
-		case TYPE:
-			icast.ptr = record->ptr;
-			return icast.value;
-		case LEVEL:
-			record = record->next;
-			icast.ptr = record->ptr;
-			return icast.value;
-		case COUNT:
-			record = record->next;
-			icast.ptr = record->next;
-			return icast.value; } }
+		case TYPE:  return cast_i( record->ptr );
+		case LEVEL: return cast_i( record->next->ptr );
+		case COUNT: return cast_i( record->next->next ); } }
 	return 0; }
 static inline void
 retype_( listItem *stack, int type ) {
-	union { void *ptr; int value; } icast;
 	listItem *record = stack->ptr;
-	icast.value = PIPE_LEVEL;
-	record->ptr = icast.ptr; }
+	record->ptr = cast_ptr( type ); }
 
 #define RETAB( level ) { \
 	fprintf( stream, level==ground?"\n\t":"\n" ); \

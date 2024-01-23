@@ -150,21 +150,3 @@ reorderListItem( listItem **list ) {
 		last_i = i; }
 	*list = last_i;
 	return count; }
-
-listItem *
-new_item( int value ) {
-	union { int value; void *ptr; } icast;
-	icast.value = value;
-	return newItem( icast.ptr ); }
-
-listItem *
-add_item( listItem **list, int value ) {
-	union { int value; void *ptr; } icast;
-	icast.value = value;
-	return addItem( list, icast.ptr ); }
-
-int
-pop_item( listItem **list ) {
-	union { int value; void *ptr; } icast;
-	icast.ptr = popListItem( list );
-	return icast.value; }

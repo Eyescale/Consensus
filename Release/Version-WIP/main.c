@@ -16,12 +16,12 @@ usage( void ) {
 		"\t./B%% -f file.ini file.bm -i\n" );
 	exit(-1); }
 
-int
-main( int argc, char *argv[] ) {
 #define bar_i( n ) \
 	if ( argc==n+1 && !strncmp( argv[n], "-i", 2 ) ) \
 		interactive = n; \
 	else
+int
+main( int argc, char *argv[] ) {
 
 	// interprete B% command args
 

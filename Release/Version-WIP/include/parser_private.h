@@ -8,10 +8,10 @@
 //===========================================================================
 #define f_tag( stack, b ) \
 	f_tag_( &flags, stack, (b) );
-#define f_restore( b ) \
-	f_restore_( (b), &flags, stack );
 #define f_parent( b ) \
 	f_parent_( stack, (b) )
+#define f_restore( b ) \
+	f_restore_( (b), &flags, stack );
 #define f_markable( stack ) \
 	f_markable_( flags, stack )
 #define f_signalable( stack ) \
@@ -22,31 +22,26 @@
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {
 	*f |= flags;
-	union { void *ptr; int value; } icast;
 	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
-		icast.ptr = i->ptr;
-		icast.value |= flags;
-		i->ptr = icast.ptr; } }
+		int value = cast_i(i->ptr) | flags;
+		i->ptr = cast_ptr( value ); } }
+
+static inline int
+f_parent_( listItem **stack, int bits )
+/*
+	Assumption: *stack != NULL
+*/ {
+	int flags = cast_i((*stack)->ptr);
+	return ( flags & bits ); }
 
 static inline void
 f_restore_( int bits, int *f, listItem **stack ) {
 	int flags = *f;
 	if is_f( LEVEL ) {
 		// set flags to parent's value
-		union { void *ptr; int value; } icast;
-		icast.ptr = (*stack)->ptr;
-		*f = (*f&~bits)|(icast.value&bits); }
+		*f = (*f&~bits)|f_parent(bits); }
 	else {	// clear flags bits
 		*f &= ~bits; } }
-
-static inline int
-f_parent_( listItem **stack, int flags )
-/*
-	Assumption: *stack != NULL
-*/ {
-	union { void *ptr; int value; } icast;
-	icast.ptr = (*stack)->ptr;
-	return ( icast.value & flags ); }
 
 static inline int
 f_markable_( int flags, listItem **stack )
@@ -55,7 +50,6 @@ f_markable_( int flags, listItem **stack )
 	by verifying, in this case, that we have %(_) e.g.
 		%( guard ? term : term )
 */ {
-	union { void *ptr; int value; } icast;
 	listItem *i, *next_i=*stack;
 	if is_f( MARKED|NEGATED ) return 0;
 	for ( ; ; ) {
@@ -67,8 +61,7 @@ f_markable_( int flags, listItem **stack )
 			return 1;
 		i = next_i;
 		next_i = i->next;
-		icast.ptr = i->ptr;
-		flags = icast.value; } }
+		flags = cast_i(i->ptr); } }
 
 static inline int
 f_signalable_( int flags, listItem **stack )
@@ -85,11 +78,9 @@ f_signalable_( int flags, listItem **stack )
 */ {
 	if ( is_f(ASSIGN) || is_f(byref) ) return 0;
 	if ( !is_f(LEVEL) || !is_f(TERNARY) ) return 1;
-	union { void *ptr; int value; } icast;
 	for ( listItem *i=*stack, *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
-		icast.ptr = i->ptr;
-		int flags = icast.value;
+		int flags = cast_i(i->ptr);
 		if is_f( FIRST ) {
 			return !next_i->next; } }
 	return 1; }

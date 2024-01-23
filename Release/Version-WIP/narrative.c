@@ -25,9 +25,7 @@ freeNarrative( CNNarrative *narrative ) {
 //===========================================================================
 CNOccurrence *
 newOccurrence( int type ) {
-	union { int value; void *ptr; } icast;
-	icast.value = type;
-	Pair *data = newPair( icast.ptr, NULL );
+	Pair *data = newPair( cast_ptr( type ), NULL );
 	return (CNOccurrence *) newPair( data, NULL ); }
 
 void
@@ -137,7 +135,6 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 
 static inline void
 fprint_expr( FILE *stream, char *expression, int type, int level ) {
-	union { void *ptr; int value; } icast;
 	if ( !(type&DO) ) {
 		fprintf( stream, "%s", expression );
 		return; }
@@ -164,11 +161,7 @@ fprint_expr( FILE *stream, char *expression, int type, int level ) {
 				fprintf( stream, " | {" );
 				push( PIPE_LEVEL, level++, count );
 				RETAB( level ); p++; }
-#ifdef TEST_PIPE
-			else if ( strmatch( "!?(", p[1] ) ) { 
-#else
-			else if ( strmatch( "!?", p[1] ) ) { 
-#endif
+			else if ( strmatch( PIPE_CND, p[1] ) ) { 
 				fprintf( stream, " |" );
 				push( PIPE, level++, count );
 				RETAB( level ) }
@@ -181,9 +174,8 @@ fprint_expr( FILE *stream, char *expression, int type, int level ) {
 			break;
 		case '}':
 			fprintf( stream, " }" );
-			int type = pop( &level, &count );
-			if ( type==PIPE_LEVEL &&
-			     !strmatch( ",)", p[1] ) && (stack))
+			if ( PIPE_LEVEL==pop( &level, &count ) &&
+			     (stack) && !strmatch( ",)", p[1] ) )
 				RETAB( level )
 			for ( ; p[1]=='}'; p++ ) {
 				pop( &level, &count );
@@ -198,7 +190,8 @@ fprint_expr( FILE *stream, char *expression, int type, int level ) {
 					fprintf( stream, " " );
 					break;
 				default:
-					if (carry||(stack)) RETAB( level )
+					if ( level==ground ) {}
+					else if (carry||(stack)) RETAB( level )
 					else fprintf( stream, " " ); }
 			break;
 		case ')':
@@ -211,11 +204,9 @@ fprint_expr( FILE *stream, char *expression, int type, int level ) {
 				   if {_} we retype PIPE into PIPE_LEVEL |{
 				*/
 				fprintf( stream, ") " );
-				count--;
-				if ( p[1]=='{' && test_PIPE(count) ) {
-					fprintf( stream, "{ " );
+				if ( p[1]=='{' && test_PIPE(count-1) )
 					retype( PIPE_LEVEL );
-					p++; } }
+				count--; }
 			else if ( test_PIPE(count-1) ) {
 				// special case: closing |(_)
 				int retab = 1;
@@ -276,16 +267,13 @@ cnIniOutput( FILE *output_stream, char *path, int level ) {
 		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
 		return -1; }
 
-	union { void *ptr; int value; } icast;
-	icast.value = level;
-	Pair *entry = newPair( output_stream, icast.ptr );
 
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
-	data.entry = entry;
+	data.entry = newPair( output_stream, cast_ptr( level ) );
         data.io = &io;
 	bm_parse_init( &data, BM_LOAD );
 	//-----------------------------------------------------------------
@@ -304,11 +292,9 @@ cnIniOutput( FILE *output_stream, char *path, int level ) {
 
 static int
 output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
-	union { void *ptr; int value; } icast;
 	BMParseData *data = user_data;
 	FILE *stream = data->entry->name;
-	icast.ptr = data->entry->value;
-	int level = icast.value;
+	int level = cast_i( data->entry->value );
 	if ( op==ExpressionTake ) {
 		TAB( level );
 		char *expression = StringFinish( data->string, 0 );

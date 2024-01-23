@@ -521,7 +521,6 @@ io_pop( CNIO *io )
 */ {
 	if ( !io->stack ) return EOF;
 	listItem **stack = &io->stack;
-	union { int value; char *ptr; } icast;
 
 	int previous = io->type;
 	switch ( previous ) {
@@ -535,11 +534,9 @@ io_pop( CNIO *io )
 	default: break; }
 
 	Pair *pair = popListItem( stack );
-	icast.ptr = pair->name;
-	io->type = icast.value;
+	io->type = cast_i( pair->name );
 	if ( previous!=IOBuffer ) {
-		icast.ptr = pair->value;
-		io->line = icast.value;
+		io->line = cast_i( pair->value );
 		io->column = 0; }
 
 	pair = popListItem( stack );

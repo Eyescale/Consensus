@@ -13,12 +13,11 @@ typedef struct {
 
 static inline listItem * subx( char *p ) {
 	if ( *p=='.' ) return NULL;
-	union { void *ptr; int value; } icast;
 	listItem *sub = NULL;
 	for ( int ndx=0; ; )
 		switch ( *p++ ) {
 		case '(': add_item( &sub, ndx ); ndx=0; break;
-		case ',': icast.value=1; sub->ptr=icast.ptr; break;
+		case ',': sub->ptr=cast_ptr( 1 ); break;
 		case '?': reorderListItem( &sub ); return sub; } }
 
 static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {

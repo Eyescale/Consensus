@@ -31,24 +31,20 @@ typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next
 #define SUB     2
 
 static inline void xpn_add( listItem **xp, int as_sub, int position ) {
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr ); }
+	int i = as_sub + position;
+	addItem( xp, cast_ptr(i) ); }
 
 static inline void xpn_set( listItem *xp, int as_sub, int position ) {
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	xp->ptr = icast.ptr; }
+	int i = as_sub + position;
+	xp->ptr = cast_ptr( i ); }
 
 static inline void xpn_free( listItem **xp, listItem *level ) {
 	while ( *xp!=level ) popListItem( xp ); }
 
 
 static inline void xpn_out( FILE *stream, listItem *xp ) {
-	union { int value; void *ptr; } icast;
 	while ( xp ) {
-		icast.ptr = xp->ptr;
-		fprintf( stream, "%d", icast.value );
+		fprintf( stream, "%d", cast_i(xp->ptr) );
 		xp = xp->next; } }
 
 

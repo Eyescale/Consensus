@@ -14,6 +14,7 @@
 //===========================================================================
 //	bm_traverse	- generic B% expression traversal
 //===========================================================================
+#define f_next_set( stack ) f_next=((*stack)? cast_i((*stack)->ptr) : 0 );
 static BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
 	char **, int *, int );
 
@@ -23,7 +24,6 @@ bm_traverse( char *expression, BMTraverseData *traverse_data, int flags ) {
 	traverse_data->done = 0;
 
 	listItem **stack = traverse_data->stack;
-	union { int value; void *ptr; } icast;
 	char *p = expression;
 
 	// invoke BMTermCB - if it is set - first thing
@@ -37,8 +37,7 @@ CB_TermCB	} while ( 0 );
 CB_EEnovEndCB				f_clr( EENOV )
 					f_set( INFORMED ) }
 				else if is_f( VECTOR ) {
-					icast.ptr = (*stack)->ptr;
-					f_next = icast.value;
+					f_next_set( stack )
 CB_EndSetCB				f_pop( stack, 0 )
 					f_set( INFORMED ) }
 				else if ( p!=expression ) {
@@ -84,15 +83,12 @@ CB_BgnSetCB			f_push( stack )
 CB_TermCB			break;
 			case '}':
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
-					if ((*stack)) {
-						icast.ptr = (*stack)->ptr;
-						f_next = icast.value; }
+					f_next_set( stack )
 CB_EndPipeCB				f_pop( stack, 0 ) }
 				if ( !is_f(SET) ) {
 					traverse_data->done = 1;
 					break; }
-				icast.ptr = (*stack)->ptr;
-				f_next = icast.value;
+				f_next_set( stack )
 CB_EndSetCB			f_pop( stack, 0 )
 				f_set( INFORMED )
 				p++; break;
@@ -100,9 +96,7 @@ CB_EndSetCB			f_pop( stack, 0 )
 				if ( !is_f(LEVEL|SET|CARRY) ) {
 					traverse_data->done = 1;
 					break; }
-				if ((*stack)) {
-					icast.ptr = (*stack)->ptr;
-					f_next = icast.value; }
+				f_next_set( stack )
 CB_BgnPipeCB			f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;
@@ -169,9 +163,7 @@ CB_FilterCB				f_clr( NEGATED|INFORMED )
 				break;
 			case ',':
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
-					if ((*stack)) {
-						icast.ptr = (*stack)->ptr;
-						f_next = icast.value; }
+					f_next_set( stack )
 CB_EndPipeCB				f_pop( stack, 0 ) }
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
 					traverse_data->done = 1;
@@ -185,16 +177,12 @@ CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 CB_TermCB				break; }
 			case ')':
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
-					if ((*stack)) {
-						icast.ptr = (*stack)->ptr;
-						f_next = icast.value; }
+					f_next_set( stack )
 CB_EndPipeCB				f_pop( stack, 0 ) }
 				if ( !is_f(VECTOR|SET|SUB_EXPR|LEVEL) ) {
 					traverse_data->done = 1;
 					break; }
-				if ((*stack)) {
-					icast.ptr = (*stack)->ptr;
-					f_next = icast.value; }
+				f_next_set( stack )
 CB_CloseCB			f_pop( stack, 0 );
 				f_set( INFORMED )
 				p++; break;

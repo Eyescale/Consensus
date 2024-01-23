@@ -28,9 +28,8 @@ void *popListItem( listItem **item );
 void freeListItem( listItem **item );
 int reorderListItem( listItem **item );
 
-listItem *new_item( int value );
-listItem *add_item( listItem **list, int value );
-int pop_item( listItem **list );
-
+#define new_item( i ) newItem( cast_ptr(i) )
+#define add_item( list, i ) addItem( list, cast_ptr(i) )
+#define pop_item( list ) cast_i( popListItem(list) )
 
 #endif	// LIST_H

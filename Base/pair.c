@@ -69,10 +69,3 @@ void
 freePair( Pair *pair ) {
 	recycle((void**) pair, &PairCache ); }
 
-Pair *
-new_pair( int name, int value ) {
-	union { int value; void *ptr; } icast[ 2 ];
-	icast[ 0 ].value = name;
-	icast[ 1 ].value = value;
-	return newPair( icast[ 0 ].ptr, icast[ 1 ].ptr ); }
-

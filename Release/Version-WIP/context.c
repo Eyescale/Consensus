@@ -71,7 +71,7 @@ BMTraverseCBEnd
 //---------------------------------------------------------------------------
 //	actualize_param
 //---------------------------------------------------------------------------
-static inline int inand( listItem *i, int operand );
+#define inand( i, operand ) ((i) && !( operand & cast_i(i->ptr) ))
 
 static void
 actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx ) {
@@ -91,13 +91,6 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
 RETURN:
 	registryRegister( BMContextLocales(ctx), p, instance ); }
-
-static inline int
-inand( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return !( icast.value & operand ); }
-	return 0; }
 
 //===========================================================================
 //	bm_context_actualize

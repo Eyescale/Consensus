@@ -2,11 +2,7 @@
 #define QUERY_PRIVATE_H
 
 typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
-static inline int uneq( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return ( icast.value!=operand ); }
-	return 0; }
+#define uneq( i, operand ) ((i) && ( operand!=cast_i(i->ptr) ))
 
 //---------------------------------------------------------------------------
 //	PUSH and POP
