@@ -9,6 +9,10 @@ listItem *	bm_scan( char *, BMContext * );
 void		bm_release( char *expression, BMContext * );
 int		bm_inputf( char *fmt, listItem *args, BMContext * );
 int		bm_outputf( FILE *, char *fmt, listItem *args, BMContext * );
+void		fprint_expr( FILE *, char *, int level );
+
+#define TAB( level ) \
+	for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
 
 //---------------------------------------------------------------------------
 //	bufferized output

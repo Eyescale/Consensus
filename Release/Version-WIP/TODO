@@ -1,5 +1,9 @@
 See Also: design/story/interactive.story
 TODO
+	. cnIniOutput => belongs to program.h
+		=> fprint_expr: belongs to expression.h
+		   except needs DO => belongs to narrative.h, which calls fprint_expr
+		=> fprint_expr to be renamed into bm_fprint_do( FILE *, char *, int level )
 	. instantiate.c
 	 	 implement ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
 		 => cf. design/specs/bm-TRAVERSE-loop.txt (WIP)

@@ -12,10 +12,11 @@ typedef struct {
 	} *threads;
 } CNProgram;
 
+int cnIniOutput( FILE *, char *path, int level );
 CNProgram *newProgram( CNStory *, char *inipath );
-void	freeProgram( CNProgram * );
-void	cnSync( CNProgram * );
-int	cnOperate( CNCell **, CNProgram * );
+void freeProgram( CNProgram * );
+void cnSync( CNProgram * );
+int cnOperate( CNCell **, CNProgram * );
 
 static inline CNCell * CNProgramStem( CNProgram *p ) {
 	return ((listItem*) p->threads->new->ptr )->ptr; }

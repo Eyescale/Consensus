@@ -8,6 +8,7 @@
 #include "story.h"
 #include "eenov.h"
 #include "parser.h"
+#include "fprint_expr.h"
 
 // #define DEBUG
 
@@ -171,9 +172,8 @@ bm_read( FILE *stream ) {
 	io_exit( &io );
 	return input; }
 
-
 //===========================================================================
-//	bm_outputf / bm_out_put / bm_out_flush
+//	bm_outputf
 //===========================================================================
 static int bm_output( FILE *, int type, char *expression, BMContext *);
 
@@ -244,9 +244,9 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	bm_out_put( user_data, e, BMContextDB(ctx) );
 	return BM_CONTINUE; }
 
-//---------------------------------------------------------------------------
+//===========================================================================
 //	bm_out_put / bm_out_flush
-//---------------------------------------------------------------------------
+//===========================================================================
 void
 bm_out_put( OutputData *data, CNInstance *e, CNDB *db ) {
 	if (( data->last )) {
@@ -274,4 +274,124 @@ bm_out_flush( OutputData *data, CNDB *db ) {
 		db_outputf( stream, db, "%s", data->last );
 	else	db_outputf( stream, db, "%_", data->last );
 	return 0; }
+
+//===========================================================================
+//	fprint_expr
+//===========================================================================
+void
+fprint_expr( FILE *stream, char *expression, int level ) {
+	listItem *stack = NULL;
+	int count=0, carry=0, ground=level;
+	for ( char *p=expression; *p; p++ ) {
+		switch ( *p ) {
+		case '!':
+			if ( p[1]!='!' )
+				fprintf( stream, "!" );
+			else {
+				fprintf( stream, "!!" );
+				p+=2;
+				while ( !is_separator(*p) )
+					fprintf( stream, "%c", *p++ );
+				if ( *p=='(' && p[1]!=')' ) {
+					fprintf( stream, "(" );
+					level++; carry=1; count=0;
+					RETAB( level ) } }
+			break;
+		case '|':
+			if ( p[1]=='{' ) {
+				fprintf( stream, " | {" );
+				push( PIPE_LEVEL, level++, count );
+				RETAB( level ); p++; }
+			else if ( strmatch( PIPE_CND, p[1] ) ) { 
+				fprintf( stream, " |" );
+				push( PIPE, level++, count );
+				RETAB( level ) }
+			else
+				fprintf( stream, "|" );
+			break;
+		case '{': // not following '|'
+			fprintf( stream, "{ " );
+			push( LEVEL, level, count );
+			break;
+		case '}':
+			fprintf( stream, " }" );
+			if ( PIPE_LEVEL==pop( &level, &count ) &&
+			     (stack) && !strmatch( ",)", p[1] ) )
+				RETAB( level )
+			for ( ; p[1]=='}'; p++ ) {
+				pop( &level, &count );
+				fprintf( stream, "}" ); }
+			break;
+		case ',':
+			fprintf( stream, "," );
+			if ( test(COUNT)==count )
+				switch ( test(TYPE) ) {
+				case PIPE:
+				case LEVEL:
+					fprintf( stream, " " );
+					break;
+				default:
+					if ( level==ground ) {}
+					else if (carry||(stack)) RETAB( level )
+					else fprintf( stream, " " ); }
+			break;
+		case ')':
+			if ( strmatch( "({", p[1] ) ) {
+				/* special case : loop bgn
+				   if current, PIPE was pushed at | followed by ?
+				   we are now at the closing ) of ?:(_) knowing
+				   that either {_} or (_) follows
+				   if (_) we shall pop PIPE at next closing )
+				   if {_} we retype PIPE into PIPE_LEVEL |{
+				*/
+				fprintf( stream, ") " );
+				if ( p[1]=='{' && test_PIPE(count-1) )
+					retype( PIPE_LEVEL );
+				count--; }
+			else if ( test_PIPE(count-1) ) {
+				// special case: closing |(_)
+				int retab = 1;
+				fprintf( stream, ")" );
+				pop( &level, &count );
+				while ( strmatch("),",p[1]) ) {
+					p++;
+					if ( *p==',' ) {
+						fprintf( stream, "," );
+						if ( !count ) RETAB( level )
+						else fprintf( stream, " " );
+						break; }
+					else if (( stack )) {
+						fprintf( stream, ")" );
+						if ( retab ) {
+							RETAB( level )
+							retab = 0; }
+						if ( test_PIPE(count-1) )
+							pop( &level, &count );
+						else count--; }
+					else fprint_close( stream ) }
+				if ( p[1]=='}' ) retype( PIPE_LEVEL ); }
+			else fprint_close( stream );
+			break;
+		//--------------------------------------------------
+		//	special cases: list, literal, format
+		//--------------------------------------------------
+		case '.':
+			if ( strncmp(p,"...):",5) ) {
+				fprintf( stream, "%c", *p );
+				break; }
+			fprintf( stream, "..." );
+			p+=3; count--;
+			// no break
+		case '(':
+			if ( p[1]!=':' ) {
+				count++;
+				fprintf( stream, "(" );
+				break; }
+			// no break
+		case '"':
+			for ( char *q=p_prune(PRUNE_TERM,p); p!=q; p++ )
+				fprintf( stream, "%c", *p );
+			p--; break;
+		default:
+			fprintf( stream, "%c", *p ); } } }
 

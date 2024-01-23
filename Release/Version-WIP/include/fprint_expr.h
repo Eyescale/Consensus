@@ -1,10 +1,6 @@
 #ifndef FPRINT_EXPR_H
 #define FPRINT_EXPR_H
 
-static void fprint_expr( FILE *, char *, int type, int level );
-#define TAB( level ) \
-	for ( int k=0; k<level; k++ ) fprintf( stream, "\t" );
-
 // #define TEST_PIPE
 #ifdef TEST_PIPE
 #define PIPE_CND	"!?("

@@ -2,8 +2,54 @@
 #include <stdlib.h>
 
 #include "program.h"
+#include "parser.h"
+#include "expression.h"
 
 // #define DEBUG
+
+//===========================================================================
+//	cnIniOutput
+//===========================================================================
+static int output_CB( BMParseOp, BMParseMode, void * );
+
+int
+cnIniOutput( FILE *output_stream, char *path, int level ) {
+	FILE *stream = fopen( path, "r" );
+	if ( !stream ) {
+		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
+		return -1; }
+	CNIO io;
+	io_init( &io, stream, path, IOStreamFile );
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+	data.entry = newPair( output_stream, cast_ptr( level ) );
+        data.io = &io;
+	bm_parse_init( &data, BM_LOAD );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, output_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	freePair( data.entry );
+	bm_parse_exit( &data );
+	io_exit( &io );
+	fclose( stream );
+	return data.errnum; }
+
+static int
+output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+	BMParseData *data = user_data;
+	FILE *stream = data->entry->name;
+	int level = cast_i( data->entry->value );
+	if ( op==ExpressionTake ) {
+		TAB( level );
+		char *expression = StringFinish( data->string, 0 );
+		fprint_expr( stream, expression, level );
+		StringReset( data->string, CNStringAll );
+		fprintf( stream, "\n" ); }
+	return 1; }
 
 //===========================================================================
 //	cnSync
