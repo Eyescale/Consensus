@@ -1,22 +1,19 @@
+#define TRAVERSAL_TEMPLATE_H
+#ifndef TRAVERSAL_TEMPLATE_H
 /*===========================================================================
 |
-|		Template - to be included in (user)_traversal.h
+|	bm_traverse template - to be included in (user)_traversal.h
 |
 +==========================================================================*/
-#ifndef TRAVERSAL_TEMPLATE_H
-#define TRAVERSAL_TEMPLATE_H
-
 // Assumption: "traversal.h" already included
-
 #include "traversal_flags.h"
 #include "traversal_CB.h"
 
-//===========================================================================
-//	bm_traverse	- generic B% expression traversal
-//===========================================================================
-#define f_next_set( stack ) f_next=((*stack)? cast_i((*stack)->ptr) : 0 );
 static BMCBTake traverse_CB( BMTraverseCB *, BMTraverseData *, \
 	char **, int *, int );
+
+#define f_next_set( stack ) \
+	f_next = (( *stack ) ? cast_i((*stack)->ptr) : FIRST );
 
 static char *
 bm_traverse( char *expression, BMTraverseData *traverse_data, int flags ) {
@@ -96,7 +93,6 @@ CB_EndSetCB			f_pop( stack, 0 )
 				if ( !is_f(LEVEL|SET|CARRY) ) {
 					traverse_data->done = 1;
 					break; }
-				f_next_set( stack )
 CB_BgnPipeCB			f_push( stack )
 				f_reset( PIPED, SET )
 				p++; break;

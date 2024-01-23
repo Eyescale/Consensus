@@ -31,16 +31,15 @@ DONE
 		./B% -f Examples/4_Yak/Schemes/calculator -p
 	. parser.c
 		. allow \n after '|'
-		. allow ?:(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_} in DO mode
-		  restricted to either s_at('|') or !(LEVEL|INFORMED|byref)
-		  Note: not restricted to PIPED|CARRY - could be SET
+		. allow ^^ and *^^ and *^sub - including *^. in DO mode
+		  RESTRICTED to PIPED|CARRY and !(INFORMED|byref)
 		. (_)^ - restricted to s_at(')') and LEVEL and !byref in DO mode
 		  Note: byref now includes condition FOR
 		  Note: not specific to PIPED|CARRY - as !?:(_)_ isn't
-		. allow ^^ and *^^ and *^sub - including *^. in DO mode
-		  restricted to PIPED|CARRY and !(INFORMED|byref)
-		. Test output System launch formula
-		  cf. Test/53_output-system-launch-formula
+		. allow ?:(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_} in DO mode
+		  RESTRICTED to either s_at('|') or !(LEVEL|INFORMED|byref)
+		  Note: not restricted to PIPED|CARRY - as could be in SET
+		. Note: pipe usage RESTRICTED to LEVEL|SET|CARRY
 	. allow B% to printout inifile, e.g.
 		 ./B% -f Examples/4_Yak/Schemes/calculator -p
 	. output: | and |{ and !!carry(...) => \n and level++
