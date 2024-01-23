@@ -1,0 +1,9 @@
+#ifndef 0
+on init
+	do ((toto,tata|(titi|(tutu),x|(a))),b)
+else
+	do >:.
+	do exit
+#else
+	do ((toto,tata|(titi)))
+#endif

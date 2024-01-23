@@ -1,6 +1,4 @@
 See Also: design/story/interactive.story
-DESIGN ISSUE
-
 TODO
 	. instantiate.c
 	 	 implement ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
@@ -22,6 +20,14 @@ TODO
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. fprint_expr completed - test cases
+		./B% -p Test/50_carry-piped
+		./B% -p Test/51_output-cosystem
+		./B% -p Test/52_output-carry
+		./B% -p Test/53_output-system-launch-formula
+		./B% -p Test/54_pipe-hell [narrative.c: enable TEST_PIPE]
+		./B% -p Examples/4_Yak/yak.bm
+		./B% -f Examples/4_Yak/Schemes/calculator -p
 	. parser.c
 		. allow \n after '|'
 		. allow ?:(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_} in DO mode
