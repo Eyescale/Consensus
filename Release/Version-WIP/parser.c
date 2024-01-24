@@ -512,11 +512,13 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_clr( ASSIGN|PRIMED )
 			end
 	in_( "!" ) bgn_
-		ons( "?^" ) if ( expr(NEWBORN) && ( s_at('|') || !is_f(LEVEL|byref) )) {
-				do_( "?" )	s_add( "!" )
-						s_take }
 		on_( '!' ) if ( s_empty ) {
 				do_( "!!" )	s_add( "!!" ) }
+		on_( '^' ) if ( s_at('|') || !is_f(LEVEL|byref) ) {
+				do_( "?" )	s_add( "!^" ) }
+		on_( '?' ) if ( s_at('|') || !is_f(LEVEL|byref) ) {
+				do_( "?" )	s_add( "!?" )
+			if ( !expr(NEWBORN) ) {	bm_parse_caution( data, WarnNeverLoop, mode ); } }
 		end
 	in_( "!!" ) bgn_
 		ons( " \t" )	do_( same )
@@ -1615,6 +1617,7 @@ bm_parse_caution( BMParseData *data, BMParseErr errnum, BMParseMode mode )
 	err_case( WarnOutputFormat, "unsupported output format - using default \"%%_\"\n" )_narg
 	err_case( WarnInputFormat, "unsupported input format - using default \"%%_\"\n" )_narg;
 	err_case( WarnUnsubscribe, "'do term~<' results in instantiation\n" )_narg;
+	err_case( WarnNeverLoop, "newborn-conditional loop with condition not set\n" )_narg;
 	default: break; }
 	fprintf( stderr, "\x1B[0m" ); }
 

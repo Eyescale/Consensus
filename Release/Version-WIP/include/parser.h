@@ -57,6 +57,7 @@ typedef enum {
 	WarnOutputFormat,
 	WarnInputFormat,
 	WarnUnsubscribe,
+	WarnNeverLoop,
 	ErrUnknownState,
 	ErrUnexpectedEOF,
 	ErrUnexpectedCR,
