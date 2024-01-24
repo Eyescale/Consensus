@@ -1,0 +1,13 @@
+
+#define PASS
+
+	on init
+#ifndef PASS
+		do newborn
+#endif
+		do test
+	else on test
+		do { (newborn)^, !^:( BINGO )( BONGA ) }
+	else
+		do >:.
+		do exit

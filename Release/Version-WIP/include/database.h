@@ -133,5 +133,27 @@ static inline int db_manifested( CNInstance *e, CNDB *db ) {
 		return !f->as_sub[ 1 ]; }
 	return 0; }
 
+//---------------------------------------------------------------------------
+//	db_has_newborn
+//---------------------------------------------------------------------------
+static inline int db_has_newborn( listItem *list, CNDB *db )
+/*
+   returns
+	1 list contains newborn or reassigned
+	0 otherwise
+*/ {
+	CNInstance *nil = db->nil, *e, *f, *g;
+	listItem *i, *j, *k;
+	for ( i=list; i!=NULL; i=i->next ) {
+		e = i->ptr;
+		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) {
+			f = j->ptr;
+			if ( f->sub[1]!=nil ) continue;
+			for ( k=f->as_sub[0]; k!=NULL; k=k->next ) {
+				g = k->ptr;
+				if ( g->sub[1]==nil )
+					return 1; } } }
+	return 0; }
+
 
 #endif	// DATABASE_H

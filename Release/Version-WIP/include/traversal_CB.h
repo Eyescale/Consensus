@@ -51,6 +51,7 @@
 	BMRegexCB
 	BMIdentifierCB
 	BMSignalCB
+	BMNewBornCB
 */
 #ifdef BMOpenCB
 #define CB_OpenCB	if ( !(mode&TERNARY) || p_ternary(p) ) \
@@ -225,6 +226,12 @@
 #define CB_SignalCB	_CB( BMSignalCB )
 #else
 #define CB_SignalCB
+#endif
+
+#ifdef BMNewBornCB
+#define CB_NewBornCB	_CB( BMNewBornCB )
+#else
+#define CB_NewBornCB
 #endif
 
 

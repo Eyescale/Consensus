@@ -23,14 +23,14 @@ p_prune( PruneType type, char *p )
 	Assumption: *p==':' => assume we start inside of TERNARY
 */ {
 	switch ( type ) {
-	case PRUNE_TERNARY:
-		return prune_ternary( p );
 	case PRUNE_TERM:
-		if ( *p==':' ) // return on closing ')'
-			return prune_ternary( p );
+		if ( *p==':' )
+			return prune_ternary( p ); // return on closing ')'
 		// no break
 	case PRUNE_FILTER: ;
 		return prune_base( p, type );
+	case PRUNE_TERNARY:
+		return prune_ternary( p );
 	case PRUNE_LITERAL:
 		return prune_level( p, 0 );
 	case PRUNE_LIST:
@@ -127,10 +127,14 @@ prune_base( char *p, PruneType type ) {
 		switch ( *p ) {
 		case '{':
 		case '!':
+		case '^':
 			p++; break;
 		case '(':
 			p = prune_level( p, 0 );
-			informed = 1; break;
+			if ( *p=='(' )
+				return p;
+			informed = 1;
+			break;
 		case '~':
 		case '@':
 			if ( p[1]=='<' )
@@ -211,6 +215,7 @@ prune_level( char *p, int level )
 				else p+=2;
 				break; }
 			// no break
+		case '^':
 		default:
 			do p++; while ( !is_separator(*p) ); } }
 	return p; }

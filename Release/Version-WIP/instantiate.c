@@ -37,6 +37,8 @@ case_( bgn_set_CB )
 		addItem( &data->results, data->sub[ 0 ] );
 		data->sub[ 0 ] = NULL; }
 	addItem( &data->results, NULL );
+	add_item( &data->newborn.stack, data->newborn.current );
+	data->newborn.current = 0;
 	_break
 case_( end_set_CB )
 	/* Assumption:	!is_f(LEVEL|SUB_EXPR)
@@ -48,6 +50,7 @@ case_( end_set_CB )
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
+	data->newborn.current = pop_item( &data->newborn.stack );
 	_break
 case_( bgn_pipe_CB )
 	bm_push_mark( data->ctx, "|", data->sub[ NDX ] );
@@ -56,6 +59,8 @@ case_( bgn_pipe_CB )
 		addItem( &data->results, data->sub[ 1 ] );
 		data->sub[ 1 ] = NULL; }
 	data->sub[ 0 ] = NULL;
+	add_item( &data->newborn.stack, data->newborn.current );
+	data->newborn.current = 0;
 	_break
 case_( end_pipe_CB )
 	bm_pop_mark( data->ctx, "|" );
@@ -63,6 +68,7 @@ case_( end_pipe_CB )
 	if (!(f_next&FIRST))
 		data->sub[ 1 ] = popListItem( &data->results );
 	data->sub[ 0 ] = popListItem( &data->results );
+	data->newborn.current = pop_item( &data->newborn.stack );
 	_break
 case_( register_variable_CB )
 	BMContext *carry = data->carry;
@@ -78,8 +84,8 @@ case_( register_variable_CB )
 	case '@':
 		found = bm_context_lookup( data->ctx, p );
 		if ( !found ) _return( 2 )
-		listItem **sub = &data->sub[ NDX ];
 		listItem *xpn = ( p[2]=='^' ? subx(p+3) : NULL );
+		listItem **sub = &data->sub[ NDX ];
 		if ( !carry ) {
 			for ( listItem *i=found; i!=NULL; i=i->next )
 				if (( e=xsub(i->ptr,xpn) )) addItem( sub, e ); }
@@ -172,6 +178,14 @@ case_( close_CB )
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
 	_break
+case_( newborn_CB )
+	switch ( data->newborn.current ) {
+	case 1: break;
+	default:
+		if ( db_has_newborn( data->sub[NDX], data->db ) )
+			data->newborn.current = 1;
+		else {	data->newborn.current = -1; } }
+	_break
 case_( activate_CB )
 	ActiveRV *active = BMContextActive( data->ctx );
 	listItem **buffer = ( *p=='@' ) ?
@@ -183,7 +197,14 @@ case_( activate_CB )
 			addIfNotThere( buffer, e ); }
 	_break
 case_( wildcard_CB )
-	data->sub[ NDX ] = newItem( NULL );
+	switch ( *p ) {
+	case '!':
+		if ( p[1]=='^' ) {
+			if ( !newborn_authorized( data ) )
+				_prune( BM_PRUNE_TERM ) }
+		break;
+	case '.':
+		data->sub[ NDX ] = newItem( NULL ); }
 	_break
 case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;

@@ -1,29 +1,38 @@
 See Also: design/story/interactive.story
 TODO
-	. cnIniOutput => belongs to program.h
-		=> fprint_expr: belongs to expression.h
-		   except needs DO => belongs to narrative.h, which calls fprint_expr
-		=> fprint_expr to be renamed into bm_fprint_do( FILE *, char *, int level )
-	. instantiate.c
-	 	 implement ^^ and *^^ and *^(_) and ?:(_)_ and ?!:(_)_ and (_)^
-		 => cf. design/specs/bm-TRAVERSE-loop.txt (WIP)
+[WIP]	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
+		=> cf. design/specs/bm-TRAVERSE-loop.txt
+		+ Test
+	. implement ^^ and *^^ and *^(_)
 		 => traverse.c: catch ^^ and *^^
 		    ^^ = current identifier / *^^ = current value
 		    ?:(_)(_) and ?:(_){_} and !?:_ and (_)^
 		    *^sub = bufferized value of %(%?:sub) (including *^.)
 		    Note: *^_ NOT supported in ?:() - but ^^ yes
+		+ Test
+	. cell out => must deregister cell's "_" and UBE from story->arena
 	. Test B% UBE & strings interface
 	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
-	. cell out => must deregister cell's "_" and UBE from story->arena
 	. NTH: do "occurrence" | ...
 		requires own stringLookup/stringRegister in bm_arena_register()
 		as we only want to compare what is inside "_"
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. implemented (_)^
+		. database.h => db_has_newborn( listItem *, CNDB * );
+		. instantiate.c:case_( wildcard_CB )
+		. traversal_termplate.h: case '!' => CB_WildCardCB
+		. parser.c
+		. Testing: cf Test/55-bingo_bonga
+		  implemented !^:(_)(_) - so that
+			if newborn_authorized
+				instantiate 1st (_)
+			otherwise
+				instantiate 2nd (_)
 	. icast stuff moved to Base/pair.h
 	. fprint_expr completed - test cases
 		./B% -p Test/50_carry-piped

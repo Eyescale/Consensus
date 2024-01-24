@@ -7,8 +7,9 @@
 #include "parser_macros.h"
 
 // these flags characterize expression as a whole
-#define CONTRARY	2
-#define RELEASED	4
+#define CONTRARY	(1<<1)
+#define RELEASED	(1<<2)
+#define NEWBORN		(1<<3)
 #define expr(a)		(data->expr&(a))
 
 //===========================================================================
@@ -202,7 +203,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		on_( '!' ) if ( are_f(EENOV|SUB_EXPR) && !is_f(EMARKED|INFORMED|NEGATED) ) {
 				do_( same )	s_take
 						f_set( EMARKED|INFORMED ) }
-			else if ( *type&DO && ( s_empty || ( s_at('|') || !is_f(LEVEL|INFORMED|byref) ))) {
+			else if ( *type&DO && !is_f(INFORMED) ) {
 				do_( "!" ) }
 		on_( '{' ) if ( !is_f(INFORMED) && (
 				( *type&ON_X && s_at('<') ) ||
@@ -224,9 +225,10 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
 		on_( '^' ) if ( *type&DO ) {
-				if ( s_at(')') && are_f(INFORMED|LEVEL) && !is_f(byref) ) {
-					do_( same )	s_take }
-				else if ( is_f(PIPED|CARRY) && !is_f(INFORMED) ) {
+				if ( is_f(INFORMED) && !is_f(byref) && s_at(')') ) {
+					do_( same )	s_take
+							data->expr |= NEWBORN; }
+				else if ( !is_f(INFORMED) && is_f(PIPED|CARRY) ) {
 					do_( "^" )	s_take } }
 		on_separator	; // err
 		on_other if ( is_f(INFORMED) )
@@ -509,6 +511,13 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			on_( '!' )	do_( "!!" )	s_take
 							f_clr( ASSIGN|PRIMED )
 			end
+	in_( "!" ) bgn_
+		ons( "?^" ) if ( expr(NEWBORN) && ( s_at('|') || !is_f(LEVEL|byref) )) {
+				do_( "?" )	s_add( "!" )
+						s_take }
+		on_( '!' ) if ( s_empty ) {
+				do_( "!!" )	s_add( "!!" ) }
+		end
 	in_( "!!" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '|' )	do_( "expr" )	s_take
@@ -594,12 +603,6 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				do_( "expr" )	REENTER
 						f_pop( stack, 0 ) }
 			else {	do_( "^sub" )	REENTER }
-		end
-	in_( "!" ) bgn_
-		on_( '!' ) if ( s_empty ) {
-				do_( "!!" )	s_add( "!!" ) }
-		on_( '?' ) if ( !s_empty ) {
-				do_( "?" )	s_add( "!?" ) }
 		end
 	in_( "?" ) bgn_
 		ons( " \t" )	do_( same )

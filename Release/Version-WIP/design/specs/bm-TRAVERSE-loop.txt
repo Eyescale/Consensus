@@ -5,9 +5,9 @@ Objective
 	support ?:(_)(_) and ?:(_){_} in DO expressions
 
 About
-	Loop usage is restricted to either
+	Loop usage is restricted to either (see parser.c)
 	. directly after the opening '|' of a pipe sequence
-	. at base level in {_} or carry(_)
+	. generally if !(LEVEL|INFORMED|byref)
 	Syntax
 		?:(_)(_) 	alt.	!?:(_)(_)
 		?:(_){_}		!?:(_){_}
@@ -18,6 +18,29 @@ About
 			_ can be of any form, including loop
 			modulo above-mentioned restrictions,
 			or (_) or {_}
+
+	The newborn flag (_)^ conditions the execution of subsequent
+	!?:(_) loops, which as all loops can take place either
+		1. on PIPE, e.g.
+			do !! | ?:(_)(_) // UBE
+			do ( _ | ?:(_)(_) )
+			do { _ | ?:(_)(_) }
+		2. at base level, e.g.
+			do ?:(_)(_)
+		3. at CARRY base level, e.g.
+			do !! carry( ?:(_)(_) )
+		4. at SET base level, e.g.
+			do { ?:(_)(_) }
+
+	The newborn flag is pushed resp. popped at the beginning
+	resp. end of each PIPE and SET sequences, with new value
+	initially unpecified.
+	When the current newborn flag value is unspecified, then
+	the stacked flag's value is tested [...] until a specified
+	value is found - or, if not found, considered -1
+
+	Notes:
+	. parser could set and test NEWBORN prior to !?:(_)
 
 Design
     Loop Bgn
@@ -120,12 +143,9 @@ instantiate.c: wildcard_CB - loop bgn
 		union { void *ptr; int value; } icast;
 		listItem *results;
 		switch ( *p ) {
-		case '.':
-			data->sub[ NDX ] = newItem( NULL );
-			break;
 		case '!':
 			// see below newborn_authorize()
-			if ( newborn_authorized( data ) ) {
+			if ( !newborn_authorized( data ) ) {
 				p = p_prune( PRUNE_TERM, p );
 				p = p_prune( PRUNE_TERM, p );
 				_continue( p ); }
@@ -142,6 +162,9 @@ instantiate.c: wildcard_CB - loop bgn
 				// does not set INFORMED
 				_continue( p ) }
 			else p = p_prune( PRUNE_TERM, p ); }
+			break;
+		case '.':
+			data->sub[ NDX ] = newItem( NULL ); }
 		_break
 
     with
@@ -187,17 +210,18 @@ instantiate.c: loop_CB - loop end
 		_break
 
 	case_( newborn_CB )
-		if ( !data->newborn.current )
-			for ( listItem *i=data->sub[ NDX ]; i!=NULL; i=i->next )
-				if ( isNewBorn( i->ptr ) ) {
-					data->newborn.current = 1;
-					break; }
+		switch ( data->newborn.current ) {
+		case 1: break;
+		default:
+			if ( db_has_newborn( data->sub[NDX], data->db ) )
+				data->newborn.current = 1;
+			else {	data->newborn.current = -1; } }
 		_break
 
 instantiate.c: bgn_pipe_CB and end_pipe_CB - push/pop newborn flag
 	case_( bgn_pipe_CB )
 		add_item( &data->newborn.stack, data->newborn.current );
-		data->newborn.current = 0;
+		data->newborn.current = 0; // UNSPECIFIED
 		_break
 	case_( end_pipe_CB )
 	    	data->newborn.current = pop_item( &data->newborn->stack );

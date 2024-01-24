@@ -2,6 +2,7 @@
 #define INSTANTIATE_PRIVATE_H
 
 typedef struct {
+	struct { listItem *stack; int current; } newborn;
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
@@ -10,6 +11,14 @@ typedef struct {
 } InstantiateData;
 
 #define NDX ( is_f( FIRST ) ? 0 : 1 )
+
+static inline int newborn_authorized( InstantiateData *data ) {
+	int current = data->newborn.current;
+	if ( current ) return ( current > 0 );
+	for ( listItem *i=data->newborn.stack; i!=NULL; i=i->next )
+		if (( current=cast_i( i->ptr ) ))
+			return ( current > 0 );
+	return 0; }
 
 static inline listItem * subx( char *p ) {
 	if ( *p=='.' ) return NULL;

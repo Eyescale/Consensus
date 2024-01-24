@@ -280,14 +280,16 @@ bm_out_flush( OutputData *data, CNDB *db ) {
 //===========================================================================
 void
 fprint_expr( FILE *stream, char *expression, int level ) {
-	listItem *stack = NULL;
+	listItem *stack = NULL, *nb = NULL;
 	int count=0, carry=0, ground=level;
 	for ( char *p=expression; *p; p++ ) {
 		switch ( *p ) {
 		case '!':
-			if ( p[1]!='!' )
-				fprintf( stream, "!" );
-			else {
+			if ( p[1]=='^' ) {
+				fprintf( stream, "!^" );
+				add_item( &nb, count );
+				p++; }
+			else if ( p[1]=='!' ) {
 				fprintf( stream, "!!" );
 				p+=2;
 				while ( !is_separator(*p) )
@@ -296,6 +298,7 @@ fprint_expr( FILE *stream, char *expression, int level ) {
 					fprintf( stream, "(" );
 					level++; carry=1; count=0;
 					RETAB( level ) } }
+			else fprintf( stream, "!" );
 			break;
 		case '|':
 			if ( p[1]=='{' ) {
@@ -336,20 +339,19 @@ fprint_expr( FILE *stream, char *expression, int level ) {
 					else fprintf( stream, " " ); }
 			break;
 		case ')':
-			if ( strmatch( "({", p[1] ) ) {
-				/* special case : loop bgn
-				   if current, PIPE was pushed at | followed by ?
-				   we are now at the closing ) of ?:(_) knowing
-				   that either {_} or (_) follows
-				   if (_) we shall pop PIPE at next closing )
-				   if {_} we retype PIPE into PIPE_LEVEL |{
-				*/
-				fprintf( stream, ") " );
+			if (( p[1]=='(') && ( nb ) && cast_i(nb->ptr)==(count-1) ) {
+				// closing first term of binary !^:(_)(_)
+				fprintf( stream, ")" );
+				popListItem( &nb ); }
+			else if ( strmatch( "({", p[1] ) ) {
+				// closing loop bgn ?:(_)
+				fprintf( stream, ")" );
+				if ((stack)||carry) fprintf( stream, " " );
 				if ( p[1]=='{' && test_PIPE(count-1) )
 					retype( PIPE_LEVEL );
 				count--; }
 			else if ( test_PIPE(count-1) ) {
-				// special case: closing |(_)
+				// closing |(_)
 				int retab = 1;
 				fprintf( stream, ")" );
 				pop( &level, &count );

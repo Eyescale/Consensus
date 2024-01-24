@@ -1,5 +1,3 @@
-#ifndef TRAVERSAL_TEMPLATE_H
-#define TRAVERSAL_TEMPLATE_H
 /*===========================================================================
 |
 |	bm_traverse template - to be included in (user)_traversal.h
@@ -58,6 +56,9 @@ CB_TermCB			break;
 			case '!':
 				if ( p[1]=='!' )
 					p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				else if ( strmatch("?^",p[1]) ) {
+CB_WildCardCB				f_set( INFORMED )
+					p+=3; }
 				else {
 CB_EMarkCharacterCB			f_set( INFORMED )
 					p++; }
@@ -172,6 +173,11 @@ CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 					p++;
 CB_TermCB				break; }
 			case ')':
+				// skip )( for now
+				if ( p[1]=='(' ) {
+					 if ( !(mode&TERNARY) ) {
+						p = p_prune( PRUNE_TERM, p+1 );
+						break; } }
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					f_next_set( stack )
 CB_EndPipeCB				f_pop( stack, 0 ) }
@@ -180,8 +186,11 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 					break; }
 				f_next_set( stack )
 CB_CloseCB			f_pop( stack, 0 );
+				p++; // move past ')'
 				f_set( INFORMED )
-				p++; break;
+				if ( *p=='^' ) {
+CB_NewBornCB				p++; }
+				break;
 			case '?':
 				if is_f( INFORMED ) {
 					if ( !is_f(SET|LEVEL|SUB_EXPR) ) {
@@ -322,5 +331,3 @@ traverse_CB( BMTraverseCB *cb, BMTraverseData *traverse_data, char **p, int *f_p
 			*p = p_prune( PRUNE_TERM, *p );
 		return BM_DONE; } }
 
-
-#endif	// TRAVERSAL_TEMPLATE_H
