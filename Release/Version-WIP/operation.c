@@ -12,9 +12,9 @@
 
 // #define DEBUG
 
-static int in_condition( char *, BMContext *, MarkData **mark );
+static int in_condition( int, char *, BMContext *, MarkData **mark );
 static int on_event( char *, BMContext *, MarkData **mark );
-static int on_event_x( int as_per, char *, BMContext *, MarkData **mark );
+static int on_event_x( int, char *, BMContext *, MarkData **mark );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
@@ -57,7 +57,8 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 				MarkData **mark = (( j ) ? &marked : NULL );
 				switch ( type ) {
 				case ROOT: passed=1; break;
-				case IN: passed=in_condition( expression, ctx, mark ); break;
+				case IN: passed=in_condition( 0, expression, ctx, mark ); break;
+				case IN_X: passed=in_condition( AS_PER, expression, ctx, mark ); break;
 				case ON: passed=on_event( expression, ctx, mark ); break;
 				case ON_X: passed=on_event_x( 0, expression, ctx, mark ); break;
 				case PER_X: passed=on_event_x( AS_PER, expression, ctx, mark ); break;
@@ -98,7 +99,7 @@ RETURN:
 //	in_condition
 //===========================================================================
 static int
-in_condition( char *expression, BMContext *ctx, MarkData **mark )
+in_condition( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
@@ -110,14 +111,16 @@ in_condition( char *expression, BMContext *ctx, MarkData **mark )
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression+=3; }
 
-	CNInstance *found;
+	void *found;
 	if ( strcmp( expression, "~." ) ) {
-		found = bm_feel( BM_CONDITION, expression, ctx );
+		if ( as_per ) found = bm_scan( expression, ctx );
+		else found = bm_feel( BM_CONDITION, expression, ctx );
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success && (mark) && (m=bm_mark(expression,NULL)) )
-		*mark = (MarkData *) newPair( m, found );
+	else if ( success && (mark) && (m=bm_mark(expression,NULL)) ) {
+		m->name = cast_ptr( as_per|cast_i(m->name) );
+		*mark = (MarkData *) newPair( m, found ); }
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif

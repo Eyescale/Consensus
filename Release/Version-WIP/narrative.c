@@ -99,10 +99,10 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 		case ROOT: break;
 		case ELSE: fprintf( stream, "else\n" ); break;
 		default: if ( type&ELSE ) fprintf( stream, "else " );
-			fprintf( stream, type&IN ? "in " :
-				 type&(ON|ON_X) ? "on " :
-				 type&(DO|INPUT|OUTPUT) ? "do " :
-				 type&PER ? "per " : "" );
+			if ( type & PER ) fprintf( stream, "per " );
+			else if ( type & IN ) fprintf( stream, "in " );
+			else if ( type & (ON|ON_X) ) fprintf( stream, "on " );
+			else if ( type & (DO|INPUT|OUTPUT) ) fprintf( stream, "do " );
 			if ( type&DO ) fprint_expr( stream, expression, level );
 			else fprintf( stream, "%s", expression );
 			fprintf( stream, "\n" ); }

@@ -1,5 +1,6 @@
 See Also: design/story/interactive.story
 TODO
+	. implement per expression
 	. implement ^^ and *^^ and *^(_)
 		 => traverse.c: catch ^^ and *^^
 		    ^^ = current identifier / *^^ = current value

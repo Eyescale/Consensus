@@ -25,7 +25,8 @@ cnStoryOutput( FILE *stream, CNStory *story ) {
 //===========================================================================
 //	readStory
 //===========================================================================
-static int read_CB( BMParseOp, BMParseMode, void * );
+static inline int indentation_verify( BMParseData *data );
+static int build_CB( BMParseOp, BMParseMode, void * );
 static void free_CB( Registry *, Pair * );
 
 CNStory *
@@ -47,7 +48,7 @@ readStory( char *path, int ignite ) {
 	addItem( &data.stack.occurrences, data.occurrence );
 	//-----------------------------------------------------------------
 #define PARSE( event, func ) \
-	data.state = func( event, BM_STORY, &data, read_CB );
+	data.state = func( event, BM_STORY, &data, build_CB );
 	int event = 0;
 	do {	event = io_read( &io, event );
 		if ( !io.errnum ) {
@@ -57,7 +58,7 @@ readStory( char *path, int ignite ) {
 		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
 	freeListItem( &data.stack.occurrences );
-	if ( !data.errnum && !read_CB( NarrativeTake, 0, &data ) ) // last take
+	if ( !data.errnum && !build_CB( NarrativeTake, 0, &data ) ) // last take
 		fprintf( stderr, "B%%: Error: read_narrative: unexpected EOF\n" );
 	if ( data.errnum ) {
 		freeNarrative( data.narrative );
@@ -74,7 +75,7 @@ readStory( char *path, int ignite ) {
 		NULL; }
 
 static int
-read_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
 	CNNarrative *narrative;
 	char *proto;
@@ -103,39 +104,7 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 			return 0; }
 		break;
 	case OccurrenceAdd: ;
-		int *tab = data->tab;
-		if ( TAB_LAST == -1 ) {
-			// very first occurrence
-			if ( data->type & ELSE )
-				return 0; }
-		else if ( TAB_CURRENT == TAB_LAST + 1 ) {
-			if ( data->type & ELSE )
-				return 0;
-			CNOccurrence *parent = data->stack.occurrences->ptr;
-			switch ( parent->data->type & ~(ELSE|PER) ) {
-			case ROOT: case IN: case ON: case ON_X:
-				break;
-			default:
-				return 0; } }
-		else if ( TAB_CURRENT <= TAB_LAST ) {
-			CNOccurrence *sibling;
-			if ( TAB_CURRENT==TAB_LAST ) {
-				sibling = data->stack.occurrences->ptr;
-				if ((sibling->data->type&(IN|ON|ON_X)) && !(data->type&ELSE))
-					return 0; }
-			for ( ; ; ) {
-				sibling = popListItem( &data->stack.occurrences );
-				if ( TAB_CURRENT==TAB_LAST ) {
-					if ((data->type&ELSE) && !(sibling->data->type&(IN|ON|ON_X)))
-						return 0; }
-				TAB_LAST--;
-				if ( sibling->data->type == ROOT )
-					return 0;
-				else if ( TAB_CURRENT <= TAB_LAST )
-					continue;
-				else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
-					break; } }
-		else return 0;
+		if ( !indentation_verify( data ) ) return 0;
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;
 		addItem( &parent->sub, occurrence );
@@ -178,6 +147,43 @@ fprintf( stderr, "end narrative: %s\n", proto );
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); } }
+	return 1; }
+
+static inline int
+indentation_verify( BMParseData *data ) {
+	int *tab = data->tab;
+	if ( TAB_LAST == -1 ) {
+		// very first occurrence
+		if ( data->type & ELSE )
+			return 0; }
+	else if ( TAB_CURRENT == TAB_LAST + 1 ) {
+		if ( data->type & ELSE )
+			return 0;
+		CNOccurrence *parent = data->stack.occurrences->ptr;
+		switch ( parent->data->type & ~(ELSE|PER) ) {
+		case ROOT: case IN: case ON: case ON_X:
+			break;
+		default:
+			return 0; } }
+	else if ( TAB_CURRENT <= TAB_LAST ) {
+		CNOccurrence *sibling;
+		if ( TAB_CURRENT==TAB_LAST ) {
+			sibling = data->stack.occurrences->ptr;
+			if ((sibling->data->type&(IN|ON|ON_X)) && !(data->type&ELSE))
+				return 0; }
+		for ( ; ; ) {
+			sibling = popListItem( &data->stack.occurrences );
+			if ( TAB_CURRENT==TAB_LAST ) {
+				if ((data->type&ELSE) && !(sibling->data->type&(IN|ON|ON_X)))
+					return 0; }
+			TAB_LAST--;
+			if ( sibling->data->type == ROOT )
+				return 0;
+			else if ( TAB_CURRENT <= TAB_LAST )
+				continue;
+			else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
+				break; } }
+	else return 0;
 	return 1; }
 
 static void

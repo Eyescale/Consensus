@@ -62,8 +62,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				do_( "_\\n" ) } // allow \nl inside <> {} and carry()
 			else if ( is_f(INFORMED) && !is_f(LEVEL|SUB_EXPR|EENOV) &&
 				  !( *type&DO && is_f(MARKED) ) &&
-				  !( *type&ON && is_f(MARKED) && expr(RELEASED) ) &&
-				     !( *type&PER && !(*type&ON_X) ) ) {
+				  !( *type&ON && expr(RELEASED) && is_f(MARKED) ) ) {
 				do_( "expr_" )	REENTER }
 		on_( '"' ) if ( s_empty && *type&DO ) {
 				do_( "\"" ) 	s_take }
@@ -277,7 +276,9 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			on_( '(' )	do_( "expr" )	REENTER
 							s_add( "~." )
 			on_( '?' ) 	; // err
-			on_( ':' ) if ( is_f(TERNARY) ) {
+			on_( ':' ) if ( *type&PER )
+					; // err
+				else if ( is_f(TERNARY) ) {
 					do_( "expr" )	REENTER
 							s_add( "~." )
 							f_set( INFORMED ) }
