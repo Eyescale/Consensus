@@ -342,7 +342,8 @@ fprint_expr( FILE *stream, char *expression, int level ) {
 			if (( p[1]=='(') && ( nb ) && cast_i(nb->ptr)==(count-1) ) {
 				// closing first term of binary !^:(_)(_)
 				fprintf( stream, ")" );
-				popListItem( &nb ); }
+				popListItem( &nb );
+				count--; }
 			else if ( strmatch( "({", p[1] ) ) {
 				// closing loop bgn ?:(_)
 				fprintf( stream, ")" );

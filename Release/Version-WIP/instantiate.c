@@ -186,6 +186,21 @@ case_( newborn_CB )
 			data->newborn.current = 1;
 		else {	data->newborn.current = -1; } }
 	_break
+case_( loop_CB )
+	// called past ) and } => test for a respin
+	if (( data->loop )&&( *p!='|' )) {
+		BMContext *ctx = data->ctx;
+		LoopData *loop = data->loop->ptr;
+		if ( *traverse_data->stack==loop->info->level ) {
+			MarkData *mark = bm_context_unmark( ctx, loop->mark );
+			if (( mark )) {
+				bm_context_mark( ctx, loop->mark );
+				_continue( loop->info->p ) }
+			else {
+				freePair((Pair *) loop->info );
+				freePair((Pair *) loop );
+				popListItem( &data->loop ); } } }
+	_break
 case_( activate_CB )
 	ActiveRV *active = BMContextActive( data->ctx );
 	listItem **buffer = ( *p=='@' ) ?
@@ -197,18 +212,30 @@ case_( activate_CB )
 			addIfNotThere( buffer, e ); }
 	_break
 case_( wildcard_CB )
+	listItem *results;
 	switch ( *p ) {
 	case '!':
-		if ( p[1]=='^' ) {
-			if ( !newborn_authorized( data ) )
+		if ( !newborn_authorized( data ) ) {
+			if ( p[1]=='^' )
 				_prune( BM_PRUNE_TERM )
-			break; }
-		else if ( !newborn_authorized( data ) ) {
-			p = p_prune( PRUNE_TERM, p );
-			p = p_prune( PRUNE_TERM, p );
-			_continue( p ); }
+			else {
+				p = p_prune( PRUNE_TERM, p );
+				p = p_prune( PRUNE_TERM, p );
+				_continue( p ) } }
+		else if ( p[1]=='^' ) break;
 		p++; // no break
 	case '?':
+		p+=2;
+		MarkData *mark = mark_scan( p, data->ctx );
+		if ( !mark ) {
+			p = p_prune( PRUNE_TERM, p );
+			p = p_prune( PRUNE_TERM, p ); }
+		else {
+			p = p_prune( PRUNE_TERM, p );
+			Pair *info = newPair( *traverse_data->stack, p );
+			addItem( &data->loop, newPair( info, mark ) );
+			bm_context_mark( data->ctx, mark ); }
+		_continue( p )
 	case '.':
 		data->sub[ NDX ] = newItem( NULL ); }
 	_break

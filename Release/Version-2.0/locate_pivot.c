@@ -67,6 +67,8 @@ bm_locate_pivot( char *expression, listItem **exponent )
 	for ( listItem **exp=exponent; *exp!=level; popListItem( exp ) );
 
 BMTraverseCBSwitch( locate_pivot_traversal )
+case_( not_CB )
+	_prune( BM_PRUNE_FILTER )
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if ( !is_f(NEGATED) && data->target==PERSO ) {

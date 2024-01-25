@@ -5,6 +5,10 @@
 #include "story.h"
 
 typedef Registry BMContext;
+typedef struct {
+	struct { void *type; listItem *xpn; } *mark;
+	union { listItem *list; Pair *record; } match;
+} MarkData;
 
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 int		bm_context_load( BMContext *ctx, char *path );
@@ -13,8 +17,8 @@ int		bm_context_update( BMContext *, CNStory * );
 void		bm_context_release( BMContext * );
 
 Pair *		bm_mark( char *, char * );
-void		bm_context_mark( BMContext *, void * );
-Pair * 		bm_context_unmark( BMContext *, void * );
+void		bm_context_mark( BMContext *, MarkData * );
+MarkData *	bm_context_unmark( BMContext *, MarkData * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );
 void		bm_reset_mark( BMContext *, char *, void * );

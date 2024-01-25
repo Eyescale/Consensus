@@ -1,9 +1,5 @@
 See Also: design/story/interactive.story
 TODO
-[WIP]	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
-		=> cf. design/specs/bm-TRAVERSE-loop.txt
-		=> must spec out context_mark etc.
-		+ Test
 	. implement ^^ and *^^ and *^(_)
 		 => traverse.c: catch ^^ and *^^
 		    ^^ = current identifier / *^^ = current value
@@ -23,6 +19,13 @@ TODO
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 
 DONE
+	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
+		=> cf. design/specs/bm-TRAVERSE-loop.txt
+		+ Test: cf. Test/56_loop
+	. BUGIX locate_pivot.c => now using not_CB
+		Note that in traversal_template.h NEGATED only applies
+		to term - i.e. is NOT passed inside (_)
+	. redesigned context.c:bm_mark() and operation.c interface
 	. implemented (_)^
 		. database.h => db_has_newborn( listItem *, CNDB * );
 		. instantiate.c:case_( wildcard_CB )

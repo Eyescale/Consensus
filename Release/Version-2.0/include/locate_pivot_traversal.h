@@ -7,10 +7,11 @@ static BMTraversal locate_pivot_traversal;
 		LocatePivotData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
+	not_CB, dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
 	star_character_CB, register_variable_CB, dereference_CB, sub_expression_CB,
 	dot_expression_CB, open_CB, filter_CB, decouple_CB, close_CB;
 
+#define BMNotCB			not_CB
 #define BMDotIdentifierCB	dot_identifier_CB
 #define BMIdentifierCB		identifier_CB
 #define BMCharacterCB		character_CB

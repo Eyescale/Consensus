@@ -1,14 +1,21 @@
 #ifndef INSTANTIATE_PRIVATE_H
 #define INSTANTIATE_PRIVATE_H
 
+#include "scour.h"
+
 typedef struct {
 	struct { listItem *stack; int current; } newborn;
 	struct { listItem *flags; } stack;
 	listItem *sub[ 2 ];
 	listItem *results;
+	listItem *loop;
 	BMContext *ctx, *carry;
 	CNDB *db;
-} InstantiateData;
+	} InstantiateData;
+typedef struct {
+	struct { void *level; char *p; } *info;
+	MarkData *mark;
+	} LoopData;
 
 #define NDX ( is_f( FIRST ) ? 0 : 1 )
 
@@ -19,6 +26,15 @@ static inline int newborn_authorized( InstantiateData *data ) {
 		if (( current=cast_i( i->ptr ) ))
 			return ( current > 0 );
 	return 0; }
+
+static inline MarkData *mark_scan( char *p, BMContext *ctx ) {
+	listItem *results = bm_scan( p, ctx );
+	if (( results )) {
+		Pair *mark = bm_mark( p, NULL );
+		if ( !mark ) mark = newPair( cast_ptr(QMARK), NULL );
+		mark->name = cast_ptr( AS_PER|cast_i(mark->name) );
+		return (MarkData *) newPair( mark, results ); }
+	return NULL; }
 
 static inline listItem * subx( char *p ) {
 	if ( *p=='.' ) return NULL;

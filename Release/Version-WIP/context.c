@@ -319,69 +319,68 @@ bm_mark( char *expression, char *src ) {
 //===========================================================================
 //	bm_context_mark / bm_context_unmark
 //===========================================================================
-static Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
-typedef struct {
-	struct {
-		union { void *ptr; int value; }	type;
-		listItem *xpn; } *mark;
-	union {
-		listItem *list;
-		Pair *record; } match;
-	} MarkData;
+/*
+	MarkData can be - depending on type=data->mark->type
+	if (( type&EENOK )&&( type&AS_PER )) // <<<< per expression < src >>>>
+	 either	[ mark:[ type, xpn ], match.list:{ batch:[ { instance(s) }, proxy ] } ]
+	    or  [ mark:[ type, xpn ], match.list:{ batch:[ NULL, proxy ] } ]
+	else if ( type&EENOK ) // <<<< on expression < src >>>>
+		[ mark:[ type, xpn ], match.record:[ instance, proxy ] ]
+	else if ( type&AS_PER ) // <<<< per expression >>>>
+		[ mark:[ type, xpn ], match.list:{ instance(s) } ]
+	else // <<<< on expression >>>>
+		[ mark:[ type, xpn ], match.list: instance ]
+*/
+static inline Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
 
 void
-bm_context_mark( BMContext *ctx, void *user_data )
-/*
-	user_data can be either, depending on mark->type
-	in case ( mark->type & AS_PER )
-		[ mark:[ type, xpn ], match.list:{ batch:[ { instance(s) }, proxy ] } ]
-	    or
-		[ mark:[ type, xpn ], match.list:{ batch:[ NULL, proxy ] } ]
-	otherwise
-		[ mark:[ type, xpn ], match.record:[ instance, proxy ] ]
-*/ {
+bm_context_mark( BMContext *ctx, MarkData *data ) {
 	CNInstance *instance, *proxy;
-	if (( user_data )) {
-		MarkData *data = user_data;
-		if ( data->mark->type.value&AS_PER ) {
+	if (( data )) {
+		int type = cast_i( data->mark->type );
+		if (( type&EENOK )&&( type&AS_PER )) {
 			Pair *batch = data->match.list->ptr;
 			proxy = batch->value;
 			instance = popListItem((listItem **) &batch->name );
 			if ( !batch->name ) {
 				freePair( batch ); // one batch per proxy
 				popListItem( &data->match.list ); } }
-		else {
+		else if ( type&EENOK ) {
 			Pair *record = data->match.record;
 			instance = record->name;
 			proxy = record->value;
 			freePair( record );
 			data->match.record = NULL; }
+		else if ( type&AS_PER )
+			instance = popListItem( &data->match.list );
+		else {
+			instance = (CNInstance *) data->match.list;
+			data->match.record = NULL; }
 
 		Pair *event = mark_prep((Pair *) data->mark, instance, proxy );
 		if (( event )) {
-			if (( proxy ))
+			if ( type & EENOK )
 				bm_push_mark( ctx, "<", newPair( event, proxy ) );
-			else
-				bm_push_mark( ctx, "?", event ); } } }
+			else {	bm_push_mark( ctx, "?", event ); } } } }
 
-Pair *
-bm_context_unmark( BMContext *ctx, void *user_data ) {
-	if (( user_data )) {
-		MarkData *data = user_data;
-		bm_pop_mark( ctx, (( data->mark->type.value&EENOK ) ? "<" : "?" ) );
+MarkData *
+bm_context_unmark( BMContext *ctx, MarkData *data ) {
+	if (( data )) {
+		int type = cast_i( data->mark->type );
+		bm_pop_mark( ctx, ( type&EENOK ? "<" : "?" ));
 		if ( !data->match.record ) {
 			freeListItem( &data->mark->xpn );
 			freePair((Pair *) data->mark );
 			freePair((Pair *) data );
-			user_data = NULL; } }
-	return user_data; }
+			data = NULL; } }
+	return data; }
 
 //---------------------------------------------------------------------------
 //	mark_prep
 //---------------------------------------------------------------------------
 static inline CNInstance * xsub( CNInstance *, listItem * );
 
-static Pair *
+static inline Pair *
 mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 /*
 	Assumption: mark is not NULL
@@ -391,23 +390,21 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 			on exit < ?
 	Note: we may have type.value==EENOK and x not NULL
 */ {
-	union { void *ptr; int value; } type;
-	type.ptr = mark->name;
+	int type = cast_i( mark->name );
 	listItem *xpn = mark->value;
-
 	CNInstance *y;
-	if ( type.value & EENOK ) {
-		y = ( type.value & EMARK ) ?
-			( type.value & QMARK ) ?
+	if ( type & EENOK ) {
+		y = ( type & EMARK ) ?
+			( type & QMARK ) ?
 				xsub( x->sub[1], xpn ) :
 				xsub( x->sub[0]->sub[1], xpn ) :
-			( type.value & QMARK ) ?
+			( type & QMARK ) ?
 				xsub( x, xpn ) : proxy; }
-	else if ( type.value & EMARK ) {
-		y = ( type.value & QMARK ) ?
+	else if ( type & EMARK ) {
+		y = ( type & QMARK ) ?
 			xsub( x->sub[1], xpn ) :
 			xsub( x->sub[0]->sub[1], xpn ); }
-	else if ( type.value & QMARK ) {
+	else if ( type & QMARK ) {
 		y = xsub( x, xpn ); }
 	else {
 		fprintf( stderr, ">>>>> B%%: Error: bm_context_mark: "
@@ -419,10 +416,8 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
 	if ( !xpn ) return x;
-	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
-		union { void *ptr; int value; } exp;
-		exp.ptr = i->ptr;
-		x = x->sub[ exp.value & 1 ]; }
+	for ( listItem *i=xpn; i!=NULL; i=i->next )
+		x = x->sub[ cast_i(i->ptr) & 1 ];
 	return x; }
 
 //===========================================================================

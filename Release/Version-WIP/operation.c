@@ -12,9 +12,9 @@
 
 // #define DEBUG
 
-static int in_condition( char *, BMContext *, Pair **mark );
-static int on_event( char *, BMContext *, Pair **mark );
-static int on_event_x( int as_per, char *, BMContext *, Pair **mark );
+static int in_condition( char *, BMContext *, MarkData **mark );
+static int on_event( char *, BMContext *, MarkData **mark );
+static int on_event_x( int as_per, char *, BMContext *, MarkData **mark );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
@@ -42,7 +42,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 #endif
 	listItem *i = newItem( narrative->root );
 	listItem *stack = NULL;
-	Pair *marked = NULL;
+	MarkData *marked = NULL;
 	int passed = 1;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
@@ -54,7 +54,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
 				char *expression = occurrence->data->expression;
 				char *deternarized = bm_deternarize( &expression, type, ctx );
-				Pair **mark = (( j ) ? &marked : NULL );
+				MarkData **mark = (( j ) ? &marked : NULL );
 				switch ( type ) {
 				case ROOT: passed=1; break;
 				case IN: passed=in_condition( expression, ctx, mark ); break;
@@ -98,7 +98,7 @@ RETURN:
 //	in_condition
 //===========================================================================
 static int
-in_condition( char *expression, BMContext *ctx, Pair **mark )
+in_condition( char *expression, BMContext *ctx, MarkData **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
@@ -117,7 +117,7 @@ in_condition( char *expression, BMContext *ctx, Pair **mark )
 
 	if ( negated ) success = !success;
 	else if ( success && (mark) && (m=bm_mark(expression,NULL)) )
-		*mark = newPair( m, newPair(found,NULL) );
+		*mark = (MarkData *) newPair( m, found );
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -127,7 +127,7 @@ in_condition( char *expression, BMContext *ctx, Pair **mark )
 //	on_event
 //===========================================================================
 static int
-on_event( char *expression, BMContext *ctx, Pair **mark )
+on_event( char *expression, BMContext *ctx, MarkData **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
@@ -156,7 +156,7 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 
 	if ( negated ) success = !success;
 	else if ( success==2 && (mark) && (m=bm_mark(expression,NULL)) )
-		*mark = newPair( m, newPair(found,NULL) );
+		*mark = (MarkData *) newPair( m, found );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -171,7 +171,7 @@ static inline void * feel( int, int, char *, listItem **, BMContext * );
 static inline void release( int, void * );
 
 static int
-on_event_x( int as_per, char *expression, BMContext *ctx, Pair **mark )
+on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
@@ -212,7 +212,7 @@ on_event_x( int as_per, char *expression, BMContext *ctx, Pair **mark )
 		release( as_per, found ); }
 	else if ( success && (mark) && (m=bm_mark((success==2?expression:NULL),src)) ) {
 		m->name = cast_ptr( as_per|cast_i(m->name)|EENOK );
-		*mark = newPair( m, found ); }
+		*mark = (MarkData *) newPair( m, found ); }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif

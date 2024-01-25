@@ -46,7 +46,7 @@ Design
 	where
 		LoopData:{
 			struct { void *level; char *p; } *info;
-			listItem *rv; } // {[ %!, %? ]}
+			MarkData *mark; }
 	and
 		loop->info->level = *traverse_data->stack
 		loop->info->p = position *past* ?:(_)_
@@ -54,17 +54,17 @@ Design
 
     Loop End
 	in traverse.c: We need to catch either
-		traverse_data->done==1 => outer loop
 		')' or '}' => replace
-			CB_CloseCB /
+			CB_CloseCB resp.
 			CB_EndSetCB	f_pop( stack, 0 )
 					f_set( INFORMED )
 					p++; break;
 		    with
-			CB_CloseCB /
+			CB_CloseCB resp.
 			CB_EndSetCB	f_pop( stack, 0 )
+					p++; // skip '}' resp. ')'
 			CB_LoopCB	f_set( INFORMED )
-					p++; break;
+					break;
 	in instantiate.c: loop_CB
 	if (( data->loop ) && p[1]!='|' ) {
 		LoopData *loop = data->loop->ptr;
@@ -82,9 +82,6 @@ Design
 	. pipe sequence can be |_ or |(_) or |{_} possibly following
 		?:(_)(_)|...
 			^--------- same level
-	  in which case possibly at base level - in SET|CARRY
-		=> possibly after traverse_data->done==1
-		=> outer loop to be created
 
 //---------------------------------------------------------------------------
 //	Internal specifications
@@ -103,10 +100,11 @@ Objective
 
 InstantiateData: must have
 	struct { int current; listItem *stack; } newborn;
-	struct {
-		struct { void *level; char *p; } *info;
-		listItem *rv; // {[ %!, %? ]}
-		} *loop;
+	listItem *loop; // holding LoopData elements
+	where
+		LoopData:{
+			struct { void *level; char *p; } *info;
+			MarkData *mark; }
 
 instantiate.c: wildcard_CB - loop bgn
     in traversal_template.h:
@@ -138,7 +136,6 @@ instantiate.c: wildcard_CB - loop bgn
     in instantiate.c
 	case_( wildcard_CB )
 		union { void *ptr; int value; } icast;
-		listItem *results;
 		switch ( *p ) {
 		case '!':
 			// see below newborn_authorize()
@@ -149,15 +146,14 @@ instantiate.c: wildcard_CB - loop bgn
 			p++; // no break
 		case '?':
 			// like bm_scan(), but results pushable as "?"
-			results = bm_simili-scan( p, data->ctx );
+			m_data = bm_simili-scan( p, data->ctx );
 			p = p_prune( PRUNE_TERM, p );
 			if ( !results )
 				p = p_prune( PRUNE_TERM, p );
 			else {
 				listItem *level = *traverse_data->stack;
-				// invoke bm_push_mark( ctx, "?", results )
-				// unless results is singleton
-				push_loop( data, results, p, level ); }
+				push_loop( data, level, p, m_data );
+				bm_context_mark( ctx, m_data ) }
 			_continue( p ) }
 		case '.':
 			data->sub[ NDX ] = newItem( NULL ); }
@@ -175,34 +171,36 @@ instantiate.c: loop_CB - loop end
 	CB_EndSetCB	f_pop( stack, 0 )
 			p++; // move past '}'
 	CB_LoopCB	f_set( INFORMED )
-			p++; break;
+			break;
 
 		case ')':
 			...
 	CB_CloseCB	f_pop( stack, 0 )
 			p++; // move past ')'
-	CB_LoopCB	f_set( INFORMED )
 			if ( *p=='^' ) {
 	CB_NewBornCB		p++; }
+	CB_LoopCB	f_set( INFORMED )
 			break;
 
     in instantiate_traversal.h
-	BMLoopCB	loop_CB		// NEW
 	BMNewBornCB	newborn_CB	// NEW
+	BMLoopCB	loop_CB		// NEW
 
     in instantiate.c
 	case_( loop_CB )
 		// called past ) and } => test for a respin
-		if (( data->loop ) && *p!='|' ) {
+		if (( data->loop )&&( *p!='|' )) {
+			BMContext *ctx = data->ctx;
 			LoopData *loop = data->loop->ptr;
 			if ( *traverse_data->stack==loop->info->level ) {
-				Pair *rv = popListItem( &loop->rv );
-				if (( rv )) {
-					bm_reset_mark( data->ctx, "?", rv );
+				MarkData *mark = bm_context_unmark( ctx, loop->mark );
+				if (( mark )) {
+					bm_context_mark( ctx, "?", loop->mark );
 					_continue( loop->info->p ) }
 				else {
-					bm_pop_mark( data->ctx, "?" );
-					loop_pop( &data->loop ); } } }
+					freePair((Pair *) loop->info );
+					freePair((Pair *) loop );
+					popListItem( &data->loop ); } } }
 		_break
 
 	case_( newborn_CB )

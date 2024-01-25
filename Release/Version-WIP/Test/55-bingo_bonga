@@ -2,10 +2,10 @@
 #define PASS
 
 	on init
+		do test
 #ifndef PASS
 		do newborn
 #endif
-		do test
 	else on test
 		do { (newborn)^, !^:( BINGO )( BONGA ) }
 	else

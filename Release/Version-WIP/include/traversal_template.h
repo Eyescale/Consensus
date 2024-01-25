@@ -88,8 +88,9 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 					break; }
 				f_next_set( stack )
 CB_EndSetCB			f_pop( stack, 0 )
-				f_set( INFORMED )
-				p++; break;
+				p++; // move past '}'
+CB_LoopCB			f_set( INFORMED )
+				break;
 			case '|':
 				if ( !is_f(LEVEL|SET|CARRY) ) {
 					traverse_data->done = 1;
@@ -173,8 +174,7 @@ CB_DecoupleCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 					p++;
 CB_TermCB				break; }
 			case ')':
-				// skip )( for now
-				if ( p[1]=='(' ) {
+				if ( p[1]=='(' ) { // skip )(_)
 					 if ( !(mode&TERNARY) ) {
 						p = p_prune( PRUNE_TERM, p+1 );
 						break; } }
@@ -187,9 +187,9 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 				f_next_set( stack )
 CB_CloseCB			f_pop( stack, 0 );
 				p++; // move past ')'
-				f_set( INFORMED )
 				if ( *p=='^' ) {
 CB_NewBornCB				p++; }
+CB_LoopCB			f_set( INFORMED )
 				break;
 			case '?':
 				if is_f( INFORMED ) {

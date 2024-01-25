@@ -258,7 +258,6 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, v
 	data->instance = NULL;
 	char *p = bm_locate_pivot( expression, &data->exponent );
 	if ( !p ) return 0;
-
 	if ( *p=='%' ) {
 		switch ( p[1] ) {
 		case '|':
