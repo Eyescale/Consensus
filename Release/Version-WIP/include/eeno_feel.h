@@ -4,7 +4,7 @@
 #include "context.h"
 #include "query.h"
 
-void *		bm_eeno_feel( CNInstance *, int, char *, BMContext * );
+void *		bm_eeno_feel( int, char *, CNInstance *, BMContext * );
 listItem *	bm_proxy_scan( int, char *, BMContext * );
 int 		bm_proxy_active( CNInstance * );
 int		bm_proxy_in( CNInstance * );

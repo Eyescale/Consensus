@@ -71,7 +71,7 @@ proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 static void * eeno_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
 
 void *
-bm_eeno_feel( CNInstance *proxy, int type, char *expression, BMContext *ctx ) {
+bm_eeno_feel( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_eeno_feel: %s\n", expression );
 #endif

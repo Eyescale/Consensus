@@ -201,8 +201,14 @@ case_( wildcard_CB )
 	case '!':
 		if ( p[1]=='^' ) {
 			if ( !newborn_authorized( data ) )
-				_prune( BM_PRUNE_TERM ) }
-		break;
+				_prune( BM_PRUNE_TERM )
+			break; }
+		else if ( !newborn_authorized( data ) ) {
+			p = p_prune( PRUNE_TERM, p );
+			p = p_prune( PRUNE_TERM, p );
+			_continue( p ); }
+		p++; // no break
+	case '?':
 	case '.':
 		data->sub[ NDX ] = newItem( NULL ); }
 	_break

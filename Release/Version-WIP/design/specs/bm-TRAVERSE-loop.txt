@@ -39,9 +39,6 @@ About
 	the stacked flag's value is tested [...] until a specified
 	value is found - or, if not found, considered -1
 
-	Notes:
-	. parser could set and test NEWBORN prior to !?:(_)
-
 Design
     Loop Bgn
 	in instantiate.c: wildcard_CB
@@ -95,7 +92,7 @@ Design
 Objective
 	implement ?:(_)_
 	implement !?:(_)_
-		usage allowed inside {_} regardless of pipe, which means
+		usage allowed inside {_} regardless of pipe, which requires
 		handling NULL results as errors (or at least ignore them)
 		Note: close_CB currently handles
 			. data->sub[1]==NULL as (expr,~.)
@@ -115,9 +112,10 @@ instantiate.c: wildcard_CB - loop bgn
     in traversal_template.h:
 		case '!':
 			if ( p[1]=='!' ) ...
-			else {
-	CB_EMarkCharacterCB	f_set( INFORMED )
-				p++; }
+			else if ( strmatch( "?^", p[1] ) {
+	CB_WildCardCB		f_set( INFORMED )
+				p+=3; }
+			...
 			break;
 		case '?':
 			if is_f( INFORMED ) ...
@@ -136,7 +134,6 @@ instantiate.c: wildcard_CB - loop bgn
 
     in instantiate_traversal.h
 	BMWildCardCB		wildcard_CB
-	BMEMarkCharacterCB	wildcard_CB	// NEW
 
     in instantiate.c
 	case_( wildcard_CB )
@@ -154,15 +151,14 @@ instantiate.c: wildcard_CB - loop bgn
 			// like bm_scan(), but results pushable as "?"
 			results = bm_simili-scan( p, data->ctx );
 			p = p_prune( PRUNE_TERM, p );
-			if (( results )) {
+			if ( !results )
+				p = p_prune( PRUNE_TERM, p );
+			else {
 				listItem *level = *traverse_data->stack;
 				// invoke bm_push_mark( ctx, "?", results )
-				// iff results not singleton
+				// unless results is singleton
 				push_loop( data, results, p, level ); }
-				// does not set INFORMED
-				_continue( p ) }
-			else p = p_prune( PRUNE_TERM, p ); }
-			break;
+			_continue( p ) }
 		case '.':
 			data->sub[ NDX ] = newItem( NULL ); }
 		_break

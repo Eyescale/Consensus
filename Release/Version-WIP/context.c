@@ -283,48 +283,36 @@ flush_perso( listItem *stack ) {
 //	bm_mark
 //===========================================================================
 Pair *
-bm_mark( int pre, char *expression, char *src, void *user_data )
-/*
-	in case src==NULL: narrative in/on expression
-		called from in_condition or on_event, with pre==0
-		returns [ [ type, xpn ], [ user_data, NULL ] ]
-	otherwise: narrative on/per expression < src
-		called from on_event_x, with pre==0 or pre==BM_AS_PER
-		returns [ [ type, xpn ], user_data ]
-*/ {
-	union { void *ptr; int value; } type;
-	type.value = 0;
+bm_mark( char *expression, char *src ) {
+	int type = 0;
 	listItem *xpn = NULL;
 
 	if (( src ) && *src!='{' && ( bm_locate_mark(src,&xpn) ))
-		type.value = EENOK; // Assumption: xpn==NULL
+		type = EENOK; // Assumption: xpn==NULL
 	else if ( !expression ) ;
 	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 );
 		if ( *value++=='\0' ) { // move past ',' aka. ':' if there is
 			// we know instance to be ((*,.),e)
 			if (( bm_locate_mark( expression, &xpn ) ))
-				type.value = EMARK|QMARK; }
+				type = EMARK|QMARK; }
 		else if ( !strncmp( value, "~.", 2 ) ) {
 			// we know instances will be ( *, e )
 			if (( bm_locate_mark( expression, &xpn ) ))
-				type.value = EMARK|QMARK; }
+				type = EMARK|QMARK; }
 		else if (( bm_locate_mark( value, &xpn ) ))
 			// we know instances will be ((*,.), e )
-			type.value = EMARK|QMARK;
+			type = EMARK|QMARK;
 		else if (( bm_locate_mark( expression, &xpn ) ))
 			// we know instances will be ((*,e), . )
-			type.value = EMARK; }
+			type = EMARK; }
 	else if (( bm_locate_mark( expression, &xpn ) ))
-		type.value = QMARK;
+		type = QMARK;
 
 	Pair *mark = NULL;
-	if ( type.value ) {
-		if ( pre ) type.value |= AS_PER;
+	if ( type ) {
 		if (( xpn )) reorderListItem( &xpn );
-		if (( src )) type.value |= EENOK;
-		else user_data = newPair( user_data, NULL );
-		mark = newPair( newPair( type.ptr, xpn ), user_data ); }
+		mark = newPair( cast_ptr(type), xpn ); }
 
 	return mark; }
 

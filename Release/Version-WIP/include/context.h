@@ -12,7 +12,7 @@ void		bm_context_init( BMContext * );
 int		bm_context_update( BMContext *, CNStory * );
 void		bm_context_release( BMContext * );
 
-Pair *		bm_mark( int, char *, char *, void * );
+Pair *		bm_mark( char *, char * );
 void		bm_context_mark( BMContext *, void * );
 Pair * 		bm_context_unmark( BMContext *, void * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	

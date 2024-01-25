@@ -8,12 +8,13 @@
 #include "expression.h"
 #include "instantiate.h"
 #include "eeno_feel.h"
+#include "scour.h"
 
 // #define DEBUG
 
 static int in_condition( char *, BMContext *, Pair **mark );
 static int on_event( char *, BMContext *, Pair **mark );
-static int on_event_x( char *, int pre, BMContext *, Pair **mark );
+static int on_event_x( int as_per, char *, BMContext *, Pair **mark );
 static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
@@ -58,8 +59,8 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 				case ROOT: passed=1; break;
 				case IN: passed=in_condition( expression, ctx, mark ); break;
 				case ON: passed=on_event( expression, ctx, mark ); break;
-				case ON_X: passed=on_event_x( expression, 0, ctx, mark ); break;
-				case PER_X: passed=on_event_x( expression, BM_AS_PER, ctx, mark ); break;
+				case ON_X: passed=on_event_x( 0, expression, ctx, mark ); break;
+				case PER_X: passed=on_event_x( AS_PER, expression, ctx, mark ); break;
 				case DO: do_action( expression, ctx, story ); break;
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
@@ -104,6 +105,7 @@ in_condition( char *expression, BMContext *ctx, Pair **mark )
 #ifdef DEBUG
 	fprintf( stderr, "in condition bgn: %s\n", expression );
 #endif
+	Pair *m;
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression+=3; }
@@ -114,8 +116,8 @@ in_condition( char *expression, BMContext *ctx, Pair **mark )
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if (( mark ) && success )
-		*mark = bm_mark( 0, expression, NULL, found );
+	else if ( success && (mark) && (m=bm_mark(expression,NULL)) )
+		*mark = newPair( m, newPair(found,NULL) );
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -132,6 +134,7 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 #ifdef DEBUG
 	fprintf( stderr, "on_event bgn: %s\n", expression );
 #endif
+	Pair *m;
 	int success=0, negated=0;
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
@@ -152,8 +155,8 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if (( mark ) && (success==2 ))
-		*mark = bm_mark( 0, expression, NULL, found );
+	else if ( success==2 && (mark) && (m=bm_mark(expression,NULL)) )
+		*mark = newPair( m, newPair(found,NULL) );
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -164,20 +167,19 @@ on_event( char *expression, BMContext *ctx, Pair **mark )
 //===========================================================================
 typedef int ProxyTest( CNInstance *proxy );
 static inline void * test( int, ProxyTest *, listItem ** );
-static inline void * feel( char *, int, listItem **, BMContext * );
+static inline void * feel( int, int, char *, listItem **, BMContext * );
 static inline void release( int, void * );
 
 static int
-on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
+on_event_x( int as_per, char *expression, BMContext *ctx, Pair **mark )
 /*
-	Assumptions:
-		pre is either 0 or BM_AS_PER
-		if (( mark )) then *mark==NULL to begin with
+	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
 #ifdef DEBUG
-	if ( pre ) fprintf( stderr, "on_event_x bgn: per %s\n", expression );
+	if ( as_per ) fprintf( stderr, "on_event_x bgn: per %s\n", expression );
 	else fprintf( stderr, "on_event_x bgn: on %s\n", expression );
 #endif
+	Pair *m;
 	int success=0, negated=0;
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
@@ -189,37 +191,37 @@ on_event_x( char *expression, int pre, BMContext *ctx, Pair **mark )
 
 	Pair *found = NULL;
 	if ( !strncmp( expression, "init<", 5 ) ) {
-		found = test( pre, bm_proxy_in, &proxies );
+		found = test( as_per, bm_proxy_in, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp( expression, "exit<", 5 ) ) {
-		found = test( pre, bm_proxy_out, &proxies );
+		found = test( as_per, bm_proxy_out, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
-		found = test( pre, bm_proxy_active, &proxies );
+		found = test( as_per, bm_proxy_active, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,"~(",2) ) {
 		expression++;
-		found = feel( expression, pre|BM_RELEASED, &proxies, ctx );
+		found = feel( as_per, BM_RELEASED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 	else {
-		found = feel( expression, pre|BM_INSTANTIATED, &proxies, ctx );
+		found = feel( as_per, BM_INSTANTIATED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 
 	if ( negated ) {
 		success = !success;
-		release( pre, found ); }
-	else if (( mark )) switch ( success ) {
-		case 1: *mark = bm_mark( pre, NULL, src, found ); break;
-		case 2: *mark = bm_mark( pre, expression, src, found ); break; }
+		release( as_per, found ); }
+	else if ( success && (mark) && (m=bm_mark((success==2?expression:NULL),src)) ) {
+		m->name = cast_ptr( as_per|cast_i(m->name)|EENOK );
+		*mark = newPair( m, found ); }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif
 	return success; }
 
 static inline void *
-test( int pre, ProxyTest *func, listItem **proxies ) {
+test( int as_per, ProxyTest *func, listItem **proxies ) {
 	CNInstance *proxy;
-	if ( pre & BM_AS_PER ) {
+	if ( as_per ) {
 		listItem *results = NULL;
 		while (( proxy = popListItem(proxies) )) {
 			if ( func( proxy ) ) {
@@ -233,30 +235,30 @@ test( int pre, ProxyTest *func, listItem **proxies ) {
 		return NULL; } }
 
 static inline void *
-feel( char *p, int type, listItem **proxies, BMContext *ctx ) {
+feel( int as_per, int type, char *p, listItem **proxies, BMContext *ctx ) {
 	CNInstance *proxy;
 	void *found;
-	if ( type & BM_AS_PER ) {
+	if ( as_per ) {
 		listItem *results = NULL;
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_eeno_feel( proxy, type, p, ctx );
+			found = bm_eeno_feel( type|BM_AS_PER, p, proxy, ctx );
 			if (( found )) {
 				Pair *batch = newPair( found, proxy );
 				addItem( &results, batch ); } }
 		return results; }
 	else {
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_eeno_feel( proxy, type, p, ctx );
+			found = bm_eeno_feel( type, p, proxy, ctx );
 			if (( found )) {
 				freeListItem( proxies );
 				return newPair( found, proxy ); } }
 		return NULL; } }
 
 static inline void
-release( int type, void *found ) {
+release( int as_per, void *found ) {
 	Pair *batch;
 	if (( found )) {
-		if ( type & BM_AS_PER ) {
+		if ( as_per ) {
 			while (( batch=popListItem((listItem **)&found) )) {
 				freeListItem((listItem **) &batch->name );
 				freePair( batch ); } }

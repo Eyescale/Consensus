@@ -2,6 +2,7 @@ See Also: design/story/interactive.story
 TODO
 [WIP]	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
 		=> cf. design/specs/bm-TRAVERSE-loop.txt
+		=> must spec out context_mark etc.
 		+ Test
 	. implement ^^ and *^^ and *^(_)
 		 => traverse.c: catch ^^ and *^^
@@ -25,14 +26,11 @@ DONE
 	. implemented (_)^
 		. database.h => db_has_newborn( listItem *, CNDB * );
 		. instantiate.c:case_( wildcard_CB )
-		. traversal_termplate.h: case '!' => CB_WildCardCB
-		. parser.c
+		. traversal_template.h: case '!' => CB_WildCardCB
 		. Testing: cf Test/55-bingo_bonga
 		  implemented !^:(_)(_) - so that
-			if newborn_authorized
-				instantiate 1st (_)
-			otherwise
-				instantiate 2nd (_)
+			newborn_authorized => instantiate 1st (_)
+			otherwise => instantiate 2nd (_)
 	. icast stuff moved to Base/pair.h
 	. fprint_expr completed - test cases
 		./B% -p Test/50_carry-piped
