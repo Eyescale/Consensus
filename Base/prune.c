@@ -107,6 +107,7 @@ prune_ternary( char *p )
 			informed = 1; break;
 		case '*':
 			if ( p[1]=='^' ) {
+				// do not set INFORMED there
 				p+=2; break; }
 		case '.':
 			if ( p[1]=='?' ) p+=2;
@@ -167,6 +168,7 @@ prune_base( char *p, PruneType type ) {
 			informed = 1; break;
 		case '*':
 			if ( p[1]=='^' ) {
+				// do not set INFORMED there
 				p+=2; break; }
 		case '.':
 			if ( p[1]=='?' ) p+=2;

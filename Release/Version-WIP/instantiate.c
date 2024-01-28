@@ -655,7 +655,7 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traverse_data ) {
 //---------------------------------------------------------------------------
 //	assign_new
 //---------------------------------------------------------------------------
-static void inform_ube( Registry *, char *, Registry *, BMTraverseData * );
+static void inform_UBE( Registry *, char *, Registry *, BMTraverseData * );
 static void inform_carry( Registry *, char *, CNCell *, BMTraverseData * );
 
 static void
@@ -685,7 +685,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 			registryRegister( buffer, x, ube );
 			} while (( list )&&( x=popListItem(list) ));
 		p++; // skip '|'
-		inform_ube( buffer, p, arena, traverse_data ); }
+		inform_UBE( buffer, p, arena, traverse_data ); }
 	//-----------------------------------------------------------
 	//	carry assignment
 	//-----------------------------------------------------------
@@ -714,7 +714,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 	freeRegistry( buffer, NULL ); }
 
 static void
-inform_ube( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse_data ) {
+inform_UBE( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse_data ) {
 	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;

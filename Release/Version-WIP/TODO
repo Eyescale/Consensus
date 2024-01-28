@@ -29,7 +29,7 @@ DONE
 	  *^_ is only authorized as term in the actionable part of DO expressions
 		instantiate_traversal	=> collect_CB // DONE: bm_scan()
 	      where
-		*^sub = bufferized value of %(%?:sub) (including *^.)
+		*^?:sub = bufferized value of %(%?:sub) (including *^?)
 		DONE: bm_scan() now invokes bm_context_lookup() to extract value
 	  ^^ is queryable => wherever BMRegisterVariableCB is defined, that is:
 		eeno_feel_traversal.h		N/A
@@ -38,8 +38,7 @@ DONE
 		query_traversal.h		match_CB // DONE: lookup_rv()
 	  Test ^^ *^^ and *^? *^?:(_)
 		cf Test/50_EYEYE-ube
-	. unrestricted ^^ - aka. EYEYE
-	  generally means: current assignee => can be NULL
+	. unrestricted ^^ - aka. EYEYE: generally means: current assignee
 	. instantiate.c: on "}|)," handle sub[ NDX ]==NULL
 		that is: pipe_bgn_CB, close_CB, end_set_CB, decouple_CB
 		=> no more _return( 2 ) but instead pruning levels
