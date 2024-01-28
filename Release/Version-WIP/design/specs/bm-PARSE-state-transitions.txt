@@ -39,19 +39,19 @@ Consensus B% Version-WIP
 			~
 			:<	expr
 			:!	!!
-		!	!!
+		!	?
+			!!
 		!!	!!$	!!$_	expr
 		.	expr
 			_term
-		_*	*	expr
+		_*	*^	expr
+				*^?	expr
+					^sub
+			*	expr
 				_term
-			*^	expr
-				^sub
 		^	expr
-		^sub	expr
-			^sub_	expr
+		^sub	^sub_ 	expr
 				^sub
-			?
 		?	?:	expr
 		?:(_)	expr
 		_term	expr

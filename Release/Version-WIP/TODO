@@ -1,16 +1,11 @@
 See Also: design/story/interactive.story
 TODO
-	. implement per expression
-	. implement ^^ and *^^ and *^(_)
-		 => traverse.c: catch ^^ and *^^
-		    ^^ = current identifier / *^^ = current value
-		    ?:(_)(_) and ?:(_){_} and !?:_ and (_)^
-		    *^sub = bufferized value of %(%?:sub) (including *^.)
-		    Note: *^_ NOT supported in ?:() - but ^^ yes
-		+ Test
-	. cell out => must deregister cell's "_" and UBE from story->arena
+	. Q: register shared entities in context ?
+		=> allows bm_query to parse them if no pivot
+		=> deregister cell's "_" and UBE from story->arena
+	  alternative would be to parse arena
 	. Test B% UBE & strings interface
-	. Test string sub-narratives
+	  in particular: Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
@@ -18,8 +13,42 @@ TODO
 		requires own stringLookup/stringRegister in bm_arena_register()
 		as we only want to compare what is inside "_"
 	. NTH: errors / warnings => should ALL be in color... => centralize?
+	. NTH: query, scan, feel, etc. should take &p as argument, so that
+	       on return we have p = post-expression
 
 DONE
+	. NOTE: do :_:!! |{ here %| means *^^, not the whole set of UBE's }
+	. implement ^^ and *^^ and *^?:sub (including *^?)
+	  in inform_carry and inform_UBE we do
+		registryRegister( ctx, "*^", (Registry *) buffer );
+		for ( ... ) { // where current is entry in buffer
+			registryRegister( ctx, "^^", (Pair *) current ); }
+	  in include/traversal_template.h, we associate
+		^^  			=> CB_RegisterVariableCB
+		*^^ and *^(_) and *^.	=> CB_DereferenceCB
+	  *^_ is only authorized as term in the actionable part of DO expressions
+		instantiate_traversal	=> collect_CB // DONE: bm_scan()
+	      where
+		*^sub = bufferized value of %(%?:sub) (including *^.)
+		DONE: bm_scan() now invokes bm_context_lookup() to extract value
+	  ^^ is queryable => wherever BMRegisterVariableCB is defined, that is:
+		eeno_feel_traversal.h		N/A
+		instantiate_traversal.h		register_variable_CB // DONE: default
+		locate_pivot_traversal.h	register_variable_CB // DONE: EYEYE
+		query_traversal.h		match_CB // DONE: lookup_rv()
+	  Test ^^ *^^ and *^? *^?:(_)
+		cf Test/50_EYEYE-ube
+	. unrestricted ^^ - aka. EYEYE
+	  generally means: current assignee => can be NULL
+	. instantiate.c: on "}|)," handle sub[ NDX ]==NULL
+		that is: pipe_bgn_CB, close_CB, end_set_CB, decouple_CB
+		=> no more _return( 2 ) but instead pruning levels
+		   with possibility to recover from NULL results
+	. redefined _prune( take ) as _prune( take, p )
+	. BUGFIX: context.c: mark_sub() only applies mark's exponent's subs
+		=> '?' requires %(_) arround starred expression
+	. p_prune( PRUNE_TERM ) returns on '|' => using _prune( BM_PRUNE_LEVEL )
+	. implement per expression
 	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
 		=> cf. design/specs/bm-TRAVERSE-loop.txt
 		+ Test: cf. Test/56_loop
@@ -46,7 +75,9 @@ DONE
 		./B% -f Examples/4_Yak/Schemes/calculator -p
 	. parser.c
 		. allow \n after '|'
-		. allow ^^ and *^^ and *^sub - including *^. in DO mode
+		. allow ^^ - aka. EYEYE
+		  UNRESTRICTED - generally means current assignee => can be NULL
+		. allow *^^ and *^?:sub - including *^? in DO mode
 		  RESTRICTED to PIPED|CARRY and !(INFORMED|byref)
 		. (_)^ - restricted to s_at(')') and LEVEL and !byref in DO mode
 		  Note: byref now includes condition FOR
@@ -157,9 +188,9 @@ OPEN ISSUES
 NICE TO HAVE
 	. replace ... with …
 	. extend do :_:_ | ... to ALL assignment operations, supporting
-		^^ = current identifier / *^^ = current value
+		^^ = current assignee / *^^ = current value
 		?:(_)(_) and ?:(_){_} and ?!:_ and _^
-		*^sub = bufferized value of %(%?:sub) (including *^.)
+		*^?:sub = bufferized value of %(%?:sub) (including *^?)
 	. OPT: assignment: should use expression=Pair *
 	. interactive - advanced / as per bm-Main.txt#interactive
 	  1. import frame narrative (for execution only)

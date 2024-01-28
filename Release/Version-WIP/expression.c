@@ -33,8 +33,12 @@ static BMQueryCB scan_CB;
 listItem *
 bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
-	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
-	reorderListItem( &results );
+	if ( !strncmp( expression, "*^", 2 ) ) {
+		CNInstance *e = bm_context_lookup( ctx, expression );
+		if (( e )) results = newItem( e ); }
+	else {
+		bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
+		reorderListItem( &results ); }
 	return results; }
 
 static BMCBTake
@@ -280,6 +284,10 @@ bm_out_flush( OutputData *data, CNDB *db ) {
 //===========================================================================
 void
 fprint_expr( FILE *stream, char *expression, int level ) {
+#if 0
+fprintf( stream, "%s", expression );
+return;
+#endif
 	listItem *stack = NULL, *nb = NULL;
 	int count=0, carry=0, ground=level;
 	for ( char *p=expression; *p; p++ ) {
@@ -291,13 +299,15 @@ fprint_expr( FILE *stream, char *expression, int level ) {
 				p++; }
 			else if ( p[1]=='!' ) {
 				fprintf( stream, "!!" );
-				p+=2;
-				while ( !is_separator(*p) )
-					fprintf( stream, "%c", *p++ );
-				if ( *p=='(' && p[1]!=')' ) {
-					fprintf( stream, "(" );
-					level++; carry=1; count=0;
-					RETAB( level ) } }
+				if ( p[2]=='|' ) p++;
+				else {
+					p+=2;
+					while ( !is_separator(*p) )
+						fprintf( stream, "%c", *p++ );
+					if ( *p=='(' && p[1]!=')' ) {
+						fprintf( stream, "(" );
+						level++; carry=1; count=0;
+						RETAB( level ) } } }
 			else fprintf( stream, "!" );
 			break;
 		case '|':

@@ -42,10 +42,8 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 		else break; }
 
 #define POP_XPi( stack, exponent ) { \
-	union { void *ptr; int value; } exp; \
 	exponent = popListItem( &stack ); \
-	exp.ptr = exponent->ptr; \
-	if ( exp.value & SUB ) freeItem( i ); \
+	if ( cast_i(exponent->ptr) & SUB ) freeItem( i ); \
 	i = popListItem( &stack ); }
 
 #define POP_ALL( stack ) \

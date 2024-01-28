@@ -26,7 +26,7 @@ case_( dot_identifier_CB )
 		_return( 2 ); }
 	_break
 case_( sub_expression_CB )
-	_prune( BM_PRUNE_FILTER )
+	_prune( BM_PRUNE_FILTER, p+1 )
 case_( dot_expression_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	_break

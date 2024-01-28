@@ -5,18 +5,29 @@
 //	macros
 //===========================================================================
 #define BMTraverseCBSwitch( user_traversal ) \
-	static char *user_traversal( char *expression, BMTraverseData *traverse_data, int flags ) { \
-		return bm_traverse( expression, traverse_data, flags );
+static char *user_traversal( char *expression, BMTraverseData *traverse_data, int flags ) { \
+	return bm_traverse( expression, traverse_data, flags );
 
-#define _prune( take )		return ( take );
+#define _prune( take, p )	return ( *q=(p), take );
 #define _return( val )		return ( traverse_data->done=(val), BM_DONE );
 #define _continue( p )		return ( *q=(p), BM_DONE );
 #define	_break			return BM_CONTINUE;
 #define BMTraverseCBEnd		}
 
 #define _CB( cb ) \
-	if ( traverse_CB(cb,traverse_data,&p,&flags,f_next)==BM_DONE ) \
-		continue;
+	switch ( cb(traverse_data,&p,flags,f_next) ) {	\
+	case BM_DONE: continue;				\
+	case BM_CONTINUE: break;			\
+	case BM_PRUNE_FILTER:				\
+		f_cls					\
+		p = p_prune( PRUNE_FILTER, p );		\
+		continue;				\
+	case BM_PRUNE_TERM:				\
+		p = p_prune( PRUNE_TERM, p );		\
+		continue;				\
+	case BM_PRUNE_LEVEL:				\
+		p = prune_level( p );			\
+		continue; }
 
 //===========================================================================
 //	traversal callbacks

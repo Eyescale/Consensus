@@ -25,11 +25,11 @@ BMTraverseCBSwitch( eeno_feel_traversal )
 case_( filter_CB )
 	fprintf( stderr, ">>>>> B%%: Warning: EENO filtered in expression\n"
 		"\t\ton/per _%s\n\t<<<<< filter ignored\n", p );
-	_prune( BM_PRUNE_TERM )
+	_prune( BM_PRUNE_TERM, p+1 )
 case_( verify_CB )
 	if ( !proxy_verify( p, data ) )
 		_return( 2 )
-	_prune( BM_PRUNE_TERM )
+	_prune( BM_PRUNE_TERM, p )
 case_( open_CB )
 	if ( f_next & COUPLE ) {
 		CNInstance *x = data->x;

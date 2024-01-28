@@ -106,6 +106,8 @@ prune_ternary( char *p )
 			p = prune_regex( p );
 			informed = 1; break;
 		case '*':
+			if ( p[1]=='^' ) {
+				p+=2; break; }
 		case '.':
 			if ( p[1]=='?' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
@@ -164,6 +166,8 @@ prune_base( char *p, PruneType type ) {
 			p = prune_regex( p );
 			informed = 1; break;
 		case '*':
+			if ( p[1]=='^' ) {
+				p+=2; break; }
 		case '.':
 			if ( p[1]=='?' ) p+=2;
 			else do p++; while ( !is_separator(*p) );

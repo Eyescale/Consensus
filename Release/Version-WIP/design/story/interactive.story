@@ -252,11 +252,11 @@ System launch
 			// foreach (trigger, action) instantiate same, for which
 			?:( ., %? ) { ( %(%?:(?,.))^, %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
-				!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %|^(?,.)),
+				!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^?:(.,?) ), %|^(?,.)),
 				// foreach (guard,(trigger,action)) instantiate same, for which
 				?:( ., %? ) { ( %(%?:(?,.))^, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %|^(?,.)) }
+					!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^?:(.,?) ), %|^(?,.)) }
 				} } } )
 
 	That is, without the comments:
@@ -264,16 +264,16 @@ System launch
 	do : %cosystem : !! Cosystem(
 		?:((.,ON|OFF),^^) { ( %(%?:(?,.)), *^^ ) |
 			?:(.,%?) { ( %(%?:(?,.))^, %| ) | {
-				!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %|^(?,.)),
+				!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^?:(.,?) ), %|^(?,.)),
 				?:(.,%?) { ( %(%?:(?,.))^, %| ) |
-					!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^(.,?) ), %|^(?,.)) }
+					!?:( ?, %(%?:(?,.)) ) (( %(%?:(?,.)), *^?:(.,?) ), %|^(?,.)) }
 				} } } )
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized
 		(_)^ means "mark if new", and !?: means "iff marked" (opt)
 		^^ represents the current assignee in the assignment buffer
 		*^^ represents the current value in the assignment buffer
-		*^sub represents %(%?:sub)'s value in the assignment buffer
+		*^?:sub represents %(%?:sub)'s value in the assignment buffer
 
 		Note: *%(%?:sub) would represent %(%?:sub)'s value ** in CNDB **
 		Likewise *(^^) would represent ^^'s previous value ** in CNDB **

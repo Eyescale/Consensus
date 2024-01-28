@@ -1,13 +1,14 @@
 
-#define PASS
+// #define PASS
 
 	on init
 		do test
-#ifndef PASS
-		do newborn
-#endif
 	else on test
+#ifdef PASS
 		do { (newborn)^, !^:( BINGO )( BONGA ) }
+#else
+		do { (test)^, !^:( BINGO )( BONGA ) }
+#endif
 	else
 		do >:.
 		do exit

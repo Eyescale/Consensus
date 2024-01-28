@@ -208,6 +208,7 @@ DBLog( int first, int released, CNDB *db, listItem **stack )
 		if !released: ( nil, e )
 		where e != (nil,.) (.,nil) nil
 */ {
+	if ( !stack && !first ) return NULL;
 	CNInstance *nil = db->nil;
 	listItem *i = first ?
 		nil->as_sub[ released ? 1 : 0 ] :
@@ -220,7 +221,7 @@ DBLog( int first, int released, CNDB *db, listItem **stack )
 		CNInstance *e = g->sub[ released ? 0 : 1 ];
 		if ( e==nil || e->sub[0]==nil || e->sub[1]==nil )
 			continue;
-		addItem( stack, i );
+		if (( stack )) addItem( stack, i );
 		return e; }
 
 	return NULL; }

@@ -19,7 +19,7 @@ typedef struct {
 
 BMTraverseCBSwitch( deparameterize_traversal )
 case_( sub_expression_CB ) // provision
-	_prune( BM_PRUNE_FILTER )
+	_prune( BM_PRUNE_FILTER, p+1 )
 case_( open_CB )
 	Pair *segment = newPair( p, NULL );
 	addItem( &data->stack.level, segment );

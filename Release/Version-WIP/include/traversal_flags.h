@@ -46,6 +46,9 @@
 	add_item( stack, flags );
 #define	f_pop( stack, save ) \
 	flags = pop_item( stack )|(flags&(save));
+#define f_cls \
+	f_clr( NEGATED ) \
+	f_set( INFORMED )
 
 
 #endif	// TRAVERSAL_FLAGS_H

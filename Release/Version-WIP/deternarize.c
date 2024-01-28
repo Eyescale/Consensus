@@ -47,8 +47,7 @@ case_( ternary_operator_CB )
 		if ( p[1]==')' ) {
 			// ~. is our current candidate
 			data->segment = NULL;
-			// proceed to ")" - setting flag
-			_prune( BM_PRUNE_TERM ) }
+			_continue( p+1 ) }
 		else {
 			// resume past ':'
 			data->segment = newPair( p+1, NULL );
@@ -58,7 +57,7 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERM ) }
+		_prune( BM_PRUNE_TERM, p+1 ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -71,7 +70,7 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERM ) }
+		_prune( BM_PRUNE_TERM, p ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {

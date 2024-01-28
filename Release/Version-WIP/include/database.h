@@ -146,6 +146,7 @@ static inline int db_has_newborn( listItem *list, CNDB *db )
 	listItem *i, *j, *k;
 	for ( i=list; i!=NULL; i=i->next ) {
 		e = i->ptr;
+		if ( !e ) return !!DBLog( 1, 0, db, NULL );
 		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) {
 			f = j->ptr;
 			if ( f->sub[1]!=nil ) continue;

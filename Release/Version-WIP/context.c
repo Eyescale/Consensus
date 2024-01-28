@@ -30,7 +30,7 @@ BMTraverseCBSwitch( actualize_traversal )
 	Note also that the caller is expected to reorder the list of exponents
 */
 case_( sub_expression_CB ) // provision
-	_prune( BM_PRUNE_FILTER )
+	_prune( BM_PRUNE_FILTER, p+1 )
 case_( dot_expression_CB )
 	xpn_add( &data->exponent, SUB, 1 );
 	_break
@@ -58,9 +58,7 @@ case_( close_CB )
 case_( wildcard_CB )
 	if is_f( ELLIPSIS ) {
 		listItem *exponent = data->exponent;
-		union { void *ptr; int value; } exp;
-		exp.ptr = exponent->ptr;
-		if ((exp.value&1) && !exponent->next ) { // vararg
+		if ((cast_i(exponent->ptr)&1) && !exponent->next ) { // vararg
 			context_rebase( data->ctx ); } }
 	_break
 case_( dot_identifier_CB )
@@ -319,6 +317,7 @@ bm_mark( char *expression, char *src ) {
 //===========================================================================
 //	bm_context_mark / bm_context_unmark
 //===========================================================================
+static inline Pair * mark_pair( Pair *, CNInstance *, CNInstance * );
 /*
 	MarkData can be - depending on type=data->mark->type
 	if (( type&EENOK )&&( type&AS_PER )) // <<<< per expression < src >>>>
@@ -331,8 +330,6 @@ bm_mark( char *expression, char *src ) {
 	else // <<<< on expression >>>>
 		[ mark:[ type, xpn ], match.list: instance ]
 */
-static inline Pair * mark_prep( Pair *, CNInstance *, CNInstance * );
-
 void
 bm_context_mark( BMContext *ctx, MarkData *data ) {
 	CNInstance *instance, *proxy;
@@ -357,7 +354,7 @@ bm_context_mark( BMContext *ctx, MarkData *data ) {
 			instance = (CNInstance *) data->match.list;
 			data->match.record = NULL; }
 
-		Pair *event = mark_prep((Pair *) data->mark, instance, proxy );
+		Pair *event = mark_pair((Pair *) data->mark, instance, proxy );
 		if (( event )) {
 			if ( type & EENOK )
 				bm_push_mark( ctx, "<", newPair( event, proxy ) );
@@ -376,12 +373,12 @@ bm_context_unmark( BMContext *ctx, MarkData *data ) {
 	return data; }
 
 //---------------------------------------------------------------------------
-//	mark_prep
+//	mark_pair
 //---------------------------------------------------------------------------
-static inline CNInstance * xsub( CNInstance *, listItem * );
+static inline CNInstance * mark_sub( CNInstance *, listItem * );
 
 static inline Pair *
-mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
+mark_pair( Pair *mark, CNInstance *x, CNInstance *proxy )
 /*
 	Assumption: mark is not NULL
 	However: x may be NULL, in which case we have type.value==EENOK
@@ -396,16 +393,16 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 	if ( type & EENOK ) {
 		y = ( type & EMARK ) ?
 			( type & QMARK ) ?
-				xsub( x->sub[1], xpn ) :
-				xsub( x->sub[0]->sub[1], xpn ) :
+				mark_sub( x->sub[1], xpn ) :
+				mark_sub( x->sub[0]->sub[1], xpn ) :
 			( type & QMARK ) ?
-				xsub( x, xpn ) : proxy; }
+				mark_sub( x, xpn ) : proxy; }
 	else if ( type & EMARK ) {
 		y = ( type & QMARK ) ?
-			xsub( x->sub[1], xpn ) :
-			xsub( x->sub[0]->sub[1], xpn ); }
+			mark_sub( x->sub[1], xpn ) :
+			mark_sub( x->sub[0]->sub[1], xpn ); }
 	else if ( type & QMARK ) {
-		y = xsub( x, xpn ); }
+		y = mark_sub( x, xpn ); }
 	else {
 		fprintf( stderr, ">>>>> B%%: Error: bm_context_mark: "
 			"unknown mark type\n" );
@@ -413,7 +410,7 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 
 	return newPair( x, y ); }
 
-static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
+static inline CNInstance * mark_sub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next )
@@ -542,59 +539,14 @@ bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
 			return db_lookup( privy, p, db ); } }
 	return NULL; }
 
-static inline void *
-lookup_rv( BMContext *ctx, char *p, int *rv ) {
-	Pair *entry;
-	listItem *i;
-	switch ( *p ) {
-	case '%':
-		switch ( p[1] ) {
-		case '?':
-			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->value;
-			goto RETURN;
-		case '!':
-			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->name;
-			goto RETURN;
-		case '%':
-			return BMContextSelf( ctx );
-		case '<':
-			*rv = 2;
-			goto RETURN;
-		case '|': ;
-			entry = registryLookup( ctx, "|" );
-			if (( i=entry->value )) {
-				*rv = 3; return i->ptr; }
-			goto RETURN;
-		case '@':
-			*rv = 3;
-			return BMContextActive( ctx )->value; }
-		break;
-	case '.':
-		return ( p[1]=='.' ) ?
-			BMContextParent( ctx ) :
-			BMContextPerso( ctx ); }
-
-	*rv = 0; // not a register variable
-RETURN:
-	return NULL; }
-
-//---------------------------------------------------------------------------
-//	bm_match
-//---------------------------------------------------------------------------
 static inline int
-match_rv( char *, BMContext *, CNDB *, CNInstance *, CNDB *, int * );
-
+	match_rv( char *, BMContext *, CNDB *, CNInstance *, CNDB *, int * );
 int
 bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 	// lookup & match first in ctx registry
 	int rv = 1;
 	int rvm = match_rv( p, ctx, db, x, db_x, &rv );
 	if (( rv )) return rvm;
-
 	if ( !strncmp( p, "(:", 2 ) ) {
 		if ( db==db_x )
 			return DBStarMatch( x->sub[ 0 ] ) &&
@@ -603,27 +555,20 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
 				"\t\t(%s\n\t<<<<< not supported in EENO\n", p );
 		return 0; }
-
 	if ( db==db_x && !is_separator( *p ) ) {
 		Registry *locales = BMContextLocales( ctx );
 		Pair *entry = registryLookup( locales, p );
 		if (( entry )) return x==entry->value; }
-
 	// not found in ctx
-	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x );
-		char_s q;
-		switch ( *p ) {
+	if (( x->sub[0] )) return 0; // not a base entity
+	char *identifier = DBIdentifier( x );
+	switch ( *p ) {
 		case '\'':
-			if ( charscan( p+1, &q ) )
+			for ( char_s q; charscan( p+1, &q ); )
 				return !strcomp( q.s, identifier, 1 );
-			break;
-		case '/':
-			return !strcomp( p, identifier, 2 );
-		default:
-			return !strcomp( p, identifier, 1 ); } }
-
-	return 0; /* not a base entity */ }
+			return 0;
+		case '/': return !strcomp( p, identifier, 2 );
+		default: return !strcomp( p, identifier, 1 ); } }
 
 static inline int
 match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv ) {
@@ -636,6 +581,74 @@ match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv 
 			if ( db_match( x, db_x, i->ptr, db ) )
 				return 1; }
 	return 0; }
+
+static inline void *
+lookup_rv( BMContext *ctx, char *p, int *rv ) {
+	Pair *entry;
+	listItem *i;
+	switch ( *p ) {
+	case '%':
+		switch ( p[1] ) {
+		case '?':
+			entry = registryLookup( ctx, "?" );
+			if (( i=entry->value ))
+				return ((Pair *) i->ptr )->value;
+			return NULL;
+		case '!':
+			entry = registryLookup( ctx, "?" );
+			if (( i=entry->value ))
+				return ((Pair *) i->ptr )->name;
+			return NULL;
+		case '%':
+			return BMContextSelf( ctx );
+		case '<':
+			*rv = 2;
+			return NULL;
+		case '|': ;
+			entry = registryLookup( ctx, "|" );
+			if (( i=entry->value )) {
+				*rv = 3; return i->ptr; }
+			return NULL;
+		case '@':
+			*rv = 3;
+			return BMContextActive( ctx )->value; }
+		break;
+	case '^':
+		if ( p[1]=='^' ) {
+			entry = registryLookup( ctx, "^^" );
+			if ( !entry ) return NULL;
+			return ((Pair *)(entry->value))->name; }
+		break;
+	case '*':
+		if ( p[1]=='^' ) {
+			switch ( p[2] ) {
+			case '^':
+				entry = registryLookup( ctx, "^^" );
+				if ( !entry ) return NULL;
+				return ((Pair *)(entry->value))->value;
+			case '?':
+				p+=3; // skip '*^?'
+				entry = registryLookup( ctx, "?" );
+				if (!( i=entry->value )) return NULL;
+				CNInstance *e = ((Pair *) i->ptr )->value;
+				entry = registryLookup( ctx, "^*" );
+				if ( !entry ) return NULL;
+				Registry *buffer = entry->value;
+				entry = registryLookup( buffer, e );
+				if ( !entry ) return NULL;
+				if ( *p==':' ) {
+					listItem *xpn = subx( p+1 );
+					e = xsub( e, xpn );
+					freeListItem( &xpn ); }
+				return e; } }
+		break;
+	case '.':
+		return ( p[1]=='.' ) ?
+			BMContextParent( ctx ) :
+			BMContextPerso( ctx ); }
+
+	*rv = 0; // not a register variable
+	return NULL; }
 
 //===========================================================================
 //	bm_inform

@@ -25,7 +25,7 @@ typedef struct {
 
 BMTraverseCBSwitch( locate_pivot_traversal )
 case_( not_CB )
-	_prune( BM_PRUNE_FILTER )
+	_prune( BM_PRUNE_FILTER, p+1 )
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if CHECK( PERSO ) {
@@ -61,6 +61,7 @@ case_( register_variable_CB )
 	case '%': mark = SELF; break;
 	case '@': mark = ACTIVE; break;
 	case '<': mark = EENOK; break;
+	case '^': mark = EYEYE; break;
 	default: _break; }
 	if CHECK( mark )
 		_return( 2 )
@@ -89,7 +90,7 @@ case_( sub_expression_CB )
 				Pair * list_expr = newPair( p, mark );
 				addItem( data->exponent, list_expr );
 				_return( 2 ) }
-			_prune( BM_PRUNE_FILTER ) } }
+			_prune( BM_PRUNE_FILTER, p+1 ) } }
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
 	while (( mark_exp )) {

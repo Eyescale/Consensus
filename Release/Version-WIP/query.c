@@ -59,10 +59,10 @@ case_( dot_expression_CB )
 	switch ( match( data->instance, p, data->base, data ) ) {
 	case 0: if is_f( NEGATED ) {
 		data->success=1; popListItem( stack );
-		_prune( BM_PRUNE_FILTER ) }
+		_prune( BM_PRUNE_FILTER, p+1 ) }
 	case -1: // no break
 		data->success=0; popListItem( stack );
-		_prune( BM_PRUNE_TERM )
+		_prune( BM_PRUNE_TERM, p+1 )
 	default: xpn_set( *stack, AS_SUB, 1 ); }
 	_break
 case_( open_CB )
@@ -72,10 +72,10 @@ case_( open_CB )
 		switch ( match( data->instance, p, data->base, data ) ) {
 		case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
-			_prune( BM_PRUNE_FILTER ) }
+			_prune( BM_PRUNE_FILTER, p ) }
 		case -1: // no break
 			data->success=0; popListItem( stack );
-			_prune( BM_PRUNE_TERM )
+			_prune( BM_PRUNE_TERM, p )
 		default: xpn_set( *stack, AS_SUB, 1 ); } }
 	else if ( f_next & COUPLE )
 		xpn_add( &data->stack.exponent, AS_SUB, 0 );
@@ -84,13 +84,13 @@ case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
-		_prune( BM_PRUNE_TERM )
+		_prune( BM_PRUNE_TERM, p+1 )
 	else _break
 case_( decouple_CB )
 	if ( data->stack.flags==data->OOS ) {
 		_return( 1 ) }
 	else if ( !data->success ) {
-		_prune( BM_PRUNE_TERM ) }
+		_prune( BM_PRUNE_TERM, p+1 ) }
 	else {
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
 		_break }
@@ -420,7 +420,7 @@ typedef struct {
 	} XPVerifyStack;
 
 static inline listItem * pop_as_sub( XPVerifyStack *, listItem *, listItem ** );
-static inline CNInstance * xsub( CNInstance *, listItem *, listItem * );
+static inline CNInstance * x_sub( CNInstance *, listItem *, listItem * );
 static inline char * prune( char *, int );
 int
 xp_verify( CNInstance *x, char *expression, BMQueryData *data )
@@ -495,7 +495,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				listItem *base = data->base;
 				addItem( &data->stack.base, base );
 				addItem( &data->stack.scope, data->stack.flags );
-				if (( x = xsub( x, data->stack.exponent, base ) )) {
+				if (( x = x_sub( x, data->stack.exponent, base ) )) {
 #ifdef DEBUG
 					fprintf( stderr, "xp_verify: starting SUB, at '%s'\n", p );
 #endif
@@ -570,10 +570,8 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 							success = 0;
 							break; } }
 					else if (( stack.as_sub )) {
-						union { void *ptr; int value; } exp;
 						exponent = popListItem( &stack.as_sub );
-						exp.ptr = exponent->ptr;
-						if (!( exp.value & SUB )) freeItem( i );
+						if (!( cast_i(exponent->ptr) & SUB )) freeItem( i );
 						i = popListItem( &stack.as_sub ); }
 					else {
 						// restore context & move on past sub-expression
@@ -613,10 +611,8 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 */ {
 	listItem **as_sub = &stack->as_sub;
 	while (( *as_sub )) {
-		union { void *ptr; int value; } exp;
 		listItem *exponent = popListItem( as_sub );
-		exp.ptr = exponent->ptr;
-		if (!( exp.value & SUB )) freeItem( i );
+		if (!( cast_i(exponent->ptr) & SUB )) freeItem( i );
 		i = popListItem( as_sub ); }
 	freeItem( i );
 	stack->as_sub = popListItem( &stack->sub );
@@ -626,8 +622,8 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 	return popListItem( &stack->i ); }
 
 static inline CNInstance *
-xsub( CNInstance *x, listItem *xpn, listItem *base ) {
-	listItem *sub_exp = NULL;
+x_sub( CNInstance *x, listItem *xpn, listItem *base ) {
+	listItem *sub_exp = NULL; // reorder xpn
 	for ( listItem *i=xpn; i!=base; i=i->next )
 		addItem( &sub_exp, i->ptr );
 	while (( x ) && (sub_exp)) {

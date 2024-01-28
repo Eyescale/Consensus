@@ -77,6 +77,7 @@ typedef enum {
 	ErrMarkTernary,
 	ErrMarkMultiple,
 	ErrMarkNegated,
+	ErrMarkStarred,
 	ErrEMarked,
 	ErrEMarkMultiple,
 	ErrEMarkNegated,

@@ -95,7 +95,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 							f_restore( NEGATED|STARRED|FILTERED|PIPED|PROTECTED ) } }
 			else if ( is_f(VECTOR|SET|CARRY) ) {
 				do_( "{_," )	f_clr( NEGATED|STARRED|FILTERED ) } // do not clear FIRST|INFORMED
-			else if ( *type&DO ) {
+			else if ( *type&DO && !is_f(PROTECTED) ) {
 				do_( "_," )	f_clr( FIRST|INFORMED|NEGATED|STARRED|FILTERED ) }
 		on_( ':' ) if ( is_f(EENOV) || ((*type&PER)&&!s_cmp("~.")) )
 				; // err
@@ -219,15 +219,15 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				!is_f(EENOV|SUB_EXPR|FILTERED) && !f_parent(NEGATED|STARRED) ) {
 				do_( "|" )	s_take
 						f_tag( stack, PROTECTED )
-						f_set( PIPED )
-						f_clr( INFORMED ) }
+						f_clr( INFORMED )
+						f_set( PIPED ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take }
 		on_( '^' ) if ( *type&DO ) {
 				if ( is_f(INFORMED) && !is_f(byref) && s_at(')') ) {
 					do_( same )	s_take
 							data->expr |= NEWBORN; }
-				else if ( !is_f(INFORMED) && is_f(PIPED|CARRY) ) {
+				else if ( !is_f(INFORMED) ) {
 					do_( "^" )	s_take } }
 		on_separator	; // err
 		on_other if ( is_f(INFORMED) )
@@ -524,6 +524,7 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	in_( "!!" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '|' )	do_( "expr" )	s_take
+						f_set( PIPED|PROTECTED )
 		on_separator	; // err
 		on_other	do_( "!!$" )	s_take
 		end
@@ -558,13 +559,20 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						f_set( STARRED )
 		end
 		in_( "*^" ) bgn_
-			on_( '(' )	do_( "^sub" )	REENTER
+			on_( '?' )	do_( "*^?" )	s_take
+			on_( '^' )	do_( "expr" )	s_take
 							f_set( INFORMED )
+							f_tag( stack, PROTECTED )
+			end
+		in_( "*^?" ) bgn_
+			on_( ':' )	do_( "^sub" )	s_take
 							f_push( stack )
+							f_tag( stack, PROTECTED )
 							f_clr( LEVEL|INFORMED|MARKED )
 							f_set( FIRST )
-			ons( "^." )	do_( "expr" )	s_take
+			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
+							f_tag( stack, PROTECTED )
 			end
 		in_( "*" ) bgn_
 			ons( " \t" )	do_( same )
@@ -580,17 +588,14 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 						f_set( INFORMED )
 		end
 	in_( "^sub" ) bgn_
-		on_( '.' ) if ( !is_f(LEVEL) ) {
-				do_( "expr" )	s_take
-						f_pop( stack, 0 ) }
-			else if ( !is_f(INFORMED) && (is_f(MARKED)?!is_f(FIRST):is_f(FIRST)) ) {
-				do_( same )	s_take
-						f_set( INFORMED ) }
 		on_( '(' ) if ( !is_f(MARKED) ) {
 				do_( same )	s_take
 						f_push( stack )
 						f_clr( INFORMED )
 						f_set( FIRST|LEVEL ) }
+		on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) && is_f(FIRST|MARKED) ) {
+				do_( same )	s_take
+						f_set( INFORMED ) }
 		on_( '?' ) if ( is_f(LEVEL) && !is_f(INFORMED|MARKED) ) {
 				do_( same )	s_take
 						f_set( INFORMED|MARKED ) }
@@ -601,12 +606,15 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				do_( "^sub_" )	s_take
 						f_pop( stack, 0 ) }
 		end
-	in_( "^sub_" ) bgn_
-		on_any	if ( !is_f(LEVEL) ) {
-				do_( "expr" )	REENTER
-						f_pop( stack, 0 ) }
-			else {	do_( "^sub" )	REENTER }
-		end
+		in_( "^sub_" ) bgn_
+			ons( ":^" )	; // err
+			on_other
+				if ( is_f(LEVEL) ) {
+					do_( "^sub" )	REENTER }
+				else {	do_( "expr" )	REENTER
+							f_pop( stack, 0 )
+							f_set( INFORMED ) }
+			end
 	in_( "?" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ':' )	do_( "?:" )	s_take
@@ -899,6 +907,7 @@ CB_( ExpressionTake, mode, data )
 						   expr(CONTRARY) ? ErrMarkNegated :
 						   is_f(INFORMED) ? ErrMarkGuard :
 						   is_f(MARKED) ? ErrMarkMultiple :
+						   is_f(STARRED) ? ErrMarkStarred :
 						   !f_markable(stack) ? ErrMarkTernary :
 						   ErrSyntaxError );
 			on_( '!' )	errnum = ( are_f(EENOV|SUB_EXPR) && !is_f(INFORMED ) ?
@@ -1584,6 +1593,7 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrMarkGuard, "'?' marked expression used as ternary guard\n" )_narg
 		err_case( ErrMarkTernary, "'?' requires %%(_) around ternary expression\n" )_narg
 		err_case( ErrMarkMultiple, "'?' already informed\n" )_narg
+		err_case( ErrMarkStarred, "'?' requires %%(_) arround starred expression\n" )_narg
 		err_case( ErrMarkNegated, "'?' negated\n" )_narg
 		err_case( ErrEMarked, "'!' unspecified\n" )_narg
 		err_case( ErrEMarkMultiple, "'!' already informed\n" )_narg
