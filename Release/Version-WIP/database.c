@@ -298,7 +298,7 @@ db_fire( CNInstance *proxy, CNDB *db )
 		else deprecate( proxy, db ); } }
 
 //===========================================================================
-//	db_match
+//	db_match / db_match_identifier
 //===========================================================================
 int
 db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
@@ -324,9 +324,12 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 		if (( y->sub[ 0 ] )) {
 			if ( !isProxy(x) || DBProxyThat(x)!=DBProxyThat(y) )
 				goto FAIL; }
+		else if (( x->sub[ 0 ] ))
+			goto FAIL;
+		else if ( isRef( y ) ) {
+			if ( bm_arena_compare( x, y ) )
+				goto FAIL; }
 		else {
-			if (( x->sub[ 0 ] ))
-				goto FAIL;
 			char *p_x = DBIdentifier( x );
 			char *p_y = DBIdentifier( y );
 			if ( strcomp( p_x, p_y, 1 ) )
@@ -340,6 +343,22 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 FAIL:
 	freeListItem( &stack );
 	return 0; }
+
+int
+db_match_identifier( CNInstance *x, char *p )
+/*
+	Assumption: x!=NULL
+*/ {
+	if (( x->sub[0] )) return 0;
+	char *identifier = DBIdentifier( x );
+	if ( !identifier ) return 0;
+	switch ( *p ) {
+	case '/': return !strcomp( p, identifier, 2 );
+	case '\'': for ( char_s q; charscan( p+1, &q ); )
+			return !strcomp( q.s, identifier, 1 );
+		   return 0;
+	default:
+		return !strcomp( p, identifier, 1 ); } }
 
 //===========================================================================
 //	db_instantiate
@@ -553,22 +572,18 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 	for ( char *p=fmt; *p; p++ )
 		switch (*p) {
 		case '%':
-			switch ( p[1] ) {
+			p++;
+			switch ( *p ) {
 			case '%':
 				fprintf( stream, "%%" );
 				break;
 			case '_':
 			case 's':
 				e = va_arg( ap, CNInstance * );
-				outputf( stream, db, p[1], e );
-				break;
-			default:
-				; // unsupported
-			}
-			p++; break;
+				outputf( stream, db, *p, e ); }
+			break;
 		default:
-			fprintf( stream, "%c", *p );
-		}
+			fprintf( stream, "%c", *p ); }
 	va_end( ap );
 	return 0; }
 
@@ -601,9 +616,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			char *p = DBIdentifier( e );
 			if ( isRef( e ) )
 				fprintf( stream, "%s", ((p)?p:"!!") );
-			else if ( type=='s' )
-				fprintf( stream, "%s", DBIdentifier(e) );
-			else if (( *p=='*' ) || ( *p=='%' ) || !is_separator(*p))
+			else if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
 				fprintf( stream, "%s", p );
 			else {
 				switch (*p) {

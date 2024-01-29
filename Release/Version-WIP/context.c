@@ -466,7 +466,11 @@ bm_reset_mark( BMContext *ctx, char *p, void *value ) {
 static inline void * lookup_mark( BMContext *, char *, int *rv );
 
 void *
-bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
+bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy )
+/*
+	Assumption: only used directly by query.c:pivot_query()
+	otherwise as bm_context_lookup => rv or locales only
+*/ {
 	// lookup first in ctx registry
 	int rv = 1;
 	void *rvv = lookup_mark( ctx, p, &rv );
@@ -491,7 +495,7 @@ bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
 		case '\'': ; // looking up single character identifier instance
 			for ( char_s q; charscan( p+1, &q ); )
 				return db_lookup( privy, q.s, db );
-			return NULL;
+			break;
 		default:
 			return db_lookup( privy, p, db ); } }
 	return NULL; }
@@ -507,12 +511,12 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
-			else {	return NULL; }
+			return NULL;
 		case '!':
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->name;
-			else {	return NULL; }
+			return NULL;
 		case '%':
 			return BMContextSelf( ctx );
 		case '<':
@@ -526,23 +530,23 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 			if (( i=entry->value )) {
 				*rv = 3;
 				return i->ptr; }
-			else {	return NULL; } }
+			return NULL; }
 		break;
 	case '^':
 		if ( p[1]=='^' ) {
 			entry = registryLookup( ctx, "^^" );
-			if (( entry )) {
-				return ((Pair *)(entry->value))->name; }
-			else {	return NULL; } }
+			if (( entry ))
+				return ((Pair *)(entry->value))->name;
+			return NULL; }
 		break;
 	case '*':
 		if ( p[1]!='^' ) break;
 		switch ( p[2] ) {
 		case '^':
 			entry = registryLookup( ctx, "^^" );
-			if (( entry )) {
-				return ((Pair *)(entry->value))->value; }
-			else {	return NULL; }
+			if (( entry ))
+				return ((Pair *)(entry->value))->value;
+			return NULL;
 		case '?':
 			p+=3; // skip '*^?'
 			entry = registryLookup( ctx, "?" );
@@ -558,6 +562,7 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 				e = xsub( e, xpn );
 				freeListItem( &xpn ); }
 			return e; }
+		break;
 	case '.':
 		return ( p[1]=='.' ) ?
 			BMContextParent( ctx ) :
@@ -598,15 +603,7 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 		if (( entry )) return x==entry->value; }
 
 	// not found in ctx registry
-	if (( x->sub[0] )) return 0; // not a base entity
-	char *identifier = DBIdentifier( x );
-	switch ( *p ) {
-		case '\'':
-			for ( char_s q; charscan( p+1, &q ); )
-				return !strcomp( q.s, identifier, 1 );
-			return 0;
-		case '/': return !strcomp( p, identifier, 2 );
-		default: return !strcomp( p, identifier, 1 ); } }
+	return db_match_identifier( x, p ); }
 
 //===========================================================================
 //	bm_register / bm_register_locale
@@ -618,9 +615,8 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 */ {
 	if ( *p == '\'' ) {
 		// registering single character identifier instance
-		char_s q;
-		if ( charscan( p+1, &q ) ) {
-			return db_register( q.s, db ); }
+		for ( char_s q; charscan( p+1, &q ); )
+			return db_register( q.s, db );
 		return NULL; }
 	else if (( ctx ) && !is_separator(*p) ) {
 		Registry *locales = BMContextLocales( ctx );

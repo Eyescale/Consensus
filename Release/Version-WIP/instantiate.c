@@ -213,7 +213,7 @@ case_( register_variable_CB )
 		break;
 	default:
 		e = bm_context_lookup( data->ctx, p );
-		e = bm_inform( carry, e, db );
+		if (( e )) e = bm_inform( carry, e, db );
 		if (( e )) data->sub[ NDX ] = newItem( e );
 		else _prune( BM_PRUNE_LEVEL, p ) }
 	_break
@@ -506,7 +506,7 @@ cleanup( BMTraverseData *traverse_data, char *expression ) {
 		"\t\tdo %s\n\t<<<<< failed at least partially\n", expression ); }
 #ifdef DEBUG
 	if ((data->sub[1]) || (data->stack.flags) || (data->results) ||
-	    (bm_lookup( data->ctx, "%|", data->db, 0 ))) {
+	    (bm_context_lookup( data->ctx, "%|" ))) {
 		fprintf( stderr, ">>>>> B%%: Error: bm_instantiate: memory leak" );
 		if (( expression )) {
 			fprintf( stderr, "\t\tdo %s\n\t<<<<< failed", expression );
@@ -520,7 +520,7 @@ cleanup( BMTraverseData *traverse_data, char *expression ) {
 			if (!data->sub[0]) fprintf( stderr, "/!data->sub[ 0 ]" ); }
 		if ((data->stack.flags)) fprintf( stderr, " data->stack.flags" );
 		if ((data->results)) fprintf( stderr, " data->results" );
-		if ((bm_lookup(data->ctx,"%|",data->db,0))) fprintf( stderr, " %%|" );
+		if ((bm_context_lookup(data->ctx,"%|"))) fprintf( stderr, " %%|" );
 		fprintf( stderr, "\n" );
 
 		freeListItem( &data->sub[ 1 ] );

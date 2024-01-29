@@ -97,8 +97,7 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 					args = args->next; }
 				fmt+=2; break;
 			default:
-				delta = charscan( fmt, &q );
-				if ( delta ) {
+				if (( delta=charscan( fmt, &q ) )) {
 					event = fgetc( stdin );
 					if ( event==EOF ) goto RETURN;
 					else if ( event!=q.value ) {
@@ -203,8 +202,7 @@ bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 					args = args->next; }
 				fmt+=2; break;
 			default:
-				delta = charscan( fmt, &q );
-				if ( delta ) {
+				if (( delta=charscan( fmt, &q ) )) {
 					fprintf( stream, "%c", q.value );
 					fmt += delta; }
 				else fmt++; } } }
@@ -229,9 +227,9 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 */ {
 	// special case: single quote & type 's' or '$'
 	if ( *arg=='\'' && type!=DEFAULT_TYPE ) {
-		char_s q;
-		if ( charscan( arg+1, &q ) )
+		for ( char_s q; charscan( arg+1, &q ); ) {
 			fprintf( stream, "%c", q.value );
+			break; }
 		return 0; }
 
 	OutputData data = { stream, type, 1, NULL };

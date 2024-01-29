@@ -27,6 +27,7 @@ void		db_deprecate( CNInstance *, CNDB * );
 void		db_clear( listItem *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );
 int		db_match( CNInstance *, CNDB *, CNInstance *, CNDB * );
+int		db_match_identifier( CNInstance *, char * );
 CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_unassign( CNInstance *, CNDB * );

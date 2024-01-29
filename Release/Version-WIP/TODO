@@ -1,6 +1,8 @@
 See Also: design/story/interactive.story
 TODO
-	. String and UBE => bm_inform: how does it work?
+	. on ~(_?_) < %% is allowed (as EENO)
+		=> %<?> resp %<!> could be deprecated
+		=> must verify when instantiating EENOV and %< is %%
 	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
@@ -15,6 +17,13 @@ TODO
 	     alternative is to parse the whole arena
 
 DONE
+	. Shared entities comparison/translation/transposition [DONE]
+		database.c: outputf - DBIdentifier(e)
+			    db_match => bm_arena_compare()
+		cell.c: bm_inform => bm_arena_transpose()
+			bm_intake => bm_arena_translate()
+		eenov.c: identifier_CB => db_match_identifier( x, p )
+		context.c: bm_match => db_match_identifier( x, p )
 	. re-fixed "?:" in eeno_query => using wildcard_CB to skip "?:"
 	. moved bm_inform() and bm_intake() from context.c to cell.c
 	. NOTE: do :_:!! |{ here %| is *^^, not the whole set of UBE's }
@@ -159,9 +168,6 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
-	. on ~(_?_) < %% is allowed (as EENO)
-		=> %<?> resp %<!> could be deprecated
-		=> must verify when instantiating EENOV and %< is %%
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. TBD: query.c: non-pivot case: shared entities not traversed

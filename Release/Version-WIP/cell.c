@@ -215,6 +215,8 @@ bm_inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
 		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
 			CNEntity *that = DBProxyThat( e );
 			instance = proxy_that( that, dst, db_dst, 1 ); }
+		else if ( isRef(e) )
+			instance = bm_arena_transpose( e, db_dst );
 		else {
 			char *p = DBIdentifier( e );
 			instance = db_register( p, db_dst ); }
@@ -274,6 +276,8 @@ bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
 		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
 			CNEntity *that = DBProxyThat( x );
 			instance = proxy_that( that, dst, db_dst, 0 ); }
+		else if ( isRef(x) )
+			instance = bm_arena_translate( x, db_dst );
 		else {
 			char *p = DBIdentifier( x );
 			instance = db_lookup( 0, p, db_dst ); }

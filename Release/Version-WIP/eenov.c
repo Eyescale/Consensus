@@ -16,15 +16,7 @@
 
 BMTraverseCBSwitch( eenov_traversal )
 case_( identifier_CB )
-	CNInstance *x = data->instance;
-	int success = 0;
-	if ( !x->sub[0] ) {
-		char *identifier = DBIdentifier( x );
-		char_s q;
-		switch ( *p ) {
-		case '/': success = !strcomp( p, identifier, 2 ); break;
-		case '\'': success = charscan(p+1,&q) && !strcomp( q.s, identifier, 1 ); break;
-		default: success = !strcomp( p, identifier, 1 ); } }
+	int success = db_match_identifier( data->instance, p );
 	data->success = is_f( NEGATED ) ? !success : success;
 	_break
 case_( open_CB )
