@@ -62,7 +62,7 @@ case_( register_variable_CB )
 	case '%': mark = SELF; break;
 	case '@': mark = ACTIVE; break;
 	case '<': mark = EENOK; break;
-	default: _break; }
+	case '|': mark = PMARK; break; }
 	if CHECK( mark )
 		_return( 2 )
 	_break
