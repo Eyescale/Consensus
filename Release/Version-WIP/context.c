@@ -12,6 +12,11 @@
 //===========================================================================
 //	actualize_traversal
 //===========================================================================
+/*
+	invokes actualize_param() on each .param found in expression, plus
+	sets context's perso to context's (self,perso) in case of varargs.
+	Note that we do not enter negated, starred or %(...) expressions
+*/
 #include "actualize_traversal.h"
 typedef struct {
 	CNInstance *instance;
@@ -23,12 +28,6 @@ typedef struct {
 static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
 
 BMTraverseCBSwitch( actualize_traversal )
-/*
-	invokes actualize_param() on each .param found in expression, plus
-	sets context's perso to context's (self,perso) in case of varargs.
-	Note that we do not enter negated, starred or %(...) expressions
-	Note also that the caller is expected to reorder the list of exponents
-*/
 case_( sub_expression_CB ) // provision
 	_prune( BM_PRUNE_FILTER, p+1 )
 case_( dot_expression_CB )
@@ -82,11 +81,11 @@ actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *c
 			while (( e=CNSUB(instance,0) )) instance = e;
 			goto RETURN; } }
 	// General case
-	listItem *xpn = NULL;
+	listItem *xpn = NULL; // reorder exponent
 	for ( listItem *i=exponent; i!=NULL; i=i->next )
 		addItem( &xpn, i->ptr );
-	int exp;
-	while (( exp=pop_item( &xpn ) )) instance = instance->sub[ exp& 1 ];
+	for ( int exp;( exp=pop_item( &xpn ) );)
+		instance = instance->sub[ exp& 1 ];
 RETURN:
 	registryRegister( BMContextLocales(ctx), p, instance ); }
 
@@ -280,6 +279,9 @@ flush_perso( listItem *stack ) {
 //===========================================================================
 //	bm_mark
 //===========================================================================
+/*
+	return mark:[ type, xpn ] if found in expression < src
+*/
 Pair *
 bm_mark( char *expression, char *src ) {
 	int type = 0;
@@ -317,7 +319,6 @@ bm_mark( char *expression, char *src ) {
 //===========================================================================
 //	bm_context_mark / bm_context_unmark
 //===========================================================================
-static inline Pair * mark_pair( Pair *, CNInstance *, CNInstance * );
 /*
 	MarkData can be - depending on type=data->mark->type
 	if (( type&EENOK )&&( type&AS_PER )) // <<<< per expression < src >>>>
@@ -330,6 +331,8 @@ static inline Pair * mark_pair( Pair *, CNInstance *, CNInstance * );
 	else // <<<< on expression >>>>
 		[ mark:[ type, xpn ], match.list: instance ]
 */
+static inline Pair * mark_pair( Pair *, CNInstance *, CNInstance * );
+
 void
 bm_context_mark( BMContext *ctx, MarkData *data ) {
 	CNInstance *instance, *proxy;
@@ -375,18 +378,18 @@ bm_context_unmark( BMContext *ctx, MarkData *data ) {
 //---------------------------------------------------------------------------
 //	mark_pair
 //---------------------------------------------------------------------------
-static inline CNInstance * mark_sub( CNInstance *, listItem * );
-
-static inline Pair *
-mark_pair( Pair *mark, CNInstance *x, CNInstance *proxy )
 /*
 	Assumption: mark is not NULL
 	However: x may be NULL, in which case we have type.value==EENOK
 	Use cases:	on . < ?
 			on init < ?
 			on exit < ?
-	Note: we may have type.value==EENOK and x not NULL
-*/ {
+	Note: we may also have type.value==EENOK and x not NULL
+*/
+static inline CNInstance * mark_sub( CNInstance *, listItem * );
+
+static inline Pair *
+mark_pair( Pair *mark, CNInstance *x, CNInstance *proxy ) {
 	int type = cast_i( mark->name );
 	listItem *xpn = mark->value;
 	CNInstance *y;
@@ -457,6 +460,153 @@ bm_reset_mark( BMContext *ctx, char *p, void *value ) {
 		default:
 			entry->value = value; } } }
 
+//===========================================================================
+//	bm_lookup / lookup_mark
+//===========================================================================
+static inline void * lookup_mark( BMContext *, char *, int *rv );
+
+void *
+bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
+	// lookup first in ctx registry
+	int rv = 1;
+	void *rvv = lookup_mark( ctx, p, &rv );
+	switch ( rv ) {
+	case 0: break; // not a register variable
+	case 2: return eenov_lookup( ctx, db, p );
+	default: return rvv; }
+
+	// not a register variable
+	if ( !strncmp( p, "(:", 2 ) ) {
+		CNInstance *star = db_lookup( 0, "*", db );
+		CNInstance *self = BMContextSelf( ctx );
+		return (( star ) ? cn_instance( star, self, 0 ) : NULL ); }
+	else if ( !is_separator( *p ) ) {
+		Registry *locales = BMContextLocales( ctx );
+		Pair *entry = registryLookup( locales, p );
+		if (( entry )) return entry->value; }
+
+	// not found in ctx registry
+	if (( db )) {
+		switch ( *p ) {
+		case '\'': ; // looking up single character identifier instance
+			for ( char_s q; charscan( p+1, &q ); )
+				return db_lookup( privy, q.s, db );
+			return NULL;
+		default:
+			return db_lookup( privy, p, db ); } }
+	return NULL; }
+
+static inline void *
+lookup_mark( BMContext *ctx, char *p, int *rv ) {
+	Pair *entry;
+	listItem *i;
+	switch ( *p ) {
+	case '%':
+		switch ( p[1] ) {
+		case '?':
+			entry = registryLookup( ctx, "?" );
+			if (( i=entry->value ))
+				return ((Pair *) i->ptr )->value;
+			else {	return NULL; }
+		case '!':
+			entry = registryLookup( ctx, "?" );
+			if (( i=entry->value ))
+				return ((Pair *) i->ptr )->name;
+			else {	return NULL; }
+		case '%':
+			return BMContextSelf( ctx );
+		case '<':
+			*rv = 2;
+			return NULL;
+		case '@':
+			*rv = 3;
+			return BMContextActive( ctx )->value;
+		case '|': ;
+			entry = registryLookup( ctx, "|" );
+			if (( i=entry->value )) {
+				*rv = 3;
+				return i->ptr; }
+			else {	return NULL; } }
+		break;
+	case '^':
+		if ( p[1]=='^' ) {
+			entry = registryLookup( ctx, "^^" );
+			if (( entry )) {
+				return ((Pair *)(entry->value))->name; }
+			else {	return NULL; }
+		break;
+	case '*':
+		if ( p[1]!='^' ) break;
+		switch ( p[2] ) {
+		case '^':
+			entry = registryLookup( ctx, "^^" );
+			if (( entry )) {
+				return ((Pair *)(entry->value))->value; }
+			else {	return NULL; }
+		case '?':
+			p+=3; // skip '*^?'
+			entry = registryLookup( ctx, "?" );
+			if (!( i=entry->value )) return NULL;
+			CNInstance *e = ((Pair *) i->ptr )->value;
+			entry = registryLookup( ctx, "^*" );
+			if ( !entry ) return NULL;
+			Registry *buffer = entry->value;
+			entry = registryLookup( buffer, e );
+			if ( !entry ) return NULL;
+			if ( *p==':' ) {
+				listItem *xpn = subx( p+1 );
+				e = xsub( e, xpn );
+				freeListItem( &xpn ); }
+			return e; }
+	case '.':
+		return ( p[1]=='.' ) ?
+			BMContextParent( ctx ) :
+			BMContextPerso( ctx ); }
+
+	*rv = 0; // not a register variable
+	return NULL; }
+
+//===========================================================================
+//	bm_match
+//===========================================================================
+int
+bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
+	// lookup & match first in ctx registry
+	int rv = 1;
+	void *rvv = lookup_mark( ctx, p, &rv );
+	switch ( rv ) {
+	case 0: break; // not a register variable
+	case 1: return db_match( x, db_x, rvv, db );
+	case 2: return eenov_match( ctx, p, x, db_x );
+	case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
+			if ( db_match( x, db_x, i->ptr, db ) )
+				return 1;
+		return 0; }
+
+	// not a register variable
+	if ( !strncmp( p, "(:", 2 ) ) {
+		if ( db==db_x )
+			return DBStarMatch( x->sub[ 0 ] ) &&
+				x->sub[ 1 ]==BMContextSelf( ctx );
+		else
+			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
+				"\t\t(%s\n\t<<<<< not supported in EENO\n", p );
+		return 0; }
+	else if ( db==db_x && !is_separator( *p ) ) {
+		Registry *locales = BMContextLocales( ctx );
+		Pair *entry = registryLookup( locales, p );
+		if (( entry )) return x==entry->value; }
+
+	// not found in ctx registry
+	if (( x->sub[0] )) return 0; // not a base entity
+	char *identifier = DBIdentifier( x );
+	switch ( *p ) {
+		case '\'':
+			for ( char_s q; charscan( p+1, &q ); )
+				return !strcomp( q.s, identifier, 1 );
+			return 0;
+		case '/': return !strcomp( p, identifier, 2 );
+		default: return !strcomp( p, identifier, 1 ); } }
 
 //===========================================================================
 //	bm_register / bm_register_locale
@@ -504,264 +654,6 @@ bm_register_locale( BMContext *ctx, char *p ) {
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
 	return 1; }
-
-//===========================================================================
-//	bm_lookup / bm_match
-//===========================================================================
-static inline void * lookup_rv( BMContext *, char *, int *rv );
-
-void *
-bm_lookup( BMContext *ctx, char *p, CNDB *db, int privy ) {
-	// lookup first in ctx registry
-	int rv = 1;
-	void *rvv = lookup_rv( ctx, p, &rv );
-	if ( rv ) return rv==2 ? eenov_lookup( ctx, db, p ) : rvv;
-
-	if ( !strncmp( p, "(:", 2 ) ) {
-		CNInstance *star = db_lookup( 0, "*", db );
-		CNInstance *self = BMContextSelf( ctx );
-		return (( star ) ? cn_instance( star, self, 0 ) : NULL ); }
-
-	if ( !is_separator( *p ) ) {
-		Registry *locales = BMContextLocales( ctx );
-		Pair *entry = registryLookup( locales, p );
-		if (( entry )) return entry->value; }
-
-	if (( db )) {
-		// not found in ctx registry
-		switch ( *p ) {
-		case '\'': ; // looking up single character identifier instance
-			char_s q;
-			if ( charscan( p+1, &q ) )
-				return db_lookup( privy, q.s, db );
-			return NULL;
-		default:
-			return db_lookup( privy, p, db ); } }
-	return NULL; }
-
-static inline int
-	match_rv( char *, BMContext *, CNDB *, CNInstance *, CNDB *, int * );
-int
-bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
-	// lookup & match first in ctx registry
-	int rv = 1;
-	int rvm = match_rv( p, ctx, db, x, db_x, &rv );
-	if (( rv )) return rvm;
-	if ( !strncmp( p, "(:", 2 ) ) {
-		if ( db==db_x )
-			return DBStarMatch( x->sub[ 0 ] ) &&
-				x->sub[ 1 ]==BMContextSelf( ctx );
-		else
-			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
-				"\t\t(%s\n\t<<<<< not supported in EENO\n", p );
-		return 0; }
-	if ( db==db_x && !is_separator( *p ) ) {
-		Registry *locales = BMContextLocales( ctx );
-		Pair *entry = registryLookup( locales, p );
-		if (( entry )) return x==entry->value; }
-	// not found in ctx
-	if (( x->sub[0] )) return 0; // not a base entity
-	char *identifier = DBIdentifier( x );
-	switch ( *p ) {
-		case '\'':
-			for ( char_s q; charscan( p+1, &q ); )
-				return !strcomp( q.s, identifier, 1 );
-			return 0;
-		case '/': return !strcomp( p, identifier, 2 );
-		default: return !strcomp( p, identifier, 1 ); } }
-
-static inline int
-match_rv( char *p, BMContext *ctx, CNDB *db, CNInstance *x, CNDB *db_x, int *rv ) {
-	void *candidate = lookup_rv( ctx, p, rv );
-	switch ( *rv ) {
-	case 1: return db_match( x, db_x, candidate, db );
-	case 2: return eenov_match( ctx, p, x, db_x );
-	case 3:
-		for ( listItem *i=candidate; i!=NULL; i=i->next )
-			if ( db_match( x, db_x, i->ptr, db ) )
-				return 1; }
-	return 0; }
-
-static inline void *
-lookup_rv( BMContext *ctx, char *p, int *rv ) {
-	Pair *entry;
-	listItem *i;
-	switch ( *p ) {
-	case '%':
-		switch ( p[1] ) {
-		case '?':
-			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->value;
-			return NULL;
-		case '!':
-			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->name;
-			return NULL;
-		case '%':
-			return BMContextSelf( ctx );
-		case '<':
-			*rv = 2;
-			return NULL;
-		case '|': ;
-			entry = registryLookup( ctx, "|" );
-			if (( i=entry->value )) {
-				*rv = 3; return i->ptr; }
-			return NULL;
-		case '@':
-			*rv = 3;
-			return BMContextActive( ctx )->value; }
-		break;
-	case '^':
-		if ( p[1]=='^' ) {
-			entry = registryLookup( ctx, "^^" );
-			if ( !entry ) return NULL;
-			return ((Pair *)(entry->value))->name; }
-		break;
-	case '*':
-		if ( p[1]=='^' ) {
-			switch ( p[2] ) {
-			case '^':
-				entry = registryLookup( ctx, "^^" );
-				if ( !entry ) return NULL;
-				return ((Pair *)(entry->value))->value;
-			case '?':
-				p+=3; // skip '*^?'
-				entry = registryLookup( ctx, "?" );
-				if (!( i=entry->value )) return NULL;
-				CNInstance *e = ((Pair *) i->ptr )->value;
-				entry = registryLookup( ctx, "^*" );
-				if ( !entry ) return NULL;
-				Registry *buffer = entry->value;
-				entry = registryLookup( buffer, e );
-				if ( !entry ) return NULL;
-				if ( *p==':' ) {
-					listItem *xpn = subx( p+1 );
-					e = xsub( e, xpn );
-					freeListItem( &xpn ); }
-				return e; } }
-		break;
-	case '.':
-		return ( p[1]=='.' ) ?
-			BMContextParent( ctx ) :
-			BMContextPerso( ctx ); }
-
-	*rv = 0; // not a register variable
-	return NULL; }
-
-//===========================================================================
-//	bm_inform
-//===========================================================================
-static inline CNInstance * inform( BMContext *, CNInstance *, CNDB * );
-
-void *
-bm_inform( int list, BMContext *dst, void *data, CNDB *db_src ) {
-	if ( list ) {
-		listItem **instances = data;
-		listItem *results = NULL;
-		for ( CNInstance *e;( e = popListItem(instances) ); ) {
-			e = inform( dst, e, db_src );
-			if (( e )) addItem( &results, e ); }
-		return results; }
-	else
-		return inform( dst, data, db_src ); }
-
-static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
-static inline CNInstance *
-inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
-	if ( !e ) return NULL;
-	CNDB *db_dst = BMContextDB( dst );
-	if ( db_dst==db_src ) return e;
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(e,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, e );
-			e = e->sub[ ndx ];
-			ndx = 0; continue; }
-		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
-			CNEntity *that = DBProxyThat( e );
-			instance = proxy_that( that, dst, db_dst, 1 ); }
-		else {
-			char *p = DBIdentifier( e );
-			instance = db_register( p, db_dst ); }
-		if ( !instance ) break;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			e = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = db_instantiate( f, instance, db_dst );
-				if ( !instance ) goto FAIL; }
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	return NULL; }
-
-static inline CNInstance *
-proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
-/*
-	look for proxy: (( this, that ), NULL ) where
-		this = BMContextCell( ctx )
-*/ {
-	if ( !that ) return NULL;
-
-	CNEntity *this = BMContextCell( ctx );
-	if ( this==that )
-		return BMContextSelf( ctx );
-
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		// Assumption: there is at most one ((this,~NULL), . )
-		if ( connection->sub[ 1 ]==that )
-			return connection->as_sub[ 0 ]->ptr; }
-
-	return ( inform ? new_proxy(this,that,db) : NULL ); }
-
-//===========================================================================
-//	bm_intake
-//===========================================================================
-CNInstance *
-bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
-	if ( !x ) return NULL;
-	if ( db_dst==db_x ) return x;
-
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(x,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, x );
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
-			CNEntity *that = DBProxyThat( x );
-			instance = proxy_that( that, dst, db_dst, 0 ); }
-		else {
-			char *p = DBIdentifier( x );
-			instance = db_lookup( 0, p, db_dst ); }
-		if ( !instance ) break;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			x = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = cn_instance( f, instance, 0 ); }
-				if ( !instance ) goto FAIL;
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	return NULL; }
 
 //===========================================================================
 //	newContext / freeContext

@@ -118,9 +118,10 @@ in_condition( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success && (mark) && (m=bm_mark(expression,NULL)) ) {
-		m->name = cast_ptr( as_per|cast_i(m->name) );
-		*mark = (MarkData *) newPair( m, found ); }
+	else if ( success && ( mark )) {
+		if (( m=bm_mark( expression, NULL ) )) {
+			m->name = cast_ptr( as_per|cast_i(m->name) );
+			*mark = (MarkData *) newPair( m, found ); } }
 #ifdef DEBUG
 	fprintf( stderr, "in_condition end\n" );
 #endif
@@ -158,8 +159,9 @@ on_event( char *expression, BMContext *ctx, MarkData **mark )
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if ( success==2 && (mark) && (m=bm_mark(expression,NULL)) )
-		*mark = (MarkData *) newPair( m, found );
+	else if ( success==2 && ( mark )) {
+		if (( m=bm_mark( expression, NULL ) )) {
+			*mark = (MarkData *) newPair( m, found ); } }
 #ifdef DEBUG
 	fprintf( stderr, "on_event end\n" );
 #endif
@@ -213,9 +215,13 @@ on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 	if ( negated ) {
 		success = !success;
 		release( as_per, found ); }
-	else if ( success && (mark) && (m=bm_mark((success==2?expression:NULL),src)) ) {
-		m->name = cast_ptr( as_per|cast_i(m->name)|EENOK );
-		*mark = (MarkData *) newPair( m, found ); }
+	else if ( success && ( mark )) {
+		switch ( success ) {
+		case 1: m = bm_mark( NULL, src ); break;
+		case 2: m = bm_mark( expression, src ); }
+		if (( m )) {
+			m->name = cast_ptr( as_per|cast_i(m->name)|EENOK );
+			*mark = (MarkData *) newPair( m, found ); } }
 #ifdef DEBUG
 	fprintf( stderr, "on_event_x end\n" );
 #endif

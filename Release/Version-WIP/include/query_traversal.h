@@ -5,8 +5,8 @@
 
 static BMTraversal query_traversal;
 #define case_( CB ) \
-	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		BMQueryData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+	BMQueryData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,

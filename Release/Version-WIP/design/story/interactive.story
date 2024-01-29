@@ -24,12 +24,13 @@ Description
 
 	The System's Requirements Specifications process involves identifying,
 	for each occurrence
-		. the referent, i.e. the cosystem for which this occurrence
-		  represents a condition ON|OFF
-		. the ON|OFF set of triggers, each trigger composed of
-			its triggering set of occurrences ON|OFF (events)
-			its enabling set of guards, each guard composed of
-				its defining set of occurrences ON|OFF (conditions)
+
+	. the referent, i.e. the cosystem for which this occurrence
+	  represents a condition ON|OFF
+	. the ON|OFF set of triggers, each trigger composed of
+		its triggering set of occurrences ON|OFF (events)
+		its enabling set of guards, each guard composed of
+			its defining set of occurrences ON|OFF (conditions)
 
 Data Model
 	We use the following Data Model when the System is in execution,

@@ -23,12 +23,10 @@ listItem *	bm_push_mark( BMContext *, char *, void * );
 void		bm_pop_mark( BMContext *, char * );
 void		bm_reset_mark( BMContext *, char *, void * );
 
-CNInstance *	bm_register( BMContext *, char *, CNDB * );
-int		bm_register_locale( BMContext *, char * );
 void *		bm_lookup( BMContext *, char *, CNDB *, int );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
-void *		bm_inform( int, BMContext *, void *, CNDB * );
-CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
+CNInstance *	bm_register( BMContext *, char *, CNDB * );
+int		bm_register_locale( BMContext *, char * );
 
 BMContext *	newContext( CNEntity *cell );
 void		freeContext( BMContext * );

@@ -36,7 +36,7 @@ CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 
 static inline int isRef( CNInstance *e ) {
-	return ( ((Pair*) e->sub[1])->value!=e ); }
+	return ( ((Pair*) e->sub[ 1 ])->value!=e ); }
 static inline char * DBIdentifier( CNInstance *e ) {
 	return (char *) ((Pair*) e->sub[ 1 ])->name; }
 static inline int DBStarMatch( CNInstance *e ) {

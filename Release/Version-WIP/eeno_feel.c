@@ -115,6 +115,7 @@ bm_eeno_feel( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 	fprintf( stderr, "bm_eeno_feel: success=%d\n", !!success );
 #endif
 	return success; }
+
 //---------------------------------------------------------------------------
 //	eeno_feel_assignment
 //---------------------------------------------------------------------------

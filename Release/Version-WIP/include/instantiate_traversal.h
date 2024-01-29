@@ -5,8 +5,8 @@
 
 static BMTraversal instantiate_traversal;
 #define case_( CB ) \
-	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		InstantiateData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+	InstantiateData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	filter_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB, open_CB,

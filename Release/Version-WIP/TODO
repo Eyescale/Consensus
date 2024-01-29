@@ -1,31 +1,30 @@
 See Also: design/story/interactive.story
 TODO
-	. Q: register shared entities in context ?
-		=> allows bm_query to parse them if no pivot
-		=> deregister cell's "_" and UBE from story->arena
-	  alternative would be to parse arena
-	. Test B% UBE & strings interface
-	  in particular: Test string sub-narratives
+	. String and UBE => bm_inform: how does it work?
+	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
-	. NTH: do "occurrence" | ...
-		requires own stringLookup/stringRegister in bm_arena_register()
-		as we only want to compare what is inside "_"
 	. NTH: errors / warnings => should ALL be in color... => centralize?
-	. NTH: query, scan, feel, etc. should take &p as argument, so that
-	       on return we have p = post-expression
+	. NTH: do "occurrence" | ...
+		requires own stringRegister/stringLookup in bm_arena_register()
+		as we only want to compare what is inside "_"
+	. Q: register shared entities in context ?
+		=> deregister cell's "_" and UBE from story->arena
+		=> allows bm_query to parse them if no pivot
+	     alternative is to parse the whole arena
 
 DONE
-	. NOTE: do :_:!! |{ here %| means *^^, not the whole set of UBE's }
+	. moved bm_inform() and bm_intake() from context.c to cell.c
+	. NOTE: do :_:!! |{ here %| is *^^, not the whole set of UBE's }
 	. implement ^^ and *^^ and *^?:sub (including *^?)
-	  in inform_carry and inform_UBE we do
+	  in instantiate.c: inform_carry and inform_UBE, we do
 		registryRegister( ctx, "*^", (Registry *) buffer );
 		for ( ... ) { // where current is entry in buffer
 			registryRegister( ctx, "^^", (Pair *) current ); }
 	  in include/traversal_template.h, we associate
 		^^  			=> CB_RegisterVariableCB
-		*^^ and *^(_) and *^.	=> CB_DereferenceCB
+		*^^ / *^?:(_) / *^?	=> CB_DereferenceCB
 	  *^_ is only authorized as term in the actionable part of DO expressions
 		instantiate_traversal	=> collect_CB // DONE: bm_scan()
 	      where
@@ -37,7 +36,7 @@ DONE
 		locate_pivot_traversal.h	register_variable_CB // DONE: EYEYE
 		query_traversal.h		match_CB // DONE: lookup_rv()
 	  Test ^^ *^^ and *^? *^?:(_)
-		cf Test/50_EYEYE-ube
+		cf Test/58_EYEYE-ube
 	. unrestricted ^^ - aka. EYEYE: generally means: current assignee
 	. instantiate.c: on "}|)," handle sub[ NDX ]==NULL
 		that is: pipe_bgn_CB, close_CB, end_set_CB, decouple_CB
@@ -159,9 +158,12 @@ DONE
 	. branched Version-2.1
 
 OPEN ISSUES
-	. BUG: instantiate.c/term_CB
-		if ( p_filtered(p) ) never passes but code must remain (why?)
-	. ISSUE: query.c: non-pivot case: shared entities not traversed
+	. on ~(_?_) < %% is allowed (as EENO)
+		=> %<?> resp %<!> could be deprecated
+		=> must verify when instantiating EENOV and %< is %%
+	. do :< a, b >: ({1,2},3)
+		=> wrong order of assignment
+	. TBD: query.c: non-pivot case: shared entities not traversed
 		=> bug or feature?
 	. TBD: should I call bm_arena_register directly from parser?
 		=> need story always: bm_read, bm_load<<<
@@ -170,21 +172,10 @@ OPEN ISSUES
 		2. can replace "_" with "&address in expression
 		the question being: is address entry?
 		but the point is: indexed by address => no strcmp
-	. do :< a, b >: ({1,2},3)
-		=> wrong order of assignment
-	. on ~(_?_) < %% is allowed (as EENO)
-		=> %<?> resp %<!> could be deprecated
-		=> must verify when instantiating EENOV and %< is %%
-	. instantiate.c
-		scream if partial instantiation did occur
-	. eliminate term_CB - no filtering unles %_ or *_ or ~_ (parser.c)
-	  1. instantiate.c => check first how many cases there are do _:xxx
-	     special case: (_,~.) => want to handle it in traverse.c/Decouple
-	  2. eeno_feel.c => have to check somehow in parser if filtered
-		on expression:...	<<< forbidden
-	  find better word than PROTECTED => EXPOSED?
 
 NICE TO HAVE
+	. query, scan, feel, etc. could take &p as argument, so that
+	       on return we have p = post-expression
 	. replace ... with …
 	. extend do :_:_ | ... to ALL assignment operations, supporting
 		^^ = current assignee / *^^ = current value

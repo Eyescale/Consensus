@@ -73,9 +73,6 @@ case_( open_CB )
 	_break
 case_( close_CB )
 	listItem *instances;
-	BMContext *ctx = data->ctx;
-	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
 	if ( !data->sub[ 0 ] ) {
 		instances = data->sub[ 1 ];
 		data->sub[ 1 ] = NULL; }
@@ -85,6 +82,8 @@ case_( close_CB )
 		freeListItem( &data->sub[ 0 ] );
 		instances = NULL; }
 	else {
+		BMContext *carry = data->carry;
+		CNDB *db = (( carry )? BMContextDB(carry) : data->db );
 		instances = is_f(ELLIPSIS) ?
 			instantiate_xpan( data->sub, db ) :
 			instantiate_couple( data->sub, db );
@@ -95,10 +94,10 @@ case_( close_CB )
 		_prune( BM_PRUNE_LEVEL, p+1 ) }
 	if ( is_f(DOT) ) {
 		// case carry here handled in dot_expression_CB
-		CNInstance *perso = BMContextPerso( ctx );
+		CNInstance *perso = BMContextPerso( data->ctx );
 		data->sub[ 0 ] = newItem( perso );
 		data->sub[ 1 ] = instances;
-		instances = instantiate_couple( data->sub, db );
+		instances = instantiate_couple( data->sub, data->db );
 		freeListItem( &data->sub[ 0 ] );
 		freeListItem( &data->sub[ 1 ] ); }
 	if ( f_next & FIRST )
@@ -142,11 +141,7 @@ case_( activate_CB )
 	_break
 case_( collect_CB )
 	listItem *results = bm_scan( p, data->ctx );
-	if (( results )) {
-		BMContext *carry = data->carry;
-		data->sub[ NDX ] = ( (carry) ?
-			bm_inform( 1, carry, &results, data->db ) :
-			results ); }
+	data->sub[ NDX ] = bmListInform( data->carry, results, data->db );
 	_prune( BM_PRUNE_TERM, p )
 case_( decouple_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
@@ -203,22 +198,24 @@ case_( register_variable_CB )
 		sub = &data->sub[ NDX ];
 		listItem *xpn = ( p[2]=='^' ? subx(p+3) : NULL );
 		for ( listItem *i=found; i!=NULL; i=i->next )
-			if (( e=xsub(i->ptr,xpn) ))
-				addItem( sub, ((carry)?bm_inform(0,carry,e,db):e) );
+			if (( e=xsub(i->ptr,xpn) )) {
+				e = bm_inform( carry, e, db );
+				if (( e )) addItem( sub, e ); }
 		freeListItem( &xpn );
 		break;
 	case '@':
 		found = bm_context_lookup( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
 		sub = &data->sub[ NDX ];
-		for ( listItem *i=found; i!=NULL; i=i->next )
-			addItem( sub, ((carry)?bm_inform(0,carry,i->ptr,db):e) );
+		for ( listItem *i=found; i!=NULL; i=i->next ) {
+			e = bm_inform( carry, i->ptr, db );
+			if (( e )) addItem( sub, e ); }
 		break;
 	default:
 		e = bm_context_lookup( data->ctx, p );
-		if ( !e ) _prune( BM_PRUNE_LEVEL, p )
-		if (( carry )) e = bm_inform( 0, carry, e, db );
-		data->sub[ NDX ] = newItem( e ); }
+		e = bm_inform( carry, e, db );
+		if (( e )) data->sub[ NDX ] = newItem( e );
+		else _prune( BM_PRUNE_LEVEL, p ) }
 	_break
 case_( literal_CB )
 	/* We have	(:_sequence_:)
@@ -226,7 +223,7 @@ case_( literal_CB )
 		return p=*q ----------
 	*/
 	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
+	CNDB *db = (( carry )? BMContextDB(carry) : data->db );
 	CNInstance *e = instantiate_literal( q, db );
 	data->sub[ NDX ] = newItem( e );
 	_break
@@ -236,19 +233,16 @@ case_( list_CB )
 		     return p=*q ---------------
 	*/
 	BMContext *carry = data->carry;
-	data->sub[ 0 ] = ((carry) ?
+	data->sub[ 0 ] = (( carry )?
 		instantiate_list( q, data->sub, BMContextDB(carry) ) :
 		instantiate_list( q, data->sub, data->db ));
 	_break
 case_( dot_expression_CB )
 	BMContext *carry = data->carry;
-	if (( carry )) {
-		listItem *results = bm_scan( p, data->ctx );
-		if (( results )) {
-			for ( listItem *i=results; i!=NULL; i=i->next )
-				i->ptr = ((CNInstance *) i->ptr )->sub[ 1 ];
-			data->sub[ NDX ] = bm_inform( 1, carry, &results, data->db ); }
-		_prune( BM_PRUNE_LEVEL, p+1 ) }
+	if (( carry )) { // null-carry case handled in close_CB
+		listItem *results = bm_scan( p+1, data->ctx );
+		data->sub[ NDX ] = bmListInform( carry, results, data->db );
+		_prune( BM_PRUNE_TERM, p+1 ) }
 	_break
 case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;
@@ -256,8 +250,8 @@ case_( dot_identifier_CB )
 	CNDB *db = data->db;
 	CNInstance *e = NULL;
 	if (( carry )) {
-		if (( e = bm_context_lookup( ctx, p+1 ) ))
-			e = bm_inform( 0, carry, e, db ); }
+		if (( e=bm_context_lookup( ctx, p+1 ) ))
+			e = bm_inform( carry, e, db ); }
 	else {
 		CNInstance *perso = BMContextPerso( ctx );
 		e = bm_register( ctx, p+1, db );
@@ -266,7 +260,7 @@ case_( dot_identifier_CB )
 	_break
 case_( identifier_CB )
 	BMContext *carry = data->carry;
-	CNDB *db = ( (carry) ? BMContextDB(carry) : data->db );
+	CNDB *db = (( carry )? BMContextDB(carry) : data->db );
 	if (( carry )) {
 		CNInstance *e = bm_register( NULL, p, db );
 		data->sub[ NDX ] = newItem( e ); }

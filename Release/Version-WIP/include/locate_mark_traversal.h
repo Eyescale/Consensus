@@ -5,8 +5,8 @@
 
 static BMTraversal locate_mark_traversal;
 #define case_( CB ) \
-	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		LocateMarkData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+	LocateMarkData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	dereference_CB, dot_identifier_CB, sub_expression_CB, dot_expression_CB, open_CB,

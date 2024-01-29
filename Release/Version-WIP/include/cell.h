@@ -8,10 +8,23 @@
 
 typedef CNEntity CNCell;
 
-int bm_cell_read( CNCell **, CNStory * );
+int		bm_cell_read( CNCell **, CNStory * );
+CNCell *	newCell( Pair *entry, char *inipath );
+void		freeCell( CNCell * );
+void		bm_cell_operate( CNCell *, CNStory * );
+CNInstance *	bm_inform( BMContext *, CNInstance *, CNDB * );
+CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
+void		bm_cell_bond( CNCell *, CNCell *, CNInstance * );
 
-CNCell * newCell( Pair *entry, char *inipath );
-void freeCell( CNCell * );
+static inline listItem *
+bmListInform( BMContext *dst, listItem *instances, CNDB *db_src ) {
+	if ( !dst || !instances ) return instances;
+	listItem *results = NULL;
+	listItem **list = &instances;
+	for ( CNInstance *e;( e = popListItem(list) ); ) {
+		e = bm_inform( dst, e, db_src );
+		if (( e )) addItem( &results, e ); }
+	return results; }
 
 static inline Pair * BMCellEntry( CNCell *cell )
 	{ return (Pair *) ((Pair *) cell->sub[ 0 ] )->name; }
@@ -36,8 +49,6 @@ static inline void bm_cell_init( CNCell *cell ) {
 static inline int bm_cell_update( CNCell *cell, CNStory *story ) {
 	return bm_context_update( BMCellContext(cell), story ); }
 
-void bm_cell_operate( CNCell *, CNStory * );
-void bm_cell_bond( CNCell *, CNCell *, CNInstance * );
 
 
 #endif	// CELL_H

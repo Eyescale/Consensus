@@ -5,8 +5,8 @@
 
 static BMTraversal eeno_feel_traversal;
 #define case_( CB ) \
-	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		EENOFeelData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+	EENOFeelData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	filter_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB;

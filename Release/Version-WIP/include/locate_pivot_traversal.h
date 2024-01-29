@@ -5,8 +5,8 @@
 
 static BMTraversal locate_pivot_traversal;
 #define case_( CB ) \
-	} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-		LocatePivotData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
+	LocatePivotData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
 	not_CB, dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
