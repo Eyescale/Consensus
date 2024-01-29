@@ -7,7 +7,7 @@
 #include "deparameterize.h"
 #include "expression.h"
 #include "instantiate.h"
-#include "eeno_feel.h"
+#include "eeno_query.h"
 #include "scour.h"
 
 // #define DEBUG
@@ -171,9 +171,9 @@ on_event( char *expression, BMContext *ctx, MarkData **mark )
 //	on_event_x
 //===========================================================================
 typedef int ProxyTest( CNInstance *proxy );
-static inline void * test( int, ProxyTest *, listItem ** );
-static inline void * feel( int, int, char *, listItem **, BMContext * );
-static inline void release( int, void * );
+static inline void * eeno_test( int, ProxyTest *, listItem ** );
+static inline void * eeno_feel( int, int, char *, listItem **, BMContext * );
+static inline void eeno_release( int, void * );
 
 static int
 on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
@@ -196,25 +196,25 @@ on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 
 	Pair *found = NULL;
 	if ( !strncmp( expression, "init<", 5 ) ) {
-		found = test( as_per, bm_proxy_in, &proxies );
+		found = eeno_test( as_per, bm_proxy_in, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp( expression, "exit<", 5 ) ) {
-		found = test( as_per, bm_proxy_out, &proxies );
+		found = eeno_test( as_per, bm_proxy_out, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,".<",2) ) {
-		found = test( as_per, bm_proxy_active, &proxies );
+		found = eeno_test( as_per, bm_proxy_active, &proxies );
 		if (( found )) success = 1; }
 	else if ( !strncmp(expression,"~(",2) ) {
 		expression++;
-		found = feel( as_per, BM_RELEASED, expression, &proxies, ctx );
+		found = eeno_feel( as_per, BM_RELEASED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 	else {
-		found = feel( as_per, BM_INSTANTIATED, expression, &proxies, ctx );
+		found = eeno_feel( as_per, BM_INSTANTIATED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 
 	if ( negated ) {
 		success = !success;
-		release( as_per, found ); }
+		eeno_release( as_per, found ); }
 	else if ( success && ( mark )) {
 		switch ( success ) {
 		case 1: m = bm_mark( NULL, src ); break;
@@ -228,7 +228,7 @@ on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 	return success; }
 
 static inline void *
-test( int as_per, ProxyTest *func, listItem **proxies ) {
+eeno_test( int as_per, ProxyTest *func, listItem **proxies ) {
 	CNInstance *proxy;
 	if ( as_per ) {
 		listItem *results = NULL;
@@ -244,27 +244,27 @@ test( int as_per, ProxyTest *func, listItem **proxies ) {
 		return NULL; } }
 
 static inline void *
-feel( int as_per, int type, char *p, listItem **proxies, BMContext *ctx ) {
+eeno_feel( int as_per, int type, char *p, listItem **proxies, BMContext *ctx ) {
 	CNInstance *proxy;
 	void *found;
 	if ( as_per ) {
 		listItem *results = NULL;
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_eeno_feel( type|BM_AS_PER, p, proxy, ctx );
+			found = bm_eeno_query( type|BM_AS_PER, p, proxy, ctx );
 			if (( found )) {
 				Pair *batch = newPair( found, proxy );
 				addItem( &results, batch ); } }
 		return results; }
 	else {
 		while (( proxy = popListItem(proxies) )) {
-			found = bm_eeno_feel( type, p, proxy, ctx );
+			found = bm_eeno_query( type, p, proxy, ctx );
 			if (( found )) {
 				freeListItem( proxies );
 				return newPair( found, proxy ); } }
 		return NULL; } }
 
 static inline void
-release( int as_per, void *found ) {
+eeno_release( int as_per, void *found ) {
 	Pair *batch;
 	if (( found )) {
 		if ( as_per ) {

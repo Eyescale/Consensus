@@ -2,16 +2,16 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "eeno_feel.h"
+#include "eeno_query.h"
 #include "eenov.h"
 #include "cell.h"
 
 // #define DEBUG
 
 //===========================================================================
-//	eeno_feel_traversal
+//	eeno_query_traversal
 //===========================================================================
-#include "eeno_feel_traversal.h"
+#include "eeno_query_traversal.h"
 typedef struct {
 	BMContext *ctx;
 	CNDB *db_x;
@@ -21,7 +21,7 @@ typedef struct {
 
 static inline CNInstance * proxy_verify( char *, EENOFeelData * );
 
-BMTraverseCBSwitch( eeno_feel_traversal )
+BMTraverseCBSwitch( eeno_query_traversal )
 case_( filter_CB )
 	fprintf( stderr, ">>>>> B%%: Warning: EENO filtered in expression\n"
 		"\t\ton/per _%s\n\t<<<<< filter ignored\n", p );
@@ -66,14 +66,14 @@ proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BM_CONTINUE; }
 
 //===========================================================================
-//	bm_eeno_feel
+//	bm_eeno_query
 //===========================================================================
-static void * eeno_feel_assignment( CNInstance *, int, char *, BMTraverseData * );
+static void * eeno_query_assignment( CNInstance *, int, char *, BMTraverseData * );
 
 void *
-bm_eeno_feel( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
+bm_eeno_query( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 #ifdef DEBUG
-	fprintf( stderr, "bm_eeno_feel: %s\n", expression );
+	fprintf( stderr, "bm_eeno_query: %s\n", expression );
 #endif
 	CNEntity *cell = DBProxyThat( proxy );
 	CNDB *db_x = BMContextDB( BMCellContext(cell) );
@@ -93,14 +93,14 @@ bm_eeno_feel( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 	traverse_data.stack = &data.stack.flags;
 	traverse_data.done = 0;
 	if ( *expression==':' ) {
-		success = eeno_feel_assignment( proxy, as_per, expression, &traverse_data ); }
+		success = eeno_query_assignment( proxy, as_per, expression, &traverse_data ); }
 	else {
 		if ( !strncmp( expression, "?:", 2 ) )
 			expression += 2;
 		listItem *s = NULL;
 		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
 			data.x = e;
-			eeno_feel_traversal( expression, &traverse_data, FIRST );
+			eeno_query_traversal( expression, &traverse_data, FIRST );
 			if ( traverse_data.done==2 ) {
 				freeListItem( &data.stack.flags );
 				freeListItem( &data.stack.x );
@@ -112,15 +112,15 @@ bm_eeno_feel( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 				success = e;
 				break; } } }
 #ifdef DEBUG
-	fprintf( stderr, "bm_eeno_feel: success=%d\n", !!success );
+	fprintf( stderr, "bm_eeno_query: success=%d\n", !!success );
 #endif
 	return success; }
 
 //---------------------------------------------------------------------------
-//	eeno_feel_assignment
+//	eeno_query_assignment
 //---------------------------------------------------------------------------
 static void *
-eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data ) {
+eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data ) {
 	EENOFeelData *data = traverse_data->user_data;
 	CNDB *db_x = data->db_x;
 	CNInstance *star = db_lookup( 2, "*", db_x );
@@ -165,7 +165,7 @@ eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTravers
 				continue;
 			// here we have g:((.,that),.)=>=proxy-Self
 			data->x = e->sub[ 1 ];
-			eeno_feel_traversal( expression, traverse_data, FIRST );
+			eeno_query_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -197,7 +197,7 @@ eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTravers
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
 			data->x = e->sub[ 1 ];
-			eeno_feel_traversal( expression, traverse_data, FIRST );
+			eeno_query_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -219,7 +219,7 @@ eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTravers
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
-			eeno_feel_traversal( expression, traverse_data, FIRST );
+			eeno_query_traversal( expression, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
@@ -227,7 +227,7 @@ eeno_feel_assignment( CNInstance *proxy, int as_per, char *expression, BMTravers
 				continue; }
 			data->x = e->sub[ 1 ];
 			traverse_data->done = 0;
-			eeno_feel_traversal( value, traverse_data, FIRST );
+			eeno_query_traversal( value, traverse_data, FIRST );
 			if ( traverse_data->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );

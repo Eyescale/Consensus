@@ -533,7 +533,7 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 			entry = registryLookup( ctx, "^^" );
 			if (( entry )) {
 				return ((Pair *)(entry->value))->name; }
-			else {	return NULL; }
+			else {	return NULL; } }
 		break;
 	case '*':
 		if ( p[1]!='^' ) break;

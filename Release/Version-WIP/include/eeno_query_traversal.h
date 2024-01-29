@@ -1,9 +1,9 @@
-#ifndef EENO_FEEL_TRAVERSAL_H
-#define EENO_FEEL_TRAVERSAL_H
+#ifndef EENO_QUERY_TRAVERSAL_H
+#define EENO_QUERY_TRAVERSAL_H
 
 #include "traversal.h"
 
-static BMTraversal eeno_feel_traversal;
+static BMTraversal eeno_query_traversal;
 #define case_( CB ) \
 } static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
 	EENOFeelData *data = traverse_data->user_data; char *p = *q;
@@ -30,4 +30,4 @@ static BMTraverseCB
 #include "traversal_template.h"
 
 
-#endif	// EENO_FEEL_TRAVERSAL_H
+#endif	// EENO_QUERY_TRAVERSAL_H
