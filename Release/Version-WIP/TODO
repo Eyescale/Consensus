@@ -15,6 +15,7 @@ TODO
 	     alternative is to parse the whole arena
 
 DONE
+	. re-fixed "?:" in eeno_query => using wildcard_CB to skip "?:"
 	. moved bm_inform() and bm_intake() from context.c to cell.c
 	. NOTE: do :_:!! |{ here %| is *^^, not the whole set of UBE's }
 	. implement ^^ and *^^ and *^?:sub (including *^?)

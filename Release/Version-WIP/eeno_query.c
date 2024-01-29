@@ -39,7 +39,8 @@ case_( open_CB )
 		else _return( 2 ) }
 	_break
 case_( decouple_CB )
-	data->x = ((CNInstance *) data->stack.x->ptr )->sub[ 1 ];
+	CNInstance *x = data->stack.x->ptr;
+	data->x = x->sub[ 1 ];
 	_break
 case_( close_CB )
 	if is_f( COUPLE )
@@ -50,6 +51,10 @@ case_( identifier_CB )
 	CNDB *db = BMContextDB( ctx );
 	if ( !bm_match( ctx, db, p, data->x, data->db_x ) )
 		_return( 2 )
+	_break
+case_( wildcard_CB )
+	if ( !strncmp( p, "?:", 2 ) )
+		_continue( p+2 )
 	_break
 BMTraverseCBEnd
 
@@ -95,8 +100,6 @@ bm_eeno_query( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
 	if ( *expression==':' ) {
 		success = eeno_query_assignment( proxy, as_per, expression, &traverse_data ); }
 	else {
-		if ( !strncmp( expression, "?:", 2 ) )
-			expression += 2;
 		listItem *s = NULL;
 		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
 			data.x = e;
