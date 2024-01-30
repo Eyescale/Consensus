@@ -13,6 +13,7 @@ TODO
 	     alternative is to parse the whole arena
 
 DONE
+	. bm_arena_register: manifest new instantiated entities
 	. string sub-narratives
 		cf. Test/59_string-sub-narrative
 	  Note: ultimately strings will be allocated in B% process arena,

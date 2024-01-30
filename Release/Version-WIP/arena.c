@@ -52,6 +52,8 @@ bm_arena_register( Registry *arena, char *s, CNDB *db )
 		e = cn_new( NULL, NULL );
 		e->sub[ 1 ] = (CNInstance *) newPair( NULL, ref );
 		registryRegister( ref, db, e ); }
+
+	db_op( DB_MANIFEST_OP, e, db );
 	return e; }
 
 //===========================================================================

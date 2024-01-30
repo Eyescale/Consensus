@@ -400,6 +400,7 @@ typedef struct {
 
 static int
 do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Registry *subs ) {
+	Registry *arena = story->arena;
 	CNDB *db = BMContextDB( ctx );
 	EnableData data;
 	data.subs = subs;
@@ -413,7 +414,7 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 		char *query;
 		switch ( *proto ) {
 		case '"':
-			instance = bm_arena_lookup( story->arena, proto, db );
+			instance = bm_arena_lookup( arena, proto, db );
 			query = en;
 			break;
 		default:

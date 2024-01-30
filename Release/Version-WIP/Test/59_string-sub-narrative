@@ -5,8 +5,14 @@
 		en *string
 
 :"hello, world"
-	do >: this
-	do exit
+	on ( this )
+		do >: this
+		do exit
 
-// Note: the following proto works as well, and no strcmp
-// : %((*,string), ? )
+/* Note: the following works as well, and no strcmp
+
+: %((*,string), ? )
+	on ( this )
+		do >: this
+		do exit
+*/
