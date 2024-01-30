@@ -18,6 +18,7 @@ void		bm_context_release( BMContext * );
 
 Pair *		bm_mark( char *, char * );
 void		bm_context_mark( BMContext *, MarkData * );
+MarkData *	bm_context_remark( BMContext *, MarkData * );
 MarkData *	bm_context_unmark( BMContext *, MarkData * );
 listItem *	bm_push_mark( BMContext *, char *, void * );	
 void		bm_pop_mark( BMContext *, char * );

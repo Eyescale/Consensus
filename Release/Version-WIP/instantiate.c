@@ -116,14 +116,11 @@ case_( newborn_CB )
 	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin
-	if (( data->loop )&&( *p!='|' )) {
-		BMContext *ctx = data->ctx;
+	if (( *p!='|' )&&( data->loop )) {
 		LoopData *loop = data->loop->ptr;
-		if ( *traverse_data->stack==loop->info->level ) {
-			MarkData *mark = bm_context_unmark( ctx, loop->mark );
-			if (( mark )) {
-				bm_context_mark( ctx, loop->mark );
-				_continue( loop->info->p ) }
+		if ( loop->info->level==*traverse_data->stack ) {
+			if (( bm_context_remark( data->ctx, loop->mark ) ))
+				_continue( loop->info->p )
 			else {
 				popListItem( &data->loop );
 				freePair((Pair *) loop->info );
@@ -250,6 +247,7 @@ case_( dot_identifier_CB )
 	CNDB *db = data->db;
 	CNInstance *e = NULL;
 	if (( carry )) {
+		// Special case: looking for locale here
 		if (( e=bm_context_lookup( ctx, p+1 ) ))
 			e = bm_inform( carry, e, db ); }
 	else {

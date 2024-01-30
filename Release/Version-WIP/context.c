@@ -28,7 +28,7 @@ typedef struct {
 static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
 
 BMTraverseCBSwitch( actualize_traversal )
-case_( sub_expression_CB ) // provision
+case_( sub_expression_CB )
 	_prune( BM_PRUNE_FILTER, p+1 )
 case_( dot_expression_CB )
 	xpn_add( &data->exponent, SUB, 1 );
@@ -56,8 +56,8 @@ case_( close_CB )
 	_break;
 case_( wildcard_CB )
 	if is_f( ELLIPSIS ) {
-		listItem *exponent = data->exponent;
-		if ((cast_i(exponent->ptr)&1) && !exponent->next ) { // vararg
+		listItem *xpn = data->exponent;
+		if ((cast_i(xpn->ptr)&1) && !xpn->next ) { // vararg
 			context_rebase( data->ctx ); } }
 	_break
 case_( dot_identifier_CB )
@@ -317,7 +317,7 @@ bm_mark( char *expression, char *src ) {
 	return mark; }
 
 //===========================================================================
-//	bm_context_mark / bm_context_unmark
+//	bm_context_mark / bm_context_remark / bm_context_unmark
 //===========================================================================
 /*
 	MarkData can be - depending on type=data->mark->type
@@ -331,37 +331,30 @@ bm_mark( char *expression, char *src ) {
 	else // <<<< on expression >>>>
 		[ mark:[ type, xpn ], match.list: instance ]
 */
-static inline Pair * mark_pair( Pair *, CNInstance *, CNInstance * );
+static inline Pair * extract_mark( int type, MarkData * );
 
 void
 bm_context_mark( BMContext *ctx, MarkData *data ) {
-	CNInstance *instance, *proxy;
 	if (( data )) {
 		int type = cast_i( data->mark->type );
-		if (( type&EENOK )&&( type&AS_PER )) {
-			Pair *batch = data->match.list->ptr;
-			proxy = batch->value;
-			instance = popListItem((listItem **) &batch->name );
-			if ( !batch->name ) {
-				freePair( batch ); // one batch per proxy
-				popListItem( &data->match.list ); } }
-		else if ( type&EENOK ) {
-			Pair *record = data->match.record;
-			instance = record->name;
-			proxy = record->value;
-			freePair( record );
-			data->match.record = NULL; }
-		else if ( type&AS_PER )
-			instance = popListItem( &data->match.list );
-		else {
-			instance = (CNInstance *) data->match.list;
-			data->match.record = NULL; }
+		char *markc = type&EENOK ? "<" : "?";
+		Pair *markv = extract_mark( type, data );
+		bm_push_mark( ctx, markc, markv ); } }
 
-		Pair *event = mark_pair((Pair *) data->mark, instance, proxy );
-		if (( event )) {
-			if ( type & EENOK )
-				bm_push_mark( ctx, "<", newPair( event, proxy ) );
-			else {	bm_push_mark( ctx, "?", event ); } } } }
+MarkData *
+bm_context_remark( BMContext *ctx, MarkData *data ) {
+	int type = cast_i( data->mark->type );
+	char *markc = type&EENOK ? "<" : "?";
+	if (( data->match.record )) {
+		Pair *markv = extract_mark( type, data );
+		bm_reset_mark( ctx, markc, markv );
+		return data; }
+	else {
+		bm_pop_mark( ctx, markc );
+		freeListItem( &data->mark->xpn );
+		freePair((Pair *) data->mark );
+		freePair((Pair *) data );
+		return NULL; } }
 
 MarkData *
 bm_context_unmark( BMContext *ctx, MarkData *data ) {
@@ -376,7 +369,7 @@ bm_context_unmark( BMContext *ctx, MarkData *data ) {
 	return data; }
 
 //---------------------------------------------------------------------------
-//	mark_pair
+//	extract_mark
 //---------------------------------------------------------------------------
 /*
 	Assumption: mark is not NULL
@@ -389,29 +382,44 @@ bm_context_unmark( BMContext *ctx, MarkData *data ) {
 static inline CNInstance * mark_sub( CNInstance *, listItem * );
 
 static inline Pair *
-mark_pair( Pair *mark, CNInstance *x, CNInstance *proxy ) {
-	int type = cast_i( mark->name );
-	listItem *xpn = mark->value;
-	CNInstance *y;
-	if ( type & EENOK ) {
-		y = ( type & EMARK ) ?
-			( type & QMARK ) ?
-				mark_sub( x->sub[1], xpn ) :
-				mark_sub( x->sub[0]->sub[1], xpn ) :
-			( type & QMARK ) ?
-				mark_sub( x, xpn ) : proxy; }
-	else if ( type & EMARK ) {
-		y = ( type & QMARK ) ?
-			mark_sub( x->sub[1], xpn ) :
-			mark_sub( x->sub[0]->sub[1], xpn ); }
-	else if ( type & QMARK ) {
-		y = mark_sub( x, xpn ); }
+extract_mark( int type, MarkData *data ) {
+	CNInstance *x, *y, *proxy=NULL;
+	if ( type&EENOK ) {
+		if ( type&AS_PER ) {
+			Pair *batch = data->match.list->ptr;
+			x = popListItem((listItem **) &batch->name );
+			proxy = batch->value;
+			if ( !batch->name ) {
+				freePair( batch ); // one batch per proxy
+				popListItem( &data->match.list ); } }
+		else {
+			Pair *record = data->match.record;
+			x = record->name;
+			proxy = record->value;
+			freePair( record );
+			data->match.record = NULL; } }
 	else {
+		if ( type&AS_PER )
+			x = popListItem( &data->match.list );
+		else {
+			x = (CNInstance *) data->match.list;
+			data->match.record = NULL; } }
+
+	listItem *xpn = data->mark->xpn;
+	y = ( type & EMARK ) ?
+		( type & QMARK ) ?
+			mark_sub( x->sub[1], xpn ) :
+			mark_sub( x->sub[0]->sub[1], xpn ) :
+		( type & QMARK ) ?
+			mark_sub( x, xpn ) : proxy;
+	if ( !y ) {
 		fprintf( stderr, ">>>>> B%%: Error: bm_context_mark: "
 			"unknown mark type\n" );
 		exit( -1 ); }
 
-	return newPair( x, y ); }
+	Pair *event = newPair( x, y );
+	return ( type&EENOK ? newPair(event,proxy) : event ); }
+
 
 static inline CNInstance * mark_sub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
@@ -449,7 +457,8 @@ void
 bm_reset_mark( BMContext *ctx, char *p, void *value ) {
 	Pair *entry = registryLookup( ctx, p );
 	if (( entry )) {
-		Pair *mark = entry->value;
+		listItem *current = entry->value;
+		Pair *mark = current->ptr;
 		switch ( *p ) {
 		case '<':
 			freePair( mark->name );
@@ -458,7 +467,7 @@ bm_reset_mark( BMContext *ctx, char *p, void *value ) {
 			freePair( mark );
 			// no break
 		default:
-			entry->value = value; } } }
+			current->ptr = value; } } }
 
 //===========================================================================
 //	bm_lookup / lookup_mark
