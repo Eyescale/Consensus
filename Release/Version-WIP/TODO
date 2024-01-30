@@ -1,9 +1,5 @@
 See Also: design/story/interactive.story
 TODO
-	. on ~(_?_) < %% is allowed (as EENO)
-		=> %<?> resp %<!> could be deprecated
-		=> must verify when instantiating EENOV and %< is %%
-	. Test string sub-narratives
 	. EENOC & EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
@@ -17,6 +13,15 @@ TODO
 	     alternative is to parse the whole arena
 
 DONE
+	. string sub-narratives
+		cf. Test/59_string-sub-narrative
+	  Note: ultimately strings will be allocated in B% process arena,
+		- and replaced in narrative occurrences with their addresses -
+		so that testing will not involve strcmp()
+	. on ~(_?_) < %% is allowed (as EENO)
+		=> %<?> resp %<!> could be deprecated
+		=> must verify when instantiating EENOV and %< is %%
+		=> DONE: cf. cell.c:bm_inform()
 	. Shared entities comparison/translation/transposition [DONE]
 		database.c: outputf - DBIdentifier(e)
 			    db_match => bm_arena_compare()

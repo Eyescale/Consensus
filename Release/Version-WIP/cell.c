@@ -198,13 +198,15 @@ freeCell( CNCell *cell )
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 
 CNInstance *
-bm_inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
-	if ( !dst ) return e;
-	if ( !e ) return NULL;
+bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
+	if ( !dst ) return x;
+	if ( !x ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
-	if ( db_dst==db_src ) return e;
+	if ( db_dst==db_src ) {
+		if ( !db_deprecated(x,db_dst) )
+			return x; }
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
+	CNInstance *instance, *e=x;
 	int ndx = 0;
 	for ( ; ; ) {
 		if (( CNSUB(e,ndx) )) {
@@ -220,7 +222,7 @@ bm_inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
 		else {
 			char *p = DBIdentifier( e );
 			instance = db_register( p, db_dst ); }
-		if ( !instance ) break;
+		if ( !instance ) goto FAIL;
 		for ( ; ; ) {
 			if ( !stack.src ) return instance;
 			e = popListItem( &stack.src );
@@ -232,6 +234,8 @@ bm_inform( BMContext *dst, CNInstance *e, CNDB *db_src ) {
 				addItem( &stack.dst, instance );
 				ndx=1; break; } } }
 FAIL:
+	fprintf( stderr, ">>>>> B%%: Warning: bm_inform() operation failed\n" );
+	db_outputf( stderr, db_src, "\t\t%_\n\t<<<<< transposition aborted\n", x );
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
 	return NULL; }

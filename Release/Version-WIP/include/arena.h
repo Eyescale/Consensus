@@ -33,5 +33,15 @@ static inline int bm_arena_compare( CNInstance *x, CNInstance *y ) {
 	void *y_ref = ((Pair *) y->sub[ 1 ])->value;
 	return ( x_ref!=y_ref ); }
 
+static CNInstance * bm_arena_lookup( Registry *arena, char *p, CNDB *db ) {
+	if (( p )) {
+		Pair *entry = registryLookup( arena, "$" );
+		if (( entry )) {
+			entry = registryLookup((Registry *) entry->value, p );
+			if (( entry )) {
+				entry = registryLookup((Registry *) entry->value, db );
+				if (( entry )) return entry->value; } } }
+	return NULL; }
+
 
 #endif // ARENA_H

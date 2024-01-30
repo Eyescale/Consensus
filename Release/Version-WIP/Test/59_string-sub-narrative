@@ -1,0 +1,12 @@
+
+	on init
+		do : string : "hello, world"
+	else
+		en *string
+
+:"hello, world"
+	do >: this
+	do exit
+
+// Note: the following proto works as well, and no strcmp
+// : %((*,string), ? )
