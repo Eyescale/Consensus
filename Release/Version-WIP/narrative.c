@@ -93,7 +93,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		char *expression = occurrence->data->expression;
-		int type = occurrence->data->type;
+		int type = cast_i( occurrence->data->type );
 		TAB( level );
 		switch ( type ) {
 		case ROOT: break;

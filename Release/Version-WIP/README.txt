@@ -5,6 +5,7 @@ Usage
 	./B% program.story
 	./B% -p program.story
 	./B% -f file.ini program.story
+	./B% -f file.ini -p
 
 	./B% -i
 	./B% file.bm -i

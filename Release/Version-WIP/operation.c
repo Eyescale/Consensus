@@ -46,7 +46,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 	int passed = 1;
 	for ( ; ; ) {
 		CNOccurrence *occurrence = i->ptr;
-		int type = occurrence->data->type;
+		int type = cast_i( occurrence->data->type );
 		if (!( type&ELSE && passed )) {
 			// processing
 			listItem *j = occurrence->sub;

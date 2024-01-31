@@ -113,7 +113,7 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 		break;
 	case ExpressionTake:
 		occurrence = data->stack.occurrences->ptr;
-		occurrence->data->type = data->type;
+		occurrence->data->type = cast_ptr( data->type );
 		occurrence->data->expression = StringFinish( data->string, 0 );
 		StringReset( data->string, CNStringMode );
 		break;
@@ -160,7 +160,8 @@ indentation_verify( BMParseData *data ) {
 		if ( data->type & ELSE )
 			return 0;
 		CNOccurrence *parent = data->stack.occurrences->ptr;
-		switch ( parent->data->type & ~(ELSE|PER) ) {
+		int type = cast_i( parent->data->type );
+		switch ( type & ~(ELSE|PER) ) {
 		case ROOT: case IN: case ON: case ON_X:
 			break;
 		default:
@@ -169,19 +170,21 @@ indentation_verify( BMParseData *data ) {
 		CNOccurrence *sibling;
 		if ( TAB_CURRENT==TAB_LAST ) {
 			sibling = data->stack.occurrences->ptr;
-			if ((sibling->data->type&(IN|ON|ON_X)) && !(data->type&ELSE))
+			int type = cast_i( sibling->data->type );
+			if ((type&(IN|ON|ON_X)) && !(data->type&ELSE))
 				return 0; }
 		for ( ; ; ) {
 			sibling = popListItem( &data->stack.occurrences );
+			int type = cast_i( sibling->data->type );
 			if ( TAB_CURRENT==TAB_LAST ) {
-				if ((data->type&ELSE) && !(sibling->data->type&(IN|ON|ON_X)))
+				if ((data->type&ELSE) && !(type&(IN|ON|ON_X)))
 					return 0; }
 			TAB_LAST--;
-			if ( sibling->data->type == ROOT )
+			if ( type == ROOT )
 				return 0;
 			else if ( TAB_CURRENT <= TAB_LAST )
 				continue;
-			else if ( !(data->type&ELSE) || sibling->data->type&(IN|ON|ON_X) )
+			else if ( !(data->type&ELSE) || type&(IN|ON|ON_X) )
 				break; } }
 	else return 0;
 	return 1; }

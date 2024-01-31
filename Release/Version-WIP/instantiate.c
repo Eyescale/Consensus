@@ -777,7 +777,7 @@ assign_string( listItem **list, char *s, CNStory *story, BMTraverseData *travers
 //===========================================================================
 //	bm_instantiate_input
 //===========================================================================
-static int instantiate_( char *, char *, BMTraverseData * );
+static int instantiate_input( char *, char *, BMTraverseData * );
 
 void
 bm_instantiate_input( char *arg, char *input, BMContext *ctx ) {
@@ -794,13 +794,13 @@ bm_instantiate_input( char *arg, char *input, BMContext *ctx ) {
 	traverse_data.user_data = &data;
 	traverse_data.stack = &data.stack.flags;
 
-	if ( !instantiate_( arg, input, &traverse_data ) ) return;
+	if ( !instantiate_input( arg, input, &traverse_data ) ) return;
 	fprintf( stderr, ">>>>> B%%: Warning: input instantiation failed\n\t\t"
 		"<<<<< on arg=%s, input=%s\n", arg, ((input)?input:"EOF") );
 	cleanup( &traverse_data, NULL ); }
 
 static int
-instantiate_( char *arg, char *input, BMTraverseData *traverse_data ) {
+instantiate_input( char *arg, char *input, BMTraverseData *traverse_data ) {
 	InstantiateData *data = traverse_data->user_data;
 	CNDB *db = data->db;
 	listItem *sub[ 2 ];

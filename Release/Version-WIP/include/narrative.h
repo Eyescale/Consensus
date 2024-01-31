@@ -25,7 +25,7 @@
 
 typedef struct {
 	struct {
-		int type;
+		void *type;
 		char *expression;
 	} *data;
 	listItem *sub;
