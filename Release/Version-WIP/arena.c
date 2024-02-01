@@ -49,8 +49,9 @@ static freeRegistryCB deregister_CB;
 void
 bm_arena_deregister( CNArena *arena, CNInstance *e, CNDB *db )
 /*
-	Assumption: we have e:( NULL, [ ., ref:{[db,e]} ] )
-					^---- NULL if UBE
+	Assumption: called upon entity removal - e is no longer connected
+	we have e:( NULL, [ ., ref:{[db,e]} ] )
+		    	    ^---- NULL if UBE
 */ {
 	// remove [db,e] from ref registry and release e
 	Pair *entry = (Pair *) e->sub[ 1 ];
@@ -81,46 +82,6 @@ static void deregister_CB( Registry *registry, Pair *entry ) {
 	CNInstance *e = entry->value;
 	e->sub[ 1 ] = NULL;
 	cn_release( e ); }
-
-//===========================================================================
-//	bm_arena_flush
-//===========================================================================
-static inline void flush( listItem **, listItem *, CNDB *, listItem ** );
-
-void
-bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db, listItem **trace ) {
-	// flush string arena - only those are traced
-	listItem *list = shared->name;
-	if (( list )) {
-		Registry *string_arena = arena->name;
-		listItem **base = &string_arena->entries;
-		flush( base, list, db, trace ); }
-	reorderListItem( trace );
-	// flush ube arena
-	list = shared->value;
-	if (( list )) {
-		listItem *ube_arena = arena->value;
-		listItem **base = (listItem **) &arena->value;
-		flush( base, list, db, NULL ); } }
-
-static inline void
-flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
-	listItem *next_i, *last_i=NULL;
-	for ( listItem *i=*base;(( i )&&( list )); i=next_i ) {
-		Pair *r = i->ptr;
-		next_i = i->next;
-		if ( r!=list->ptr ) last_i = i;
-		else {
-			Registry *ref = r->value;
-			registryCBDeregister( ref, deregister_CB, db );
-			if ( !ref->entries ) {
-				if (( trace )) addItem( trace, list->ptr );
-				freeRegistry( ref, NULL );
-				freeItem( i );
-				freePair( r );
-				if (( last_i )) last_i->next = next_i;
-				else *base = next_i; }
-			list = list->next; } } }
 
 //===========================================================================
 //	bm_arena_translate, bm_arena_transpose, bm_arena_lookup
@@ -155,6 +116,52 @@ bm_arena_lookup( CNArena *arena, char *p, CNDB *db ) {
 	return NULL; }
 
 //===========================================================================
+//	bm_arena_flush
+//===========================================================================
+static inline void flush( listItem **, listItem *, CNDB *, listItem ** );
+
+void
+bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db, listItem **trace ) {
+	// flush string arena - only those are traced
+	listItem *list = shared->name;
+	if (( list )) {
+		Registry *string_arena = arena->name;
+		listItem **base = &string_arena->entries;
+		flush( base, list, db, trace ); }
+	reorderListItem( trace );
+	// flush ube arena
+	list = shared->value;
+	if (( list )) {
+		listItem *ube_arena = arena->value;
+		listItem **base = (listItem **) &arena->value;
+		flush( base, list, db, NULL ); } }
+
+static freeRegistryCB flush_CB;
+static inline void
+flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
+	listItem *next_i, *last_i=NULL;
+	for ( listItem *i=*base;(( i )&&( list )); i=next_i ) {
+		Pair *r = i->ptr;
+		next_i = i->next;
+		if ( r!=list->ptr ) last_i = i;
+		else {
+			Registry *ref = r->value;
+			registryCBDeregister( ref, flush_CB, db );
+			if ( !ref->entries ) {
+				if (( trace )) addItem( trace, list->ptr );
+				freeRegistry( ref, NULL );
+				freeItem( i );
+				freePair( r );
+				if (( last_i )) last_i->next = next_i;
+				else *base = next_i; }
+			list = list->next; } } }
+
+static void flush_CB( Registry *registry, Pair *entry ) {
+	CNInstance *e = entry->value;
+	e->sub[ 1 ] = NULL;
+	cn_prune( e ); }
+
+//===========================================================================
 //	newArena / freeArena
 //===========================================================================
 static freeRegistryCB free_string_CB;
@@ -171,10 +178,10 @@ freeArena( CNArena *arena ) {
 	freeRegistry( string_arena, free_string_CB );
 	listItem **ube_arena = (listItem **) &arena->value;
 	for ( Pair *ube;( ube=popListItem(ube_arena) ); ) {
-		freeRegistry( ube->value, deregister_CB );
+		freeRegistry( ube->value, flush_CB );
 		freePair( ube ); } }
 
 static void free_string_CB( Registry *arena, Pair *entry ) {
 	Registry *ref = entry->value;
-	freeRegistry( ref, deregister_CB ); }
+	freeRegistry( ref, flush_CB ); }
 

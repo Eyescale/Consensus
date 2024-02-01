@@ -1,5 +1,6 @@
 See Also: design/story/interactive.story
 TODO
+	. for all DB cells: must cn_prune( e );
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
