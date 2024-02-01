@@ -16,6 +16,7 @@ Consensus B% Version-WIP
 				term~
 			%<	expr
 				%<?	expr
+				%<.	expr
 		(	expr
 			(:
 		,	expr

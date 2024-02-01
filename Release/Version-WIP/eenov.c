@@ -57,12 +57,14 @@ BMTraverseCBEnd
 //===========================================================================
 static EEnovType eenov_type( BMContext *, char *, EEnovData * );
 static CNInstance * eenov_query( EEnovQueryOp, BMContext *, char *, EEnovData * );
+static CNInstance * eeva( CNInstance *, CNDB * );
 
 int
 eenov_output( char *p, BMContext *ctx, OutputData *od ) {
 	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
+	case EEvaType:
 		return 0;
 	case EEnovSrcType: ;
 		CNDB *db = BMContextDB( ctx );
@@ -81,6 +83,7 @@ eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst ) {
 	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
+	case EEvaType:
 		return NULL;
 	case EEnovSrcType: ;
 		CNInstance *e = bm_inform( dst, data.src, db );
@@ -103,6 +106,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 	EEnovData data;	// mem NOT set
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
+	case EEvaType:
 		return NULL;
 	case EEnovSrcType:
 		return data.src;
@@ -124,6 +128,8 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 		return 0;
+	case EEvaType:
+		return !!eeva( x, db_x );
 	case EEnovSrcType:
 		return db_match( x, db_x, data.src, BMContextDB(ctx) ); 
 	case EEnovInstanceType:
@@ -138,6 +144,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 //---------------------------------------------------------------------------
 static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
+	if ( p[2]=='.' ) return EEvaType;
 	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
 	if (( eenov )) {
 		data->success = 1; // initialize
@@ -261,4 +268,39 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data ) {
 		if ( db_match( data->param.match.x, data->param.match.db,
 			e, db ) ) { data->result = e; return BM_DONE; } }
 	return BM_CONTINUE; }
+
+//---------------------------------------------------------------------------
+//	eeva
+//---------------------------------------------------------------------------
+CNInstance *
+eeva( CNInstance *e, CNDB *db )
+/*
+	we want to find ((*,x),y) in db_dst's manifested log
+	where
+		db_dst: BMProxyDB( e->sub[1] )
+		x: db_dst( e->sub[0]->sub[0] )
+		y: db_dst( e->sub[0]->sub[1] )
+*/
+{
+	CNInstance *proxy = e->sub[ 1 ];
+	if ( !isProxy(proxy) )
+		return NULL;
+	CNCell *that = DBProxyThat( proxy );
+	BMContext *dst = BMCellContext( that );
+	CNDB *db_dst = BMContextDB( dst );
+	if ( !db_dst || !( e=e->sub[ 0 ] ))
+		return NULL;
+	CNInstance *star = db_lookup( 0, "*", db_dst );
+	CNInstance *x = bm_intake( dst, db_dst, e->sub[ 0 ], db );
+	CNInstance *y = bm_intake( dst, db_dst, e->sub[ 1 ], db );
+	if ( !star || !x || !y )
+		return NULL;
+	listItem *s = NULL;
+	for ( e=DBLog(1,0,db_dst,&s); e!=NULL; e=DBLog(0,0,db_dst,&s) ) {
+		if ( e->sub[ 1 ]!=y ) continue;
+		CNInstance *f = e->sub[ 0 ];
+		if (( f ) && f->sub[0]==star && f->sub[1]==x ) {
+			freeListItem( &s );
+			return e; } } // return ((*,x),y)
+	return NULL; }
 

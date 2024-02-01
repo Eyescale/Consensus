@@ -10,7 +10,7 @@
 //===========================================================================
 //	cnIniOutput
 //===========================================================================
-static int output_CB( BMParseOp, BMParseMode, void * );
+static BMParseCB output_CB;
 
 int
 cnIniOutput( FILE *output_stream, char *path, int level ) {
@@ -86,6 +86,9 @@ cnSync( CNProgram *program ) {
 //===========================================================================
 //	cnOperate
 //===========================================================================
+static inline void uncache( listItem *flushed, listItem *narratives );
+static freeCellCB arena_flush_CB;
+
 int
 cnOperate( CNCell **this, CNProgram *program ) {
 #ifdef DEBUG
@@ -117,11 +120,32 @@ cnOperate( CNCell **this, CNProgram *program ) {
 			last_i = i; } }
 	// free out cells
 	while (( cell = popListItem(&out) ))
-		freeCell( cell );
+		freeCell( cell, arena_flush_CB, program->story );
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new)); }
+
+static void
+arena_flush_CB( BMContext *ctx, void *user_data ) {
+	CNStory *story = user_data;
+	CNDB *db = BMContextDB( ctx );
+	Pair *shared = registryLookup( ctx, "$" )->value;
+	listItem *flushed = bm_arena_flush( story->arena, shared, db );
+	if (( flushed )) {
+		uncache( flushed, story->narratives->entries );
+		freeListItem( &flushed ); } }
+
+static inline void
+uncache( listItem *flushed, listItem *narratives ) {
+	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		listItem *narratives = entry->value;
+		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
+			CNNarrative *narrative = j->ptr;
+			void *shared = narrative->root->data->expression;
+			if (( shared )&&( lookupIfThere(flushed,shared) ))
+				narrative->root->data->expression = NULL; } } }
 
 //===========================================================================
 //	newProgram / freeProgram
@@ -146,9 +170,9 @@ freeProgram( CNProgram *program ) {
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
 	while (( cell = popListItem(active) )) {
-		freeCell( cell ); }
+		freeCell( cell, arena_flush_CB, program->story ); }
 	while (( cell = popListItem(new) )) {
-		freeCell( cell ); }
+		freeCell( cell, arena_flush_CB, program->story ); }
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program ); }
 

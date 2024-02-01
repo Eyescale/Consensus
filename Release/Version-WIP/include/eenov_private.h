@@ -19,6 +19,7 @@ typedef struct {
 } EEnovData;
 typedef enum {
 	EEnovNone,
+	EEvaType,
 	EEnovSrcType,
 	EEnovInstanceType,
 	EEnovExprType

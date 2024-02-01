@@ -18,6 +18,7 @@ Registry *newRegistry( RegistryType type );
 void	freeRegistry( Registry *registry, freeRegistryCB );
 Pair *	newRegistryEntry( RegistryType type, void *name, void *value );
 Pair *	registryRegister( Registry *registry, void *name, void *value );
+void	registryCBDeregister( Registry *registry, freeRegistryCB, void * );
 void	registryDeregister( Registry *registry, void *name, ... );
 Pair *	registryLookup( Registry *registry, void *name, ... );
 

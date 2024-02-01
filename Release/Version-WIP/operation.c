@@ -51,10 +51,11 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 			// processing
 			listItem *j = occurrence->sub;
 			if ( !marked ) {
-				type &= ~ELSE; // Assumption: ELSE will be handled as ROOT#=0
-				char *expression = occurrence->data->expression;
-				char *deternarized = bm_deternarize( &expression, type, ctx );
 				MarkData **mark = (( j ) ? &marked : NULL );
+				char *expression, *deternarized = NULL;
+				if (( type&=~ELSE )) { // Assumption: ELSE handled as ROOT#=0
+					expression = occurrence->data->expression;
+					deternarized = bm_deternarize( &expression, type, ctx ); }
 				switch ( type ) {
 				case ROOT: passed=1; break;
 				case IN: passed=in_condition( 0, expression, ctx, mark ); break;
@@ -392,34 +393,37 @@ do_output( char *expression, BMContext *ctx )
 //===========================================================================
 static BMQueryCB enable_CB;
 typedef struct {
-	CNInstance *instance;
 	CNNarrative *narrative;
+	void *shared;
 	Registry *subs;
 	Pair *entry;
 	} EnableData;
 
 static int
 do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Registry *subs ) {
-	Registry *arena = story->arena;
+	Registry *string_arena = story->arena->name;
 	CNDB *db = BMContextDB( ctx );
 	EnableData data;
 	data.subs = subs;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
-		char *proto = narrative->proto;
-		switch ( *proto ) {
-		case '.': proto = p_prune(PRUNE_IDENTIFIER,proto+1) + 1; }
-		CNInstance *instance = NULL;
+		char *p = narrative->proto;
+		switch ( *p ) {
+		case '.': p = p_prune(PRUNE_IDENTIFIER,p+1) + 1; }
+		void *shared = NULL;
 		CNString *s = NULL;
 		char *query;
-		switch ( *proto ) {
+		switch ( *p ) {
 		case '"':
-			instance = bm_arena_lookup( arena, proto, db );
+			shared = narrative->root->data->expression;
+			if ( !shared ) { // cache arena string's [ s, ref ]
+				shared = registryLookup( string_arena, p );
+				narrative->root->data->expression = shared; }
 			query = en;
 			break;
 		default:
 			// build query string "proto:en"
-			s = bm_deparameterize( proto );
+			s = bm_deparameterize( p );
 			StringAppend( s, ':' );
 			s_add( en )
 			query = StringFinish( s, 0 ); }
@@ -427,11 +431,11 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 		if ( !strncmp( query, "%(.,...):", 9 ) ) {
 			fprintf( stderr, ">>>>> B%%: do_enable(): Warning: "
 				"proto %s resolves to %%(.,...) - "
-				"passes through!!\n", proto ); }
+				"passes through!!\n", p ); }
 #endif
 		// launch enable query
 		data.narrative = narrative;
-		data.instance = instance;
+		data.shared = shared;
 		data.entry = NULL;
 		bm_query( BM_CONDITION, query, ctx, enable_CB, &data );
 		if (( s )) freeString( s ); }
@@ -440,14 +444,14 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 static BMCBTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableData *data = user_data;
-	CNInstance *instance = data->instance;
-	if ( !instance ) {
+	void *shared = data->shared;
+	if ( !shared ) {
 		Pair *entry = data->entry;
 		if ( !entry ) {
 			entry = registryRegister( data->subs, data->narrative, NULL );
 			data->entry = entry; }
 		addIfNotThere((listItem **) &entry->value, e ); }
-	else if ( e==instance ) {
+	else if ( e->sub[1]==shared ) {
 		registryRegister( data->subs, data->narrative, newItem(e) );
 		return BM_DONE; }
 	return BM_CONTINUE; }

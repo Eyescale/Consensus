@@ -7,10 +7,11 @@
 #include "story.h"
 
 typedef CNEntity CNCell;
+typedef void freeCellCB( BMContext *, void * );
 
 int		bm_cell_read( CNCell **, CNStory * );
 CNCell *	newCell( Pair *entry, char *inipath );
-void		freeCell( CNCell * );
+void		freeCell( CNCell *, freeCellCB, void * );
 void		bm_cell_operate( CNCell *, CNStory * );
 CNInstance *	bm_inform( BMContext *, CNInstance *, CNDB * );
 CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );

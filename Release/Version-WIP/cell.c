@@ -140,59 +140,6 @@ free_CB( Registry *warden, Pair *entry ) {
 	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
-//	newCell / freeCell
-//===========================================================================
-CNCell *
-newCell( Pair *entry, char *inipath ) {
-	CNCell *cell = cn_new( NULL, NULL );
-	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
-	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
-	if (( inipath )) {
-		int errnum = bm_context_load( BMCellContext(cell), inipath );
-		if ( errnum ) {
-			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
-			freeCell( cell );
-			return NULL; } }
-	return cell; }
-
-void
-freeCell( CNCell *cell )
-/*
-	. prune CNDB proxies & release cell's input connections (cell,.)
-	  this includes Parent connection & associated proxy if set
-	. nullify cell in subscribers' connections (.,cell)
-	  removing cell's Self proxy ((NULL,cell),NULL) on the way
-	. free cell itself - nucleus and ctx
-	Assumptions:
-	. connection->as_sub[ 0 ]==singleton=={ proxy }
-	. connection->as_sub[ 1 ]==NULL
-	. subscriber is responsible for handling dangling connections
-	  see bm_context_update()
-*/
-{
-	if ( !cell ) return;
-
-	CNEntity *connection;
-	listItem **connections = &cell->as_sub[ 0 ];
-	while (( connection = popListItem( connections ) )) {
-		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		CNEntity *that = connection->sub[ 1 ];
-		if (( that )) removeItem( &that->as_sub[1], connection );
-		cn_free( connection ); }
-
-	connections = &cell->as_sub[ 1 ];
-	while (( connection = popListItem( connections ) )) {
-		if (( connection->sub[ 0 ] ))
-			connection->sub[ 1 ] = NULL; 
-		else {	// remove cell's Self proxy
-			cn_prune( connection->as_sub[0]->ptr );
-			cn_free( connection ); } }
-
-	freePair((Pair *) cell->sub[ 0 ] );
-	freeContext((BMContext *) cell->sub[ 1 ] );
-	cn_free( cell ); }
-
-//===========================================================================
 //	bm_inform
 //===========================================================================
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
@@ -322,4 +269,59 @@ bm_cell_bond( CNCell *this, CNCell *child, CNInstance *proxy ) {
 	// inform child's parent RV
 	Pair *id = BMContextId( ctx );
 	id->value = proxy; }
+
+//===========================================================================
+//	newCell / freeCell
+//===========================================================================
+CNCell *
+newCell( Pair *entry, char *inipath ) {
+	CNCell *cell = cn_new( NULL, NULL );
+	cell->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
+	cell->sub[ 1 ] = (CNEntity *) newContext( cell );
+	if (( inipath )) {
+		int errnum = bm_context_load( BMCellContext(cell), inipath );
+		if ( errnum ) {
+			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
+			freeCell( cell, NULL, NULL );
+			return NULL; } }
+	return cell; }
+
+void
+freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
+/*
+	. prune CNDB proxies & release cell's input connections (cell,.)
+	  this includes Parent connection & associated proxy if set
+	. nullify cell in subscribers' connections (.,cell)
+	  removing cell's Self proxy ((NULL,cell),NULL) on the way
+	. free cell itself - nucleus and ctx
+	Assumptions:
+	. connection->as_sub[ 0 ]==singleton=={ proxy }
+	. connection->as_sub[ 1 ]==NULL
+	. subscriber is responsible for handling dangling connections
+	  see bm_context_update()
+*/
+{
+	if ( !cell ) return;
+
+	CNEntity *connection;
+	listItem **connections = &cell->as_sub[ 0 ];
+	while (( connection = popListItem( connections ) )) {
+		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
+		CNEntity *that = connection->sub[ 1 ];
+		if (( that )) removeItem( &that->as_sub[1], connection );
+		cn_free( connection ); }
+
+	connections = &cell->as_sub[ 1 ];
+	while (( connection = popListItem( connections ) )) {
+		if (( connection->sub[ 0 ] ))
+			connection->sub[ 1 ] = NULL; 
+		else {	// remove cell's Self proxy
+			cn_prune( connection->as_sub[0]->ptr );
+			cn_free( connection ); } }
+
+	freePair((Pair *) cell->sub[ 0 ] );
+	BMContext *ctx = (BMContext *) cell->sub[ 1 ];
+	if ( user_CB ) user_CB( ctx, user_data );
+	freeContext( ctx );
+	cn_free( cell ); }
 

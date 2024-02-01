@@ -34,6 +34,17 @@ void		freeContext( BMContext * );
 
 static inline void * bm_context_lookup( BMContext *ctx, char *p ) {
 	return bm_lookup( ctx, p, NULL, 0 ); }
+static inline void bm_register_string( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	addIfNotThere((listItem **)&entry->name, e->sub[1] ); }
+static inline void bm_register_ube( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	addIfNotThere((listItem **)&entry->value, e->sub[1] ); }
+static inline void bm_deregister( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	if ( isUnnamed(e) )
+		removeIfThere((listItem **)&entry->value, e->sub[1] );
+	else	removeIfThere((listItem **)&entry->name, e->sub[1] ); }
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;

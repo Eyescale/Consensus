@@ -1,0 +1,26 @@
+:
+	do > "--------\n"
+	on init
+		do >"Frame execution: Last-In-First-Out\n"
+		do : titi : !! Titi
+	else on init < *titi
+		do > "- hey\n"
+		do : eeva : (( a, b ), *titi )
+	else in : eeva : %<.>
+		do > "- yep!\n"
+		do exit
+	else
+		do >"- nope\n"
+
+: Titi
+	do > "===================\n"
+	on init
+		do > "= hi\n"
+	else on : eeva : . < ..
+		do > "= yep!\n"
+		do : a : b
+	else on exit < ..
+		do > "= bye\n"
+		do exit
+	else
+		do > "= nope\n"

@@ -15,7 +15,8 @@ typedef enum {
 
 int	db_op( DBOperation op, CNInstance *e, CNDB *db );
 
-void	db_update( CNDB *, CNInstance *, Registry * );
+typedef int DBRemoveCB( CNDB *, CNInstance *, void * );
+void	db_update( CNDB *, DBRemoveCB *, void * );
 
 CNInstance * DBLog( int first, int released, CNDB *, listItem ** );
 

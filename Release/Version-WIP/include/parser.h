@@ -85,8 +85,7 @@ typedef enum {
 	ErrUnknownCommand,
 } BMParseErr;
 
-typedef int (*BMParseCB)( BMParseOp, BMParseMode, void * );
-typedef char * (*BMParseFunc)( int event, BMParseMode, BMParseData *, BMParseCB );
+typedef int BMParseCB( BMParseOp, BMParseMode, void * );
 
 char * bm_parse_cmd( int event, BMParseMode, BMParseData *, BMParseCB );
 char * bm_parse_expr( int event, BMParseMode, BMParseData *, BMParseCB );

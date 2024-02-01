@@ -131,19 +131,12 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 	while (( y ) && (xpn)) {
 		int exp = pop_item( &xpn );
 		y = CNSUB( y, exp&1 ); }
-	if (( y )) {
-		if (( p )) {
-			// optimization
-			if (( data->pivot ) && p==data->pivot->name ) {
-				// Assumption: %| no longer authorized in queries
-				if ( strncmp(p,"%@",2) ) {
-					return ( y==data->pivot->value ); } }
-			return bm_match( data->ctx, data->db, p, y, data->db ); }
-		else { // wildcard
-			return 1; } }
-	else {
-		freeListItem( &xpn );
-		return -1; } }
+	if ( !y ) { freeListItem( &xpn ); return -1; }
+	else if ( !p ) return 1; // wildcard
+	else if (( data->pivot ) && p==data->pivot->name ) {
+		if ( strncmp(p,"%@",2) ) // Assumption: cannot be %|
+			return ( y==data->pivot->value ); }
+	return bm_match( data->ctx, data->db, p, y, data->db ); }
 
 //===========================================================================
 //	bm_query

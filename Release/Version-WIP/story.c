@@ -15,7 +15,10 @@ cnStoryOutput( FILE *stream, CNStory *story ) {
 	Registry *narratives = story->narratives;
 	for ( listItem *i=narratives->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
-		fprintf( stream, ": %s\n", (char *) entry->name );
+		char *name = entry->name;
+		if ( *name )
+			fprintf( stream, ": %s\n", name );
+		else	fprintf( stream, ":\n" );
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );
@@ -26,8 +29,8 @@ cnStoryOutput( FILE *stream, CNStory *story ) {
 //	readStory
 //===========================================================================
 static inline int indentation_verify( BMParseData *data );
-static int build_CB( BMParseOp, BMParseMode, void * );
 static void free_CB( Registry *, Pair * );
+static BMParseCB build_CB;
 
 CNStory *
 readStory( char *path, int ignite ) {

@@ -38,6 +38,8 @@ CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 
 static inline int isRef( CNInstance *e ) {
 	return ( ((Pair*) e->sub[ 1 ])->value!=e ); }
+static inline int isUnnamed( CNInstance *e ) {
+	return ( ((Pair*) e->sub[ 1 ])->name==NULL ); }
 static inline char * DBIdentifier( CNInstance *e ) {
 	return (char *) ((Pair*) e->sub[ 1 ])->name; }
 static inline int DBStarMatch( CNInstance *e ) {
@@ -107,7 +109,7 @@ static inline int db_private( int privy, CNInstance *e, CNDB *db ) {
 	. if privy==1 - traversing db_log( released, ... )
 		returns 1 if newborn (not reassigned)
 		returns 0 otherwise
-	. if privy==2 - traversing %| or in proxy_feel_assignment()
+	. if privy==2 - traversing %| or in eeno_query_assignment()
 		returns 1 if e:( ., nil ) or e:( nil, . )
 		returns 0 otherwise
 */

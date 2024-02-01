@@ -60,8 +60,9 @@ case_( register_variable_CB )
 	case '.': mark = PARENT; break;
 	case '%': mark = SELF; break;
 	case '@': mark = ACTIVE; break;
-	case '<': mark = EENOK; break;
 	case '^': mark = EYEYE; break;
+	case '<': if ( p[2]!='.' ) {
+			mark = EENOK; break; }
 	default: _break; }
 	if CHECK( mark )
 		_return( 2 )

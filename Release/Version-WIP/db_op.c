@@ -104,7 +104,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 // cf design/specs/db-update.txt
 
 void
-db_update( CNDB *db, CNInstance *parent, Registry *arena ) {
+db_update( CNDB *db, DBRemoveCB user_CB, void *user_data ) {
 	CNInstance *nil = db->nil;
 	if (( nil->sub[0] )) // remove init condition
 		nil->sub[ 0 ] = NULL;
@@ -185,12 +185,11 @@ fprintf( stderr, "db_update: 4. actualize to-be-released entities\n" );
 fprintf( stderr, "db_update: 5. remove released entities\n" );
 #endif
 	while (( x=popListItem( &released ) )) {
-		if ( x==parent ) continue;
+		if (( user_CB ) && user_CB( db, x, user_data ) )
+			continue;
 		else if (( x->sub[0] )) {
 			if (( x->sub[ 1 ] )) cn_release( x );
 			else free_proxy( x ); }
-		else if ( isRef(x) )
-			bm_arena_deregister( arena, x, db );
 		else db_deregister( x, db ); }
 #ifdef DEBUG
 fprintf( stderr, "--\n" );

@@ -647,7 +647,7 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traverse_data ) {
 //---------------------------------------------------------------------------
 //	assign_new
 //---------------------------------------------------------------------------
-static void inform_UBE( Registry *, char *, Registry *, BMTraverseData * );
+static void inform_UBE( Registry *, char *, CNArena *, BMTraverseData * );
 static void inform_carry( Registry *, char *, CNCell *, BMTraverseData * );
 
 static void
@@ -662,16 +662,17 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 	//	UBE assignment
 	//-----------------------------------------------------------
 	if ( !*p ) { // do :_: !!
-		Registry *arena = story->arena;
+		CNArena *arena = story->arena;
 		CNInstance *ube, *x;
 		while (( x=popListItem( list ))) {
 			ube = bm_arena_register( arena, NULL, db );
+			bm_register_ube( ctx, ube );
 			db_assign( x, ube, db ); }
 		return; }
 	else if ( *p=='|' ) {
+		CNArena *arena = story->arena;
 		buffer = newRegistry( IndexedByAddress );
 		registryRegister( ctx, "*^", buffer );
-		Registry *arena = story->arena;
 		CNInstance *ube, *x = (list) ? popListItem(list) : NULL;
 		do {	ube = bm_arena_register( arena, NULL, db );
 			registryRegister( buffer, x, ube );
@@ -706,7 +707,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 	freeRegistry( buffer, NULL ); }
 
 static void
-inform_UBE( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse_data ) {
+inform_UBE( Registry *buffer, char *p, CNArena *arena, BMTraverseData *traverse_data ) {
 	InstantiateData *data = traverse_data->user_data;
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
@@ -727,11 +728,13 @@ inform_UBE( Registry *buffer, char *p, Registry *arena, BMTraverseData *traverse
 		Pair *entry = i->ptr;
 		CNInstance *x = entry->name;
 		CNInstance *ube = entry->value;
-		if (( x )) db_assign( x, ube, db );
-		else if ( !CONNECTED(ube) ) {
+		if ( !x && !CONNECTED(ube) ) {
 			fprintf( stderr, ">>>>> B%%: Warning: UBE not connected in\n"
 				"\t\tdo :_: !! | %s\n\t<<<<< discarding assignment\n", start_p );
-			bm_arena_deregister( arena, ube, db ); } }
+			bm_arena_deregister( arena, ube, db ); }
+		else {
+			if (( x )) db_assign( x, ube, db );
+			bm_register_ube( ctx, ube ); } }
 	bm_pop_mark( ctx, "|" );
 	freeItem( pipe_mark ); }
 
@@ -770,6 +773,7 @@ assign_string( listItem **list, char *s, CNStory *story, BMTraverseData *travers
 	InstantiateData *data = traverse_data->user_data;
 	CNDB *db = data->db;
 	CNInstance *e = bm_arena_register( story->arena, s, db );
+	bm_register_string( data->ctx, e );
 	if (( list )) {
 		for ( CNInstance *x;(x=popListItem( list ));)
 			db_assign( x, e, db ); } }

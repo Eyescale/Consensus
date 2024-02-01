@@ -120,7 +120,7 @@ CB_OpenCB				f_push( stack )
 				else if ( p[1]=='<' ) {
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( strmatch( "?!(", *p ) ) {
+					if ( strmatch( "?!(.", *p ) ) {
 						f_set( EENOV )
 						p = p_prune( PRUNE_TERM, p ); }
 					break; }

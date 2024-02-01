@@ -242,13 +242,16 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	in_( "\"" ) bgn_
 		on_( '\t' )	do_( same )	s_add( "\\t" )
 		on_( '\n' )	do_( same )	s_add( "\\n" )
-		on_( '\\' )	do_( "\"\\" )	s_take
+		on_( '\\' )	do_( "\"\\" )
 		on_( '"' )	do_( "expr" )	s_take
 						f_set( INFORMED )
 		on_other	do_( same )	s_take
 		end
 		in_( "\"\\" ) bgn_
-			on_any		do_( "\"" )	s_take
+			on_( '\n' )	do_( "\"" )
+			on_( '\t' )	do_( "\"" )	REENTER
+			on_other	do_( "\"" )	s_add( "\\" )
+							s_take
 			end
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
@@ -342,6 +345,8 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 			ons( "?!" )	do_( "%<?" )	s_take
 							f_push( stack )
 							f_reset( EENOV|INFORMED|FIRST, 0 )
+			on_( '.' ) if ( *type&IN || is_f(SUB_EXPR) ) {
+					do_( "%<." )	s_take }
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
 			end
@@ -350,6 +355,11 @@ bm_parse_expr( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 				on_( '>' )	do_( "expr" )	REENTER
 				on_( ':' )	do_( "expr" )	s_take
 								f_clr( INFORMED )
+				end
+			in_( "%<." ) bgn_
+				ons( " \t" )	do_( same )
+				on_( '>' )	do_( "expr" )	s_take
+								f_set( INFORMED )
 				end
 	in_( "(" ) bgn_
 		ons( " \t" )	do_( same )

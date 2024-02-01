@@ -121,7 +121,7 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 //===========================================================================
 //	bm_context_load
 //===========================================================================
-static int load_CB( BMParseOp, BMParseMode, void * );
+static BMParseCB load_CB;
 
 int
 bm_context_load( BMContext *ctx, char *path ) {
@@ -186,6 +186,13 @@ update_active( ActiveRV *active ) {
 //===========================================================================
 //	bm_context_update
 //===========================================================================
+static DBRemoveCB remove_CB;
+typedef struct {
+	CNInstance *parent;
+	CNArena *arena;
+	BMContext *ctx;
+	} RemoveData;
+
 int
 bm_context_update( BMContext *ctx, CNStory *story ) {
 #ifdef DEBUG
@@ -205,8 +212,11 @@ bm_context_update( BMContext *ctx, CNStory *story ) {
 		db_fire( connection->as_sub[0]->ptr, db ); }
 
 	// invoke db_update
-	CNInstance *parent = BMContextParent( ctx );
-	db_update( db, parent, story->arena );
+	RemoveData data;
+	data.parent = BMContextParent( ctx );
+	data.arena = story->arena;
+	data.ctx = ctx;
+	db_update( db, remove_CB, &data );
 
 	// update active registry wrt deprecated connections
 	listItem **entries = &active->value;
@@ -216,11 +226,21 @@ bm_context_update( BMContext *ctx, CNStory *story ) {
 		if ( db_deprecated( e, db ) )
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
-
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif
 	return DBExitOn( db ); }
+
+static int
+remove_CB( CNDB *db, CNInstance *x, void *user_data ) {
+	RemoveData *data = user_data;
+	if ( x==data->parent )
+		return 1;
+	else if ( !x->sub[0] && isRef(x) ) {
+		bm_arena_deregister( data->arena, x, db );
+		bm_deregister( data->ctx, x );
+		return 1; }
+	return 0; }
 
 //===========================================================================
 //	bm_context_release
@@ -531,15 +551,15 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 		case '<':
 			*rv = 2;
 			return NULL;
-		case '@':
-			*rv = 3;
-			return BMContextActive( ctx )->value;
 		case '|': ;
 			entry = registryLookup( ctx, "|" );
 			if (( i=entry->value )) {
 				*rv = 3;
 				return i->ptr; }
-			return NULL; }
+			return NULL;
+		case '@':
+			*rv = 3;
+			return BMContextActive( ctx )->value; }
 		break;
 	case '^':
 		if ( p[1]=='^' ) {
@@ -670,6 +690,7 @@ newContext( CNEntity *cell ) {
 	Pair *id = newPair( self, NULL );
 	Pair *active = newPair( newPair( NULL, NULL ), NULL );
 	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+	Pair *shared = newPair( NULL, NULL );
 
 	Registry *ctx = newRegistry( IndexedByCharacter );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
@@ -679,6 +700,7 @@ newContext( CNEntity *cell ) {
 	registryRegister( ctx, "?", NULL ); // aka. %?
 	registryRegister( ctx, "|", NULL ); // aka. %|
 	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
+	registryRegister( ctx, "$", shared );
 	return ctx; }
 
 void
@@ -706,6 +728,12 @@ freeContext( BMContext *ctx )
 	freeRegistry(((Pair *) stack->ptr )->value, NULL );
 	freePair( stack->ptr );
 	freeItem( stack );
+
+	// free shared entity indexes
+	Pair *shared = registryLookup( ctx, "$" )->value;
+	freeListItem((listItem **) &shared->name );
+	freeListItem((listItem **) &shared->value );
+	freePair( shared );
 
 	// free CNDB & context registry
 	CNDB *db = BMContextDB( ctx );

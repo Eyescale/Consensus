@@ -327,7 +327,7 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 		else if (( x->sub[ 0 ] ))
 			goto FAIL;
 		else if ( isRef( y ) ) {
-			if ( bm_arena_compare( x, y ) )
+			if ( bm_arena_cmp( x, y ) )
 				goto FAIL; }
 		else {
 			char *p_x = DBIdentifier( x );

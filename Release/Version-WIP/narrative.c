@@ -37,8 +37,9 @@ freeOccurrence( CNOccurrence *occurrence ) {
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i=j; }
 		else for ( ; ; ) {
-			char *expression = occurrence->data->expression;
-			if (( expression )) free( expression );
+			if ( occurrence->data->type!=ROOT ) {
+				char *expression = occurrence->data->expression;
+				if (( expression )) free( expression ); }
 			freePair((Pair *) occurrence->data );
 			freePair((Pair *) occurrence );
 			if (( i->next )) {
@@ -79,6 +80,8 @@ narrative_reorder( CNNarrative *narrative ) {
 //===========================================================================
 //	narrative_output
 //===========================================================================
+#define if_( a, b ) if (type&(a)) fprintf(stream,b);
+
 int
 narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	if ( narrative == NULL ) {
@@ -92,19 +95,22 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
-		char *expression = occurrence->data->expression;
 		int type = cast_i( occurrence->data->type );
-		TAB( level );
+		char *expression = occurrence->data->expression;
+		if ( type!=ROOT ) TAB( level );
 		switch ( type ) {
+		case ELSE: fprintf( stream, "else\n" );
 		case ROOT: break;
-		case ELSE: fprintf( stream, "else\n" ); break;
-		default: if ( type&ELSE ) fprintf( stream, "else " );
-			if ( type & PER ) fprintf( stream, "per " );
-			else if ( type & IN ) fprintf( stream, "in " );
-			else if ( type & (ON|ON_X) ) fprintf( stream, "on " );
-			else if ( type & (DO|INPUT|OUTPUT) ) fprintf( stream, "do " );
-			if ( type&DO ) fprint_expr( stream, expression, level );
-			else fprintf( stream, "%s", expression );
+		default:
+			if_( ELSE, "else " )
+			if_( EN, "en " )
+			else if_( IN, "in " )
+			else if_( ON|ON_X, "on " )
+			else if_( PER_X|IN_X, "per " )
+			else if_( DO|INPUT|OUTPUT, "do " )
+			if ( type&DO )
+				fprint_expr( stream, expression, level );
+			else	fprintf( stream, "%s", expression );
 			fprintf( stream, "\n" ); }
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i=j; level++; }

@@ -1,7 +1,6 @@
 See Also: design/story/interactive.story
 TODO
-	. EENOC & EEVA => use %<.> to represent EEVA
-		we do not implement EENOC
+	. Test case EEVA
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
@@ -12,11 +11,18 @@ TODO
 		=> allows bm_query to parse them if no pivot
 		=> on cell out, deregister cell's "_" and UBE from story->arena
 	     alternative is to parse the whole arena
-	. Optimization: String sub-narrative
-		cache string entity as narrative->root->expression when found
-		=> ISSUE: reset to NULL when e removed - or make e persistent
 
 DONE
+	. implemented EEVA as %<.> - we do not implement EENOC in this release
+		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
+		=> locate_pivot.c: ignore %<.>
+		=> eenov.c: implemented eeva( CNInstance *e )
+	  cf. Test/60_EEVA
+	. Story Arena
+		. retype arena into e.g. [ string, ube ]
+		. cache sub-narrative string in n->root->expression
+		. register shared entities in context's "$" entry
+		. implement cell-out and bm_arena_flush()
 	. bm_arena_register: manifest new instantiated entities
 	. string sub-narratives
 		cf. Test/59_string-sub-narrative

@@ -17,11 +17,11 @@ newRegistry( RegistryType type ) {
 	return (Registry *) newPair( cast_ptr(type), NULL ); }
 
 void
-freeRegistry( Registry *registry, freeRegistryCB callback ) {
+freeRegistry( Registry *registry, freeRegistryCB cb ) {
 	RegistryType type = registry->type;
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
-		if (( callback )) callback( registry, entry );
+		if (( cb )) cb( registry, entry );
 		else if ( type==IndexedByName ) free( entry->name );
 		freePair( entry ); }
 	freeListItem( &registry->entries );
@@ -68,38 +68,51 @@ registryRegister( Registry *registry, void *name, void *value ) {
 	return r; }
 
 void
-registryDeregister( Registry *registry, void *name, ... ) {
+registryCBDeregister( Registry *registry, freeRegistryCB cb, void *name ) {
 	Pair *r;
 	RegistryType type = registry->type;
 	listItem *i, *next_i, *last_i=NULL;
-	if (( name )) {
-		for ( i=registry->entries; i!=NULL; i=next_i ) {
-			r = i->ptr;
-			next_i = i->next;
-			int comparison;
-			comparison = compare( type, r, name );
-			if ( comparison > 0 ) return;
-			else if ( !comparison )
-				goto CLIP;
-			else last_i = i; } }
+	for ( i=registry->entries; i!=NULL; i=next_i ) {
+		r = i->ptr;
+		next_i = i->next;
+		int comparison;
+		comparison = compare( type, r, name );
+		if ( comparison > 0 ) return;
+		else if ( comparison ) last_i = i;
+		else {
+			if ((cb)) cb( registry, r );
+			freeItem( i );
+			freePair( r );
+			if (( last_i )) last_i->next = next_i;
+			else registry->entries = next_i; } } }
+
+static freeRegistryCB free_CB;
+void
+registryDeregister( Registry *registry, void *name, ... ) {
+	RegistryType type = registry->type;
+	freeRegistryCB *cb = ( type==IndexedByName ? free_CB : NULL );
+	if (( name ))
+		registryCBDeregister( registry, cb, name );
 	else {
 		va_list ap;
 		va_start( ap, name );
 		void *value = va_arg( ap, void * );
 		va_end( ap );
+		Pair *r;
+		listItem *i, *next_i, *last_i=NULL;
 		for ( i=registry->entries; i!=NULL; i=next_i ) {
 			r = i->ptr;
 			next_i = i->next;
-			if ( r->value == value )
-				goto CLIP;
-			else last_i = i; } }
-	return;
-CLIP:
-	if (( last_i )) last_i->next = next_i;
-	else registry->entries = next_i;
-	freeItem( i );
-	if ( type==IndexedByName ) free( r->name );
-	freePair( r ); }
+			if ( r->value!=value ) last_i=i;
+			else {
+				if ((cb)) cb( registry, r );
+				freeItem( i );
+				freePair( r );
+				if (( last_i )) last_i->next = next_i;
+				else registry->entries = next_i; } } } }
+
+static void free_CB( Registry *registry, Pair *entry ) {
+	free( entry->name ); }
 
 Pair *
 registryLookup( Registry *registry, void *name, ... ) {
