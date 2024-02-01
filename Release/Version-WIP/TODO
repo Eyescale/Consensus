@@ -6,20 +6,18 @@ TODO
 	. NTH: do "occurrence" | ...
 		requires own stringRegister/stringLookup in bm_arena_register()
 		as we only want to compare what is inside "_"
-	. Q: register shared entities in context ?
-		=> allows bm_query to parse them if no pivot
-		=> on cell out, deregister cell's "_" and UBE from story->arena
-	     alternative is to parse the whole arena
 
 DONE
 	. implemented EEVA as %<.> - we do not implement EENOC in this release
 		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
 		=> locate_pivot.c: ignore %<.>
-		=> eenov.c: implemented eeva( CNInstance *e )
+		=> eenov.c: implemented eeva( CNInstance *, CNDB * )
 	  cf. Test/60_EEVA
+	. NOTE: strings are not authorized in inifile as we may not have a story
+	  at that stage.
 	. Story Arena
 		. retype arena into e.g. [ string, ube ]
-		. cache sub-narrative string in n->root->expression
+		. cache sub-narrative string in n->root->data->expression
 		. register shared entities in context's "$" entry
 		. implement cell-out and bm_arena_flush()
 	. bm_arena_register: manifest new instantiated entities

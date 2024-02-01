@@ -58,6 +58,8 @@ typedef struct {
 
 static inline CNDB * BMContextDB( BMContext *ctx ) {
 	return registryLookup( ctx, "" )->value; }
+static inline Pair * BMContextShared( BMContext *ctx ) {
+	return registryLookup( ctx, "$" )->value; }
 static inline Pair * BMContextId( BMContext *ctx ) {
 	return registryLookup( ctx, "%" )->value; }
 static inline CNInstance * BMContextSelf( BMContext *ctx ) {
@@ -76,7 +78,7 @@ static inline Pair * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
 static inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->name; }
-static inline Registry *BMContextLocales( BMContext *ctx ) {
+static inline Registry * BMContextLocales( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->value; }
 
 //===========================================================================

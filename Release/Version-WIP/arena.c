@@ -10,14 +10,12 @@ CNInstance *
 bm_arena_register( CNArena *arena, char *s, CNDB *db )
 /*
    returns
-		e:( NULL, [ s, ref:{[db,e]} ] )
-   Note:
-	in the future we might want to create and use a compressed version
-	of the "_" string passed by bm_instantiate() on either
-		do "_"
-		do :_:"_"
-	to index string arena - we might also inform it directly during
-	story / narrative creation
+		e:( NULL, [ s, ref:{[db,e]} ] ) 
+		  ^	  ^-------------------- shared arena part
+		   ---------------------------- db-specific
+
+	ube arena is a list of all registered [ NULL, {[db,e]} ]
+	string arena is a {[ s, {[db,e]} ]} registry
 */ {
 	CNInstance *e;
 	Pair *entry, *r;

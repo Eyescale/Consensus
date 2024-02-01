@@ -319,9 +319,8 @@ freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
 			cn_prune( connection->as_sub[0]->ptr );
 			cn_free( connection ); } }
 
+	if ( user_CB ) user_CB( cell, user_data );
 	freePair((Pair *) cell->sub[ 0 ] );
-	BMContext *ctx = (BMContext *) cell->sub[ 1 ];
-	if ( user_CB ) user_CB( ctx, user_data );
-	freeContext( ctx );
+	freeContext((BMContext *) cell->sub[ 1 ] );
 	cn_free( cell ); }
 

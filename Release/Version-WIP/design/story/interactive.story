@@ -22,7 +22,7 @@ Description
 			on occurrence(s) // event
 				do occurrence(s) // action
 
-	The System's Requirements Specifications process involves identifying,
+	The System's Requirement Specification process involves identifying,
 	for each occurrence
 
 	. the referent, i.e. the cosystem for which this occurrence

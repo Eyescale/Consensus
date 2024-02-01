@@ -86,8 +86,7 @@ cnSync( CNProgram *program ) {
 //===========================================================================
 //	cnOperate
 //===========================================================================
-static inline void uncache( listItem *flushed, listItem *narratives );
-static freeCellCB arena_flush_CB;
+static freeCellCB cell_release;
 
 int
 cnOperate( CNCell **this, CNProgram *program ) {
@@ -120,25 +119,27 @@ cnOperate( CNCell **this, CNProgram *program ) {
 			last_i = i; } }
 	// free out cells
 	while (( cell = popListItem(&out) ))
-		freeCell( cell, arena_flush_CB, program->story );
+		freeCell( cell, cell_release, program->story );
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new)); }
 
 static void
-arena_flush_CB( BMContext *ctx, void *user_data ) {
+cell_release( CNCell *cell, void *user_data ) {
 	listItem *flushed = NULL;
 	CNStory *story = user_data;
+	BMContext *ctx = BMCellContext( cell );
+	Pair *shared = BMContextShared( ctx );
 	CNDB *db = BMContextDB( ctx );
-	Pair *shared = registryLookup( ctx, "$" )->value;
 	bm_arena_flush( story->arena, shared, db, &flushed );
-	if (( flushed )) {
-		uncache( flushed, story->narratives->entries );
-		freeListItem( &flushed ); } }
+	if ( !flushed ) return;
 
-static inline void
-uncache( listItem *flushed, listItem *narratives ) {
+	/* Must parse all story narratives here, not just the cell's, as
+	   although a narrative string is only cached in relation with a
+	   referencing cell, that cell may not be the last one to go out
+	*/
+	listItem *narratives = story->narratives->entries;
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		narratives = entry->value;
@@ -146,7 +147,8 @@ uncache( listItem *flushed, listItem *narratives ) {
 			CNNarrative *narrative = j->ptr;
 			void *cached = narrative->root->data->expression;
 			if (( cached )&&( lookupIfThere(flushed,cached) ))
-				narrative->root->data->expression = NULL; } } }
+				narrative->root->data->expression = NULL; } }
+	freeListItem( &flushed ); }
 
 //===========================================================================
 //	newProgram / freeProgram
@@ -171,9 +173,9 @@ freeProgram( CNProgram *program ) {
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
 	while (( cell = popListItem(active) )) {
-		freeCell( cell, arena_flush_CB, program->story ); }
+		freeCell( cell, cell_release, program->story ); }
 	while (( cell = popListItem(new) )) {
-		freeCell( cell, arena_flush_CB, program->story ); }
+		freeCell( cell, cell_release, program->story ); }
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program ); }
 
