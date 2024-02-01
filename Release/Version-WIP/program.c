@@ -144,8 +144,8 @@ uncache( listItem *flushed, listItem *narratives ) {
 		narratives = entry->value;
 		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
 			CNNarrative *narrative = j->ptr;
-			void *shared = narrative->root->data->expression;
-			if (( shared )&&( lookupIfThere(flushed,shared) ))
+			void *cached = narrative->root->data->expression;
+			if (( cached )&&( lookupIfThere(flushed,cached) ))
 				narrative->root->data->expression = NULL; } } }
 
 //===========================================================================

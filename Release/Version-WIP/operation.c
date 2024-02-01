@@ -394,7 +394,7 @@ do_output( char *expression, BMContext *ctx )
 static BMQueryCB enable_CB;
 typedef struct {
 	CNNarrative *narrative;
-	void *shared;
+	void *string_ref;
 	Registry *subs;
 	Pair *entry;
 	} EnableData;
@@ -410,15 +410,15 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 		char *p = narrative->proto;
 		switch ( *p ) {
 		case '.': p = p_prune(PRUNE_IDENTIFIER,p+1) + 1; }
-		void *shared = NULL;
+		void *string_ref = NULL;
 		CNString *s = NULL;
 		char *query;
 		switch ( *p ) {
 		case '"':
-			shared = narrative->root->data->expression;
-			if ( !shared ) { // cache arena string's [ s, ref ]
-				shared = registryLookup( string_arena, p );
-				narrative->root->data->expression = shared; }
+			string_ref = narrative->root->data->expression;
+			if ( !string_ref ) { // cache arena string's [ s, ref ]
+				string_ref = registryLookup( string_arena, p );
+				narrative->root->data->expression = string_ref; }
 			query = en;
 			break;
 		default:
@@ -435,7 +435,7 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 #endif
 		// launch enable query
 		data.narrative = narrative;
-		data.shared = shared;
+		data.string_ref = string_ref;
 		data.entry = NULL;
 		bm_query( BM_CONDITION, query, ctx, enable_CB, &data );
 		if (( s )) freeString( s ); }
@@ -444,14 +444,14 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 static BMCBTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableData *data = user_data;
-	void *shared = data->shared;
-	if ( !shared ) {
+	void *string_ref = data->string_ref;
+	if ( !string_ref ) {
 		Pair *entry = data->entry;
 		if ( !entry ) {
 			entry = registryRegister( data->subs, data->narrative, NULL );
 			data->entry = entry; }
 		addIfNotThere((listItem **) &entry->value, e ); }
-	else if ( e->sub[1]==shared ) {
+	else if ( e->sub[1]==string_ref ) {
 		registryRegister( data->subs, data->narrative, newItem(e) );
 		return BM_DONE; }
 	return BM_CONTINUE; }
