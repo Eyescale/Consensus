@@ -10,7 +10,7 @@ CNArena *	newArena( void );
 void		freeArena( CNArena * );
 CNInstance *	bm_arena_register( CNArena *, char *, CNDB * );
 void		bm_arena_deregister( CNArena *, CNInstance *, CNDB * );
-listItem *	bm_arena_flush( CNArena *, Pair *, CNDB * );
+void		bm_arena_flush( CNArena *, Pair *, CNDB *, listItem ** );
 CNInstance *	bm_arena_lookup( CNArena *, char *, CNDB * );
 CNInstance *	bm_arena_translate( CNInstance *, CNDB * );
 CNInstance *	bm_arena_transpose( CNInstance *, CNDB * );

@@ -128,10 +128,11 @@ cnOperate( CNCell **this, CNProgram *program ) {
 
 static void
 arena_flush_CB( BMContext *ctx, void *user_data ) {
+	listItem *flushed = NULL;
 	CNStory *story = user_data;
 	CNDB *db = BMContextDB( ctx );
 	Pair *shared = registryLookup( ctx, "$" )->value;
-	listItem *flushed = bm_arena_flush( story->arena, shared, db );
+	bm_arena_flush( story->arena, shared, db, &flushed );
 	if (( flushed )) {
 		uncache( flushed, story->narratives->entries );
 		freeListItem( &flushed ); } }
@@ -140,7 +141,7 @@ static inline void
 uncache( listItem *flushed, listItem *narratives ) {
 	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
-		listItem *narratives = entry->value;
+		narratives = entry->value;
 		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
 			CNNarrative *narrative = j->ptr;
 			void *shared = narrative->root->data->expression;

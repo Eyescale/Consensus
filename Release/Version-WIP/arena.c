@@ -89,23 +89,21 @@ static void deregister_CB( Registry *registry, Pair *entry ) {
 //===========================================================================
 static inline void flush( listItem **, listItem *, CNDB *, listItem ** );
 
-listItem *
-bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db ) {
-	listItem *trace = NULL;
-	// flush ube arena
-	listItem *list = shared->value;
-	if (( list )) {
-		listItem *ube_arena = arena->value;
-		listItem **base = (listItem **) &arena->value;
-		flush( base, list, db, NULL ); }
-	// flush string arena
-	list = shared->name;
+void
+bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db, listItem **trace ) {
+	// flush string arena - only those are traced
+	listItem *list = shared->name;
 	if (( list )) {
 		Registry *string_arena = arena->name;
 		listItem **base = &string_arena->entries;
-		flush( base, list, db, &trace ); }
-	reorderListItem( &trace );
-	return trace; }
+		flush( base, list, db, trace ); }
+	reorderListItem( trace );
+	// flush ube arena
+	list = shared->value;
+	if (( list )) {
+		listItem *ube_arena = arena->value;
+		listItem **base = (listItem **) &arena->value;
+		flush( base, list, db, NULL ); } }
 
 static inline void
 flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
