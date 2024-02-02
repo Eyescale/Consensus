@@ -212,13 +212,6 @@ OPEN ISSUES
 		=> wrong order of assignment
 	. TBD: query.c: non-pivot case: shared entities not traversed
 		=> bug or feature?
-	. TBD: should I call bm_arena_register directly from parser?
-		=> need story always: bm_read, bm_load<<<
-		benefit:
-		1. support do "occurrence" | ...
-		2. can replace "_" with "&address in expression
-		the question being: is address entry?
-		but the point is: indexed by address => no strcmp
 
 NICE TO HAVE
 	. query, scan, feel, etc. could take &p as argument, so that
