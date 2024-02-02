@@ -26,7 +26,7 @@ static char *user_traversal( char *expression, BMTraverseData *traverse_data, in
 		p = p_prune( PRUNE_TERM, p );		\
 		continue;				\
 	case BM_PRUNE_LEVEL:				\
-		p = prune_level( p );			\
+		p = p_prune( PRUNE_LEVEL, p );		\
 		continue; }
 
 //===========================================================================

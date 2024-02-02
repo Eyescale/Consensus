@@ -107,12 +107,13 @@ optimize( Pair *segment, char *p )
 /*
 	remove ternary expression's result's enclosing parentheses if possible
 */ {
-	segment = segment->name;
-	char *bgn = segment->name;
-	char *end = segment->value; // segment ended after '('
-	if (( bgn==end-1 ) || !strmatch( "~*%.", *(end-2) ))
-		{ segment->value--; return p+1; }
-	else return p; }
+	if ( p[1]!='^' ) {
+		segment = segment->name;
+		char *bgn = segment->name;
+		char *end = segment->value; // segment ended after '('
+		if (( bgn==end-1 ) || !strmatch( "~*%.)", *(end-2) ))
+			{ segment->value--; return p+1; } }
+	return p; }
 
 //===========================================================================
 //	bm_deternarize

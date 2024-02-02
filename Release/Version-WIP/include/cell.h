@@ -13,19 +13,10 @@ int		bm_cell_read( CNCell **, CNStory * );
 CNCell *	newCell( Pair *entry, char *inipath );
 void		freeCell( CNCell *, freeCellCB, void * );
 void		bm_cell_operate( CNCell *, CNStory * );
-CNInstance *	bm_inform( BMContext *, CNInstance *, CNDB * );
 CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
+CNInstance *	bm_inform( BMContext *, CNInstance *, CNDB * );
+listItem *	bm_list_inform( BMContext *, listItem **, CNDB *, int * );
 void		bm_cell_bond( CNCell *, CNCell *, CNInstance * );
-
-static inline listItem *
-bmListInform( BMContext *dst, listItem *instances, CNDB *db_src ) {
-	if ( !dst || !instances ) return instances;
-	listItem *results = NULL;
-	listItem **list = &instances;
-	for ( CNInstance *e;( e = popListItem(list) ); ) {
-		e = bm_inform( dst, e, db_src );
-		if (( e )) addItem( &results, e ); }
-	return results; }
 
 static inline Pair * BMCellEntry( CNCell *cell )
 	{ return (Pair *) ((Pair *) cell->sub[ 0 ] )->name; }

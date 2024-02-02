@@ -140,10 +140,71 @@ free_CB( Registry *warden, Pair *entry ) {
 	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
-//	bm_inform
+//	bm_intake
 //===========================================================================
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 
+CNInstance *
+bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
+	if ( !x ) return NULL;
+	if ( db_dst==db_x ) return x;
+
+	struct { listItem *src, *dst; } stack = { NULL, NULL };
+	CNInstance *instance;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(x,ndx) )) {
+			add_item( &stack.src, ndx );
+			addItem( &stack.src, x );
+			x = x->sub[ ndx ];
+			ndx = 0; continue; }
+		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
+			CNEntity *that = DBProxyThat( x );
+			instance = proxy_that( that, dst, db_dst, 0 ); }
+		else if ( isRef(x) )
+			instance = bm_arena_translate( x, db_dst );
+		else {
+			char *p = DBIdentifier( x );
+			instance = db_lookup( 0, p, db_dst ); }
+		if ( !instance ) break;
+		for ( ; ; ) {
+			if ( !stack.src ) return instance;
+			x = popListItem( &stack.src );
+			if (( ndx = pop_item( &stack.src ) )) {
+				CNInstance *f = popListItem( &stack.dst );
+				instance = cn_instance( f, instance, 0 ); }
+				if ( !instance ) goto FAIL;
+			else {
+				addItem( &stack.dst, instance );
+				ndx=1; break; } } }
+FAIL:
+	freeListItem( &stack.src );
+	freeListItem( &stack.dst );
+	return NULL; }
+
+static inline CNInstance *
+proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
+/*
+	look for proxy: (( this, that ), NULL ) where
+		this = BMContextCell( ctx )
+*/ {
+	if ( !that ) return NULL;
+
+	CNEntity *this = BMContextCell( ctx );
+	if ( this==that )
+		return BMContextSelf( ctx );
+
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		// Assumption: there is at most one ((this,~NULL), . )
+		if ( connection->sub[ 1 ]==that )
+			return connection->as_sub[ 0 ]->ptr; }
+
+	return ( inform ? new_proxy(this,that,db) : NULL ); }
+
+//===========================================================================
+//	bm_inform / bm_list_inform
+//===========================================================================
 CNInstance *
 bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
 	if ( !dst ) return x;
@@ -187,66 +248,25 @@ FAIL:
 	freeListItem( &stack.dst );
 	return NULL; }
 
-static inline CNInstance *
-proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
-/*
-	look for proxy: (( this, that ), NULL ) where
-		this = BMContextCell( ctx )
-*/ {
-	if ( !that ) return NULL;
-
-	CNEntity *this = BMContextCell( ctx );
-	if ( this==that )
-		return BMContextSelf( ctx );
-
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		// Assumption: there is at most one ((this,~NULL), . )
-		if ( connection->sub[ 1 ]==that )
-			return connection->as_sub[ 0 ]->ptr; }
-
-	return ( inform ? new_proxy(this,that,db) : NULL ); }
-
-//===========================================================================
-//	bm_intake
-//===========================================================================
-CNInstance *
-bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
-	if ( !x ) return NULL;
-	if ( db_dst==db_x ) return x;
-
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(x,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, x );
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
-			CNEntity *that = DBProxyThat( x );
-			instance = proxy_that( that, dst, db_dst, 0 ); }
-		else if ( isRef(x) )
-			instance = bm_arena_translate( x, db_dst );
-		else {
-			char *p = DBIdentifier( x );
-			instance = db_lookup( 0, p, db_dst ); }
-		if ( !instance ) break;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			x = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = cn_instance( f, instance, 0 ); }
-				if ( !instance ) goto FAIL;
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	return NULL; }
+//---------------------------------------------------------------------------
+//	bm_list_inform
+//---------------------------------------------------------------------------
+listItem *
+bm_list_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
+	if ( !dst || !*list ) return *list;
+	listItem *results = NULL;
+	CNInstance *e;
+	if (( nb )&&( *nb < 1 )) {
+		CNDB *db_dst = BMContextDB( dst );
+		while (( e=popListItem(list) ) &&
+		       (( e=bm_intake( dst, db_dst, e, db_src ) ) ||
+		       !( e=bm_inform( dst, e, db_src ) ))) {}
+		*nb = (( e )? 1 : -1 ); // inform newborn flag
+		if (( e )) addItem( &results, e ); }
+	while (( e=popListItem(list) )) {
+		e = bm_inform( dst, e, db_src );
+		if (( e )) addItem( &results, e ); }
+	return results; }
 
 //===========================================================================
 //	bm_cell_bond

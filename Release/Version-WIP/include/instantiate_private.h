@@ -41,7 +41,7 @@ static inline int newborn_authorized( InstantiateData *data ) {
 		if (( current=cast_i( i->ptr ) ))
 			return ( current > 0 );
 	return 0; }
-static inline MarkData *mark_scan( char *p, BMContext *ctx ) {
+static inline MarkData *markscan( char *p, BMContext *ctx ) {
 	listItem *results = bm_scan( p, ctx );
 	if (( results )) {
 		Pair *mark = bm_mark( p, NULL );

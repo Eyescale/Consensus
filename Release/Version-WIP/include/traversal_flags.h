@@ -28,7 +28,7 @@
 #define ELLIPSIS	(1<<21)
 #define PRIMED		(1<<22)
 #define STARRED		(1<<23)
-#define FOR		(1<<24)
+#define FORE		(1<<24)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

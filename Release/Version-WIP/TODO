@@ -1,14 +1,40 @@
 See Also: design/story/interactive.story
 TODO
-	. for all DB cells: must cn_prune( e );
 	. %identifier list variables
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: do "occurrence" | ...
 		requires own stringRegister/stringLookup in bm_arena_register()
 		as we only want to compare what is inside "_"
+	. NTH: now that we keep list of shared entities in context
+		=> bm_query() could parse them in no pivot case
 
 DONE
+	. RE-REVISION 2.2: using %|:sub instead of %|^sub - more understandable
+	. implemented %(_)^ use case, as per design/story/interactive.story
+	  => instantiate.c: collect_CB uses bm_list_inform() which first tests
+	     results via bm_intake so as to set data->newborn.current flag
+	. p_prune( PRUNE_TERM, p ) now returns on '^' if follows ')'
+	. p_prune( PRUNE_LEVEL, p ) / integrated in prune.c / handles '^'
+	. bm_traverse(): handles '^' use cases:
+		*^	=> *^^	& DereferenceCB / p++ to ^^
+			   *^? 	& DereferenceCB / p++ to ^?
+		^.	=> INFORMED & RegisterVariableCB / p+=2; set INFORMED
+		^^	=> INFORMED & RegisterVariableCB / p+=2; set INFORMED
+		^?	=> following *
+		)^	=> INFORMED & NewBornCB / p++ past )^
+		|^	=> not done yet
+	. parser: (_)^ PROTECTED => cannot be followed by ':' nor be ternary guard
+	. deternarize no longer optimizes any of ?:(_)(_) or !^:(_)(_) or (_)^
+		=> parser.c: does not allow ternary in FORE
+		=> deternarize.c: does not optimize if )(_) or )^
+	. bugfix ?:(_){_} => traversal_template.h
+		. on )(_) skip to the last closing parenthesis - for !^:(_)(_)
+		. bugfix markscan - for ?:(_)(_) and ?:(_){_}
+		  on (_) or {_} when BASE and INFORMED => traverse_data->done = 1
+		  allows markscan / bm_query() to return after FORE
+	  cf Test/56_Loop
+	. bm_arena_flush() and freeArena() invoke cn_prune vs. cn_release
 	. implemented EEVA as %<.> - we do not implement EENOC in this release
 		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
 		=> locate_pivot.c: ignore %<.>

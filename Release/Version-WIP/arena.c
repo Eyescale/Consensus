@@ -132,7 +132,6 @@ bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db, listItem **trace ) {
 	// flush ube arena
 	list = shared->value;
 	if (( list )) {
-		listItem *ube_arena = arena->value;
 		listItem **base = (listItem **) &arena->value;
 		flush( base, list, db, NULL ); } }
 

@@ -17,7 +17,7 @@
 #define f_signalable( stack ) \
 	f_signalable_( flags, stack )
 #define byref \
-	EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED|FOR
+	FORE|EENOV|SUB_EXPR|NEGATED|FILTERED|STARRED
 
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {

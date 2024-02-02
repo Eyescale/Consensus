@@ -138,8 +138,10 @@ case_( activate_CB )
 	_break
 case_( collect_CB )
 	listItem *results = bm_scan( p, data->ctx );
-	data->sub[ NDX ] = bmListInform( data->carry, results, data->db );
-	_prune( BM_PRUNE_TERM, p )
+	p = p_prune( PRUNE_TERM, p+1 );
+	int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
+	data->sub[ NDX ] = bm_list_inform( data->carry, &results, data->db, nb );
+	_continue( p )
 case_( decouple_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
 		listItem **results = &data->results;
@@ -167,7 +169,7 @@ case_( wildcard_CB )
 			p++; } // no break
 	case '?':
 		p+=2;
-		MarkData *mark = mark_scan( p, data->ctx );
+		MarkData *mark = markscan( p, data->ctx );
 		if ( !mark ) _prune( BM_PRUNE_LEVEL, p )
 		else {
 			p = p_prune( PRUNE_TERM, p );
@@ -191,9 +193,9 @@ case_( register_variable_CB )
 		break;
 	case '|':
 		found = bm_context_lookup( data->ctx, p );
-		if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
+		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
 		sub = &data->sub[ NDX ];
-		listItem *xpn = ( p[2]=='^' ? subx(p+3) : NULL );
+		listItem *xpn = ( p[2]==':' ? subx(p+3) : NULL );
 		for ( listItem *i=found; i!=NULL; i=i->next )
 			if (( e=xsub(i->ptr,xpn) )) {
 				e = bm_inform( carry, e, db );
@@ -238,8 +240,10 @@ case_( dot_expression_CB )
 	BMContext *carry = data->carry;
 	if (( carry )) { // null-carry case handled in close_CB
 		listItem *results = bm_scan( p+1, data->ctx );
-		data->sub[ NDX ] = bmListInform( carry, results, data->db );
-		_prune( BM_PRUNE_TERM, p+1 ) }
+		p = p_prune( PRUNE_TERM, p+1 );
+		int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
+		data->sub[ NDX ] = bm_list_inform( carry, &results, data->db, nb );
+		_continue( p ) }
 	_break
 case_( dot_identifier_CB )
 	BMContext *ctx = data->ctx;
@@ -591,10 +595,10 @@ static int
 assign_v2v( char *expression, BMTraverseData *traverse_data ) {
 	char *q, *p = expression+1; // skip leading ':'
 	listItem *vector[ 2 ] = { NULL, NULL };
-	for ( q=p; *q++!='>'; q=prune_level(q) )
+	for ( q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		addItem( &vector[ 0 ], q );
 	if ( q[1]=='<' ) {
-		for ( q++; *q++!='>'; q=prune_level(q) )
+		for ( q++; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 			addItem( &vector[ 1 ], q ); }
 	else {	freeListItem( &vector[ 0 ] );
 		return 0; }
