@@ -154,11 +154,11 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				case '!':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( mode&LITERAL && *p==':' ) {
-						if (( subx(p+1) )) 
-							p = p_prune( PRUNE_TERM, p+1 ); }
-					else if ( *p=='~' && p[1]!='<' ) {
-CB_SignalCB					p++; }
+					if ( mode&LITERAL ) {
+						if ( *p=='~' && p[1]!='<' ) {
+CB_SignalCB						p++; }
+						else if( *p==':' && subpass(p+1) ) {
+							p = p_prune( PRUNE_TERM, p+1 ); } }
 					break;
 				default:
 CB_ModCharacterCB			f_set( INFORMED )
