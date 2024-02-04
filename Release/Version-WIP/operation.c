@@ -192,7 +192,7 @@ on_event_x( int as_per, char *expression, BMContext *ctx, MarkData **mark )
 
 	char *src = p_prune( PRUNE_TERM, expression ) + 1;
 	if ( *expression==':' ) src = p_prune( PRUNE_TERM, src ) + 1;
-	listItem *proxies = bm_proxy_scan( BM_CONDITION, src, ctx );
+	listItem *proxies = bm_eeno_scan( src, ctx );
 	if ( !proxies ) return 0;
 
 	Pair *found = NULL;

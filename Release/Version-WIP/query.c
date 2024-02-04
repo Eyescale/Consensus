@@ -398,7 +398,7 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 	return success; }
 
 //---------------------------------------------------------------------------
-//	xp_verify	- also invoked by eeno_feel.c: bm_proxy_scan()
+//	xp_verify	- also invoked by eeno_query.c: bm_eeno_scan()
 //---------------------------------------------------------------------------
 static CNInstance * op_set( BMVerifyOp, BMQueryData *, CNInstance *, char **, int );
 typedef struct {

@@ -243,3 +243,43 @@ CLEAN and LISTABLE flags
 		%((?,...),_)
 		    ^-- are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED)
 
+%?:sub and %!:sub support
+	Simple solution - [DONE]: in *type&DO when !(SUB_EXPR|byref)
+                => allow e.g. %?:(.,?) without %(%?:(.,?)) in these cases
+                => %?:sub is PROTECTED: can neither be filtered nor used
+		   as ternary guard
+
+	General solution - TBD
+		1. %?:sub only => %?:(toto,.) err => use (%?) instead
+		2. %?:sub cannot be filtered, etc. - use (%?:sub) instead
+		3. %?:sub is not filterable - use (%?:sub) instead
+		4. %?:sub is not considered marked
+
+byref vs. BYREF
+	in DO mode, I want to
+		forbid FILTER unless BYREF
+	    where
+		BYREF means
+			expression starts with
+				~
+				*
+				%
+			or (register variables)
+				..
+				^^
+				^.
+				^?
+			or FORE is set
+
+	So that
+		in DO mode, on ",)}>\n"
+			if FILTERED and !BYREF => err
+		in TERNARY
+			if PROTECTED => err
+
+	Currently we use byref#=FORE|SUB_EXPR|NEGATED|FILTERED|STARRED
+	which does NOT cover register variables
+
+	Note
+	. BYREF does not replace PROTECTED, which affects the whole stack
+

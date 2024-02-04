@@ -114,7 +114,7 @@
 					in : push : ( ., OUT ) // pruning
 						do :< s, r >:< %?, %(%?:(.,?)) >
 						in : push : ( ?, . )
-							do : push : ((%?:~IN) ? %? :)
+							do : push : ( %(%?:~IN) ? %? :)
 							do ~( %?, . )
 						do : pop : ~.
 					else

@@ -202,6 +202,17 @@ case_( register_variable_CB )
 				if (( e )) addItem( sub, e ); }
 		freeListItem( &xpn );
 		break;
+	case '?':
+	case '!':
+		e = bm_context_lookup( data->ctx, p );
+		if (( e )&&( p[2]==':' )) {
+			listItem *xpn = subx(p+3);
+			e = xsub( e, xpn );
+			freeListItem( &xpn ); }
+		if (( e )) e = bm_inform( carry, e, db );
+		if (( e )) data->sub[ NDX ] = newItem( e );
+		else _prune( BM_PRUNE_LEVEL, p );
+		break;
 	case '@':
 		found = bm_context_lookup( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )

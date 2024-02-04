@@ -29,6 +29,7 @@
 #define PRIMED		(1<<22)
 #define STARRED		(1<<23)
 #define FORE		(1<<24)
+#define PROPPED		(1<<25)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

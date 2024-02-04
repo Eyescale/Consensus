@@ -244,24 +244,33 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 	return success; }
 
 //===========================================================================
-//	bm_proxy_scan
+//	bm_eeno_scan
 //===========================================================================
 listItem *
-bm_proxy_scan( int type, char *expression, BMContext *ctx )
+bm_eeno_scan( char *src, BMContext *ctx )
 /*
 	return all context's active connections (proxies) matching expression
 */ {
 #ifdef DEBUG
-	fprintf( stderr, "bm_proxy_scan: bgn - %s\n", expression );
+	fprintf( stderr, "bm_eeno_scan: bgn - %s\n", src );
 #endif
 	listItem *results = NULL;
-	// Special case: expression is or includes %%
-	if ( !strncmp( expression, "%%", 2 ) ) {
+	if ( *src=='?' ) {
+		if ( src[1]==':' ) src+=2; // skip leading "?:"
+		else {
+			ActiveRV *active = BMContextActive( ctx );
+			for ( listItem *i=active->value; i!=NULL; i=i->next )
+				addItem( &results, i->ptr );
+			reorderListItem( &results );
+			return results; } }
+
+	// Special case: src is or includes %%
+	if ( !strncmp( src, "%%", 2 ) ) {
 		CNInstance *proxy = BMContextSelf(ctx);
 		results = newItem( proxy );
 		return results; }
-	else if ( *expression=='{' ) {
-		char *p = expression;
+	else if ( *src=='{' ) {
+		char *p = src;
 		do {	p++;
 			if ( !strncmp( p, "%%", 2 ) ) {
 				CNInstance *proxy = BMContextSelf(ctx);
@@ -276,10 +285,10 @@ bm_proxy_scan( int type, char *expression, BMContext *ctx )
 	data.ctx = ctx;
 	data.db = db;
 	ActiveRV *active = BMContextActive( ctx );
-	if ( *expression=='{' ) {
+	if ( *src=='{' ) {
 		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 			CNInstance *proxy = i->ptr;
-			char *p = expression;
+			char *p = src;
 			do {	p++;
 				if ( !strncmp( p, "%%", 2 ) )
 					{ p+=2; continue; }
@@ -291,10 +300,10 @@ bm_proxy_scan( int type, char *expression, BMContext *ctx )
 	else {
 		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 			CNInstance *proxy = i->ptr;
-			if ( xp_verify( proxy, expression, &data ) )
+			if ( xp_verify( proxy, src, &data ) )
 				addIfNotThere( &results, proxy ); } }
 #ifdef DEBUG
-	fprintf( stderr, "bm_proxy_scan: end\n" );
+	fprintf( stderr, "bm_eeno_scan: end\n" );
 #endif
 	return results; }
 

@@ -7,7 +7,7 @@
 
 .s: ((( schema, .p ), .f ), .r )
 	on .EXIT
-		do ~((.,r):~%(?,EXIT) ? s : r )
+		do ~( (.,r):~%(?,EXIT) ? s : r )
 #ifdef MEMOPT
 	else in ~.: (r,.) // all r subscribers failed
 		do ~( r )
