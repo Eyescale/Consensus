@@ -47,19 +47,46 @@ static inline void xpn_out( FILE *stream, listItem *xp ) {
 		fprintf( stream, "%d", cast_i(xp->ptr) );
 		xp = xp->next; } }
 
-static inline listItem * subx( char *p ) {
-	if ( *p=='.' ) return NULL;
-	listItem *sub = NULL;
-	char *s=p;
-	for ( int ndx=0; ; )
+#define subpass_( event, test ) \
+	case event: if (!test) { freeListItem(&stack); return 0; } else
+
+static inline int subpass( char *p ) {
+	if ( *p++!='(' ) return 0;
+	int first, informed, marked, level;
+	listItem *stack = NULL;
+	informed = marked = 0;
+	first = level = 1;
+	for ( ; ; )
 		switch ( *p++ ) {
+		subpass_( '(', !(informed||marked) ) {
+			level++; add_item(&stack,first);
+			first = 1;
+			break; }
+		subpass_( ')', (informed&&!first) ) {
+			level--; first=pop_item(&stack);
+			if ( !level ) return 1;
+			break; }
+		subpass_( ',', (first&&informed) ) {
+			first = informed = 0;
+			break; }
+		subpass_( '.', ((first||marked)&&!informed) ) {
+			informed = 1;
+			break; }
+		subpass_( '?', !(informed||marked) ) {
+			informed = marked = 1;
+			break; }
+		default:
+			freeListItem( &stack );
+			return 0; } }
+
+static inline listItem * subx( char *p ) {
+	if ( !subpass(p) ) return NULL;
+	listItem *sub = NULL;
+	int ndx = 0;
+	for ( ; ; ) switch ( *p++ ) {
 		case '(': add_item( &sub, ndx ); ndx=0; break;
 		case ',': sub->ptr=cast_ptr( 1 ); break;
-		case '?': reorderListItem( &sub ); return sub;
-		case '.': break;
-		default: fprintf( stderr, ">>>>> B%%: Warning: subx:\n"
-			"\t\t_:%s\n\t<<<<< format inconsistent - ignoring\n", s );
-			freeListItem( &sub ); return NULL; } }
+		case '?': reorderListItem( &sub ); return sub; } }
 
 static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 	if ( !xpn ) return x;

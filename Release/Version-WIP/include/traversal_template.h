@@ -155,7 +155,8 @@ CB_RegisterVariableCB			f_set( INFORMED )
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
 					if ( mode&LITERAL && *p==':' ) {
-						p = p_prune( PRUNE_TERM, p+1 ); }
+						if (( subx(p+1) )) 
+							p = p_prune( PRUNE_TERM, p+1 ); }
 					else if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
 					break;
