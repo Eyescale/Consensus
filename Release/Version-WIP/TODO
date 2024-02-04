@@ -1,6 +1,9 @@
 See Also: design/story/interactive.story
 TODO
 	. %identifier list variables
+		.%list  <_>	// initialization, e.g.: .%list <ON,OFF>
+		.%list  {_}	// foreach: may include clipping?
+		.%list~ {_}	// while pop
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: now that we keep list of shared entities in context

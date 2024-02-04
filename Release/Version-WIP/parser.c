@@ -527,67 +527,6 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '^' )	do_( "expr" )	s_take
 						f_set( INFORMED )
 		end
-#if 1
-	in_( ":_sub" ) bgn_
-		on_( '(' )	do_( ":sub" )	REENTER
-						f_set( PROPPED )
-		on_other if ( is_f(FILTERED) ) {
-				do_( "expr" ) 	REENTER }
-		end
-		in_( ":sub" ) bgn_
-			on_( '(' ) if ( !is_f(MARKED|INFORMED) ) {
-					do_( same )	s_take
-							f_push( stack )
-							f_clr( INFORMED|PROPPED )
-							f_set( FIRST|LEVEL ) }
-				else if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			on_( '.' ) if ( is_f(LEVEL) && !is_f(INFORMED) && is_f(FIRST|MARKED) ) {
-					do_( same )	s_take
-							f_set( INFORMED ) }
-				else if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			on_( '?' ) if ( is_f(LEVEL) && !is_f(INFORMED|MARKED) ) {
-					do_( same )	s_take
-							f_set( INFORMED|MARKED ) }
-				else if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			on_( ',' ) if ( are_f(LEVEL|FIRST) && is_f(INFORMED) ) {
-					do_( same )	s_take
-							f_clr( FIRST|INFORMED ) }
-			on_( ')' ) if ( are_f(LEVEL|INFORMED) ) {
-					if ( !is_f(FIRST) ) {
-						do_( ":sub_" )	s_take
-								f_pop( stack, MARKED )
-								f_set( INFORMED ) }
-					else if ( is_f(FILTERED) ) {
-						do_( "expr" )	REENTER } }
-			on_other if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			end
-		in_( ":sub_" ) bgn_
-			ons( " \t" ) if ( is_f(PROPPED) ) {
-					do_( same ) }
-				else if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			ons( ",)" ) if ( are_f(PROPPED|MARKED) ) {
-					do_( "expr" )	REENTER
-							f_clr( MARKED|FILTERED )
-							f_tag( stack, PROTECTED ) }
-				else if ( are_f(PROPPED|FILTERED) ) {
-					do_( "expr" )	REENTER }
-				else if ( !is_f(PROPPED) ) {
-					do_( ":sub" )	REENTER }
-			ons( "^}>\n" ) if ( are_f(PROPPED|MARKED) ) {
-					do_( "expr" )	REENTER
-							f_clr( MARKED|FILTERED )
-							f_tag( stack, PROTECTED ) }
-				else if ( are_f(PROPPED|FILTERED ) ) {
-					do_( "expr" )	REENTER }
-			on_other if ( is_f(FILTERED) ) {
-					do_( "expr" )	REENTER }
-			end
-#else
 	in_( ":_sub" ) bgn_
 		on_( '(' )	do_( ":sub" )	REENTER
 						f_set( PROPPED )
@@ -649,7 +588,6 @@ BM_PARSE_FUNC( bm_parse_expr )
 			on_other if ( is_f(FILTERED) && !is_f(MARKED) ) {
 					do_( "expr" )	REENTER }
 			end
-#endif
 	in_( "?" ) bgn_	// Assumption: starting ON_X or FORE
 		ons( " \t" )	do_( same )
 		on_( '\n' ) if ( *type&ON_X ) {

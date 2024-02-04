@@ -154,7 +154,7 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				case '!':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( mode&LITERAL ) {
+					if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
 						if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB						p++; }
 						else if( *p==':' && subpass(p+1) ) {
