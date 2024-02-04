@@ -50,11 +50,16 @@ static inline void xpn_out( FILE *stream, listItem *xp ) {
 static inline listItem * subx( char *p ) {
 	if ( *p=='.' ) return NULL;
 	listItem *sub = NULL;
+	char *s=p;
 	for ( int ndx=0; ; )
 		switch ( *p++ ) {
 		case '(': add_item( &sub, ndx ); ndx=0; break;
 		case ',': sub->ptr=cast_ptr( 1 ); break;
-		case '?': reorderListItem( &sub ); return sub; } }
+		case '?': reorderListItem( &sub ); return sub;
+		case '.': break;
+		default: fprintf( stderr, ">>>>> B%%: Warning: subx:\n"
+			"\t\t_:%s\n\t<<<<< format inconsistent - ignoring\n", s );
+			freeListItem( &sub ); return NULL; } }
 
 static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
 	if ( !xpn ) return x;

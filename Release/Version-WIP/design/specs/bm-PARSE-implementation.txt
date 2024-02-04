@@ -276,10 +276,15 @@ byref vs. BYREF
 			if FILTERED and !BYREF => err
 		in TERNARY
 			if PROTECTED => err
+		Note
+		. BYREF would not replace PROTECTED, which affects
+		the whole stack
 
+	Rationale:
 	Currently we use byref#=FORE|SUB_EXPR|NEGATED|FILTERED|STARRED
-	which does NOT cover register variables
+	which does NOT cover register variables, and therefore we do not
+	prevent the user from specifying FILTERED expressions in DO mode
+	- just that we catch and ignore them at run-time (with warning),
+	when they are not used as ternary guards
 
-	Note
-	. BYREF does not replace PROTECTED, which affects the whole stack
 
