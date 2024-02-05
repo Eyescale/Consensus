@@ -141,7 +141,7 @@ match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
 //===========================================================================
 //	bm_query
 //===========================================================================
-typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+typedef BMQTake XPTraverseCB( CNInstance *, char *, BMQueryData * );
 
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
 static CNInstance * query_assignment( int, char *, BMQueryData * );
@@ -157,7 +157,7 @@ bm_query( int type, char *expression, BMContext *ctx,
 	expression. otherwise test every entity in CNDB against expression.
 	if no user callback is provided, returns first entity that passes.
 	otherwise, invokes callback for each entity that passes, and returns
-	first entity for which user callback returns BM_DONE.
+	first entity for which user callback returns BMQ_DONE.
 */ {
 #ifdef DEBUG
 	fprintf( stderr, "BM_QUERY: %s\n", expression );
@@ -180,14 +180,14 @@ bm_query( int type, char *expression, BMContext *ctx,
 		switch ( type ) {
 		case BM_CONDITION:
 			for ( e=DBFirst(db,&s); e!=NULL; e=DBNext(db,e,&s) )
-				if ( bm_verify( e, expression, &data )==BM_DONE ) {
+				if ( bm_verify( e, expression, &data )==BMQ_DONE ) {
 					freeListItem( &s );
 					return e; }
 			e = BMContextSelf( ctx );
 			if ( !db_private( 0, e, db ) ) {
 				listItem *i = newItem( e );
 				for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
-					if ( bm_verify( e, expression, &data )==BM_DONE ) {
+					if ( bm_verify( e, expression, &data )==BMQ_DONE ) {
 						freeListItem( &s );
 						break; }
 				freeItem( i );
@@ -201,26 +201,26 @@ bm_query( int type, char *expression, BMContext *ctx,
 			return NULL; } }
 	return data.instance; }
 
-static int
+static BMQTake
 bm_verify( CNInstance *e, char *expression, BMQueryData *data ) {
 	CNDB *db;
 	switch ( data->type ) {
 	case BM_INSTANTIATED:
 		if ( db_manifested(e,data->db) && xp_verify(e,expression,data) ) {
 			data->instance = e;
-			return BM_DONE; }
+			return BMQ_DONE; }
 		break;
 	case BM_RELEASED:
 		if ( db_deprecated(e,data->db) && xp_verify(e,expression,data) ) {
 			data->instance = e;
-			return BM_DONE; }
+			return BMQ_DONE; }
 		break;
 	default:
 		if ( xp_verify(e,expression,data) && ( !data->user_CB ||
-		     data->user_CB( e, data->ctx, data->user_data )==BM_DONE ) ) {
+		     data->user_CB( e, data->ctx, data->user_data )==BMQ_DONE ) ) {
 			data->instance = e;
-			return BM_DONE; } }
-	return BM_CONTINUE; }
+			return BMQ_DONE; } }
+	return BMQ_CONTINUE; }
 
 static inline CNInstance *
 dotnext( CNDB *db, listItem **stack ) {
@@ -298,7 +298,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	Traverses data->pivot's exponent [ resp., if data->list is set,
 		xpn.as_sub[0]^n.sub[1].exponent (n>=1), etc. ]
 		invoking traverse_CB on every match
-	returns current match on the callback's BM_DONE, and NULL otherwise
+	returns current match on the callback's BMQ_DONE, and NULL otherwise
 	Assumptions
 	. when set, we have data->list:[ list:[ list_p, mark_p ], xpn ] where
 	  expression is in either form
@@ -350,7 +350,7 @@ fprintf( stderr, "\n" );
 PUSH_stack:		PUSH( stack, exponent, POP_stack )
 			if ( !lookupIfThere( trail, e ) ) { // ward off doublons
 				addIfNotThere( &trail, e );
-				if ( traverse_CB( e, expression, data )==BM_DONE ) {
+				if ( traverse_CB( e, expression, data )==BMQ_DONE ) {
 					success = e;
 					break; } }
 POP_stack:		POP( stack, exponent, PUSH_stack )
@@ -373,12 +373,12 @@ PUSH_list:		LUSH( stack[ LIST_id ], lm, POP_list )
 				else goto POP_list; }
 PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 			if ( lm==1 ) { // Here we do NOT ward off doublons
-				if ( traverse_CB( e, expression, data )==BM_DONE ) {
+				if ( traverse_CB( e, expression, data )==BMQ_DONE ) {
 					success = e;
 					break; } }
 			else if ( !lookupIfThere( trail, e ) ) { // ward off doublons
 				addIfNotThere( &trail, e );
-				if ( traverse_CB( e, expression, data )==BM_DONE ) {
+				if ( traverse_CB( e, expression, data )==BMQ_DONE ) {
 					success = e;
 					break; } }
 POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp )
@@ -748,10 +748,10 @@ query_assignment( int type, char *expression, BMQueryData *data ) {
 				return NULL; } } }
 	return data->instance; }
 
-static int
+static BMQTake
 verify_unassigned( CNInstance *e, char *variable, BMQueryData *data ) {
 	if ( !xp_verify( e, variable, data ) )
-		return BM_CONTINUE;
+		return BMQ_CONTINUE;
 	CNDB *db = data->db;
 	CNInstance *star = data->star;
 	switch ( data->type ) {
@@ -762,7 +762,7 @@ verify_unassigned( CNInstance *e, char *variable, BMQueryData *data ) {
 			if ( !db_manifested(f,db) ) continue;
 			if ( assignment(f,db) ) continue;
 			data->instance = f; // return (*,e)
-			return BM_DONE; }
+			return BMQ_DONE; }
 		break;
 	default:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
@@ -770,14 +770,14 @@ verify_unassigned( CNInstance *e, char *variable, BMQueryData *data ) {
 			if ( f->sub[0]!=star ) continue;
 			if ( assignment(f,db) ) continue;
 			data->instance = f; // return (*,e)
-			return BM_DONE; } }
+			return BMQ_DONE; } }
 
-	return BM_CONTINUE; }
+	return BMQ_CONTINUE; }
 
-static int
+static BMQTake
 verify_value( CNInstance *e, char *variable, BMQueryData *data ) {
 	if ( !xp_verify( e, variable, data ) )
-		return BM_CONTINUE;
+		return BMQ_CONTINUE;
 	char *value = data->user_data;
 	CNDB *db = data->db;
 	CNInstance *star = data->star;
@@ -790,7 +790,7 @@ verify_value( CNInstance *e, char *variable, BMQueryData *data ) {
 			if ( !g || !db_manifested(g,db) ) continue;
 			if ( xp_verify( g->sub[1], value, data ) ) {
 				data->instance = g; // return ((*,e),.)
-				return BM_DONE; } }
+				return BMQ_DONE; } }
 		break;
 	default:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
@@ -800,14 +800,14 @@ verify_value( CNInstance *e, char *variable, BMQueryData *data ) {
 			if ( !g ) continue;
 			if ( xp_verify( g->sub[1], value, data ) ) {
 				data->instance = g; // return ((*,e),.)
-				return BM_DONE; } } }
-	return BM_CONTINUE; }
+				return BMQ_DONE; } } }
+	return BMQ_CONTINUE; }
 
-static int
+static BMQTake
 verify_variable( CNInstance *e, char *value, BMQueryData *data )
 {
 	if ( !xp_verify( e, value, data ) )
-		return BM_CONTINUE;
+		return BMQ_CONTINUE;
 	char *variable = data->user_data;
 	CNDB *db = data->db;
 	CNInstance *star = data->star;
@@ -821,7 +821,7 @@ verify_variable( CNInstance *e, char *value, BMQueryData *data )
 			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
 			if ( xp_verify( f->sub[1], variable, data ) ) {
 				data->instance = g; // return ((*,.),e)
-				return BM_DONE; } }
+				return BMQ_DONE; } }
 		break;
 	default:
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
@@ -831,6 +831,6 @@ verify_variable( CNInstance *e, char *value, BMQueryData *data )
 			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
 			if ( xp_verify( f->sub[1], variable, data ) ) {
 				data->instance = g; // return ((*,.),e)
-				return BM_DONE; } } }
-	return BM_CONTINUE; }
+				return BMQ_DONE; } } }
+	return BMQ_CONTINUE; }
 

@@ -1,7 +1,7 @@
 #ifndef EENO_QUERY_TRAVERSAL_H
 #define EENO_QUERY_TRAVERSAL_H
 
-#include "traversal.h"
+#include "user_traversal.h"
 
 static BMTraversal eeno_query_traversal;
 #define case_( CB ) \
@@ -28,7 +28,7 @@ static BMTraverseCB
 #define BMIdentifierCB		identifier_CB
 #define BMWildCardCB		wildcard_CB
 
-#include "traversal_template.h"
+#include "traversal.h"
 
 
 #endif	// EENO_QUERY_TRAVERSAL_H

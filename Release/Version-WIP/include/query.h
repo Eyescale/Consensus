@@ -2,7 +2,6 @@
 #define QUERY_H
 
 #include "context.h"
-#include "traversal.h"
 
 #define BM_EVENT	1
 #define BM_VISIBLE	2
@@ -12,7 +11,12 @@
 #define	BM_CONDITION	BM_VISIBLE
 #define	BM_INSTANTIATED (BM_EVENT|BM_VISIBLE)
 
-typedef BMCBTake BMQueryCB( CNInstance *, BMContext *, void * );
+typedef enum {
+	BMQ_CONTINUE = 0,
+	BMQ_DONE
+	} BMQTake;
+
+typedef BMQTake BMQueryCB( CNInstance *, BMContext *, void * );
 CNInstance *bm_query( int, char *expression, BMContext *, BMQueryCB, void * );
 
 typedef struct {

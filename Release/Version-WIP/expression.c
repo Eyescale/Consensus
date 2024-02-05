@@ -41,11 +41,11 @@ bm_scan( char *expression, BMContext *ctx ) {
 		reorderListItem( &results ); }
 	return results; }
 
-static BMCBTake
+static BMQTake
 scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	listItem **results = user_data;
 	addItem( results, e );
-	return BM_CONTINUE; }
+	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_release
@@ -57,10 +57,10 @@ bm_release( char *expression, BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	bm_query( BM_CONDITION, expression, ctx, release_CB, db ); }
 
-static BMCBTake
+static BMQTake
 release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	db_deprecate( e, (CNDB *) user_data );
-	return BM_CONTINUE; }
+	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_inputf
@@ -241,10 +241,10 @@ bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
 	return bm_out_flush( &data, BMContextDB(ctx) ); }
 
-static BMCBTake
+static BMQTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	bm_out_put( user_data, e, BMContextDB(ctx) );
-	return BM_CONTINUE; }
+	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_out_put / bm_out_flush

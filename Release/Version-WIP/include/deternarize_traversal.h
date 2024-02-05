@@ -1,7 +1,7 @@
 #ifndef DETERNARIZE_TRAVERSAL_H
 #define DETERNARIZE_TRAVERSAL_H
 
-#include "traversal.h"
+#include "user_traversal.h"
 
 static BMTraversal deternarize_traversal;
 #define case_( CB ) \
@@ -16,7 +16,7 @@ static BMTraverseCB
 #define BMFilterCB		filter_CB
 #define BMCloseCB		close_CB
 
-#include "traversal_template.h"
+#include "traversal.h"
 
 
 #endif	// DETERNARIZE_TRAVERSAL_H

@@ -4,6 +4,10 @@ TODO
 		.%list  <_>	// initialization, e.g.: .%list <ON,OFF>
 		.%list  {_}	// foreach: may include clipping?
 		.%list~ {_}	// while pop
+	  Rule:
+		%list cannot be both term and tag in the same expression
+		=> can be checked either by parser or traversal - which one?
+		
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: now that we keep list of shared entities in context
@@ -43,7 +47,7 @@ DONE
 	. deternarize no longer optimizes any of ?:(_)(_) or !^:(_)(_) or (_)^
 		=> parser.c: does not allow ternary in FORE
 		=> deternarize.c: does not optimize if )(_) or )^
-	. bugfix ?:(_){_} => traversal_template.h
+	. bugfix ?:(_){_} => traversal.h
 		. on )(_) skip to the last closing parenthesis - for !^:(_)(_)
 		. bugfix markscan - for ?:(_)(_) and ?:(_){_}
 		  on (_) or {_} when BASE and INFORMED => traverse_data->done = 1
@@ -87,7 +91,7 @@ DONE
 		registryRegister( ctx, "*^", (Registry *) buffer );
 		for ( ... ) { // where current is entry in buffer
 			registryRegister( ctx, "^^", (Pair *) current ); }
-	  in include/traversal_template.h, we associate
+	  in include/traversal.h, we associate
 		^^  			=> CB_RegisterVariableCB
 		*^^ / *^?:(_) / *^?	=> CB_DereferenceCB
 	  *^_ is only authorized as term in the actionable part of DO expressions
@@ -116,13 +120,13 @@ DONE
 		=> cf. design/specs/bm-TRAVERSE-loop.txt
 		+ Test: cf. Test/56_loop
 	. BUGIX locate_pivot.c => now using not_CB
-		Note that in traversal_template.h NEGATED only applies
+		Note that in traversal.h NEGATED only applies
 		to term - i.e. is NOT passed inside (_)
 	. redesigned context.c:bm_mark() and operation.c interface
 	. implemented (_)^
 		. database.h => db_has_newborn( listItem *, CNDB * );
 		. instantiate.c:case_( wildcard_CB )
-		. traversal_template.h: case '!' => CB_WildCardCB
+		. traversal.h: case '!' => CB_WildCardCB
 		. Testing: cf Test/55-bingo_bonga
 		  implemented !^:(_)(_) - so that
 			newborn_authorized => instantiate 1st (_)

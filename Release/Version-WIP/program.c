@@ -155,6 +155,7 @@ cell_release( CNCell *cell, void *user_data ) {
 //===========================================================================
 CNProgram *
 newProgram( CNStory *story, char *inipath ) {
+	if ( !story ) return NULL;
 	Pair *entry = CNStoryMain( story );
 	if ( !entry ) {
 		fprintf( stderr, "B%%: Error: story has no main\n" );

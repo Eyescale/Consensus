@@ -441,7 +441,7 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 		if (( s )) freeString( s ); }
 	return 1; }
 
-static BMCBTake
+static BMQTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableData *data = user_data;
 	void *string_ref = data->string_ref;
@@ -453,6 +453,6 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 		addIfNotThere((listItem **) &entry->value, e ); }
 	else if ( e->sub[1]==string_ref ) {
 		registryRegister( data->subs, data->narrative, newItem(e) );
-		return BM_DONE; }
-	return BM_CONTINUE; }
+		return BMQ_DONE; }
+	return BMQ_CONTINUE; }
 

@@ -1,7 +1,7 @@
 #ifndef EENOV_TRAVERSAL_H
 #define EENOV_TRAVERSAL_H
 
-#include "traversal.h"
+#include "user_traversal.h"
 
 static BMTraversal eenov_traversal;
 #define case_( CB ) \
@@ -22,7 +22,7 @@ static BMTraverseCB
 #define BMCloseCB		close_CB
 #define BMEEnovEndCB		end_CB
 
-#include "traversal_template.h"
+#include "traversal.h"
 
 
 #endif	// EENOV_TRAVERSAL_H

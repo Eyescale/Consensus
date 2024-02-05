@@ -58,17 +58,17 @@ case_( wildcard_CB )
 	_break
 BMTraverseCBEnd
 
-static BMCBTake proxy_verify_CB( CNInstance *, BMContext *, void * );
+static BMQueryCB proxy_verify_CB;
 static inline CNInstance *
 proxy_verify( char *p, EENOFeelData *data ) {
 	return bm_query( BM_CONDITION, p, data->ctx, proxy_verify_CB, data ); }
 
-static BMCBTake
+static BMQTake
 proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EENOFeelData *data = user_data;
 	if ( db_match( data->x, data->db_x, e, BMContextDB(ctx) ) )
-		return BM_DONE;
-	return BM_CONTINUE; }
+		return BMQ_DONE;
+	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_eeno_query

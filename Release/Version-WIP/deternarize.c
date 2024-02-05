@@ -1,17 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "story.h"
+#include "string_util.h"
 #include "deternarize.h"
-#include "deternarize_private.h"
 #include "expression.h"
+
+typedef int BMTernaryCB( char *, void * );
 
 //===========================================================================
 //	deternarize_traversal
 //===========================================================================
 #include "deternarize_traversal.h"
+typedef struct {
+	BMTernaryCB *user_CB;
+	void *user_data;
+	int ternary;
+	struct { listItem *sequence, *flags; } stack;
+	listItem *sequence;
+	Pair *segment;
+	} DeternarizeData;
 
 static char *optimize( Pair *, char * );
+static void s_scan( CNString *, listItem * );
 
 BMTraverseCBSwitch( deternarize_traversal )
 case_( open_CB )
@@ -118,6 +128,7 @@ optimize( Pair *segment, char *p )
 //===========================================================================
 //	bm_deternarize
 //===========================================================================
+static char * deternarize( char *, listItem **, BMTraverseData *, char * );
 static BMTernaryCB pass_CB;
 
 char *
@@ -199,9 +210,9 @@ pass_CB( char *guard, void *user_data ) {
 	BMContext *ctx = user_data;
 	return !!bm_feel( BM_CONDITION, guard, ctx ); }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	deternarize
-//===========================================================================
+//---------------------------------------------------------------------------
 static char *
 deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression ) {
 	DeternarizeData *data = traverse_data->user_data;

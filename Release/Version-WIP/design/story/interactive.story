@@ -184,7 +184,7 @@ System Execution
 	
 			// execute action
 			do : %(%?:(?,.)) : %(%?:(.,?))
-	
+
 			// remove action-corresponding condition from relevant guard
 			// Status, and tag these guards
 			do ~( (%?,%%), %( Status, .|^tag ))

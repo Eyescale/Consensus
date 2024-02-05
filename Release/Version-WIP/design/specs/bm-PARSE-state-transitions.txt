@@ -7,7 +7,7 @@ Consensus B% Version-WIP
 		\"	expr
 		~	expr
 			~.	expr
-				_term
+				term
 		%	expr
 			%(	expr
 			%|	expr
@@ -36,7 +36,7 @@ Consensus B% Version-WIP
 			:~	:
 				~
 			_,
-		:_	expr
+		::	expr
 			\"
 			~
 			:<	expr
@@ -45,20 +45,21 @@ Consensus B% Version-WIP
 			!!
 		!!	!!$	!!$_	expr
 		.	expr
-			_term
-		_*	*^	expr
+			term
+		*	*^	expr
 				*^?	expr
 					:_sub
-			*	expr
-				_term
+			*_	expr
+				term
 		^	expr
 		:_sub	expr
-			:sub 	:sub_ 	expr
+			:sub 	expr
+				:sub_ 	expr
 					:sub
 		?	?:	expr
 		?:(_)	expr
-		_term	expr
 		term	expr
+		term.	expr
 			term~	expr
 		char	char_	expr
 			char\\	char_

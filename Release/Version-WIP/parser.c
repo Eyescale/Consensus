@@ -29,7 +29,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) { do_( "(" )	s_take }
 		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) 	s_take }
-		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "_*" )	s_take }
+		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 			   else if ( *type&DO ) {   do_( "@" )	s_take }
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
@@ -42,7 +42,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				; // err
 			else if ( is_f(ASSIGN) ) {
 				if ( !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
-					do_( *type&DO ? ":_" : same )
+					do_( *type&DO ? "::" : same )
 							s_take
 							f_clr( FIRST|NEGATED|STARRED|INFORMED )
 							f_set( PRIMED ) } }
@@ -60,12 +60,12 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( ':' ) if ( *type&PER && !s_cmp("~.") )
 				; // err
 			else if ( s_empty || !s_cmp( "~.:" ) ) {
-				do_( ":_" )	s_take
+				do_( "::" )	s_take
 						f_set( ASSIGN ) }
 			else if ( is_f(INFORMED) ) {
 				if ( is_f(ASSIGN) ) {
 					if ( !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
-						do_( *type&DO ? ":_" : same )
+						do_( *type&DO ? "::" : same )
 								s_add( "," )
 								f_clr( FIRST|NEGATED|STARRED|INFORMED )
 								f_set( PRIMED ) } }
@@ -168,8 +168,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_other if ( is_f(INFORMED) )
 				; // err
 			else if ( *type&DO && f_signalable(stack) ) {
-				do_( "term" )	s_take }
-			else {	do_( "_term" )	s_take }
+				do_( "term." )	s_take }
+			else {	do_( "term" )	s_take }
 		end
 	//----------------------------------------------------------------------
 	// bm_parse_expr:	Expression sub-states
@@ -430,7 +430,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 			on_other	do_( "~" )	REENTER
 							s_add( ":" )
 			end
-	in_( ":_" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
+	in_( "::" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
 		ons( " \t" )	do_( same )
 		on_( '"' ) if ( *type&DO && is_f(PRIMED) ) {
 				do_( "\"" )	s_take }
@@ -493,12 +493,12 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "expr" )	REENTER }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
-		on_other	do_( "_term" )	s_take
+		on_other	do_( "term" )	s_take
 		end
-	in_( "_*" ) bgn_
+	in_( "*" ) bgn_
 		on_( '^' ) if ( is_f(PIPED|CARRY) && !is_f(INFORMED|byref) ) {
 				do_( "*^" )	s_take }
-		on_other	do_( "*" )	REENTER
+		on_other	do_( "*_" )	REENTER
 						f_clr( PIPED|PROTECTED )
 						f_set( STARRED )
 		end
@@ -514,14 +514,13 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( INFORMED )
 							f_tag( stack, PROTECTED )
 			end
-		in_( "*" ) bgn_
-			ons( " \t" )	do_( same )
+		in_( "*_" ) bgn_
 			on_( '*' )	do_( same )	s_take
 			ons( ".%(?" )	do_( "expr" )	REENTER
 			ons( "~{" )	; //err
 			on_separator	do_( "expr" )	REENTER
 							f_set( INFORMED )
-			on_other	do_( "_term" )	s_take
+			on_other	do_( "term" )	s_take
 			end
 	in_( "^" ) bgn_
 		on_( '^' )	do_( "expr" )	s_take
@@ -613,14 +612,14 @@ BM_PARSE_FUNC( bm_parse_expr )
 		ons( " \t" )	do_( same )
 		ons( "({" )	do_( "expr" )	REENTER
 		end
-	in_( "_term" ) bgn_
+	in_( "term" ) bgn_
 		on_( '~' ) 	do_( "@" )	s_take
 						f_set( INFORMED )
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 		on_other 	do_( same )	s_take
 		end
-	in_( "term" ) bgn_
+	in_( "term." ) bgn_
 		on_( '~' ) 	do_( "term~" )	s_take
 						f_set( INFORMED )
 		on_separator	do_( "expr" )	REENTER
@@ -982,7 +981,7 @@ static BM_PARSE_FUNC( bm_parse_eenov ) {
 			end
 	PARSER_END }
 
-static BM_PARSE_FUNC( bm_parse_seq ) {
+static BM_PARSE_FUNC( bm_parse_seq ) {	// list and literal
 	PARSER_BGN( "bm_parse_seq" )
 	in_( "(:" ) bgn_
 		ons( "(\n" )	; // err

@@ -1,7 +1,7 @@
 #ifndef INSTANTIATE_TRAVERSAL_H
 #define	INSTANTIATE_TRAVERSAL_H
 
-#include "traversal.h"
+#include "user_traversal.h"
 
 static BMTraversal instantiate_traversal;
 #define case_( CB ) \
@@ -40,7 +40,7 @@ static BMTraverseCB
 #define BMCharacterCB		identifier_CB
 #define BMSignalCB		signal_CB
 
-#include "traversal_template.h"
+#include "traversal.h"
 
 
 #endif	// INSTANTIATE_TRAVERSAL_H

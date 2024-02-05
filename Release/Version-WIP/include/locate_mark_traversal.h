@@ -1,7 +1,7 @@
 #ifndef LOCATE_MARK_TRAVERSAL_H
 #define LOCATE_MARK_TRAVERSAL_H
 
-#include "traversal.h"
+#include "user_traversal.h"
 
 static BMTraversal locate_mark_traversal;
 #define case_( CB ) \
@@ -22,7 +22,7 @@ static BMTraverseCB
 #define BMCloseCB		close_CB
 #define BMWildCardCB		wildcard_CB
 
-#include "traversal_template.h"
+#include "traversal.h"
 
 
 #endif	// LOCATE_MARK_TRAVERSAL_H
