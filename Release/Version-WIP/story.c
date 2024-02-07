@@ -118,17 +118,18 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 		// compare current term with registered tags
 		base = data->stack.tags;
 		term = data->string->data;
+		int locale = data->type&LOCALE;
 		for ( listItem *i=base; i!=NULL; i=i->next )
 		for ( listItem *j=i->ptr, *k=term; (j)&&(k); j=j->next, k=k->next ) {
 			int e=cast_i(j->ptr), f=cast_i(k->ptr);
 			if ( is_separator(e) || is_separator(f) ) {
-				if (( i==base && data->type&LOCALE ) ?
+				if (( locale && i==base ) ?
 					(( e=='^' || e=='%' )&&( f=='^' && f=='%' )) :
 					(( e=='^' && f=='%' )||( e=='%' && f=='^' )) )
 					return 0;
 				break; } }
 		listItem **tags = &data->stack.tags;
-		if ( !data->type&LOCALE ) addItem( tags, term );
+		if ( !locale ) addItem( tags, term );
 		else { popListItem(tags); addItem( tags, term ); addItem(tags,base); }
 		return 1;
 	case ExpressionTake:

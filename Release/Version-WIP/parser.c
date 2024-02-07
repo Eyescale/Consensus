@@ -148,7 +148,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '}' ) if ( are_f(SET|INFORMED) && !is_f(LEVEL|SUB_EXPR) ) {
 				if ( *type&LOCALE ) { 
 					do_( "._" )	s_take }
-				else if ( *type&(DO|ON_X ) ) {
+				else if ( *type&(DO|ON_X) ) {
 					do_( same )	s_take
 							f_pop( stack, 0 )
 							f_tag( stack, PROTECTED )
@@ -1233,7 +1233,7 @@ BM_PARSE_FUNC( bm_parse_cmd )
 				do_( "+" )	TAB_SHIFT++; }
 		on_( '-' ) if ( !TAB_CURRENT ) {
 				do_( "-" )	TAB_SHIFT--; }
-		on_( '%' )	do_( "%" )	REENTER
+		on_( '%' )	do_( "%" )	s_take
 						TAB_BASE = column;
 		on_( '.' ) 	do_( "." )	s_take
 						TAB_BASE = column;
