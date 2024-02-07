@@ -1,7 +1,6 @@
 See Also: design/story/interactive.story
 
 TODO
-	. BUG: LOCALE: NEGATED flag => disappears!
 	. + TEST esp. %identifier list stuff
 	  NOTE: %list and |^list should be usable in OUTPUT, FORE, etc.
 		just cannot be used in DO and ON and PER
