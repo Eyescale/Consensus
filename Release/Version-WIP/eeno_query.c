@@ -46,7 +46,7 @@ case_( close_CB )
 	if is_f( COUPLE )
 		data->x = popListItem( &data->stack.x );
 	_break
-case_( identifier_CB )
+case_( match_CB )
 	BMContext *ctx = data->ctx;
 	CNDB *db = BMContextDB( ctx );
 	if ( !bm_match( ctx, db, p, data->x, data->db_x ) )

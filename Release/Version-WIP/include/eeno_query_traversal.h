@@ -9,7 +9,7 @@ static BMTraversal eeno_query_traversal;
 	EENOFeelData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	filter_CB, verify_CB, open_CB, decouple_CB, close_CB, identifier_CB, wildcard_CB;
+	filter_CB, verify_CB, open_CB, decouple_CB, close_CB, match_CB, wildcard_CB;
 
 #define BMFilterCB		filter_CB
 #define BMNotCB			verify_CB
@@ -20,12 +20,12 @@ static BMTraverseCB
 #define BMOpenCB		open_CB
 #define BMDecoupleCB		decouple_CB
 #define BMCloseCB		close_CB
-#define BMRegisterVariableCB	identifier_CB
-#define BMModCharacterCB	identifier_CB
-#define BMStarCharacterCB	identifier_CB
-#define BMRegexCB		identifier_CB
-#define BMCharacterCB		identifier_CB
-#define BMIdentifierCB		identifier_CB
+#define BMRegisterVariableCB	match_CB
+#define BMModCharacterCB	match_CB
+#define BMStarCharacterCB	match_CB
+#define BMRegexCB		match_CB
+#define BMCharacterCB		match_CB
+#define BMIdentifierCB		match_CB
 #define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"

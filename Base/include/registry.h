@@ -7,7 +7,7 @@
 typedef struct { int type; listItem *entries; } Registry;
 typedef enum {
 	IndexedByAddress = 0, // default
-	IndexedByCharacter,
+	IndexedByNameRef,
 	IndexedByName,
 	IndexedByNumber
 } RegistryType;

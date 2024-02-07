@@ -9,9 +9,10 @@ static BMTraversal query_traversal;
 	BMQueryData *data = traverse_data->user_data; char *p = *q;
 
 static BMTraverseCB
-	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,
+	match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB, tag_CB,
 	sub_expression_CB, open_CB, filter_CB, decouple_CB, close_CB, wildcard_CB;
 
+#define BMBgnPipeCB		tag_CB
 #define BMRegisterVariableCB	match_CB
 #define BMStarCharacterCB	match_CB
 #define BMModCharacterCB	match_CB

@@ -48,6 +48,73 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
+//	bm_tag_clear
+//===========================================================================
+static freeRegistryCB clear_CB;
+
+int
+bm_tag_clear( char *expression, BMContext *ctx )
+/*
+	Assumption: expression: identifier~
+*/ {
+	Pair *entry = registryLookup( ctx, expression );
+	if (( entry ))
+		registryCBDeregister( ctx, clear_CB, expression );
+	return 1; }
+
+static void
+clear_CB( Registry *registry, Pair *entry ) {
+	freeListItem((listItem **) &entry->value ); }
+
+//===========================================================================
+//	bm_tag_traverse, bm_tag_inform
+//===========================================================================
+static BMQueryCB continue_CB, inform_CB;
+
+int
+bm_tag_traverse( char *expression, char *p, BMContext *ctx )
+/*
+	Assumption: p: ~{_} or {_}
+*/ {
+	Pair *entry = registryLookup( ctx, expression );
+	if ( !entry ) return 0;
+	int negated = ( *p=='~' ? (p++,1) : 0 );
+	Pair *current = registryRegister( ctx, "^.", NULL );
+	listItem *next_i, *last_i=NULL;
+	listItem **entries = (listItem **) &entry->value;
+	for ( listItem *i=*entries; i!=NULL; i=next_i ) {
+		next_i = i->next;
+		current->value = i->ptr;
+		int clip = negated;
+		for ( char *q=p; *q++!='}'; q=p_prune(PRUNE_LEVEL,q) )
+			bm_query( BM_CONDITION, q, ctx, continue_CB, &clip );
+		if (( clip )) clipListItem( entries, i, last_i, next_i );
+		else last_i = i; }
+	registryDeregister( ctx, "^." );
+	if ( *entries==NULL ) registryDeregister( ctx, expression );
+	return 1; }
+
+static BMQTake
+continue_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	return BMQ_CONTINUE; }
+
+int
+bm_tag_inform( char *expression, char *p, BMContext *ctx )
+/*
+	Assumption: p: <_>
+*/ {
+	Pair *entry = registryLookup( ctx, expression );
+	if ( !entry ) entry = registryRegister( ctx, expression, NULL );
+	for ( char *q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
+		bm_query( BM_CONDITION, q, ctx, inform_CB, &entry->value );
+	return 1; }
+
+static BMQTake
+inform_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	addIfNotThere((listItem **) user_data, e );
+	return BMQ_CONTINUE; }
+
+//===========================================================================
 //	bm_release
 //===========================================================================
 static BMQueryCB release_CB;

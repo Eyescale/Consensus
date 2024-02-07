@@ -24,12 +24,12 @@ CB_TermCB	} while ( 0 );
 	while ( *p && !traverse_data->done ) {
 		switch ( *p ) {
 			case '^':
-				if ( p[1]=='?' ) {
-					p=p_prune( PRUNE_TERM, p+1 );
-					f_set( INFORMED ) }
-				else if ( strmatch("^.",p[1]) ) {
+				if ( strmatch("^.",p[1]) ) {
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2; }
+				else if ( p[1]=='?' ) {
+					p=p_prune( PRUNE_TERM, p+1 );
+					f_set( INFORMED ) }
 				else {
 					p++; }
 				break;
@@ -102,12 +102,17 @@ CB_EndSetCB			f_pop( stack, 0 )
 CB_LoopCB			f_set( INFORMED )
 				break;
 			case '|':
-				if ( BASE && !is_f(CARRY) ) {
-					traverse_data->done = 1;
-					break; }
-CB_BgnPipeCB			f_push( stack )
-				f_reset( PIPED|FIRST, SET )
-				p++; break;
+				if ( p[1]=='^' ) {
+CB_BgnPipeCB				if ( p[2]=='.' ) p+=( p[3]=='~' ? 3 : 2 );
+					else p = p_prune( PRUNE_IDENTIFIER, p+2 ); }
+				else {
+					if ( BASE && !is_f(CARRY) ) {
+						traverse_data->done = 1;
+						break; }
+CB_BgnPipeCB				f_push( stack )
+					f_reset( PIPED|FIRST, SET )
+					p++; }
+				break;
 			case '*':
 				if ( p[1]=='^' ) {
 CB_DereferenceCB			p = p_prune( PRUNE_TERM, p );
@@ -161,8 +166,12 @@ CB_SignalCB						p++; }
 							p = p_prune( PRUNE_TERM, p+1 ); } }
 					break;
 				default:
-CB_ModCharacterCB			f_set( INFORMED )
-					p++; }
+					if ( !is_separator( p[1] ) ) {
+CB_RegisterVariableCB				f_set( INFORMED )
+						p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
+					else {
+CB_ModCharacterCB				f_set( INFORMED )
+						p++; } }
 				break;
 			case '(':
 				if ( is_f(INFORMED) && BASE && !(mode&TERNARY) ) {
@@ -243,10 +252,6 @@ CB_TermCB				break; }
 CB_DotIdentifierCB			p+=2;
 					f_set( INFORMED )
 					break; }
-				else if ( !is_separator(p[1]) ) {
-CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
-					f_set( INFORMED )
-					break; }
 				else if ( p[1]=='.' ) {
 					if ( p[2]=='.' ) {
 						/* Assumption: p[3]==')'
@@ -273,6 +278,10 @@ CB_ListCB							f_pop( stack, 0 ) }
 					else {
 CB_RegisterVariableCB				f_set( INFORMED )
 						p+=2; break; } }
+				else if ( !is_separator(p[1]) ) {
+CB_DotIdentifierCB			p = p_prune( PRUNE_FILTER, p+2 );
+					f_set( INFORMED )
+					break; }
 				else {
 CB_WildCardCB				f_set( INFORMED )
 					p++; break; }

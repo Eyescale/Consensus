@@ -20,8 +20,10 @@ typedef enum {
 typedef struct {
 // shared between parser and bm_read()
 	struct {
-		listItem *flags; // bm_parse() only
-		listItem *occurrences; // bm_read() only
+	// bm_read() only:
+		listItem *occurrences, *tags;
+	// bm_parse() only:
+		listItem *flags;
 	} stack; 
 	CNIO *		io;
 	CNString *	string;
@@ -47,10 +49,11 @@ typedef struct {
 #define TAB_BASE	tab[3]
 
 typedef enum {
-	NarrativeTake = 1,
-	ProtoSet,
+	ProtoSet = 1,
 	OccurrenceAdd,
-	ExpressionTake
+	TagTake,
+	ExpressionTake,
+	NarrativeTake
 } BMParseOp;
 typedef enum {
 	ErrNone = 0,
@@ -83,6 +86,7 @@ typedef enum {
 	ErrEMarkNegated,
 	ErrPerContrary,
 	ErrUnknownCommand,
+	ErrTagTake,
 } BMParseErr;
 
 typedef int BMParseCB( BMParseOp, BMParseMode, void * );

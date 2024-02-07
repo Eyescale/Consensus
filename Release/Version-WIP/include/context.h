@@ -26,6 +26,7 @@ void		bm_reset_mark( BMContext *, char *, void * );
 
 void *		bm_lookup( BMContext *, char *, CNDB *, int );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
+char *		bm_tag( BMContext *, char *, CNInstance * );
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
 int		bm_register_locale( BMContext *, char * );
 

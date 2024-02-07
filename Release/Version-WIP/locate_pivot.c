@@ -53,19 +53,24 @@ case_( star_character_CB )
 		_return( 2 )
 	_break
 case_( register_variable_CB )
-	int mark;
-	switch ( p[1] ) {
-	case '?': mark = QMARK; break;
-	case '!': mark = EMARK; break;
-	case '.': mark = PARENT; break;
-	case '%': mark = SELF; break;
-	case '@': mark = ACTIVE; break;
-	case '^': mark = EYEYE; break;
-	case '<': if ( p[2]!='.' ) {
-			mark = EENOK; break; }
-	default: _break; }
-	if CHECK( mark )
-		_return( 2 )
+	int mark = 0;
+	if ( *p=='^' ) {
+		switch ( p[1] ) {
+		case '^': mark = EYEYE; break;
+		case '.': mark = TAG; break;
+		default: if ( !is_separator(p[1]) )
+			mark = TAG; } }
+	else switch ( p[1] ) {
+		case '?': mark = QMARK; break;
+		case '!': mark = EMARK; break;
+		case '.': mark = PARENT; break;
+		case '%': mark = SELF; break;
+		case '@': mark = ACTIVE; break;
+		case '<': if ( p[2]=='.' ) break;
+			{ mark = EENOK; break; } }
+	if ( mark ) {
+		if CHECK( mark )
+			_return( 2 ) }
 	_break
 case_( dereference_CB )
 	listItem **exponent = data->exponent;

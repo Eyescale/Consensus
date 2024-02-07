@@ -213,19 +213,19 @@ case_( register_variable_CB )
 		if (( e )) data->sub[ NDX ] = newItem( e );
 		else _prune( BM_PRUNE_LEVEL, p );
 		break;
-	case '@':
-		found = bm_context_lookup( data->ctx, p );
-		if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
-		sub = &data->sub[ NDX ];
-		for ( listItem *i=found; i!=NULL; i=i->next ) {
-			e = bm_inform( carry, i->ptr, db );
-			if (( e )) addItem( sub, e ); }
-		break;
 	default:
-		e = bm_context_lookup( data->ctx, p );
-		if (( e )) e = bm_inform( carry, e, db );
-		if (( e )) data->sub[ NDX ] = newItem( e );
-		else _prune( BM_PRUNE_LEVEL, p ) }
+		if ( is_separator(p[1]) && p[1]!='@' ) {
+			e = bm_context_lookup( data->ctx, p );
+			if (( e )) e = bm_inform( carry, e, db );
+			if (( e )) data->sub[ NDX ] = newItem( e );
+			else _prune( BM_PRUNE_LEVEL, p ) }
+		else {
+			found = bm_context_lookup( data->ctx, p );
+			if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
+			sub = &data->sub[ NDX ];
+			for ( listItem *i=found; i!=NULL; i=i->next ) {
+				e = bm_inform( carry, i->ptr, db );
+				if (( e )) addItem( sub, e ); } } }
 	_break
 case_( literal_CB )
 	/* We have	(:_sequence_:)

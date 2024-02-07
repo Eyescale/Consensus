@@ -15,25 +15,33 @@
 #include "query_traversal.h"
 #include "query_private.h"
 
-static int match( CNInstance *, char *, listItem *, BMQueryData * );
+static int match( char *, BMQueryData * );
+static char *tag( char *, BMQueryData * );
 
 BMTraverseCBSwitch( query_traversal )
+case_( tag_CB )
+	if ( p[2]=='.' ) // special case: |^.
+		*(int *)data->user_data = !(p[3]=='~');
+	else if ( data->success ) {
+		p = tag( p, data );
+		if (( p )) _continue( p ) }
+	_break
 case_( match_CB )
-	switch ( match( data->instance, p, data->base, data ) ) {
+	switch ( match( p, data ) ) {
 	case -1: data->success = 0; break;
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
 	_break
 case_( dot_identifier_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
+	switch ( match( p, data ) ) {
 	case -1: data->success = 0; break;
 	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 	case  1: if ( p[1]=='?' ) { // special case: .? (cannot be negated)
 			data->success = 1;
 			break; }
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
-		switch ( match( data->instance, p+1, data->base, data ) ) {
+		switch ( match( p+1, data ) ) {
 		case -1: data->success = 0; break;
 		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
 		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
@@ -56,7 +64,7 @@ case_( sub_expression_CB )
 case_( dot_expression_CB )
 	listItem **stack = &data->stack.exponent;
 	xpn_add( stack, AS_SUB, 0 );
-	switch ( match( data->instance, p, data->base, data ) ) {
+	switch ( match( p, data ) ) {
 	case 0: if is_f( NEGATED ) {
 		data->success=1; popListItem( stack );
 		_prune( BM_PRUNE_FILTER, p+1 ) }
@@ -69,7 +77,7 @@ case_( open_CB )
 	if ( f_next & ASSIGN ) {
 		listItem **stack = &data->stack.exponent;
 		xpn_add( stack, AS_SUB, 0 );
-		switch ( match( data->instance, p, data->base, data ) ) {
+		switch ( match( p, data ) ) {
 		case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
 			_prune( BM_PRUNE_FILTER, p ) }
@@ -108,7 +116,7 @@ case_( wildcard_CB )
 	if is_f( NEGATED ) data->success = 0;
 	else if ( !uneq( data->stack.exponent, 1 ) ) {
 		data->success = 1; } // wildcard is any or as_sub[1]
-	else switch ( match( data->instance, NULL, data->base, data ) ) {
+	else switch ( match( NULL, data ) ) {
 		case -1: // no break
 		case  0: data->success = 0; break;
 		case  1: data->success = 1; break; }
@@ -116,27 +124,39 @@ case_( wildcard_CB )
 BMTraverseCBEnd
 
 //---------------------------------------------------------------------------
-//	match
+//	match, tag
 //---------------------------------------------------------------------------
+static inline CNInstance * extract( CNInstance *, listItem *, listItem * );
+
 static int
-match( CNInstance *x, char *p, listItem *base, BMQueryData *data )
+match( char *p, BMQueryData *data )
 /*
 	tests x.sub[kn]...sub[k0] where exponent=as_sub[k0]...as_sub[kn]
 	is either NULL or the exponent of p as expression term
 */ {
+	CNInstance *x = extract(data->instance,data->stack.exponent,data->base);
+	if ( !x ) return -1;
+	if ( !p ) return 1; // wildcard
+	if (( data->pivot ) && p==data->pivot->name ) {
+		if ( *p!='%' || p[1]!='@' || is_separator( p[1] ) )
+			return ( x==data->pivot->value ); }
+	return bm_match( data->ctx, data->db, p, x, data->db ); }
+
+static char *
+tag( char *p, BMQueryData *data ) {
+	CNInstance *x = extract(data->instance,data->stack.exponent,data->base);
+	return (( x )? bm_tag( data->ctx, p+2, x ) : NULL ); }
+
+static inline CNInstance *
+extract( CNInstance *x, listItem *exponent, listItem *base ) {
 	listItem *xpn = NULL;
-	for ( listItem *i=data->stack.exponent; i!=base; i=i->next )
+	for ( listItem *i=exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
-	CNInstance *y = x;
-	while (( y ) && (xpn)) {
+	while (( x ) && (xpn)) {
 		int exp = pop_item( &xpn );
-		y = CNSUB( y, exp&1 ); }
-	if ( !y ) { freeListItem( &xpn ); return -1; }
-	else if ( !p ) return 1; // wildcard
-	else if (( data->pivot ) && p==data->pivot->name ) {
-		if ( strncmp(p,"%@",2) ) // Assumption: cannot be %|
-			return ( y==data->pivot->value ); }
-	return bm_match( data->ctx, data->db, p, y, data->db ); }
+		x = CNSUB( x, exp&1 ); }
+	if ( !x ) freeListItem( &xpn );
+	return x; }
 
 //===========================================================================
 //	bm_query
@@ -251,25 +271,21 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *CB, v
 	data->instance = NULL;
 	char *p = bm_locate_pivot( expression, &data->exponent );
 	if ( !p ) return 0;
-	if ( *p=='%' ) {
-		switch ( p[1] ) {
-		case '|':
-			data->privy = 2;
-			break;
-		case '(': ; // %(list,?:...) or %(list,...) or %((?,...):list)
-			Pair *list = popListItem( &data->exponent );
-			// list_p = list->name;
-			// mark_p = list->value;
-			listItem *xpn = NULL;
-			p += strncmp(p+2,"(?",2) ? 2 : 10;
-			p = bm_locate_pivot( p, &xpn );
-			if ( p && strncmp(p,"%(",2) )
-				data->list = newPair( list, xpn );
-			else {
-				freePair( list );
-				freeListItem( &xpn );
-				freeListItem( &data->exponent );
-				return 0; } } }
+	else if ( !strncmp( p, "%(", 2 ) ) {
+		// %(list,?:...) or %(list,...) or %((?,...):list)
+		Pair *list = popListItem( &data->exponent );
+		// list_p = list->name;
+		// mark_p = list->value;
+		listItem *xpn = NULL;
+		p += strncmp(p+2,"(?",2) ? 2 : 10;
+		p = bm_locate_pivot( p, &xpn );
+		if ( p && strncmp(p,"%(",2) )
+			data->list = newPair( list, xpn );
+		else {
+			freePair( list );
+			freeListItem( &xpn );
+			freeListItem( &data->exponent );
+			return 0; } }
 
 	CNInstance *e = bm_lookup( data->ctx, p, data->db, privy );
 	if (( e )) {
@@ -323,7 +339,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	char *p = pivot->name;
 
 	// %| no longer authorized in query expressions
-	int pv = !strncmp(p,"%@",2) ? 1 : 0;
+	int pv = ( *p=='%' ?( p[1]=='@' || !is_separator(p[1]) ): 0 );
 	
 	listItem *i, *j;
 	CNInstance *e, *f;
@@ -627,7 +643,7 @@ x_sub( CNInstance *x, listItem *xpn, listItem *base ) {
 
 static inline char *
 prune( char *p, int success ) {
-	p = p_prune(( success ? PRUNE_FILTER : PRUNE_TERM ), p+1 );
+	p = p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 );
 	if ( *p==':' ) p++;
 	return p; }
 

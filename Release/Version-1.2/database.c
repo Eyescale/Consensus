@@ -18,7 +18,7 @@ newCNDB( void )
 #ifdef NULL_TERMINATED
 	Registry *index = newRegistry( IndexedByName );
 #else
-	Registry *index = newRegistry( IndexedByCharacter );
+	Registry *index = newRegistry( IndexedByNameRef );
 #endif
 	char *p = strmake( "*" );
 	CNInstance *star = cn_new( NULL, NULL );

@@ -14,7 +14,7 @@
 BMContext *
 newContext( CNEntity *cell, CNEntity *parent )
 {
-	Registry *ctx = newRegistry( IndexedByCharacter );
+	Registry *ctx = newRegistry( IndexedByNameRef );
 	CNDB *db = newCNDB();
 	Pair *id = newPair(
 		db_proxy( NULL, cell, db ),

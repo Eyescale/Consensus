@@ -1,19 +1,39 @@
 See Also: design/story/interactive.story
+
 TODO
-	. %identifier list variables
-		.%list  <_>	// initialization, e.g.: .%list <ON,OFF>
-		.%list  {_}	// foreach: may include clipping?
-		.%list~ {_}	// while pop
-	  Rule:
-		%list cannot be both term and tag in the same expression
-		=> can be checked either by parser or traversal - which one?
-		
+	. + TEST esp. %identifier list stuff
+	  NOTE: %list and |^list should be usable in OUTPUT, FORE, etc.
+		just cannot be used in DO and ON and PER
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: now that we keep list of shared entities in context
 		=> bm_query() could parse them in no pivot case
+	. NTH: parser_macros: extract REENTER + put caught in io struct
+	. NTH: parser post-processing -> identify/eliminate undue filters
+	. NTH: .%(_) is more consistent than %(_) for ENABLE
+
 
 DONE
+	. %identifier list variables
+		.%tag  <_> // inform tag, e.g.: .%tag <ON,OFF>
+		.%tag  { expression(^.)|^.~, ... } // foreach, |^.~ => clip
+		.%tag~ { expression(^.)|^., ... } // while pop |^. => save
+		.%tag~ // flush
+	  RESTRICTIONS
+	  . neither %tag nor ^tag can be used inside of expression
+	  . %list and ^list cannot be both in the same expression
+	  . ^. only allowed if *type&LOCALE and is_f(SET) - ie.
+		.%tag{_} or .%tag~{_} above
+	. parser.c: implemented %list and |^list and |^list~
+	  RESTRICTION: %list and ^list cannot be both in the same expression
+	  => traversal.h: %list => RegisterVariableCB
+			DONE	locate_pivot.c:	register_variable_CB
+			DONE	instantiate.c:	register_variable_CB
+			DONE	eeno_query.c:	match_CB => bm_match()
+			DONE	query.c:	match_CB => bm_match()
+	  => traversal.h: |^list and |^list~ => BgnPipeCB
+			DONE	query.c: tag_CB
+	. registry.h: renamed IndexedByCharacter into IndexedByNameRef
 	. eeno_query.c: renamed bm_proxy_scan into bm_eeno_scan
 	. allow %?:sub and %!:sub when *type&DO and !(SUB_EXPR|byref)
 		=> allows e.g. %?:(.,?) without %(%?:(.,?)) in these cases

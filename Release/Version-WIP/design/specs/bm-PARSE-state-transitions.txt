@@ -58,6 +58,7 @@ Consensus B% Version-WIP
 					:sub
 		?	?:	expr
 		?:(_)	expr
+		%term	expr
 		term	expr
 		term.	expr
 			term~	expr

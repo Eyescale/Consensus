@@ -20,8 +20,8 @@ typedef struct {
 	Pair *segment;
 	} DeternarizeData;
 
-static char *optimize( Pair *, char * );
 static void s_scan( CNString *, listItem * );
+static char *optimize( Pair *, char * );
 
 BMTraverseCBSwitch( deternarize_traversal )
 case_( open_CB )
@@ -112,10 +112,44 @@ case_( close_CB )
 	_break
 BMTraverseCBEnd
 
+static void
+s_scan( CNString *s, listItem *sequence )
+/*
+	scan ternary-operator guard
+		Sequence:{
+			| [ NULL, sub:Sequence ]
+			| [ segment:Segment, NULL ]
+			| [ NULL, NULL ] // ~.
+			}
+		where
+			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+	into CNString
+*/ {
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	for ( ; ; ) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			// item==[ NULL, sub:Sequence ]
+			if (( i->next )) addItem( &stack, i->next );
+			i = item->value; // parse sub-sequence
+			continue; }
+		else if (( item->name )) {
+			// item==[ segment:Segment, NULL ]
+			Pair *segment = item->name;
+			s_append( segment->name, segment->value ) }
+		else s_add( "~." )
+		// moving on
+		if (( i->next ))
+			i = i->next;
+		else if (( stack ))
+			i = popListItem( &stack );
+		else break; } }
+
 static char *
 optimize( Pair *segment, char *p )
 /*
-	remove ternary expression's result's enclosing parentheses if possible
+	remove expression's result's enclosing parentheses if possible
 */ {
 	if ( p[1]!='^' ) {
 		segment = segment->name;
@@ -288,39 +322,3 @@ free_deternarized( listItem *sequence )
 		else break; }
 	freeListItem( &sequence ); }
 
-//===========================================================================
-//	s_scan
-//===========================================================================
-static void
-s_scan( CNString *s, listItem *sequence )
-/*
-	scan ternary-operator guard
-		Sequence:{
-			| [ NULL, sub:Sequence ]
-			| [ segment:Segment, NULL ]
-			| [ NULL, NULL ] // ~.
-			}
-		where
-			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-	into CNString
-*/ {
-	listItem *stack = NULL;
-	listItem *i = sequence;
-	for ( ; ; ) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item==[ NULL, sub:Sequence ]
-			if (( i->next )) addItem( &stack, i->next );
-			i = item->value; // parse sub-sequence
-			continue; }
-		else if (( item->name )) {
-			// item==[ segment:Segment, NULL ]
-			Pair *segment = item->name;
-			s_append( segment->name, segment->value ) }
-		else s_add( "~." )
-		// moving on
-		if (( i->next ))
-			i = i->next;
-		else if (( stack ))
-			i = popListItem( &stack );
-		else break; } }

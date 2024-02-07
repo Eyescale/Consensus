@@ -38,7 +38,7 @@ registryRegister( Registry *registry, void *name, void *value ) {
 	RegistryType type = registry->type;
 	switch ( type ) {
 	case IndexedByName:
-	case IndexedByCharacter:
+	case IndexedByNameRef:
 		if ( name == NULL ) return NULL;
 	default:
 		break; }
@@ -168,7 +168,7 @@ compare( RegistryType type, Pair *entry, void *name ) {
 	switch ( type ) {
 	case IndexedByName:
 		return strcomp( entry->name, (char *) name, 0 );
-	case IndexedByCharacter:
+	case IndexedByNameRef:
 		return strcomp( entry->name, (char *) name, 1 );
 	case IndexedByNumber:
 		return ( cast_i(entry->name) - *(int *) name );

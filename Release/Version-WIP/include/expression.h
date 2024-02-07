@@ -6,7 +6,10 @@
 
 CNInstance *	bm_feel( int, char *, BMContext * );
 listItem *	bm_scan( char *, BMContext * );
-void		bm_release( char *expression, BMContext * );
+int		bm_tag_clear( char *, BMContext * );
+int		bm_tag_traverse( char *, char *, BMContext * );
+int		bm_tag_inform( char *, char *, BMContext * );
+void		bm_release( char *, BMContext * );
 int		bm_inputf( char *fmt, listItem *args, BMContext * );
 int		bm_outputf( FILE *, char *fmt, listItem *args, BMContext * );
 void		fprint_expr( FILE *, char *, int level );

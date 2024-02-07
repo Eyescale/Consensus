@@ -19,6 +19,7 @@ static int do_action( char *, BMContext *, CNStory *story );
 static int do_enable( char *, BMContext *, listItem *, CNStory *, Registry * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
+static int set_locale( char *, BMContext * );
 
 //===========================================================================
 //	bm_op
@@ -67,7 +68,7 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 				case INPUT: do_input( expression, ctx ); break;
 				case OUTPUT: do_output( expression, ctx ); break;
 				case EN: do_enable( expression, ctx, narratives, story, subs ); break;
-				case LOCALE: bm_register_locale( ctx, expression ); break; }
+				case LOCALE: set_locale( expression, ctx ); break; }
 				if (( deternarized )) free( expression ); }
 			// pushing down
 			if ( passed && ( j )) {
@@ -456,3 +457,24 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 		return BMQ_DONE; }
 	return BMQ_CONTINUE; }
 
+//===========================================================================
+//	set_locale
+//===========================================================================
+static int
+set_locale( char *expression, BMContext *ctx ) {
+	listItem **list;
+	if ( !strncmp(expression,".%",2) ) {
+		expression+=2; // skip '.%'
+		char *p = p_prune( PRUNE_IDENTIFIER, expression );
+		switch ( *p ) {
+		case '<':
+			return bm_tag_inform( expression, p, ctx );
+		case '{':
+			return bm_tag_traverse( expression, p, ctx );
+		case '~':
+			switch ( p[1] ) {
+			case '{': return bm_tag_traverse( expression, p, ctx );
+			case '\0': return bm_tag_clear( expression, ctx ); } }
+		return 0; }
+	else {
+		return bm_register_locale( ctx, expression ); } }

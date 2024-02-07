@@ -294,7 +294,7 @@ flush_perso( listItem *stack ) {
 		freePair( next ); }
 	freeListItem( &stack->next );
 	freeRegistry((Registry *) current->value, NULL );
-	current->value = newRegistry( IndexedByCharacter ); }
+	current->value = newRegistry( IndexedByNameRef ); }
 
 //===========================================================================
 //	bm_mark
@@ -533,7 +533,37 @@ static inline void *
 lookup_mark( BMContext *ctx, char *p, int *rv ) {
 	Pair *entry;
 	listItem *i;
+	// special case: from instantiate.c:collect_CB
+	int ref = ( strncmp(p,"*^",2) ? 0 : (p++,1) );
 	switch ( *p ) {
+	case '^':
+		switch ( p[1] ) {
+		case '^':
+			entry = registryLookup( ctx, "^^" );
+			if (( entry )) {
+				Pair *r = entry->value;
+				return ref ? r->value : r->name; }
+			return NULL;
+		case '.':
+			if ( ref ) break; // err
+			entry = registryLookup( ctx, "^." );
+			return (( entry )? entry->value : NULL );
+		case '?':
+			if ( !ref ) break; // err
+			entry = registryLookup( ctx, "?" );
+			if (!( i=entry->value )) return NULL;
+			CNInstance *e = ((Pair *) i->ptr )->value;
+			entry = registryLookup( ctx, "^*" );
+			if ( !entry ) return NULL;
+			Registry *buffer = entry->value;
+			entry = registryLookup( buffer, e );
+			if ( !entry ) return NULL;
+			if ( p[2]==':' ) {
+				listItem *xpn = subx( p+3 );
+				e = xsub( e, xpn );
+				freeListItem( &xpn ); }
+			return e; }
+		break;
 	case '%':
 		switch ( p[1] ) {
 		case '?':
@@ -552,45 +582,19 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 			*rv = 2;
 			return NULL;
 		case '|': ;
+			*rv = 3;
 			entry = registryLookup( ctx, "|" );
-			if (( i=entry->value )) {
-				*rv = 3;
-				return i->ptr; }
+			if (( i=entry->value ))
+				return i->ptr;
 			return NULL;
 		case '@':
 			*rv = 3;
-			return BMContextActive( ctx )->value; }
-		break;
-	case '^':
-		if ( p[1]=='^' ) {
-			entry = registryLookup( ctx, "^^" );
-			if (( entry ))
-				return ((Pair *)(entry->value))->name;
-			return NULL; }
-		break;
-	case '*':
-		if ( p[1]!='^' ) break;
-		switch ( p[2] ) {
-		case '^':
-			entry = registryLookup( ctx, "^^" );
-			if (( entry ))
-				return ((Pair *)(entry->value))->value;
-			return NULL;
-		case '?':
-			p+=3; // skip '*^?'
-			entry = registryLookup( ctx, "?" );
-			if (!( i=entry->value )) return NULL;
-			CNInstance *e = ((Pair *) i->ptr )->value;
-			entry = registryLookup( ctx, "^*" );
-			if ( !entry ) return NULL;
-			Registry *buffer = entry->value;
-			entry = registryLookup( buffer, e );
-			if ( !entry ) return NULL;
-			if ( *p==':' ) {
-				listItem *xpn = subx( p+1 );
-				e = xsub( e, xpn );
-				freeListItem( &xpn ); }
-			return e; }
+			return BMContextActive( ctx )->value;
+		default:
+			if ( is_separator( p[1] ) ) break;
+			*rv = 3;
+			entry = registryLookup( ctx, p+1 );
+			return (( entry )? entry->value : NULL ); }
 		break;
 	case '.':
 		return ( p[1]=='.' ) ?
@@ -633,6 +637,24 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 
 	// not found in ctx registry
 	return db_match_identifier( x, p ); }
+
+//===========================================================================
+//	bm_tag
+//===========================================================================
+char *
+bm_tag( BMContext *ctx, char *p, CNInstance *x ) {
+	Pair *entry = registryLookup( ctx, p );
+	if (( entry )) {
+		listItem **tag = (listItem **) &entry->value;
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		if ( *p=='~' ) { p++; removeIfThere(tag,x); }
+		else addIfNotThere( tag, x ); }
+	else {
+		char *tag = p;
+		p = p_prune( PRUNE_IDENTIFIER, p );
+		if ( *p=='~' ) p++;
+		else registryRegister( ctx, tag, x ); }
+	return p; }
 
 //===========================================================================
 //	bm_register / bm_register_locale
@@ -689,10 +711,10 @@ newContext( CNEntity *cell ) {
 	CNInstance *self = new_proxy( NULL, cell, db );
 	Pair *id = newPair( self, NULL );
 	Pair *active = newPair( newPair( NULL, NULL ), NULL );
-	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+	Pair *perso = newPair( self, newRegistry(IndexedByNameRef) );
 	Pair *shared = newPair( NULL, NULL );
 
-	Registry *ctx = newRegistry( IndexedByCharacter );
+	Registry *ctx = newRegistry( IndexedByNameRef );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
 	registryRegister( ctx, "%", id ); // aka. %% and ..
 	registryRegister( ctx, "@", active ); // active connections (proxies)
@@ -703,11 +725,12 @@ newContext( CNEntity *cell ) {
 	registryRegister( ctx, "$", shared );
 	return ctx; }
 
+static freeRegistryCB free_tag_CB;
 void
 freeContext( BMContext *ctx )
 /*
 	Assumptions - cf freeCell()
-		. CNDB is free from any proxy attachment
+		. CNDB is free from any proxy and arena attachment
 		. id Self and Parent proxies have been released
 		. ctx registry all flushed out
 */ {
@@ -738,5 +761,11 @@ freeContext( BMContext *ctx )
 	// free CNDB & context registry
 	CNDB *db = BMContextDB( ctx );
 	freeCNDB( db );
-	freeRegistry( ctx, NULL ); }
+	freeRegistry( ctx, free_tag_CB ); }
+
+static void
+free_tag_CB( Registry *registry, Pair *entry ) {
+	char *p = entry->name;
+	if ( !is_separator( *p ) )
+		freeListItem((listItem **) &entry->value ); }
 

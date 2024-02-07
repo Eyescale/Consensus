@@ -47,7 +47,7 @@ readStory( char *path, int ignite ) {
 	bm_parse_init( &data, BM_STORY );
 	data.narrative = newNarrative();
 	data.occurrence = data.narrative->root;
-	data.narratives = newRegistry( IndexedByCharacter );
+	data.narratives = newRegistry( IndexedByNameRef );
 	addItem( &data.stack.occurrences, data.occurrence );
 	//-----------------------------------------------------------------
 #define PARSE( event, func ) \
@@ -60,7 +60,6 @@ readStory( char *path, int ignite ) {
 		else data.errnum = io_report( &io );
 		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
-	freeListItem( &data.stack.occurrences );
 	if ( !data.errnum && !build_CB( NarrativeTake, 0, &data ) ) // last take
 		fprintf( stderr, "B%%: Error: read_narrative: unexpected EOF\n" );
 	if ( data.errnum ) {
@@ -81,6 +80,7 @@ static int
 build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
 	CNNarrative *narrative;
+	listItem *base, *term;
 	char *proto;
 	switch ( op ) {
 	case ProtoSet:
@@ -114,11 +114,29 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 		addItem( &data->stack.occurrences, occurrence );
 		data->occurrence = occurrence;
 		break;
+	case TagTake:
+		// compare current term with registered tags
+		base = data->stack.tags;
+		term = data->string->data;
+		for ( listItem *i=base; i!=NULL; i=i->next )
+		for ( listItem *j=i->ptr, *k=term; (j)&&(k); j=j->next, k=k->next ) {
+			int e=cast_i(j->ptr), f=cast_i(k->ptr);
+			if ( is_separator(e) || is_separator(f) ) {
+				if (( i==base && data->type&LOCALE ) ?
+					(( e=='^' || e=='%' )&&( f=='^' && f=='%' )) :
+					(( e=='^' && f=='%' )||( e=='%' && f=='^' )) )
+					return 0;
+				break; } }
+		listItem **tags = &data->stack.tags;
+		if ( !data->type&LOCALE ) addItem( tags, term );
+		else { popListItem(tags); addItem( tags, term ); addItem(tags,base); }
+		return 1;
 	case ExpressionTake:
 		occurrence = data->stack.occurrences->ptr;
 		occurrence->data->type = cast_ptr( data->type );
 		occurrence->data->expression = StringFinish( data->string, 0 );
 		StringReset( data->string, CNStringMode );
+		freeListItem( &data->stack.tags );
 		break;
 	case NarrativeTake: ; // Assumption: mode==( last take ? 0 : BM_STORY )
 		narrative = data->narrative;
@@ -209,7 +227,7 @@ free_CB( Registry *registry, Pair *entry ) {
 //===========================================================================
 CNStory *
 newStory( void ) {
-	Registry *narratives = newRegistry( IndexedByCharacter );
+	Registry *narratives = newRegistry( IndexedByNameRef );
 	CNNarrative *base = newNarrative();
 	registryRegister( narratives, "", newItem( base ) );
 	return (CNStory *) newPair( narratives, newArena() ); }

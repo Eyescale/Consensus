@@ -18,9 +18,9 @@ newContext( CNEntity *cell )
 	CNInstance *self = db_proxy( NULL, cell, db );
 	Pair *id = newPair( self, NULL );
 	Pair *active = newPair( newPair( NULL, NULL ), NULL );
-	Pair *perso = newPair( self, newRegistry(IndexedByCharacter) );
+	Pair *perso = newPair( self, newRegistry(IndexedByNameRef) );
 
-	Registry *ctx = newRegistry( IndexedByCharacter );
+	Registry *ctx = newRegistry( IndexedByNameRef );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
 	registryRegister( ctx, "%", id ); // aka. %% and ..
 	registryRegister( ctx, "@", active ); // active connections (proxies)
@@ -304,7 +304,7 @@ flush_perso( listItem *stack )
 		freePair( next ); }
 	freeListItem( &stack->next );
 	freeRegistry((Registry *) current->value, NULL );
-	current->value = newRegistry( IndexedByCharacter );
+	current->value = newRegistry( IndexedByNameRef );
 }
 
 //===========================================================================

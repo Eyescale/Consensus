@@ -13,7 +13,7 @@ newContext( CNDB *db )
 {
 	CNInstance *this = cn_new( NULL, NULL );
 	this->sub[ 1 ] = (CNInstance *) db;
-	Registry *registry = newRegistry( IndexedByCharacter );
+	Registry *registry = newRegistry( IndexedByNameRef );
 	registryRegister( registry, ".", NULL ); // sub-narrative instance
 	registryRegister( registry, "?", NULL ); // aka. %?
 	registryRegister( registry, "!", NULL ); // aka. %!
