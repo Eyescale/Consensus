@@ -78,14 +78,14 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 */ {
 	Pair *entry = registryLookup( ctx, expression );
 	if ( !entry ) return 0;
-	int negated = ( *p=='~' ? (p++,1) : 0 );
+	int released = ( *p=='~' ? (p++,1) : 0 );
 	Pair *current = registryRegister( ctx, "^.", NULL );
 	listItem *next_i, *last_i=NULL;
 	listItem **entries = (listItem **) &entry->value;
 	for ( listItem *i=*entries; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		current->value = i->ptr;
-		int clip = negated;
+		int clip = released;
 		for ( char *q=p; *q++!='}'; q=p_prune(PRUNE_LEVEL,q) )
 			bm_query( BM_CONDITION, q, ctx, continue_CB, &clip );
 		if (( clip )) clipListItem( entries, i, last_i, next_i );

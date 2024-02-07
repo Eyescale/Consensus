@@ -53,8 +53,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 				else if ( are_f(FIRST|LEVEL) ) {
 					do_( "," )	s_take
 							f_restore( NEGATED|STARRED|FILTERED|PIPED|PROTECTED ) } }
-			else if ( is_f(VECTOR|SET|CARRY) ) {
-				do_( "{_," )	f_clr( NEGATED|STARRED|FILTERED ) } // do not clear FIRST|INFORMED
+			else if ( is_f(VECTOR|SET|CARRY) ) { // do not clear FIRST|INFORMED
+				do_( "{_," )	f_clr( NEGATED|STARRED|FILTERED ) }
 			else if ( *type&DO && !is_f(PROTECTED) ) {
 				do_( "_," )	f_clr( FIRST|INFORMED|NEGATED|STARRED|FILTERED ) }
 		on_( ':' ) if ( *type&PER && !s_cmp("~.") )
@@ -786,7 +786,7 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 		on_other	do_( "expr" )	REENTER
 		end
 	in_( "|_" ) bgn_
-		on_( '^' )	do_( "|^" )
+		on_( '^' )	do_( "|^" )	s_take
 		end
 		in_( "|^" ) bgn_
 			on_( '.' ) if ( *type&LOCALE && is_f(SET) && !is_f(LEVEL|SUB_EXPR) ) {
@@ -795,9 +795,9 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 			on_other	do_( "|^$" )	s_take
 			end
 		in_( "|^." ) bgn_
-			on_( '~' ) if ( !is_f(NEGATED) ) {
+			on_( '~' ) if ( !expr(RELEASED) ) {
 					do_( "|^._" )	s_take }
-			on_other if ( is_f(NEGATED) ) {
+			on_other if ( expr(RELEASED) ) {
 					do_( "|^._" )	REENTER }
 			end
 		in_( "|^._" ) bgn_
@@ -1527,8 +1527,12 @@ CB_if_( OccurrenceAdd, mode, data ) {
 	in_( "_expr" )
 CB_if_( OccurrenceAdd, mode, data ) {
 		bgn_ on_any
+		if ( *type&LOCALE && is_f(NEGATED) ) {
 			do_( "expr" )	TAB_LAST = TAB_CURRENT;
-					data->expr = 1;
+					data->expr = RELEASED;
+					f_clr( RELEASED ) }
+		else {	do_( "expr" )	TAB_LAST = TAB_CURRENT;
+					data->expr = 1; }
 			end }
 	//----------------------------------------------------------------------
 	// bm_parse_cmd:	Error Handling

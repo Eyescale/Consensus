@@ -20,11 +20,12 @@ static char *tag( char *, BMQueryData * );
 
 BMTraverseCBSwitch( query_traversal )
 case_( tag_CB )
-	if ( p[2]=='.' ) // special case: |^.
-		*(int *)data->user_data = !(p[3]=='~');
-	else if ( data->success ) {
-		p = tag( p, data );
-		if (( p )) _continue( p ) }
+	if ( data->success ) {
+		if ( p[2]=='.' ) // special case: |^.
+			*(int *)data->user_data = !(p[3]=='~');
+		else {
+			p = tag( p, data );
+			if (( p )) _continue( p ) } }
 	_break
 case_( match_CB )
 	switch ( match( p, data ) ) {
