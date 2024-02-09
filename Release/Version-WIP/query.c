@@ -22,7 +22,7 @@ BMTraverseCBSwitch( query_traversal )
 case_( tag_CB )
 	if ( data->success ) {
 		if ( p[2]=='.' ) // special case: |^.
-			*(int *)data->user_data = !(p[3]=='~');
+			*(int *)data->user_data = (p[3]=='~');
 		else {
 			p = tag( p, data );
 			if (( p )) _continue( p ) } }
@@ -139,8 +139,9 @@ match( char *p, BMQueryData *data )
 	if ( !x ) return -1;
 	if ( !p ) return 1; // wildcard
 	if (( data->pivot ) && p==data->pivot->name ) {
-		if ( *p!='%' || p[1]!='@' || is_separator( p[1] ) )
-			return ( x==data->pivot->value ); }
+		if ( *p=='%' && ( p[1]=='@' || !is_separator(p[1]) ) )
+			return !!lookupIfThere( data->pivot->value, x );
+		else	return ( x==data->pivot->value ); }
 	return bm_match( data->ctx, data->db, p, x, data->db ); }
 
 static char *

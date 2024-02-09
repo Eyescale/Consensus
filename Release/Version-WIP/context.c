@@ -250,40 +250,29 @@ static inline void flush_perso( listItem * );
 void
 bm_context_release( BMContext *ctx )
 /*
-	Assumption: ActiveRV dealt with separately
+	Assumption: ActiveRV and Pipe dealt with separately
 */ {
+	Pair *mark;
 	listItem **stack;
-	listItem **entries = &ctx->entries;
-	listItem *last_i = NULL, *next_i;
-	for ( listItem *i=*entries; i!=NULL; i=next_i ) {
+	for ( listItem *i=ctx->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
-		next_i = i->next;
 		char *name = entry->name;
-		if ( !is_separator( *name ) ) {
-			clipListItem( entries, i, last_i, next_i );
-			freePair( entry ); }
-		else {
-			Pair *mark;
-			switch ( *name ) {
-			case '?':
-				stack = (listItem **) &entry->value;
-				while (( mark = popListItem( stack ) ))
-					freePair( mark );
-				break;
-			case '<':
-				stack = (listItem **) &entry->value;
-				while (( mark = popListItem( stack ) )) {
-					freePair( mark->name );
-					freePair( mark ); }
-				break;
-			case '|':
-				stack = (listItem **) &entry->value;
-				freeListItem( stack );
-				break;
-			case '.':
-				flush_perso( entry->value );
-				break; }
-			last_i = i; } } }
+		Pair *mark;
+		switch ( *name ) {
+		case '?':
+			stack = (listItem **) &entry->value;
+			while (( mark = popListItem( stack ) ))
+				freePair( mark );
+			break;
+		case '<':
+			stack = (listItem **) &entry->value;
+			while (( mark = popListItem( stack ) )) {
+				freePair( mark->name );
+				freePair( mark ); }
+			break;
+		case '.':
+			flush_perso( entry->value );
+			break; } } }
 
 static inline void
 flush_perso( listItem *stack ) {
@@ -591,10 +580,10 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 			*rv = 3;
 			return BMContextActive( ctx )->value;
 		default:
-			if ( is_separator( p[1] ) ) break;
-			*rv = 3;
-			entry = registryLookup( ctx, p+1 );
-			return (( entry )? entry->value : NULL ); }
+			if ( !is_separator( p[1] ) ) {
+				*rv = 3;
+				entry = registryLookup( ctx, p+1 );
+				return (( entry )? entry->value : NULL ); } }
 		break;
 	case '.':
 		return ( p[1]=='.' ) ?

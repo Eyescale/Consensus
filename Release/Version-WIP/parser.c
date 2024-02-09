@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "parser.h"
-#include "parser_private.h"
 // #define DEBUG
 #include "parser_macros.h"
+#include "parser.h"
+#include "parser_private.h"
 
 //===========================================================================
 //	bm_parse_expr
@@ -172,6 +172,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_tag( stack, PROTECTED ) }
 				else if ( !is_f(INFORMED) ) {
 					do_( "^" )	s_take } }
+			else if ( *type&LOCALE && is_f(SET) && !is_f(INFORMED) ) {
+				do_( "^" )	s_take }
 		on_separator	; // err
 		on_other if ( is_f(INFORMED) )
 				; // err
@@ -255,8 +257,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_separator	do_( "expr" )	REENTER
 						s_add( "%" )
 						f_set( INFORMED )
-		on_other if ( *type&IN || is_f(SUB_EXPR) ) {
-				do_( "%term" )	s_take }
+		on_other if ( *type&(IN|OUTPUT) || is_f(SUB_EXPR) ) {
+				do_( "%term" )	s_add( "%" )
+						s_take }
 		end
 		in_( "%(" ) bgn_
 			ons( " \t" )	do_( same )
@@ -539,10 +542,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 			on_other	do_( "term" )	s_take
 			end
 	in_( "^" ) bgn_
-		on_( '^' )	do_( "expr" )	s_take
+		ons( "^." )	do_( "expr" )	s_take
 						f_set( INFORMED )
-		on_( '.' ) if ( *type&LOCALE && is_f(SET) ) {
-				do_( "expr" )	s_take }
 		end
 	in_( ":_sub" ) bgn_
 		on_( '(' )	do_( ":sub" )	REENTER
@@ -700,7 +701,7 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( "expr" )	REENTER
 							f_set( INFORMED )
-			on_other	do_( "expr" )	REENTER
+			on_other	do_( ">_:" )	REENTER
 			end
 		in_( ">\"" ) bgn_
 			on_( '\t' )	do_( same )	s_add( "\\t" )
@@ -1530,7 +1531,7 @@ CB_if_( OccurrenceAdd, mode, data ) {
 		if ( *type&LOCALE && is_f(NEGATED) ) {
 			do_( "expr" )	TAB_LAST = TAB_CURRENT;
 					data->expr = RELEASED;
-					f_clr( RELEASED ) }
+					f_clr( NEGATED ) }
 		else {	do_( "expr" )	TAB_LAST = TAB_CURRENT;
 					data->expr = 1; }
 			end }

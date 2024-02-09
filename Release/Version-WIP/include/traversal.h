@@ -103,8 +103,9 @@ CB_LoopCB			f_set( INFORMED )
 				break;
 			case '|':
 				if ( p[1]=='^' ) {
-CB_BgnPipeCB				if ( p[2]=='.' ) p+=( p[3]=='~' ? 3 : 2 );
+CB_BgnPipeCB				if ( p[2]=='.' ) p+=3;
 					else p = p_prune( PRUNE_IDENTIFIER, p+2 ); }
+					if ( *p=='~' ) p++;
 				else {
 					if ( BASE && !is_f(CARRY) ) {
 						traverse_data->done = 1;

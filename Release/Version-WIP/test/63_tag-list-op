@@ -1,0 +1,18 @@
+
+	on init
+		do { ON, OFF, DUMMY }
+	else on ON
+		.%op < ON, OFF, DUMMY >
+	else in DUMMY: %op
+		do >"clipping DUMMY from:%_\n":< %op >
+		.%op { ^.:DUMMY|^.~ }
+	else in OFF: %op
+		do >"saving ON from: %_\n":< %op >
+		.%op~{ ^.:ON|^. }
+	else in %op
+		do >"flushing: %_\n":<%op >
+		.%op~
+	else
+		do >"bye - %_\n":<%op >
+		do exit
+

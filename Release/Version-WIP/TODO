@@ -2,8 +2,6 @@ See Also: design/story/interactive.story
 
 TODO
 	. + TEST esp. %identifier list stuff
-	  NOTE: %list and |^list should be usable in OUTPUT, FORE, etc.
-		just cannot be used in DO and ON and PER
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: now that we keep list of shared entities in context
@@ -11,21 +9,24 @@ TODO
 	. NTH: parser_macros: extract REENTER + put caught in io struct
 	. NTH: parser post-processing -> identify/eliminate undue filters
 	. NTH: .%(_) is more consistent than %(_) for ENABLE
+	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
+		just cannot be used in DO and ON and PER
 
 
 DONE
-	. %identifier list variables
+	. implemented .%tag expressions
 		.%tag  <_> // inform tag, e.g.: .%tag <ON,OFF>
 		.%tag  { expression(^.)|^.~, ... } // foreach, |^.~ => clip
 		.%tag~ { expression(^.)|^., ... } // while pop |^. => save
 		.%tag~ // flush
 	  RESTRICTIONS
-	  . neither %tag nor ^tag can be used inside of expression
-	  . %list and ^list cannot be both in the same expression
-	  . ^. only allowed if *type&LOCALE and is_f(SET) - ie.
-		.%tag{_} or .%tag~{_} above
-	. parser.c: implemented %list and |^list and |^list~
-	  RESTRICTION: %list and ^list cannot be both in the same expression
+		%list and ^list cannot be both in the same expression
+		neither %tag nor ^tag can be used inside of expression
+		^. only allowed in *type&LOCALE and is_f(SET) - ie.
+			.%tag{_} or .%tag~{_} above
+	. implemented %list and |^list and |^list~
+	  RESTRICTION:
+		%list and ^list cannot be both in the same expression
 	  => traversal.h: %list => RegisterVariableCB
 			DONE	locate_pivot.c:	register_variable_CB
 			DONE	instantiate.c:	register_variable_CB
@@ -35,13 +36,13 @@ DONE
 			DONE	query.c: tag_CB
 	. registry.h: renamed IndexedByCharacter into IndexedByNameRef
 	. eeno_query.c: renamed bm_proxy_scan into bm_eeno_scan
-	. allow %?:sub and %!:sub when *type&DO and !(SUB_EXPR|byref)
+	. allow %?:sub and %!:sub when *type&DO and !byref
 		=> allows e.g. %?:(.,?) without %(%?:(.,?)) in these cases
 		=> is PROTECTED: cannot be filtered nor used as ternary guard
 	  cf. Test/53_output-system-launch-formula [updated]
 	  cf. Test/61_instantiate-rvsub
 	. allow _< ?:{_} // cf. parser.c and eeno_query.c: bm_eeno_scan()
-	. extract bm_parse_eenov, bm_parse_char, bm_parse_regex, bm_parse_seq
+	. extracted bm_parse_eenov, bm_parse_char, bm_parse_regex, bm_parse_seq
 	  from parser.c - Note:
 	  	~.?	not allowed
 		~.:	must be written verbatim (no space)
@@ -56,13 +57,13 @@ DONE
 	. p_prune( PRUNE_TERM, p ) now returns on '^' if follows ')'
 	. p_prune( PRUNE_LEVEL, p ) / integrated in prune.c / handles '^'
 	. bm_traverse(): handles '^' use cases:
-		*^	=> *^^	& DereferenceCB / p++ to ^^
-			   *^? 	& DereferenceCB / p++ to ^?
-		^.	=> INFORMED & RegisterVariableCB / p+=2; set INFORMED
-		^^	=> INFORMED & RegisterVariableCB / p+=2; set INFORMED
+		*^	=> *^^	& DereferenceCB alt. p++ to ^^
+			   *^? 	& DereferenceCB alt. p++ to ^?
+		^.	=> INFORMED & RegisterVariableCB alt. p+=2; set INFORMED
+		^^	=> INFORMED & RegisterVariableCB alt. p+=2; set INFORMED
 		^?	=> following *
 		)^	=> INFORMED & NewBornCB / p++ past )^
-		|^	=> not done yet
+		|^	=> BgnPipeCB alt. skip |^_~
 	. parser: (_)^ PROTECTED => cannot be followed by ':' nor be ternary guard
 	. deternarize no longer optimizes any of ?:(_)(_) or !^:(_)(_) or (_)^
 		=> parser.c: does not allow ternary in FORE

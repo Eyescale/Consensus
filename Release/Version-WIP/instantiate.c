@@ -49,8 +49,10 @@ case_( end_set_CB )
 case_( bgn_pipe_CB )
 	if ( !data->sub[ NDX ] ) _prune( BM_PRUNE_LEVEL, p+1 )
 	bm_push_mark( data->ctx, "|", data->sub[ NDX ] );
-	addItem( &data->results, data->sub[ 0 ] );
-	if ( NDX ) {
+	if ( is_f(FIRST) ) // backup results
+		addItem( &data->results, data->sub[ 0 ] );
+	else {
+		addItem( &data->results, data->sub[ 0 ] );
 		addItem( &data->results, data->sub[ 1 ] );
 		data->sub[ 1 ] = NULL; }
 	data->sub[ 0 ] = NULL;
@@ -60,9 +62,10 @@ case_( bgn_pipe_CB )
 case_( end_pipe_CB )
 	bm_pop_mark( data->ctx, "|" );
 	freeListItem( &data->sub[ 0 ] );
-	if ( f_next&FIRST )
+	if ( f_next&FIRST ) // restore results
 		data->sub[ 0 ] = popListItem( &data->results );
-	else	data->sub[ 1 ] = popListItem( &data->results );
+	else {	data->sub[ 1 ] = popListItem( &data->results );
+		data->sub[ 0 ] = popListItem( &data->results ); }
 	data->newborn.current = pop_item( &data->newborn.stack );
 	_break
 case_( open_CB )
