@@ -47,10 +47,10 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
-//	bm_tag_declare
+//	bm_tag_register
 //===========================================================================
 int
-bm_tag_declare( char *expression, char *p, BMContext *ctx ) {
+bm_tag_register( char *expression, char *p, BMContext *ctx ) {
 	for ( ; ; ) {
 		registryRegister( ctx, expression, NULL );
 		if ( *p==' ' ) {

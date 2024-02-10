@@ -6,7 +6,7 @@
 
 CNInstance *	bm_feel( int, char *, BMContext * );
 listItem *	bm_scan( char *, BMContext * );
-int		bm_tag_declare( char *, char *, BMContext * );
+int		bm_tag_register( char *, char *, BMContext * );
 int		bm_tag_traverse( char *, char *, BMContext * );
 int		bm_tag_inform( char *, char *, BMContext * );
 int		bm_tag_clear( char *, BMContext * );
