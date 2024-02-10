@@ -1300,7 +1300,7 @@ CB_( TagTake, mode, data ) {		do_( ".%$_" )	REENTER } }
 			on_( '\n' ) if ( is_f(NEGATED) ) {
 					do_( "_expr" )	REENTER
 							TAB_CURRENT += TAB_SHIFT;
-							*type = IN|LOCALE;
+							*type = LOCALE;
 							f_set( INFORMED ) }
 			on_( '{' ) 	do_( "_expr" )	s_take
 							TAB_CURRENT += TAB_SHIFT;
