@@ -29,7 +29,6 @@ bm_feel( int type, char *expression, BMContext *ctx ) {
 //	bm_scan
 //===========================================================================
 static BMQueryCB scan_CB;
-
 listItem *
 bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
@@ -54,18 +53,16 @@ int
 bm_tag_declare( char *expression, char *p, BMContext *ctx ) {
 	for ( ; ; ) {
 		registryRegister( ctx, expression, NULL );
-		switch ( *p ) {
-		case ' ':
+		if ( *p==' ' ) {
 			expression = p+3;
-			p = p_prune( PRUNE_IDENTIFIER, expression );
-			break;
-		default: return 1; } } }
+			p = p_prune( PRUNE_IDENTIFIER, expression ); }
+		else return 1; } }
 
 //===========================================================================
-//	bm_tag_traverse, bm_tag_inform
+//	bm_tag_traverse
 //===========================================================================
-static BMQueryCB continue_CB, inform_CB;
-
+static BMQueryCB continue_CB;
+static int err_tag( char * );
 int
 bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 /*
@@ -73,12 +70,7 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 	Note that we do not free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) {
-		fprintf( stderr, ">>>>> B%%: error: "
-			"list identifier unknown in expression\n"
-				"\t\t.%%%s\n"
-			"\t<<<<< instruction ignored\n", expression );
-		return 0; }
+	if ( !entry ) return err_tag( expression );
 	int released = ( *p=='~' ? (p++,1) : 0 );
 	Pair *current = registryRegister( ctx, "^.", NULL );
 	listItem *next_i, *last_i=NULL;
@@ -98,14 +90,25 @@ static BMQTake
 continue_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
+static int
+err_tag( char *expression ) {
+	fprintf( stderr, ">>>>> B%%: error: "
+		"list identifier unknown in expression\n"
+			"\t\t.%%%s\n"
+		"\t<<<<< instruction ignored\n", expression );
+	return 0; }
+
+//===========================================================================
+//	bm_tag_inform
+//===========================================================================
+static BMQueryCB inform_CB;
 int
 bm_tag_inform( char *expression, char *p, BMContext *ctx )
 /*
 	Assumption: p: <_>
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry )
-		entry = registryRegister( ctx, expression, NULL );
+	if ( !entry ) entry = registryRegister( ctx, expression, NULL );
 	for ( char *q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		bm_query( BM_CONDITION, q, ctx, inform_CB, &entry->value );
 	return 1; }
@@ -119,7 +122,6 @@ inform_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //	bm_tag_clear
 //===========================================================================
 static freeRegistryCB clear_CB;
-
 int
 bm_tag_clear( char *expression, BMContext *ctx )
 /*
@@ -127,23 +129,18 @@ bm_tag_clear( char *expression, BMContext *ctx )
 	Note that we do free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if (( entry ))
-		registryCBDeregister( ctx, clear_CB, expression );
-	else fprintf( stderr, ">>>>> B%%: warning: "
-		"list identifier unknown in expression\n\t\t.%%%s\n\t"
-		"<<<<< instruction ignored\n", expression );
-	return !!entry; }
+	if ( !entry ) return err_tag( expression );
+	registryCBDeregister( ctx, clear_CB, expression );
+	return 1; }
 
 static void
 clear_CB( Registry *registry, Pair *entry ) {
-	freeListItem((listItem **) &entry->value );
-	free((char *) entry->name ); }
+	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
 //	bm_release
 //===========================================================================
 static BMQueryCB release_CB;
-
 void
 bm_release( char *expression, BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
@@ -158,9 +155,7 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //	bm_inputf
 //===========================================================================
 static int bm_input( int type, char *arg, BMContext * );
-
 #define DEFAULT_TYPE '_'
-
 int
 bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 /*
@@ -271,7 +266,6 @@ bm_read( FILE *stream ) {
 //	bm_outputf
 //===========================================================================
 static int bm_output( FILE *, int type, char *expression, BMContext *);
-
 int
 bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 /*
@@ -310,7 +304,6 @@ RETURN:
 //	bm_output
 //---------------------------------------------------------------------------
 static BMQueryCB output_CB;
-
 static int
 bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
 /*

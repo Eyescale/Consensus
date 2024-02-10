@@ -1,8 +1,7 @@
 
 	.%tag .%guard
 	on init
-		do {
-			guardA |{
+		do {	guardA |{
 				( %|, ( trigger, action )),
 				( conditionA, %| ) },
 			guardB |{
@@ -44,8 +43,7 @@
 			"\tcondition-free: %_\n"
 			"\tstatus-free: %_\n"
 			"\tpending: %_\n": <
-			%(?,(.,action)):~%(.,?)
-			%(Status,.):~%(.,?),
-			%(.,(Status,.))
-			>
+				%(?,(.,action)):~%(.,?),
+				%(Status,.):~%(.,?),
+				%(.,(Status,.)) >
 		do exit

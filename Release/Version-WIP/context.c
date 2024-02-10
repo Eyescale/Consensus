@@ -630,20 +630,24 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 //===========================================================================
 //	bm_tag
 //===========================================================================
+static char * err_tag( char *p );
 char *
 bm_tag( BMContext *ctx, char *p, CNInstance *x ) {
 	Pair *entry = registryLookup( ctx, p );
-	if ( !entry ) {
-		fprintf( stderr, ">>>>> B%%: error: "
-			"tag unknown in expression\n"
-				"\t\t_|^%s\n"
-			"\t<<<<< tag ignored\n", p );
-		return NULL; }
+	if ( !entry ) return err_tag( p );
 	listItem **tag = (listItem **) &entry->value;
 	p = p_prune( PRUNE_IDENTIFIER, p );
 	if ( *p=='~' ) { p++; removeIfThere(tag,x); }
 	else addIfNotThere( tag, x );
 	return p; }
+
+static char *
+err_tag( char *p ) {
+	fprintf( stderr, ">>>>> B%%: error: "
+		"tag unknown in expression\n"
+			"\t\t_|^%s\n"
+		"\t<<<<< tag ignored\n", p );
+	return NULL; }
 
 //===========================================================================
 //	bm_register / bm_register_locale
