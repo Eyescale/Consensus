@@ -633,16 +633,16 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 char *
 bm_tag( BMContext *ctx, char *p, CNInstance *x ) {
 	Pair *entry = registryLookup( ctx, p );
-	if (( entry )) {
-		listItem **tag = (listItem **) &entry->value;
-		p = p_prune( PRUNE_IDENTIFIER, p );
-		if ( *p=='~' ) { p++; removeIfThere(tag,x); }
-		else addIfNotThere( tag, x ); }
-	else {
-		char *tag = p;
-		p = p_prune( PRUNE_IDENTIFIER, p );
-		if ( *p=='~' ) p++;
-		else registryRegister( ctx, tag, x ); }
+	if ( !entry ) {
+		fprintf( stderr, ">>>>> B%%: error: "
+			"tag unknown in expression\n"
+				"\t\t_|^%s\n"
+			"\t<<<<< tag ignored\n", p );
+		return NULL; }
+	listItem **tag = (listItem **) &entry->value;
+	p = p_prune( PRUNE_IDENTIFIER, p );
+	if ( *p=='~' ) { p++; removeIfThere(tag,x); }
+	else addIfNotThere( tag, x );
 	return p; }
 
 //===========================================================================
@@ -754,7 +754,6 @@ freeContext( BMContext *ctx )
 
 static void
 free_tag_CB( Registry *registry, Pair *entry ) {
-	char *p = entry->name;
-	if ( !is_separator( *p ) )
+	if ( !is_separator( *(char *)entry->name ) )
 		freeListItem((listItem **) &entry->value ); }
 

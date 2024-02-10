@@ -1,9 +1,7 @@
 See Also: design/story/interactive.story
 
 TODO
-	. + TEST esp. %identifier list stuff
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
-	. NTH: errors / warnings => should ALL be in color... => centralize?
 	. NTH: now that we keep list of shared entities in context
 		=> bm_query() could parse them in no pivot case
 	. NTH: parser_macros: extract REENTER + put caught in io struct
@@ -12,18 +10,26 @@ TODO
 	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
 		just cannot be used in DO and ON and PER
 
-
 DONE
+	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>
+	  or .%tag so that it can be registered into ctx from expression
+	  - otherwise e.g. in %( titi ? toto|^tag : tutu ) would register
+	  tag from deternarized string, which will be freed
+	     => allow several on the same line (declaration only)
+	     => error if tag used and not declared (run-time)
+	  cf. Test/64_tag-use-cases
 	. implemented .%tag expressions
+		.%tag	// declaration and registration
 		.%tag  <_> // inform tag, e.g.: .%tag <ON,OFF>
 		.%tag  { expression(^.)|^.~, ... } // foreach, |^.~ => clip
 		.%tag~ { expression(^.)|^., ... } // while pop |^. => save
-		.%tag~ // flush
+		.%tag~ // flush and deregistration
 	  RESTRICTIONS
 		%list and ^list cannot be both in the same expression
 		neither %tag nor ^tag can be used inside of expression
 		^. only allowed in *type&LOCALE and is_f(SET) - ie.
 			.%tag{_} or .%tag~{_} above
+	  cf. Test/63_tag-list-op
 	. implemented %list and |^list and |^list~
 	  RESTRICTION:
 		%list and ^list cannot be both in the same expression
@@ -33,7 +39,7 @@ DONE
 			DONE	eeno_query.c:	match_CB => bm_match()
 			DONE	query.c:	match_CB => bm_match()
 	  => traversal.h: |^list and |^list~ => BgnPipeCB
-			DONE	query.c: tag_CB
+			DONE	query.c: using filter_CB
 	. registry.h: renamed IndexedByCharacter into IndexedByNameRef
 	. eeno_query.c: renamed bm_proxy_scan into bm_eeno_scan
 	. allow %?:sub and %!:sub when *type&DO and !byref

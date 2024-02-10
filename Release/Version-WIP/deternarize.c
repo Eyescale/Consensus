@@ -255,7 +255,8 @@ deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *express
 	p = deternarize_traversal( p, traverse_data, FIRST );
 
 	if ((data->stack.sequence)||(data->stack.flags)) {
-		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: 0x%x %s, at %s\n",
+		fprintf( stderr, ">>>>> B%%: Error: deternarize: Memory Leak: "
+			"0x%x %s, at %s\n",
 			(int) data->stack.sequence, expression, p );
 		freeListItem( &data->stack.sequence );
 		freeListItem( &data->stack.flags );

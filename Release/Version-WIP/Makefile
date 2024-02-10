@@ -24,6 +24,7 @@ SRCS =	story.c \
 					locate_pivot.c \
 					locate_mark.c \
 			eeno_query.c
+
 LIB = libbmod.a
 
 TARGETS = $(LIB) B%

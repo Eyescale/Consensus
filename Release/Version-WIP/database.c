@@ -567,6 +567,8 @@ static int outputf( FILE *, CNDB *, int type, CNInstance * );
 int
 db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 	CNInstance *e;
+	char *string;
+	int num;
 	va_list ap;
 	va_start( ap, fmt );
 	for ( char *p=fmt; *p; p++ )
@@ -576,6 +578,14 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 			switch ( *p ) {
 			case '%':
 				fprintf( stream, "%%" );
+				break;
+			case 'd':
+				num = va_arg( ap, int );
+				fprintf( stream, "%d", num );
+				break;
+			case '$':
+				string = va_arg( ap, char * );
+				fprintf( stream, "%s", string );
 				break;
 			case '_':
 			case 's':

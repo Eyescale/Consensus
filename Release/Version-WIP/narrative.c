@@ -105,8 +105,8 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 			if_( ELSE, "else " )
 			if_( EN, "en " )
 			else if_( IN, "in " )
+			else if_( PER, "per " )
 			else if_( ON|ON_X, "on " )
-			else if_( PER_X|IN_X, "per " )
 			else if_( DO|INPUT|OUTPUT, "do " )
 			if ( type&DO )
 				fprint_expr( stream, expression, level );

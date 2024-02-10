@@ -467,6 +467,9 @@ set_locale( char *expression, BMContext *ctx ) {
 		expression+=2; // skip '.%'
 		char *p = p_prune( PRUNE_IDENTIFIER, expression );
 		switch ( *p ) {
+		case '\0':
+		case ' ':
+			return bm_tag_declare( expression, p, ctx );
 		case '<':
 			return bm_tag_inform( expression, p, ctx );
 		case '{':

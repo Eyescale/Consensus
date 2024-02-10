@@ -30,7 +30,38 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				else if ( p[1]=='?' ) {
 					p=p_prune( PRUNE_TERM, p+1 );
 					f_set( INFORMED ) }
+				break;
+			case '{':
+				if ( is_f(INFORMED) && BASE && !(mode&TERNARY) ) {
+					traverse_data->done = 1; // markscan
+					break; }
+CB_BgnSetCB			f_push( stack )
+				f_reset( SET|FIRST, 0 )
+				p++;
+CB_TermCB			break;
+			case '}':
+				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
+					f_next = cast_i((*stack)->ptr);
+CB_EndPipeCB				f_pop( stack, 0 ) }
+				if ( BASE ) {
+					traverse_data->done = 1;
+					break; }
+				f_next = cast_i((*stack)->ptr);
+CB_EndSetCB			f_pop( stack, 0 )
+				p++; // move past '}'
+CB_LoopCB			f_set( INFORMED )
+				break;
+			case '|':
+				if ( p[1]=='^' ) {
+CB_BgnPipeCB				if ( p[2]=='.' ) p+=3;
+					else p = p_prune( PRUNE_IDENTIFIER, p+2 );
+					if ( *p=='~' ) p++; }
 				else {
+					if ( BASE && !is_f(CARRY) ) {
+						traverse_data->done = 1;
+						break; }
+CB_BgnPipeCB				f_push( stack )
+					f_reset( PIPED|FIRST, SET )
 					p++; }
 				break;
 			case '>':
@@ -79,39 +110,6 @@ CB_ActivateCB				p+=2; }
 CB_NotCB				if is_f( NEGATED )
 						f_clr( NEGATED )
 					else	f_set( NEGATED )
-					p++; }
-				break;
-			case '{':
-				if ( is_f(INFORMED) && BASE && !(mode&TERNARY) ) {
-					traverse_data->done = 1; // markscan
-					break; }
-CB_BgnSetCB			f_push( stack )
-				f_reset( SET|FIRST, 0 )
-				p++;
-CB_TermCB			break;
-			case '}':
-				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
-					f_next = cast_i((*stack)->ptr);
-CB_EndPipeCB				f_pop( stack, 0 ) }
-				if ( BASE ) {
-					traverse_data->done = 1;
-					break; }
-				f_next = cast_i((*stack)->ptr);
-CB_EndSetCB			f_pop( stack, 0 )
-				p++; // move past '}'
-CB_LoopCB			f_set( INFORMED )
-				break;
-			case '|':
-				if ( p[1]=='^' ) {
-CB_BgnPipeCB				if ( p[2]=='.' ) p+=3;
-					else p = p_prune( PRUNE_IDENTIFIER, p+2 ); }
-					if ( *p=='~' ) p++;
-				else {
-					if ( BASE && !is_f(CARRY) ) {
-						traverse_data->done = 1;
-						break; }
-CB_BgnPipeCB				f_push( stack )
-					f_reset( PIPED|FIRST, SET )
 					p++; }
 				break;
 			case '*':

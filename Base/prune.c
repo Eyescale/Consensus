@@ -128,6 +128,14 @@ prune_term( char *p, PruneType type ) {
 		case '{':
 		case '!':
 			p++; break;
+		case '|':
+			if ( type==PRUNE_FILTER )
+				return p;
+			else if ( p[1]=='^' ) {
+				if ( p[2]=='.' ) p+=3;
+				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				if ( *p=='~' ) p++; }
+			else return p;
 		default:
 			if ( !is_separator( *p ) ) {
 				do p++; while ( !is_separator( *p ) );
@@ -186,10 +194,11 @@ prune_ternary( char *p )
 			informed = 0;
 			p++; break;
 		case '%':
-			if ( p[1]=='(' )
-				{ p++; break; }
-			p = prune_mod( p );
-			informed = 1; break;
+			if ( p[1]=='(' ) p++;
+			else {
+				p = prune_mod( p );
+				informed = 1; }
+			break;
 		case '\'':
 			p = prune_char( p );
 			informed = 1; break;

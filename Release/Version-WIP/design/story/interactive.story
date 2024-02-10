@@ -174,7 +174,7 @@ System Execution
 			per ( ?, ( ., ((.,ON|OFF),%%) ))
 				do ( (.,%?) ? // guard has condition(s)
 					( %(?,%?), ( Status, %? )) :
-					( %?|^guard ) )
+					%( %?|^guard ) )
 		else
 	+	// flush %tag list & enrol condition-free guards, pre-frame
 		.%tag~ { ^.:~%(.,(Status,?))|^guard }
@@ -254,10 +254,10 @@ System launch
 			?:( ., %? ) { ( %?:(?,.)^, %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
 				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)),
-				// foreach (guard,(trigger,action)) instantiate same, for which
-				?:( ., %? ) { ( %?:(?,.)^, %| ) |
+				// foreach guard:%(?,(trigger,action)) instantiate same, for which
+				?:( ?, %? ) { ( (%?)^, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
+					!?:( ?, %? ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
 				} } } )
 
 	That is, without the comments:
@@ -266,8 +266,8 @@ System launch
 		?:((.,ON|OFF),^^) { ( %?:(?,.), *^^ ) |
 			?:(.,%?) { ( %?:(?,.)^, %| ) | {
 				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)),
-				?:(.,%?) { ( %?:(?,.)^, %| ) |
-					!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
+				?:(?,%?) { ( %?^, %| ) |
+					!?:(?,%?) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
 				} } } )
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized

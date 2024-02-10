@@ -48,6 +48,20 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
+//	bm_tag_declare
+//===========================================================================
+int
+bm_tag_declare( char *expression, char *p, BMContext *ctx ) {
+	for ( ; ; ) {
+		registryRegister( ctx, expression, NULL );
+		switch ( *p ) {
+		case ' ':
+			expression = p+3;
+			p = p_prune( PRUNE_IDENTIFIER, expression );
+			break;
+		default: return 1; } } }
+
+//===========================================================================
 //	bm_tag_traverse, bm_tag_inform
 //===========================================================================
 static BMQueryCB continue_CB, inform_CB;
@@ -56,9 +70,15 @@ int
 bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 /*
 	Assumption: p: ~{_} or {_}
+	Note that we do not free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) return 0;
+	if ( !entry ) {
+		fprintf( stderr, ">>>>> B%%: error: "
+			"list identifier unknown in expression\n"
+				"\t\t.%%%s\n"
+			"\t<<<<< instruction ignored\n", expression );
+		return 0; }
 	int released = ( *p=='~' ? (p++,1) : 0 );
 	Pair *current = registryRegister( ctx, "^.", NULL );
 	listItem *next_i, *last_i=NULL;
@@ -72,7 +92,6 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 		if (( clip )) clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
 	registryDeregister( ctx, "^." );
-	if ( *entries==NULL ) registryDeregister( ctx, expression );
 	return 1; }
 
 static BMQTake
@@ -85,7 +104,8 @@ bm_tag_inform( char *expression, char *p, BMContext *ctx )
 	Assumption: p: <_>
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) entry = registryRegister( ctx, expression, NULL );
+	if ( !entry )
+		entry = registryRegister( ctx, expression, NULL );
 	for ( char *q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		bm_query( BM_CONDITION, q, ctx, inform_CB, &entry->value );
 	return 1; }
@@ -104,15 +124,20 @@ int
 bm_tag_clear( char *expression, BMContext *ctx )
 /*
 	Assumption: expression: identifier~
+	Note that we do free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
 	if (( entry ))
 		registryCBDeregister( ctx, clear_CB, expression );
-	return 1; }
+	else fprintf( stderr, ">>>>> B%%: warning: "
+		"list identifier unknown in expression\n\t\t.%%%s\n\t"
+		"<<<<< instruction ignored\n", expression );
+	return !!entry; }
 
 static void
 clear_CB( Registry *registry, Pair *entry ) {
-	freeListItem((listItem **) &entry->value ); }
+	freeListItem((listItem **) &entry->value );
+	free((char *) entry->name ); }
 
 //===========================================================================
 //	bm_release
@@ -393,8 +418,8 @@ return;
 			break;
 		case '}':
 			fprintf( stream, " }" );
-			if ( PIPE_LEVEL==pop( &level, &count ) &&
-			     (stack) && !strmatch( ",)", p[1] ) )
+			int type = pop( &level, &count );
+			if ( type==PIPE_LEVEL && (stack) && !strmatch(",)",p[1]) )
 				RETAB( level )
 			for ( ; p[1]=='}'; p++ ) {
 				pop( &level, &count );

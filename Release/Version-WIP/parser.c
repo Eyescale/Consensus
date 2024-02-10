@@ -83,7 +83,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_clr( INFORMED )
 							f_set( FILTERED ) } }
 		on_( '?' ) if ( is_f(INFORMED) ) {
-				if ( !is_f(FORE|PROTECTED) && is_f(LEVEL|SUB_EXPR) &&
+				if ( !is_f(FORE|PROTECTED|LOCALE) && is_f(LEVEL|SUB_EXPR) &&
 				     ( !is_f(MARKED) || ( is_f(LEVEL) && f_parent(MARKED) ) ) ) {
 					do_( "(_?" )	s_take
 							f_restore( NEGATED|STARRED|FILTERED )
@@ -1264,28 +1264,43 @@ CB_if_( NarrativeTake, mode, data ) { // take previous narrative
 						TAB_CURRENT += TAB_SHIFT;
 		end
 	in_( "." ) bgn_
-		on_( '%' )	do_( ".%" )	s_take
+		on_( '%' ) if ( !(*type&LOCALE) || *type&IN ) {
+				do_( ".%" )	s_take }
 		on_separator	; // err
-		on_other	do_( ".$" )	s_take
+		on_other if ( !(*type&IN) ) {
+				do_( ".$" )	s_take }
 		end
 		in_( ".%" ) bgn_
 			on_separator	; // err
 			on_other	do_( ".%$" )	s_take
 			end
 		in_( ".%$" ) bgn_
-			on_( '~' )
+			ons( " \t" )	do_( ".%$ " )
+			on_( '\n' )	do_( ".%$ " )	REENTER
+			on_( '~' ) if ( !(*type&LOCALE) ) {
 CB_( TagTake, mode, data ) {		do_( ".%$_" )	s_take
-							f_set( NEGATED ) }
-			on_separator
-CB_( TagTake, mode, data ) {		do_( ".%$_" )	REENTER }
+							f_set( NEGATED ) } }
+			on_separator if ( !(*type&LOCALE) ) {
+CB_( TagTake, mode, data ) {		do_( ".%$_" )	REENTER } }
 			on_other	do_( same )	s_take
+			end
+		in_( ".%$ " ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' )	do_( "_expr" )	REENTER
+							TAB_CURRENT += TAB_SHIFT;
+							*type = LOCALE;
+							f_set( INFORMED )
+			on_( '.' )	do_( "." )	s_add( " " )
+							s_take
+							*type = IN|LOCALE;
+			on_separator	do_( ".%$" )	REENTER
 			end
 		in_( ".%$_" ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' ) if ( is_f(NEGATED) ) {
 					do_( "_expr" )	REENTER
 							TAB_CURRENT += TAB_SHIFT;
-							*type = LOCALE;
+							*type = IN|LOCALE;
 							f_set( INFORMED ) }
 			on_( '{' ) 	do_( "_expr" )	s_take
 							TAB_CURRENT += TAB_SHIFT;
