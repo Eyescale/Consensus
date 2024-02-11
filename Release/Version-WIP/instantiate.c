@@ -4,6 +4,7 @@
 #include "cell.h"
 #include "instantiate.h"
 #include "eenov.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -20,9 +21,7 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 
 BMTraverseCBSwitch( instantiate_traversal )
 case_( filter_CB )
-	fprintf( stderr, ">>>>> B%%: Warning: instantiation filtered in expression\n"
-			"\t\tdo _%s\n"
-		"\t<<<<< filter ignored\n", p );
+	errout( InstantiateFiltered, p );
 	_prune( BM_PRUNE_TERM, p+1 )
 case_( bgn_set_CB )
 	if ( NDX ) {
@@ -518,9 +517,8 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 static inline void
 cleanup( BMTraverseData *traverse_data, char *expression ) {
 	InstantiateData *data = traverse_data->user_data;
-	if ( !data->sub[0] && ( expression )) {
-		fprintf( stderr, ">>>>> B%%: Warning: unable to complete instantiation\n"
-		"\t\tdo %s\n\t<<<<< failed at least partially\n", expression ); }
+	if ( !data->sub[0] && ( expression ))
+		errout( InstantiatePartial, expression );
 #ifdef DEBUG
 	if ((data->sub[1]) || (data->stack.flags) || (data->results) ||
 	    (bm_context_lookup( data->ctx, "%|" ))) {
@@ -716,10 +714,8 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 		inform_carry( buffer, p, this, traverse_data ); }
 	else {
 		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n" );
-		if (( list )) {
-			fprintf( stderr, "\tdo :_: %s <<<<<\n", p );
-			freeListItem( list ); }
-		else fprintf( stderr, "\tdo !! %s <<<<<\n", p );
+		errout((list)?InstantiateClassNotFoundv:InstantiateClassNotFound, p );
+		if (( list )) freeListItem( list );
 		return; }
 	registryDeregister( ctx, "^^" );
 	registryDeregister( ctx, "*^" );
@@ -748,8 +744,7 @@ inform_UBE( Registry *buffer, char *p, CNArena *arena, BMTraverseData *traverse_
 		CNInstance *x = entry->name;
 		CNInstance *ube = entry->value;
 		if ( !x && !CONNECTED(ube) ) {
-			fprintf( stderr, ">>>>> B%%: Warning: UBE not connected in\n"
-				"\t\tdo :_: !! | %s\n\t<<<<< discarding assignment\n", start_p );
+			errout( InstantiateUBENotConnected, start_p );
 			bm_arena_deregister( arena, ube, db ); }
 		else {
 			if (( x )) db_assign( x, ube, db );
@@ -818,8 +813,7 @@ bm_instantiate_input( char *arg, char *input, BMContext *ctx ) {
 	traverse_data.stack = &data.stack.flags;
 
 	if ( !instantiate_input( arg, input, &traverse_data ) ) return;
-	fprintf( stderr, ">>>>> B%%: Warning: input instantiation failed\n"
-		"\t<<<<< on arg=%s, input=%s\n", arg, ((input)?input:"EOF") );
+	errout( InstantiateInput, arg, ((input)?input:"EOF") );
 	cleanup( &traverse_data, NULL ); }
 
 static int

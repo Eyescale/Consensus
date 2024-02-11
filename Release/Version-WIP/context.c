@@ -8,6 +8,7 @@
 #include "eenov.h"
 #include "instantiate.h"
 #include "parser.h"
+#include "errout.h"
 
 //===========================================================================
 //	actualize_traversal
@@ -127,8 +128,7 @@ int
 bm_context_load( BMContext *ctx, char *path ) {
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
-		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
-		return -1; }
+		return( errout( ContextLoad, path ), -1 ); }
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 
@@ -422,8 +422,7 @@ extract_mark( int type, MarkData *data ) {
 		( type & QMARK ) ?
 			mark_sub( x, xpn ) : proxy;
 	if ( !y ) {
-		fprintf( stderr, ">>>>> B%%: Error: bm_context_mark: "
-			"unknown mark type\n" );
+		errout( ContextMarkType );
 		exit( -1 ); }
 
 	Pair *event = newPair( x, y );
@@ -611,14 +610,10 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 		return 0; }
 
 	// not a register variable
-	if ( !strncmp( p, "(:", 2 ) ) {
-		if ( db==db_x )
-			return DBStarMatch( x->sub[ 0 ] ) &&
-				x->sub[ 1 ]==BMContextSelf( ctx );
-		else
-			fprintf( stderr, ">>>>> B%%::Warning: Self-assignment\n"
-				"\t\t(%s\n\t<<<<< not supported in EENO\n", p );
-		return 0; }
+	if ( !strncmp( p, "(:", 2 ) )
+		return ( db==db_x ?
+			DBStarMatch(x->sub[ 0 ]) && x->sub[ 1 ]==BMContextSelf(ctx) :
+			!!errout( ContextEENOSelfAssignment, p ) );
 	else if ( db==db_x && !is_separator( *p ) ) {
 		Registry *locales = BMContextLocales( ctx );
 		Pair *entry = registryLookup( locales, p );
@@ -630,24 +625,15 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 //===========================================================================
 //	bm_tag
 //===========================================================================
-static char * err_tag( char *p );
 char *
 bm_tag( BMContext *ctx, char *p, CNInstance *x ) {
 	Pair *entry = registryLookup( ctx, p );
-	if ( !entry ) return err_tag( p );
+	if ( !entry ) return errout( ContextTagUnknown, p );
 	listItem **tag = (listItem **) &entry->value;
 	p = p_prune( PRUNE_IDENTIFIER, p );
 	if ( *p=='~' ) { p++; removeIfThere(tag,x); }
 	else addIfNotThere( tag, x );
 	return p; }
-
-static char *
-err_tag( char *p ) {
-	fprintf( stderr, ">>>>> B%%: error: "
-		"tag unknown in expression\n"
-			"\t\t_|^%s\n"
-		"\t<<<<< tag ignored\n", p );
-	return NULL; }
 
 //===========================================================================
 //	bm_register / bm_register_locale
@@ -680,11 +666,8 @@ bm_register_locale( BMContext *ctx, char *p ) {
 		entry = registryLookup( locales, p );
 		if (( entry )) { // already registered
 			CNInstance *instance = entry->value;
-			fprintf( stderr, ">>>>> B%%: Error: LOCALE " );
-			fprintf( stderr, ( instance->sub[ 0 ]==perso ?
-				"multiple declarations: '.%s'\n" :
-				"name %s conflict with sub-narrative .arg\n" ),
-				p );
+			errout( instance->sub[0]==perso ?
+				ContextLocaleMultiple : ContextLocaleConflict, p );
 			exit( -1 ); }
 		else {
 			CNInstance *x = db_register( p, db );

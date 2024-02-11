@@ -12,6 +12,7 @@ TODO
 	. NTH: fprint_expr: air-space output vector - cf Test/64_tag-use-cases
 
 DONE
+	. errout.c: centralized error messages
 	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>
 	  or .%tag so that it can be registered into ctx from expression
 	  - otherwise e.g. in %( titi ? toto|^tag : tutu ) would register

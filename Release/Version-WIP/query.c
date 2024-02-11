@@ -598,12 +598,12 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
-		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on exponent\n" );
+		errout( QueryExponentMemoryLeak );
 		exit( -1 ); }
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.exponent );
 	if ((data->stack.scope) || (data->stack.base)) {
-		fprintf( stderr, ">>>>> B%%: Error: xp_verify: memory leak on scope\n" );
+		errout( QueryScopeMemoryLeak );
 		exit( -1 ); }
 #endif
 #ifdef DEBUG

@@ -4,6 +4,7 @@
 
 #include "string_util.h"
 #include "database.h"
+#include "errout.h"
 
 // #define DEBUG
 // #define NULL_TERMINATED
@@ -411,10 +412,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_op( DB_MANIFEST_OP, instance, db );
 	return instance;
 ERR:
-	db_outputf( stderr, db,
-		"B%%::Warning: concurrent reassignment :%_:%_->%_ not authorized\n",
-		e->sub[1], candidate->sub[1], f );
-	return NULL; }
+	return errout( DBConcurrentAssignment, db, e->sub[1], candidate->sub[1], f ); }
 
 static inline int
 concurrent( CNInstance *e, CNDB *db ) {

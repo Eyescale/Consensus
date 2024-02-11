@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "narrative.h"
 #include "story.h"
+#include "errout.h"
 
 //===========================================================================
 //	cnStoryOutput
@@ -36,9 +37,7 @@ CNStory *
 readStory( char *path, int ignite ) {
 	if ( !path ) return ( ignite ? newStory() : NULL );
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) {
-		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
-		return NULL; }
+	if ( !stream ) return errout( StoryLoad, path );
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 	BMParseData data;
@@ -61,7 +60,7 @@ readStory( char *path, int ignite ) {
 		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
 	if ( !data.errnum && !build_CB( NarrativeTake, 0, &data ) ) // last take
-		fprintf( stderr, "B%%: Error: read_narrative: unexpected EOF\n" );
+		errout( StoryUnexpectedEOF );
 	if ( data.errnum ) {
 		freeNarrative( data.narrative );
 		freeRegistry( data.narratives, free_CB );

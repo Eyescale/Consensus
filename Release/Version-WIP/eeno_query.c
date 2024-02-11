@@ -5,6 +5,7 @@
 #include "eeno_query.h"
 #include "eenov.h"
 #include "cell.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -23,8 +24,7 @@ static inline CNInstance * proxy_verify( char *, EENOFeelData * );
 
 BMTraverseCBSwitch( eeno_query_traversal )
 case_( filter_CB )
-	fprintf( stderr, ">>>>> B%%: Warning: EENO filtered in expression\n"
-		"\t\ton/per _%s\n\t<<<<< filter ignored\n", p );
+	errout( EENOQueryFiltered, p );
 	_prune( BM_PRUNE_TERM, p+1 )
 case_( verify_CB )
 	if ( !proxy_verify( p, data ) )

@@ -4,6 +4,7 @@
 
 #include "narrative.h"
 #include "expression.h"
+#include "errout.h"
 
 //===========================================================================
 //	newNarrative / freeNarrative
@@ -84,9 +85,7 @@ narrative_reorder( CNNarrative *narrative ) {
 
 int
 narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
-	if ( narrative == NULL ) {
-		fprintf( stderr, "Error: narrative_output: No narrative\n" );
-		return 0; }
+	if ( narrative == NULL ) return !!errout( NarrativeOutputNone );
 	char *proto = narrative->proto;
 	if (( proto )) {
 		if ( !is_separator( *proto ) ) fprintf( stream, ": " );

@@ -9,6 +9,7 @@
 #include "eenov.h"
 #include "parser.h"
 #include "fprint_expr.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -62,7 +63,6 @@ bm_tag_register( char *expression, char *p, BMContext *ctx ) {
 //	bm_tag_traverse
 //===========================================================================
 static BMQueryCB continue_CB;
-static int err_tag( char * );
 int
 bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 /*
@@ -70,7 +70,7 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 	Note that we do not free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) return err_tag( expression );
+	if ( !entry ) return !!errout( ExpressionTagUnknown, expression );
 	int released = ( *p=='~' ? (p++,1) : 0 );
 	Pair *current = registryRegister( ctx, "^.", NULL );
 	listItem *next_i, *last_i=NULL;
@@ -89,14 +89,6 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 static BMQTake
 continue_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
-
-static int
-err_tag( char *expression ) {
-	fprintf( stderr, ">>>>> B%%: error: "
-		"list identifier unknown in expression\n"
-			"\t\t.%%%s\n"
-		"\t<<<<< instruction ignored\n", expression );
-	return 0; }
 
 //===========================================================================
 //	bm_tag_inform
@@ -129,7 +121,7 @@ bm_tag_clear( char *expression, BMContext *ctx )
 	Note that we do free tag entry in context registry
 */ {
 	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) return err_tag( expression );
+	if ( !entry ) return !!errout( ExpressionTagUnknown, expression );
 	registryCBDeregister( ctx, clear_CB, expression );
 	return 1; }
 

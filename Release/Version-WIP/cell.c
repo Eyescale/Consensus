@@ -4,6 +4,7 @@
 #include "cell.h"
 #include "operation.h"
 #include "parser.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -242,11 +243,9 @@ bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
 				addItem( &stack.dst, instance );
 				ndx=1; break; } } }
 FAIL:
-	fprintf( stderr, ">>>>> B%%: Warning: bm_inform() operation failed\n" );
-	db_outputf( stderr, db_src, "\t\t%_\n\t<<<<< transposition aborted\n", x );
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
-	return NULL; }
+	return errout( CellInform, db_src, x ); }
 
 //---------------------------------------------------------------------------
 //	bm_list_inform
@@ -301,9 +300,8 @@ newCell( Pair *entry, char *inipath ) {
 	if (( inipath )) {
 		int errnum = bm_context_load( BMCellContext(cell), inipath );
 		if ( errnum ) {
-			fprintf( stderr, "B%%: Error: load init file: '%s' failed\n", inipath );
 			freeCell( cell, NULL, NULL );
-			return NULL; } }
+			return errout( CellLoad, inipath ); } }
 	return cell; }
 
 void

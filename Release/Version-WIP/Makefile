@@ -23,7 +23,8 @@ SRCS =	story.c \
 				query.c \
 					locate_pivot.c \
 					locate_mark.c \
-			eeno_query.c
+			eeno_query.c \
+	errout.c
 
 LIB = libbmod.a
 

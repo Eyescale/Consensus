@@ -4,6 +4,7 @@
 #include "program.h"
 #include "parser.h"
 #include "expression.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -15,9 +16,7 @@ static BMParseCB output_CB;
 int
 cnIniOutput( FILE *output_stream, char *path, int level ) {
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) {
-		fprintf( stderr, "B%%: Error: no such file or directory: '%s'\n", path );
-		return -1; }
+	if ( !stream ) return ( errout( ProgramLoad, path ), -1 );
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 	BMParseData data;
@@ -157,9 +156,7 @@ CNProgram *
 newProgram( CNStory *story, char *inipath ) {
 	if ( !story ) return NULL;
 	Pair *entry = CNStoryMain( story );
-	if ( !entry ) {
-		fprintf( stderr, "B%%: Error: story has no main\n" );
-		return NULL; }
+	if ( !entry ) return errout( ProgramStory );
 	CNCell *cell = newCell( entry, inipath );
 	if ( !cell ) return NULL;
 	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );

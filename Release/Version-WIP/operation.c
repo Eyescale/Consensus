@@ -9,6 +9,7 @@
 #include "instantiate.h"
 #include "eeno_query.h"
 #include "scour.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -30,7 +31,7 @@ bm_op( int type, char *expression, BMContext *ctx, CNStory *story ) {
 	case DO: do_action( expression, ctx, story ); break;
 	case INPUT: do_input( expression, ctx ); break;
 	case OUTPUT: do_output( expression, ctx ); break;
-	default: fprintf( stderr, "B%%: Warning: operation not supported\n" ); } }
+	default: errout( OperationNotSupported ); } }
 
 //===========================================================================
 //	bm_operate
@@ -429,10 +430,8 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 			s_add( en )
 			query = StringFinish( s, 0 ); }
 #ifdef DEBUG
-		if ( !strncmp( query, "%(.,...):", 9 ) ) {
-			fprintf( stderr, ">>>>> B%%: do_enable(): Warning: "
-				"proto %s resolves to %%(.,...) - "
-				"passes through!!\n", p ); }
+		if ( !strncmp( query, "%(.,...):", 9 ) )
+			errout( OperationProtoPassThrough, p );
 #endif
 		// launch enable query
 		data.narrative = narrative;
