@@ -488,24 +488,24 @@ return;
 //===========================================================================
 void
 fprint_output( FILE *stream, char *p, int level ) {
+	int fmt;
 	putc( *p++, stream ); // output '>'
-	if ( *p=='"' ) {
+	if (( fmt=(*p=='"') )) {
 		char *q = p_prune( PRUNE_IDENTIFIER, p );
 		do putc( *p++, stream ); while ( p!=q ); }
 	if ( !*p ) return;
 	putc( *p++, stream ); // output ':'
-	switch ( *p ) {
-	case '<': fprintf( stream, "%c\n", *p++ );
-		level++; TAB( level );
+	if ( *p=='<' ) {
+		fprintf( stream, "%c ", *p++ );
 		for ( ; ; ) {
 			char *q = p_prune( PRUNE_LEVEL, p );
 			do putc( *p++, stream ); while ( p!=q );
 			switch ( *p++ ) {
-			case '>':
-				fprintf( stream, " >" );
-				return;
+			case ',':
+				fprintf( stream, ", " );
+				break;
 			default:
-				fprintf( stream, ", " ); } }
-	default:
-		fprintf( stream, "%s", p ); } }
+				fprintf( stream, " >" );
+				return; } } }
+	else fprintf( stream, "%s", p ); }
 
