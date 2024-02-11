@@ -26,9 +26,9 @@ typedef enum {
 #define push( type, level, count ) stackpush_( &stack, type, level, count )
 #define retype( type ) retype_( stack, type )
 #define fprint_close( stream ) \
-	if ( count ) { fprintf( stream, ")" ); count--; } \
+	if ( count ) { putc( ')', stream ); count--; } \
 	else if ( carry ) { fprintf( stream, " )" ); carry=0; } \
-	else fprintf( stream, ")" );
+	else putc( ')', stream );
 
 static inline void stackpush_( listItem **stack, int type, int level, int count ) {
 	listItem *record = new_item( type );

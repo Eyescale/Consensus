@@ -9,9 +9,9 @@ TODO
 	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
 		just cannot be used in DO and ON and PER
 	. NTH: parser post-processing -> identify/eliminate undue filters
-	. NTH: fprint_expr: air-space output vector - cf Test/64_tag-use-cases
 
 DONE
+	. fprint_output: air-space output vector - cf Test/64_tag-use-cases
 	. errout.c: centralized error messages
 	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>
 	  or .%tag so that it can be registered into ctx from expression

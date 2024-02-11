@@ -692,12 +692,12 @@ newContext( CNEntity *cell ) {
 
 	Registry *ctx = newRegistry( IndexedByNameRef );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
-	registryRegister( ctx, "%", id ); // aka. %% and ..
+	registryRegister( ctx, "%", id ); // aka. [ %%, .. ]
 	registryRegister( ctx, "@", active ); // active connections (proxies)
 	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
-	registryRegister( ctx, "?", NULL ); // aka. %?
+	registryRegister( ctx, "?", NULL ); // aka. [ %?, %! ]
 	registryRegister( ctx, "|", NULL ); // aka. %|
-	registryRegister( ctx, "<", NULL ); // aka. %<?> %<!> %<
+	registryRegister( ctx, "<", NULL ); // aka. [ [ %<!>, %<?> ], %< ]
 	registryRegister( ctx, "$", shared );
 	return ctx; }
 

@@ -378,12 +378,12 @@ return;
 				else {
 					p+=2;
 					while ( !is_separator(*p) )
-						fprintf( stream, "%c", *p++ );
+						putc( *p++, stream );
 					if ( *p=='(' && p[1]!=')' ) {
-						fprintf( stream, "(" );
+						putc( '(', stream );
 						level++; carry=1; count=0;
 						RETAB( level ) } } }
-			else fprintf( stream, "!" );
+			else putc( '!', stream );
 			break;
 		case '|':
 			if ( p[1]=='{' ) {
@@ -395,7 +395,7 @@ return;
 				push( PIPE, level++, count );
 				RETAB( level ) }
 			else
-				fprintf( stream, "|" );
+				putc( '|', stream );
 			break;
 		case '{': // not following '|'
 			fprintf( stream, "{ " );
@@ -408,48 +408,48 @@ return;
 				RETAB( level )
 			for ( ; p[1]=='}'; p++ ) {
 				pop( &level, &count );
-				fprintf( stream, "}" ); }
+				putc( '}', stream ); }
 			break;
 		case ',':
-			fprintf( stream, "," );
+			putc( ',', stream );
 			if ( test(COUNT)==count )
 				switch ( test(TYPE) ) {
 				case PIPE:
 				case LEVEL:
-					fprintf( stream, " " );
+					putc( ' ', stream );
 					break;
 				default:
 					if ( level==ground ) {}
 					else if (carry||(stack)) RETAB( level )
-					else fprintf( stream, " " ); }
+					else putc( ' ', stream ); }
 			break;
 		case ')':
 			if (( p[1]=='(') && ( nb ) && cast_i(nb->ptr)==(count-1) ) {
 				// closing first term of binary !^:(_)(_)
-				fprintf( stream, ")" );
+				putc( ')', stream );
 				popListItem( &nb );
 				count--; }
 			else if ( strmatch( "({", p[1] ) ) {
 				// closing loop bgn ?:(_)
-				fprintf( stream, ")" );
-				if ((stack)||carry) fprintf( stream, " " );
+				putc( ')', stream );
+				if ((stack)||carry) putc( ' ', stream );
 				if ( p[1]=='{' && test_PIPE(count-1) )
 					retype( PIPE_LEVEL );
 				count--; }
 			else if ( test_PIPE(count-1) ) {
 				// closing |(_)
 				int retab = 1;
-				fprintf( stream, ")" );
+				putc( ')', stream );
 				pop( &level, &count );
 				while ( strmatch("),",p[1]) ) {
 					p++;
 					if ( *p==',' ) {
-						fprintf( stream, "," );
+						putc( ',', stream );
 						if ( !count ) RETAB( level )
-						else fprintf( stream, " " );
+						else putc( ' ', stream );
 						break; }
 					else if (( stack )) {
-						fprintf( stream, ")" );
+						putc( ')', stream );
 						if ( retab ) {
 							RETAB( level )
 							retab = 0; }
@@ -465,7 +465,7 @@ return;
 		//--------------------------------------------------
 		case '.':
 			if ( strncmp(p,"...):",5) ) {
-				fprintf( stream, "%c", *p );
+				putc( *p, stream );
 				break; }
 			fprintf( stream, "..." );
 			p+=3; count--;
@@ -473,13 +473,39 @@ return;
 		case '(':
 			if ( p[1]!=':' ) {
 				count++;
-				fprintf( stream, "(" );
+				putc( '(', stream );
 				break; }
 			// no break
 		case '"':
 			for ( char *q=p_prune(PRUNE_TERM,p); p!=q; p++ )
-				fprintf( stream, "%c", *p );
+				putc( *p, stream );
 			p--; break;
 		default:
-			fprintf( stream, "%c", *p ); } } }
+			putc( *p, stream ); } } }
+
+//===========================================================================
+//	fprint_output
+//===========================================================================
+void
+fprint_output( FILE *stream, char *p, int level ) {
+	putc( *p++, stream ); // output '>'
+	if ( *p=='"' ) {
+		char *q = p_prune( PRUNE_IDENTIFIER, p );
+		do putc( *p++, stream ); while ( p!=q ); }
+	if ( !*p ) return;
+	putc( *p++, stream ); // output ':'
+	switch ( *p ) {
+	case '<': fprintf( stream, "%c\n", *p++ );
+		level++; TAB( level );
+		for ( ; ; ) {
+			char *q = p_prune( PRUNE_LEVEL, p );
+			do putc( *p++, stream ); while ( p!=q );
+			switch ( *p++ ) {
+			case '>':
+				fprintf( stream, " >" );
+				return;
+			default:
+				fprintf( stream, ", " ); } }
+	default:
+		fprintf( stream, "%s", p ); } }
 

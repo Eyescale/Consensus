@@ -109,6 +109,8 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 			else if_( DO|INPUT|OUTPUT, "do " )
 			if ( type&DO )
 				fprint_expr( stream, expression, level );
+			else if ( type&OUTPUT )
+				fprint_output( stream, expression, level );
 			else	fprintf( stream, "%s", expression );
 			fprintf( stream, "\n" ); }
 		listItem *j = occurrence->sub;
