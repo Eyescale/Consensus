@@ -1,5 +1,5 @@
 :
-	%(.)
+	en .
 	on init
 		do (((list,a),b),c)
 	else

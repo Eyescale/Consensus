@@ -12,7 +12,7 @@
 			do exit
 
 	else in INPUT
-		%(((schema,.),.),.)
+		en (((schema,.),.),.)
 		on ( INPUT ) // start base rule instance - feeding base
 			do (((rule,base), (']',(record,*))), base )
 		else in ?: %( ?:((rule,.),.), base )

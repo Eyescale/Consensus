@@ -420,6 +420,7 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 			string_ref = narrative->root->data->expression;
 			if ( !string_ref ) { // cache arena string's [ s, ref ]
 				string_ref = registryLookup( string_arena, p );
+				if ( !string_ref ) continue;
 				narrative->root->data->expression = string_ref; }
 			query = en;
 			break;

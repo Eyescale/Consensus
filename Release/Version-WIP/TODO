@@ -4,13 +4,16 @@ TODO
 	. cosystem init: create (.,(Status,.)) // use %% instead of Status?
 	. NTH: now that we keep list of shared entities in context
 		=> bm_query() could parse them in no pivot case
-	. NTH: parser_macros: extract REENTER + put caught in io struct
 	. NTH: .%(_) is more consistent than %(_) for ENABLE
+	. NTH: parser_macros: extract REENTER + put caught in io struct
 	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
 		just cannot be used in DO and ON and PER
 	. NTH: parser post-processing -> identify/eliminate undue filters
 
 DONE
+	. bugfix operation.c:do_enable() cf. Test/48_string
+	. REVISION 2.2: deprecated %(_) => use en _
+	. removed Test/47_do-ellipsis - file was garbage (?)
 	. fprint_output: air-space output vector - cf Test/64_tag-use-cases
 	. errout.c: centralized error messages
 	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>

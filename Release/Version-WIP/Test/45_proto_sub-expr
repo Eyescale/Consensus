@@ -1,8 +1,7 @@
 :
 	on init
 		do ( toto, titi )
-	else
-		%(.)
+	else en .
 
 .who: %( ?, titi )
 	do >: who

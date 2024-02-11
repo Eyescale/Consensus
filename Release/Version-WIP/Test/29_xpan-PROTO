@@ -1,7 +1,6 @@
 :
-#	%( list, ... )
-#	%( list, ... ):~%(?,.)
-#	%( ~%(?,.) )
+#	en %( list, ... )
+#	en %( list, ... ):~%(?,.)
 	en ~%(?,.)
 	on init
 		do (( list, toto ), titi )

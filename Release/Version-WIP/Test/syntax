@@ -1,5 +1,5 @@
 :
-	%( list, ... )
+	en %( list, ... )
 	on init
 		do >"Usage: ./B%% -p Test/syntax\n"
 		do exit

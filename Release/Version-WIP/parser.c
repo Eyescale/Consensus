@@ -1234,8 +1234,6 @@ BM_PARSE_FUNC( bm_parse_cmd )
 				do_( "+" )	TAB_SHIFT++; }
 		on_( '-' ) if ( !TAB_CURRENT ) {
 				do_( "-" )	TAB_SHIFT--; }
-		on_( '%' )	do_( "%" )	s_take
-						TAB_BASE = column;
 		on_( '.' ) 	do_( "." )	s_take
 						TAB_BASE = column;
 		on_( ':' ) if ( !TAB_CURRENT ) {
@@ -1256,13 +1254,6 @@ CB_if_( NarrativeTake, mode, data ) { // take previous narrative
 	//----------------------------------------------------------------------
 	// bm_parse_cmd:	Locale Declaration
 	//----------------------------------------------------------------------
-	in_( "%" ) bgn_
-		on_( '(' )	do_( "_expr" )	s_take
-						f_push( stack )
-						f_reset( SUB_EXPR|FIRST, 0 )
-						*type |= EN;
-						TAB_CURRENT += TAB_SHIFT;
-		end
 	in_( "." ) bgn_
 		on_( '%' ) if ( !(*type&LOCALE) || *type&IN ) {
 				do_( ".%" )	s_take }

@@ -5,7 +5,7 @@
 		do (( Rule, base ), ( Schema, (:%pass:)) )
 		do INPUT
 	else
-		%( . )
+		en .
 		on ( INPUT ) // start base rule instance - feeding base
 			do ( schema, %((Rule,base),(Schema,?)) )
 		else on ~( schema, . )

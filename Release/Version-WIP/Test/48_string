@@ -1,10 +1,14 @@
 
-	on init
-		%(.)
-		do : toto : "hello, world"
-	else on toto
-		do >: *toto
-		do exit
+// #define CORRECT
 
-:"hello, world"
+	on init
+		do : toto : "hello, world"
+#ifndef CORRECT
+	else en . // original test: fails as query has no pivot
+#else
+	else en *toto
+#endif
+
+: "hello, world"
+	do >: this
 	do exit

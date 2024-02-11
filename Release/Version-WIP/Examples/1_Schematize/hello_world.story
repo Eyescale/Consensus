@@ -6,7 +6,7 @@
 		do ((*,record), (record,*))
 		do INPUT
 	else in INPUT
-		%( schema, . )
+		en ( schema, . )
 		on INPUT
 			do ( schema, %( Schema, ? ) )
 		else in ( schema, . )

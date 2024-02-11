@@ -26,7 +26,7 @@
 				(((schema, %((Rule,base),(Schema,?:~'\0'))), %|:(.,?)), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
-			%( . )
+			en .
 			in ~.: .READY // sync based on rule schemas
 				in (.,%?): ~%(?,DONE)
 					in (.,%?): ~%(?,DONE): ~%(?,READY)
