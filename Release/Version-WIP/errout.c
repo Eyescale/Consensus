@@ -7,11 +7,13 @@
 
 #define YELLOW "\x1B[1;33m"
 #define RESET "\x1B[0m"
+#define paint( c ) \
+	fprintf( stderr, c )
 
+#define ERR "B%%: error: "
 #define HEAD ">>>>> B%%: error: "
 #define BODY RESET "\t\t"
 #define FOOT YELLOW "\t<<<<< "
-
 #define _( msg ) \
 	fprintf( stderr, msg ); break;
 #define _arg( msg ) \
@@ -23,7 +25,7 @@ errout( ErrOutType type, ... ) {
 	CNInstance *e, *f, *g;
 	char *p, *expression;
 	void *address;
-	fprintf( stderr, YELLOW );
+	paint( YELLOW );
 	va_list ap;
 	va_start( ap, type );
 	switch ( type ) {
@@ -31,21 +33,21 @@ errout( ErrOutType type, ... ) {
 	//	Formatted
 	//----------------------------------------------------------------------
 	case NarrativeOutputNone: _(
-		"B%%: error: narrative_output: No narrative\n" )
+		ERR "narrative_output: No narrative\n" )
 	case OperationNotSupported: _(
-		"B%%: error: operation not supported\n" )
+		ERR "operation not supported\n" )
 	case ProgramStory: _(
-		"B%%: error: story has no main\n" )
+		ERR "story has no main\n" )
 	case StoryUnexpectedEOF: _(
-		"B%%: error: readStory(): unexpected EOF\n" )
+		ERR "readStory(): unexpected EOF\n" )
 	case CellLoad: _arg(
-		"B%%: error: load init file: '%s' failed\n" )
+		ERR "load init file: '%s' failed\n" )
 	case ContextLoad: _arg(
-		"B%%: error: no such file or directory: '%s'\n" )
+		ERR "no such file or directory: '%s'\n" )
 	case ProgramLoad: _arg(
-		"B%%: error: no such file or directory: '%s'\n" )
+		ERR "no such file or directory: '%s'\n" )
 	case StoryLoad: _arg(
-		"B%%: error: no such file or directory: '%s'\n" )
+		ERR "no such file or directory: '%s'\n" )
 	case ContextMarkType: _(
 		HEAD "extract_mark(): unknown mark type\n" )
 	case QueryScopeMemoryLeak: _(
@@ -139,7 +141,7 @@ errout( ErrOutType type, ... ) {
 	default:
 		break; }
 	va_end( ap );
-	fprintf( stderr, RESET );
+	paint( RESET );
 	return NULL; }
 
 
