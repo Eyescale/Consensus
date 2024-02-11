@@ -488,9 +488,8 @@ return;
 //===========================================================================
 void
 fprint_output( FILE *stream, char *p, int level ) {
-	int fmt;
 	putc( *p++, stream ); // output '>'
-	if (( fmt=(*p=='"') )) {
+	if ( *p=='"' ) {
 		char *q = p_prune( PRUNE_IDENTIFIER, p );
 		do putc( *p++, stream ); while ( p!=q ); }
 	if ( !*p ) return;
