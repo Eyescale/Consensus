@@ -395,7 +395,7 @@ return;
 			break;
 		case '|':
 			if ( p[1]=='{' ) {
-				fprintf( stream, " | {" );
+				fprintf( stream, " |{" );
 				push( PIPE_LEVEL, level++, count );
 				RETAB( level ); p++; }
 			else if ( strmatch( PIPE_CND, p[1] ) ) { 

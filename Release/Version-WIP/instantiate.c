@@ -21,7 +21,8 @@ static listItem *instantiate_xpan( listItem **, CNDB * );
 BMTraverseCBSwitch( instantiate_traversal )
 case_( filter_CB )
 	fprintf( stderr, ">>>>> B%%: Warning: instantiation filtered in expression\n"
-		"\t\tdo _%s\n\t<<<<< filter ignored\n", p );
+			"\t\tdo _%s\n"
+		"\t<<<<< filter ignored\n", p );
 	_prune( BM_PRUNE_TERM, p+1 )
 case_( bgn_set_CB )
 	if ( NDX ) {
@@ -69,7 +70,7 @@ case_( end_pipe_CB )
 	data->newborn.current = pop_item( &data->newborn.stack );
 	_break
 case_( open_CB )
-	if (!( f_next&DOT )) {
+	if ( !(f_next&DOT) ) {
 		if ( NDX ) {
 			addItem( &data->results, data->sub[ 0 ] );
 			data->sub[ 0 ] = NULL; } }
@@ -817,8 +818,8 @@ bm_instantiate_input( char *arg, char *input, BMContext *ctx ) {
 	traverse_data.stack = &data.stack.flags;
 
 	if ( !instantiate_input( arg, input, &traverse_data ) ) return;
-	fprintf( stderr, ">>>>> B%%: Warning: input instantiation failed\n\t\t"
-		"<<<<< on arg=%s, input=%s\n", arg, ((input)?input:"EOF") );
+	fprintf( stderr, ">>>>> B%%: Warning: input instantiation failed\n"
+		"\t<<<<< on arg=%s, input=%s\n", arg, ((input)?input:"EOF") );
 	cleanup( &traverse_data, NULL ); }
 
 static int

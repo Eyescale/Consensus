@@ -9,8 +9,6 @@
 
 // #define DEBUG
 
-static inline CNInstance * x_sub( CNInstance *, listItem *, listItem * );
-
 //===========================================================================
 //	query_traversal
 //===========================================================================
@@ -127,6 +125,8 @@ BMTraverseCBEnd
 //---------------------------------------------------------------------------
 //	match, tag
 //---------------------------------------------------------------------------
+static inline CNInstance * x_sub( CNInstance *, listItem *, listItem * );
+
 static int
 match( char *p, BMQueryData *data )
 /*

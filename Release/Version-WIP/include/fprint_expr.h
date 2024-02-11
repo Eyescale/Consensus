@@ -8,7 +8,14 @@
 #define PIPE_CND	"!?"
 #endif
 
-typedef enum { TYPE=1, LEVEL, COUNT, PIPE, PIPE_LEVEL } StackStuff;
+typedef enum {
+	TYPE=1,
+	LEVEL,
+	COUNT,
+	PIPE,
+	PIPE_LEVEL
+	} StackStuff;
+
 #define RETAB( level ) { \
 	fprintf( stream, level==ground?"\n\t":"\n" ); \
 	TAB(level) }

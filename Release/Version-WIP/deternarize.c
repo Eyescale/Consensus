@@ -91,8 +91,7 @@ case_( close_CB )
 				// finish current sequence, reordered
 				if ( !segment->value ) segment->value = p;
 				addItem( &data->sequence, newPair( segment, NULL ) );
-				reorderListItem( &data->sequence );
-			}
+				reorderListItem( &data->sequence ); }
 			// add as sub-Sequence to on-going expression
 			listItem *sub = data->sequence;
 			data->sequence = popListItem( &data->stack.sequence );
@@ -317,8 +316,7 @@ free_deternarized( listItem *sequence )
 				freeListItem((listItem**) &item->name );
 				// start new one
 				i = item->value;
-				freePair( item );
-			}
+				freePair( item ); }
 			while ( !i && (stack) ); }
 		else break; }
 	freeListItem( &sequence ); }

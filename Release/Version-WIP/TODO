@@ -5,10 +5,11 @@ TODO
 	. NTH: now that we keep list of shared entities in context
 		=> bm_query() could parse them in no pivot case
 	. NTH: parser_macros: extract REENTER + put caught in io struct
-	. NTH: parser post-processing -> identify/eliminate undue filters
 	. NTH: .%(_) is more consistent than %(_) for ENABLE
 	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
 		just cannot be used in DO and ON and PER
+	. NTH: parser post-processing -> identify/eliminate undue filters
+	. NTH: fprint_expr: air-space output vector - cf Test/64_tag-use-cases
 
 DONE
 	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>
