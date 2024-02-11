@@ -1,5 +1,5 @@
 
-// #define CORRECT
+#define CORRECT
 
 	on init
 		do : toto : "hello, world"
