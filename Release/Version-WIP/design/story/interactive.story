@@ -284,23 +284,23 @@ System init
 	that is: which action is triggered by which events depending on which
 	system conditions. This being set, and each guard Status set to all
 	guard conditions - and their contrary - we now need to clear initial
-	conditions from our guard Stati.
+	conditions from our guard Status.
 
 	A condition is normally set via a cosystem occurrence
 		do : occurrence : ON|OFF
 	which triggers other cosystems' actions and guard Status update
 
-	Here we only want to upade guard Status, for which we shall implement
+	Here we only want to update guard Status, for which we shall implement
 	the following launch & init sequence:
 
 		System			    |	    Cosystems
 					    |
-	1. Launch cosystems		    | 1. N/A
+	1. Launch cosystems		    | 1. n/a
 	2. per ?:%cosystem		    \ 2. on init
-		do ( *%?, %((?,%?):%init) ) |        create Stati
-	3. do : init : ON		    | 3. per ~(?,.) < ..
+		do ( *%?, %((?,%?):%init) ) |        create Status
+	3. do : init : ON		    \ 3. per ~(?,.) < ..
 					    |        remove ( %<!:(.,?)>, %<?> )
-					    |	            from all local Stati
+					    |	            from all local Status
     	4. ...		    		    \ 4. event processing
 					    |
 
