@@ -12,7 +12,7 @@ typedef struct {
 	} *threads;
 } CNProgram;
 
-int cnIniOutput( FILE *, char *path, int level );
+int cnPrintout( FILE *, char *path, int level );
 CNProgram *newProgram( CNStory *, char *inipath );
 void freeProgram( CNProgram * );
 void cnSync( CNProgram * );

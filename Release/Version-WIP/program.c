@@ -9,14 +9,14 @@
 // #define DEBUG
 
 //===========================================================================
-//	cnIniOutput
+//	cnPrintout
 //===========================================================================
 static BMParseCB output_CB;
 
 int
-cnIniOutput( FILE *output_stream, char *path, int level ) {
+cnPrintout( FILE *output_stream, char *path, int level ) {
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) return ( errout( ProgramLoad, path ), -1 );
+	if ( !stream ) return ( errout( ProgramPrintout, path ), -1 );
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 	BMParseData data;

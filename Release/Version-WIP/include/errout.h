@@ -24,7 +24,7 @@ typedef enum {
 	NarrativeOutputNone,
 	OperationNotSupported,
 	OperationProtoPassThrough,
-	ProgramLoad,
+	ProgramPrintout,
 	ProgramStory,
 	QueryScopeMemoryLeak,
 	QueryExponentMemoryLeak,

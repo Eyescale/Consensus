@@ -127,8 +127,7 @@ static BMParseCB load_CB;
 int
 bm_context_load( BMContext *ctx, char *path ) {
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) {
-		return( errout( ContextLoad, path ), -1 ); }
+	if ( !stream ) return( errout( ContextLoad, path ), -1 );
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 

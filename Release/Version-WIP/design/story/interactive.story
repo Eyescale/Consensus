@@ -279,6 +279,44 @@ System launch
 		Note: *%(%?:sub) would represent %(%?:sub)'s value ** in CNDB **
 		Likewise *(^^) would represent ^^'s previous value ** in CNDB **
 
+System init
+	System launch ensures that each cosystem knows how to play its part,
+	that is: which action is triggered by which events depending on which
+	system conditions. This being set, and each guard Status set to all
+	guard conditions - and their contrary - we now need to clear initial
+	conditions from our guard Stati.
+
+	A condition is normally set via a cosystem occurrence
+		do : occurrence : ON|OFF
+	which triggers other cosystems' actions and guard Status update
+
+	Here we only want to upade guard Status, for which we shall implement
+	the following launch & init sequence:
+
+		System			    |	    Cosystems
+					    |
+	1. Launch cosystems		    | 1. N/A
+	2. per ?:%cosystem		    \ 2. on init
+		do ( *%?, %((?,%?):%init) ) |        create Stati
+	3. do : init : ON		    | 3. per ~(?,.) < ..
+					    |        remove ( %<!:(.,?)>, %<?> )
+					    |	            from all local Stati
+    	4. ...		    		    \ 4. event processing
+					    |
+
+	Where
+	. (((occurrence,ON|OFF),cosystem)|^init) was performed during the system
+	  requirement description phase
+	. per ~( ?:%(.,?), %(?,.) ) < .. should be used instead of per ~(?,.) < ..
+	  to select EENO reflecting local entities (optimization)
+	. The system event ((init,ON),%%) can be used as-is in System requirements
+	  provided only that *^?:sub returns
+	  EITHER - if %?:sub is an assignee in the current assignment occurrence
+		the assigned value of %?:sub in the current assignment buffer
+	  OR - if %?:sub is not an assignee in the current assignment occurrence
+		%?:sub itself
+	  Then our System launch formula still works
+
 Feature List
     	1. %identifier list variables
     	2. <<_>> EENO Condition (EENOC) and EEVA definition

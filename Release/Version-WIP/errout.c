@@ -32,6 +32,10 @@ errout( ErrOutType type, ... ) {
 	//----------------------------------------------------------------------
 	//	Formatted
 	//----------------------------------------------------------------------
+	case StoryLoad:
+	case ContextLoad:
+	case ProgramPrintout: _arg(
+		ERR "no such file or directory: '%s'\n" )
 	case NarrativeOutputNone: _(
 		ERR "narrative_output: No narrative\n" )
 	case OperationNotSupported: _(
@@ -42,12 +46,6 @@ errout( ErrOutType type, ... ) {
 		ERR "readStory(): unexpected EOF\n" )
 	case CellLoad: _arg(
 		ERR "load init file: '%s' failed\n" )
-	case ContextLoad: _arg(
-		ERR "no such file or directory: '%s'\n" )
-	case ProgramLoad: _arg(
-		ERR "no such file or directory: '%s'\n" )
-	case StoryLoad: _arg(
-		ERR "no such file or directory: '%s'\n" )
 	case ContextMarkType: _(
 		HEAD "extract_mark(): unknown mark type\n" )
 	case QueryScopeMemoryLeak: _(

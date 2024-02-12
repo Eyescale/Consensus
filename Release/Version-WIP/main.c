@@ -49,7 +49,7 @@ main( int argc, char *argv[] ) {
 	// execute B% command
 
 	if ( printini )
-		cnIniOutput( stdout, path[0], 1 );
+		cnPrintout( stdout, path[0], 1 );
 	else if ( printout ) {
 		CNStory *story = readStory( path[1], 0 );
 		cnStoryOutput( stdout, story );
