@@ -525,31 +525,31 @@ lookup_mark( BMContext *ctx, char *p, int *rv ) {
 	switch ( *p ) {
 	case '^':
 		switch ( p[1] ) {
+		case '.':
+			if ( ref ) break; // err
+			entry = registryLookup( ctx, "^" );
+			return (( entry )? entry->value : NULL );
 		case '^':
-			entry = registryLookup( ctx, "^^" );
+			entry = registryLookup( ctx, ":" );
 			if (( entry )) {
 				Pair *r = entry->value;
 				return ref ? r->value : r->name; }
 			return NULL;
-		case '.':
-			if ( ref ) break; // err
-			entry = registryLookup( ctx, "^." );
-			return (( entry )? entry->value : NULL );
 		case '?':
 			if ( !ref ) break; // err
 			entry = registryLookup( ctx, "?" );
 			if (!( i=entry->value )) return NULL;
 			CNInstance *e = ((Pair *) i->ptr )->value;
-			entry = registryLookup( ctx, "^*" );
-			if ( !entry ) return NULL;
-			Registry *buffer = entry->value;
-			entry = registryLookup( buffer, e );
-			if ( !entry ) return NULL;
 			if ( p[2]==':' ) {
 				listItem *xpn = subx( p+3 );
 				e = xsub( e, xpn );
 				freeListItem( &xpn ); }
-			return e; }
+			if (( entry=registryLookup( ctx, ";" ) )) {
+				Registry *buffer = entry->value;
+				if (( entry=registryLookup( buffer, e ) ))
+					return entry->value;
+				else return e; }
+			return NULL; }
 		break;
 	case '%':
 		switch ( p[1] ) {

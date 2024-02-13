@@ -72,7 +72,7 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 	Pair *entry = registryLookup( ctx, expression );
 	if ( !entry ) return !!errout( ExpressionTagUnknown, expression );
 	int released = ( *p=='~' ? (p++,1) : 0 );
-	Pair *current = registryRegister( ctx, "^.", NULL );
+	Pair *current = registryRegister( ctx, "^", NULL );
 	listItem *next_i, *last_i=NULL;
 	listItem **entries = (listItem **) &entry->value;
 	for ( listItem *i=*entries; i!=NULL; i=next_i ) {

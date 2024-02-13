@@ -1,0 +1,8 @@
+
+	on init
+		do ((dummy,tutu),toto)
+		do : titi : toto
+	else
+		do >:%(*?:toto)
+//		do >:%((*,?),toto)
+		do exit

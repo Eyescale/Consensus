@@ -1,11 +1,6 @@
 See Also: design/story/interactive.story
 
 TODO
-	. extend *^?:sub to return
-	  EITHER - if %?:sub is an assignee in the current assignment occurrence
-		the assigned value of %?:sub in the current assignment buffer
-	  OR - if %?:sub is not an assignee in the current assignment occurrence
-		%?:sub itself
 	. cosystem init: create (.,(Status,.)) and clear guard Stati
 	  implement and test example
 	. NTH: now that we keep list of shared entities in context
@@ -16,6 +11,20 @@ TODO
 	. NTH: parser post-processing -> identify/eliminate undue filters
 
 DONE
+	. extended *^?:sub to return
+	  EITHER - if %?:sub is an assignee in the current assignment occurrence
+		the assigned value of %?:sub in the current assignment buffer
+	  OR - if %?:sub is not an assignee in the current assignment occurrence
+		%?:sub itself
+	  BUGFIX Test/58_EYEYE-ube
+	. BMContext entry: name can either be identifier or one separator
+		'^' represents "^." in expression = tag current value
+		':' represents "^^" in expression = current assignee
+		';' represents "*^?" in expression = assignment buffer
+	. BUGFIX query.c:xp_verify()
+		Tests DBStarMatch( x->sub[0]->sub[0] ) before subbing exponent
+	  cf. Test/65_star-mark
+	. parser.c: reallowed ~.. and ~.identifier
 	. System init spec - see design/story/interactive.story
 	. upgraded Test/09_pipe to %|:sub instead of %(%|:sub) <<< deprecated
 	. bugfix operation.c:do_enable() cf. Test/48_string
@@ -66,8 +75,6 @@ DONE
 		~.:	must be written verbatim (no space)
 		~.(	must be written verbatim (no space)
 		?:...	must be written verbatim (no space)
-		~..	no longer allowed => use ~(..)
-		~.identifier	no longer allowed => user ~(.identifier)
 	. RE-REVISION 2.2: using %|:sub instead of %|^sub - more understandable
 	. implemented %(_)^ use case, as per design/story/interactive.story
 	  => instantiate.c: collect_CB uses bm_list_inform() which first tests
@@ -127,9 +134,9 @@ DONE
 	. NOTE: do :_:!! |{ here %| is *^^, not the whole set of UBE's }
 	. implement ^^ and *^^ and *^?:sub (including *^?)
 	  in instantiate.c: inform_carry and inform_UBE, we do
-		registryRegister( ctx, "*^", (Registry *) buffer );
+		registryRegister( ctx, ";", (Registry *) buffer );
 		for ( ... ) { // where current is entry in buffer
-			registryRegister( ctx, "^^", (Pair *) current ); }
+			registryRegister( ctx, ":", (Pair *) current ); }
 	  in include/traversal.h, we associate
 		^^  			=> CB_RegisterVariableCB
 		*^^ / *^?:(_) / *^?	=> CB_DereferenceCB

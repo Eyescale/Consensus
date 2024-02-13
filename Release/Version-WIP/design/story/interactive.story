@@ -266,7 +266,7 @@ System launch
 		?:((.,ON|OFF),^^) { ( %?:(?,.), *^^ ) |
 			?:(.,%?) { ( %?:(?,.)^, %| ) | {
 				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)),
-				?:(?,%?) { ( %?^, %| ) |
+				?:(?,%?) { ( (%?)^, %| ) |
 					!?:(?,%?) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
 				} } } )
 	where
@@ -311,11 +311,11 @@ System init
 	  to select EENO reflecting local entities (optimization)
 	. The system event ((init,ON),%%) can be used as-is in System requirements
 	  provided only that *^?:sub returns
-	  EITHER - if %?:sub is an assignee in the current assignment occurrence
+	  EITHER - if %?:sub is an assignee in the current assignment expression
 		the assigned value of %?:sub in the current assignment buffer
-	  OR - if %?:sub is not an assignee in the current assignment occurrence
+	  OR - if %?:sub is not an assignee in the current assignment expression
 		%?:sub itself
-	  Then our System launch formula still works
+	  Then our System launch formula still works as-is
 
 Feature List
     	1. %identifier list variables

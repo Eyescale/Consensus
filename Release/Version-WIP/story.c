@@ -69,8 +69,9 @@ readStory( char *path, int ignite ) {
 		else data.errnum = io_report( &io );
 		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
-	if ( !data.errnum && !build_CB( NarrativeTake, 0, &data ) ) // last take
-		errout( StoryUnexpectedEOF );
+	if ( !data.errnum && !build_CB( NarrativeTake, 0, &data ) ) { // last take
+		data.errnum = ErrUnexpectedEOF;
+		errout( StoryUnexpectedEOF ); }
 	if ( data.errnum ) {
 		freeNarrative( data.narrative );
 		freeRegistry( data.narratives, free_CB );

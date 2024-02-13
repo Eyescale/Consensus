@@ -223,6 +223,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 						f_set( NEGATED )
 		end
 		in_( "~." ) bgn_
+			on_( '.' )	do_( "expr" )	s_add( "~.." )
+							f_set( INFORMED )
 			on_( '(' )	do_( "expr" )	REENTER
 							s_add( "~." )
 			on_( ':' ) if ( *type&PER )
@@ -240,6 +242,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 					do_( "expr" )	REENTER
 							s_add( "~." )
 							f_set( INFORMED ) }
+			on_other	do_( "term" )	s_add( "~." )
+							s_take
 			end
 	in_( "%" ) bgn_
 		on_( '(' )	do_( "%(" )	f_push( stack )

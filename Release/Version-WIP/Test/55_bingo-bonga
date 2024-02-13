@@ -1,10 +1,10 @@
 
-// #define PASS
+// #define BINGO
 
 	on init
 		do test
 	else on test
-#ifdef PASS
+#ifdef BINGO
 		do { (newborn)^, !^:( BINGO )( BONGA ) }
 #else
 		do { (test)^, !^:( BINGO )( BONGA ) }

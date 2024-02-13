@@ -689,7 +689,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 	else if ( *p=='|' ) {
 		CNArena *arena = story->arena;
 		buffer = newRegistry( IndexedByAddress );
-		registryRegister( ctx, "*^", buffer );
+		registryRegister( ctx, ";", buffer );
 		CNInstance *ube, *x = (list) ? popListItem(list) : NULL;
 		do {	ube = bm_arena_register( arena, NULL, db );
 			registryRegister( buffer, x, ube );
@@ -701,7 +701,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 	//-----------------------------------------------------------
 	else if (( entry=registryLookup( story->narratives, p ) )) {
 		buffer = newRegistry( IndexedByAddress );
-		registryRegister( ctx, "*^", buffer );
+		registryRegister( ctx, ";", buffer );
 		CNCell *this = BMContextCell( ctx );
 		CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
 		do {	CNCell *child = newCell( entry, NULL );
@@ -717,8 +717,8 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traverse_d
 		errout((list)?InstantiateClassNotFoundv:InstantiateClassNotFound, p );
 		if (( list )) freeListItem( list );
 		return; }
-	registryDeregister( ctx, "^^" );
-	registryDeregister( ctx, "*^" );
+	registryDeregister( ctx, ":" );
+	registryDeregister( ctx, ";" );
 	freeRegistry( buffer, NULL ); }
 
 static void
@@ -729,7 +729,7 @@ inform_UBE( Registry *buffer, char *p, CNArena *arena, BMTraverseData *traverse_
 	char *start_p = p;
 	listItem *pipe_mark = newItem( NULL );
 	bm_push_mark( ctx, "|", pipe_mark );	
-	Pair *current = registryRegister( ctx, "^^", NULL );
+	Pair *current = registryRegister( ctx, ":", NULL );
 	// inform each UBE's connections
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
@@ -758,7 +758,7 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traverse_
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
 	char *start_p = p;
-	Pair *current = registryRegister( ctx, "^^", NULL );
+	Pair *current = registryRegister( ctx, ":", NULL );
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
 		current->value = entry;

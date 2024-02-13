@@ -6,6 +6,7 @@
 #include "locate_mark.h"
 #include "query.h"
 #include "eenov.h"
+#include "errout.h"
 
 // #define DEBUG
 
@@ -339,7 +340,7 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	char *p = pivot->name;
 
 	// %| no longer authorized in query expressions
-	int pv = ( *p=='%' ?( p[1]=='@' || !is_separator(p[1]) ): 0 );
+	int pv = (( *p=='%' )&&( p[1]=='@' || !is_separator(p[1]) ));
 	
 	listItem *i, *j;
 	CNInstance *e, *f;
@@ -477,14 +478,16 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 					exponent = exponent->next;
 					i = j; continue; }
 				else x = NULL; }
-			else {
-				x = CNSUB( x, exp.value&1 );
-				if (( x )) {
-					addItem( &stack.as_sub, i );
-					addItem( &stack.as_sub, exponent );
-					exponent = exponent->next;
-					i = newItem( x );
-					continue; } } }
+			else { // Assumption: star case only
+				CNInstance *y = CNSUB( x, 0 );
+				if ( y && DBStarMatch( y->sub[0] ) ) {
+					x = CNSUB( x, exp.value&1 );
+					if (( x )) {
+						addItem( &stack.as_sub, i );
+						addItem( &stack.as_sub, exponent );
+						exponent = exponent->next;
+						i = newItem( x );
+						continue; } } } }
 
 		if ((x) && ( x=op_set( op, data, x, &p, success ) )) {
 			if ( op==BM_BGN )
@@ -611,33 +614,6 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 #endif
 	return success; }
 
-static inline listItem *
-pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
-/*
-	free as_sub exponent stack and associated items
-	(if these were reallocated) starting from i
-*/ {
-	listItem **as_sub = &stack->as_sub;
-	while (( *as_sub )) {
-		listItem *exponent = popListItem( as_sub );
-		if (!( cast_i(exponent->ptr) & SUB )) freeItem( i );
-		i = popListItem( as_sub ); }
-	freeItem( i );
-	stack->as_sub = popListItem( &stack->sub );
-	// free mark_exp exponent stack
-	freeListItem( mark_exp );
-	// return previously stacked i
-	return popListItem( &stack->i ); }
-
-static inline char *
-prune( char *p, int success ) {
-	p = p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 );
-	if ( *p==':' ) p++;
-	return p; }
-
-//---------------------------------------------------------------------------
-//	op_set
-//---------------------------------------------------------------------------
 static CNInstance *
 op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success ) {
 	char *p = *q;
@@ -678,6 +654,29 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 		data->success = success; }
 	*q = p;
 	return x; }
+
+static inline listItem *
+pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
+/*
+	free as_sub exponent stack and associated items
+	(if these were reallocated) starting from i
+*/ {
+	listItem **as_sub = &stack->as_sub;
+	while (( *as_sub )) {
+		listItem *exponent = popListItem( as_sub );
+		if (!( cast_i(exponent->ptr) & SUB )) freeItem( i );
+		i = popListItem( as_sub ); }
+	freeItem( i );
+	stack->as_sub = popListItem( &stack->sub );
+	// free mark_exp exponent stack
+	freeListItem( mark_exp );
+	// return previously stacked i
+	return popListItem( &stack->i ); }
+
+static inline char *
+prune( char *p, int success ) {
+	p = p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 );
+	return ( *p==':' ? p+1 : p ); }
 
 //===========================================================================
 //	query_assignment
