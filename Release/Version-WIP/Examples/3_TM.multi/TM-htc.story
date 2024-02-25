@@ -18,14 +18,15 @@
 		on ( init )
 			do : record : ( init, * )
 		else in ( *record, ? )
-			in %?: /[01]/
-				// manifest symbol for tape
-				do : symbol : %?
-			else in %?: /[A-Z]/
+			in %?: /[A-Z]/
 				// manifest state for head
 				do : state : %?
 				do mark
-			else do ( mark ? ~( mark ) :)
+			else in %?: /[01]/
+				// manifest symbol for tape
+				do : symbol : %?
+			else in %?: ' '
+				do ( mark ? ~( mark ) :)
 			do : record : %( *record, . )
 		else
 			do ( mark ? ~( mark ) : exit )
@@ -64,13 +65,18 @@
 	else in : setup
 		on : symbol : ? < ..
 			do : new : !! Cell( ((*,symbol),%<?>) )
+			in : new : ?  // restricted
+				do %? ~<
 		else on ~( mark ) < ..
 			do : start : *new
 		else on exit < ..
 			in : start : ?
-				do : cell : %?
+				do : cell : %? @<
+				in : new : ~%?
+					do *new ~<
 				do : ~.
 			else in : new : ?
+				do >"Warning: tape: last cell will flush out\n"
 				do : cell : %?
 				do : ~.
 			else do exit
