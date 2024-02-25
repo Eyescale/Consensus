@@ -1,8 +1,9 @@
 See Also: design/story/interactive.story
 
 TODO
-	. cosystem init: create (.,(Status,.)) and clear guard Stati
+	. cosystem init: create (.,(Status,.)) and clear guard Status -
 	  implement and test example
+	. TBD: active registry not checked on event < *src - bug? feature?
 	. NTH: now that we keep list of shared entities in context
 		=> bm_query() could parse them in no pivot case
 	. NTH: parser_macros: extract REENTER + put caught in io struct
@@ -11,6 +12,8 @@ TODO
 	. NTH: parser post-processing -> identify/eliminate undue filters
 
 DONE
+	. created Examples/3_TM.multi/TM-tape_drive.story
+		  new Cell centralized in Tape class
 	. extended *^?:sub to return
 	  EITHER - if %?:sub is an assignee in the current assignment occurrence
 		the assigned value of %?:sub in the current assignment buffer

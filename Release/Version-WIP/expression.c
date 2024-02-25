@@ -55,7 +55,7 @@ bm_tag_register( char *expression, char *p, BMContext *ctx ) {
 	for ( ; ; ) {
 		registryRegister( ctx, expression, NULL );
 		if ( *p==' ' ) {
-			expression = p+3;
+			expression = p+3; // skip ' .%'
 			p = p_prune( PRUNE_IDENTIFIER, expression ); }
 		else return 1; } }
 

@@ -598,7 +598,6 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 						op = BM_END;
 						break; } } } }
 		else break; }
-	freeItem( i );
 #ifdef DEBUG
 	if ((data->stack.flags) || (data->stack.exponent)) {
 		errout( QueryExponentMemoryLeak );
@@ -612,47 +611,49 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 #ifdef DEBUG
 	fprintf( stderr, "xp_verify:........} success=%d\n", success );
 #endif
+	freeItem( i );
 	return success; }
 
 static CNInstance *
-op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success ) {
-	char *p = *q;
+op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
+/*
+	Note: we cannot use exponent to track scope, as no exponent is
+	pushed in case of "single" expressions - e.g. %(%?:(.,?))
+*/ {
 	switch ( op ) {
+	case BM_INIT:
+		data->base = data->stack.exponent;
+		data->OOS = data->stack.flags;
+		break;
 	case BM_BGN:
-		if ( *p++=='*' ) {
-			// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+		// take x.sub[0].sub[1] if x.sub[0].sub[0]==star
+		if ( *(*q)++=='*' ) {
 			CNInstance *y = CNSUB( x, 0 );
-			if ( y && DBStarMatch( y->sub[0] ) )
+			if (( y ) && DBStarMatch( y->sub[0] ))
 				x = y->sub[ 1 ];
 			else {
 				data->success = 0;
-				x = NULL; break; } }
-		// no break
-	default:
+				return NULL; } }
+		data->base = data->stack.exponent;
+		data->OOS = data->stack.flags;
+		break;
+	case BM_END:
+		data->base = popListItem( &data->stack.base );
+		popListItem( &data->stack.scope ); // done with that one
+		data->OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL ); }
 #ifdef DEBUG
-		fprintf( stderr, "xp_verify: " );
-		switch ( op ) {
-		case BM_INIT: fprintf( stderr, "BM_INIT success=%d ", success ); break;
-		case BM_BGN: fprintf( stderr, "BM_BGN success=%d ", success ); break;
-		case BM_END: fprintf( stderr, "BM_END success=%d ", success ); break; }
-		fprintf( stderr, "'%s'\n", p );
+	fprintf( stderr, "xp_verify: " );
+	switch ( op ) {
+	case BM_INIT: fprintf( stderr, "BM_INIT success=%d ", success ); break;
+	case BM_BGN: fprintf( stderr, "BM_BGN success=%d ", success ); break;
+	case BM_END: fprintf( stderr, "BM_END success=%d ", success ); break; }
+	fprintf( stderr, "'%s'\n", *q );
 #endif
-		/* we cannot use exponent to track scope, as no exponent is
-		   pushed in case of "single" expressions - e.g. %(%?:(.,?))
-		*/
-		if ( op==BM_END ) {
-			data->base = popListItem( &data->stack.base );
-			popListItem( &data->stack.scope ); // done with that one
-			data->OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL ); }
-		else {
-			data->base = data->stack.exponent;
-			data->OOS = data->stack.flags; }
-		data->op = op;
-		data->instance = x;
-		data->list_exp = 0;
-		data->mark_exp = NULL;
-		data->success = success; }
-	*q = p;
+	data->op = op;
+	data->instance = x;
+	data->list_exp = 0;
+	data->mark_exp = NULL;
+	data->success = success;
 	return x; }
 
 static inline listItem *
@@ -681,8 +682,7 @@ prune( char *p, int success ) {
 //===========================================================================
 //	query_assignment
 //===========================================================================
-static XPTraverseCB
-	verify_unassigned, verify_variable, verify_value;
+static XPTraverseCB verify_unassigned, verify_variable, verify_value;
 
 static CNInstance *
 query_assignment( int type, char *expression, BMQueryData *data ) {
