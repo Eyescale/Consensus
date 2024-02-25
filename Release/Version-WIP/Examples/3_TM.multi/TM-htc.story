@@ -67,8 +67,13 @@
 		else on ~( mark ) < ..
 			do : start : *new
 		else on exit < ..
-			do : cell : *start
-			do : ~.
+			in : start : ?
+				do : cell : %?
+				do : ~.
+			else in : new : ?
+				do : cell : %?
+				do : ~.
+			else do exit
 	else on : symbol : ? < *head
 		do : symbol : %<?>  // manifest symbol for cell
 		on : shift : RIGHT < %<
