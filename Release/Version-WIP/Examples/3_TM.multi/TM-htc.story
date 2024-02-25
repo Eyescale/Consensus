@@ -1,8 +1,9 @@
 :
-	on init
+	on init 
+		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
+//		do (( init, ... ):A0:)
 		do : head : !! Head (
 			((*,HALT), H )
-			((*,INIT), A )
 			( TUPLE, {
 				(A,(0,(1,(RIGHT,B))))
 				(A,(1,(1,(RIGHT,H))))
@@ -13,13 +14,26 @@
 				} ) )
 		do : tape : !! Tape (
 			((*,BLANK), 0 ) )
-		do exit
+	else
+		on ( init )
+			do : record : ( init, * )
+		else in ( *record, ? )
+			in %?: /[01]/
+				// manifest symbol for tape
+				do : symbol : %?
+			else in %?: /[A-Z]/
+				// manifest state for head
+				do : state : %?
+				do mark
+			else do ( mark ? ~( mark ) :)
+			do : record : %( *record, . )
+		else
+			do ( mark ? ~( mark ) : exit )
 
 : Head
 	on init
 		on : tape : ? < ..
 			do : tape : %<?> @<
-		do : state : *INIT
 	else in : state : ?
 		on ~( %%, ? ) < *tape
 			do > "%s": %?	// output state
@@ -32,15 +46,22 @@
 			else
 				do >"Error: head: unable to dereference ( state, symbol )\n"
 				do exit
-	else
-		do >"Error: head: no state\n"
-		do exit
+	else on : state : ? < ..
+		do : state : %<?>
 
 : Tape
 	on init
 		on : head : ? < ..
 			do : head : %<?> @<
-		do : cell : !! Cell( start, ((*,symbol),*BLANK) )
+		do : setup
+	else in : setup
+		on : symbol : ? < ..
+			do : new : !! Cell( ((*,symbol),%<?>) )
+		else on ~( mark ) < ..
+			do : start : *new
+		else on exit < ..
+			do : cell : *start
+			do : ~.
 	else on : symbol : ? < *head
 		do : symbol : %<?>  // manifest symbol for cell
 		on : shift : RIGHT < %<
@@ -69,9 +90,18 @@
 
 : Cell
 	//--------------------------------------------------
+	//	initialization
+	//--------------------------------------------------
+	on : new : ? < ..
+		in %<?>: %%
+			on ~((*,new), ? ) < ..
+				do : left : %<?> @<
+		else on ~((*,new), %% ) < ..
+			do : right : %<?> @<
+	//--------------------------------------------------
 	//	rollback
 	//--------------------------------------------------
-	on ~( signal ) < *right
+	else on ~( signal ) < *right
 		do signal~
 	else on ( *left ? ~.: ~( signal ) )
 		do > "%s": (start?'|':)
@@ -83,7 +113,14 @@
 	//--------------------------------------------------
 	else on : cell : ? < ..
 		in %<?>: %%
-			on start
+			on ~.: ~((*,cell),.) < ..
+				do start
+				// manifest right for tape
+				in : right : ?
+					do : right : %?
+				// manifest left for tape
+				in : left : ?
+					do : left : %?
 				do signal~
 			else on : left : ? < ..  // shift RIGHT
 				// register left if didn't have
