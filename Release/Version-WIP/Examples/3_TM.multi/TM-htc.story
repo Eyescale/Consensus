@@ -34,6 +34,12 @@
 	on init
 		on : tape : ? < ..
 			do : tape : %<?> @<
+		do : setup
+	else in : setup
+		on : state : ? < ..
+			do : state : %<?>
+		else on exit < ..
+			do : ~.
 	else in : state : ?
 		on ~( %%, ? ) < *tape
 			do > "%s": %?	// output state
@@ -46,8 +52,9 @@
 			else
 				do >"Error: head: unable to dereference ( state, symbol )\n"
 				do exit
-	else on : state : ? < ..
-		do : state : %<?>
+	else
+		do >"Error: head: no state\n"
+		do exit
 
 : Tape
 	on init
@@ -99,16 +106,6 @@
 		else on ~((*,new), %% ) < ..
 			do : right : %<?> @<
 	//--------------------------------------------------
-	//	rollback
-	//--------------------------------------------------
-	else on ~( signal ) < *right
-		do signal~
-	else on ( *left ? ~.: ~( signal ) )
-		do > "%s": (start?'|':)
-		in : current
-			do ( .., *symbol )
-		else do callout~
-	//--------------------------------------------------
 	//	tape input
 	//--------------------------------------------------
 	else on : cell : ? < ..
@@ -153,6 +150,16 @@
 		in : current
 			do > "%s%s":< *symbol, (*right?' ':'\n') >
 			do ( *right ? flush~ : exit )
+	//--------------------------------------------------
+	//	rollback
+	//--------------------------------------------------
+	else on ~( signal ) < *right
+		do signal~
+	else on ( *left ? ~.: ~( signal ) )
+		do > "%s": (start?'|':)
+		in : current
+			do ( .., *symbol )
+		else do callout~
 	//--------------------------------------------------
 	//	rollcall
 	//--------------------------------------------------

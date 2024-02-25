@@ -12,7 +12,7 @@ TODO
 	. NTH: parser post-processing -> identify/eliminate undue filters
 
 DONE
-	. created Examples/3_TM.multi/TM-tape_drive.story
+	. created Examples/3_TM.multi/{ TM-tape_drive.story, TM-htc.story }
 		  new Cell centralized in Tape class
 	. extended *^?:sub to return
 	  EITHER - if %?:sub is an assignee in the current assignment occurrence
