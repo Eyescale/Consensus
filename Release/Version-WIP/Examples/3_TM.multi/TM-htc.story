@@ -1,7 +1,7 @@
 :
 	on init 
-		do (( init, ... ):0 0 0 A0 0 0 0 0 0 0:)
-//		do (( init, ... ):A0:)
+		do (( preset, ... ):0 0 0 A0 0 0 0 0 0 0:)
+//		do (( preset, ... ):A0:)
 		do : head : !! Head (
 			((*,HALT), H )
 			( TUPLE, {
@@ -15,8 +15,8 @@
 		do : tape : !! Tape (
 			((*,BLANK), 0 ) )
 	else
-		on ( init )
-			do : record : ( init, * )
+		on preset
+			do : record : ( preset, * )
 		else in ( *record, ? )
 			in %?: /[A-Z]/
 				// manifest state for head
@@ -28,17 +28,23 @@
 			else in %?: ' '
 				do ( mark ? ~( mark ) :)
 			do : record : %( *record, . )
-		else
+		else in symbol
 			do ( mark ? ~( mark ) : exit )
+		else
+			do >"Error: tape empty\n"
+			do state~
+			do exit
 
 : Head
 	on init
 		on : tape : ? < ..
 			do : tape : %<?> @<
-		do : setup
-	else in : setup
+		do : init
+	else in : init
 		on : state : ? < ..
 			do : state : %<?>
+		else on ~( state ) < ..
+			do exit
 		else on exit < ..
 			do : ~.
 	else in : state : ?
@@ -61,24 +67,24 @@
 	on init
 		on : head : ? < ..
 			do : head : %<?> @<
-		do : setup
-	else in : setup
+		do : init
+	else in : init
 		on : symbol : ? < ..
-			do : new : !! Cell( ((*,symbol),%<?>) )
-			in : new : ?  // restricted
+			do : preset : !! Cell( ((*,symbol),%<?>) )
+			in : preset : ? // listen only to current
 				do %? ~<
 		else on ~( mark ) < ..
-			do : start : *new
+			in : preset : ?
+				do : start : %?
 		else on exit < ..
 			in : start : ?
 				do : cell : %? @<
-				in : new : ~%?
-					do *new ~<
+				in : preset : ~%?
+					do *preset ~<
 				do : ~.
-			else in : new : ?
-				do >"Warning: tape: last cell will flush out\n"
+			else in : preset : ?
 				do : cell : %?
-				do : ~.
+				do exit
 			else do exit
 	else on : symbol : ? < *head
 		do : symbol : %<?>  // manifest symbol for cell
@@ -108,28 +114,34 @@
 
 : Cell
 	//--------------------------------------------------
-	//	initialization
+	//	init
 	//--------------------------------------------------
-	on : new : ? < ..
+	on : preset : ? < ..
 		in %<?>: %%
-			on ~((*,new), ? ) < ..
+			on ~((*,preset), ? ) < ..
 				do : left : %<?> @<
-		else on ~((*,new), %% ) < ..
+		else on ~((*,preset), %% ) < ..
 			do : right : %<?> @<
 	//--------------------------------------------------
-	//	tape input
+	//	update
 	//--------------------------------------------------
 	else on : cell : ? < ..
-		in %<?>: %%
-			on ~.: ~((*,cell),.) < ..
-				do start
-				// manifest right for tape
-				in : right : ?
-					do : right : %?
-				// manifest left for tape
-				in : left : ?
-					do : left : %?
-				do signal~
+		in : current
+			do : ~.
+			on : symbol : ? < ..
+				do > "%s%s":< *symbol, (*right?' ':'\n') >
+				do ( *right ? rollcall~ : rollback~ )
+				do : symbol : %<?>
+			on : left : %% < .. // shift RIGHT
+				in ~.: *right
+					do : right : %<?> @<
+			else on : right : %% < .. // shift LEFT
+				in ~.: *left
+					do : left : %<?> @<
+		else in %<?>: %%
+			do : current
+			on exit < ..
+				do exit
 			else on : left : ? < ..  // shift RIGHT
 				// register left if didn't have
 				in ~.: *left
@@ -144,19 +156,12 @@
 				// manifest left for tape
 				in : left : ?
 					do : left : %?
-			do : current
-		else in : current
-			on : left : %% < .. // shift RIGHT
-				in ~.: *right
-					do : right : %<?> @<
-			else on : right : %% < .. // shift LEFT
-				in ~.: *left
-					do : left : %<?> @<
-			on : symbol : ? < ..
-				do > "%s%s":< *symbol, (*right?' ':'\n') >
-				do ( *right ? rollcall~ : signal~ )
-				do : symbol : %<?>
-			do : ~.
+			else
+				do { start, rollback~ }
+				in : right : ?
+					do : right : %?
+				in : left : ?
+					do : left : %?
 	else on exit < ..
 		in : current
 			do > "%s%s":< *symbol, (*right?' ':'\n') >
@@ -164,9 +169,9 @@
 	//--------------------------------------------------
 	//	rollback
 	//--------------------------------------------------
-	else on ~( signal ) < *right
-		do signal~
-	else on ( *left ? ~.: ~( signal ) )
+	else on ~( rollback ) < *right
+		do rollback~
+	else on ( *left ? ~.: ~( rollback ) )
 		do > "%s": (start?'|':)
 		in : current
 			do ( .., *symbol )
@@ -176,7 +181,7 @@
 	//--------------------------------------------------
 	else on ~( callout )
 		do > " %s%s":< *symbol, (*right?' ':'\n') >
-		do ( *right ? rollcall~ : signal~ )
+		do ( *right ? rollcall~ : rollback~ )
 	else on ~( rollcall ) < *left
 		do > "%s": (start?'|':)
 		in : current

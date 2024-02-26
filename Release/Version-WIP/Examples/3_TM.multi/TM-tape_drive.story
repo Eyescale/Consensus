@@ -68,24 +68,22 @@
 			do ( *head, %<?> )
 
 : Cell
-	//--------------------------------------------------
-	//	rollback
-	//--------------------------------------------------
-	on ~( signal ) < *right
-		do signal~
-	else on ( *left ? ~.: ~( signal ) )
-		do > "%s": (start?'|':)
+	on : cell : ? < ..
 		in : current
-			do ( .., *symbol )
-		else do callout~
-	//--------------------------------------------------
-	//	tape input
-	//--------------------------------------------------
-	else on : cell : ? < ..
-		in %<?>: %%
-			on start
-				do signal~
-			else on : left : ? < ..  // shift RIGHT
+			do : ~.
+			on : symbol : ? < ..
+				do > "%s%s":< *symbol, (*right?' ':'\n') >
+				do ( *right ? rollcall~ : rollback~ )
+				do : symbol : %<?>
+			on : left : %% < .. // shift RIGHT
+				in ~.: *right
+					do : right : %<?> @<
+			else on : right : %% < .. // shift LEFT
+				in ~.: *left
+					do : left : %<?> @<
+		else in %<?>: %%
+			do : current
+			on : left : ? < ..  // shift RIGHT
 				// register left if didn't have
 				in ~.: *left
 					do : left : %<?> @<
@@ -99,29 +97,28 @@
 				// manifest left for tape
 				in : left : ?
 					do : left : %?
-			do : current
-		else in : current
-			on : left : %% < .. // shift RIGHT
-				in ~.: *right
-					do : right : %<?> @<
-			else on : right : %% < .. // shift LEFT
-				in ~.: *left
-					do : left : %<?> @<
-			on : symbol : ? < ..
-				do > "%s%s":< *symbol, (*right?' ':'\n') >
-				do ( *right ? rollcall~ : signal~ )
-				do : symbol : %<?>
-			do : ~.
+			else on start
+				do rollback~
 	else on exit < ..
 		in : current
 			do > "%s%s":< *symbol, (*right?' ':'\n') >
 			do ( *right ? flush~ : exit )
 	//--------------------------------------------------
+	//	rollback
+	//--------------------------------------------------
+	else on ~( rollback ) < *right
+		do rollback~
+	else on ( *left ? ~.: ~( rollback ) )
+		do > "%s": (start?'|':)
+		in : current
+			do ( .., *symbol )
+		else do callout~
+	//--------------------------------------------------
 	//	rollcall
 	//--------------------------------------------------
 	else on ~( callout )
 		do > " %s%s":< *symbol, (*right?' ':'\n') >
-		do ( *right ? rollcall~ : signal~ )
+		do ( *right ? rollcall~ : rollback~ )
 	else on ~( rollcall ) < *left
 		do > "%s": (start?'|':)
 		in : current
