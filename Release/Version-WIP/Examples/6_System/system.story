@@ -275,7 +275,7 @@
 	in : Q : ?
 		in ?: ( %?, . )
 			do :< input, Q >:< %?:(.,?), %? >
-		else
-			do input : "%c" <
-			do ~( Q )
-	else do input : "%c" <
+		else do ~( Q )
+	else
+		do input : "%c" <
+

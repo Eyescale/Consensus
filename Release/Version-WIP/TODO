@@ -20,6 +20,10 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
+	. Memory Leak: came back !!!!!!!!!!!!!!
+		cf. from /Users/totoro/Eyescale/Consensus/Release/Version-WIP/.versions/2025-01-18-20:45
+	for i in *.c; do echo ------------------------------------- $i; diff $i ../2025-01-17-19\:51/; done > DIFF
+
 	. update github
 		. cleanup Examples/6_System/README vs. specs.txt
 		. cleanup design/story/...

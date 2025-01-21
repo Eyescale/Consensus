@@ -135,14 +135,15 @@ in_case( int type, char *expression, BMContext *ctx, BMMark **mark )
 */ {
 	DBG_IN_CASE_BGN
 	int success = 0;
-	if ( type&SWITCH ) {
+	if ( type&CASE )
+		success = bm_case( expression, ctx );
+	else {
 		type = ( type&IN ? BM_CONDITION : BM_INSTANTIATED );
 		Pair *found = bm_switch( type, expression, ctx );
 		if (( found )) {
 			if (( mark )) *mark = bm_lmark( found );
 			else freePair( found );
 			success = 1; } }
-	else success = bm_case( expression, ctx );
 	DBG_IN_CASE_END
 	return success; }
 

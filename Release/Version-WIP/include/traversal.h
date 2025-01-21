@@ -7,12 +7,11 @@
 #include "parser_flags.h"
 #include "traversal_CB.h"
 
-#define BASE !is_f(VECTOR|SET|SUB_EXPR|LEVEL)
+#define BASE !is_f(VECTOR|SET|SUB_EXPR|LEVEL) && !(mode&TERNARY)
 
 static char *
 bm_traverse( char *expression, BMTraverseData *traversal, int flags ) {
 	int f_next, mode = traversal->done;
-	mode|=is_f( ASSIGN ); f_clr( ASSIGN );
 	traversal->done = 0;
 
 	listItem **stack = traversal->stack;
@@ -33,8 +32,8 @@ CB_RegisterVariableCB			f_set( INFORMED )
 					f_set( INFORMED ) }
 				break;
 			case '{':
-				if ( is_f(INFORMED) && BASE && !(mode&TERNARY) ) {
-					traversal->done = 1; // markscan
+				if ( is_f(INFORMED) && BASE ) {
+					traversal->done = 1; // forescan
 					break; }
 CB_BgnSetCB			f_push( stack )
 				f_reset( SET|FIRST, 0 )
@@ -64,7 +63,7 @@ CB_TagCB				if ( p[2]=='.' ) p+=3;
 				else if is_f( PIPED ) {
 CB_BgnPipeCB				f_clr( NEGATED|INFORMED|FILTERED )
 					p++; }
-				else if ( BASE && !is_f(CARRY) && (!(mode&ASSIGN) || p[1]==':')) {
+				else if ( BASE && !(mode&CARRY) && (!(mode&ASSIGN) || p[1]==':')) {
 					traversal->done = 1; }
 				else {
 CB_BgnPipeCB				f_push( stack )
@@ -184,7 +183,7 @@ CB_ModCharacterCB				f_set( INFORMED )
 						p++; } }
 				break;
 			case '(':
-				if ( is_f(INFORMED) && BASE && !(mode&TERNARY) ) {
+				if ( is_f(INFORMED) && BASE ) {
 					traversal->done = 1; // forescan
 					break; }
 				if ( p[1]==':' ) {

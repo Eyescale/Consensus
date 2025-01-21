@@ -394,7 +394,6 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					freeListItem( &data->mark_exp );
 					// move on past sub-expression
 					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
-					else success = 0;
 					p = prune( p, success );
 					exponent = NULL;
 					op = BM_END;
@@ -601,11 +600,7 @@ case_( open_CB )
 		default: xpn_set( *stack, AS_SUB, 1 ); } }
 	else if is_f_next( COUPLE ) {
 		listItem **stack = &data->stack.exponent;
-		xpn_add( stack, AS_SUB, 0 );
-		switch ( match( NULL, data ) ) {
-		case -1:
-			data->success=0; popListItem( stack );
-			_prune( BM_PRUNE_LEVEL, p ) } }
+		xpn_add( stack, AS_SUB, 0 ); }
 	_break
 case_( comma_CB )
 	if ( data->stack.flags==data->OOS ) {
@@ -656,7 +651,6 @@ match( char *p, BMQueryData *data )
 
 static char *
 tag( char *p, BMQueryData *data ) {
-fprintf( stderr, "BINGO: %s\n", p );
 	CNInstance *x = x_sub( data->instance, data->stack.exponent, data->base );
 	if ( !x ) return NULL;
 	else {
@@ -679,9 +673,9 @@ fprintf( stderr, "BINGO: %s\n", p );
 		return q; } }
 
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	query_assignment
-//===========================================================================
+//---------------------------------------------------------------------------
 static XPTraverseCB verify_unassigned, verify_variable, verify_value;
 
 static CNInstance *

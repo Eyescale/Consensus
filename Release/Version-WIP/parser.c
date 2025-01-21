@@ -179,7 +179,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '|' ) if ( !is_f(INFORMED) )
 				; // err
 			else if ( *type&DO && !is_f(FORE|SUB_EXPR|FILTERED) && !f_parent(byref|FILTERED) &&
-				(( is_f(ASSIGN) && !is_f(PRIMED|LEVEL)) || is_f(LEVEL|SET|CARRY)) ) {
+				(( is_f(ASSIGN) && !is_f(PRIMED|LEVEL)) || is_f(LEVEL|SET|CARRY) )) {
 				do_( "|" )	s_take
 						f_clr( NEGATED|STARRED|BYREF|INFORMED )
 						f_set( PIPED ) }

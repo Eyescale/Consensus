@@ -22,8 +22,8 @@ typedef struct {
 #define NDX ( is_f( FIRST ) ? 0 : 1 )
 
 #define ifn_instantiate_traversal( expr, extra ) \
-	traversal->done = INFORMED|LITERAL; \
-	p = instantiate_traversal( expr, traversal, FIRST|extra ); \
+	traversal->done = INFORMED|LITERAL|extra; \
+	p = instantiate_traversal( expr, traversal, FIRST ); \
 	if ( traversal->done==BMTraverseError || !data->sub[ 0 ] )
 #define BM_ASSIGN( sub, db ) \
 	for ( listItem *i=sub[0], *j=sub[1]; (i)&&(j); i=i->next, j=j->next ) \

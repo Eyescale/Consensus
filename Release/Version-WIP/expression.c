@@ -49,6 +49,21 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
+//	bm_release
+//===========================================================================
+static BMQueryCB release_CB;
+void
+bm_release( char *expression, BMContext *ctx ) {
+	if ( !strcmp( expression, "(~.)" ) ) return;
+	CNDB *db = BMContextDB( ctx );
+	bm_query( BM_CONDITION, expression, ctx, release_CB, db ); }
+
+static BMQTake
+release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	db_deprecate( e, (CNDB *) user_data );
+	return BMQ_CONTINUE; }
+
+//===========================================================================
 //	bm_switch / bm_case
 //===========================================================================
 // see include/expression.h
@@ -138,21 +153,6 @@ bm_tag_clear( char *expression, BMContext *ctx )
 		return 0; }
 	bm_untag( ctx, expression );
 	return 1; }
-
-//===========================================================================
-//	bm_release
-//===========================================================================
-static BMQueryCB release_CB;
-void
-bm_release( char *expression, BMContext *ctx ) {
-	if ( !strcmp( expression, "(~.)" ) ) return;
-	CNDB *db = BMContextDB( ctx );
-	bm_query( BM_CONDITION, expression, ctx, release_CB, db ); }
-
-static BMQTake
-release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	db_deprecate( e, (CNDB *) user_data );
-	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_inputf
