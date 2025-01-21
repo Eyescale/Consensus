@@ -1,0 +1,96 @@
+Data Structure
+	We use tab, *tab and **tab to keep track of the path to action's current
+	conditions, as follow:
+
+		: tab : ((( tab, '\t' ), ... ), '\t' )
+			*tab -----------------^
+
+		: *tab : (((( .(*tab), (IN,$)), (ELSE_IN,$)), ... ), (ELSE_OFF,$))
+			      ^------ ( %%, *tab )
+		where
+			$ is ( %( s, ... ), %% ) // aka. string
+
+	as illustrated below:
+	
+			**tab grows vertically
+				 |
+		in $ ------------+--> *tab grows horizontally
+				 |
+			...	 |
+				 v
+				in $
+				else in $
+					on $	<<<< CANNOT BE same level
+				...
+				else off $
+					> current conditions
+
+	Now with current pointing to an element in *tab, so that we do have
+		: tab : %( *current, ... )
+
+	Upon a new occurrence,
+	. No more than the number of tabs in *tab may have been entered
+	. The same number of tabs as are in *tab must have been entered for
+	  the current conditions to apply, in which case
+	  . we cannot accept ELSE_XX
+	  . if IN, ON, or OFF is entered then we add one tab and start new condition
+	  . if DO or CL is entered then we must mark *tab, so that when we come
+	    back from subsequent new condition we do not accept ELSE_XX either
+	  . Note that we also do not accept ELSE_XX if last condition is ELSE
+	. if less tabs than are in *tab were entered, then we do
+		: tab : ( *current, ~. )
+		// which btw here may leave (ELSE_OFF,$) dangling
+	  and apply the same rules as above, with the exception that here, ie.
+	  after we pop, we do accept ELSE_XX iff current tab is not marked, and
+	  the last condition is not ELSE
+
+: output
+	generates the following output:
+	...
+	--------------------------------------------------------
+	IN ....
+	ON ....
+	ELSE IN .....
+	ELSE ON .....
+		IN .....
+		ELSE OFF ....
+		ELSE
+			DO .....
+			> ......
+			> ......
+	--------------------------------------------------------
+	...
+
+	We have %?:(( *q, ... ), (cmd,string))
+	where
+             : p : (( tab, ... ), '\t' )
+             : q : ( take, *p )
+	
+	1. output all the tabs from *p going backward
+             do >"%$": %(%((?,...):*p):(.,?))
+	
+	2. output ( cmd, string )
+	   where
+		cmd:	%(%?:((.,(?,.))
+		string: %(%?:((.,(.,?))
+	   and
+	   	cmd can be singleton or pair ( ELSE, . )
+
+	The last ( *q, ... ) list can be either
+
+		CL ...		| or
+	   or			|	... #2
+	   	DO ...		|	ELSE CL ...
+		> ....		| or
+	   	> ....		|	... #2
+	   or			|	ELSE DO ...
+		CL ...   #1	|	~.
+	   	ELSE DO ...	| or
+				|	...
+				|	ELSE CL ... #1
+				|	ELSE DO ...
+
+	1. must check to concatenate output
+	2. can be any number of [ELSE] IN/ON/OFF ...
+	   or nothing
+
