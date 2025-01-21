@@ -1,0 +1,13 @@
+/*
+	Note:  '\0' usage is generic - any entity would do
+*/
+	on init
+		do : s : (((s,a),b),c)
+	else on s
+		do ( '\0' |{ ( ?:%(%((?,...):*s):(.,?)) (%|,%?):| ), ((*,copy),%|) } )
+#			       ^---- { c, b, a } -----^         ^----------------^
+# 				(((('\0',c),b),a) built and saved into copy
+	else on copy
+		do >"%$\n": %(%((?,...):*copy):(.,?))
+#				outputs abc
+		do exit

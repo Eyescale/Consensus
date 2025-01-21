@@ -7,7 +7,7 @@
 #ifdef BINGO
 		do { (newborn)^, !^:( BINGO )( BONGA ) }
 #else
-		do { (test)^, !^:( BINGO )( BONGA ) }
+		do { (test)^(.,.), !^(?,.):( BINGO )( BONGA ) }
 #endif
 	else
 		do >:.

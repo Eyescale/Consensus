@@ -10,7 +10,7 @@
 
 // #define DEBUG
 
-typedef int XPTraverseCB( CNInstance *, char *, BMQueryData * );
+typedef BMCBTake XPTraverseCB( CNInstance *, char *, BMQueryData * );
 
 //===========================================================================
 //	bm_query
@@ -74,7 +74,7 @@ bm_query( int type, char *expression, BMContext *ctx,
 			return NULL; } }
 	return data.instance;
 }
-static int
+static BMCBTake
 bm_verify( CNInstance *e, char *expression, BMQueryData *data )
 {
 	CNDB *db;
@@ -201,14 +201,16 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB, voi
 	Pair *pivot = data->pivot;
 	char *p = pivot->name;
 	int pv = (*p=='%'&&(p[1]=='|'||p[1]=='@'));
-	listItem *i, *j;
+	listItem *i, *j, *pvi;
 	CNInstance *e, *f;
 	if ( pv ) {
 		i = pivot->value;
-		e = i->ptr; }
+		e = i->ptr;
+		pvi = NULL; }
 	else {
 		e = pivot->value;
-		i = newItem( e ); }
+		i = newItem( e );
+		pvi = i; }
 	listItem *exponent = data->exponent;
 	if (( user_data ))
 		data->user_data = user_data;
@@ -258,7 +260,8 @@ PUSH_exp:		PUSH( stack[ EXP_id ], exponent, POP_exp )
 					success = e;
 					break; } }
 POP_exp:		POP( stack[ EXP_id ], exponent, PUSH_exp )
-POP_list:		LOP( stack[ LIST_id ], lm, PUSH_list, stack[ XPN_id ] )
+POP_list:		LOP( stack[ LIST_id ], lm, PUSH_list )
+			if ( !stack[ XPN_id ] ) break;
 			POP_XPi( stack[ XPN_id ], xpn );
 POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 			break; }
@@ -269,8 +272,7 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 	fprintf( stderr, "XP_TRAVERSE: end, success=%d\n", !!success );
 #endif
 	freeListItem( &trail );
-	if ( !pv )
-		freeItem( i );
+	if (( pvi )) freeItem( pvi );
 	return success;
 }
 
@@ -279,7 +281,6 @@ POP_xpn:		POP( stack[ XPN_id ], xpn, PUSH_xpn )
 //===========================================================================
 #include "query_traversal.h"
 
-typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 static CNInstance * op_set( BMVerifyOp, BMQueryData *, CNInstance *, char **, int );
 typedef struct {
 	listItem *flags;
@@ -429,7 +430,7 @@ db_outputf( stderr, db, "candidate=%_ ........{\n", x );
 				op = BM_END; }
 			else {
 				if ( list_exp ) {
-					CND_LXj( list_exp, x, i, list_i, stack.list_i ) {
+					if_LDIG( list_exp, x, i, list_i, stack.list_i ) {
 						i = j;
 						p = stack.p->ptr;
 						op = BM_BGN;
@@ -569,7 +570,6 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char **q, int success )
 //	query_traversal
 //---------------------------------------------------------------------------
 static int match( CNInstance *, char *, listItem *, BMQueryData * );
-static inline int uneq( listItem *i, int operand );
 
 BMTraverseCBSwitch( query_traversal )
 case_( match_CB )
@@ -669,12 +669,6 @@ case_( wildcard_CB )
 	_break
 BMTraverseCBEnd
 
-
-static inline int uneq( listItem *i, int operand ) {
-	if (( i )) {
-		union { void *ptr; int value; } icast;
-		icast.ptr = i->ptr; return ( icast.value!=operand ); }
-	return 0; }
 
 //---------------------------------------------------------------------------
 //	match
@@ -785,7 +779,7 @@ query_assignment( int type, char *expression, BMQueryData *data )
 				return NULL; } } }
 	return data->instance;
 }
-static int
+static BMCBTake
 verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
@@ -812,7 +806,7 @@ verify_unassigned( CNInstance *e, char *variable, BMQueryData *data )
 
 	return BM_CONTINUE;
 }
-static int
+static BMCBTake
 verify_value( CNInstance *e, char *variable, BMQueryData *data )
 {
 	if ( !xp_verify( e, variable, data ) )
@@ -842,7 +836,7 @@ verify_value( CNInstance *e, char *variable, BMQueryData *data )
 				return BM_DONE; } } }
 	return BM_CONTINUE;
 }
-static int
+static BMCBTake
 verify_variable( CNInstance *e, char *value, BMQueryData *data )
 {
 	if ( !xp_verify( e, value, data ) )

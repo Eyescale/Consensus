@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "program.h"
+#include "main.h"
 
 void
 usage( void ) {
@@ -66,5 +66,7 @@ main( int argc, char *argv[] ) {
 		CNProgram *threads = newProgram( story, path[0] );
 		do cnSync(threads); while ( cnOperate( NULL, threads ) );
 		freeProgram( threads );
-		freeStory( story ); } }
+		freeStory( story ); }
+
+	cnExit( 1 ); }
 

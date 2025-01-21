@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "traverse.h"
 #include "scour.h"
+#include "traverse.h"
 #include "locate_mark.h"
 #include "locate_pivot.h"
 
@@ -12,7 +12,7 @@
 #include "locate_pivot_traversal.h"
 typedef struct {
 	char *expression;
-	int primary, secondary;
+	unsigned int primary, secondary;
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;

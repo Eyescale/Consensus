@@ -538,10 +538,12 @@ io_pop( CNIO *io )
 	if ( previous!=IOBuffer ) {
 		io->line = cast_i( pair->value );
 		io->column = 0; }
+	freePair( pair );
 
 	pair = popListItem( stack );
 	io->stream = pair->name;
 	io->path = pair->value;
+	freePair( pair );
 	return 0; }
 
 //===========================================================================

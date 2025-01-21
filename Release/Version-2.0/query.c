@@ -114,13 +114,15 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *traverse_CB )
 	int privy = data->privy;
 	Pair *pivot = data->pivot;
 	CNInstance *e;
-	listItem *i, *j;
+	listItem *i, *j, *pvi ;
 	if ( !strncmp( pivot->name, "%|", 2 ) ) {
 		i = pivot->value;
-		e = i->ptr; }
+		e = i->ptr;
+		pvi = NULL; }
 	else {
 		e = pivot->value;
-		i = newItem( e ); }
+		i = newItem( e );
+		pvi = i; }
 	listItem *exponent = data->exponent;
 	CNInstance *success = NULL;
 #ifdef DEBUG
@@ -177,8 +179,7 @@ RETURN:
 		int exp = (int) exponent->ptr;
 		if ( exp & SUB ) freeItem( i );
 		i = popListItem( &stack ); }
-	if ( strncmp( pivot->name, "%|", 2 ) )
-		freeItem( i );
+	if (( pvi )) freeItem( pvi );
 	return success;
 }
 

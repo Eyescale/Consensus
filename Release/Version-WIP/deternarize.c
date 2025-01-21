@@ -2,16 +2,18 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "deternarize.h"
 #include "expression.h"
 #include "errout.h"
 
-typedef int BMTernaryCB( char *, void * );
+#include "deternarize.h"
+#include "deternarize_traversal.h"
 
 //===========================================================================
-//	deternarize_traversal
+//	bm_deternarize
 //===========================================================================
-#include "deternarize_traversal.h"
+static char * deternarize( char *, listItem **, BMTraverseData *, char * );
+static void s_scan( CNString *, listItem * );
+typedef int BMTernaryCB( char *, void * );
 typedef struct {
 	BMTernaryCB *user_CB;
 	void *user_data;
@@ -20,8 +22,159 @@ typedef struct {
 	listItem *sequence;
 	Pair *segment;
 	} DeternarizeData;
+static BMTernaryCB pass_CB;
 
-static void s_scan( CNString *, listItem * );
+char *
+bm_deternarize( char **candidate, int type, BMContext *ctx )
+/*
+	build Sequence:{
+		| [ segment:Segment, NULL ]
+		| [ NULL, sub:Sequence ]
+		| [ NULL, NULL ] // ~.
+		}
+	where
+		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+
+	and convert into string
+
+   Note
+	only ternary-operated sequences are pushed on stack.sequence
+*/ {
+	if ( !type || type&LOCALE ) return NULL;
+#ifdef DEBUG
+	fprintf( stderr, "bm_deternarize: bgn - candidate: %s\n", *candidate );
+#endif
+
+	char *expression = *candidate;
+	if ( !expression || !strcmp( expression, ":<" ) )
+		return NULL;
+
+	char *deternarized = NULL;
+	int traverse_mode = TERNARY|INFORMED;
+	if ( type&DO ) traverse_mode |= LITERAL;
+
+	DeternarizeData data;
+	memset( &data, 0, sizeof(data) );
+	data.user_CB = pass_CB;
+	data.user_data = ctx;
+
+	BMTraverseData traversal;
+	traversal.user_data = &data;
+	traversal.stack = &data.stack.flags;
+	traversal.done = traverse_mode;
+
+	if ( *expression!=':' ) {
+		deternarize( expression, NULL, &traversal, expression );
+		if (( data.sequence )) {
+			// convert sequence to char *string
+			CNString *s = newString();
+			s_scan( s, data.sequence );
+			deternarized = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			// release sequence
+			free_deternarized( data.sequence ); } }
+	else {
+		char *p = expression + 1, *q;
+		listItem *sequence[ 2 ] = { NULL, NULL };
+		p = deternarize( p, &sequence[0], &traversal, expression );
+		if ( *(q=p) ) {
+			data.sequence = NULL;
+			traversal.done = traverse_mode;
+			q = deternarize( p+1, &sequence[1], &traversal, expression ); }
+		if ((sequence[ 0 ])||(sequence[ 1 ])) {
+			CNString *s = newString();
+			if (( sequence[ 0 ] )) {
+				StringAppend( s, ':' );
+				s_scan( s, sequence[ 0 ] ); }
+			else s_append( expression, p )
+			if (( sequence[ 1 ] )) {
+				StringAppend( s, *p );
+				s_scan( s, sequence[ 1 ] ); }
+			else s_append( p, q )
+			deternarized = StringFinish( s, 0 );
+			StringReset( s, CNStringMode );
+			freeString( s );
+			// release sequences
+			free_deternarized( sequence[ 0 ] );
+			free_deternarized( sequence[ 1 ] ); } }
+#ifdef DEBUG
+	fprintf( stderr, "bm_deternarize: end - expression: %s\n", expression );
+#endif
+	return ( !!deternarized ? ((*candidate=deternarized),expression) : NULL ); }
+
+static int
+pass_CB( char *guard, void *user_data ) {
+	BMContext *ctx = user_data;
+	return !!bm_feel( BM_CONDITION, guard, ctx ); }
+
+static void
+s_scan( CNString *s, listItem *sequence )
+/*
+	scan ternary-operator guard
+		Sequence:{
+			| [ NULL, sub:Sequence ]
+			| [ segment:Segment, NULL ]
+			| [ NULL, NULL ] // ~.
+			}
+		where
+			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
+	into CNString
+*/ {
+	listItem *stack = NULL;
+	listItem *i = sequence;
+	for ( ; ; ) {
+		Pair *item = i->ptr;
+		if (( item->value )) {
+			// item==[ NULL, sub:Sequence ]
+			if (( i->next )) addItem( &stack, i->next );
+			i = item->value; // parse sub-sequence
+			continue; }
+		else if (( item->name )) {
+			// item==[ segment:Segment, NULL ]
+			Pair *segment = item->name;
+			s_append( segment->name, segment->value ) }
+		else s_add( "~." )
+		// moving on
+		if (( i->next ))
+			i = i->next;
+		else if (( stack ))
+			i = popListItem( &stack );
+		else break; } }
+
+//---------------------------------------------------------------------------
+//	deternarize
+//---------------------------------------------------------------------------
+static char *
+deternarize( char *p, listItem **s, BMTraverseData *traversal, char *expression ) {
+	DeternarizeData *data = traversal->user_data;
+	data->segment = newPair( p, NULL );
+
+	p = deternarize_traversal( p, traversal, FIRST );
+
+	if ((data->stack.sequence)||(data->stack.flags)) {
+		errout( DeternarizeMemoryLeak, expression, p, data->stack.sequence, data->stack.flags );
+		freeListItem( &data->stack.sequence );
+		freeListItem( &data->stack.flags );
+		exit( -1 ); }
+
+	if ( !data->ternary )
+		freePair( data->segment );
+	else {
+		// finish sequence
+		listItem **sequence = &data->sequence;
+		Pair *segment = data->segment;
+		if ( segment->name != p ) {
+			segment->value = p;
+			addItem( sequence, newPair( segment, NULL ) ); }
+		else freePair( segment );
+		reorderListItem( sequence );
+		if (( s )) *s = *sequence; }
+	return p; }
+
+//---------------------------------------------------------------------------
+//	deternarize_traversal
+//---------------------------------------------------------------------------
 static char *optimize( Pair *, char * );
 
 BMTraverseCBSwitch( deternarize_traversal )
@@ -112,40 +265,6 @@ case_( close_CB )
 	_break
 BMTraverseCBEnd
 
-static void
-s_scan( CNString *s, listItem *sequence )
-/*
-	scan ternary-operator guard
-		Sequence:{
-			| [ NULL, sub:Sequence ]
-			| [ segment:Segment, NULL ]
-			| [ NULL, NULL ] // ~.
-			}
-		where
-			Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-	into CNString
-*/ {
-	listItem *stack = NULL;
-	listItem *i = sequence;
-	for ( ; ; ) {
-		Pair *item = i->ptr;
-		if (( item->value )) {
-			// item==[ NULL, sub:Sequence ]
-			if (( i->next )) addItem( &stack, i->next );
-			i = item->value; // parse sub-sequence
-			continue; }
-		else if (( item->name )) {
-			// item==[ segment:Segment, NULL ]
-			Pair *segment = item->name;
-			s_append( segment->name, segment->value ) }
-		else s_add( "~." )
-		// moving on
-		if (( i->next ))
-			i = i->next;
-		else if (( stack ))
-			i = popListItem( &stack );
-		else break; } }
-
 static char *
 optimize( Pair *segment, char *p )
 /*
@@ -157,121 +276,6 @@ optimize( Pair *segment, char *p )
 		char *end = segment->value; // segment ended after '('
 		if (( bgn==end-1 ) || !strmatch( "~*%.)", *(end-2) ))
 			{ segment->value--; return p+1; } }
-	return p; }
-
-//===========================================================================
-//	bm_deternarize
-//===========================================================================
-static char * deternarize( char *, listItem **, BMTraverseData *, char * );
-static BMTernaryCB pass_CB;
-
-char *
-bm_deternarize( char **candidate, int type, BMContext *ctx )
-/*
-	build Sequence:{
-		| [ segment:Segment, NULL ]
-		| [ NULL, sub:Sequence ]
-		| [ NULL, NULL ] // ~.
-		}
-	where
-		Segment:[ name, value ]	// a.k.a. { char *bgn, *end; } 
-
-	and convert into string
-
-   Note
-	only ternary-operated sequences are pushed on stack.sequence
-*/ {
-	if ( type&LOCALE ) return NULL;
-
-	char *expression = *candidate;
-	if ( !expression || !strcmp( expression, ":<" ) )
-		return NULL;
-
-	char *deternarized = NULL;
-	int traverse_mode = TERNARY|INFORMED;
-	if ( type&DO ) traverse_mode |= LITERAL;
-
-	DeternarizeData data;
-	memset( &data, 0, sizeof(data) );
-	data.user_CB = pass_CB;
-	data.user_data = ctx;
-
-	BMTraverseData traverse_data;
-	traverse_data.user_data = &data;
-	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = traverse_mode;
-
-	if ( *expression!=':' ) {
-		deternarize( expression, NULL, &traverse_data, expression );
-		if (( data.sequence )) {
-			// convert sequence to char *string
-			CNString *s = newString();
-			s_scan( s, data.sequence );
-			deternarized = StringFinish( s, 0 );
-			StringReset( s, CNStringMode );
-			freeString( s );
-			// release sequence
-			free_deternarized( data.sequence ); } }
-	else {
-		char *p = expression + 1, *q;
-		listItem *sequence[ 2 ] = { NULL, NULL };
-		p = deternarize( p, &sequence[0], &traverse_data, expression );
-		if ( *(q=p) ) {
-			data.sequence = NULL;
-			traverse_data.done = traverse_mode;
-			q = deternarize( p+1, &sequence[1], &traverse_data, expression ); }
-		if ((sequence[ 0 ])||(sequence[ 1 ])) {
-			CNString *s = newString();
-			if (( sequence[ 0 ] )) {
-				StringAppend( s, ':' );
-				s_scan( s, sequence[ 0 ] ); }
-			else s_append( expression, p )
-			if (( sequence[ 1 ] )) {
-				StringAppend( s, ',' );
-				s_scan( s, sequence[ 1 ] ); }
-			else s_append( p, q )
-			deternarized = StringFinish( s, 0 );
-			StringReset( s, CNStringMode );
-			freeString( s );
-			// release sequences
-			free_deternarized( sequence[ 0 ] );
-			free_deternarized( sequence[ 1 ] ); } }
-
-	return ( !!deternarized ? ((*candidate=deternarized),expression) : NULL ); }
-
-static int
-pass_CB( char *guard, void *user_data ) {
-	BMContext *ctx = user_data;
-	return !!bm_feel( BM_CONDITION, guard, ctx ); }
-
-//---------------------------------------------------------------------------
-//	deternarize
-//---------------------------------------------------------------------------
-static char *
-deternarize( char *p, listItem **s, BMTraverseData *traverse_data, char *expression ) {
-	DeternarizeData *data = traverse_data->user_data;
-	data->segment = newPair( p, NULL );
-
-	p = deternarize_traversal( p, traverse_data, FIRST );
-
-	if ((data->stack.sequence)||(data->stack.flags)) {
-		errout( DeternarizeMemoryLeak, data->stack.sequence, expression, p );
-		freeListItem( &data->stack.sequence );
-		freeListItem( &data->stack.flags );
-		exit( -1 ); }
-
-	if ( !data->ternary )
-		freePair( data->segment );
-	else {
-		// finish sequence
-		listItem **sequence = &data->sequence;
-		Pair *segment = data->segment;
-		if ( segment->name != p ) {
-			segment->value = p;
-			addItem( sequence, newPair( segment, NULL ) ); }
-		else freePair( segment );
-		reorderListItem( sequence );
-		if (( s )) *s = *sequence; }
 	return p; }
 
 //===========================================================================

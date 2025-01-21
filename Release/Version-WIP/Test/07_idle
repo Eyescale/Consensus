@@ -1,7 +1,7 @@
 :
 	on init
 		do ( a, ( b, c ))
-	else on ~.
+	else on ~.: .
 		do >"Bye\n"
 		do exit
 

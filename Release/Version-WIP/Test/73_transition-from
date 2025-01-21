@@ -1,0 +1,19 @@
+
+	on init
+		do : a
+		do : C : !! Toto
+	else on : a
+		do : b
+	else on ~(:?) < *C
+		do >"from Main: caught C leaving %_\n": %<?>
+		do exit
+
+: Toto
+	on init
+		do : y
+	else on : y
+		do : z
+	else on : z
+		on ~(:?)
+			do >"Oops: caught myself leaving %_\n" : %?
+	else do exit

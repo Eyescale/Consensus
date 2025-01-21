@@ -11,7 +11,7 @@
 static char *prune_level( char * );
 static char *prune_term( char *, PruneType );
 static char *prune_ternary( char * );
-static char *prune_sub( char *, int );
+static char *prune_sub( char * );
 static char *prune_mod( char * );
 static char *prune_format( char * );
 static char *prune_char( char * );
@@ -27,12 +27,12 @@ p_prune( PruneType type, char *p )
 	case PRUNE_LEVEL:
 		return prune_level( p );
 	case PRUNE_TERM:
-	case PRUNE_FILTER: ;
+	case PRUNE_FILTER:
 		return prune_term( p, type );
 	case PRUNE_TERNARY:
 		return prune_ternary( p );
 	case PRUNE_LITERAL:
-		return prune_sub( p, 0 );
+		return prune_sub( p );
 	case PRUNE_LIST:
 		return prune_list( p );
 	case PRUNE_IDENTIFIER:
@@ -40,7 +40,7 @@ p_prune( PruneType type, char *p )
 		case '"':  return prune_format( p );
 		case '\'': return prune_char( p );
 		case '/':  return prune_regex( p );
-		case '(':  return prune_sub( p, 0 );
+		case '(':  return prune_sub( p );
 		default:
 			while ( !is_separator(*p) ) p++;
 			return p; } } }
@@ -79,7 +79,7 @@ prune_term( char *p, PruneType type ) {
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
-			p = prune_sub( p, 0 );
+			p = prune_sub( p );
 			switch ( *p ) {
 			case '(':
 			case '{':
@@ -88,6 +88,7 @@ prune_term( char *p, PruneType type ) {
 			informed = 1;
 			break;
 		case ':':
+			if ( p[1]=='|' ) { p+=2; break; }
 			if ( type==PRUNE_FILTER )
 				return p;
 			informed = 0;
@@ -97,10 +98,11 @@ prune_term( char *p, PruneType type ) {
 			informed = 1;
 			p++; break;
 		case '%':
-			if ( p[1]=='(' )
-				{ p++; break; }
-			p = prune_mod( p );
-			informed = 1; break;
+			if ( p[1]=='(' ) p++;
+			else {
+				p = prune_mod( p );
+				informed = 1; }
+			break;
 		case '*':
 			if ( p[1]=='^' )
 				{ p++; break; }
@@ -172,7 +174,7 @@ prune_ternary( char *p )
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
-			p = prune_sub( p, 0 );
+			p = prune_sub( p );
 			informed = 1; break;
 		case ',':
 		case ')':
@@ -185,6 +187,7 @@ prune_ternary( char *p )
 			else informed = 1;
 			p++; break;
 		case ':':
+			if ( p[1]=='|' ) { p+=2; break; }
 			if ( ternary ) {
 				ternary--;
 				if ( start=='?' ) {
@@ -209,9 +212,12 @@ prune_ternary( char *p )
 			if ( p[1]=='^' )
 				{ p++; break; }
 		case '.':
-			if ( p[1]=='?' ) p+=2;
+			if ( p[1]=='?' || p[1]=='.' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
+		case '|':
+			informed = 0;
+			p++; break;
 		default:
 			do p++; while ( !is_separator(*p) );
 			informed = 1; } }
@@ -223,11 +229,12 @@ RETURN:
 //	prune_sub
 //---------------------------------------------------------------------------
 static char *
-prune_sub( char *p, int level )
+prune_sub( char *p )
 /*
 	Assumption: *p=='(' and no format string authorized in level
 	return after closing ')'
 */ {
+	int level = 0;
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
@@ -247,17 +254,16 @@ prune_sub( char *p, int level )
 			p = prune_regex( p );
 			break;
 		case '.':
-			if ( p[1]=='.' ) {
-				if ( p[2]=='.' ) {
-					// level should be at least 2 for list
-					if ( level && !strncmp( p+3, "):", 2 ) ) {
-						p = prune_list( p );
-						level--; // here *p==')'
-						if ( !level ) return p; }
-					else p+=3; }
-				else p+=2;
-				break; }
-			// no break
+			if ( !strncmp( p, "...", 3 ) ) {
+				if ( !strncmp( p+3, "):", 2 ) ) {
+					p = prune_list( p );
+					level--; // prune_list did skip "):"
+					if ( level ) break;
+					else return p; }
+				else { p+=3; break; } }
+			else if ( p[1]=='?' || p[1]=='.' ) {
+				p+=2; break; }
+			// no break;
 		default:
 			do p++; while ( !is_separator(*p) ); } }
 	return p; }
@@ -277,7 +283,7 @@ prune_mod( char *p )
 		case '!':
 			for ( p+=3; *p!='>'; )
 				switch ( *p ) {
-				case '(':  p = prune_sub( p, 0 ); break;
+				case '(':  p = prune_sub( p ); break;
 				case '\'': p = prune_char( p ); break;
 				case '/':  p = prune_regex( p ); break;
 				default:
@@ -359,25 +365,20 @@ prune_regex( char *p )
 static char *
 prune_list( char *p )
 /*
-	Assumption: p can be point to either one of the following
+	Assumption: p points to the first dot of Ellipsis in
 		((expression,...):sequence:)
-		|	     ^------------------ p (Ellipsis)
-		^------------------------------- p (expression)
-	In the first case (Ellipsis) we return on the closing ')'
-	In the second case (expression) we return after the closing ')'
+			     ^-------- p
+	return on first non-backslased ')', or '(' or '\0'
 */ {
-	if ( *p=='(' ) // not called from prune_sub
-		return prune_sub( p, 0 );
 	p += 5;
 	while ( *p ) {
 		switch ( *p ) {
-		case ':':
-			if ( p[1]==')' )
-				return p+1;
-			p++; break;
+		case ')':
+		case '(':
+			return p;
 		case '\\':
 			if ( p[1] ) p++;
-			// no break
+			p++; break;
 		default:
 			p++; } }
 	return p; }

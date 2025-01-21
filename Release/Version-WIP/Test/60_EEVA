@@ -10,7 +10,7 @@
 		do > "- yep!\n"
 		do exit
 	else
-		do >"- nope\n"
+		do >"- nop\n"
 
 : Titi
 	do > "===================\n"
@@ -23,4 +23,4 @@
 		do > "= bye\n"
 		do exit
 	else
-		do > "= nope\n"
+		do > "= nop\n"

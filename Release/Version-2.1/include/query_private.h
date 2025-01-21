@@ -1,6 +1,10 @@
 #ifndef QUERY_PRIVATE_H
 #define QUERY_PRIVATE_H
 
+typedef BMCBTake XPTraverseCB( CNInstance *, char *, BMQueryData * );
+typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
+#define uneq( i, operand ) ((i) && ( operand!=cast_i(i->ptr) ))
+
 //---------------------------------------------------------------------------
 //	PUSH and POP
 //---------------------------------------------------------------------------
@@ -39,10 +43,8 @@
 		else break; }
 
 #define POP_XPi( stack, exponent ) { \
-	union { void *ptr; int value; } exp; \
 	exponent = popListItem( &stack ); \
-	exp.ptr = exponent->ptr; \
-	if ( exp.value & SUB ) freeItem( i ); \
+	if ( cast_i(exponent->ptr) & SUB ) freeItem( i ); \
 	i = popListItem( &stack ); }
 
 #define POP_ALL( stack ) \
@@ -61,19 +63,19 @@
 #define LUSH( stack, lm, LOP ) \
 	if ( lm==3 ) { \
 		stack = (void*)CNSUB(e,0); } \
-	else if ( !lm ) { \
-		lm=2; addItem( &stack, i ); } \
-	else { /* lm==1 or lm==2 */ \
+	else if ( lm ) { /* lm==1 or lm==2 */ \
 		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) \
 			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
-		if (( j )) { \
+		if ( !j ) { lm=NEG(lm); goto LOP; } \
+		else { \
 			addItem( &stack, i ); \
 			addItem( &stack, j ); \
-			i = j; e = i->ptr; } \
-		else { lm=NEG(lm); goto LOP; } } \
+			i = j; e = i->ptr; } } \
+	else { /* lm==0 */ \
+		lm=2; addItem( &stack, i ); } \
 
-#define LOP( stack, lm, LUSH, NEXT ) \
+#define LOP( stack, lm, LUSH ) \
 	if ( lm==3 ) { \
 		if (( e=(void*)stack )) goto LUSH; } \
 	else if ( lm > 0 ) { /* lm==1 or lm==2 */ \
@@ -86,32 +88,27 @@
 				i = i->next; \
 				if ( !db_private( privy, i->ptr, db ) ) { \
 					e = i->ptr; goto LUSH; } } \
-			else i = popListItem( &stack ); } } \
-	if ( !NEXT ) break;
+			else i = popListItem( &stack ); } }
 
 //---------------------------------------------------------------------------
-//	LFLUSH, CND_LXj
+//	if_LDIG and LFLUSH
 //---------------------------------------------------------------------------
-#define LFLUSH( list_exp, i, list_i, stack ) { \
-	if ( list_exp & 1 ) { \
-		switch ( list_exp-- ) { \
-		case 7: while (( j=popListItem(&list_i) )) i=j; break; \
-		default: freeItem( i ); i = list_i; } \
-		list_i = popListItem( &stack ); } }
-
-#define CND_LXj( list_exp, x, i, list_i, stack ) { \
+/*
+	list_expr parity bit indicates whether stack_list_i was informed
+*/
+#define if_LDIG( list_expr, x, i, list_i, stack_list_i ) { \
 	CNInstance *y; \
-	switch ( list_exp ) { \
+	switch ( list_expr ) { \
 	case 2: case 4: ; /* %(list,...) or %(list,?:...) */ \
 		if ((x) && ( y=CNSUB(x,0) )) { \
-			list_exp++; \
-			addItem( &stack, list_i ); \
-			list_i = i; j = newItem( y ); } \
+			addItem( &stack_list_i, list_i ); \
+			list_i=i; j=newItem( y ); \
+			list_expr++; } \
 		else j = NULL; \
 		break; \
 	case 3: case 5: /* %(list,...) or %(list,?:...) */ \
 		if ((x) && ( y=CNSUB(x,0) )) { \
-			i->ptr = y; j = i; } \
+			i->ptr=y; j=i; } \
 		else j = NULL; \
 		break; \
 	case 6: case 7: /* %((?,...):list) */ \
@@ -119,25 +116,30 @@
 			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
 		if (( j )) { \
-			if ( list_exp==6 ) { \
-				list_exp++; \
-				addItem( &stack, list_i ); } \
+			if ( list_expr==6 ) { \
+				addItem( &stack_list_i, list_i ); \
+				list_expr++; } \
 			addItem( &list_i, i ); } \
-		else j = pop_list_i( i, &list_i, privy, db ); \
+		else while (( list_i )) { \
+			if (( i=i->next )) { \
+				if ( !db_private(privy,i->ptr,db) ) \
+					{ j=i; break; } } \
+			else i = popListItem( &list_i ); } \
 		break; } } \
 	if ( !j ) \
-		LFLUSH( list_exp, i, list_i, stack ) \
+		LFLUSH( list_expr, i, list_i, stack_list_i ) \
 	else
 
-static inline listItem *
-pop_list_i( listItem *i, listItem **list_i, int privy, CNDB *db ) {
-	while (( *list_i )) {
-		if (( i->next )) {
-			i = i->next;
-			if ( !db_private( privy, i->ptr, db ) )
-				return i; }
-		else i = popListItem( list_i ); }
-	return NULL; }
+#define LFLUSH( list_expr, i, list_i, stack_list_i ) { \
+	if ( list_expr & 1 ) { \
+		switch ( list_expr-- ) { \
+		case 3: case 5: /* %(list,...) or %(list,?:...) */ \
+			freeItem( i ); i=list_i; \
+			break; \
+		case 7: /* %((?,...):list) */ \
+			while (( j=popListItem(&list_i) )) i=j; \
+			break; } \
+		list_i = popListItem( &stack_list_i ); } }
 
 //---------------------------------------------------------------------------
 //	assignment	- query_assignment utility

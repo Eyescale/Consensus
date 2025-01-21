@@ -99,7 +99,7 @@ bm_arena_transpose( CNInstance *x, CNDB *db ) {
 	if (( entry )) return entry->value;
 	else {
 		CNInstance *instance = cn_new( NULL, NULL );
-		if (( DBIdentifier(x) ))
+		if (( CNIdentifier(x) ))
 			instance->sub[ 1 ] = x->sub[ 1 ];
 		else	instance->sub[ 1 ] = (CNInstance *) newPair( NULL, ref );
 		registryRegister( ref, db, instance );
@@ -178,7 +178,8 @@ freeArena( CNArena *arena ) {
 	listItem **ube_arena = (listItem **) &arena->value;
 	for ( Pair *ube;( ube=popListItem(ube_arena) ); ) {
 		freeRegistry( ube->value, flush_CB );
-		freePair( ube ); } }
+		freePair( ube ); }
+	freePair( arena ); }
 
 static void free_string_CB( Registry *arena, Pair *entry ) {
 	Registry *ref = entry->value;

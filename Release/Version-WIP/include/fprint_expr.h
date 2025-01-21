@@ -19,9 +19,9 @@ typedef enum {
 #define RETAB( level ) { \
 	fprintf( stream, level==ground?"\n\t":"\n" ); \
 	TAB(level) }
-#define test( what ) stacktest_( stack, what )
+#define test_( what ) stacktest_( stack, what )
 #define test_PIPE( count ) \
-	( test(TYPE)==PIPE && test(COUNT)==(count) )
+	( test_(TYPE)==PIPE && test_(COUNT)==(count) )
 #define pop( level, count ) stackpop_( &stack, level, count )
 #define push( type, level, count ) stackpush_( &stack, type, level, count )
 #define retype( type ) retype_( stack, type )

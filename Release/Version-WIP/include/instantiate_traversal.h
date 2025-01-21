@@ -5,12 +5,12 @@
 
 static BMTraversal instantiate_traversal;
 #define case_( CB ) \
-} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-	InstantiateData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traversal, char **q, int flags, int f_next ) { \
+	InstantiateData *data = traversal->user_data; char *p = *q;
 
 static BMTraverseCB
 	filter_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB, open_CB,
-	close_CB, newborn_CB, loop_CB, activate_CB, collect_CB, decouple_CB,
+	close_CB, newborn_CB, loop_CB, activate_CB, collect_CB, comma_CB,
 	wildcard_CB, register_variable_CB, literal_CB, list_CB, dot_expression_CB,
 	dot_identifier_CB, identifier_CB, signal_CB;
 
@@ -27,7 +27,7 @@ static BMTraverseCB
 #define BMDereferenceCB		collect_CB
 #define BMNotCB			collect_CB
 #define BMSubExpressionCB	collect_CB
-#define BMDecoupleCB		decouple_CB
+#define BMCommaCB		comma_CB
 #define BMWildCardCB		wildcard_CB
 #define BMRegisterVariableCB	register_variable_CB
 #define BMLiteralCB		literal_CB

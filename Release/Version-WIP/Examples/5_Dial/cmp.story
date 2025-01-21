@@ -35,7 +35,7 @@
 			do : CMP
 		else on : .  // dial operation on next digit(s)
 			in : p : (.,?)
-				do : *dial : (%?,(*q?%(*q:(.,?)):0))
+				do : *dial : (%?,( *q ? %(*q:(.,?)) : 0 ))
 			else in : q : (.,?)
 				do : *dial : ( 0, %? )
 			else

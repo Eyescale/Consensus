@@ -5,17 +5,18 @@
 //	macros
 //===========================================================================
 #define BMTraverseCBSwitch( user_traversal ) \
-static char *user_traversal( char *expression, BMTraverseData *traverse_data, int flags ) { \
-	return bm_traverse( expression, traverse_data, flags );
+static char *user_traversal( char *expression, BMTraverseData *traversal, int flags ) { \
+	return bm_traverse( expression, traversal, flags );
 
 #define _prune( take, p )	return ( *q=(p), take );
-#define _return( val )		return ( traverse_data->done=(val), BM_DONE );
+#define _branch( cb, p )	return ( *q=(p), cb(traversal,q,flags,f_next) );
+#define _return( val )		return ( traversal->done=(val), BM_DONE );
 #define _continue( p )		return ( *q=(p), BM_DONE );
 #define	_break			return BM_CONTINUE;
 #define BMTraverseCBEnd		}
 
 #define _CB( cb ) \
-	switch ( cb(traverse_data,&p,flags,f_next) ) {	\
+	switch ( cb(traversal,&p,flags,f_next) ) {	\
 	case BM_DONE: continue;				\
 	case BM_CONTINUE: break;			\
 	case BM_PRUNE_FILTER:				\
@@ -43,6 +44,7 @@ static char *user_traversal( char *expression, BMTraverseData *traverse_data, in
 	BMEndSetCB
 	BMBgnPipeCB
 	BMEndPipeCB
+	BMTagCB
 	BMModCharacterCB
 	BMStarCharacterCB
 	BMEMarkCharacterCB
@@ -52,8 +54,9 @@ static char *user_traversal( char *expression, BMTraverseData *traverse_data, in
 	BMDereferenceCB
 	BMLiteralCB
 	BMListCB
-	BMDecoupleCB
+	BMCommaCB
 	BMFilterCB
+	BMPipeAssignCB
 	BMWildCardCB
 	BMDotExpressionCB
 	BMDotIdentifierCB
@@ -126,6 +129,12 @@ static char *user_traversal( char *expression, BMTraverseData *traverse_data, in
 #define CB_EndPipeCB
 #endif
 
+#ifdef BMTagCB
+#define CB_TagCB	_CB( BMTagCB )
+#else
+#define CB_TagCB
+#endif
+
 #ifdef BMModCharacterCB
 #define CB_ModCharacterCB	_CB( BMModCharacterCB )
 #else
@@ -180,16 +189,22 @@ static char *user_traversal( char *expression, BMTraverseData *traverse_data, in
 #define CB_ListCB	p = p_prune( PRUNE_LIST, p );
 #endif
 
-#ifdef BMDecoupleCB
-#define CB_DecoupleCB	_CB( BMDecoupleCB )
+#ifdef BMCommaCB
+#define CB_CommaCB	_CB( BMCommaCB )
 #else
-#define CB_DecoupleCB
+#define CB_CommaCB
 #endif
 
 #ifdef BMFilterCB
 #define CB_FilterCB	_CB( BMFilterCB )
 #else
 #define CB_FilterCB
+#endif
+
+#ifdef BMPipeAssignCB
+#define CB_PipeAssignCB	_CB( BMPipeAssignCB )
+#else
+#define CB_PipeAssignCB
 #endif
 
 #ifdef BMWildCardCB

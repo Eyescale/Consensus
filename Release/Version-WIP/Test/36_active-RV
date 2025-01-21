@@ -1,6 +1,6 @@
 
 	on init
-		do : toto : !! Cell()
+		do : toto : !! Cell
 	else in ?:%@
 		do >"found active: %_\n": %(*?:%?)
 		do exit

@@ -1,11 +1,16 @@
 :
+	do >"------------------------\n"
 	en .
 	on init
 		do (((list,a),b),c)
+	else on list
+//		do >: %(list,...)
 	else
-		do >: %(list,...)
+		do >:.
 		do exit
 
-:( ( .passthrough, ... ), ... )
+// :( .passthrough )
+:( .passthrough, ... )
+// :( ( .passthrough, ... ), ... )
 	do >"hi from ( %_,...) as %_\n": < passthrough, this >
-	do exit
+//	do exit

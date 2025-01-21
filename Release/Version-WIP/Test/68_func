@@ -1,0 +1,23 @@
+
+	on init
+		do ( toto, titi )
+	else on toto
+		do >"=============\n"
+		en test ( toto, titi )
+	else
+		do >"=============\n"
+		en toto
+		do exit
+
+.:test( .occurrence, .state )
+	//Note that caller's context .perso, .locales is preserved
+	in this
+		do >"testing from: %_\n""occurrence=%_, state=%_\n": <
+			this, occurrence, state >
+	else
+		do >"testing from: main\n""occurrence=%_, state=%_\n": <
+			occurrence, state >
+
+:( toto )
+	en test %( toto, titi )
+

@@ -1,0 +1,58 @@
+Objective
+	Allocate shared entities (UBE and Strings) from story arena
+
+Description
+	bm_arena_register( arena, s, db ) returns
+		e:( NULL, [ s, {[db,e]} ] ) 
+		  ^	  ^-------------------- shared arena part
+		   ---------------------------- db-specific
+
+	ube arena is a list of all registered [ NULL, {[db,e]} ]
+	string arena is the {[ s, {[db,e]} ]} registry
+
+	In addition, the registering context maintains the "$" lists
+	of all [ ., {[db,e]} ] pertaining to the context's DB
+		=> added upon instantiation
+		=> removed upon db_udpdate() or cell out
+
+Use case cell out
+	When a cell goes out we must deregister the cell's db from all
+	shared entities, for which we use the cell's context's "$" lists
+
+	Right now bm_arena_deregister() removes dangling entities
+	directly, but actually should be listed, so that bm_arena_flush()
+	can be implemented as below - and the whole arena traversed only
+	once.
+
+	=> must retype story arena from registry to something else, e.g.
+	[[ strings:Registry, ube:Registry ], discard:listItem ]
+
+Use case string lookup
+	In case of string shared entity we need to be able to lookup
+	a string in the string Registry, as the same string may be
+	referenced in various ways from various narratives:
+
+		do "string"		// instantiation
+		do :_:"string"		// assignment
+		:"string"		// sub-narrative
+
+	In case of sub-narrative, we cache string entity when found as
+		narrative->root->expression
+
+	This requires it to be reset to NULL when entity removed, via
+
+void
+bm_arena_flush( CNStory *story, listItem *list )
+/*
+	where list is the list of removed string entities
+*/ {
+	for ( listItem *i=story->narratives->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		listItem *narratives = entry->value;
+		for ( listITem *j=narratives->next; j!=NULL; j=j->next ) {
+			CNNarrative *narrative = j->ptr;
+			CNInstance *e = (CNInstance *) narrative->root->expression;
+			if (( e )&&( lookupIfThere(list,e) ))
+				narrative->root->expression=NULL; } } }
+
+

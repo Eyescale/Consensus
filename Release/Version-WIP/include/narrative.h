@@ -19,9 +19,16 @@
 #define OUTPUT		(1<<7)
 #define LOCALE		(1<<8)
 #define PER		(1<<9)
+#define SWITCH		(1<<10)
+#define CASE		(1<<11)
 
+#define IN_S		(IN|SWITCH)
+#define ON_S		(ON|SWITCH)
 #define IN_X		(ON|PER)
 #define PER_X		(ON_X|PER)
+#define EN_X		(EN|PER)
+#define C_IN		(CASE|IN)
+#define C_ON		(CASE|ON)
 
 typedef struct {
 	struct {

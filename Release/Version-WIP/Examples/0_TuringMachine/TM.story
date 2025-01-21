@@ -1,7 +1,6 @@
 on init
 	do (( *, phase ), INPUT )
 	do (( *, state ), INPUT_SEPARATOR )
-	do input: <
 
 else in *phase: INPUT
 	on ((*,input), . )

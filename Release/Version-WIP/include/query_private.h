@@ -1,8 +1,27 @@
 #ifndef QUERY_PRIVATE_H
 #define QUERY_PRIVATE_H
 
+typedef BMQTake XPTraverseCB( CNInstance *, char *, BMQueryData * );
 typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 #define uneq( i, operand ) ((i) && ( operand!=cast_i(i->ptr) ))
+
+#ifdef DEBUG
+#define DBG_OP_SET( db, x, p, success ) \
+	fprintf( stderr, "xp_verify: " ); \
+	switch ( op ) { \
+	case BM_INIT: db_outputf( db, stderr, "BM_INIT x=%_, ", x ); break; \
+	case BM_BGN: db_outputf( db, stderr, "BM_BGN x=%_, ", x ); break; \
+	case BM_END: db_outputf( db, stderr, "BM_END success=%d, ", success ); } \
+	fprintf( stderr, "at '%s'\n", p );
+#define DBG_OP_RETURN( p, success ) \
+	fprintf( stderr, "xp_verify: returning %d, at '%s'\n", success, p );
+#define DBG_OP_SUB_EXPR( p ) \
+	fprintf( stderr, "xp_verify: bgn SUB_EXPR, at '%s'\n", p );
+#else
+#define DBG_OP_SET( db, x, p, success )
+#define DBG_OP_RETURN( p, success )
+#define DBG_OP_SUB_EXPR( p )
+#endif
 
 //---------------------------------------------------------------------------
 //	PUSH and POP
@@ -62,19 +81,19 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 #define LUSH( stack, lm, LOP ) \
 	if ( lm==3 ) { \
 		stack = (void*)CNSUB(e,0); } \
-	else if ( !lm ) { \
-		lm=2; addItem( &stack, i ); } \
-	else { /* lm==1 or lm==2 */ \
+	else if ( lm ) { /* lm==1 or lm==2 */ \
 		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) \
 			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
-		if (( j )) { \
+		if ( !j ) { lm=NEG(lm); goto LOP; } \
+		else { \
 			addItem( &stack, i ); \
 			addItem( &stack, j ); \
-			i = j; e = i->ptr; } \
-		else { lm=NEG(lm); goto LOP; } } \
+			i = j; e = i->ptr; } } \
+	else { /* lm==0 */ \
+		lm=2; addItem( &stack, i ); } \
 
-#define LOP( stack, lm, LUSH, NEXT ) \
+#define LOP( stack, lm, LUSH ) \
 	if ( lm==3 ) { \
 		if (( e=(void*)stack )) goto LUSH; } \
 	else if ( lm > 0 ) { /* lm==1 or lm==2 */ \
@@ -87,32 +106,27 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 				i = i->next; \
 				if ( !db_private( privy, i->ptr, db ) ) { \
 					e = i->ptr; goto LUSH; } } \
-			else i = popListItem( &stack ); } } \
-	if ( !NEXT ) break;
+			else i = popListItem( &stack ); } }
 
 //---------------------------------------------------------------------------
-//	LFLUSH, CND_LXj
+//	if_LDIG and LFLUSH
 //---------------------------------------------------------------------------
-#define LFLUSH( list_exp, i, list_i, stack ) { \
-	if ( list_exp & 1 ) { \
-		switch ( list_exp-- ) { \
-		case 7: while (( j=popListItem(&list_i) )) i=j; break; \
-		default: freeItem( i ); i = list_i; } \
-		list_i = popListItem( &stack ); } }
-
-#define CND_LXj( list_exp, x, i, list_i, stack ) { \
+/*
+	list_expr parity bit indicates whether stack_list_i was informed
+*/
+#define if_LDIG( list_expr, x, i, list_i, stack_list_i ) { \
 	CNInstance *y; \
-	switch ( list_exp ) { \
+	switch ( list_expr ) { \
 	case 2: case 4: ; /* %(list,...) or %(list,?:...) */ \
 		if ((x) && ( y=CNSUB(x,0) )) { \
-			list_exp++; \
-			addItem( &stack, list_i ); \
-			list_i = i; j = newItem( y ); } \
+			addItem( &stack_list_i, list_i ); \
+			list_i=i; j=newItem( y ); \
+			list_expr++; } \
 		else j = NULL; \
 		break; \
 	case 3: case 5: /* %(list,...) or %(list,?:...) */ \
 		if ((x) && ( y=CNSUB(x,0) )) { \
-			i->ptr = y; j = i; } \
+			i->ptr=y; j=i; } \
 		else j = NULL; \
 		break; \
 	case 6: case 7: /* %((?,...):list) */ \
@@ -120,28 +134,55 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 			if ( !db_private( privy, j->ptr, db ) ) \
 				break; \
 		if (( j )) { \
-			if ( list_exp==6 ) { \
-				list_exp++; \
-				addItem( &stack, list_i ); } \
+			if ( list_expr==6 ) { \
+				addItem( &stack_list_i, list_i ); \
+				list_expr++; } \
 			addItem( &list_i, i ); } \
-		else j = pop_list_i( i, &list_i, privy, db ); \
+		else while (( list_i )) { \
+			if (( i=i->next )) { \
+				if ( !db_private(privy,i->ptr,db) ) \
+					{ j=i; break; } } \
+			else i = popListItem( &list_i ); } \
 		break; } } \
 	if ( !j ) \
-		LFLUSH( list_exp, i, list_i, stack ) \
+		LFLUSH( list_expr, i, list_i, stack_list_i ) \
 	else
 
-static inline listItem *
-pop_list_i( listItem *i, listItem **list_i, int privy, CNDB *db ) {
-	while (( *list_i )) {
-		if (( i->next )) {
-			i = i->next;
-			if ( !db_private( privy, i->ptr, db ) )
-				return i; }
-		else i = popListItem( list_i ); }
-	return NULL; }
+#define LFLUSH( list_expr, i, list_i, stack_list_i ) { \
+	if ( list_expr & 1 ) { \
+		switch ( list_expr-- ) { \
+		case 3: case 5: /* %(list,...) or %(list,?:...) */ \
+			freeItem( i ); i=list_i; \
+			break; \
+		case 7: /* %((?,...):list) */ \
+			while (( j=popListItem(&list_i) )) i=j; \
+			break; } \
+		list_i = popListItem( &stack_list_i ); } }
 
 //---------------------------------------------------------------------------
-//	assignment	- query_assignment utility
+//	OP_END, POP_STACK and is_DOUBLE_STARRED
+//---------------------------------------------------------------------------
+#define OP_END( data ) op_end( data ); /* see below */
+
+#define POP_STACK( start_p, i, mark_exp, list_expr, flags ) { \
+	start_p = popListItem( &stack.p ); \
+	i = pop_as_sub( &stack, i, &mark_exp ); \
+	mark_exp = popListItem( &stack.mark_exp ); \
+	list_expr = pop_item( &stack.list_expr ); \
+	flags = pop_item( &stack.flags ); }
+
+#define is_DOUBLE_STARRED( start_p, expression, data ) \
+	( start_p!=expression && !strncmp(start_p-1,"**",2) && op_end(data) )
+
+static inline int
+op_end( BMQueryData *data ) {
+	data->base = popListItem( &data->stack.base );
+	popListItem( &data->stack.scope ); // done with that one
+	data->OOS = ((data->stack.scope) ? data->stack.scope->ptr : NULL );
+	return 1; }
+
+//---------------------------------------------------------------------------
+//	assignment utilities
 //---------------------------------------------------------------------------
 static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
 	// Assumption: e:( *, . ) -> returns first ( e, . )
@@ -149,6 +190,13 @@ static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
 		if ( !db_private( 0, j->ptr, db ) )
 			return j->ptr;
 	return NULL; }
+
+static inline CNInstance *
+assignment_fetch( CNInstance *x, BMQueryData *data ) {
+	/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star */
+	if (( x=CNSUB(x,0) ) && cnStarMatch( x->sub[0] ))
+		return x->sub[ 1 ];
+	else { data->success = 0; return NULL; } }
 
 
 #endif // QUERY_PRIVATE_H

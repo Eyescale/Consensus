@@ -5,14 +5,15 @@
 
 static BMTraversal query_traversal;
 #define case_( CB ) \
-} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-	BMQueryData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traversal, char **q, int flags, int f_next ) { \
+	BMQueryData *data = traversal->user_data; char *p = *q;
 
 static BMTraverseCB
-	filter_CB, match_CB, dot_identifier_CB, dereference_CB, dot_expression_CB,
-	sub_expression_CB, open_CB, decouple_CB, close_CB, wildcard_CB;
+	tag_CB, filter_CB, match_CB, dot_identifier_CB, dot_expression_CB, comma_CB,
+	dereference_CB, sub_expression_CB, open_CB, close_CB, wildcard_CB;
 
-#define BMBgnPipeCB		filter_CB
+
+#define BMTagCB			tag_CB
 #define BMFilterCB		filter_CB
 #define BMRegisterVariableCB	match_CB
 #define BMStarCharacterCB	match_CB
@@ -25,7 +26,7 @@ static BMTraverseCB
 #define BMSubExpressionCB	sub_expression_CB
 #define BMDotExpressionCB	dot_expression_CB
 #define BMOpenCB		open_CB
-#define BMDecoupleCB		decouple_CB
+#define BMCommaCB		comma_CB
 #define BMCloseCB		close_CB
 #define BMWildCardCB		wildcard_CB
 

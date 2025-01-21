@@ -3,6 +3,7 @@
 
 typedef enum {
 	ErrOutNone = 0,
+	BMMemoryLeak,
 	CellLoad,
 	CellInform,
 	ContextLoad,
@@ -14,8 +15,8 @@ typedef enum {
 	DBConcurrentAssignment,
 	DeternarizeMemoryLeak,
 	EENOQueryFiltered,
+	EnPostFrame,
 	ExpressionTagUnknown,
-	InstantiateFiltered,
 	InstantiatePartial,
 	InstantiateClassNotFound,
 	InstantiateClassNotFoundv,

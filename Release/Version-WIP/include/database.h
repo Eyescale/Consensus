@@ -36,14 +36,14 @@ int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
 
-static inline int isRef( CNInstance *e ) {
+static inline int cnIsShared( CNInstance *e ) {
 	return ( ((Pair*) e->sub[ 1 ])->value!=e ); }
-static inline int isUnnamed( CNInstance *e ) {
+static inline int cnIsUnnamed( CNInstance *e ) {
 	return ( ((Pair*) e->sub[ 1 ])->name==NULL ); }
-static inline char * DBIdentifier( CNInstance *e ) {
+static inline char * CNIdentifier( CNInstance *e ) {
 	return (char *) ((Pair*) e->sub[ 1 ])->name; }
-static inline int DBStarMatch( CNInstance *e ) {
-	return ((e) && !(e->sub[0]) && *DBIdentifier(e)=='*' ); }
+static inline int cnStarMatch( CNInstance *e ) {
+	return ((e) && !(e->sub[0]) && *CNIdentifier(e)=='*' ); }
 
 //===========================================================================
 //	proxy
@@ -53,24 +53,24 @@ void		free_proxy( CNEntity *e );
 void		db_fire( CNInstance *, CNDB * );
 
 //---------------------------------------------------------------------------
-//	isProxy, DBProxyThis, DBProxyThat, isProxySelf
+//	cnIsProxy, CNProxyThis, CNProxyThat, cnIsSelf
 //---------------------------------------------------------------------------
-static inline int isProxy( CNInstance *e ) {
+static inline int cnIsProxy( CNInstance *e ) {
 	return ((e->sub[0]) && !e->sub[1]); }
 
-static inline CNEntity * DBProxyThis( CNInstance *proxy ) {
+static inline CNEntity * CNProxyThis( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[0]; }
 
-static inline CNEntity * DBProxyThat( CNInstance *proxy ) {
+static inline CNEntity * CNProxyThat( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[1]; }
 
-static inline int isProxySelf( CNInstance *proxy ) {
-	return !DBProxyThis(proxy); }
+static inline int cnIsSelf( CNInstance *proxy ) {
+	return !CNProxyThis(proxy); }
 
 //---------------------------------------------------------------------------
 //	i/o
 //---------------------------------------------------------------------------
-int	db_outputf( FILE *, CNDB *, char *fmt, ... );
+int	db_outputf( CNDB *, FILE *, char *fmt, ... );
 
 //===========================================================================
 //	op (nil-based)
@@ -139,17 +139,23 @@ static inline int db_manifested( CNInstance *e, CNDB *db ) {
 //---------------------------------------------------------------------------
 //	db_has_newborn
 //---------------------------------------------------------------------------
-static inline int db_has_newborn( listItem *list, CNDB *db )
+static inline int db_has_newborn( listItem *list, int sub, CNDB *db )
 /*
+   argument
+	sub==1 => list=list.sub[0]
+	sub==2 => list=list.sub[1]
    returns
-	1 list contains newborn or reassigned
+	1 if list contains newborn or reassigned
 	0 otherwise
 */ {
 	CNInstance *nil = db->nil, *e, *f, *g;
 	listItem *i, *j, *k;
 	for ( i=list; i!=NULL; i=i->next ) {
 		e = i->ptr;
-		if ( !e ) return !!DBLog( 1, 0, db, NULL );
+		if ( !e ) continue; // not supported
+		else if ( sub==1 ) e = CNSUB( e, 0 );
+		else if ( sub==2 ) e = CNSUB( e, 1 );
+		if ( !e ) continue;
 		for ( j=e->as_sub[0]; j!=NULL; j=j->next ) {
 			f = j->ptr;
 			if ( f->sub[1]!=nil ) continue;

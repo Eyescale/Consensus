@@ -6,46 +6,63 @@
 
 typedef Registry BMContext;
 typedef struct {
-	struct { void *type; listItem *xpn; } *mark;
+	struct { void *type; listItem *xpn; } *data;
 	union { listItem *list; Pair *record; } match;
-} MarkData;
+} BMMark;
 
-void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 int		bm_context_load( BMContext *ctx, char *path );
 void		bm_context_init( BMContext * );
 int		bm_context_update( BMContext *, CNStory * );
+void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
-Pair *		bm_mark( char *, char * );
-void		bm_context_mark( BMContext *, MarkData * );
-MarkData *	bm_context_remark( BMContext *, MarkData * );
-MarkData *	bm_context_unmark( BMContext *, MarkData * );
-listItem *	bm_push_mark( BMContext *, char *, void * );	
-void		bm_pop_mark( BMContext *, char * );
-void		bm_reset_mark( BMContext *, char *, void * );
+BMMark *	bm_mark( char *, char *, unsigned int flags, void * );
+BMMark *	bm_lmark( Pair * );
+void		bm_context_mark( BMContext *, BMMark * );
+BMMark *	bm_context_unmark( BMContext *, BMMark * );
+int 		bm_context_check( BMContext *, BMMark * );
+Pair *		bm_context_push( BMContext *, char *, void * );
+void *		bm_context_pop( BMContext *, char * );
+listItem *	bm_context_take( BMContext *, char *, void * );
+void		bm_context_debug( BMContext *, char * );
 
-void *		bm_lookup( BMContext *, char *, CNDB *, int );
+void *		bm_lookup( int, char *, BMContext *, CNDB * );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
-char *		bm_tag( BMContext *, char *, CNInstance * );
+void		bm_untag( BMContext *, char * );
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
 int		bm_register_locale( BMContext *, char * );
 
 BMContext *	newContext( CNEntity *cell );
 void		freeContext( BMContext * );
 
-static inline void * bm_context_lookup( BMContext *ctx, char *p ) {
-	return bm_lookup( ctx, p, NULL, 0 ); }
-static inline void bm_register_string( BMContext *ctx, CNInstance *e ) {
+static inline Pair * bm_tag( BMContext *ctx, char *tag, void *value ) {
+	return registryRegister( ctx, strmake(tag), value ); }
+static inline Pair * BMTag( BMContext *ctx, char *tag ) {
+	return registryLookup( ctx, tag ); }
+static inline void * BMVal( BMContext *ctx, char *p ) {
+	return bm_lookup( 0, p, ctx, NULL ); }
+
+static inline void bm_cache_string( BMContext *ctx, CNInstance *e ) {
 	Pair *entry = registryLookup( ctx, "$" )->value;
 	addIfNotThere((listItem **)&entry->name, e->sub[1] ); }
-static inline void bm_register_ube( BMContext *ctx, CNInstance *e ) {
+static inline void bm_cache_ube( BMContext *ctx, CNInstance *e ) {
 	Pair *entry = registryLookup( ctx, "$" )->value;
 	addIfNotThere((listItem **)&entry->value, e->sub[1] ); }
-static inline void bm_deregister( BMContext *ctx, CNInstance *e ) {
+static inline CNInstance * bm_lookup_string( BMContext *ctx, char *s ) {
 	Pair *entry = registryLookup( ctx, "$" )->value;
-	if ( isUnnamed(e) )
+	for ( listItem *i=entry->name; i!=NULL; i=i->next ) {
+		entry = i->ptr;	// [ string, ref:{[db,e]} ]
+		if ( strcmp( s, entry->name ) ) continue;
+		CNDB *db = registryLookup( ctx, "" )->value;
+		entry = registryLookup((Registry *) entry->value, db );
+		return ((entry) ? entry->value : NULL ); }
+	return NULL; }
+static inline void bm_uncache( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	if ( cnIsUnnamed(e) )
 		removeIfThere((listItem **)&entry->value, e->sub[1] );
 	else	removeIfThere((listItem **)&entry->name, e->sub[1] ); }
+
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;
@@ -68,7 +85,7 @@ static inline CNInstance * BMContextSelf( BMContext *ctx ) {
 static inline CNInstance * BMContextParent( BMContext *ctx ) {
 	return BMContextId( ctx )->value; }
 static inline CNEntity * BMContextCell( BMContext *ctx ) {
-	return DBProxyThat( BMContextSelf(ctx) ); }
+	return CNProxyThat( BMContextSelf(ctx) ); }
 static inline ActiveRV * BMContextActive( BMContext *ctx ) {
 	return registryLookup( ctx, "@" )->value; }
 static inline void * BMContextEENOVCurrent( BMContext *ctx ) {
@@ -81,6 +98,10 @@ static inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->name; }
 static inline Registry * BMContextLocales( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->value; }
+static inline Pair *Mset( BMContext *ctx, void *value ) {
+	return registryRegister( BMContextLocales(ctx), "", value ); }
+static inline void Mclr( BMContext *ctx ) {
+	registryDeregister( BMContextLocales(ctx), "" ); }
 
 //===========================================================================
 //	Utilities

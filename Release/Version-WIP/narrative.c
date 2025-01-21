@@ -15,11 +15,11 @@ newNarrative( void ) {
 
 void
 freeNarrative( CNNarrative *narrative ) {
-	if (( narrative )) {
-		char *proto = narrative->proto;
-		if (( proto )) free( proto );
-		freeOccurrence( narrative->root );
-		freePair((Pair *) narrative ); } }
+	char *proto = narrative->proto;
+	if (( proto ) && strcmp(proto,""))
+		free( proto );
+	freeOccurrence( narrative->root );
+	freePair((Pair *) narrative ); }
 
 //===========================================================================
 //	newOccurrence / freeOccurrence
@@ -88,8 +88,8 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	if ( narrative == NULL ) return !!errout( NarrativeOutputNone );
 	char *proto = narrative->proto;
 	if (( proto )) {
-		if ( !is_separator( *proto ) ) fprintf( stream, ": " );
-		fprintf( stream, "%s\n", proto ); }
+		if ( *proto==':' ) fprintf( stream, ".%s\n", proto );
+		else fprintf( stream, "%s\n", proto ); }
 	CNOccurrence *occurrence = narrative->root;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
@@ -101,12 +101,15 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 		case ELSE: fprintf( stream, "else\n" );
 		case ROOT: break;
 		default:
-			if_( ELSE, "else " )
-			if_( EN, "en " )
-			else if_( IN, "in " )
-			else if_( PER, "per " )
-			else if_( ON|ON_X, "on " )
-			else if_( DO|INPUT|OUTPUT, "do " )
+			// output cmd
+			if ( !(type&CASE) ) {
+				if_( ELSE, "else " )
+				if_( EN, "en " )
+				else if_( PER, "per " )
+				else if_( IN, "in " )
+				else if_( ON|ON_X, "on " )
+				else if_( DO|INPUT|OUTPUT, "do " ) }
+			// output expr
 			if ( type&DO )
 				fprint_expr( stream, expression, level );
 			else if ( type&OUTPUT )

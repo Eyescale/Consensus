@@ -5,6 +5,7 @@
 #include "database.h"
 #include "expression.h"
 #include "instantiate.h"
+#include "scour.h"
 #include "story.h"
 #include "eenov.h"
 #include "parser.h"
@@ -27,14 +28,14 @@ bm_feel( int type, char *expression, BMContext *ctx ) {
 		return bm_query( type, expression, ctx, NULL, NULL ); } }
 
 //===========================================================================
-//	bm_scan
+//	bm_scan, bm_forescan
 //===========================================================================
 static BMQueryCB scan_CB;
 listItem *
 bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
 	if ( !strncmp( expression, "*^", 2 ) ) {
-		CNInstance *e = bm_context_lookup( ctx, expression );
+		CNInstance *e = BMVal( ctx, expression );
 		if (( e )) results = newItem( e ); }
 	else {
 		bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
@@ -48,15 +49,20 @@ scan_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
+//	bm_switch / bm_case
+//===========================================================================
+// see include/expression.h
+
+//===========================================================================
 //	bm_tag_register
 //===========================================================================
 int
-bm_tag_register( char *expression, char *p, BMContext *ctx ) {
+bm_tag_register( char *tag, char *p, BMContext *ctx ) {
 	for ( ; ; ) {
-		registryRegister( ctx, expression, NULL );
+		bm_tag( ctx, tag, NULL );
 		if ( *p==' ' ) {
-			expression = p+3; // skip ' .%'
-			p = p_prune( PRUNE_IDENTIFIER, expression ); }
+			tag = p+3; // skip ' .%'
+			p = p_prune( PRUNE_IDENTIFIER, tag ); }
 		else return 1; } }
 
 //===========================================================================
@@ -69,10 +75,13 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 	Assumption: p: ~{_} or {_}
 	Note that we do not free tag entry in context registry
 */ {
-	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) return !!errout( ExpressionTagUnknown, expression );
+	Pair *entry = BMTag( ctx, expression );
+	if ( !entry ) {
+//		errout( ExpressionTagUnknown, expression );
+		return 0; }
 	int released = ( *p=='~' ? (p++,1) : 0 );
-	Pair *current = registryRegister( ctx, "^", NULL );
+
+	Pair *current = Mset( ctx, NULL );
 	listItem *next_i, *last_i=NULL;
 	listItem **entries = (listItem **) &entry->value;
 	for ( listItem *i=*entries; i!=NULL; i=next_i ) {
@@ -81,9 +90,11 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 		int clip = released;
 		for ( char *q=p; *q++!='}'; q=p_prune(PRUNE_LEVEL,q) )
 			bm_query( BM_CONDITION, q, ctx, continue_CB, &clip );
-		if (( clip )) clipListItem( entries, i, last_i, next_i );
+		if (( clip ))
+			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
-	registryDeregister( ctx, "^." );
+	Mclr( ctx );
+
 	return 1; }
 
 static BMQTake
@@ -99,8 +110,9 @@ bm_tag_inform( char *expression, char *p, BMContext *ctx )
 /*
 	Assumption: p: <_>
 */ {
-	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) entry = registryRegister( ctx, expression, NULL );
+	Pair *entry = BMTag( ctx, expression );
+	if ( !entry ) entry = bm_tag( ctx, expression, NULL );
+
 	for ( char *q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		bm_query( BM_CONDITION, q, ctx, inform_CB, &entry->value );
 	return 1; }
@@ -120,14 +132,12 @@ bm_tag_clear( char *expression, BMContext *ctx )
 	Assumption: expression: identifier~
 	Note that we do free tag entry in context registry
 */ {
-	Pair *entry = registryLookup( ctx, expression );
-	if ( !entry ) return !!errout( ExpressionTagUnknown, expression );
-	registryCBDeregister( ctx, clear_CB, expression );
+	Pair *entry = BMTag( ctx, expression );
+	if ( !entry ) {
+//		errout( ExpressionTagUnknown, expression );
+		return 0; }
+	bm_untag( ctx, expression );
 	return 1; }
-
-static void
-clear_CB( Registry *registry, Pair *entry ) {
-	freeListItem((listItem **) &entry->value ); }
 
 //===========================================================================
 //	bm_release
@@ -135,6 +145,7 @@ clear_CB( Registry *registry, Pair *entry ) {
 static BMQueryCB release_CB;
 void
 bm_release( char *expression, BMContext *ctx ) {
+	if ( !strcmp( expression, "(~.)" ) ) return;
 	CNDB *db = BMContextDB( ctx );
 	bm_query( BM_CONDITION, expression, ctx, release_CB, db ); }
 
@@ -146,8 +157,8 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //===========================================================================
 //	bm_inputf
 //===========================================================================
-static int bm_input( int type, char *arg, BMContext * );
-#define DEFAULT_TYPE '_'
+static int bm_input( char *fmt, char *arg, BMContext * );
+#define DEFAULT_FMT "_"
 int
 bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 /*
@@ -171,7 +182,7 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 						goto RETURN; } }
 				else if ((args)) {
 					char *arg = args->ptr;
-					event = bm_input( fmt[1], arg, ctx );
+					event = bm_input( fmt+1, arg, ctx );
 					if ( event==EOF ) goto RETURN;
 					args = args->next; }
 				fmt+=2; break;
@@ -186,7 +197,7 @@ bm_inputf( char *fmt, listItem *args, BMContext *ctx )
 	else {
 		while (( args )) {
 			char *arg = args->ptr;
-			event = bm_input( DEFAULT_TYPE, arg, ctx );
+			event = bm_input( DEFAULT_FMT, arg, ctx );
 			if ( event==EOF ) break;
 			else args = args->next; } }
 RETURN:
@@ -199,10 +210,10 @@ RETURN:
 
 static char * bm_read( FILE *stream );
 static int
-bm_input( int type, char *arg, BMContext *ctx ) {
+bm_input( char *fmt, char *arg, BMContext *ctx ) {
 	char *input = NULL;
 	int event = 0;
-	switch ( type ) {
+	switch ( *fmt ) {
 	case 'c':
 		event = fgetc( stdin );
 		if ( event == EOF )
@@ -257,7 +268,8 @@ bm_read( FILE *stream ) {
 //===========================================================================
 //	bm_outputf
 //===========================================================================
-static int bm_output( FILE *, int type, char *expression, BMContext *);
+static int bm_output( FILE *, char *fmt, char *expression, BMContext *);
+
 int
 bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 /*
@@ -276,8 +288,11 @@ bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 					fprintf( stream, "%%" );
 				else if ((args)) {
 					char *arg = args->ptr;
-					bm_output( stream, fmt[1], arg, ctx );
-					args = args->next; }
+					bm_output( stream, fmt+1, arg, ctx );
+					args = args->next;
+					if ( fmt[1]=='(' ) {
+						fmt = prune_xsub(fmt+1) + 1;
+						break; } }
 				fmt+=2; break;
 			default:
 				if (( delta=charscan( fmt, &q ) )) {
@@ -286,7 +301,7 @@ bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 				else fmt++; } } }
 	else if (( args )) {
 		for ( listItem *i=args; i!=NULL; i=i->next ) {
-			bm_output( stream, DEFAULT_TYPE, i->ptr, ctx );
+			bm_output( stream, DEFAULT_FMT, i->ptr, ctx );
 			fprintf( stream, "\n" ); } }
 	else fprintf( stream, "\n" );
 RETURN:
@@ -297,26 +312,32 @@ RETURN:
 //---------------------------------------------------------------------------
 static BMQueryCB output_CB;
 static int
-bm_output( FILE *stream, int type, char *arg, BMContext *ctx )
+bm_output( FILE *stream, char *fmt, char *arg, BMContext *ctx )
 /*
 	outputs arg-expression's results
 	note that we rely on bm_query to eliminate doublons
 */ {
-	// special case: single quote & type 's' or '$'
-	if ( *arg=='\'' && type!=DEFAULT_TYPE ) {
+	// special case: single quote & fmt "s" or "$"
+	switch ( *arg ) {
+	case '\'':
+		if ( *fmt==*DEFAULT_FMT ) break;
 		for ( char_s q; charscan( arg+1, &q ); ) {
 			fprintf( stream, "%c", q.value );
 			break; }
+		return 0;
+	case '"':
+		for ( char *c=arg+1; *c!='"'; c++ )
+			fprintf( stream, "%c", *c );
 		return 0; }
 
-	OutputData data = { stream, type, 1, NULL };
+	OutputData data = { stream, fmt, 1, NULL };
 
 	// special case: EEnoRV as-is
-	if ( !strncmp(arg,"%<",2) && !p_filtered(arg) )
+	if ( !strncmp(arg,"%<",2) && strmatch("s$_",*fmt) && !p_filtered(arg) )
 		return eenov_output( arg, ctx, &data );
 
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
-	return bm_out_flush( &data, BMContextDB(ctx) ); }
+	return bm_out_last( &data, BMContextDB(ctx) ); }
 
 static BMQTake
 output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
@@ -324,46 +345,58 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
-//	bm_out_put / bm_out_flush
+//	bm_out_put / bm_out_last
 //===========================================================================
+static inline int out_pass( int pass, char *, OutputData *, CNDB * );
+
 void
 bm_out_put( OutputData *data, CNInstance *e, CNDB *db ) {
-	if (( data->last )) {
-		FILE *stream = data->stream;
-		if ( data->type=='$' )
-			db_outputf( stream, db, "%_", data->last );
-		else {
-			if ( data->first ) {
-				switch ( data->type ) {
-				case 's': fprintf( stream, "\\{" ); break;
-				default: fprintf( stream, "{" ); }
-				data->first = 0; }
-			else fprintf( stream, "," );
-			db_outputf( stream, db, " %_", data->last ); } }
+	char *fmt = data->fmt;
+	if ( *fmt=='(' ) {
+		listItem *xpn = xpn_make( fmt );
+		if ( !xpn ) return;
+		e = xsub( e, xpn );
+		freeListItem( &xpn );
+		if ( !e ) return;
+		fmt = prune_xsub( fmt ); }
+	out_pass( 0, fmt, data, db );
 	data->last = e; }
 
 int
-bm_out_flush( OutputData *data, CNDB *db ) {
+bm_out_last( OutputData *data, CNDB *db ) {
+	char *fmt = data->fmt;
+	if ( *fmt=='(' ) fmt = prune_xsub( fmt );
+	return out_pass( 1, fmt, data, db ); }
+
+static inline int
+out_pass( int is_last, char *fmt, OutputData *data, CNDB *db ) {
+	CNInstance *e = data->last;
+	if ( !e ) return 0;
 	FILE *stream = data->stream;
-	if ( data->type=='$' )
-		db_outputf( stream, db, "%_", data->last );
-	else if ( !data->first )
-		db_outputf( stream, db, ", %_ }", data->last );
-	else if ( data->type=='s' )
-		db_outputf( stream, db, "%s", data->last );
-	else	db_outputf( stream, db, "%_", data->last );
-	return 0; }
+	if ( *fmt=='$' )
+		db_outputf( db, stream, "%s", e );
+	else {
+		switch ( is_last ) {
+		case 0: // not last pass
+			db_outputf( db, stream, (( data->first ) ?
+				*fmt=='s' ? "\\{ %s" : "{ %_" :
+				*fmt=='s' ? ", %s" : ", %_"
+				), e );
+			data->first = 0;
+			break;
+		default:
+			db_outputf( db, stream, (( data->first ) ?
+				*fmt=='s' ? "%s" : "%_" :
+				*fmt=='s' ? ", %s }" : ", %_ }"
+				), e ); } }
+	return 1; }
 
 //===========================================================================
 //	fprint_expr
 //===========================================================================
 void
 fprint_expr( FILE *stream, char *expression, int level ) {
-#if 0
-fprintf( stream, "%s", expression );
-return;
-#endif
-	listItem *stack = NULL, *nb = NULL;
+	listItem *stack = NULL, *nb = NULL; // newborn
 	int count=0, carry=0, ground=level;
 	for ( char *p=expression; *p; p++ ) {
 		switch ( *p ) {
@@ -374,8 +407,7 @@ return;
 				p++; }
 			else if ( p[1]=='!' ) {
 				fprintf( stream, "!!" );
-				if ( p[2]=='|' ) p++;
-				else {
+				if ( p[2]=='|' ) p++; else {
 					p+=2;
 					while ( !is_separator(*p) )
 						putc( *p++, stream );
@@ -386,16 +418,24 @@ return;
 			else putc( '!', stream );
 			break;
 		case '|':
-			if ( p[1]=='{' ) {
+			switch ( p[1] ) {
+			case '{':
 				fprintf( stream, " |{" );
 				push( PIPE_LEVEL, level++, count );
-				RETAB( level ); p++; }
-			else if ( strmatch( PIPE_CND, p[1] ) ) { 
+				RETAB( level );
+				p++; break;
+			case '!':
+			case '?':
 				fprintf( stream, " |" );
 				push( PIPE, level++, count );
-				RETAB( level ) }
-			else
+				RETAB( level )
+				break;
+			case ')':
 				putc( '|', stream );
+				putc( ' ', stream );
+				break;
+			default:
+				putc( '|', stream ); }
 			break;
 		case '{': // not following '|'
 			fprintf( stream, "{ " );
@@ -412,8 +452,8 @@ return;
 			break;
 		case ',':
 			putc( ',', stream );
-			if ( test(COUNT)==count )
-				switch ( test(TYPE) ) {
+			if ( test_(COUNT)==count )
+				switch ( test_(TYPE) ) {
 				case PIPE:
 				case LEVEL:
 					putc( ' ', stream );
@@ -481,7 +521,12 @@ return;
 				putc( *p, stream );
 			p--; break;
 		default:
-			putc( *p, stream ); } } }
+			putc( *p, stream ); } }
+	if (( stack )||( nb )) {
+//		fprintf( stderr, "fprint_expr: Memory Leak: stack\n" );
+		do pop( &level, &count ); while (( stack ));
+		freeListItem( &nb ); }
+	return; }
 
 //===========================================================================
 //	fprint_output

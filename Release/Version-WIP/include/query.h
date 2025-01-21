@@ -15,34 +15,23 @@ typedef enum {
 	BMQ_CONTINUE = 0,
 	BMQ_DONE
 	} BMQTake;
+typedef BMQTake \
+	BMQueryCB( CNInstance *, BMContext *, void * );
 
-typedef BMQTake BMQueryCB( CNInstance *, BMContext *, void * );
-CNInstance *bm_query( int, char *expression, BMContext *, BMQueryCB, void * );
+CNInstance *bm_query( int, char *, BMContext *, BMQueryCB, void * );
+CNInstance *bm_query_assignee( int, char *, BMContext * );
 
 typedef struct {
-	int type;
-	BMQueryCB *user_CB;
-	void *user_data;
 	BMContext *ctx;
 	CNDB *db;
-	Pair *pivot;
-	int privy;
-	listItem *exponent;
-	int op, success;
-	int list_exp;
-	Pair *list;
-	CNInstance *star;
-	CNInstance *instance;
-	listItem *mark_exp;
-	listItem *base;
-	listItem *OOS;
-	struct {
-		listItem *flags;
-		listItem *scope;
-		listItem *exponent;
-		listItem *base;
-	} stack;
-} BMQueryData;
+	int type, privy, op, success, list_expr;
+	Pair *pivot, *list;
+	CNInstance *instance, *star;
+	listItem *exponent, *mark_exp, *base, *OOS;
+	struct { listItem *flags, *scope, *exponent, *base; } stack;
+	BMQueryCB *user_CB;
+	void *user_data;
+	} BMQueryData;
 
 int xp_verify( CNInstance *, char *, BMQueryData * );
 

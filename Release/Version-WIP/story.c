@@ -10,7 +10,6 @@
 //===========================================================================
 //	newStory, freeStory
 //===========================================================================
-static freeRegistryCB free_CB;
 CNStory *
 newStory( void ) {
 	Registry *narratives = newRegistry( IndexedByNameRef );
@@ -18,29 +17,26 @@ newStory( void ) {
 	registryRegister( narratives, "", newItem( base ) );
 	return (CNStory *) newPair( narratives, newArena() ); }
 
+static freeRegistryCB free_CB;
 void
 freeStory( CNStory *story ) {
 	if (( story )) {
 		freeRegistry( story->narratives, free_CB );
 		freeArena( story->arena );
 		freePair((Pair *) story ); } }
-
 static void
 free_CB( Registry *registry, Pair *entry ) {
 	char *def = entry->name;
 	if ( strcmp( def, "" ) ) free( def );
-	for ( listItem *i=entry->value; i!=NULL; i=i->next ) {
-		CNNarrative *narrative = i->ptr;
-		char *proto = narrative->proto;
-		if (( proto ) && strcmp(proto,""))
-			free( proto );
-		freeOccurrence( narrative->root ); }
-	freeListItem((listItem **) &entry->value ); }
+	listItem **narratives = (listItem **) &entry->value;
+	CNNarrative *narrative;
+	while (( narrative=popListItem(narratives) ))
+		freeNarrative( narrative ); }
 
 //===========================================================================
 //	readStory
 //===========================================================================
-static inline int indentation_verify( BMParseData *data );
+static inline int indentation_check( BMParseData *data );
 static BMParseCB build_CB;
 
 CNStory *
@@ -86,6 +82,8 @@ readStory( char *path, int ignite ) {
 		(CNStory *) newPair( data.narratives, newArena() ) :
 		NULL; }
 
+#define BAR_DANGLING( o ) \
+	if ((o) && cast_i(o->data->type)&(IN|ON|ON_X)) return 0;
 static int
 build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
@@ -94,6 +92,7 @@ build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	char *proto;
 	switch ( op ) {
 	case ProtoSet:
+		BAR_DANGLING( data->occurrence )
 		narrative = data->narrative;
 		proto = StringFinish( data->string, 0 );
 		StringReset( data->string, CNStringMode );
@@ -116,8 +115,8 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 			free(proto);
 			return 0; }
 		break;
-	case OccurrenceAdd: ;
-		if ( !indentation_verify( data ) ) return 0;
+	case OccurrenceTake: ;
+		if ( !indentation_check( data ) ) return 0;
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;
 		addItem( &parent->sub, occurrence );
@@ -149,7 +148,8 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 		StringReset( data->string, CNStringMode );
 		freeListItem( &data->stack.tags );
 		break;
-	case NarrativeTake: ; // Assumption: mode==( last take ? 0 : BM_STORY )
+	case NarrativeTake: // Assumption: mode==( last take ? 0 : BM_STORY )
+		BAR_DANGLING( data->occurrence )
 		narrative = data->narrative;
 		proto = narrative->proto;
 #ifdef DEBUG
@@ -181,45 +181,99 @@ fprintf( stderr, "end narrative: %s\n", proto );
 			addItem( &data->stack.occurrences, data->narrative->root ); } }
 	return 1; }
 
+static inline int l_case( CNOccurrence *sibling, BMParseData *data );
 static inline int
-indentation_verify( BMParseData *data ) {
+indentation_check( BMParseData *data )
+/*
+	if data->type is informed, then
+		verify data->type against parent->type
+	otherwise if parent->type & SWITCH, then
+		inform data->type as [ELSE]|CASE|{IN,ON}
+		Note that ELSE is set if parent's last sub
+		is either ELSE|... or has sub
+		return 1
+	otherwise return 0
+*/ {
 	int *tab = data->tab;
-	if ( TAB_LAST == -1 ) {
-		// very first occurrence
-		if ( data->type & ELSE )
-			return 0; }
-	else if ( TAB_CURRENT == TAB_LAST + 1 ) {
-		if ( data->type & ELSE )
-			return 0;
-		CNOccurrence *parent = data->stack.occurrences->ptr;
-		int type = cast_i( parent->data->type );
-		switch ( type & ~(ELSE|PER) ) {
-		case ROOT: case IN: case ON: case ON_X:
-			break;
-		default:
-			return 0; } }
-	else if ( TAB_CURRENT <= TAB_LAST ) {
-		CNOccurrence *sibling;
-		if ( TAB_CURRENT==TAB_LAST ) {
-			sibling = data->stack.occurrences->ptr;
-			int type = cast_i( sibling->data->type );
-			if ((type&(IN|ON|ON_X)) && !(data->type&ELSE))
-				return 0; }
-		for ( ; ; ) {
+	int type = data->type;
+	int elsing = type & ELSE;
+	if ( TAB_LAST==-1 ) // very first occurrence
+		return type ? !elsing : 0;
+	CNOccurrence *parent, *sibling;
+	int parent_type, sibling_type;
+	int tab_diff = TAB_LAST - TAB_CURRENT;
+	if ( type ) {
+		if ( tab_diff < 0 ) {
+			if ( elsing || tab_diff < -1 ) return 0;
+			parent = data->stack.occurrences->ptr;
+			parent_type = cast_i( parent->data->type );
+			return ( parent_type==ROOT || parent_type==ELSE ||
+			         parent_type&(PER|IN|ON|ON_X) ); }
+		else if ( !tab_diff ) {
+			/* We do support
+				in expression
+				else ...
+			   but we do not support e.g.
+				in expression
+				do expression	// no indentation
+			   nor
+				else ...	// out of the blue
+			*/
 			sibling = popListItem( &data->stack.occurrences );
-			int type = cast_i( sibling->data->type );
-			if ( TAB_CURRENT==TAB_LAST ) {
-				if ((data->type&ELSE) && !(type&(IN|ON|ON_X)))
-					return 0; }
-			TAB_LAST--;
-			if ( type == ROOT )
-				return 0;
-			else if ( TAB_CURRENT <= TAB_LAST )
-				continue;
-			else if ( !(data->type&ELSE) || type&(IN|ON|ON_X) )
-				break; } }
-	else return 0;
-	return 1; }
+			sibling_type = cast_i( sibling->data->type );
+			sibling_type &= (IN|ON|ON_X);
+			if (( sibling_type && !elsing )||( elsing && !sibling_type ))
+				return 0; }
+		else {
+			listItem **stack = &data->stack.occurrences;
+			while ( tab_diff-- ) {
+				popListItem( stack );
+				if ( !*stack ) return 0; }
+			sibling = popListItem( stack );
+			sibling_type = cast_i( sibling->data->type );
+			sibling_type &= (IN|ON|ON_X);
+			if ( elsing && !sibling_type )
+				return 0; }
+		return 1; }
+	else {
+		if ( tab_diff < 0 ) {
+			if ( tab_diff < -1 ) return 0;
+			parent = data->stack.occurrences->ptr;
+			parent_type = cast_i( parent->data->type );
+			if ( parent_type & SWITCH ) {
+				if (( parent->sub )) {
+					sibling = parent->sub->ptr;
+					return l_case( sibling, data ); }
+				else {
+					data->type = CASE|(parent_type&(IN|ON));
+					return 1; } } }
+		else if ( !tab_diff ) {
+			sibling = data->stack.occurrences->ptr;
+			if ( l_case( sibling, data ) ) {
+				popListItem( &data->stack.occurrences );
+				return 1; } }
+		else {
+			listItem *stack = data->stack.occurrences;
+			while ( tab_diff-- ) {
+				stack = stack->next;
+				if ( !stack ) return 0; }
+			sibling = stack->ptr;
+			if ( l_case( sibling, data ) ) {
+				listItem **s = &data->stack.occurrences;
+				do popListItem( s ); while ( *s!=stack );
+				popListItem( s );
+				return 1; } }
+		return 0; } }
+
+static inline int
+l_case( CNOccurrence *sibling, BMParseData *data ) {
+	int sibling_type = cast_i( sibling->data->type );
+	if ( sibling_type&CASE ) {
+		data->type = CASE|(sibling_type&(IN|ON));
+		if ( sibling_type&ELSE || ( sibling->sub ))
+			data->type |= ELSE;
+		return 1; }
+	else return 0; }
 
 //===========================================================================
 //	cnStoryOutput

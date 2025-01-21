@@ -17,6 +17,7 @@ CNProgram *newProgram( CNStory *, char *inipath );
 void freeProgram( CNProgram * );
 void cnSync( CNProgram * );
 int cnOperate( CNCell **, CNProgram * );
+void cnExit( int debug );
 
 static inline CNCell * CNProgramStem( CNProgram *p ) {
 	return ((listItem*) p->threads->new->ptr )->ptr; }

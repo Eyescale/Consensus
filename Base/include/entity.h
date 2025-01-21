@@ -16,11 +16,79 @@ void cn_release( CNEntity * );
 void cn_free( CNEntity * );
 
 #define CNSUB(e,ndx) \
-	( (e)->sub[!(ndx)] ? (e)->sub[ndx] : NULL )
+	( ((CNEntity*)e)->sub[!(ndx)] ? ((CNEntity*)e)->sub[ndx] : NULL )
 #define isBase( e ) \
 	( !CNSUB(e,0) )
 
 static inline int cn_hold( CNEntity *e, CNEntity *f ) {
 	return ( e->sub[0]==f || e->sub[1]==f ); }
+
+//---------------------------------------------------------------------------
+//	exponent utilities
+//---------------------------------------------------------------------------
+static inline void xpn_add( listItem **xp, int as_sub, int position ) {
+	int i = as_sub + position;
+	addItem( xp, cast_ptr(i) ); }
+
+static inline void xpn_set( listItem *xp, int as_sub, int position ) {
+	int i = as_sub + position;
+	xp->ptr = cast_ptr( i ); }
+
+static inline void xpn_free( listItem **xp, listItem *level ) {
+	while ( *xp!=level ) popListItem( xp ); }
+
+static inline void xpn_out( FILE *stream, listItem *xp ) {
+	while ( xp ) {
+		fprintf( stream, "%d", cast_i(xp->ptr) );
+		xp = xp->next; } }
+
+static inline int is_xpn_expr( char *p ) {
+	if ( *p++!='(' ) return 0;
+	int first, informed, marked;
+	listItem *stack = NULL;
+	informed = marked = 0;
+	first = 1;
+#define sub_case( event, test ) \
+	case event: if (!test) { freeListItem(&stack); return 0; } else
+	for ( ; ; )
+		switch ( *p++ ) {
+		sub_case( '(', !(informed||marked) ) {
+			add_item(&stack,first);
+			first = 1;
+			break; }
+		sub_case( ')', (informed&&!first) ) {
+			if ( !stack ) return 1;
+			first = pop_item(&stack);
+			break; }
+		sub_case( ',', (first&&informed) ) {
+			first = informed = 0;
+			break; }
+		sub_case( '.', ((first||marked)&&!informed) ) { 
+			informed = 1;
+			break; }
+		sub_case( '?', !(informed||marked) ) {
+			informed = marked = 1;
+			break; }
+#undef sub_case
+		default:
+			freeListItem( &stack );
+			return 0; } }
+
+static inline listItem * xpn_make( char *p ) {
+	if ( !is_xpn_expr( p ) ) return NULL;
+	listItem *sub = NULL;
+	int ndx = 0;
+	for ( ; ; ) switch ( *p++ ) {
+		case '(': add_item( &sub, ndx ); ndx=0; break;
+		case ',': ndx=1; sub->ptr=cast_ptr(ndx); break;
+		case '?': reorderListItem( &sub ); return sub; } }
+
+static inline CNEntity * xsub( CNEntity *x, listItem *xpn ) {
+	if ( !xpn ) return x;
+	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
+		x = CNSUB( x, cast_i(i->ptr) );
+		if ( !x ) return NULL; }
+	return x; }
+
 
 #endif	// ENTITY_H

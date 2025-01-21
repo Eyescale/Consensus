@@ -4,7 +4,7 @@
 	else on ON
 		.%op < ON, OFF, DUMMY >
 	else in DUMMY: %op
-		do >"clipping DUMMY from:%_\n": %op
+		do >& "clipping DUMMY from:%_\n": %op
 		.%op { ^.:DUMMY|^.~ }
 	else in OFF: %op
 		do >"saving ON from: %_\n": %op

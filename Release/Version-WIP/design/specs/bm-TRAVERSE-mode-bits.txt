@@ -8,7 +8,11 @@ bm_traverse mode init and usage
 			   2. overrides LITERAL mode setting
 	FILTERED	=> passes ellipsis as wildcard
 	TERNARY		=> 1. on '<' continues vs. terminating traversal
-			 	   2. skips ellipsis
+			   2. skips ellipsis
+	ASSIGN		=> 1. passed by bm_assign() as bm_traverse's flags
+			      argument (first pass only)
+			   2. on '|' continues vs. terminating traversal
+
 	Note about parser.c
 		PROTECTED flag prevents expression from being FILTERED and literals
 		from being used as ternary guards

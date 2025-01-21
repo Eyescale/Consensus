@@ -1,0 +1,12 @@
+
+	on init
+		do tutu
+	else on tutu
+		do : toto | { (titi,%|), tata, ~(tutu) }
+	else
+		do >:.
+		en func( toto )
+		do exit
+
+.:func( .toto )
+	do >"bye\n"

@@ -3,69 +3,96 @@
 
 #include "pair.h"
 
-#define U_CACHE
-// #define U_COUNT
+#define CN_CACHE
+#define CN_CACHE_COUNT
+#define CN_CACHE_BSIZE 15000
 
 //===========================================================================
-//	allocation functions
+//	newPair, freePair
 //===========================================================================
-#ifdef U_CACHE
+#ifdef CN_CACHE
+static inline void * allocate( void *** );
+static inline void recycle( void **item, void ***Cache );
+static struct {
+	void **ptr;
+	uint64_t size;
+	uint64_t used;
+	} CNCache = { NULL, 0, 0 };
 
-#define U_CACHE_SIZE 15000
-#ifdef U_COUNT
-static int UCount = 0;
-#endif
+uint64_t cnCacheGetSize( void ) { return CNCache.size; }
+uint64_t cnCacheGetUsed( void ) { return CNCache.used; }
 
-inline void *
-allocate( void ***Cache ) {
-	void **this, **cache = *Cache;
-	if (( cache ))
-        	this = cache;
-	else {
-#ifdef U_COUNT
-		fprintf( stderr, "B%%: allocate: %d\n", UCount++ );
-#endif
-		this = malloc( U_CACHE_SIZE * 2 * sizeof(void*) );
-		this[ 1 ] = NULL;
-		for ( int i=U_CACHE_SIZE-1; (i--); ) {
-			this += 2;
-			this[ 1 ] = this-2; } }
- 	*Cache = this[ 1 ];
-	return this; }
+#ifdef CN_CACHE_COUNT
+Pair *
+newPair( void *name, void *value ) {
+        Pair *pair = (Pair *) allocate( &CNCache.ptr );
+	CNCache.used++;
+        pair->name = name;
+        pair->value = value;
+        return pair; }
+void
+freePair( Pair *pair ) {
+	recycle((void**) pair, &CNCache.ptr );
+	CNCache.used--; }
 
-inline void
-recycle( void **item, void ***Cache ) {
-	item[ 1 ] = *Cache;
-	*Cache = item; }
+#else // !CN_CACHE_COUNT
+Pair *
+newPair( void *name, void *value ) {
+        Pair *pair = (Pair *) allocate( &CNCache.ptr );
+        pair->name = name;
+        pair->value = value;
+        return pair; }
+void
+freePair( Pair *pair ) {
+	recycle((void**) pair, &CNCache.ptr ); }
 
-#else	// U_CACHE
+#endif // !CN_CACHE_COUNT
+#else // !CN_CACHE
 
-inline void *
-allocate( void ***cache ) {
-	return calloc(1,2*sizeof(void*));
-//	return malloc(2*sizeof(void*));
-	}
+uint64_t cnCacheGetSize( void ) { return 0; }
+uint64_t cnCacheGetUsed( void ) { return 0; }
 
-inline void
-recycle( void **item, void ***Cache ) {
-	if (( item )) free((void *) item );
-	else fprintf( stderr, "***** Warning: recycle(): NULL\n" ); }
-
-#endif	// U_CACHE
-
-//===========================================================================
-//	newPair / freePair
-//===========================================================================
-static void **PairCache = NULL;
 
 Pair *
 newPair( void *name, void *value ) {
-        Pair *pair = (Pair *) allocate( &PairCache );
+	Pair *pair = malloc( sizeof(Pair) );
         pair->name = name;
         pair->value = value;
         return pair; }
 
 void
 freePair( Pair *pair ) {
-	recycle((void**) pair, &PairCache ); }
+	if (( pair )) free( pair );
+	else fprintf( stderr, "***** Error: freePair(): NULL argument\n" ); }
 
+#endif // !CN_CACHE
+
+//---------------------------------------------------------------------------
+//	allocate, recycle
+//---------------------------------------------------------------------------
+#ifdef CN_CACHE
+
+static inline void *
+allocate( void ***Cache ) {
+	void **this, **cache = *Cache;
+	if (( cache )) this = cache;
+	else {
+		this = malloc( CN_CACHE_BSIZE * 2 * sizeof(void*) );
+		this[ 1 ] = NULL;
+		for ( int i=CN_CACHE_BSIZE-1; (i--); ) {
+			this += 2;
+			this[ 1 ] = this-2; }
+#ifdef CN_CACHE_COUNT
+		CNCache.size += CN_CACHE_BSIZE;
+#endif
+       	}
+ 	*Cache = this[ 1 ];
+	return this; }
+
+static inline void
+recycle( void **item, void ***Cache ) {
+	item[ 1 ] = *Cache;
+	*Cache = item; }
+
+
+#endif // CN_CACHE

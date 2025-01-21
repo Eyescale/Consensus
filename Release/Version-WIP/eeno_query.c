@@ -2,17 +2,19 @@
 #include <stdlib.h>
 
 #include "string_util.h"
-#include "eeno_query.h"
 #include "eenov.h"
 #include "cell.h"
 #include "errout.h"
 
 // #define DEBUG
 
-//===========================================================================
-//	eeno_query_traversal
-//===========================================================================
+#include "eeno_query.h"
 #include "eeno_query_traversal.h"
+
+//===========================================================================
+//	bm_eeno_query
+//===========================================================================
+static void * eeno_query_assignment( CNInstance *, int, char *, BMTraverseData * );
 typedef struct {
 	BMContext *ctx;
 	CNDB *db_x;
@@ -20,6 +22,53 @@ typedef struct {
 	struct { listItem *flags, *x; } stack;
 	} EENOFeelData;
 
+void *
+bm_eeno_query( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
+#ifdef DEBUG
+	fprintf( stderr, "bm_eeno_query: %s\n", expression );
+#endif
+	CNEntity *cell = CNProxyThat( proxy );
+	CNDB *db_x = BMContextDB( BMCellContext(cell) );
+
+	int as_per = ( type & BM_AS_PER );
+	int privy = !( type & BM_VISIBLE );
+        void *success = NULL;
+        CNInstance *e;
+
+	EENOFeelData data;
+	memset( &data, 0, sizeof(data) );
+	data.ctx = ctx;
+	data.db_x = db_x;
+
+	BMTraverseData traversal;
+	traversal.user_data = &data;
+	traversal.stack = &data.stack.flags;
+	traversal.done = 0;
+	if ( *expression==':' ) {
+		success = eeno_query_assignment( proxy, as_per, expression, &traversal ); }
+	else {
+		listItem *s = NULL;
+		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
+			data.x = e;
+			eeno_query_traversal( expression, &traversal, FIRST );
+			if ( traversal.done==2 ) {
+				freeListItem( &data.stack.flags );
+				freeListItem( &data.stack.x );
+				traversal.done = 0; }
+			else if ( as_per ) {
+				addItem((listItem **) &success, e ); }
+			else {
+				freeListItem( &s );
+				success = e;
+				break; } } }
+#ifdef DEBUG
+	fprintf( stderr, "bm_eeno_query: success=%d\n", !!success );
+#endif
+	return success; }
+
+//---------------------------------------------------------------------------
+//	eeno_query_traversal
+//---------------------------------------------------------------------------
 static inline CNInstance * proxy_verify( char *, EENOFeelData * );
 
 BMTraverseCBSwitch( eeno_query_traversal )
@@ -31,14 +80,14 @@ case_( verify_CB )
 		_return( 2 )
 	_prune( BM_PRUNE_TERM, p )
 case_( open_CB )
-	if ( f_next & COUPLE ) {
+	if is_f_next( COUPLE ) {
 		CNInstance *x = data->x;
 		if (( CNSUB( x, 0 ) )) {
 			addItem( &data->stack.x, x );
 			data->x = x->sub[ 0 ]; }
 		else _return( 2 ) }
 	_break
-case_( decouple_CB )
+case_( comma_CB )
 	CNInstance *x = data->stack.x->ptr;
 	data->x = x->sub[ 1 ];
 	_break
@@ -70,61 +119,12 @@ proxy_verify_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 		return BMQ_DONE;
 	return BMQ_CONTINUE; }
 
-//===========================================================================
-//	bm_eeno_query
-//===========================================================================
-static void * eeno_query_assignment( CNInstance *, int, char *, BMTraverseData * );
-
-void *
-bm_eeno_query( int type, char *expression, CNInstance *proxy, BMContext *ctx ) {
-#ifdef DEBUG
-	fprintf( stderr, "bm_eeno_query: %s\n", expression );
-#endif
-	CNEntity *cell = DBProxyThat( proxy );
-	CNDB *db_x = BMContextDB( BMCellContext(cell) );
-
-	int as_per = ( type & BM_AS_PER );
-	int privy = !( type & BM_VISIBLE );
-        void *success = NULL;
-        CNInstance *e;
-
-	EENOFeelData data;
-	memset( &data, 0, sizeof(data) );
-	data.ctx = ctx;
-	data.db_x = db_x;
-
-	BMTraverseData traverse_data;
-	traverse_data.user_data = &data;
-	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = 0;
-	if ( *expression==':' ) {
-		success = eeno_query_assignment( proxy, as_per, expression, &traverse_data ); }
-	else {
-		listItem *s = NULL;
-		for ( e=DBLog(1,privy,db_x,&s); e!=NULL; e=DBLog(0,privy,db_x,&s) ) {
-			data.x = e;
-			eeno_query_traversal( expression, &traverse_data, FIRST );
-			if ( traverse_data.done==2 ) {
-				freeListItem( &data.stack.flags );
-				freeListItem( &data.stack.x );
-				traverse_data.done = 0; }
-			else if ( as_per ) {
-				addItem((listItem **) &success, e ); }
-			else {
-				freeListItem( &s );
-				success = e;
-				break; } } }
-#ifdef DEBUG
-	fprintf( stderr, "bm_eeno_query: success=%d\n", !!success );
-#endif
-	return success; }
-
 //---------------------------------------------------------------------------
 //	eeno_query_assignment
 //---------------------------------------------------------------------------
 static void *
-eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traverse_data ) {
-	EENOFeelData *data = traverse_data->user_data;
+eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraverseData *traversal ) {
+	EENOFeelData *data = traversal->user_data;
 	CNDB *db_x = data->db_x;
 	CNInstance *star = db_lookup( 2, "*", db_x );
 	if ( !star ) return NULL;
@@ -145,11 +145,11 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 					break; } }
 			else if ( e->sub[0]==star ) {
 				f = e->sub[ 1 ];
-				if (( f->sub[0] ) && DBProxyThat(f)==DBProxyThat(proxy) )
+				if (( f->sub[0] ) && CNProxyThat(f)==CNProxyThat(proxy) )
 					success = f; }
 			else if (( f=CNSUB(e,0) ) && f->sub[0]==star ) {
 				f = f->sub[ 1 ]; // here we have e:((*,f),.)
-				if (( f->sub[0] ) && DBProxyThat(f)==DBProxyThat(proxy) ) {
+				if (( f->sub[0] ) && CNProxyThat(f)==CNProxyThat(proxy) ) {
 					freeListItem( &s );
 					break; } } }
 		return success; } // (*,%%) manifested
@@ -164,15 +164,15 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			CNInstance *g = f->sub[ 1 ];
-			if ( !g->sub[0] || DBProxyThat(g)!=DBProxyThat(proxy) )
+			if ( !g->sub[0] || CNProxyThat(g)!=CNProxyThat(proxy) )
 				continue;
 			// here we have g:((.,that),.)=>=proxy-Self
 			data->x = e->sub[ 1 ];
-			eeno_query_traversal( expression, traverse_data, FIRST );
-			if ( traverse_data->done==2 ) {
+			eeno_query_traversal( expression, traversal, FIRST );
+			if ( traversal->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
-				traverse_data->done = 0; }
+				traversal->done = 0; }
 			else {
 				freeListItem( &s );
 				success = e; // return ((*,.),.)
@@ -200,11 +200,11 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 		freeListItem( &warden );
 		while (( e = popListItem( &candidates ) )) {
 			data->x = e->sub[ 1 ];
-			eeno_query_traversal( expression, traverse_data, FIRST );
-			if ( traverse_data->done==2 ) {
+			eeno_query_traversal( expression, traversal, FIRST );
+			if ( traversal->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
-				traverse_data->done = 0; }
+				traversal->done = 0; }
 			else if ( as_per ) {
 				addItem((listItem **) &success, e ); }
 			else {
@@ -222,19 +222,19 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			data->x = f->sub[ 1 ];
-			eeno_query_traversal( expression, traverse_data, FIRST );
-			if ( traverse_data->done==2 ) {
+			eeno_query_traversal( expression, traversal, FIRST );
+			if ( traversal->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
-				traverse_data->done = 0;
+				traversal->done = 0;
 				continue; }
 			data->x = e->sub[ 1 ];
-			traverse_data->done = 0;
-			eeno_query_traversal( value, traverse_data, FIRST );
-			if ( traverse_data->done==2 ) {
+			traversal->done = 0;
+			eeno_query_traversal( value, traversal, FIRST );
+			if ( traversal->done==2 ) {
 				freeListItem( &data->stack.flags );
 				freeListItem( &data->stack.x );
-				traverse_data->done = 0; }
+				traversal->done = 0; }
 			else if ( as_per ) {
 				addItem((listItem **) &success, e ); }
 			else {
@@ -312,20 +312,20 @@ bm_eeno_scan( char *src, BMContext *ctx )
 //===========================================================================
 int
 bm_proxy_active( CNInstance *proxy ) {
-	CNEntity *cell = DBProxyThat( proxy );
+	CNEntity *cell = CNProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	return DBActive( db ); }
 
 int
 bm_proxy_in( CNInstance *proxy ) {
-	CNEntity *cell = DBProxyThat( proxy );
+	CNEntity *cell = CNProxyThat( proxy );
 	BMContext *ctx = BMCellContext( cell );
 	CNDB *db = BMContextDB( ctx );
 	return DBInitOn( db ); }
 
 int
 bm_proxy_out( CNInstance *proxy ) {
-	CNEntity *cell = DBProxyThat( proxy );
+	CNEntity *cell = CNProxyThat( proxy );
 	return ((cell) && bm_cell_out(cell) ); }
 

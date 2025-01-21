@@ -17,6 +17,7 @@
 #define	STAR		(1<<13)
 
 #define	AS_PER		(1<<20)
+#define	LMARK		(1<<21)
 
 
 #endif	// SCOUR_H

@@ -4,19 +4,60 @@
 #include "scour.h"
 #include "locate_mark.h"
 #include "locate_pivot.h"
+#include "locate_pivot_traversal.h"
 
 //===========================================================================
-//	locate_pivot_traversal
+//	bm_locate_pivot
 //===========================================================================
-#include "locate_pivot_traversal.h"
 typedef struct {
 	char *expression;
-	int primary, secondary;
+	unsigned int primary, secondary;
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level, *premark; } stack;
 	} LocatePivotData;
 
+char *
+bm_locate_pivot( char *expression, listItem **xpn )
+/*
+	returns first term (according to prioritization in scour.h)
+	which is not a wildcard and is not negated, with corresponding
+	exponent (in reverse order).
+*/ {
+	LocatePivotData data;
+	memset( &data, 0, sizeof(data) );
+	data.expression = expression;
+	data.primary = EENOK|EMARK|QMARK;
+	data.exponent = xpn;
+
+	BMTraverseData traversal;
+	traversal.user_data = &data;
+	traversal.stack = &data.stack.flags;
+	traversal.done = 0;
+
+	char *p = locate_pivot_traversal( expression, &traversal, FIRST );
+	if ( traversal.done==2 ) {
+		freeListItem( &data.stack.flags );
+		freeListItem( &data.stack.level );
+		freeListItem( &data.stack.premark );
+		return p; }
+	else if ( data.secondary ) {
+		xpn_free( xpn, NULL );
+		traversal.done = 0;
+		data.primary = data.secondary;
+		p = locate_pivot_traversal( expression, &traversal, FIRST );
+		if ( traversal.done==2 ) {
+			freeListItem( &data.stack.flags );
+			freeListItem( &data.stack.level );
+			freeListItem( &data.stack.premark );
+			return p; } }
+
+	xpn_free( xpn, NULL );
+	return NULL; }
+
+//---------------------------------------------------------------------------
+//	locate_pivot_traversal
+//---------------------------------------------------------------------------
 #define CHECK( type ) \
 	(!( data->primary & type )) { \
 		if ( !data->secondary || ( type < data->secondary )) \
@@ -114,14 +155,14 @@ case_( dot_expression_CB )
 	xpn_add( exponent, AS_SUB, 1 );
 	_break
 case_( open_CB )
-	if ( f_next & ASSIGN ) {
+	if is_f_next( ASSIGN ) {
 		listItem **exponent = data->exponent;
 		if CHECK( SELF ) {
 			xpn_add( exponent, AS_SUB, 0 );
 			_return( 2 ) }
 		// apply (: operator to whatever comes next
 		xpn_add( exponent, AS_SUB, 1 ); }
-	else if ( f_next & COUPLE )
+	else if is_f_next( COUPLE )
 		xpn_add( data->exponent, AS_SUB, 0 );
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
@@ -129,7 +170,7 @@ case_( open_CB )
 case_( filter_CB )
 	xpn_free( data->exponent, data->level );
 	_break
-case_( decouple_CB )
+case_( comma_CB )
 	xpn_free( data->exponent, data->level );
 	xpn_set( *data->exponent, AS_SUB, 1 );
 	_break
@@ -147,44 +188,3 @@ case_( close_CB )
 		if ((tag)) xpn_free( data->exponent, tag ); }
 	_break;
 BMTraverseCBEnd
-
-//===========================================================================
-//	bm_locate_pivot
-//===========================================================================
-char *
-bm_locate_pivot( char *expression, listItem **xpn )
-/*
-	returns first term (according to prioritization in scour.h)
-	which is not a wildcard and is not negated, with corresponding
-	exponent (in reverse order).
-*/ {
-	LocatePivotData data;
-	memset( &data, 0, sizeof(data) );
-	data.expression = expression;
-	data.primary = EENOK|EMARK|QMARK;
-	data.exponent = xpn;
-
-	BMTraverseData traverse_data;
-	traverse_data.user_data = &data;
-	traverse_data.stack = &data.stack.flags;
-	traverse_data.done = 0;
-
-	char *p = locate_pivot_traversal( expression, &traverse_data, FIRST );
-	if ( traverse_data.done==2 ) {
-		freeListItem( &data.stack.flags );
-		freeListItem( &data.stack.level );
-		freeListItem( &data.stack.premark );
-		return p; }
-	else if ( data.secondary ) {
-		xpn_free( xpn, NULL );
-		traverse_data.done = 0;
-		data.primary = data.secondary;
-		p = locate_pivot_traversal( expression, &traverse_data, FIRST );
-		if ( traverse_data.done==2 ) {
-			freeListItem( &data.stack.flags );
-			freeListItem( &data.stack.level );
-			freeListItem( &data.stack.premark );
-			return p; } }
-
-	xpn_free( xpn, NULL );
-	return NULL; }

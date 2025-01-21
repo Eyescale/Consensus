@@ -1,5 +1,5 @@
 
-	.%tag .%guard
+#	.%tag .%guard	// no need
 	on init
 		do {	guardA |{
 				( %|, ( trigger, action )),

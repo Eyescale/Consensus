@@ -4,7 +4,7 @@ About
 	It is not intended as a complete specification
 
 LEVEL vs. SUB_EXPR flags
-	on (
+	on '('
 		in "expr"
 			bm_parse pushes current flags on its stack
 			and then
@@ -32,7 +32,7 @@ LEVEL vs. SUB_EXPR flags
 			ASSIGN
 			TERNARY
 			ELLIPSIS
-	on )
+	on ')'
 		if LEVEL is set
 			. bm_parse passes MARKED down the stack
 		otherwise
@@ -80,7 +80,7 @@ Markability
 	   and db_op( REHABILITATE_OP, e ) does not rehabilitate subs
 
 NEGATED flag
-	The main purpose* of the NEGATED flag is to authorize
+	The main purpose* of the NEGATED flag is to un-authorize
 	usage of the '?' signus in expressions
 
 	logics
@@ -196,10 +196,10 @@ PROTECTED flag
 
 	Only the PIPED flag is in fact required to allow %| in expression
 		but both PIPED and PROTECTED must be unset on
-			*	DONE
-			%(_)	DONE
-			%<_>	DONE
-			~(_)	DONE
+			*
+			%(_)
+			%<_>
+			~(_)
 		in order to allow e.g. filtering of these expressions,
 	and both must be restored on ',' when LEVEL is set
 
@@ -244,20 +244,19 @@ CLEAN and LISTABLE flags
 		    ^-- are_f(SUB_EXPR|CLEAN|MARKED) && !is_f(FILTERED)
 
 %?:sub and %!:sub support
-	Simple solution - [DONE]: in *type&DO when !(SUB_EXPR|byref)
+	Simple solution: in *type&DO when !(SUB_EXPR|byref)
                 => allow e.g. %?:(.,?) without %(%?:(.,?)) in these cases
                 => %?:sub is PROTECTED: can neither be filtered nor used
 		   as ternary guard
 
 	General solution - TBD
 		1. %?:sub only => %?:(toto,.) err => use (%?) instead
-		2. %?:sub cannot be filtered, etc. - use (%?:sub) instead
 		3. %?:sub is not filterable - use (%?:sub) instead
 		4. %?:sub is not considered marked
 
-byref vs. BYREF
+byref vs. BYREF vs. FILTERED
 	in DO mode, I want to
-		forbid FILTER unless BYREF
+		forbid FILTER unless BYREF or FORE or SUB_EXPR is set
 	    where
 		BYREF means
 			expression starts with
@@ -269,22 +268,20 @@ byref vs. BYREF
 				^^
 				^.
 				^?
-			or FORE is set
 
 	So that
-		in DO mode, on ",)}>\n"
-			if FILTERED and !BYREF => err
-		in TERNARY
-			if PROTECTED => err
-		Note
-		. BYREF would not replace PROTECTED, which affects
-		the whole stack
-
-	Rationale:
-	Currently we use byref#=FORE|SUB_EXPR|NEGATED|FILTERED|STARRED
-	which does NOT cover register variables, and therefore we do not
-	prevent the user from specifying FILTERED expressions in DO mode
-	- just that we catch and ignore them at run-time (with warning),
-	when they are not used as ternary guards
-
+		in *type&DO and INFORMED
+			ons ",)}>\n"	[1]
+				if FILTERED and !BYREF => err
+			ons "?:"
+				if PROTECTED => err
+				else restore BYREF from parent
+	Notes
+	. ')' needs special care in [1], as FILTERED expression can and will
+	  be used as TERNARY guard at any level.
+	  Solution: we pass the FILTERED flag down on ')' until
+	  TERNARY operator restores the one below - or err
+	. BYREF is different from STARRED or NEGATED in that
+		. it is not set if expression is already FILTERED
+		. it is not cleared on ':'
 

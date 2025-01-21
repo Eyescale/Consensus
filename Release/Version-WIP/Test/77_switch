@@ -1,0 +1,11 @@
+
+	on init
+		do : input : 'a'
+	else on :input:
+		'a'
+			in *^^:'a'
+				do >"bingo\n"
+			else do > "benga\n"
+	else do exit
+		
+		

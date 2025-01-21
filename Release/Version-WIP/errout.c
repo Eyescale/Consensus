@@ -14,17 +14,14 @@
 #define HEAD ">>>>> B%%: error: "
 #define BODY RESET "\t\t"
 #define FOOT YELLOW "\t<<<<< "
-#define _( msg ) \
-	fprintf( stderr, msg ); break;
-#define _arg( msg ) \
-	fprintf( stderr, msg, va_arg(ap,char*) ); break;
+#define _( msg ) fprintf( stderr, msg ); break;
+#define _arg( msg ) fprintf( stderr, msg, va_arg(ap,char*) ); break;
 
 void *
 errout( ErrOutType type, ... ) {
 	CNDB *db;
 	CNInstance *e, *f, *g;
 	char *p, *expression;
-	void *address;
 	paint( YELLOW );
 	va_list ap;
 	va_start( ap, type );
@@ -47,7 +44,7 @@ errout( ErrOutType type, ... ) {
 	case CellLoad: _arg(
 		ERR "load init file: '%s' failed\n" )
 	case ContextMarkType: _(
-		HEAD "extract_mark(): unknown mark type\n" )
+		HEAD "mark_pop(): unknown mark type\n" )
 	case QueryScopeMemoryLeak: _(
 		HEAD "xp_verify: memory leak on scope\n" )
 	case QueryExponentMemoryLeak: _(
@@ -72,14 +69,14 @@ errout( ErrOutType type, ... ) {
 		HEAD "EENO filtered in expression\n"
 		BODY "on/per _%s\n"
 		FOOT "filter ignored\n" )
+	case EnPostFrame: _arg(
+		HEAD "post-frame narrative\n"
+		BODY "en %s\n"
+		FOOT "post-frame operation not supported\n" )
 	case ExpressionTagUnknown: _arg(
 		HEAD "list identifier unknown in expression\n"
 		BODY ".%%%s\n"
 		FOOT "instruction ignored\n" )
-	case InstantiateFiltered: _arg(
-		HEAD "instantiation filtered in expression\n"
-		BODY "do _%s\n"
-		FOOT "filter ignored\n" )
 	case InstantiatePartial: _arg(
 		HEAD "unable to complete instantiation\n"
 		BODY "do %s\n"
@@ -103,10 +100,15 @@ errout( ErrOutType type, ... ) {
 	//----------------------------------------------------------------------
 	//	Unformatted
 	//----------------------------------------------------------------------
+	case BMMemoryLeak:
+		fprintf( stderr, ERR "Memory Leak: "
+			"%llu/%llu Pair items unaccounted for\n",
+        		CNMemoryUsed, CNMemorySize );
+		break;
 	case CellInform:
 		db = va_arg( ap, CNDB * );
 		e = va_arg( ap, CNInstance * );
-		db_outputf( stderr, db,
+		db_outputf( db, stderr,
 			HEAD "bm_inform() instance\n"
 			BODY "%_\n"
 			FOOT "transposition failed\n", e );
@@ -116,18 +118,19 @@ errout( ErrOutType type, ... ) {
 		e = va_arg( ap, CNInstance * );
 		f = va_arg( ap, CNInstance * );
 		g = va_arg( ap, CNInstance * );
-		db_outputf( stderr, db,
+		db_outputf( db, stderr,
 			HEAD "concurrent reassignment\n"
 			BODY ":%_:%_->%_\n"
 			FOOT "not authorized\n", e, f, g );
 		break;
 	case DeternarizeMemoryLeak:
-		address = va_arg( ap, void * );
 		expression = va_arg( ap, char * );
 		p = va_arg( ap, char * );
 		fprintf( stderr,
-			HEAD "deternarize: Memory Leak: "
-			"0x%x %s, at %s\n", (int)address, expression, p );
+			HEAD "deternarize: Memory Leak\n"
+			BODY "%s\n"
+			FOOT "at '"RESET"%s"YELLOW"', s:0x%x f:0x%x\n", expression, p,
+			(int)va_arg(ap,void*), (int)va_arg(ap,void*) );
 		break;
 	case InstantiateInput:
 		expression = va_arg( ap, char * );

@@ -19,17 +19,33 @@ void		fprint_output( FILE *, char *, int level );
 #define TAB( level ) \
 	for ( int k=0; k<level; k++ ) putc( '\t', stream );
 
+static inline Pair *
+bm_switch( int type, char *expression, BMContext *ctx ) {
+	CNInstance *e, *f;
+	e = bm_query_assignee( type, expression, ctx );
+	if ( !e ) return NULL;
+	else if ( !cnStarMatch( f=e->sub[0] ) )
+		return newPair( f->sub[1], e->sub[1] );
+	else return newPair(e,NULL); }
+
+static inline int
+bm_case( char *expression, BMContext *ctx ) {
+	return !strcmp( expression, "." ) ?
+		1 : !strcmp( expression, "~." ) ?
+		!BMVal( ctx, "*^^" ) : !!bm_query_assignee( 0, expression, ctx ); }
+
 //---------------------------------------------------------------------------
 //	bufferized output
 //---------------------------------------------------------------------------
 typedef struct {
 	FILE *stream;
-	int type, first;
+	char *fmt;
+	int first;
 	CNInstance *last;
 } OutputData;
 
 void	bm_out_put( OutputData *, CNInstance *, CNDB * );
-int	bm_out_flush( OutputData *, CNDB * );
+int	bm_out_last( OutputData *, CNDB * );
 
 
 #endif	// EXPRESSION_H

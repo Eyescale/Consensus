@@ -2,7 +2,7 @@
 //	External specifications
 //---------------------------------------------------------------------------
 Objective
-	support ?:(_)(_) and ?:(_){_} in DO expressions
+	support ?:(_)(_) and ?:(_){_} aka. FORE in DO expressions
 
 About
 	Loop usage is restricted to either (see parser.c)

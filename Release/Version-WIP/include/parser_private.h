@@ -1,23 +1,28 @@
 #ifndef PARSER_PRIVATE_H
 #define PARSER_PRIVATE_H
 
-#include "traversal_flags.h"
+#include "parser_flags.h"
 
-#define byref \
-	FORE|SUB_EXPR|NEGATED|FILTERED|STARRED
+// remove leading '.' in ".:func" on '('
+#define S_HACK \
+	if is_f( INFORMED ) { \
+		listItem **s = (listItem **) &data->string->data; \
+		reorderListItem( s ); \
+		popListItem( s ); \
+		reorderListItem( s ); }
 
 // these flags characterize expression as a whole
+#define EXPR		1
 #define CONTRARY	(1<<1)
 #define RELEASED	(1<<2)
-#define NEWBORN		(1<<3) // cf. WarnNeverLoop
-#define P_CHAR		(1<<4)
-#define P_REGEX		(1<<5)
-#define P_EENOV		(1<<6)
-#define P_LITERAL	(1<<7)
+#define P_CHAR		(1<<3)
+#define P_REGEX		(1<<4)
+#define P_EENOV		(1<<5)
+#define P_LITERAL	(1<<6)
 
 #define expr(a)		(data->expr&(a))
-#define push_expr(a)	data->expr|=(a);
-#define pop_expr(a)	data->expr&=~(a);
+#define expr_set(a)	data->expr|=(a);
+#define expr_clr(a)	data->expr&=~(a);
 
 static BMParseFunc bm_parse_char, bm_parse_regex, bm_parse_eenov, bm_parse_seq;
 
@@ -34,6 +39,10 @@ static BMParseFunc bm_parse_char, bm_parse_regex, bm_parse_eenov, bm_parse_seq;
 	f_markable_( flags, stack )
 #define f_signalable( stack ) \
 	f_signalable_( flags, stack )
+#define f_contrariable( stack ) \
+	f_contrariable_( flags, stack )
+#define f_outputable( stack ) \
+	f_outputable_( flags, stack )
 
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {
@@ -43,12 +52,11 @@ f_tag_( int *f, listItem **stack, int flags ) {
 		i->ptr = cast_ptr( value ); } }
 
 static inline int
-f_parent_( listItem **stack, int bits )
-/*
-	Assumption: *stack != NULL
-*/ {
-	int flags = cast_i((*stack)->ptr);
-	return ( flags & bits ); }
+f_parent_( listItem **stack, int bits ) {
+	if ( *stack ) {
+		int flags = cast_i((*stack)->ptr);
+		return ( flags & bits ); }
+	return 0; }
 
 static inline void
 f_restore_( int bits, int *f, listItem **stack ) {
@@ -80,11 +88,54 @@ f_markable_( int flags, listItem **stack )
 		next_i = i->next;
 		flags = cast_i(i->ptr); } }
 
+static inline int is_base_ternary_term( listItem *, int );
 static inline int
 f_signalable_( int flags, listItem **stack )
 /*
 	Authorize the usage of signal~ as term in mono-level ternary
 	expression do ( guard ? term : term )
+*/ {
+	if ( is_f(ASSIGN) || is_f(byref) ) return 0;
+	if ( !is_f(LEVEL) || !is_f(TERNARY) ) return 1;
+	return is_base_ternary_term( *stack, 0 ); }
+
+static inline int
+f_contrariable_( int flags, listItem **stack )
+/*
+	Authorize the usage of contra term (~.:_) at base level only or
+	in mono-level ternary expression do ( guard ? term : term ) 
+*/ {
+	if ( !is_f(LEVEL|FIRST) || is_f(INFORMED|ASSIGN|TERNARY|byref) )
+		return 0; // LEVEL here is the contra level
+	listItem *i = *stack;
+	listItem *next_i = i->next;
+	if (( next_i )) {
+		flags = cast_i(i->ptr);
+		if is_f( TERNARY )
+			return is_base_ternary_term( next_i, 0 );
+		else return 0; }
+	return 1; }
+
+static inline int
+f_outputable_( int flags, listItem **stack )
+/*
+	Authorize the usage of "_" term at base level only or in
+	mono-level ternary expression do ( guard ? term : term ) 
+	possibly in vector - Assumption: we have expr( OUTPUT )
+*/ {
+	if is_f( INFORMED|ASSIGN|byref )
+		return 0;
+	else if is_f( TERNARY )
+		return is_base_ternary_term( *stack, VECTOR );
+	else if (( *stack ))
+		return ( is_f(VECTOR) && !(*stack)->next );
+	return 1; }
+
+static inline int
+is_base_ternary_term( listItem *stack, int extra )
+/*
+	return 1 if stack represents term of mono-level ternary
+	expression do ( guard ? term : term ) 
 	Note that stack is pushed,
 	  . first, upon entering the expression - therefore
 	    before the TERNARY flag is set,
@@ -93,13 +144,17 @@ f_signalable_( int flags, listItem **stack )
 		   ^---- 1st push 
 			   ^---- 2nd push: set TERNARY, clear FIRST
 */ {
-	if ( is_f(ASSIGN) || is_f(byref) ) return 0;
-	if ( !is_f(LEVEL) || !is_f(TERNARY) ) return 1;
-	for ( listItem *i=*stack, *next_i; i!=NULL; i=next_i ) {
+	// Assumption: TERNARY verified beforehand
+	for ( listItem *i=stack, *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		int flags = cast_i(i->ptr);
 		if is_f( FIRST ) {
-			return !next_i->next; } }
+			if ( !next_i->next ) return 1;
+			else if ( extra ) {
+				i = next_i;
+				flags = cast_i(i->ptr);
+				return ( is_f(extra) && !i->next->next ); }
+			else return 0; } }
 	return 1; }
 
 //===========================================================================

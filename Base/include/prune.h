@@ -40,5 +40,11 @@ static inline int p_list( char *p ) {
 		return !strncmp( p, ",...", 4 ); }
 	return 0; }
 
+static inline char * prune_xsub( char *fmt ) {
+	for ( int level=0; ; )
+		switch ( *fmt++ ) {
+		case '(': level++; break;
+		case ')': level--;
+			if ( !level ) return fmt; } }
 
 #endif	// PRUNE_H

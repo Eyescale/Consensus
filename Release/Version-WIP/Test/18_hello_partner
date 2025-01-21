@@ -4,6 +4,7 @@
 	else on init < *partner
 		do >"hello, partner\n"
 	else on ~( *partner )
+		do >"bye\n"
 		do exit
 	else do >"... "
 

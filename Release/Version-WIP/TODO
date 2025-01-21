@@ -1,17 +1,284 @@
 See Also: design/story/interactive.story
 
+MUST DO:
+	. reimplement string shared arena interface, ie.
+	  replace any string in narrative with $address in arena
+		  => no more messing up with ROOT expression
+		  => use strcomp => allow strings everywhere
+		  => in expression : on $ => knows what to do
+	  => MUST update ./design/specs/bm-ARENA.txt - esp. for strings
+	  starting with local base entity definition e:[ NULL, CNDB::entry ]
+			that is	e.sub[1]==[ s, e ]
+		  vs. e shared:	e.sub[1]==[ s, arena::ref ]!=e
+	  but also how string narrative hold string entity in root->expression
+	  and how we cache local shared entities in context '$' entry, which
+	  . is used on cell release to flush arena - cf. program.c:cell_release()
+	  . keeps not the e but the e->sub[1] where e is a shared entity -
+	    cf.  context.h:bm_register_string() bm_register_ube()
+	  etc.
+	  + TBD: why do I store e->sub[1] in ctx->shared and not e?
+		=> would facilitate bm_lookup_string()
+
 TODO
-	. cosystem init: create (.,(Status,.)) and clear guard Status -
-	  implement and test example
-	. TBD: active registry not checked on event < *src - bug? feature?
-	. NTH: now that we keep list of shared entities in context
+	. update github
+		. cleanup Examples/6_System/README vs. specs.txt
+		. cleanup design/story/...
+		. git status [...] => integrate new files
+	. reimplement string shared arena (see above)
+	. use #ifdef XXX_TRAVERSAL_H vs. traversal->done in bm_traverse()
+	. rewrite fprint_expr / does not work for Test/69_inc, due to ternary
+		=> implement approach a la bm_traverse() - with callbacks
+	. feature complete Examples/6_Proto [*]
+		[ DONE ] output l%dc%d on error
+		[ DONE ] handle backslash in : string => nope! these are natural!!
+		[ DONE ] output system as is => in .:output
+		. creating data structure & output
+		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
+		. allow {ON,OFF} in query ?
+		. cosystem init
+		. create (.,(Status,.)) and clear guard Status -
+		. capture all proxies (and subscribe) on init
+		. finalize and test TM.story example (manual)
+	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
+	. OPT: locate_pivot && query_traversal in case of **...*identifier
+	. TBD: I would like to replace else on/off & etc. with
+		eg. on which / off which and else on that / else off that
+		but in fact can keep '&' - just need to remove else in current narrative !
+		but then "else" meaning: none of the above => no clamping ??
+	. TBD: ( guard ?: term ) should NOT insert guard if passes => then what?
+		if just '.' => on . requires event (can be release)
+		do . => in fact does nothing, same as do ~. EXCEPT in couple!
+	. TBD: publish %. // better than "this" ?
+	. TBD: use cosystem names vs. proxy => change EVA definition
+	       this makes the cosystem generic, ie. co-actor can be changed /
+	       handy in TM Cell implementation / e.g. current cell actor
+	  issue: newly assigned cosystems must know system rules and actors
+	. NTH: expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
+	. NTH: since we keep list of locally shared entities in context '$' entry
 		=> bm_query() could parse them in no pivot case
+	. NTH: do >format:args | format:args | format:args
+	. NTH: global function scope
 	. NTH: parser_macros: extract REENTER + put caught in io struct
-	. NTH: allow %list and |^list in OUTPUT, FORE, etc.
-		just cannot be used in DO and ON and PER
-	. NTH: parser post-processing -> identify/eliminate undue filters
+	. NTH: tag list feature completion
+	  . .%list < expression, ... > just adds entries to existing list
+	    .%list~ < expression, ... > could be used to reset and re-initialize
+	  . %list and |^tag currently cannot be used in DO and ON and PER
+	    we only support tagging in condition evaluation e.g. %(expression|^tag )
+	    which could be extended to cover e.g. OUTPUT, FORE, etc.
+	  . Note that .%tag~ {_} only performs condition evaluation (and tagging)
+	    of passed expressions, as we don't want to transport private entities
+	    and we need to support .%tag~ { ^.:~%(.,(Status,?))|^guard }
+
+[*] 	See under ./design/story/proto/
+		system.spec - TM system external specifications
+		narrative.pseudo - TM system definition
+		model.file - model file format & generator specs
+	  1. specify system
+	  2. extract occurrences, associate cosystems
+	  3. create system narrative aka. narrative.pseudo
+	  4. load system model from narrative.pseudo
+	  5. output system model, in html, in the form
+		cosystem
+		: action <={ trigger, guard },{ ... }=>{ occurrences } 
+		: action <={ trigger, guard },{ ... }=>{ occurrences } 
+		...
+		cosystem 
+		...
+	  => allows to navigate
+
+	Note: when I parse my pseudo-narrative
+		=> I have a current guard = { conditions }
+		=> I have a current trigger = ( { bar }, { on } )
+		=> for all subsequent actions
+			instantiate ( guard, ( trigger, %? ))
+	I can make list as I go, starting with : guard : ( guard, * )
+		and then do : guard : ( *guard, condition )
+	so popping is easy
+	and list in extenso: (((((guard, *), 1 ), 2 ), 3), etc. )
+
+		in ?: "....."
+			do %?|^guard
+
+BUGS
+	. finalized filter pipe ":|" design & implementation
+	  cf. design/specs/bm-PIPE-instantiation-rules.txt
+	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
+	  => that's because parser replaces %( with default format %_
+	     should actually exit on error
+	. do :( A | B | C ) => deternarize memory leak!!! => test again
+	  but do :( A | (B|C) ) => no problem
+	. do ~({titi,toto}) accepted but what does nothing !?
+	. do ~{ started, finish } to be implemented
+	. do :< a, b >: ({1,2},3)
+		=> wrong order of assignment
+	. passthrough "this" (cf. context_rebase) not good,
+	  as it is in turn passed to sub-narrative, etc.
+	. TBD: query.c: non-pivot case: shared entities not traversed
+		=> bug or feature?
+
+NOTES
+	. FEATURE: per-else sequences are accepted, e.g.
+		per expression	// resp. per expression < .
+			action	// not even required
+		else // no match was found for expression
+			...
+	. prune_sub: no need to check level in case '.' -> '...'
+	  implement prune_dot?
+	. locales in occurrence narratives => (occurrence,locale)
+	  should not have .ON, .OFF or use something special
+	. ?:_ => invokes
+		CB_WildCardCB on '?' then, having set INFORMED,
+		CB_FilterCB on ':' which is kind of a contradication (?)
+	  could actually skip the ':' after WildCardCB => leave INFORMED unset
+	. integrate db_debug.c from Version-1.1 into db_op.c
+	. Note: in the future I want to be able to
+		do list:"%$"<"string"	or do list < "string"
+	  so that
+		do >"%$": %( list, ?:... ) outputs string
+		and we have *list pointing to the last string character
+		could be NULL terminated?
+	  Conversely, I want to be able to make a string out of a list
+	  => The string would then be stored in string arena
+	  	do : handle : $(list)	or ??
+	. we could have initial state %%, allowing narrative to be
+	  ::
+		en %(:?)
+	  .: %%
+		on init // optional, could be also on %% or on this
+			do : base	
+	  .: base
+		...
+	  .: &
+		// post-frame
 
 DONE
+	. switch/case implementation => cf system.NEXT
+	  => parser.c, story.c:indentation_check() changes
+	  => update bm_vop()
+	  => operation.c:in_case() implemented the following:
+	  IN_S/ON_S: meaning in/on switch
+		traverse ":expression:" aka. (*,expression) and
+		if passed inform lmark:[^^,*^^] / (*^^) possibly NULL
+	  C_IN/C_ON: meaning case in/on
+		test "expression" (possibly "~." or ".") against *^^
+		=> query_switch() in the same vein as query_assignment()
+	  => in_case() covers everything, invoking
+		expression.c:{ bm_switch(), bm_case() } appropriately
+	  NOTES
+	  1. there may be several candidates matching SWITCH expression.
+	     We prioritize those verifying %((*,expression),?) either in CNDB or
+	     in log - according to in/on - unassigned only if all else failed.
+	  2. *^^ NULL systematically fails all cases other than "~."
+	. allowed FORE expression to be filtered and marked, e.g.
+	  in Examples/6_System/system.story
+		do ( '\0' |
+			?:%((?,...):*s):(.,?) (%|,%?):|
+				((*,*tab), (**tab, (%?,%|))) )
+	  cf. PivotQueryOptimization.spec for performance win
+	. parser now detects and **forbids** FILTERED expressions
+	  (was: at run-time)
+			do expression : expression
+		as well as do ( expression : expression )
+	  where the first term is not BYREF
+	  cf. design/specs/bm-PARSE-implementation.txt
+	. renamed traversal_flags.h into parser_flags.h
+	. implemented %sub$ in output format - used in system.story
+	  	do > "%(.,?)$": %((?,...):*p)
+	  instead of, previously
+	  	do > "%$": %(%((?,...):*p):(.,?))
+		where
+			*p : (( tab, ... ), '\t' )
+	  cf. PivotQueryOptimization.spec for performance win
+	. implemented string as output argument - e.g.
+		do >"hello, %s\n": "world"
+	  RESTRICTIONS: base level only - base ternary term included
+	  output as-is for now => string finished on 2nd '"' encountered
+	  cf expression.c:bm_output()
+	. implemented in (~.:expression) as contrary condition
+	  RESTRICTION: base level only - base ternary term included
+	. implemented do : state |: expression (including ~.)
+	. implemented ~(:?) - cf Test/73_transition-from
+	. allow do : state | ...
+		%| takes state, ^^ is not set (would be %%)
+	  as a no brainer due to the unicity of value / assignment.
+	  Note that we do not allow
+		  eg. do : err | ~( nl ) to release nl
+	  due to the prenascency of the piping context, not befitting
+	  the release operation; but as a convenience we do allow
+		  eg. do : err | { ~( nl ) } to release nl
+	. reformatted function declaration as .:func( args )
+	  stored internally as :func(args) to optimize do_enable and
+	  do_enable_x traversals, yet hidden by narrative_output
+	. allowed narrative definition as .:expression to
+	  	avoid unnecessary .this:expression
+		allow identifier as expression
+	. implemented bm_lookup_string() looking up local "$" registry
+	  Note that string needs to be registered to be found, and
+	  that string needs to terminate expression as we use strcmp
+	  (would be easy to change as we keep the double-quotes)
+		=> we could provide general support for string entities
+		=> wait for redesign to be completed
+	. FIXED: ellipsis no longer accepted unless SUB_EXPR in FORE
+	. support ?:%(_)_ in FORE
+	. implemented :| - cf instantiate.c:loop_CB()
+	  upon (_):| %| takes current data->sub[NDX], ***even if NULL***
+	  RESTRICTIONS:
+	  only supported in instantiation, iff
+	  	. preceded and followed by ) => must be _):|) alt. _):| )
+		. as terminating a piped expression => must be (_| _(_):|)
+	  and pass through unless (_| ?:(_)(_):| ) and actually looping
+	  cf Test/69_inc_dec
+	  Note: we don't inforce FORE as preceding but we could, ie.
+		parser.c in "?:(_)" on '(' set some flag, but which?
+	. rename traverse_data into traversal everywhere
+	. FIXED: prune.c:prune_list()
+		ASSUME starting on ellipsis
+		RETURN on first non-backslashed ')' or '(' or '\0'
+	. replaced all lookupIfThere/addIfNotThere sequences w/ addIfNotThere
+	. operation:bm_vop() cf. debug.c
+	. BUGFIX: query.c:xp_traverse() pvi set apart to be freed at the end
+	. do { ..., ~( expression ), ... } now invokes bm_release( expression )
+	  Note: only if is_f(SET) and !is_f(VECTOR|LEVEL|SUB_EXPR) nor carry
+	. function expression // aka. function call - considered EN occurrence
+	  RESTRICTION: expression must start with '%' or '('
+	  See implementation in cell.c:bm_cell_operate() where
+	  . we preserve caller's context into func (including variable perso)
+	    REMINDER: perso usage is limited to locale declaration i.e.
+	    .locale will instantiate ( perso, locale ) if it does not exist,
+	    and allows it to be referenced as locale
+	    .( expression ) references or instantiate ( perso, expression )
+	    There is currently no way for the user to query perso directly
+	    Base narrative perso is %%
+	  . the execution order guarantees ( narrative, perso, func, instance )
+	    unicity, which means for instance that the same function( instance )
+	    may be invoked multiple times so long as it's from a different
+	    ( narrative, perso ) context (can be same perso different narrative)
+	  cf. Test/68_func
+	. .:function ( parameters ) // function definition
+	  RESTRICTION: func multiple definitions allowed but not executed
+		as operation.c:do_enable() returns on first match
+	. implemented sub-mark optimization - cf. new design / double trigger
+		allow (_)^(.,.)	to enable sub-mark
+		allowing !^(?,.) or !^(.,?) or !^(?,?) or !^(.,.)
+			to precondition instantiation loop
+		or branch e.g. !^(?,.):(1)(2) means
+			if mark.sub[ 0 ] has newborn then do 1 else do 2
+			cf. Test/55_bingo-bonga
+		Note that in include/traversal.h
+			)^_ invokes CB_NewBornCB, on the caret
+			!^_ invokes CB_WildCardCB, on the exclamation mark
+	. implemented
+		in ?: "string"	// cf. Test/67_in-str
+	  in addition to
+		do "string"
+		do : variable : "string"
+		: "string" // narrative
+	. implemented post-frame narrative - cf. Test/66_post-frame
+	  affected cell.c: bm_cell_operate(), operation.c: do_enable()
+	. removed restriction whereby tag needed to be declared before use:
+	  tag names are now memory allocated, so no need to declare them before use
+	  note: declaration is still supported and will pre-allocate tag
+	  cf. Test/64_tag-use-cases
 	. created Examples/3_TM.multi/{ TM-tape_drive.story, TM-htc.story }
 		  new Cell centralized in Tape class
 	. extended *^?:sub to return
@@ -35,13 +302,6 @@ DONE
 	. removed Test/47_do-ellipsis - file was garbage (?)
 	. fprint_output: air-space output vector - cf Test/64_tag-use-cases
 	. errout.c: centralized error messages
-	. RESTRICTION: .%tag must be declared before use, either as .%tag <_>
-	  or .%tag so that it can be registered into ctx from expression
-	  - otherwise e.g. in %( titi ? toto|^tag : tutu ) would register
-	  tag from deternarized string, which will be freed
-	     => allow several on the same line (declaration only)
-	     => error if tag used and not declared (run-time)
-	  cf. Test/64_tag-use-cases
 	. implemented .%tag expressions
 		.%tag	// declaration and registration
 		.%tag  <_> // inform tag, e.g.: .%tag <ON,OFF>
@@ -49,8 +309,8 @@ DONE
 		.%tag~ { expression(^.)|^., ... } // while pop |^. => save
 		.%tag~ // flush and deregistration
 	  RESTRICTIONS
+		neither %tag nor ^tag can be used inside of expression(^.)
 		%list and ^list cannot be both in the same expression
-		neither %tag nor ^tag can be used inside of expression
 		^. only allowed in *type&LOCALE and is_f(SET) - ie.
 			.%tag{_} or .%tag~{_} above
 	  cf. Test/63_tag-list-op
@@ -157,7 +417,7 @@ DONE
 		cf Test/58_EYEYE-ube
 	. unrestricted ^^ - aka. EYEYE: generally means: current assignee
 	. instantiate.c: on "}|)," handle sub[ NDX ]==NULL
-		that is: pipe_bgn_CB, close_CB, end_set_CB, decouple_CB
+		that is: pipe_bgn_CB, close_CB, end_set_CB, comma_CB
 		=> no more _return( 2 ) but instead pruning levels
 		   with possibility to recover from NULL results
 	. redefined _prune( take ) as _prune( take, p )
@@ -167,7 +427,7 @@ DONE
 	. implement per expression
 	. implement ?:(_)(_) and ?:(_){_} and !?:(_)(_) and !?:(_){_}
 		=> cf. design/specs/bm-TRAVERSE-loop.txt
-		+ Test: cf. Test/56_loop
+		+ Test: cf. Test/56_FORE
 	. BUGIX locate_pivot.c => now using not_CB
 		Note that in traversal.h NEGATED only applies
 		to term - i.e. is NOT passed inside (_)
@@ -275,18 +535,15 @@ DONE
 		cf. design/specs/bm-Main.txt
 	. branched Version-2.1
 
-OPEN ISSUES
-	. do :< a, b >: ({1,2},3)
-		=> wrong order of assignment
-	. TBD: query.c: non-pivot case: shared entities not traversed
-		=> bug or feature?
-
 NICE TO HAVE
-	. NTH: do "occurrence" | ...
-		requires own stringRegister/stringLookup in bm_arena_register()
-		as we only want to compare what is inside "_"
-	. NTH: byref vs. BYREF (traversal flag of its own)
-	       issue: major compatibility breach
+	. do "occurrence" | ...
+	  requires own stringRegister/stringLookup in bm_arena_register()
+	  as we only want to compare what is inside "_"
+	. implement p_prune() using bm_traverse() ?
+		. pros: less complexity in Base + consistent w/ code
+		. cons: test each character
+	. byref vs. BYREF (traversal flag of its own)
+	  issue: major compatibility breach
 	. query, scan, feel, etc. could take &p as argument, so that
 	       on return we have p = post-expression
 	. replace ... with …
@@ -390,8 +647,24 @@ NICE TO HAVE
 		  => bm_instantiate() may do half a job (user responsibility)
 	. multi-threading (pthreads)
 	. restore DEBUG mode in freeCNDB() and db_update() - cf. Version-1.1
+	. really think about
+		on init <=> on ( %% )
+		do exit <=> do ~( %% )
+	  => we have
+		nil:( NULL, NULL ) as it should <<< actually could be anything I want >>>>
+	  	%%:( ( NULL, (CNCell*) this ), NULL )
+				^------	( [ entry:narrative, carry:NULL ], ctx )
+	          db:[ nil, ndx ] -----------------------------------------^
+			     ^----------------- registries ----------------^
+		Why not separate CNDB and ctx ? Because I want access to db from ctx !
+	  The thing I am interested in being the relationship between %% and nil
 
 TODOC
+	. cf. Test/37_include: path is relative to the story file path,
+	  not to the current B% working directory
+	. [sub]narrative definition CAN start at tab 0 after declaration
+	. active registry not verified on event < *src
+	  when specified directly, *src is not required to be in %@ for EENO to perform
 	. %identifier' in literal or list MUST be followed by non-separator
 	. write Consensus B% Version-2.0 Programming Guide
 		. Reminder: instantiation may do half a job, as
@@ -432,6 +705,11 @@ TODOC
 	. CAVEAT: DBFirst() DBNext() do not traverse proxy.as_sub[0]^n
 		=> These instances will not be found in Version-2.0 when the
 		   query expression is non-pivotable
-		=> Not a problem in Version-2.1 (currently WIP) as these will
-		   only be created as DB_SIGNAL_OP
+		=> Not a problem in Version-2.1 as these are created as DB_SIGNAL_OP
+
+NEXT VERSION
+	. externalize System definition => bmedit or ./B% -i
+	. bmedit to verify that, in B% sub-narratives
+	  action-generated events cannot be (action,ON|OFF) except ( this, OFF )
+	  which must be specified for actions with B% narrative
 

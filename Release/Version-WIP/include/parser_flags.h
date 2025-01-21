@@ -1,6 +1,11 @@
 #ifndef TRAVERSAL_FLAGS_H
 #define TRAVERSAL_FLAGS_H
 
+#define byref \
+	FORE|SUB_EXPR|BYREF
+#define f_set_BYREF \
+	if ( !is_f(FILTERED) ) f_set( BYREF )
+
 //===========================================================================
 //	traversal flags
 //===========================================================================
@@ -30,6 +35,8 @@
 #define STARRED		(1<<23)
 #define FORE		(1<<24)
 #define PROPPED		(1<<25)
+#define CONTRA		(1<<26)
+#define BYREF		(1<<27)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

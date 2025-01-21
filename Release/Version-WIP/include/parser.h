@@ -50,7 +50,7 @@ typedef struct {
 
 typedef enum {
 	ProtoSet = 1,
-	OccurrenceAdd,
+	OccurrenceTake,
 	TagTake,
 	ExpressionTake,
 	NarrativeTake
@@ -60,7 +60,6 @@ typedef enum {
 	WarnOutputFormat,
 	WarnInputFormat,
 	WarnUnsubscribe,
-	WarnNeverLoop,
 	ErrUnknownState,
 	ErrUnexpectedEOF,
 	ErrUnexpectedCR,

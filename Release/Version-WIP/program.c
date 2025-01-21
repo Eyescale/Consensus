@@ -128,6 +128,7 @@ static void
 cell_release( CNCell *cell, void *user_data ) {
 	listItem *flushed = NULL;
 	CNStory *story = user_data;
+
 	BMContext *ctx = BMCellContext( cell );
 	Pair *shared = BMContextShared( ctx );
 	CNDB *db = BMContextDB( ctx );
@@ -176,4 +177,16 @@ freeProgram( CNProgram *program ) {
 		freeCell( cell, cell_release, program->story ); }
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program ); }
+
+//===========================================================================
+//	cnExit
+//===========================================================================
+void
+cnExit( int status )  {
+	switch ( status ) {
+	case 0 :
+		break;
+	default:
+		if ( CNMemoryUsed ) errout( BMMemoryLeak );
+		break; } }
 

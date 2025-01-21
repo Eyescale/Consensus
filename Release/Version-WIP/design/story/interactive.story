@@ -15,7 +15,7 @@ Objective
 
 Description
 	Requirement Specifications can be reduced to short statements, which
-	which we call occurrences, describing the System's conditions, events,
+	we call occurrences, describing the System's conditions, events,
 	and actions, according to the syntax
 
 		in occurrence(s) // condition

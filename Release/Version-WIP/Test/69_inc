@@ -1,0 +1,44 @@
+/*
+	increment - decrement -- Dial implementation
+*/
+on init
+	do (:0123456789:) // dial
+	do ((N,...):19999:)
+	do : inc
+else in : inc
+	en increment( N, * )
+	do : dec
+else on : dec
+	do >"\t%$ - 1 = ": %((N,*),?:...)
+else in : dec
+	en decrement( N, * )
+	do : ~.
+else on : ~.
+	do >"%$\n": %((N,*),?:...)
+	do exit
+
+.: increment( .N )
+	// for each subsequence in %(N,...) not ending with 9
+	per ?: %((N,.),...):(.,~9)
+		// which is not itself part of a sequence ending with not 9
+		in ~.: %((%?,.), ... ):( ., ~9 )
+			// replace last subsequence's digit with digit successor in dial
+			// Assumption: No (digit,(.,.)) instance exists other than in dial
+			do ( (( %?:(?,.), ~. ), %( %(%?:(.,?)), (?,.) )) | ?:%(%?,?:...) (%|,0):| )
+	else in ?: N // either all %(N,...) digits are 9 or N has no digit association
+		// replace N's all successor digits with 0, preceded by 1
+		do ((( %?, ~. ), 1 ) | ?:%(%?,?:...) (%|,0):| )
+
+.: decrement( .N )
+	// for each subsequence in %(N,...) not ending with 0
+	per ?: %((N,.),...):(.,~0)
+		// which is not itself part of a sequence ending with not 0
+		in ~.: %((%?,.), ... ):( ., ~0 )
+			// replace last subsequence's digit with digit predecessor in dial
+			// Assumption: No (.,(digit,.)) instance exists other than in dial
+			do ( %?:(N,1) ? // special case: N is 1 followed by nothing but 0
+				( ( %?:(?,.), ~. ) | ?:%(%?,?:...) (%|,9):| ) :
+				( (( %?:(?,.), ~. ), %( ?, (%(%?:(.,?)),.))) | ?:%(%?,?:...) (%|,9):| ) )
+	else // either all %(N,...) digits are 0 or N has no digit association
+		do (( N, 0 ), ~. )
+

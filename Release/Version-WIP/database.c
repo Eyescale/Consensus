@@ -273,7 +273,7 @@ uncoupled( CNInstance *y, CNInstance *x, CNDB *db )
 	make sure that all these connections are either released or
 	to-be-released - so that we can release y
 */ {
-	if ( !y || isProxy(y) ) // proxies are kept untouched
+	if ( !y || cnIsProxy(y) ) // proxies are kept untouched
 		return 0;
 	CNInstance *nil = db->nil;
 	for ( int ndx=0; ndx<2; ndx++ )
@@ -294,7 +294,7 @@ db_fire( CNInstance *proxy, CNDB *db )
 	deprecates either all e:(proxy,.) or, if dangling, proxy
 */ {
 	if ( deprecatable( proxy, db ) ) {
-		if (( DBProxyThat( proxy ) ))
+		if (( CNProxyThat( proxy ) ))
 			deprecate_as_sub( proxy, 0, db );
 		else deprecate( proxy, db ); } }
 
@@ -323,16 +323,16 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 			ndx = 0; continue; }
 
 		if (( y->sub[ 0 ] )) {
-			if ( !isProxy(x) || DBProxyThat(x)!=DBProxyThat(y) )
+			if ( !cnIsProxy(x) || CNProxyThat(x)!=CNProxyThat(y) )
 				goto FAIL; }
 		else if (( x->sub[ 0 ] ))
 			goto FAIL;
-		else if ( isRef( y ) ) {
+		else if ( cnIsShared( y ) ) {
 			if ( bm_arena_cmp( x, y ) )
 				goto FAIL; }
 		else {
-			char *p_x = DBIdentifier( x );
-			char *p_y = DBIdentifier( y );
+			char *p_x = CNIdentifier( x );
+			char *p_y = CNIdentifier( y );
 			if ( strcomp( p_x, p_y, 1 ) )
 				goto FAIL; }
 		for ( ; ; ) {
@@ -351,7 +351,7 @@ db_match_identifier( CNInstance *x, char *p )
 	Assumption: x!=NULL
 */ {
 	if (( x->sub[0] )) return 0;
-	char *identifier = DBIdentifier( x );
+	char *identifier = CNIdentifier( x );
 	if ( !identifier ) return 0;
 	switch ( *p ) {
 	case '/': return !strcomp( p, identifier, 2 );
@@ -378,10 +378,10 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	assignments.
 */ {
 #ifdef DEBUG
-	db_outputf( stderr, db, "db_instantiate: ( %_, %_ )\n", e, f );
+	db_outputf( db, stderr, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL, *candidate;
-	if ( DBStarMatch( e->sub[0] ) ) {
+	if ( cnStarMatch( e->sub[0] ) ) {
 		/* Assignment case - as we have e:( *, . )
 		*/
 		// ward off concurrent reassignment case
@@ -473,7 +473,7 @@ db_lookup( int privy, char *p, CNDB *db ) {
 		entry->value : NULL; }
 
 //===========================================================================
-//	DBIdentifier, DBStarMatch
+//	CNIdentifier, cnIsUnnamed, cnStarMatch, cnIsShared
 //===========================================================================
 // see database.h
 
@@ -563,9 +563,10 @@ DBNext( CNDB *db, CNInstance *e, listItem **stack ) {
 static int outputf( FILE *, CNDB *, int type, CNInstance * );
 
 int
-db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
+db_outputf( CNDB *db, FILE *stream, char *fmt, ... ) {
 	CNInstance *e;
 	char *string;
+	listItem *xpn;
 	int num;
 	va_list ap;
 	va_start( ap, fmt );
@@ -580,6 +581,10 @@ db_outputf( FILE *stream, CNDB *db, char *fmt, ... ) {
 			case 'd':
 				num = va_arg( ap, int );
 				fprintf( stream, "%d", num );
+				break;
+			case '^':
+				xpn = va_arg( ap, listItem * );
+				xpn_out( stream, xpn );
 				break;
 			case '$':
 				string = va_arg( ap, char * );
@@ -621,8 +626,8 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 		else if (( e->sub[ 0 ] )) // proxy
 			fprintf( stream, "%s", ((e->sub[0]->sub[0])?"@@@":"%%"));
 		else {
-			char *p = DBIdentifier( e );
-			if ( isRef( e ) )
+			char *p = CNIdentifier( e );
+			if ( cnIsShared( e ) )
 				fprintf( stream, "%s", ((p)?p:"!!") );
 			else if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
 				fprintf( stream, "%s", p );
@@ -634,7 +639,8 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 				case '\'': fprintf( stream, "'\\''" ); break;
 				case '\\': fprintf( stream, "'\\\\'" ); break;
 				default:
-					if ( is_printable(*p) ) fprintf( stream, "'%c'", *p );
+					if ( is_printable(*p) )
+						fprintf( stream, "'%c'", *p );
 					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
 				} } }
 		for ( ; ; ) {

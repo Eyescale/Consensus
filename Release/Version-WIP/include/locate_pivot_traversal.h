@@ -5,13 +5,13 @@
 
 static BMTraversal locate_pivot_traversal;
 #define case_( CB ) \
-} static BMCBTake CB( BMTraverseData *traverse_data, char **q, int flags, int f_next ) { \
-	LocatePivotData *data = traverse_data->user_data; char *p = *q;
+} static BMCBTake CB( BMTraverseData *traversal, char **q, int flags, int f_next ) { \
+	LocatePivotData *data = traversal->user_data; char *p = *q;
 
 static BMTraverseCB
 	not_CB, dot_identifier_CB, identifier_CB, character_CB, mod_character_CB,
 	star_character_CB, register_variable_CB, dereference_CB, sub_expression_CB,
-	dot_expression_CB, open_CB, filter_CB, decouple_CB, close_CB;
+	dot_expression_CB, open_CB, filter_CB, comma_CB, close_CB;
 
 #define BMNotCB			not_CB
 #define BMDotIdentifierCB	dot_identifier_CB
@@ -25,7 +25,7 @@ static BMTraverseCB
 #define BMDotExpressionCB	dot_expression_CB
 #define BMOpenCB		open_CB
 #define BMFilterCB		filter_CB
-#define BMDecoupleCB		decouple_CB
+#define BMCommaCB		comma_CB
 #define BMCloseCB		close_CB
 
 #include "traversal.h"

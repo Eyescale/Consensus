@@ -17,7 +17,8 @@
 //---------------------------------------------------------------------------
 CNString *
 newString( void ) {
-	return (CNString *) newPair( NULL, cast_ptr(CNStringBytes) ); }
+	int type = CNStringBytes;
+	return (CNString *) newPair( NULL, cast_ptr(type) ); }
 
 void
 freeString( CNString *string ) {
