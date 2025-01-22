@@ -1,7 +1,7 @@
 System Description
-	We start from a pseudo-narrative = System description
-	from which we derive the System occurrences, which are
-	categorized into actions, events and conditions
+	We start from a pseudo-narrative = System description, from
+	which we derive the System occurrences which we categorize into
+	conditions, events and actions
 
 					O
 				       -:-
@@ -22,34 +22,43 @@ System Description
 				     Machine
 
 	Notes
-	. each action is itself a System, where the cosystems are
-	  B% entity [aka. state variable], and the occurrences are
-	  B% instructions (performative)
+	. Conceptually each action is itself a System, where the cosystems
+	  are B% entity [aka. state variable], and the occurrences are B%
+	  instructions (performative)
 
 System Completion
 	The system is complete when
 
-	. Every condition has a corresponding action or event
-	  occurrence specified and in use
+	. Each condition has a corresponding action or event occurrence
+	  specified and in use
 
-	. Every event occurrence is either
+	. Each event occurrence is either
 	  . corresponding to an action specified and in use
-	  . specified as originating from an action, whose
-	    B% Narrative generates the event via
+	  . specified as originating from an action, whose B% Narrative
+	    generates the event via
 
 		in ?: "occurrence"
 			.%action <(%?,ON|OFF)>
 
-  	Notes
-	. Every action occurrence also represents the event and condition
-	  occurrences corresponding to the action
-		do "occurrence" => in/on "occurrence" allowed
-	. An action which is not specified as event originator does
-	  not require a B% narrative, as it may just serve to set
-	  system conditions
-	. The "action" done event if not specified also as an action
-	  does requires a B% narrative to be specified for the action,
-	  where this event is generated via .%action <(this,OFF)>
+System Rules
+	. Each action occurrence also represents its corresponding
+	  event and condition occurrences, i.e.
+		DO "occurrence" => IN/ON "occurrence" allowed
+	. DO action occurrences may be specified as other event originators,
+	  in which case they must be associated with a B% narrative
+	  generating the event
+	. When not specified as event originator, DO action occurrences
+	  do not require a B% narrative (System events/conditions)
+	. When an action narrative is specified, then the corresponding
+	  CL action occurrence can only be specified from inside that
+	  narrative - and must be if the corresponding OFF event is used
+	. CL action occurrences therefore may not have B% narrative, 
+	  whereas OFF event occurrences require a B% narrative to be
+	  specified where this event is generated - via
+
+		in ?: "occurrence"
+			.%action <(%?,OFF)>
+
 
 Task List
 	. Extract occurrences from System description
