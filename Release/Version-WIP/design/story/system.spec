@@ -48,14 +48,16 @@ System Rules
 	  in which case they must be associated with a B% narrative
 	  generating the event
 	. When not specified as event originator, DO action occurrences
-	  do not require a B% narrative (System events/conditions)
+	  do not require a B% narrative - System events/conditions
 	. When an action narrative is specified, then the corresponding
-	  CL action occurrence can only be specified from inside that
-	  narrative - and must be if the corresponding OFF event is used
-	. CL action occurrences therefore may not have B% narrative, 
-	  whereas OFF event occurrences require a B% narrative to be
-	  specified where this event is generated - via
-
+	  CL action can not be specified outside that narrative - and the
+	  corresponding OFF event occurrence, if used, must be generated
+	  from inside that same narrative, via
+		in ?:this
+			.%action <(%?,OFF)>
+	. CL action occurrences therefore are not permitted a B% narrative, 
+	  whereas OFF event occurrences which are not CL-actioned require
+	  a B% narrative to generate the event - via
 		in ?: "occurrence"
 			.%action <(%?,OFF)>
 

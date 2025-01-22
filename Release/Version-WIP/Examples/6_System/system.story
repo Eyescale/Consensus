@@ -13,11 +13,9 @@
 				do : take | (cmd,~.)
 			else in : base
 				in (cmd,.)
-					do : err |: ErrUnexpectedEOF
-				else in ready
-					do : output
-				else do : ~.
-			else do : err |: ErrUnexpectedEOF
+					do : err
+				else do : ( ready ? output : ~. )
+			else do : err
 		else on : ~.
 			do exit
 		else en %(:?)
@@ -31,7 +29,7 @@
 		' '
 			in ( cmd, . )
 				do : cmd
-			else do : err |: ErrUnexpectedSpace
+			else do : err
 		'\t'
 			in ( cmd, . )
 				do : cmd
@@ -46,7 +44,7 @@
 					in ( (%?:CL) ?: (%?:DO) ?: (%?:'>') )
 						do : err |: ErrElseIndentation
 					else in ( (%?:(.,CL)) ?: (%?:(.,DO)) )
-						do : err |: ErrRedundantElse
+						do : err |: ErrElseRedundant
 					else
 						do : cmd : ( cmd, ~. )
 						do : take // standalone ELSE
@@ -55,16 +53,16 @@
 				in ~.:: tab : .
 					do : level : ( root, ~. )
 				else do : level : root
-			else do : err |: ErrUnexpectedCR
+			else do : err
 		'%'
 			in (( *level:root )?( *cmd:cmd ):)
 				// do : mode : narrative
 				do : flush |: space
-			else do : err | ErrUnexpectedCharacter
+			else do : err
 		'#'
 			in (( *level:root )?( *cmd:cmd ):)
 				do : flush
-			else do : err |: ErrUnexpectedPound
+			else do : err
 		.
 			do : err
 	else en &
@@ -79,19 +77,19 @@
 			do ~.
 		.
 			in space
-				do : err |: ErrUnexpectedCharacter
+				do : err
 	else en &
 
 .: cmd
 	in : cmd :
 		((((.,e),l),s),e)
 			in ( type, ELSE )
-				do : err |: ErrRedundantElse
+				do : err |: ErrElseRedundant
 			else in : *level : (.,(?,.))
 				in ( (%?:CL) ?: (%?:DO) ?: (%?:'>') )
 					do : err |: ErrElseIndentation
 				else in ( (%?:(.,CL)) ?: (%?:(.,DO)) )
-					do : err |: ErrRedundantElse
+					do : err |: ErrElseRedundant
 				else
 					do : cmd : ( cmd, ~. )
 					do : base | ( type, ELSE )
@@ -108,12 +106,12 @@
 			do : string | ( type, CL )
 		(.,'>')
 			in ((type,ELSE)?:(~.:(*level:*tab)))
-				do : err |: ErrUnexpectedStripe
+				do : err
 			else in : *tab : (.,(?,.))
 				in (( %?:DO )?:( %?:'>' ))
 					do : string | ( type, '>' )
-				else do : err |: ErrUnexpectedStripe
-			else do : err |: ErrUnexpectedStripe
+				else do : err
+			else do : err
 	else do : err |: ErrUnknownCommand
 
 .: string
@@ -164,7 +162,7 @@
 				// take CL pending DO
 				do : cmd : (( cmd, ~.  ), *^^ )
 				do : take
-			else do : err |: ErrUnexpectedCharacter
+			else do : err
 			do { ~(nl), (ps,~.) }
 	else en &
 
@@ -247,13 +245,13 @@
 	else on : p : ?
 		in ?:( take, %? )
 			do : q : %?
-	else in ready // just entered
+	else in ready
 		do >"--------------------------------------------------------\n"
 		do : p : root
 		do ~( ready )
 	else in : output : ~.
-		on ~(: take ) // just transitioned from take
-			do : err |: ErrUnexpectedEOF
+		on : . // just entered, from take, not ready
+			do : err
 		else do : ~.
 	else do : take
 
@@ -267,7 +265,9 @@
 	else
 		in : err : ?
 			do > ": %_\n": %?
-		else do >:
+		else in : input : ?
+			do >": ErrUnexpectedCharacter: '%s'\n": %?
+		else do >": ErrUnexpectedEOF\n"
 		do : ~.
 
 .: &
