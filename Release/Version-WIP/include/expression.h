@@ -13,11 +13,6 @@ int		bm_tag_clear( char *, BMContext * );
 void		bm_release( char *, BMContext * );
 int		bm_inputf( char *fmt, listItem *args, BMContext * );
 int		bm_outputf( FILE *, char *fmt, listItem *args, BMContext * );
-void		fprint_expr( FILE *, char *, int level );
-void		fprint_output( FILE *, char *, int level );
-
-#define TAB( level ) \
-	for ( int k=0; k<level; k++ ) putc( '\t', stream );
 
 static inline Pair *
 bm_switch( int type, char *expression, BMContext *ctx ) {

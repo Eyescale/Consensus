@@ -1,12 +1,28 @@
 #ifndef FPRINT_EXPR_H
 #define FPRINT_EXPR_H
 
+//===========================================================================
+//	public
+//===========================================================================
+#define TAB( level ) \
+	for ( int k=0; k<level; k++ ) putc( '\t', stream );
+
+void fprint_expr( FILE *, char *, int );
+void fprint_output( FILE *, char *, int );
+
+//===========================================================================
+//	private - cf narrative.c
+//===========================================================================
 // #define TEST_PIPE
 #ifdef TEST_PIPE
 #define PIPE_CND	"!?("
 #else
 #define PIPE_CND	"!?"
 #endif
+#define RETAB( level ) { \
+	fprintf( stream, level==ground?"\n\t":"\n" ); \
+	TAB(level) }
+
 
 typedef enum {
 	TYPE=1,
@@ -16,9 +32,6 @@ typedef enum {
 	PIPE_LEVEL
 	} StackStuff;
 
-#define RETAB( level ) { \
-	fprintf( stream, level==ground?"\n\t":"\n" ); \
-	TAB(level) }
 #define test_( what ) stacktest_( stack, what )
 #define test_PIPE( count ) \
 	( test_(TYPE)==PIPE && test_(COUNT)==(count) )

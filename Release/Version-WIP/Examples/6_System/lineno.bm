@@ -1,30 +1,35 @@
-#ifndef LCCOUNT_BM
-#define LCCOUNT_BM
+#ifndef LINENO_BM
+#define LINENO_BM
+
+#~#	// uncomment to unpound the pounded lines below
+// ##	// uncomment to repound the pounded lines below
 
 //---------------------------------------------------------------------------
 //	LineNo
 //---------------------------------------------------------------------------
 : LineNo
-	on ( Q ) < ..
+	on Queue < ..
 		// input queue starts with '\n' of current line
-		do { ((c,~.),0), rew }
+		do ( c, ~. )
 	else on : input : ? < ..
-		in rew // ignore leading '\n'
-			do ~( rew )
-		else in %<?:'\n'>
-			in nl
-//				do >"l+1c1\n"
-				en increment( l )
-				do ((c,~.),1)
-			else
-//				do >"l%$c%$\n":< %(l,?:...), %(c,?:...) >
-				do nl
-		else in nl
+		in c:~%(?,.) // ignore input queue's leading '\n'
+			do ( c, 0 )
+		else in nl // pending new line's first character
+			in %<?:'\n'>
+#				do >"l+1c1\n"
+			else do { ~( nl ), ((c,~.),1) }
 			en increment( l )
-			do ((c,~.),1)
-			do ~( nl )
+		else in c
+			in %<?:'\n'>
+#				do >"l%$c%$\n":< %(l,?:...), %(c,?:...) >
+				do nl
+			else en increment( c )
 		else
-			en increment( c )
+			in %<?:'\n'>
+#				do >"l1c1\n"
+				do nl
+			else do (c,1)
+			do (l,1)
 	else on :..: err < ..
 		do ((( .., l ), ... ),< %(l,?:...), 'c', %(c,?:...) >)
 	else on exit < ..
@@ -42,4 +47,4 @@
 		// replace N's all successor digits with 0, preceded by 1
 		do ((( %?, ~. ), 1 ) | ?:%(%?,?:...) (%|,0):| )
 
-#endif // LCCOUNT_BM
+#endif // LINENO_BM

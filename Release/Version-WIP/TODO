@@ -20,20 +20,26 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
-	. reimplement string shared arena (see above)
 	. rewrite fprint_expr / does not work for Test/69_inc, due to ternary
 		=> implement approach a la bm_traverse() - with callbacks
-	. feature complete Examples/6_Proto [*]
+	. reimplement string shared arena (see above)
+	. rename *^? into *^%?
+		*^ means "dereference in current assignment buffer (if there is)"
+		*^^ means "assigner" vs. ^^ "assignee"
+	  issue:
+		in CARRY or PIPED ^^ and *^^ are nascent => not filterable, vs.
+		in switch/case they are instantiated
+	. feature complete Examples/6_Proto
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!
 		[ DONE ] output system as is => in .:output
-		. creating data structure & output
+		. create data structure & output as per system model [*]
 		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
 		. allow {ON,OFF} in query ?
 		. cosystem init
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
-		. finalize and test TM.story example (manual)
+		. finalize and test TM.system example (manual)
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
 	. TBD: I would like to replace else on/off & etc. with
@@ -43,17 +49,13 @@ TODO
 	. TBD: ( guard ?: term ) should NOT insert guard if passes => then what?
 		if just '.' => on . requires event (can be release)
 		do . => in fact does nothing, same as do ~. EXCEPT in couple!
-	. TBD: publish %. // better than "this" ?
 	. TBD: use cosystem names vs. proxy => change EVA definition
 	       this makes the cosystem generic, ie. co-actor can be changed /
 	       handy in TM Cell implementation / e.g. current cell actor
 	  issue: newly assigned cosystems must know system rules and actors
-	. NTH: expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
+	. TBD: publish %. // better than "this" ?
 	. NTH: since we keep list of locally shared entities in context '$' entry
 		=> bm_query() could parse them in no pivot case
-	. NTH: do >format:args | format:args | format:args
-	. NTH: global function scope
-	. NTH: parser_macros: extract REENTER + put caught in io struct
 	. NTH: tag list feature completion
 	  . .%list < expression, ... > just adds entries to existing list
 	    .%list~ < expression, ... > could be used to reset and re-initialize
@@ -63,6 +65,13 @@ TODO
 	  . Note that .%tag~ {_} only performs condition evaluation (and tagging)
 	    of passed expressions, as we don't want to transport private entities
 	    and we need to support .%tag~ { ^.:~%(.,(Status,?))|^guard }
+	  . Do we even use .%list <_> ? idea was .%onoff < ON, OFF >
+		=> see when engineering complete
+		=> remove feature if not used
+	. NTH: expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
+	. NTH: do >format:args | format:args | format:args
+	. NTH: global function scope
+	. NTH: parser_macros: extract REENTER + put caught in io struct
 
 [*] 	See under ./design/story/proto/
 		system.spec - TM system external specifications
@@ -72,7 +81,7 @@ TODO
 	  2. extract occurrences, associate cosystems
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
-	  5. output system model, in html, in the form
+	  5. output system model [in html] as
 		cosystem
 		: action <={ trigger, guard },{ ... }=>{ occurrences } 
 		: action <={ trigger, guard },{ ... }=>{ occurrences } 
@@ -95,6 +104,7 @@ TODO
 			do %?|^guard
 
 BUGS
+	. in system.story, if ~(s) instead of (s,~.) => crash
 	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
 	  => that's because parser replaces %( with default format %_
 	     should actually exit on error
@@ -145,6 +155,15 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented prepocessor "unpounding" directive
+		  cf. Examples/6_System/lineno.bm
+	  Toggling between #~# and ## allows e.g.
+	  #	this is commented
+	  #~#	this executes
+	  #	this executes
+	  ...
+	  ##	this is commented
+	  #	this is commented
 	. switch/case implementation => cf system.NEXT
 	  => parser.c, story.c:indentation_check() changes
 	  => update bm_vop()

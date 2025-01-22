@@ -114,7 +114,7 @@ io_read( CNIO *io, int last_event )
 				break; } }
 TAKE:
 		if ( event==EOF ) {
-			if ( io->control.mode )
+			if ( io->control.mode & ~IO_UNPOUND )
 				io->errnum = IOErrUnterminatedIf; }
 		else {
 			if (( io->buffer )) io_push( io, IOBuffer, NULL );
@@ -126,6 +126,241 @@ TAKE:
 RETURN:
 	return event; }
 
+//---------------------------------------------------------------------------
+//	preprocess
+//---------------------------------------------------------------------------
+// #define DEBUG
+#include "parser_macros.h"
+static inline IOControlPragma pragma_type( CNIO * );
+
+static IOEventAction
+preprocess( CNIO *io, int event ) {
+	CNString *s = io->string;
+	char *	state = io->state;
+	int	line = io->line,
+		column = io->column,
+		action = 0,
+		errnum = 0;
+
+	BMParseBegin( "preprocess", state, event, line, column )
+	on_( EOF ) bgn_
+		in_( "/" )	do_( "pop" ) 	action = IOEventRestore;
+		in_( "\\" )	do_( "pop" ) 	action = IOEventRestore;
+		in_( "\"\"" )	do_( "pop" ) 	action = IOEventRestore;
+		in_( "\"\"\\" ) do_( "pop" )	action = IOEventRestore;
+		in_other	do_( "" )	action = IOEventTake;
+						errnum = s_empty ? 0 : IOErrUnexpectedEOF;
+		end
+		in_( "pop" ) bgn_
+			on_any	do_( "" )	action = IOEventTake;
+			end
+	in_( "" ) bgn_
+		on_( '#' )
+			if ( column || io->type==IOStreamInput ) {
+				do_( "//" )	action = IOEventPass; }
+			else {	do_( "_#" )	action = IOEventPass; }
+		on_( '/' )	do_( "/" )	action = IOEventQueue;
+		on_( '\\' )	do_( "\\" )	action = IOEventQueue;
+		on_( '"' )	do_( "\"" )	action = IOEventTake;
+		on_( '\'' )	do_( "'" )	action = IOEventTake;
+		on_other	do_( same )	action = IOEventTake;
+		end
+	in_( "\\" ) bgn_
+		on_( '\n' )	do_( "\\_" )	action = IOEventPass;
+		on_other	do_( "pop" )	action = IOEventRestore;
+		end
+		in_( "\\_" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_( '\\' )	do_( "\\" )	action = IOEventQueue;
+			on_other	do_( "" )	action = IOEventTake;
+			end
+	in_( "\"" ) bgn_
+		on_( '"' )	do_( "\"\"" )	action = IOEventQueue;
+		on_( '\\' )	do_( "\"\\" )	action = IOEventTake;
+		on_other	do_( same )	action = IOEventTake;
+		end
+		in_( "\"\\" )	bgn_
+			on_any	do_( "\"" )	action = IOEventTake;
+			end
+		in_( "\"\"" ) bgn_
+			ons( " \t\n" )		do_( same )	action = IOEventQueue;
+			on_( '\\' )		do_( "\"\"\\" )	action = IOEventQueue;
+			on_( '"' )		do_( "\"" )	action = IOEventPass;
+			on_other		do_( "pop" )	action = IOEventRestore;
+			end
+		in_( "\"\"\\" ) bgn_
+			on_( '\n' )	do_( "\"\"" )	action = IOEventQueue;
+			on_other	do_( "pop" )	action = IOEventRestore;
+			end
+	in_( "'" ) bgn_
+		on_( '\'' )	do_( "" )	action = IOEventTake;
+		on_( '\\' )	do_( "'\\" )	action = IOEventTake;
+		on_other	do_( "'_" )	action = IOEventTake;
+		end
+		in_( "'_" ) bgn_
+			on_any	do_( "" )	action = IOEventTake;
+			end
+		in_( "'\\" ) bgn_
+			on_( 'x' )	do_( "'\\x" )	action = IOEventTake;
+			on_other	do_( "'_" )	action = IOEventTake;
+			end
+			in_( "'\\x" ) bgn_
+				on_any	do_( "'\\x_" )	action = IOEventTake;
+				end
+			in_( "'\\x_" ) bgn_
+				on_any	do_( "'_" )	action = IOEventTake;
+				end
+	in_( "/" ) bgn_
+		on_( '*' )	do_( "/*" )	action = IOEventPass;
+		on_( '/' )	do_( "//" )	action = IOEventPass;
+		on_other	do_( "pop" )	action = IOEventRestore;
+		end
+		in_( "/*" ) bgn_
+			on_( '*' )	do_( "/**" )	action = IOEventPass;
+			on_other	do_( same )	action = IOEventPass;
+			end
+			in_( "/**" ) bgn_
+				on_( '/' )	do_( "" )	action = IOEventPass;
+				on_other	do_( "/*" )	action = IOEventPass;
+				end
+		in_( "//" ) bgn_
+			on_( '\n' )	do_( "" )	action = IOEventTake;
+			on_other	do_( same )	action = IOEventPass;
+			end
+	in_( "_#" ) bgn_
+		on_( '#' )	do_( "//" )	action = IOEventPass;
+						io->control.mode &= ~IO_UNPOUND;
+		on_( '~' )	do_( "_#~" )	action = IOEventPass;
+		on_separator if ( io->control.mode & IO_UNPOUND ) {
+				do_( "" )	REENTER } // unpounding
+			else {	do_( "#" )	REENTER }
+		on_other	do_( "#" )	REENTER
+		end
+		in_( "_#~" ) bgn_
+			on_( '#' )	do_( "" )	action = IOEventPass;
+							io->control.mode |= IO_UNPOUND;
+			on_other	do_( "//" )	REENTER
+			end
+	in_( "#" ) bgn_
+		ons( " \t" ) switch ( pragma_type( io ) ) {
+			case IOPragma_include:
+				do_( "#<" )	action = IOEventPass;
+						break;
+			case IOPragmaNary:
+				do_( "#$" )	action = IOEventPass;
+						break;
+			case IOPragmaUnary:
+				do_( "#_" )	action = IOEventPass;
+						break; 
+			default:
+				do_( "//" ) 	action = IOEventPass;
+						break; }
+		on_( '\n' ) switch ( pragma_type( io ) ) {
+			case IOPragma_include:
+			case IOPragmaNary:
+				do_( "" )	errnum = IOErrPragmaIncomplete;
+						break;
+			case IOPragmaUnary:
+				do_( "" )	action = IOEventPragma;
+						break;
+			default:
+				do_( "//" )	REENTER
+						break; }
+		on_separator 	do_( "//" )	s_reset( CNStringAll )
+						action = IOEventPass;
+		on_other	do_( same )	s_take
+						action = IOEventPass;
+		end
+		in_( "#<" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_( '"' )	do_( "#<\"" )	action = IOEventPass;
+			on_other	do_( "" )	errnum = IOErrIncludeFormat;
+			end
+			in_( "#<\"" ) bgn_
+				on_( '"' )	do_( "#_" )	action = IOEventPass;
+				on_( '\\' )	do_( "#<\"\\" )	action = IOEventPass;
+				on_( '\n' )	do_( "" )	errnum = IOErrIncludeFormat;
+				on_other	do_( same )	s_take
+								action = IOEventPass;
+			end
+			in_( "#<\"\\" ) bgn_
+				on_any		do_( "#<\"" )	s_add( "\\" )
+								s_take
+								action = IOEventPass;
+				end
+		in_( "#$" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_separator	do_( "" )	errnum = IOErrPragmaIncomplete;
+			on_other	do_( "#$_" )	s_take
+							action = IOEventPass;
+			end
+			in_( "#$_" ) bgn_
+				on_( '\n' )	do_( "#_//" )	REENTER
+				on_separator	do_( "#_" )	action = IOEventPass;
+				on_other	do_( same )	s_take
+								action = IOEventPass;
+			end
+		in_( "#_" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_( '/' )	do_( "#_/" )	action = IOEventPass;
+			on_( '\n' )	do_( "#_//" )	REENTER
+			on_other	do_( "" )	errnum = IOErrTrailingChar;
+			end
+			in_( "#_/" ) bgn_
+				on_( '/' )	do_( "#_//" )	action = IOEventPass;
+				on_other	do_( "" )	errnum = IOErrTrailingChar;
+				end
+			in_( "#_//" ) bgn_
+				on_( '\n' )	do_( "" )	action = IOEventPragma;
+				on_other	do_( same )	action = IOEventPass;
+				end
+	BMParseEnd
+
+	io->errnum = errnum;
+	io->state = state;
+	return action; }
+
+static inline IOControlPragma
+pragma_type( CNIO *io ) {
+	char *p;
+	CNString *s = io->string;
+	IOControlPragma type =
+		!s_cmp( "include" )	? IOPragma_include :
+		!s_cmp( "define" )	? IOPragma_define :
+		!s_cmp( "undef" )	? IOPragma_undef :
+		!s_cmp( "ifdef" )	? IOPragma_ifdef :
+		!s_cmp( "ifndef" )	? IOPragma_ifndef :
+		!s_cmp( "eldef" )	? IOPragma_eldef :
+		!s_cmp( "elndef" )	? IOPragma_elndef :
+		!s_cmp( "else" )	? IOPragma_else :
+		!s_cmp( "endif" )	? IOPragma_endif :
+		IOPragmaNone;
+
+	switch (( io->control.pragma = type )) {
+	case IOPragma_include:
+		break;
+	case IOPragma_else:
+	case IOPragma_endif:
+		type = IOPragmaUnary;
+		break;
+	case IOPragma_define:
+	case IOPragma_undef:
+	case IOPragma_ifdef:
+	case IOPragma_ifndef:
+	case IOPragma_eldef:
+	case IOPragma_elndef:
+		type = IOPragmaNary;
+		break;
+	case IOPragmaNone:
+	default: if (( p=StringFinish(s,0) ))
+			fprintf( stderr, "B%%: bm_preprocess: Warning: "
+			"unknown preprocessing directive #%s\n", p ); }
+	s_reset( CNStringAll )
+	return type; }
+
+//---------------------------------------------------------------------------
+//	io_pragma_execute
+//---------------------------------------------------------------------------
 static int
 io_pragma_execute( CNIO *io ) {
 	union { void *ptr; int value; } parent_mode;
@@ -226,222 +461,6 @@ io_pragma_execute( CNIO *io ) {
 	io->control.pragma = 0;
 	io->errnum = errnum;
 	return errnum; }
-
-//---------------------------------------------------------------------------
-//	preprocess
-//---------------------------------------------------------------------------
-// #define DEBUG
-#include "parser_macros.h"
-
-static inline IOControlPragma
-pragma_type( CNIO *io ) {
-	char *p;
-	CNString *s = io->string;
-	IOControlPragma type =
-		!s_cmp( "include" )	? IOPragma_include :
-		!s_cmp( "define" )	? IOPragma_define :
-		!s_cmp( "undef" )	? IOPragma_undef :
-		!s_cmp( "ifdef" )	? IOPragma_ifdef :
-		!s_cmp( "ifndef" )	? IOPragma_ifndef :
-		!s_cmp( "eldef" )	? IOPragma_eldef :
-		!s_cmp( "elndef" )	? IOPragma_elndef :
-		!s_cmp( "else" )	? IOPragma_else :
-		!s_cmp( "endif" )	? IOPragma_endif :
-		IOPragmaNone;
-
-	switch (( io->control.pragma = type )) {
-	case IOPragma_include:
-		break;
-	case IOPragma_else:
-	case IOPragma_endif:
-		type = IOPragmaUnary;
-		break;
-	case IOPragma_define:
-	case IOPragma_undef:
-	case IOPragma_ifdef:
-	case IOPragma_ifndef:
-	case IOPragma_eldef:
-	case IOPragma_elndef:
-		type = IOPragmaNary;
-		break;
-	case IOPragmaNone:
-	default: if (( p=StringFinish(s,0) ))
-			fprintf( stderr, "B%%: bm_preprocess: Warning: "
-			"unknown preprocessing directive #%s\n", p ); }
-	s_reset( CNStringAll )
-	return type; }
-
-static IOEventAction
-preprocess( CNIO *io, int event ) {
-	CNString *s = io->string;
-	char *	state = io->state;
-	int	line = io->line,
-		column = io->column,
-		action = 0,
-		errnum = 0;
-
-	BMParseBegin( "preprocess", state, event, line, column )
-	on_( EOF ) bgn_
-		in_( "/" )	do_( "pop" ) 	action = IOEventRestore;
-		in_( "\\" )	do_( "pop" ) 	action = IOEventRestore;
-		in_( "\"\"" )	do_( "pop" ) 	action = IOEventRestore;
-		in_( "\"\"\\" ) do_( "pop" )	action = IOEventRestore;
-		in_other	do_( "" )	action = IOEventTake;
-						errnum = s_empty ? 0 : IOErrUnexpectedEOF;
-		end
-		in_( "pop" ) bgn_
-			on_any	do_( "" )	action = IOEventTake;
-			end
-	in_( "" ) bgn_
-		on_( '#' ) if (!( column || io->type==IOStreamInput )) {
-				do_( "#" )	action = IOEventPass; }
-			else {	do_( "//" )	action = IOEventPass; }
-		on_( '/' )	do_( "/" )	action = IOEventQueue;
-		on_( '\\' )	do_( "\\" )	action = IOEventQueue;
-		on_( '"' )	do_( "\"" )	action = IOEventTake;
-		on_( '\'' )	do_( "'" )	action = IOEventTake;
-		on_other	do_( same )	action = IOEventTake;
-		end
-	in_( "\\" ) bgn_
-		on_( '\n' )	do_( "\\_" )	action = IOEventPass;
-		on_other	do_( "pop" )	action = IOEventRestore;
-		end
-		in_( "\\_" ) bgn_
-			ons( " \t" )	do_( same )	action = IOEventPass;
-			on_( '\\' )	do_( "\\" )	action = IOEventQueue;
-			on_other	do_( "" )	action = IOEventTake;
-			end
-	in_( "\"" ) bgn_
-		on_( '"' )	do_( "\"\"" )	action = IOEventQueue;
-		on_( '\\' )	do_( "\"\\" )	action = IOEventTake;
-		on_other	do_( same )	action = IOEventTake;
-		end
-		in_( "\"\\" )	bgn_
-			on_any	do_( "\"" )	action = IOEventTake;
-			end
-		in_( "\"\"" ) bgn_
-			ons( " \t\n" )		do_( same )	action = IOEventQueue;
-			on_( '\\' )		do_( "\"\"\\" )	action = IOEventQueue;
-			on_( '"' )		do_( "\"" )	action = IOEventPass;
-			on_other		do_( "pop" )	action = IOEventRestore;
-			end
-		in_( "\"\"\\" ) bgn_
-			on_( '\n' )	do_( "\"\"" )	action = IOEventQueue;
-			on_other	do_( "pop" )	action = IOEventRestore;
-			end
-	in_( "'" ) bgn_
-		on_( '\'' )	do_( "" )	action = IOEventTake;
-		on_( '\\' )	do_( "'\\" )	action = IOEventTake;
-		on_other	do_( "'_" )	action = IOEventTake;
-		end
-		in_( "'_" ) bgn_
-			on_any	do_( "" )	action = IOEventTake;
-			end
-		in_( "'\\" ) bgn_
-			on_( 'x' )	do_( "'\\x" )	action = IOEventTake;
-			on_other	do_( "'_" )	action = IOEventTake;
-			end
-			in_( "'\\x" ) bgn_
-				on_any	do_( "'\\x_" )	action = IOEventTake;
-				end
-			in_( "'\\x_" ) bgn_
-				on_any	do_( "'_" )	action = IOEventTake;
-				end
-	in_( "/" ) bgn_
-		on_( '*' )	do_( "/*" )	action = IOEventPass;
-		on_( '/' )	do_( "//" )	action = IOEventPass;
-		on_other	do_( "pop" )	action = IOEventRestore;
-		end
-		in_( "/*" ) bgn_
-			on_( '*' )	do_( "/**" )	action = IOEventPass;
-			on_other	do_( same )	action = IOEventPass;
-			end
-			in_( "/**" ) bgn_
-				on_( '/' )	do_( "" )	action = IOEventPass;
-				on_other	do_( "/*" )	action = IOEventPass;
-				end
-		in_( "//" ) bgn_
-			on_( '\n' )	do_( "" )	action = IOEventTake;
-			on_other	do_( same )	action = IOEventPass;
-			end
-	in_( "#" ) bgn_
-		ons( " \t" ) switch ( pragma_type( io ) ) {
-			case IOPragma_include:
-				do_( "#<" )	action = IOEventPass;
-						break;
-			case IOPragmaNary:
-				do_( "#$" )	action = IOEventPass;
-						break;
-			case IOPragmaUnary:
-				do_( "#_" )	action = IOEventPass;
-						break; 
-			default:
-				do_( "//" ) 	action = IOEventPass;
-						break; }
-		on_( '\n' ) switch ( pragma_type( io ) ) {
-			case IOPragma_include:
-			case IOPragmaNary:
-				do_( "" )	errnum = IOErrPragmaIncomplete;
-						break;
-			case IOPragmaUnary:
-				do_( "" )	action = IOEventPragma;
-						break;
-			default:
-				do_( "//" )	REENTER
-						break; }
-		on_separator 	do_( "//" )	s_reset( CNStringAll )
-						action = IOEventPass;
-		on_other	do_( same )	s_take
-						action = IOEventPass;
-		end
-		in_( "#<" ) bgn_
-			ons( " \t" )	do_( same )	action = IOEventPass;
-			on_( '"' )	do_( "#<\"" )	action = IOEventPass;
-			on_other	do_( "" )	errnum = IOErrIncludeFormat;
-			end
-			in_( "#<\"" ) bgn_
-				on_( '"' )	do_( "#_" )	action = IOEventPass;
-				on_( '\\' )	do_( "#<\"\\" )	action = IOEventPass;
-				on_( '\n' )	do_( "" )	errnum = IOErrIncludeFormat;
-				on_other	do_( same )	s_take
-								action = IOEventPass;
-			end
-			in_( "#<\"\\" ) bgn_
-				on_any		do_( "#<\"" )	s_add( "\\" )
-								s_take
-								action = IOEventPass;
-				end
-		in_( "#$" ) bgn_
-			ons( " \t" )	do_( same )	action = IOEventPass;
-			on_separator	do_( "" )	errnum = IOErrPragmaIncomplete;
-			on_other	do_( "#$_" )	s_take
-							action = IOEventPass;
-			end
-			in_( "#$_" ) bgn_
-				on_( '\n' )	do_( "#_//" )	REENTER
-				on_separator	do_( "#_" )	action = IOEventPass;
-				on_other	do_( same )	s_take
-								action = IOEventPass;
-			end
-		in_( "#_" ) bgn_
-			ons( " \t" )	do_( same )	action = IOEventPass;
-			on_( '/' )	do_( "#_/" )	action = IOEventPass;
-			on_( '\n' )	do_( "#_//" )	REENTER
-			on_other	do_( "" )	errnum = IOErrTrailingChar;
-			end
-			in_( "#_/" ) bgn_
-				on_( '/' )	do_( "#_//" )	action = IOEventPass;
-				on_other	do_( "" )	errnum = IOErrTrailingChar;
-				end
-			in_( "#_//" ) bgn_
-				on_( '\n' )	do_( "" )	action = IOEventPragma;
-				on_other	do_( same )	action = IOEventPass;
-				end
-	BMParseEnd
-
-	io->errnum = errnum;
-	io->state = state;
-	return action; }
 
 //---------------------------------------------------------------------------
 //	io_push / io_pop

@@ -3,7 +3,7 @@
 
 #include "program.h"
 #include "parser.h"
-#include "expression.h"
+#include "fprint_expr.h"
 #include "errout.h"
 
 // #define DEBUG

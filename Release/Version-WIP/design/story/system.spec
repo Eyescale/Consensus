@@ -1,7 +1,7 @@
 System Description
-	We start from a pseudo-narrative = System description, from
-	which we derive the System occurrences which we categorize into
-	conditions, events and actions
+	We start from a pseudo-narrative = System description,
+	from which we derive cosystems and the System occurrences,
+	which we categorize into conditions, events and actions
 
 					O
 				       -:-

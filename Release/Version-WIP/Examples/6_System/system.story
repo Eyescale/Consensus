@@ -1,8 +1,7 @@
 #include "lineno.bm"
 :
 	on init
-		do : lc : !! LineNo(
-			(l,0), (c,0), nl, (:0123456789:) )
+		do : lc : !! LineNo( (:0123456789:) )
 		do : level : root
 		do : cmd : cmd
 		do : base
@@ -28,14 +27,14 @@
 			do : cmd : ( *cmd, *^^ )
 		' '
 			in ( cmd, . )
-				do : cmd
+				do : check
 			else do : err
 		'\t'
 			in ( cmd, . )
-				do : cmd
+				do : check
 			else in ~.:: tab : .
-				do : level : ( *level, *^^ )
-			else in ?:( *level, *^^ ) // must exist
+				do : level : ( *level, '\t' )
+			else in ?:( *level, '\t' ) // must exist
 				do : level : %?
 			else do : err |: ErrIndentation
 		'\n'
@@ -80,7 +79,7 @@
 				do : err
 	else en &
 
-.: cmd
+.: check
 	in : cmd :
 		((((.,e),l),s),e)
 			in ( type, ELSE )
@@ -115,13 +114,13 @@
 	else do : err |: ErrUnknownCommand
 
 .: string
-	in *s // started
+	in : s : ? // started
 		on : input :
 			'"'
 				do : ps // finish
 			.
 				// record string
-				do : s : ( *s, *^^ )
+				do : s : ( %?, *^^ )
 		else en &
 	else
 		on : input :
@@ -132,7 +131,7 @@
 			'&'
 				in ?:%( *that ? ( type, ?:~ELSE ) :)
 					in (( %?:IN ) ?: ( %?:ON ) ?: ( %?:OFF ))
-						do : s : ( s, *^^ )
+						do : s : ( s, '&' )
 						do : flush |: space
 					else do : err
 				else do : err
@@ -144,18 +143,18 @@
 	// try to concatenate _" "_
 	on : input :
 		'"' // success
-			do : string | { ~(nl), (ps,~.) }
+			do : string | { ~(ps) }
 		'\n'
-			// backup input, starting with newline
-			do ( nl | ((*,ps),((ps,*^^),~.)) )
+			do : ps : (( ps, *^^ ), ~. )
 		/[ \t]/
-			do ( nl ? ((*,ps),(*ps,*^^)) :)
+			in : ps : ?
+				do : ps : ( %?, *^^ )
 		.
 			in : s : s // empty string
 				do : err |: ErrStringEmpty
-			else in nl
+			else in : ps : ?
 				// restore backup as input queue
-				do : Q : ( Q | ((%|,...),< %(ps,?:...), *^^ >) )
+				do : Queue : ( Queue | ((%|,...),< %(ps,?:...), *^^ >) )
 				do : cmd : ( cmd, ~. )
 				do : take 
 			else in (( type, CL )?( *^^:'d' ):)
@@ -163,7 +162,7 @@
 				do : cmd : (( cmd, ~.  ), *^^ )
 				do : take
 			else do : err
-			do { ~(nl), (ps,~.) }
+			do ~( ps )
 	else en &
 
 .: take
@@ -213,7 +212,7 @@
 			do : *tab : ( **tab, ELSE ) // inform current
 
 		in : input : .
-			do : base | { (s,~.), ~( type, ((cmd,.)?CL:.) ) }
+			do : base | { (s,~.), ~((cmd,.)?(type,CL):(type,.)) }
 		else do : output |: ~.
 
 .: output
@@ -256,10 +255,9 @@
 	else do : take
 
 .: err
-	on : . // lc coming next frame
+	on : . // lc coming up next
 		on ~(:?) // just transitioned from
 			do >"[%_:] Error: ": %?
-		else do >"Error: "
 	else on ~( %%, l ) < *lc
 		do >"l%$": %<(!,?:...)>
 	else
@@ -272,10 +270,10 @@
 
 .: &
 	// post-frame narrative: read input on demand
-	in : Q : ?
+	in : Queue : ?
 		in ?: ( %?, . )
-			do :< input, Q >:< %?:(.,?), %? >
-		else do ~( Q )
+			do :< input, Queue >:< %?:(.,?), %? >
+		else do ~( Queue )
 	else
 		do input : "%c" <
 

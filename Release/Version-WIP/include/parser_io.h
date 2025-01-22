@@ -8,6 +8,7 @@
 #define IO_SILENT	2
 #define IO_ELSE		4
 #define IO_ELIF		8
+#define IO_UNPOUND	16
 
 typedef enum {
 	IOBuffer,
