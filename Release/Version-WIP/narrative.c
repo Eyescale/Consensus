@@ -3,7 +3,7 @@
 #include <stdarg.h>
 
 #include "narrative.h"
-#include "expression.h"
+#include "string_util.h"
 #include "fprint_expr.h"
 #include "errout.h"
 

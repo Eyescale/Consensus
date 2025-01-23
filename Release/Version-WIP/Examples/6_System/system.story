@@ -36,30 +36,24 @@
 				do : level : ( *level, '\t' )
 			else in ?:( *level, '\t' ) // must exist
 				do : level : %?
-			else do : err |: ErrIndentation
+			else do : err
 		'\n'
-			in : cmd : ((type,ELSE)?( cmd ):((((.,e),l),s),e))
-				in : *level : (.,(?,.))
-					in ( (%?:CL) ?: (%?:DO) ?: (%?:'>') )
-						do : err |: ErrElseIndentation
-					else in ( (%?:(.,CL)) ?: (%?:(.,DO)) )
-						do : err |: ErrElseRedundant
-					else
-						do : cmd : ( cmd, ~. )
-						do : take // standalone ELSE
-				else do : err |: ErrElseIndentation
-			else in : cmd : cmd
-				in ~.:: tab : .
-					do : level : ( root, ~. )
-				else do : level : root
+			in ( type, ~ELSE )
+				do : err
+			else in : cmd : ((((.,e),l),s),e)
+				do : check
+			else in ~.:( cmd, . )
+				in ( type, . ) // standalone ELSE
+					do : check
+				else do : level : ( *tab ? root : (root,~.) )
 			else do : err
 		'%'
-			in (( *level:root )?( *cmd:cmd ):)
+			in (( *level:root )?(~.:(cmd,.)):)
 				// do : mode : narrative
 				do : flush |: space
 			else do : err
 		'#'
-			in (( *level:root )?( *cmd:cmd ):)
+			in (( *level:root )?(~.:(cmd,.)):)
 				do : flush
 			else do : err
 		.
@@ -75,24 +69,18 @@
 		/[ \t]/
 			do ~.
 		.
-			in space
-				do : err
+			do : ( space ? err : . )
 	else en &
 
 .: check
 	in : cmd :
 		((((.,e),l),s),e)
 			in ( type, ELSE )
-				do : err |: ErrElseRedundant
-			else in : *level : (.,(?,.))
-				in ( (%?:CL) ?: (%?:DO) ?: (%?:'>') )
-					do : err |: ErrElseIndentation
-				else in ( (%?:(.,CL)) ?: (%?:(.,DO)) )
-					do : err |: ErrElseRedundant
-				else
-					do : cmd : ( cmd, ~. )
-					do : base | ( type, ELSE )
-			else do : err |: ErrElseIndentation
+				do : err |: ErrRedundantElse
+			else
+				do ( type, ELSE )
+				do : cmd : ( cmd, ~. )
+				do : ( *input:'\n' ? . : base )
 		((.,i),n)
 			do : string | ( type, IN )
 		((.,o),n)
@@ -111,7 +99,18 @@
 					do : string | ( type, '>' )
 				else do : err
 			else do : err
-	else do : err |: ErrUnknownCommand
+		^^
+			// standalone ELSE
+			in : *level : (.,(?,.))
+				in ( (%?:CL) ?: (%?:DO) ?: (%?:'>') )
+					do : err |: ErrIndentation
+				else in ( (%?:(.,CL)) ?: (%?:(.,DO)) )
+					do : err |: ErrRedundantElse
+				else do : take
+			else
+				do : err |: ErrIndentation
+		.
+			do : err |: ErrUnknownCommand
 
 .: string
 	in : s : ? // started
@@ -154,7 +153,7 @@
 				do : err |: ErrStringEmpty
 			else in : ps : ?
 				// restore backup as input queue
-				do : Queue : ( Queue | ((%|,...),< %(ps,?:...), *^^ >) )
+				do : buffer : ( buffer | ((%|,...),< %(ps,?:...), *^^ >) )
 				do : cmd : ( cmd, ~. )
 				do : take 
 			else in (( type, CL )?( *^^:'d' ):)
@@ -263,17 +262,23 @@
 	else
 		in : err : ?
 			do > ": %_\n": %?
-		else in : input : ?
-			do >": ErrUnexpectedCharacter: '%s'\n": %?
-		else do >": ErrUnexpectedEOF\n"
+		else in : input :
+			~.
+				do >": ErrUnexpectedEOF\n"
+			'\t'
+				do >": ErrUnexpectedTab\n"
+			'\n'
+				do >": ErrUnexpectedCR\n"
+			.
+				do >": ErrUnexpectedCharacter: '%s'\n": *^^
 		do : ~.
 
 .: &
 	// post-frame narrative: read input on demand
-	in : Queue : ?
+	in : buffer : ?
 		in ?: ( %?, . )
-			do :< input, Queue >:< %?:(.,?), %? >
-		else do ~( Queue )
+			do :< input, buffer >:< %?:(.,?), %? >
+		else do ~( buffer )
 	else
 		do input : "%c" <
 

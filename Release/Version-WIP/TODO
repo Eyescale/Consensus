@@ -29,6 +29,7 @@ TODO
 	  issue:
 		in CARRY or PIPED ^^ and *^^ are nascent => not filterable, vs.
 		in switch/case they are instantiated
+	. parser: forbid en command in post-frame narrative
 	. feature complete Examples/6_Proto
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!

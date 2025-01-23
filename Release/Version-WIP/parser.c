@@ -188,14 +188,11 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take
 						expr_set( P_CHAR ) }
-		on_( '^' ) if ( *type&DO ) {
-				if ( s_at(')') && is_f(INFORMED) && !is_f(byref|FILTERED) ) {
+		on_( '^' ) if ( is_f(INFORMED) ) {
+				if ( *type&DO && s_at(')') && !is_f(byref|FILTERED) ) {
 					do_( ")^" )	s_take
-							f_tag( stack, PROTECTED ) }
-				else if ( !is_f(INFORMED) ) {
-					do_( "^" )	s_take } }
-			else if ( *type&LOCALE && is_f(SET) && !is_f(INFORMED) ) {
-				do_( "^" )	s_take }
+							f_tag( stack, PROTECTED ) } }
+			else {	do_( "^" )	s_take }
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
 				do_( "term" )	s_take }

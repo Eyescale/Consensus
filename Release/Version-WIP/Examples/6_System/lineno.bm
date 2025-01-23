@@ -8,11 +8,11 @@
 //	LineNo
 //---------------------------------------------------------------------------
 : LineNo
-	on Queue < ..
-		// input queue starts with '\n' of current line
+	on buffer < ..
+		// input buffer starts with '\n' of current line
 		do ( c, ~. )
 	else on : input : ? < ..
-		in c:~%(?,.) // ignore input queue's leading '\n'
+		in c:~%(?,.) // ignore input buffer's leading '\n'
 			do ( c, 0 )
 		else in nl // pending new line's first character
 			in %<?:'\n'>
