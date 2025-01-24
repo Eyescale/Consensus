@@ -20,15 +20,13 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
-	. rewrite fprint_expr / does not work for Test/69_inc, due to ternary
-		=> implement approach a la bm_traverse() - with callbacks
-	. reimplement string shared arena (see above)
-	. rename *^? into *^%?
-		*^ means "dereference in current assignment buffer (if there is)"
-		*^^ means "assigner" vs. ^^ "assignee"
-	  issue:
+	. issue:
 		in CARRY or PIPED ^^ and *^^ are nascent => not filterable, vs.
-		in switch/case they are instantiated
+		in switch/case they are already instantiated
+	. rename *^? into *^%?
+		*^ means: dereference in current assignment buffer - if there is
+		*^^ means: assigner - vs. ^^ which means assignee
+	. reimplement string shared arena (see above)
 	. parser: forbid en command in post-frame narrative
 	. feature complete Examples/6_Proto
 		[ DONE ] output l%dc%d on error
@@ -156,8 +154,12 @@ NOTES
 		// post-frame
 
 DONE
+	. reimplemented fprint_expr(), now in narrative.c
+		./B% -p Examples/6_System/system.story
+		./B% -p Test/69_inc
+		./B% -p Test/53_output-system-launch-formula
 	. implemented prepocessor "unpounding" directive
-		  cf. Examples/6_System/lineno.bm
+		cf. Examples/6_System/lineno.bm
 	  Toggling between #~# and ## allows e.g.
 	  #	this is commented
 	  #~#	this executes

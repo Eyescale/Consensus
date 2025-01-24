@@ -83,8 +83,9 @@ prune_term( char *p, PruneType type ) {
 			switch ( *p ) {
 			case '(':
 			case '{':
+				return p;
 			case '^':
-				return p; }
+				return p+1; }
 			informed = 1;
 			break;
 		case ':':
@@ -242,7 +243,8 @@ prune_sub( char *p )
 			p++; break;
 		case ')':
 			level--;
-			if ( !level ) return p+1;
+			if ( !level )
+				return p[1]=='^' ? p+2 : p+1;
 			p++; break;
 		case '\\':
 			if ( p[1] ) p++;

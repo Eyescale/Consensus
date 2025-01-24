@@ -45,7 +45,7 @@ output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	if ( op==ExpressionTake ) {
 		TAB( level );
 		char *expression = StringFinish( data->string, 0 );
-		fprint_expr( stream, expression, level );
+		fprint_expr( stream, expression, level, DO );
 		StringReset( data->string, CNStringAll );
 		fprintf( stream, "\n" ); }
 	return 1; }

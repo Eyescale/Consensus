@@ -179,16 +179,17 @@ static char *optimize( Pair *, char * );
 
 BMTraverseCBSwitch( deternarize_traversal )
 case_( open_CB )
-	data->ternary = 1;
-	Pair *segment = data->segment;
-	// finish current Sequence after '(' - without reordering,
-	// which will take place after closing
-	segment->value = p+1;
-	addItem( &data->sequence, newPair( segment, NULL ) );
-	// push current Sequence on stack.sequence and start new
-	addItem( &data->stack.sequence, data->sequence );
-	data->sequence = NULL;
-	data->segment = newPair( p+1, NULL );
+	if ( p_ternary(p) ) {
+		data->ternary = 1;
+		Pair *segment = data->segment;
+		// finish current Sequence after '(' - without reordering,
+		// which will take place after closing
+		segment->value = p+1;
+		addItem( &data->sequence, newPair( segment, NULL ) );
+		// push current Sequence on stack.sequence and start new
+		addItem( &data->stack.sequence, data->sequence );
+		data->sequence = NULL;
+		data->segment = newPair( p+1, NULL ); }
 	_break
 case_( ternary_operator_CB )
 	Pair *segment = data->segment;

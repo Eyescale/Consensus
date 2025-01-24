@@ -558,9 +558,12 @@ case_( dot_identifier_CB )
 	popListItem( &data->stack.exponent );
 	_break
 case_( dereference_CB )
-	if ( p[1]=='^' ) _branch( match_CB, p )
-	xpn_add( &data->mark_exp, SUB, 1 );
-	_return( 1 )
+	if ( p[1]=='^' )
+		switch_over( match_CB, p, p )
+	else {
+		xpn_add( &data->mark_exp, SUB, 1 );
+		_return( 1 ) }
+	_break
 case_( sub_expression_CB )
 	char *mark = bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) {

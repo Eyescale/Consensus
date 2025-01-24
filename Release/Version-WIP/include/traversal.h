@@ -20,7 +20,6 @@ bm_traverse( char *expression, BMTraverseData *traversal, int flags ) {
 	// invoke BMTermCB - if it is set - first thing
 	do {
 CB_TermCB	} while ( 0 );
-
 	while ( *p && !traversal->done ) {
 		switch ( *p ) {
 			case '^':
@@ -30,6 +29,7 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				else if ( p[1]=='?' ) {
 					p=p_prune( PRUNE_TERM, p+1 );
 					f_set( INFORMED ) }
+				else p++;
 				break;
 			case '{':
 				if ( is_f(INFORMED) && BASE ) {

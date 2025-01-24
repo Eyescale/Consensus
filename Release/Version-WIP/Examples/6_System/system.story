@@ -40,13 +40,16 @@
 		'\n'
 			in ( type, ~ELSE )
 				do : err
-			else in : cmd : ((((.,e),l),s),e)
-				do : check
-			else in ~.:( cmd, . )
-				in ( type, . ) // standalone ELSE
-					do : check
-				else do : level : ( *tab ? root : (root,~.) )
-			else do : err
+			else in : cmd :
+				((((.,e),l),s),e)
+					do : check // standalone ELSE
+				^^
+					in ( type, . )
+						do : check // standalone ELSE
+					else // empty line
+						do : level : (*tab?root:(root,~.))
+				.
+					do : err
 		'%'
 			in (( *level:root )?(~.:(cmd,.)):)
 				// do : mode : narrative
@@ -263,12 +266,12 @@
 		in : err : ?
 			do > ": %_\n": %?
 		else in : input :
-			~.
-				do >": ErrUnexpectedEOF\n"
 			'\t'
 				do >": ErrUnexpectedTab\n"
 			'\n'
 				do >": ErrUnexpectedCR\n"
+			~.
+				do >": ErrUnexpectedEOF\n"
 			.
 				do >": ErrUnexpectedCharacter: '%s'\n": *^^
 		do : ~.

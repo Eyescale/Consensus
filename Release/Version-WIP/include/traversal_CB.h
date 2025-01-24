@@ -9,12 +9,23 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	return bm_traverse( expression, traversal, flags );
 
 #define _prune( take, p )	return ( *q=(p), take );
-#define _branch( cb, p )	return ( *q=(p), cb(traversal,q,flags,f_next) );
 #define _return( val )		return ( traversal->done=(val), BM_DONE );
 #define _continue( p )		return ( *q=(p), BM_DONE );
 #define	_break			return BM_CONTINUE;
+
+#define switch_over( cb, p_in, p_out )	\
+	switch (*q=(p_in),cb(traversal,q,flags,f_next)) { \
+	case BM_DONE: return BM_DONE; \
+	case BM_CONTINUE: *q=p_out; return BM_CONTINUE; \
+	case BM_PRUNE_FILTER: return BM_PRUNE_FILTER; \
+	case BM_PRUNE_TERM: return BM_PRUNE_TERM; \
+	case BM_PRUNE_LEVEL: return BM_PRUNE_LEVEL; }
+
 #define BMTraverseCBEnd		}
 
+//---------------------------------------------------------------------------
+//	private
+//---------------------------------------------------------------------------
 #define _CB( cb ) \
 	switch ( cb(traversal,&p,flags,f_next) ) {	\
 	case BM_DONE: continue;				\
@@ -30,9 +41,9 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 		p = p_prune( PRUNE_LEVEL, p );		\
 		continue; }
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	traversal callbacks
-//===========================================================================
+//---------------------------------------------------------------------------
 /*
 	BMOpenCB
 	BMCloseCB
@@ -69,8 +80,7 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMLoopCB
 */
 #ifdef BMOpenCB
-#define CB_OpenCB	if ( !(mode&TERNARY) || p_ternary(p) ) \
-				_CB( BMOpenCB )
+#define CB_OpenCB	_CB( BMOpenCB )
 #else
 #define CB_OpenCB
 #endif

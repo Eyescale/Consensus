@@ -111,12 +111,12 @@ case_( filter_CB )
 	if ( !r )
 		_prune( BM_PRUNE_LEVEL, p+2 )
 	else if ( !is_f(PIPED) )
-		_branch( bgn_pipe_CB, p+1 )
+		switch_over( bgn_pipe_CB, p+1, p )
 	else {
 		r = bm_context_take( data->ctx, "|", r );
 		if ( r!=data->results->ptr )
-			freeListItem( &r );
-		_break }
+			freeListItem( &r ); }
+	_break
 case_( bgn_set_CB )
 	if ( NDX ) {
 		addItem( &data->results, data->sub[ 0 ] );
@@ -198,18 +198,18 @@ case_( close_CB )
 			instances = instantiate_couple( data->sub, data->db );
 			freeListItem( &data->sub[ 0 ] );
 			freeListItem( &data->sub[ 1 ] ); }
-		if ( is_f_next(FIRST) )
+		if is_f_next( FIRST )
 			data->sub[ 0 ] = instances;
 		else {
 			data->sub[ 0 ] = popListItem( &data->results );
-			data->sub[ 1 ] = instances; } }
+			data->sub[ 1 ] = instances; }
+		_break }
 	else {
 		popListItem( &data->stack.flags );
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
 		_prune( BM_PRUNE_LEVEL, p+1 ) }
-	_break
 case_( newborn_CB )
 	/* mask is either 0 (untested) or we have
 	   mask & 1 => newborn entity detected
@@ -249,20 +249,19 @@ case_( loop_CB )
 				*results = NULL; }
 			_continue( loop->bgn->p ) }
 		else if ( *restore ) {	// last iteration done
-			if ( strncmp(p,":|",2) ) {
+			if ( !strncmp(p,":|",2) ) {
+				if ( *results ) {
+					bm_context_take( data->ctx, "|", *results );
+					*results = NULL; }
+				freeListItem( restore ); }
+			else {
 				while (( e=popListItem(results) ))
 					addItem( restore, e );
-				*results = *restore;
-				*restore = NULL; }
-			else if (( *results )) {
-				freeListItem( restore );
-				bm_context_take( data->ctx, "|", *results ); }
-			else {
 				*results = *restore;
 				*restore = NULL; } }
 		loopPop( data, 1 ); }
 	else if ( !strncmp(p+1,":|",2) )
-		_branch( filter_CB, p+1 )
+		switch_over( filter_CB, p+1, p )
 	_break
 case_( activate_CB )
 	ActiveRV *active = BMContextActive( data->ctx );
