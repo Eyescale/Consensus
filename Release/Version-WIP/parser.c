@@ -523,6 +523,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 			end
 		in_( ":!" ) bgn_
 			on_( '!' )	do_( "!!" )	s_take
+							expr_set( NASCENT )
 							f_clr( ASSIGN|PRIMED )
 			end
 	in_( "!" ) bgn_
@@ -590,17 +591,20 @@ BM_PARSE_FUNC( bm_parse_expr )
 		end
 		in_( "*^" ) bgn_
 			on_( '?' ) if ( *type&DO && !is_f(byref|FILTERED) ) {
-					do_( "*^?" )	s_take
+					do_( "*^?" )	s_take }
+			on_( '^' ) if ( !expr(NASCENT) ) {
+					do_( "expr" )	s_take
 							f_set( INFORMED|STARRED )
 							f_set_BYREF }
-			on_( '^' )	do_( "expr" )	s_take
-							f_set( INFORMED|STARRED )
-							f_set_BYREF
+				else if ( !is_f(byref|FILTERED) ) {
+					do_( "expr" )	s_take
+							f_set( INFORMED )
+							f_tag( stack, PROTECTED ) }
 			end
 		in_( "*^?" ) bgn_
 			on_( ':' )	do_( ":_sub" )  s_take
-							f_clr( INFORMED )
 			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED )
 							f_tag( stack, PROTECTED )
 			end
 		in_( "*_" ) bgn_
@@ -634,9 +638,17 @@ BM_PARSE_FUNC( bm_parse_expr )
 			on_( ')' )	do_( "expr" )	s_take
 			end
 	in_( "^" ) bgn_
-		ons( "^." )	do_( "expr" )	s_take
+		on_( '^' ) if ( !expr(NASCENT) ) {
+				do_( "expr" )	s_take
 						f_set( INFORMED )
-						f_set_BYREF
+						f_set_BYREF }
+			else if ( are_f(CARRY|FORE) ) {
+				do_( "expr" )	s_take
+						f_set( INFORMED )
+						f_tag( stack, PROTECTED ) }
+			else if ( !is_f(byref|FILTERED) ) {
+				do_( "*^?" )	s_take }
+		on_( '.' )	do_( "expr" )	s_take
 		end
 	in_( ":_sub" ) bgn_
 		on_( '(' )	do_( ":sub" )	REENTER

@@ -20,9 +20,6 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
-	. issue:
-		in CARRY or PIPED ^^ and *^^ are nascent => not filterable, vs.
-		in switch/case they are already instantiated
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
@@ -154,6 +151,16 @@ NOTES
 		// post-frame
 
 DONE
+	. SOLVED: NASCENT expr flag in parser.c set upon "!!" allowing
+	  to limit ^^ and *^^ RV usage to *type&DO && !(FILTERED|query), vs.
+	  usage in SWITCH/CASE, where their values are already instantiated
+		^^ in NASCENT
+			in !query: can be subbed but not FILTERED
+			otherwise and only in CARRY|FORE: only as-is
+		*^^ in NASCENT
+			only in !query, only as-is
+		*^? in NASCENT (only)
+			only in !query, can be subbed but not FILTERED
 	. reimplemented fprint_expr(), now in narrative.c
 		./B% -p Examples/6_System/system.story
 		./B% -p Test/69_inc
