@@ -42,27 +42,6 @@ static inline Pair * BMTag( BMContext *ctx, char *tag ) {
 static inline void * BMVal( BMContext *ctx, char *p ) {
 	return bm_lookup( 0, p, ctx, NULL ); }
 
-static inline void bm_cache_string( BMContext *ctx, CNInstance *e ) {
-	Pair *entry = registryLookup( ctx, "$" )->value;
-	addIfNotThere((listItem **)&entry->name, e->sub[1] ); }
-static inline void bm_cache_ube( BMContext *ctx, CNInstance *e ) {
-	Pair *entry = registryLookup( ctx, "$" )->value;
-	addIfNotThere((listItem **)&entry->value, e->sub[1] ); }
-static inline CNInstance * bm_lookup_string( BMContext *ctx, char *s ) {
-	Pair *entry = registryLookup( ctx, "$" )->value;
-	for ( listItem *i=entry->name; i!=NULL; i=i->next ) {
-		entry = i->ptr;	// [ string, ref:{[db,e]} ]
-		if ( strcmp( s, entry->name ) ) continue;
-		CNDB *db = registryLookup( ctx, "" )->value;
-		entry = registryLookup((Registry *) entry->value, db );
-		return ((entry) ? entry->value : NULL ); }
-	return NULL; }
-static inline void bm_uncache( BMContext *ctx, CNInstance *e ) {
-	Pair *entry = registryLookup( ctx, "$" )->value;
-	if ( cnIsUnnamed(e) )
-		removeIfThere((listItem **)&entry->value, e->sub[1] );
-	else	removeIfThere((listItem **)&entry->name, e->sub[1] ); }
-
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;
@@ -98,10 +77,32 @@ static inline CNInstance * BMContextPerso( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->name; }
 static inline Registry * BMContextLocales( BMContext *ctx ) {
 	return BMContextCurrent( ctx )->value; }
+
 static inline Pair *Mset( BMContext *ctx, void *value ) {
-	return registryRegister( BMContextLocales(ctx), "", value ); }
+	return registryRegister( ctx, "~", value ); }
 static inline void Mclr( BMContext *ctx ) {
-	registryDeregister( BMContextLocales(ctx), "" ); }
+	registryDeregister( ctx, "~" ); }
+
+static inline void bm_cache_string( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	addIfNotThere((listItem **)&entry->name, e->sub[1] ); }
+static inline void bm_cache_ube( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	addIfNotThere((listItem **)&entry->value, e->sub[1] ); }
+static inline CNInstance * bm_lookup_string( BMContext *ctx, char *s ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	for ( listItem *i=entry->name; i!=NULL; i=i->next ) {
+		entry = i->ptr;	// [ string, ref:{[db,e]} ]
+		if ( strcmp( s, entry->name ) ) continue;
+		CNDB *db = BMContextDB( ctx );
+		entry = registryLookup((Registry *) entry->value, db );
+		return ((entry) ? entry->value : NULL ); }
+	return NULL; }
+static inline void bm_uncache( BMContext *ctx, CNInstance *e ) {
+	Pair *entry = registryLookup( ctx, "$" )->value;
+	if ( cnIsUnnamed(e) )
+		removeIfThere((listItem **)&entry->value, e->sub[1] );
+	else	removeIfThere((listItem **)&entry->name, e->sub[1] ); }
 
 //===========================================================================
 //	Utilities

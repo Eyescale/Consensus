@@ -609,8 +609,7 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 				return ((Pair *) i->ptr )->name;
 			return NULL;
 		case '.':
-			// same as BMVal( ctx, "" )
-			entry = registryLookup( BMContextLocales(ctx), "" );
+			entry = registryLookup( ctx, "~" );
 			return ((entry) ? entry->value : NULL ); }
 		break;
 	case '*':

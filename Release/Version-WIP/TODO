@@ -26,7 +26,6 @@ TODO
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
-	. remap ^. into ~ (transcient)
 	. parser: forbid 'en' command in post-frame narrative
 	. feature complete Examples/6_Proto
 		[ DONE ] output l%dc%d on error
@@ -154,6 +153,8 @@ NOTES
 		// post-frame
 
 DONE
+	. remapped ^. into BMContext("~") (transcient)
+	  cf. Test/63_... and Test/64_...
 	. SOLVED: NASCENT expr flag in parser.c set upon "!!" allowing
 	  to limit ^^ and *^^ RV usage to *type&DO && !(FILTERED|query), vs.
 	  usage in SWITCH/CASE, where their values are already instantiated
