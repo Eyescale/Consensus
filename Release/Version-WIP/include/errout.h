@@ -33,7 +33,7 @@ typedef enum {
 	StoryUnexpectedEOF
 	} ErrOutType;
 
-void * errout( ErrOutType, ... );
+int errout( ErrOutType, ... );
 
 
 #endif // ERROUT_H

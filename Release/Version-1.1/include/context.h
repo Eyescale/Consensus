@@ -25,9 +25,6 @@ CNInstance * bm_lookup( int privy, char *, BMContext * );
 #else
 #define ESUB(e,ndx) e->sub[ndx]
 #endif
-void xpn_add( listItem **xp, int as_sub, int position );
-void xpn_set( listItem *xp, int as_sub, int position );
-void xpn_out( FILE *stream, listItem *xp );
 
 
 #endif	// CONTEXT_H

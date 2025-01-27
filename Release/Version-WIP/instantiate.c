@@ -352,7 +352,7 @@ case_( register_variable_CB )
 		sub = &data->sub[ NDX ];
 		listItem *xpn = ( p[2]==':' ? xpn_make(p+3) : NULL );
 		for ( listItem *i=found; i!=NULL; i=i->next )
-			if (( e=xsub(i->ptr,xpn) )) {
+			if (( e=xpn_sub(i->ptr,xpn) )) {
 				e = bm_inform( carry, e, db );
 				if (( e )) addItem( sub, e ); }
 		freeListItem( &xpn );
@@ -362,7 +362,7 @@ case_( register_variable_CB )
 		e = BMVal( data->ctx, p );
 		if (( e )&&( p[2]==':' )) {
 			listItem *xpn = xpn_make(p+3);
-			e = xsub( e, xpn );
+			e = xpn_sub( e, xpn );
 			freeListItem( &xpn ); }
 		if (( e )) e = bm_inform( carry, e, db );
 		if (( e )) data->sub[ NDX ] = newItem( e );

@@ -5,22 +5,23 @@
 #include "registry.h"
 #include "string_util.h"
 
+//===========================================================================
+//	newCNDB / freeCNDB
+//===========================================================================
 typedef CNEntity CNInstance;
 typedef struct {
 	CNInstance *nil;
 	Registry *index;
 } CNDB;
-typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
 
-//===========================================================================
-//	newCNDB / freeCNDB
-//===========================================================================
 CNDB *	newCNDB( void );
 void	freeCNDB( CNDB * );
 
 //===========================================================================
 //	data
 //===========================================================================
+typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
+
 CNInstance *	db_register( char *identifier, CNDB * );
 void		db_deregister( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
@@ -35,45 +36,61 @@ CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
 int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
-
-static inline int cnIsShared( CNInstance *e ) {
-	return ( ((Pair*) e->sub[ 1 ])->value!=e ); }
-static inline int cnIsUnnamed( CNInstance *e ) {
-	return ( ((Pair*) e->sub[ 1 ])->name==NULL ); }
-static inline char * CNIdentifier( CNInstance *e ) {
-	return (char *) ((Pair*) e->sub[ 1 ])->name; }
-static inline int cnStarMatch( CNInstance *e ) {
-	return ((e) && !(e->sub[0]) && *CNIdentifier(e)=='*' ); }
-
-//===========================================================================
-//	proxy
-//===========================================================================
 CNInstance *	new_proxy( CNEntity *, CNEntity *, CNDB * );
 void		free_proxy( CNEntity *e );
 void		db_fire( CNInstance *, CNDB * );
-
-//---------------------------------------------------------------------------
-//	cnIsProxy, CNProxyThis, CNProxyThat, cnIsSelf
-//---------------------------------------------------------------------------
-static inline int cnIsProxy( CNInstance *e ) {
-	return ((e->sub[0]) && !e->sub[1]); }
-
-static inline CNEntity * CNProxyThis( CNInstance *proxy ) {
-	return (CNEntity*) proxy->sub[0]->sub[0]; }
-
-static inline CNEntity * CNProxyThat( CNInstance *proxy ) {
-	return (CNEntity*) proxy->sub[0]->sub[1]; }
-
-static inline int cnIsSelf( CNInstance *proxy ) {
-	return !CNProxyThis(proxy); }
 
 //---------------------------------------------------------------------------
 //	i/o
 //---------------------------------------------------------------------------
 int	db_outputf( CNDB *, FILE *, char *fmt, ... );
 
+//---------------------------------------------------------------------------
+//	sub
+//---------------------------------------------------------------------------
+#define CNSUB(e,ndx) (( e==e->sub[1] || !e->sub[!(ndx)] ) ? NULL : e->sub[ndx] )
+
+#define isBase(e) (!CNSUB(e,0))
+
+static inline int cn_hold( CNEntity *e, CNEntity *f ) {
+	return ( CNSUB(e,0)==f || CNSUB(e,1)==f ); }
+
+static inline CNEntity * xpn_sub( CNEntity *x, listItem *xpn ) {
+	if ( !xpn ) return x;
+	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
+		x = CNSUB( x, cast_i(i->ptr) );
+		if ( !x ) return NULL; }
+	return x; }
+
+static inline int cnIsIdentifier( CNInstance *e ) {
+	return ( e->sub[1]==e ); }
+static inline char * CNIdentifier( CNInstance *e ) {
+	return (char *) e->sub[ 0 ]; }
+static inline int cnStarMatch( CNInstance *e ) {
+	return (( e ) && cnIsIdentifier(e) && *CNIdentifier(e)=='*' ); }
+
+static inline int cnIsShared( CNInstance *e ) {
+	return ( !e->sub[ 0 ] ); }
+static inline char * CNSharedIdentifier( CNInstance *e ) {
+	return (char *) ((Pair *)e->sub[1])->name; }
+static inline int cnIsUnnamed( CNInstance *e ) {
+	return !CNSharedIdentifier(e); }
+
+//---------------------------------------------------------------------------
+//	proxy
+//---------------------------------------------------------------------------
+static inline CNEntity * CNProxyThis( CNInstance *proxy ) {
+	return (CNEntity*) proxy->sub[0]->sub[0]; }
+static inline CNEntity * CNProxyThat( CNInstance *proxy ) {
+	return (CNEntity*) proxy->sub[0]->sub[1]; }
+
+static inline int cnIsProxy( CNInstance *e ) {
+	return ((e->sub[0]) && !e->sub[1]); }
+static inline int cnIsSelf( CNInstance *proxy ) {
+	return !CNProxyThis(proxy); }
+
 //===========================================================================
-//	op (nil-based)
+//	operation (nil-based)
 //===========================================================================
 #include "db_op.h"
 

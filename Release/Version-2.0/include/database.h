@@ -17,6 +17,23 @@ typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
 CNDB *	newCNDB( void );
 void	freeCNDB( CNDB * );
 
+//---------------------------------------------------------------------------
+//	CNSUB
+//---------------------------------------------------------------------------
+#define CNSUB(e,ndx) ( !e->sub[!ndx] ? NULL : e->sub[ndx] )
+
+#define isBase( e ) (!CNSUB(e,0))
+
+static inline int cn_hold( CNEntity *e, CNEntity *f ) {
+	return ( CNSUB(e,0)==f || CNSUB(e,1)==f ); }
+
+static inline CNEntity * xpn_sub( CNEntity *x, listItem *xpn ) {
+	if ( !xpn ) return x;
+	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
+		x = CNSUB( x, cast_i(i->ptr) );
+		if ( !x ) return NULL; }
+	return x; }
+
 //===========================================================================
 //	data
 //===========================================================================

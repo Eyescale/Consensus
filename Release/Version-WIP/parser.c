@@ -90,7 +90,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 						do_( same )	REENTER
 								f_pop( stack, 0 ) } }
 				else if ( !is_f(PROTECTED) ) {
-						do_( ":" )	f_restore( NEGATED|STARRED|BYREF )
+						do_( ":" )	f_restore( NEGATED|STARRED )
 								f_clr( INFORMED ) } }
 			else if ( *type&DO ) {
 				if ( s_at('|') && is_f(ASSIGN) && !is_f(PRIMED|LEVEL) ) {
@@ -125,7 +125,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				else if ( is_f(INFORMED) ) {
 					if ( is_f(LEVEL) ) {
 						do_( same )	s_take
-								f_pop( stack, MARKED|INFORMED|FILTERED ) }
+								f_pop( stack, MARKED|INFORMED ) }
 					else if ( is_f(FORE) ) {
 						do_( "?:(_)" )	s_take }
 					else {	do_( same )	s_take
@@ -608,13 +608,13 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_tag( stack, PROTECTED )
 			end
 		in_( "*_" ) bgn_
+			ons( "~{<" )	; //err
 			on_( '*' )	do_( same )	s_take
 							f_set( STARRED )
 							f_set_BYREF
 			ons( ".%(?" )	do_( "expr" )	REENTER
 							f_set( STARRED )
 							f_set_BYREF
-			ons( "~{<" )	; //err
 			on_separator do_( "expr" )	REENTER
 							f_set( INFORMED )
 			on_other	do_( "term" )	s_take

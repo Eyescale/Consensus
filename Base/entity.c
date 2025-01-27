@@ -92,9 +92,10 @@ cn_release( CNEntity *e )
 */ {
 	/* 1. remove e from the as_sub lists of its subs
 	*/
-	CNEntity *sub;
-	if (( sub=e->sub[0] )) removeItem( &sub->as_sub[0], e );
-	if (( sub=e->sub[1] )) removeItem( &sub->as_sub[1], e );
+	if (( e->sub )) {
+		CNEntity *sub;
+		if (( sub=e->sub[0] )) removeItem( &sub->as_sub[0], e );
+		if (( sub=e->sub[1] )) removeItem( &sub->as_sub[1], e ); }
 
 	/* 2. nullify e as sub of its as_sub's
 	*/
@@ -115,7 +116,8 @@ cn_release( CNEntity *e )
 void
 cn_free( CNEntity *e ) {
 	if ( e == NULL ) return;
-	freePair((Pair *) e->sub );
+	if (( e->sub )&&( e!=e->sub[1] ))
+		freePair((Pair *) e->sub );
 	freeListItem( &e->as_sub[ 0 ] );
 	freeListItem( &e->as_sub[ 1 ] );
 	freePair((Pair *) e->as_sub );

@@ -40,16 +40,14 @@
 		'\n'
 			in ( type, ~ELSE )
 				do : err
-			else in : cmd :
-				((((.,e),l),s),e)
+			else in : cmd : ((((.,e),l),s),e)
+				do : check // standalone ELSE
+			else in ~.:(cmd,.)
+				in ( type, . )
 					do : check // standalone ELSE
-				^^
-					in ( type, . )
-						do : check // standalone ELSE
-					else // empty line
-						do : level : (*tab?root:(root,~.))
-				.
-					do : err
+				else // empty line
+					do : level : (*tab?root:(root,~.))
+			else do : err
 		'%'
 			in (( *level:root )?(~.:(cmd,.)):)
 				// do : mode : narrative
@@ -154,7 +152,7 @@
 		.
 			in : s : s // empty string
 				do : err |: ErrStringEmpty
-			else in : ps : ?
+			else in : ps : .
 				// restore backup as input queue
 				do : buffer : ( buffer | ((%|,...),< %(ps,?:...), *^^ >) )
 				do : cmd : ( cmd, ~. )

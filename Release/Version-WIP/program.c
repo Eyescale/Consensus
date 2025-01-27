@@ -14,9 +14,9 @@
 static BMParseCB output_CB;
 
 int
-cnPrintout( FILE *output_stream, char *path, int level ) {
+cnPrintOut( FILE *output_stream, char *path, int level ) {
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) return ( errout( ProgramPrintout, path ), -1 );
+	if ( !stream ) return errout( ProgramPrintout, path );
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 	BMParseData data;
@@ -157,7 +157,9 @@ CNProgram *
 newProgram( CNStory *story, char *inipath ) {
 	if ( !story ) return NULL;
 	Pair *entry = CNStoryMain( story );
-	if ( !entry ) return errout( ProgramStory );
+	if ( !entry ) {
+		errout( ProgramStory );
+		return NULL; }
 	CNCell *cell = newCell( entry, inipath );
 	if ( !cell ) return NULL;
 	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );

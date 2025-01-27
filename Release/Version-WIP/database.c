@@ -7,7 +7,6 @@
 #include "errout.h"
 
 // #define DEBUG
-// #define NULL_TERMINATED
 
 //===========================================================================
 //	newCNDB / freeCNDB
@@ -18,11 +17,7 @@ CNDB *
 newCNDB( void ) {
 	CNInstance *nil = cn_new( NULL, NULL );
 	nil->sub[ 0 ] = nil; // set init condition
-#ifdef NULL_TERMINATED
-	Registry *index = newRegistry( IndexedByName );
-#else
 	Registry *index = newRegistry( IndexedByNameRef );
-#endif
 	return (CNDB *) newPair( nil, index ); }
 
 void
@@ -78,25 +73,14 @@ db_register( char *p, CNDB *db )
 	manifest only if instance is new or rehabilitated
 */ {
 	if ( p == NULL ) return NULL;
-#ifdef NULL_TERMINATED
-	p = strmake( p ); // for comparison
-#endif
 	CNInstance *e = NULL;
 	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		e = entry->value;
-		db_op( DB_REHABILITATE_OP, e, db );
-#ifdef NULL_TERMINATED
-		free( p );
-#endif
-		}
+		db_op( DB_REHABILITATE_OP, e, db ); }
 	else {
-#ifndef NULL_TERMINATED
-		p = strmake( p ); // for storage
-#endif
-		e = cn_new( NULL, NULL );
-		entry = registryRegister( db->index, p, e );
-		e->sub[ 1 ] = (CNInstance *) entry;
+		entry = registryRegister( db->index, strmake(p), NULL );
+		e = entry->value = cn_carrier( entry );
 		db_op( DB_MANIFEST_OP, e, db ); }
 	return e; }
 
@@ -109,25 +93,15 @@ db_deregister( CNInstance *e, CNDB *db )
 	Assumption: e->sub[0]==NULL
 */ {
 	// remove entry from db->index
-	Pair *entry = (Pair *) e->sub[ 1 ];
-	Registry *index = db->index;
-	listItem *next_i, *last_i=NULL;
-	for ( listItem *i=index->entries; i!=NULL; i=next_i ) {
-		Pair *r = i->ptr;
-		next_i = i->next;
-		if ( r!=entry ) last_i = i;
-		else {
-			freeItem( i );
-			if (( last_i )) last_i->next = next_i;
-			else index->entries = next_i;
-			break; } }
+	Pair *entry = (Pair *) e->sub;
+	registryRemove( db->index, entry );
 	// free entry
 	free( entry->name );
 	freePair( entry );
 	// release e
-	e->sub[1] = NULL;
+	e->sub = NULL;
 	cn_release( e ); }
-	
+
 //===========================================================================
 //	db_deprecate
 //===========================================================================
@@ -322,14 +296,14 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 			x = x->sub[ ndx ];
 			ndx = 0; continue; }
 
-		if (( y->sub[ 0 ] )) {
+		if ( cnIsProxy(y) ) {
 			if ( !cnIsProxy(x) || CNProxyThat(x)!=CNProxyThat(y) )
 				goto FAIL; }
-		else if (( x->sub[ 0 ] ))
-			goto FAIL;
-		else if ( cnIsShared( y ) ) {
+		else if ( cnIsShared(y) ) {
 			if ( bm_arena_cmp( x, y ) )
 				goto FAIL; }
+		else if ( !cnIsIdentifier(x) )
+			goto FAIL;
 		else {
 			char *p_x = CNIdentifier( x );
 			char *p_y = CNIdentifier( y );
@@ -350,7 +324,7 @@ db_match_identifier( CNInstance *x, char *p )
 /*
 	Assumption: x!=NULL
 */ {
-	if (( x->sub[0] )) return 0;
+	if ( !cnIsIdentifier(x) ) return 0;
 	char *identifier = CNIdentifier( x );
 	if ( !identifier ) return 0;
 	switch ( *p ) {
@@ -381,7 +355,7 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_outputf( db, stderr, "db_instantiate: ( %_, %_ )\n", e, f );
 #endif
 	CNInstance *instance = NULL, *candidate;
-	if ( cnStarMatch( e->sub[0] ) ) {
+	if ( cnStarMatch( CNSUB(e,0) ) ) {
 		/* Assignment case - as we have e:( *, . )
 		*/
 		// ward off concurrent reassignment case
@@ -412,7 +386,8 @@ db_instantiate( CNInstance *e, CNInstance *f, CNDB *db )
 	db_op( DB_MANIFEST_OP, instance, db );
 	return instance;
 ERR:
-	return errout( DBConcurrentAssignment, db, e->sub[1], candidate->sub[1], f ); }
+	errout( DBConcurrentAssignment, db, e->sub[1], candidate->sub[1], f );
+	return NULL; }
 
 static inline int
 concurrent( CNInstance *e, CNDB *db ) {
@@ -462,13 +437,7 @@ db_unassign( CNInstance *x, CNDB *db )
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db ) {
 	if ( !p ) return NULL;
-#ifdef NULL_TERMINATED
-	p = strmake( p );
 	Pair *entry = registryLookup( db->index, p );
-	free( p );
-#else
-	Pair *entry = registryLookup( db->index, p );
-#endif
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL; }
 
@@ -623,13 +592,14 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
-		else if (( e->sub[ 0 ] )) // proxy
+		else if ( cnIsProxy(e) )
 			fprintf( stream, "%s", ((e->sub[0]->sub[0])?"@@@":"%%"));
+		else if ( cnIsShared(e) ) {
+			char *p = CNSharedIdentifier( e );
+			fprintf( stream, "%s", ((p)?p:"!!") ); }
 		else {
 			char *p = CNIdentifier( e );
-			if ( cnIsShared( e ) )
-				fprintf( stream, "%s", ((p)?p:"!!") );
-			else if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
+			if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
 				fprintf( stream, "%s", p );
 			else {
 				switch (*p) {

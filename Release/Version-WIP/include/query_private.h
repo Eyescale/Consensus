@@ -194,7 +194,7 @@ static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
 static inline CNInstance *
 assignment_fetch( CNInstance *x, BMQueryData *data ) {
 	/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star */
-	if (( x=CNSUB(x,0) ) && cnStarMatch( x->sub[0] ))
+	if (( x=CNSUB(x,0) ) && cnStarMatch( CNSUB(x,0) ))
 		return x->sub[ 1 ];
 	else { data->success = 0; return NULL; } }
 

@@ -12,10 +12,6 @@ char *	bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );
 #define AS_SUB  0
 #define SUB     2
 
-void xpn_add( listItem **xp, int as_sub, int position );
-void xpn_set( listItem *xp, int as_sub, int position );
-void xpn_out( FILE *stream, listItem *xp );
-
 //===========================================================================
 //      target acquisition (internal)
 //===========================================================================

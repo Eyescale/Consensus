@@ -133,6 +133,20 @@ registryLookup( Registry *registry, void *name, ... ) {
 			if ( r->value == value ) return r; } }
         return NULL; }
 
+void
+registryRemove( Registry *registry, Pair *entry ) {
+	// remove entry from registry
+	listItem *next_i, *last_i=NULL;
+	for ( listItem *i=registry->entries; i!=NULL; i=next_i ) {
+		Pair *r = i->ptr;
+		next_i = i->next;
+		if ( r!=entry ) last_i = i;
+		else {
+			freeItem( i );
+			if (( last_i )) last_i->next = next_i;
+			else registry->entries = next_i;
+			return; } } }
+
 Registry *
 registryDuplicate( Registry *registry ) {
 	int type = registry->type;

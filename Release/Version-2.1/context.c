@@ -424,7 +424,7 @@ bm_context_unmark( BMContext *ctx, void *user_data )
 //---------------------------------------------------------------------------
 //	mark_prep
 //---------------------------------------------------------------------------
-static inline CNInstance * xsub( CNInstance *, listItem * );
+static inline CNInstance * mark_sub( CNInstance *, listItem * );
 
 static Pair *
 mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
@@ -445,25 +445,25 @@ mark_prep( Pair *mark, CNInstance *x, CNInstance *proxy )
 	if ( type.value & EENOK ) {
 		y = ( type.value & EMARK ) ?
 			( type.value & QMARK ) ?
-				xsub( x->sub[1], xpn ) :
-				xsub( x->sub[0]->sub[1], xpn ) :
+				mark_sub( x->sub[1], xpn ) :
+				mark_sub( x->sub[0]->sub[1], xpn ) :
 			( type.value & QMARK ) ?
-				xsub( x, xpn ) : proxy; }
+				mark_sub( x, xpn ) : proxy; }
 	else if ( type.value & EMARK ) {
 		y = ( type.value & QMARK ) ?
-			xsub( x->sub[1], xpn ) :
-			xsub( x->sub[0]->sub[1], xpn ); }
+			mark_sub( x->sub[1], xpn ) :
+			mark_sub( x->sub[0]->sub[1], xpn ); }
 	else if ( type.value & QMARK ) {
-		y = xsub( x, xpn ); }
+		y = mark_sub( x, xpn ); }
 	else {
 		fprintf( stderr, ">>>>> B%%: Error: bm_context_mark: "
 			"unknown mark type\n" );
 		exit( -1 ); }
 
-	return newPair( x, y );
-}
+	return newPair( x, y ); }
 
-static inline CNInstance * xsub( CNInstance *x, listItem *xpn ) {
+static inline CNInstance *
+mark_sub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next ) {

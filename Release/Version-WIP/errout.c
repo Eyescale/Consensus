@@ -17,7 +17,7 @@
 #define _( msg ) fprintf( stderr, msg ); break;
 #define _arg( msg ) fprintf( stderr, msg, va_arg(ap,char*) ); break;
 
-void *
+int
 errout( ErrOutType type, ... ) {
 	CNDB *db;
 	CNInstance *e, *f, *g;
@@ -143,6 +143,6 @@ errout( ErrOutType type, ... ) {
 		break; }
 	va_end( ap );
 	paint( RESET );
-	return NULL; }
+	return 0; }
 
 

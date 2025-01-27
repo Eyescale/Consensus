@@ -128,7 +128,7 @@ remove_CB( CNDB *db, CNInstance *x, void *user_data ) {
 	RemoveData *data = user_data;
 	if ( x==data->parent )
 		return 1;
-	else if ( !x->sub[0] && cnIsShared(x) ) {
+	else if ( cnIsShared(x) ) {
 		bm_arena_deregister( data->arena, x, db );
 		bm_uncache( data->ctx, x );
 		return 1; }
@@ -627,7 +627,7 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 			CNInstance *e = ((Pair *) i->ptr )->value;
 			if ( p[2]==':' ) {
 				listItem *xpn = xpn_make( p+3 );
-				e = xsub( e, xpn );
+				e = xpn_sub( e, xpn );
 				freeListItem( &xpn ); }
 			if (( e )&&( entry=registryLookup( ctx, ":" ) )) {
 				Registry *buffer = entry->value;

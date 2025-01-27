@@ -1,7 +1,7 @@
 #ifndef LOCATE_PIVOT_H
 #define LOCATE_PIVOT_H
 
-#include "list.h"
+#include "entity.h"
 
 char *	bm_locate_pivot( char *, listItem ** );
 

@@ -185,7 +185,7 @@ bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
 			addItem( &stack.src, x );
 			x = x->sub[ ndx ];
 			ndx = 0; continue; }
-		if (( x->sub[ 0 ] )) { // proxy x:(( this, that ), NULL )
+		if ( cnIsProxy(x) ) { // proxy x:(( this, that ), NULL )
 			CNEntity *that = CNProxyThat( x );
 			instance = proxy_that( that, dst, db_dst, 0 ); }
 		else if ( cnIsShared(x) )
@@ -249,7 +249,7 @@ bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
 			addItem( &stack.src, e );
 			e = e->sub[ ndx ];
 			ndx = 0; continue; }
-		if (( e->sub[ 0 ] )) { // proxy e:(( this, that ), NULL )
+		if ( cnIsProxy(e) ) { // proxy e:(( this, that ), NULL )
 			CNEntity *that = CNProxyThat( e );
 			instance = proxy_that( that, dst, db_dst, 1 ); }
 		else if ( cnIsShared(e) )
@@ -271,7 +271,8 @@ bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
 FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
-	return errout( CellInform, db_src, x ); }
+	errout( CellInform, db_src, x );
+	return NULL; }
 
 //---------------------------------------------------------------------------
 //	bm_list_inform
@@ -327,7 +328,8 @@ newCell( Pair *entry, char *inipath ) {
 		int errnum = bm_context_load( BMCellContext(this), inipath );
 		if ( errnum ) {
 			freeCell( this, NULL, NULL );
-			return errout( CellLoad, inipath ); } }
+			errout( CellLoad, inipath );
+			return NULL; } }
 	return this; }
 
 void

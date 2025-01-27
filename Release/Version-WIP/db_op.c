@@ -156,7 +156,6 @@ fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
 			cn_release( g );
 			cn_release( f );
 			cn_new( nil, x ); } }
-
 #ifdef DEBUG
 fprintf( stderr, "db_update: 3. actualize to-be-manifested entities\n" );
 #endif
@@ -186,10 +185,9 @@ fprintf( stderr, "db_update: 5. remove released entities\n" );
 #endif
 	while (( x=popListItem( &released ) )) {
 		if (( user_CB ) && user_CB( db, x, user_data ) )
-			continue;
-		else if (( x->sub[0] )) {
-			if (( x->sub[ 1 ] )) cn_release( x );
-			else free_proxy( x ); }
+			continue; // takes care of shared
+		else if ( !isBase(x) ) cn_release( x );
+		else if ( cnIsProxy(x) ) free_proxy( x );
 		else db_deregister( x, db ); }
 #ifdef DEBUG
 fprintf( stderr, "--\n" );

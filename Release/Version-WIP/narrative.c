@@ -84,41 +84,22 @@ narrative_reorder( CNNarrative *narrative ) {
 //===========================================================================
 //	narrative_output
 //===========================================================================
-static inline void fprint_switch( FILE *, char *, int, int );
-
-#define if_( a, b ) if (type&(a)) fprintf(stream,b);
+static inline void output_proto( FILE *, char * );
+static inline int output_cmd( FILE *, int, int );
+static inline void output_expr( FILE *, char *, int, int );
 
 int
 narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 	if ( narrative == NULL ) return !!errout( NarrativeOutputNone );
-	char *proto = narrative->proto;
-	if (( proto )) {
-		if ( *proto==':' ) fprintf( stream, ".%s\n", proto );
-		else fprintf( stream, "%s\n", proto ); }
+	output_proto( stream, narrative->proto );
 	CNOccurrence *occurrence = narrative->root;
 	listItem *i = newItem( occurrence ), *stack = NULL;
 	for ( ; ; ) {
 		occurrence = i->ptr;
 		int type = cast_i( occurrence->data->type );
 		char *expression = occurrence->data->expression;
-		switch ( type ) {
-		case ROOT: break;
-		case ELSE:
-			TAB( level );
-			fprintf( stream, "else\n" );
-			break;
-		default:
-			TAB( level );
-			// output cmd
-			if ( !(type&CASE) ) {
-				if_( ELSE, "else " )
-				if_( EN, "en " )
-				else if_( PER, "per " )
-				else if_( IN, "in " )
-				else if_( ON|ON_X, "on " )
-				else if_( DO|INPUT|OUTPUT, "do " ) }
-			// output expr
-			fprint_switch( stream, expression, level, type ); }
+		if ( output_cmd( stream, type, level ) )
+			output_expr( stream, expression, level, type );
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i=j; level++; }
 		else for ( ; ; ) {
@@ -133,17 +114,35 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 				freeItem( i );
 				return 0; } } } }
 
-//---------------------------------------------------------------------------
-//	fprint_switch
-//---------------------------------------------------------------------------
 static inline void
-fprint_switch( FILE *stream, char *expression, int level, int type ) {
-	if ( strlen( expression ) < 40 )
-		fprintf( stream, "%s", expression );
-	else if ( type & DO )
+output_proto( FILE *stream, char *proto ) {
+	if (( proto )) {
+		if ( *proto==':' ) fprintf( stream, ".%s\n", proto );
+		else fprintf( stream, "%s\n", proto ); } }
+
+#define if_( a, b ) if (type&(a)) fprintf(stream,b);
+static inline int
+output_cmd( FILE *stream, int type, int level ) {
+	if ( type==ROOT )
+		return 0;
+	else {
+		TAB( level );
+		if ( type==ELSE ) {
+			fprintf( stream, "else\n" );
+			return 0; }
+		else if ( !(type&CASE) ) {
+			if_( ELSE, "else " )
+			if_( EN, "en " )
+			else if_( PER, "per " )
+			else if_( IN, "in " )
+			else if_( ON|ON_X, "on " )
+			else if_( DO|INPUT|OUTPUT, "do " ) }
+		return 1; } }
+
+static inline void
+output_expr( FILE *stream, char *expression, int level, int type ) {
+	if ( type&(DO|OUTPUT) && strlen(expression)>=40 )
 		fprint_expr( stream, expression, level, type );
-	else if ( type & OUTPUT )
-		fprint_output( stream, expression, level );
 	else fprintf( stream, "%s", expression );
 	fprintf( stream, "\n" ); }
 
@@ -158,7 +157,7 @@ typedef struct {
 	struct { listItem *level, *flags; } stack;
 	} fprintExprData;
 static char *
-	carry_out( fprintExprData *, char * );
+	jump_start( fprintExprData *, char * );
 
 void
 fprint_expr( FILE *stream, char *p, int level, int type ) {
@@ -168,40 +167,40 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 	data.p = p;
 	data.level = level;
 	data.type = type;
-
-	// get carry out of the way
-	p = carry_out( &data, p );
-	if ( !p ) return;
-
-	BMTraverseData traversal;
-	traversal.user_data = &data;
-	traversal.stack = &data.stack.flags;
-	traversal.done = TERNARY|INFORMED;
-	if ( type&DO ) traversal.done |= LITERAL;
-
-	p = fprint_expr_traversal( p, &traversal, FIRST );
-	for ( char *q=data.p; q!=p; q++ ) fputc( *q, stream ); }
+	p = jump_start( &data, p );
+	if (( p )) {
+		BMTraverseData traversal;
+		traversal.user_data = &data;
+		traversal.stack = &data.stack.flags;
+		traversal.done = TERNARY|INFORMED;
+		if ( type&DO ) traversal.done |= LITERAL;
+		fprint_expr_traversal( p, &traversal, FIRST ); }
+	fprintf( stream, "%s", data.p ); }
 
 static inline char * retab( fprintExprData *, char * );
 static char *
-carry_out( fprintExprData *data, char *p ) {
+jump_start( fprintExprData *data, char *p ) {
 	switch ( *p ) {
+	case '>':
+		p++;
+		if ( *p=='&' ) p++;
+		if ( *p=='"' ) p = p_prune( PRUNE_IDENTIFIER, p );
+		return *p ? p+1 : NULL;
 	case ':':
 		p = p_prune( PRUNE_LEVEL, p+1 );
 		switch ( *p ) {
 		case '\0':
-			fprintf( data->stream, "%s", data->p );
 			return NULL;
 		case ',':
-			if ( p[1]!='!' )
-				return p+1;
-			p++; }
+			p++;
+			if ( *p!='!' )
+				return p;
+			break; }
 		// no break
 	case '!':
 		p+=2;
 		switch ( *p ) {
 		case '\0':
-			fprintf( data->stream, "%s", data->p );
 			return NULL;
 		default:
 			if ( is_separator(*p) )
@@ -213,8 +212,8 @@ carry_out( fprintExprData *data, char *p ) {
 
 static inline char *
 retab( fprintExprData *data, char *p ) {
-	p++;
 	FILE *stream = data->stream;
+	p++;
 	for ( char *q=data->p; q!=p; q++ )
 		fputc( *q, stream );
 	fputc( '\n', stream );
@@ -239,7 +238,7 @@ retab( fprintExprData *data, char *p ) {
 	1. each pipe retab increases the indentation level, whereas
 	   vector or set retab increases it only once and consistently
 	   restores it after each comma
-	2. ternary separation is only effected at the ternary base level
+	2. ternary separation is only effected at the first ternary level
 */
 BMTraverseCBSwitch( fprint_expr_traversal )
 case_( bgn_pipe_CB )
@@ -266,14 +265,6 @@ case_( comma_CB )
 			data->level = level;
 			retab( data, p ); } }
 	_break
-case_( filter_CB )
-	if ( p==data->ternary.p ) {
-		data->ternary.p = NULL;
-		data->level = data->ternary.level;
-		retab( data, p ); }
-	else if ( !strncmp(p,":|",2) && p[2]!=')' )
-		switch_over( bgn_pipe_CB, p+1, p )
-	_break
 case_( open_CB )
 	if ( !data->ternary.p ) {
 		p = p_prune( PRUNE_TERNARY, p );
@@ -284,18 +275,17 @@ case_( open_CB )
 				data->ternary.level = data->level;
 				retab( data, p ); } } }
 	_break
+case_( filter_CB )
+	if ( p==data->ternary.p && *p==':' ) {
+		data->ternary.p = p_prune( PRUNE_TERNARY, p );
+		data->level = data->ternary.level;
+		retab( data, p ); }
+	else if ( !strncmp(p,":|",2) && !strmatch("){",p[2]) )
+		retab( data, p+1 );
+	_break
+case_( close_CB )
+	if ( p==data->ternary.p )
+		data->ternary.p = NULL;
+	_break
 BMTraverseCBEnd
-
-//---------------------------------------------------------------------------
-//	fprint_output
-//---------------------------------------------------------------------------
-void
-fprint_output( FILE *stream, char *expression, int level ) {
-	char *p = expression+1;	// skip '>'
-	if ( *p=='&' ) p++;
-	if ( *p=='"' ) p = p_prune( PRUNE_IDENTIFIER, p );
-	if ( *p=='\0' ) { fprintf( stream, "%s", expression ); return; }
-	p++; // skip ':'
-	for ( char *q=expression; q!=p; q++ ) fputc( *q, stream );
-	fprint_expr( stream, p, level, OUTPUT ); }
 

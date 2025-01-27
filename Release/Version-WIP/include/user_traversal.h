@@ -1,7 +1,8 @@
 #ifndef TRAVERSAL_H
 #define TRAVERSAL_H
 
-#include "database.h"
+#include "entity.h"
+#include "string_util.h"
 
 #define AS_SUB  0
 #define SUB     2

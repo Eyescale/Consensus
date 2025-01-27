@@ -21,6 +21,7 @@ Pair *	registryRegister( Registry *registry, void *name, void *value );
 void	registryCBDeregister( Registry *registry, freeRegistryCB, void * );
 void	registryDeregister( Registry *registry, void *name, ... );
 Pair *	registryLookup( Registry *registry, void *name, ... );
+void	registryRemove( Registry *registry, Pair *entry );
 
 Registry *registryDuplicate( Registry *registry );
 

@@ -1,7 +1,7 @@
 #ifndef LOCATE_PARAM_H
 #define LOCATE_PARAM_H
 
-#include "list.h"
+#include "entity.h"
 
 typedef void BMLocateCB( char *, listItem *, void * );
 char *	bm_locate_param( char *, listItem **xpn, BMLocateCB, void * );

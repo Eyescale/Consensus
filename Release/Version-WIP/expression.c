@@ -354,7 +354,7 @@ bm_out_put( OutputData *data, CNInstance *e, CNDB *db ) {
 	if ( *fmt=='(' ) {
 		listItem *xpn = xpn_make( fmt );
 		if ( !xpn ) return;
-		e = xsub( e, xpn );
+		e = xpn_sub( e, xpn );
 		freeListItem( &xpn );
 		if ( !e ) return;
 		fmt = prune_xsub( fmt ); }

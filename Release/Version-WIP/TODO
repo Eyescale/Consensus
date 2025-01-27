@@ -20,11 +20,14 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
+	. reimplement string shared arena (see above)
+		. SUSPECT: isBase(e) => used only in flareable
+		  return !CNSUB(e,0) => e.g. proxy/shared are flareable - I guess so?
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
-	. reimplement string shared arena (see above)
-	. parser: forbid en command in post-frame narrative
+	. remap ^. into ~ (transcient)
+	. parser: forbid 'en' command in post-frame narrative
 	. feature complete Examples/6_Proto
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!

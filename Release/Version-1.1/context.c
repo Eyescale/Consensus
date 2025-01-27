@@ -242,33 +242,3 @@ bm_register( BMContext *ctx, char *p )
 	return NULL;
 }
 
-//===========================================================================
-//	xpn_add, xpn_set
-//===========================================================================
-void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
-}
-void
-xpn_set( listItem *xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	xp->ptr = icast.ptr;
-}
-
-//===========================================================================
-//	xpn_out
-//===========================================================================
-void
-xpn_out( FILE *stream, listItem *xp )
-{
-	while ( xp ) {
-		fprintf( stream, "%d", (int)xp->ptr );
-		xp = xp->next;
-	}
-}
-

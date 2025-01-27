@@ -124,32 +124,5 @@ typedef enum {
 typedef char *BMTraversal( char *, BMTraverseData *, int );
 typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next );
 
-//===========================================================================
-//	utilities
-//===========================================================================
-static inline void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
-}
-static inline void
-xpn_set( listItem *xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	xp->ptr = icast.ptr;
-}
-static inline void
-xpn_out( FILE *stream, listItem *xp )
-{
-	union { int value; void *ptr; } icast;
-	while ( xp ) {
-		icast.ptr = xp->ptr;
-		fprintf( stream, "%d", icast.value );
-		xp = xp->next; }
-}
-
 
 #endif	// TRAVERSE_H

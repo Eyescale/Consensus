@@ -1,7 +1,7 @@
 #ifndef LOCATE_MARK_H
 #define LOCATE_MARK_H
 
-#include "list.h"
+#include "entity.h"
 
 char *	bm_locate_mark( char *, listItem **xpn );
 

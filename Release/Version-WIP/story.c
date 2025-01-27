@@ -43,7 +43,9 @@ CNStory *
 readStory( char *path, int ignite ) {
 	if ( !path ) return ( ignite ? newStory() : NULL );
 	FILE *stream = fopen( path, "r" );
-	if ( !stream ) return errout( StoryLoad, path );
+	if ( !stream ) {
+		errout( StoryLoad, path );
+		return NULL; }
 	CNIO io;
 	io_init( &io, stream, path, IOStreamFile );
 	BMParseData data;

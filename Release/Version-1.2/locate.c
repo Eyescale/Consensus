@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "string_util.h"
+#include "entity.h"
 #include "traverse.h"
 #include "locate.h"
 
@@ -364,36 +365,4 @@ case_( parameter_CB )
 	 	data->param_CB( p+1, *data->exponent, data->user_data );
 	_break
 BMTraverseCBEnd
-
-//===========================================================================
-//	xpn_add, xpn_set
-//===========================================================================
-void
-xpn_add( listItem **xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	addItem( xp, icast.ptr );
-}
-void
-xpn_set( listItem *xp, int as_sub, int position )
-{
-	union { int value; void *ptr; } icast;
-	icast.value = as_sub + position;
-	xp->ptr = icast.ptr;
-}
-
-//===========================================================================
-//	xpn_out
-//===========================================================================
-void
-xpn_out( FILE *stream, listItem *xp )
-{
-	union { int value; void *ptr; } icast;
-	while ( xp ) {
-		icast.ptr = xp->ptr;
-		fprintf( stream, "%d", icast.value );
-		xp = xp->next;
-	}
-}
 

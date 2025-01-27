@@ -15,13 +15,9 @@ void cn_prune( CNEntity * );
 void cn_release( CNEntity * );
 void cn_free( CNEntity * );
 
-#define CNSUB(e,ndx) \
-	( ((CNEntity*)e)->sub[!(ndx)] ? ((CNEntity*)e)->sub[ndx] : NULL )
-#define isBase( e ) \
-	( !CNSUB(e,0) )
-
-static inline int cn_hold( CNEntity *e, CNEntity *f ) {
-	return ( e->sub[0]==f || e->sub[1]==f ); }
+static inline CNEntity *cn_carrier( Pair *sub ) {
+	Pair *as_sub = newPair( NULL, NULL );
+	return (CNEntity*) newPair( sub, as_sub ); }
 
 //---------------------------------------------------------------------------
 //	exponent utilities
@@ -42,14 +38,21 @@ static inline void xpn_out( FILE *stream, listItem *xp ) {
 		fprintf( stream, "%d", cast_i(xp->ptr) );
 		xp = xp->next; } }
 
+//---------------------------------------------------------------------------
+//	is_xpn_expr, xpn_make, xsub
+//---------------------------------------------------------------------------
+/*
+	sub format expressions
+*/
+#define sub_case( event, test ) \
+	case event: if (!test) { freeListItem(&stack); return 0; } else
+
 static inline int is_xpn_expr( char *p ) {
 	if ( *p++!='(' ) return 0;
 	int first, informed, marked;
 	listItem *stack = NULL;
 	informed = marked = 0;
 	first = 1;
-#define sub_case( event, test ) \
-	case event: if (!test) { freeListItem(&stack); return 0; } else
 	for ( ; ; )
 		switch ( *p++ ) {
 		sub_case( '(', !(informed||marked) ) {
@@ -69,7 +72,6 @@ static inline int is_xpn_expr( char *p ) {
 		sub_case( '?', !(informed||marked) ) {
 			informed = marked = 1;
 			break; }
-#undef sub_case
 		default:
 			freeListItem( &stack );
 			return 0; } }
@@ -82,13 +84,6 @@ static inline listItem * xpn_make( char *p ) {
 		case '(': add_item( &sub, ndx ); ndx=0; break;
 		case ',': ndx=1; sub->ptr=cast_ptr(ndx); break;
 		case '?': reorderListItem( &sub ); return sub; } }
-
-static inline CNEntity * xsub( CNEntity *x, listItem *xpn ) {
-	if ( !xpn ) return x;
-	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
-		x = CNSUB( x, cast_i(i->ptr) );
-		if ( !x ) return NULL; }
-	return x; }
 
 
 #endif	// ENTITY_H
