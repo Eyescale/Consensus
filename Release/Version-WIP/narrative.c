@@ -6,7 +6,6 @@
 #include "string_util.h"
 #include "errout.h"
 
-#include "fprint_expr.h"
 #include "fprint_expr_traversal.h"
 
 //===========================================================================

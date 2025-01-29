@@ -3,10 +3,119 @@
 
 #include "program.h"
 #include "parser.h"
-#include "fprint_expr.h"
+#include "narrative.h"
+#include "instantiate.h"
 #include "errout.h"
 
 // #define DEBUG
+
+//===========================================================================
+//	newProgram / freeProgram
+//===========================================================================
+static int bm_load( BMContext *ctx, char *path );
+
+CNProgram *
+newProgram( CNStory *story, char *inipath ) {
+	if ( !story ) return NULL;
+	Pair *entry = CNStoryMain( story );
+	if ( !entry ) {
+		errout( ProgramStory );
+		return NULL; }
+	CNCell *cell = newCell( entry );
+	if (( inipath )) {
+		int errnum = bm_load( BMCellContext(cell), inipath );
+		if ( errnum ) {
+			freeCell( cell, NULL, NULL );
+			errout( CellLoad, inipath );
+			return NULL; } }
+	if ( !cell ) return NULL;
+	Pair *threads = newPair( NULL, NULL );
+	CNProgram *program = (CNProgram *) newPair( story, threads );
+	// threads->new is a list of lists
+	program->threads->new = newItem( newItem( cell ) );
+	return program; }
+
+static freeCellCB cell_release;
+void
+freeProgram( CNProgram *program ) {
+	if ( !program ) return;
+	CNCell *cell;
+	listItem **active = &program->threads->active;
+	listItem **new = &program->threads->new;
+	while (( cell = popListItem(active) )) {
+		freeCell( cell, cell_release, program->story ); }
+	while (( cell = popListItem(new) )) {
+		freeCell( cell, cell_release, program->story ); }
+	freePair((Pair *) program->threads );
+	freePair((Pair *) program ); }
+
+//---------------------------------------------------------------------------
+//	bm_load
+//---------------------------------------------------------------------------
+static BMParseCB load_CB;
+
+static int
+bm_load( BMContext *ctx, char *path ) {
+	FILE *stream = fopen( path, "r" );
+	if ( !stream ) return( errout( ContextLoad, path ), -1 );
+	CNIO io;
+	io_init( &io, stream, path, IOStreamFile );
+
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+        data.io = &io;
+	data.ctx = ctx;
+	bm_parse_init( &data, BM_LOAD );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, load_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	bm_parse_exit( &data );
+	io_exit( &io );
+
+	fclose( stream );
+	return data.errnum; }
+
+static int
+load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+	BMParseData *data = user_data;
+	if ( op==ExpressionTake ) {
+		char *expression = StringFinish( data->string, 0 );
+		bm_instantiate( expression, data->ctx, NULL );
+		StringReset( data->string, CNStringAll ); }
+	return 1; }
+
+//---------------------------------------------------------------------------
+//	cell_release
+//---------------------------------------------------------------------------
+static void
+cell_release( CNCell *cell, void *user_data ) {
+	listItem *flushed = NULL;
+	CNStory *story = user_data;
+
+	BMContext *ctx = BMCellContext( cell );
+	Pair *shared = BMContextShared( ctx );
+	CNDB *db = BMContextDB( ctx );
+	bm_arena_flush( story->arena, shared, db, &flushed );
+	if ( !flushed ) return;
+
+	/* Must parse all story narratives here, not just the cell's, as
+	   although a narrative string is only cached in relation with a
+	   referencing cell, that cell may not be the last one to go out
+	*/
+	listItem *narratives = story->narratives->entries;
+	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		narratives = entry->value;
+		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
+			CNNarrative *narrative = j->ptr;
+			void *cached = narrative->root->data->expression;
+			if (( cached )&&( lookupIfThere(flushed,cached) ))
+				narrative->root->data->expression = NULL; } }
+	freeListItem( &flushed ); }
 
 //===========================================================================
 //	cnPrintout
@@ -85,8 +194,6 @@ cnSync( CNProgram *program ) {
 //===========================================================================
 //	cnOperate
 //===========================================================================
-static freeCellCB cell_release;
-
 int
 cnOperate( CNCell **this, CNProgram *program ) {
 #ifdef DEBUG
@@ -123,62 +230,6 @@ cnOperate( CNCell **this, CNProgram *program ) {
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new)); }
-
-static void
-cell_release( CNCell *cell, void *user_data ) {
-	listItem *flushed = NULL;
-	CNStory *story = user_data;
-
-	BMContext *ctx = BMCellContext( cell );
-	Pair *shared = BMContextShared( ctx );
-	CNDB *db = BMContextDB( ctx );
-	bm_arena_flush( story->arena, shared, db, &flushed );
-	if ( !flushed ) return;
-
-	/* Must parse all story narratives here, not just the cell's, as
-	   although a narrative string is only cached in relation with a
-	   referencing cell, that cell may not be the last one to go out
-	*/
-	listItem *narratives = story->narratives->entries;
-	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
-		Pair *entry = i->ptr;
-		narratives = entry->value;
-		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
-			CNNarrative *narrative = j->ptr;
-			void *cached = narrative->root->data->expression;
-			if (( cached )&&( lookupIfThere(flushed,cached) ))
-				narrative->root->data->expression = NULL; } }
-	freeListItem( &flushed ); }
-
-//===========================================================================
-//	newProgram / freeProgram
-//===========================================================================
-CNProgram *
-newProgram( CNStory *story, char *inipath ) {
-	if ( !story ) return NULL;
-	Pair *entry = CNStoryMain( story );
-	if ( !entry ) {
-		errout( ProgramStory );
-		return NULL; }
-	CNCell *cell = newCell( entry, inipath );
-	if ( !cell ) return NULL;
-	CNProgram *program = (CNProgram *) newPair( story, newPair(NULL,NULL) );
-	// threads->new is a list of lists
-	program->threads->new = newItem( newItem( cell ) );
-	return program; }
-
-void
-freeProgram( CNProgram *program ) {
-	if ( !program ) return;
-	CNCell *cell;
-	listItem **active = &program->threads->active;
-	listItem **new = &program->threads->new;
-	while (( cell = popListItem(active) )) {
-		freeCell( cell, cell_release, program->story ); }
-	while (( cell = popListItem(new) )) {
-		freeCell( cell, cell_release, program->story ); }
-	freePair((Pair *) program->threads );
-	freePair((Pair *) program ); }
 
 //===========================================================================
 //	cnExit

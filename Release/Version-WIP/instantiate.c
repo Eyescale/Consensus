@@ -801,7 +801,7 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal 
 		registryRegister( ctx, ":", buffer );
 		CNCell *this = BMContextCell( ctx );
 		CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
-		do {	CNCell *child = newCell( entry, NULL );
+		do {	CNCell *child = newCell( entry );
 			addItem( BMCellCarry(this), child );
 			proxy = new_proxy( this, child, db );
 			registryRegister( buffer, x, proxy );
@@ -877,7 +877,7 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traversal
 			db_deprecate( proxy, db ); }
 		else {
 			if (( x )) db_assign( x, proxy, db );
-			bm_cell_bond( this, child, proxy ); } }
+			bm_bond( this, child, proxy ); } }
 	bm_context_pop( ctx, "^" );
 	freeItem( current ); }
 

@@ -106,9 +106,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 void
 db_update( CNDB *db, DBRemoveCB user_CB, void *user_data ) {
 	CNInstance *nil = db->nil;
-	if (( nil->sub[0] )) // remove init condition
-		nil->sub[ 0 ] = NULL;
-
 	CNInstance *f, *g, *x;
 #ifdef DEBUG
 fprintf( stderr, "db_update: 1. actualize manifested entities\n" );

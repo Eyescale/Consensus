@@ -14,7 +14,7 @@ typedef struct {
 	Registry *index;
 } CNDB;
 
-CNDB *	newCNDB( void );
+CNDB *	newCNDB( CNEntity * );
 void	freeCNDB( CNDB * );
 
 //===========================================================================
@@ -52,9 +52,6 @@ int	db_outputf( CNDB *, FILE *, char *fmt, ... );
 
 #define isBase(e) (!CNSUB(e,0))
 
-static inline int cn_hold( CNEntity *e, CNEntity *f ) {
-	return ( CNSUB(e,0)==f || CNSUB(e,1)==f ); }
-
 static inline CNEntity * xpn_sub( CNEntity *x, listItem *xpn ) {
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
@@ -76,16 +73,12 @@ static inline char * CNSharedIdentifier( CNInstance *e ) {
 static inline int cnIsUnnamed( CNInstance *e ) {
 	return !CNSharedIdentifier(e); }
 
-//---------------------------------------------------------------------------
-//	proxy
-//---------------------------------------------------------------------------
+static inline int cnIsProxy( CNInstance *e ) {
+	return ((e->sub[0]) && !e->sub[1]); }
 static inline CNEntity * CNProxyThis( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[0]; }
 static inline CNEntity * CNProxyThat( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[1]; }
-
-static inline int cnIsProxy( CNInstance *e ) {
-	return ((e->sub[0]) && !e->sub[1]); }
 static inline int cnIsSelf( CNInstance *proxy ) {
 	return !CNProxyThis(proxy); }
 
@@ -93,26 +86,6 @@ static inline int cnIsSelf( CNInstance *proxy ) {
 //	operation (nil-based)
 //===========================================================================
 #include "db_op.h"
-
-//---------------------------------------------------------------------------
-//	db_init, db_exit, DBInitOn, DBExitOn, DBActive
-//---------------------------------------------------------------------------
-static inline void db_init( CNDB *db ) {
-	db_update( db, NULL, NULL );
-	db->nil->sub[ 0 ] = db->nil; }
-
-static inline void db_exit( CNDB *db ) {
-	db->nil->sub[ 1 ] = db->nil; }
-
-static inline int DBInitOn( CNDB *db ) {
-	return !!db->nil->sub[ 0 ]; }
-
-static inline int DBExitOn( CNDB *db ) {
-	return !!db->nil->sub[ 1 ]; }
-
-static inline int DBActive( CNDB *db ) {
-	listItem **as_sub = db->nil->as_sub;
-	return ((as_sub[ 0 ]) || (as_sub[ 1 ]) || DBInitOn(db) || DBExitOn(db)); }
 
 //---------------------------------------------------------------------------
 //	db_private, db_deprecated, db_manifested
@@ -181,6 +154,27 @@ static inline int db_has_newborn( listItem *list, int sub, CNDB *db )
 				if ( g->sub[1]==nil )
 					return 1; } } }
 	return 0; }
+
+//---------------------------------------------------------------------------
+//	db_init, db_exit, DBInitOn, DBExitOn
+//---------------------------------------------------------------------------
+#define SELF_PROXY(db) ((CNInstance *)db->nil->sub[0])
+
+static inline void db_init( CNDB *db ) {
+	db_update( db, NULL, NULL ); }
+static inline void db_exit( CNDB *db ) {
+	db_op( DB_DEPRECATE_OP, SELF_PROXY(db), db ); }
+static inline int DBInitOn( CNDB *db ) {
+	return db_manifested( SELF_PROXY(db), db ); }
+static inline int DBExitOn( CNDB *db ) {
+	return db_deprecated( SELF_PROXY(db), db ); }
+
+//---------------------------------------------------------------------------
+//	DBActive
+//---------------------------------------------------------------------------
+static inline int DBActive( CNDB *db ) {
+	listItem **as_sub = db->nil->as_sub;
+	return ((as_sub[ 0 ]) || (as_sub[ 1 ]) || DBInitOn(db) || DBExitOn(db)); }
 
 
 #endif	// DATABASE_H

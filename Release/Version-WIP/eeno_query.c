@@ -137,6 +137,7 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 			but we don't have ( x, . ) in there as well
 		*/
 		listItem *s = NULL;
+		CNInstance *that = CNProxyThat( proxy );
 		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
 			if (( success )) {
 				if ( e->sub[ 0 ]==success ) {
@@ -145,11 +146,11 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 					break; } }
 			else if ( e->sub[0]==star ) {
 				f = e->sub[ 1 ];
-				if (( f->sub[0] ) && CNProxyThat(f)==CNProxyThat(proxy) )
+				if (( f->sub[0] ) && CNProxyThat(f)==that )
 					success = f; }
 			else if (( f=CNSUB(e,0) ) && f->sub[0]==star ) {
 				f = f->sub[ 1 ]; // here we have e:((*,f),.)
-				if (( f->sub[0] ) && CNProxyThat(f)==CNProxyThat(proxy) ) {
+				if (( f->sub[0] ) && CNProxyThat(f)==that ) {
 					freeListItem( &s );
 					break; } } }
 		return success; } // (*,%%) manifested
@@ -160,11 +161,12 @@ eeno_query_assignment( CNInstance *proxy, int as_per, char *expression, BMTraver
 			proxy_self:((NULL,that),NULL) where proxy:((this,that),NULL)
 		*/
 		listItem *s = NULL;
+		CNInstance *that = CNProxyThat( proxy );
 		for ( e=DBLog(1,0,db_x,&s); e!=NULL; e=DBLog(0,0,db_x,&s) ) {
 			CNInstance *f = CNSUB( e, 0 ); // e:( f, . )
 			if ( !f || f->sub[0]!=star ) continue;
 			CNInstance *g = f->sub[ 1 ];
-			if ( !g->sub[0] || CNProxyThat(g)!=CNProxyThat(proxy) )
+			if ( !g->sub[0] || CNProxyThat(g)!=that )
 				continue;
 			// here we have g:((.,that),.)=>=proxy-Self
 			data->x = e->sub[ 1 ];

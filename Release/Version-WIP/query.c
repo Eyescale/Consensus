@@ -717,7 +717,7 @@ query_assignment( int type, char *expression, BMQueryData *data ) {
 			default: ;
 				listItem *s = NULL;
 				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
-					if ( !cnStarMatch( CNSUB(e,0) ) || (assignment(e,db)) )
+					if ( e->sub[0]!=star || (assignment(e,db)) )
 						continue;
 					if ( xp_verify( e->sub[1], expression, data ) ) {
 						freeListItem( &s );
@@ -740,7 +740,7 @@ query_assignment( int type, char *expression, BMQueryData *data ) {
 				listItem *s = NULL;
 				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
 					CNInstance *f = CNSUB( e, 0 );
-					if ( !f || !cnStarMatch( CNSUB(f,0) ) ) continue;
+					if ( !f || f->sub[0]!=star ) continue;
 					if ( xp_verify( f->sub[1], expression, data ) &&
 					     xp_verify( e->sub[1], value, data ) ) {
 						freeListItem( &s );
@@ -817,7 +817,7 @@ verify_variable( CNInstance *e, char *expression, BMQueryData *data )
 			CNInstance *g = i->ptr; // g:(.,e)
 			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
 			// Assumption: cannot be manifested AND private
-			if ( !cnStarMatch( CNSUB(f,0) ) || !db_manifested(g,db) )
+			if ( f->sub[0]!=star || !db_manifested(g,db) )
 				continue;
 			if ( xp_verify( f->sub[1], variable, data ) ) {
 				data->instance = g; // return ((*,.),e)
@@ -827,7 +827,7 @@ verify_variable( CNInstance *e, char *expression, BMQueryData *data )
 		for ( listItem *i=e->as_sub[1]; i!=NULL; i=i->next ) {
 			CNInstance *g = i->ptr; // g:(.,e)
 			CNInstance *f = g->sub[ 0 ]; // g:(f:(*,.),e)
-			if ( !cnStarMatch( CNSUB(f,0) ) || db_private(0,g,db) )
+			if ( f->sub[0]!=star || db_private(0,g,db) )
 				continue;
 			if ( xp_verify( f->sub[1], variable, data ) ) {
 				data->instance = g; // return ((*,.),e)
@@ -881,7 +881,7 @@ bm_query_assignee( int type, char *expression, BMContext *ctx )
 				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
 					CNInstance *f = CNSUB( e, 0 );
 					if ( f==star ) fallback = e;
-					if ( !f || !cnStarMatch( CNSUB(f,0) ) ) continue;
+					if ( !f || f->sub[0]!=star ) continue;
 					if ( xp_verify( f->sub[ 1 ], expression, &data ) ) {
 						freeListItem( &s );
 						return e; } } // return ((*,.),.)

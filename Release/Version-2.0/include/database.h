@@ -24,9 +24,6 @@ void	freeCNDB( CNDB * );
 
 #define isBase( e ) (!CNSUB(e,0))
 
-static inline int cn_hold( CNEntity *e, CNEntity *f ) {
-	return ( CNSUB(e,0)==f || CNSUB(e,1)==f ); }
-
 static inline CNEntity * xpn_sub( CNEntity *x, listItem *xpn ) {
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next ) {

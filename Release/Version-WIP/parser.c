@@ -96,8 +96,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 				if ( s_at('|') && is_f(ASSIGN) && !is_f(PRIMED|LEVEL) ) {
 					do_( "::" )	f_clr( NEGATED|STARRED||BYREF|FIRST )
 							f_set( PRIMED ) } }
-		on_( '?' ) if ( *type&LOCALE && !is_f(SUB_EXPR) ) {
-				; } // err
+		on_( '?' ) if ( *type&LOCALE && !is_f(SUB_EXPR) )
+				; // err
 			else if ( *type&ON && !s_cmp("~(:") ) {
 					do_( "(:?" )	s_take }
 			else if ( is_f(INFORMED) ) {

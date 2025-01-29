@@ -9,6 +9,74 @@
 // #define DEBUG
 
 //===========================================================================
+//	newCell / freeCell / bm_bond
+//===========================================================================
+CNCell *
+newCell( Pair *narrative ) {
+	CNEntity *this = cn_new( NULL, NULL );
+	this->sub[ 0 ] = (CNEntity *) newPair( narrative, NULL );
+	this->sub[ 1 ] = (CNEntity *) newContext( this );
+	return this; }
+
+void
+freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
+/*
+	. prune CNDB proxies & release cell's input connections (cell,.)
+	  this includes Parent connection & associated proxy if set
+	. nullify cell in subscribers' connections (.,cell)
+	  removing cell's Self proxy ((NULL,cell),NULL) on the way
+	. free cell itself - nucleus and ctx
+	Assumptions:
+	. connection->as_sub[ 0 ]==singleton=={ proxy }
+	. connection->as_sub[ 1 ]==NULL
+	. subscriber is responsible for handling dangling connections
+	  see bm_context_update()
+*/
+{
+	if ( !cell ) return;
+	listItem **connections;
+	CNEntity *connection, *that;
+
+	connections = &cell->as_sub[ 0 ];
+	while (( connection=popListItem( connections ) )) {
+		if (( that=connection->sub[ 1 ] ))
+			removeItem( &that->as_sub[1], connection );
+		cn_prune( connection->as_sub[0]->ptr );
+		cn_free( connection ); } // remove proxy
+
+	connections = &cell->as_sub[ 1 ];
+	while (( connection=popListItem( connections ) )) {
+		if (( connection->sub[ 0 ] )) {
+			connection->sub[ 1 ] = NULL; 
+			continue; }
+		cn_prune( connection->as_sub[0]->ptr );
+		cn_free( connection ); } // remove self
+
+	if ( user_CB ) user_CB( cell, user_data );
+	freePair((Pair *) cell->sub[ 0 ] );
+	freeContext((BMContext *) cell->sub[ 1 ] );
+	cn_free( cell ); }
+
+void
+bm_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
+	BMContext *ctx;
+
+	// activate connection from parent to child
+	ctx = BMCellContext( this );
+	ActiveRV *active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, proxy );
+
+	// activate connection from child to parent
+	ctx = BMCellContext( child );
+	proxy = new_proxy( child, this, BMContextDB(ctx) );
+	active = BMContextActive( ctx );
+	addIfNotThere( &active->buffer->activated, proxy );
+
+	// inform child's parent RV
+	Pair *id = BMContextId( ctx );
+	id->value = proxy; }
+
+//===========================================================================
 //	bm_cell_read
 //===========================================================================
 int
@@ -165,208 +233,4 @@ enlist( Registry *subs, Registry *enable, Registry *invoke, Registry *warden[2],
 			for ( listItem *i=sub->value; i!=NULL; i=i->next )
 				addItem( instances, i->ptr ); }
 		freePair( sub ); } }
-
-//===========================================================================
-//	bm_intake
-//===========================================================================
-static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
-
-CNInstance *
-bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
-	if ( !x ) return NULL;
-	if ( db_dst==db_x ) return x;
-
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(x,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, x );
-			x = x->sub[ ndx ];
-			ndx = 0; continue; }
-		if ( cnIsProxy(x) ) { // proxy x:(( this, that ), NULL )
-			CNEntity *that = CNProxyThat( x );
-			instance = proxy_that( that, dst, db_dst, 0 ); }
-		else if ( cnIsShared(x) )
-			instance = bm_arena_translate( x, db_dst );
-		else {
-			char *p = CNIdentifier( x );
-			instance = db_lookup( 0, p, db_dst ); }
-		if ( !instance ) break;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			x = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = cn_instance( f, instance, 0 ); }
-				if ( !instance ) goto FAIL;
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	return NULL; }
-
-static inline CNInstance *
-proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
-/*
-	look for proxy: (( this, that ), NULL ) where
-		this = BMContextCell( ctx )
-*/ {
-	if ( !that ) return NULL;
-
-	CNEntity *this = BMContextCell( ctx );
-	if ( this==that )
-		return BMContextSelf( ctx );
-
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		// Assumption: there is at most one ((this,~NULL), . )
-		if ( connection->sub[ 1 ]==that )
-			return connection->as_sub[ 0 ]->ptr; }
-
-	return ( inform ? new_proxy(this,that,db) : NULL ); }
-
-//===========================================================================
-//	bm_inform / bm_list_inform
-//===========================================================================
-CNInstance *
-bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
-	if ( !dst ) return x;
-	if ( !x ) return NULL;
-	CNDB *db_dst = BMContextDB( dst );
-	if ( db_dst==db_src ) {
-		if ( !db_deprecated(x,db_dst) )
-			return x; }
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance, *e=x;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(e,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, e );
-			e = e->sub[ ndx ];
-			ndx = 0; continue; }
-		if ( cnIsProxy(e) ) { // proxy e:(( this, that ), NULL )
-			CNEntity *that = CNProxyThat( e );
-			instance = proxy_that( that, dst, db_dst, 1 ); }
-		else if ( cnIsShared(e) )
-			instance = bm_arena_transpose( e, db_dst );
-		else {
-			char *p = CNIdentifier( e );
-			instance = db_register( p, db_dst ); }
-		if ( !instance ) goto FAIL;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			e = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = db_instantiate( f, instance, db_dst );
-				if ( !instance ) goto FAIL; }
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	errout( CellInform, db_src, x );
-	return NULL; }
-
-//---------------------------------------------------------------------------
-//	bm_list_inform
-//---------------------------------------------------------------------------
-listItem *
-bm_list_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
-	if ( !dst || !*list ) return *list;
-	listItem *results = NULL;
-	CNInstance *e;
-	if (( nb )&&( *nb < 1 )) {
-		CNDB *db_dst = BMContextDB( dst );
-		while (( e=popListItem(list) ) &&
-		       (( e=bm_intake( dst, db_dst, e, db_src ) ) ||
-		       !( e=bm_inform( dst, e, db_src ) ))) {}
-		*nb = (( e )? 1 : -1 ); // inform newborn flag
-		if (( e )) addItem( &results, e ); }
-	while (( e=popListItem(list) )) {
-		e = bm_inform( dst, e, db_src );
-		if (( e )) addItem( &results, e ); }
-	return results; }
-
-//===========================================================================
-//	bm_cell_bond
-//===========================================================================
-void
-bm_cell_bond( CNCell *this, CNCell *child, CNInstance *proxy ) {
-	BMContext *ctx;
-
-	// activate connection from parent to child
-	ctx = BMCellContext( this );
-	ActiveRV *active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->activated, proxy );
-
-	// activate connection from child to parent
-	ctx = BMCellContext( child );
-	proxy = new_proxy( child, this, BMContextDB(ctx) );
-	active = BMContextActive( ctx );
-	addIfNotThere( &active->buffer->activated, proxy );
-
-	// inform child's parent RV
-	Pair *id = BMContextId( ctx );
-	id->value = proxy; }
-
-//===========================================================================
-//	newCell / freeCell
-//===========================================================================
-CNCell *
-newCell( Pair *entry, char *inipath ) {
-	CNEntity *this = cn_new( NULL, NULL );
-	this->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
-	this->sub[ 1 ] = (CNEntity *) newContext( this );
-	if (( inipath )) {
-		int errnum = bm_context_load( BMCellContext(this), inipath );
-		if ( errnum ) {
-			freeCell( this, NULL, NULL );
-			errout( CellLoad, inipath );
-			return NULL; } }
-	return this; }
-
-void
-freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
-/*
-	. prune CNDB proxies & release cell's input connections (cell,.)
-	  this includes Parent connection & associated proxy if set
-	. nullify cell in subscribers' connections (.,cell)
-	  removing cell's Self proxy ((NULL,cell),NULL) on the way
-	. free cell itself - nucleus and ctx
-	Assumptions:
-	. connection->as_sub[ 0 ]==singleton=={ proxy }
-	. connection->as_sub[ 1 ]==NULL
-	. subscriber is responsible for handling dangling connections
-	  see bm_context_update()
-*/
-{
-	if ( !cell ) return;
-
-	CNEntity *connection;
-	listItem **connections = &cell->as_sub[ 0 ];
-	while (( connection = popListItem( connections ) )) {
-		cn_prune( connection->as_sub[0]->ptr ); // remove proxy
-		CNEntity *that = connection->sub[ 1 ];
-		if (( that )) removeItem( &that->as_sub[1], connection );
-		cn_free( connection ); }
-
-	connections = &cell->as_sub[ 1 ];
-	while (( connection = popListItem( connections ) )) {
-		if (( connection->sub[ 0 ] ))
-			connection->sub[ 1 ] = NULL; 
-		else {	// remove cell's Self proxy
-			cn_prune( connection->as_sub[0]->ptr );
-			cn_free( connection ); } }
-
-	if ( user_CB ) user_CB( cell, user_data );
-	freePair((Pair *) cell->sub[ 0 ] );
-	freeContext((BMContext *) cell->sub[ 1 ] );
-	cn_free( cell ); }
 

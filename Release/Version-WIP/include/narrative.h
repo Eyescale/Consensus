@@ -52,8 +52,12 @@ void		freeNarrative( CNNarrative * );
 CNOccurrence *	newOccurrence( int type );
 void		freeOccurrence( CNOccurrence * );
 
-void		narrative_reorder( CNNarrative * );
-int		narrative_output( FILE *, CNNarrative *, int level );
+void	narrative_reorder( CNNarrative * );
+int	narrative_output( FILE *, CNNarrative *, int level );
+void	fprint_expr( FILE *, char *, int, int );
+
+#define TAB( level ) \
+	for ( int k=0; k<level; k++ ) putc( '\t', stream );
 
 
 #endif	// NARRATIVE_H

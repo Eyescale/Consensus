@@ -14,9 +14,8 @@
 static freeRegistryCB free_CB;
 
 CNDB *
-newCNDB( void ) {
+newCNDB( CNEntity *this ) {
 	CNInstance *nil = cn_new( NULL, NULL );
-	nil->sub[ 0 ] = nil; // set init condition
 	Registry *index = newRegistry( IndexedByNameRef );
 	return (CNDB *) newPair( nil, index ); }
 
@@ -27,8 +26,8 @@ freeCNDB( CNDB *db )
 */ {
 	if ( db == NULL ) return;
 	CNInstance *nil = db->nil;
-	nil->sub[ 0 ] = NULL;
-	nil->sub[ 1 ] = NULL;
+	freePair((Pair *) nil->sub );
+	nil->sub = NULL;
 	cn_prune( nil );
 	freeRegistry( db->index, free_CB );
 	freePair((Pair *) db ); }
@@ -46,21 +45,22 @@ new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 /*
 	Assumptions: proxy not already created, and that!=NULL
 */ {
-	CNInstance *e = cn_new( cn_new(this,that), NULL );
-	db_op( DB_MANIFEST_OP, e, db );
-	return e; }
+	CNInstance *proxy = cn_new( cn_new(this,that), NULL );
+	if ( this==NULL ) db->nil->sub[ 0 ] = proxy;
+	db_op( DB_MANIFEST_OP, proxy, db );
+	return proxy; }
 
 void
-free_proxy( CNEntity *e )
+free_proxy( CNEntity *proxy )
 /*
 	Assumption: e is proxy:( connection:(this,that), NULL )
-	where this==NULL denotes current cell's Self proxy
+	where this==NULL denotes current cell's Self proxy.
 	cn_release( connection ) will remove connection
 	from this->as_sub[ 0 ] and from that->as_sub[ 1 ]
 */ {
-	CNEntity *connection = e->sub[ 0 ];
+	CNEntity *connection = proxy->sub[ 0 ];
 	if (( connection->sub[ 0 ] )) { // !this
-		cn_release( e ); // remove proxy
+		cn_release( proxy );
 		cn_release( connection ); } }
 
 //===========================================================================
@@ -117,19 +117,6 @@ db_deprecate( CNInstance *x, CNDB *db )
 	if (( x ) && deprecatable(x,db) )
 		deprecate( x, db ); }
 
-static inline int
-deprecatable( CNInstance *e, CNDB *db )
-/*
-	returns 0 if e is either released or to-be-released,
-		which we assume applies to all its ascendants
-	returns 1 otherwise.
-*/ {
-	CNInstance *nil = db->nil;
-	if ( cn_hold( e, nil ) )
-		return 0;
-	CNInstance *f = cn_instance( e, nil, 1 );
-	return ( !f || ( f->as_sub[0] && !f->as_sub[1] )); }
-
 static inline void
 deprecate( CNInstance *x, CNDB *db ) {
 	listItem * stack = NULL,
@@ -161,6 +148,19 @@ deprecate( CNInstance *x, CNDB *db ) {
 			else goto RETURN; } }
 RETURN:
 	freeItem( i ); }
+
+static inline int
+deprecatable( CNInstance *e, CNDB *db )
+/*
+	returns 0 if e is either released or to-be-released,
+		which we assume applies to all its ascendants
+	returns 1 otherwise.
+*/ {
+	CNInstance *nil = db->nil;
+	if ( cn_hold( e, nil ) )
+		return 0;
+	CNInstance *f = cn_instance( e, nil, 1 );
+	return ( !f || ( f->as_sub[0] && !f->as_sub[1] )); }
 
 //===========================================================================
 //	db_clear

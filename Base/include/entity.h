@@ -19,6 +19,9 @@ static inline CNEntity *cn_carrier( Pair *sub ) {
 	Pair *as_sub = newPair( NULL, NULL );
 	return (CNEntity*) newPair( sub, as_sub ); }
 
+static inline int cn_hold( CNEntity *e, CNEntity *f ) {
+	return ( e->sub[0]==f || e->sub[1]==f ); }
+
 //---------------------------------------------------------------------------
 //	exponent utilities
 //---------------------------------------------------------------------------

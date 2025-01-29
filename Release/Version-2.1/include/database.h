@@ -25,9 +25,6 @@ void	freeCNDB( CNDB * );
 
 #define isBase( e ) (!CNSUB(e,0))
 
-static inline int cn_hold( CNEntity *e, CNEntity *f ) {
-	return ( CNSUB(e,0)==f || CNSUB(e,1)==f ); }
-
 //===========================================================================
 //	data
 //===========================================================================

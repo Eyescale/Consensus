@@ -13,43 +13,66 @@
 #include "actualize_traversal.h"
 
 //===========================================================================
-//	bm_context_load
+//	newContext / freeContext
 //===========================================================================
-static BMParseCB load_CB;
+BMContext *
+newContext( CNEntity *cell ) {
+	CNDB *db = newCNDB( cell );
+	CNInstance *self = new_proxy( NULL, cell, db );
+	Pair *active = newPair( newPair( NULL, NULL ), NULL );
+	Pair *perso = newPair( self, newRegistry(IndexedByNameRef) );
+	Pair *shared = newPair( NULL, NULL );
 
-int
-bm_context_load( BMContext *ctx, char *path ) {
-	FILE *stream = fopen( path, "r" );
-	if ( !stream ) return( errout( ContextLoad, path ), -1 );
-	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
+	Registry *ctx = newRegistry( IndexedByNameRef );
+	registryRegister( ctx, "", db ); // BMContextDB( ctx )
+	registryRegister( ctx, "@", active ); // active connections (proxies)
+	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
+	registryRegister( ctx, "^", NULL ); // aka. [ ^^, *^^ ]
+	registryRegister( ctx, "?", NULL ); // aka. [ %!, %? ]
+	registryRegister( ctx, "|", NULL ); // aka. %|
+	registryRegister( ctx, "<", NULL ); // aka. [ [ %<!>, %<?> ], %< ]
+	registryRegister( ctx, "$", shared );
+	return ctx; }
 
-	BMParseData data;
-	memset( &data, 0, sizeof(BMParseData) );
-        data.io = &io;
-	data.ctx = ctx;
-	bm_parse_init( &data, BM_LOAD );
-	//-----------------------------------------------------------------
-	int event = 0;
-	do {	event = io_read( &io, event );
-		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse_load( event, BM_LOAD, &data, load_CB );
-		} while ( strcmp( data.state, "" ) && !data.errnum );
-	//-----------------------------------------------------------------
-	bm_parse_exit( &data );
-	io_exit( &io );
+static freeRegistryCB untag_CB;
+void
+freeContext( BMContext *ctx )
+/*
+	Assumptions - cf freeCell()
+		. CNDB is free from any proxy and arena attachment
+		. id Self and Parent proxies have been released
+		. ctx registry all flushed out
+*/ {
+	// free active connections register
+	ActiveRV *active = BMContextActive( ctx );
+	freeListItem( &active->buffer->activated );
+	freeListItem( &active->buffer->deactivated );
+	freePair((Pair *) active->buffer );
+	freeListItem( &active->value );
+	freePair((Pair *) active );
 
-	fclose( stream );
-	return data.errnum; }
+	// free perso stack
+	listItem *stack = registryLookup( ctx, "." )->value;
+	freeRegistry(((Pair *) stack->ptr )->value, NULL );
+	freePair( stack->ptr );
+	freeItem( stack );
 
-static int
-load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
-	BMParseData *data = user_data;
-	if ( op==ExpressionTake ) {
-		char *expression = StringFinish( data->string, 0 );
-		bm_instantiate( expression, data->ctx, NULL );
-		StringReset( data->string, CNStringAll ); }
-	return 1; }
+	// free shared entity indexes
+	Pair *shared = registryLookup( ctx, "$" )->value;
+	freeListItem((listItem **) &shared->name );
+	freeListItem((listItem **) &shared->value );
+	freePair( shared );
+
+	// free CNDB & context registry
+	CNDB *db = BMContextDB( ctx );
+	freeCNDB( db );
+	freeRegistry( ctx, untag_CB ); }
+
+static void
+untag_CB( Registry *registry, Pair *entry ) {
+	if ( !is_separator( *(char *)entry->name ) ) {
+		free( entry->name );
+		freeListItem((listItem **) &entry->value ); } }
 
 //===========================================================================
 //	bm_context_init
@@ -485,7 +508,8 @@ mark_pop( BMMark *mark, int type ) {
 	return ( type&EENOK ? newPair(event,proxy) : event ); }
 
 
-static inline CNInstance * mark_sub( CNInstance *x, listItem *xpn ) {
+static inline CNInstance *
+mark_sub( CNInstance *x, listItem *xpn ) {
 	// Assumption: x.xpn exists by construction
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next )
@@ -749,82 +773,138 @@ bm_register_locale( BMContext *ctx, char *p ) {
 	return 1; }
 
 //===========================================================================
+//	bm_intake
+//===========================================================================
+static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
+
+CNInstance *
+bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
+	if ( !x ) return NULL;
+	if ( db_dst==db_x ) return x;
+
+	struct { listItem *src, *dst; } stack = { NULL, NULL };
+	CNInstance *instance;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(x,ndx) )) {
+			add_item( &stack.src, ndx );
+			addItem( &stack.src, x );
+			x = x->sub[ ndx ];
+			ndx = 0; continue; }
+		if ( cnIsProxy(x) ) { // proxy x:(( this, that ), NULL )
+			CNEntity *that = CNProxyThat( x );
+			instance = proxy_that( that, dst, db_dst, 0 ); }
+		else if ( cnIsShared(x) )
+			instance = bm_arena_translate( x, db_dst );
+		else {
+			char *p = CNIdentifier( x );
+			instance = db_lookup( 0, p, db_dst ); }
+		if ( !instance ) break;
+		for ( ; ; ) {
+			if ( !stack.src ) return instance;
+			x = popListItem( &stack.src );
+			if (( ndx = pop_item( &stack.src ) )) {
+				CNInstance *f = popListItem( &stack.dst );
+				instance = cn_instance( f, instance, 0 ); }
+				if ( !instance ) goto FAIL;
+			else {
+				addItem( &stack.dst, instance );
+				ndx=1; break; } } }
+FAIL:
+	freeListItem( &stack.src );
+	freeListItem( &stack.dst );
+	return NULL; }
+
+static inline CNInstance *
+proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
+/*
+	look for proxy: (( this, that ), NULL ) where
+		this = BMContextCell( ctx )
+*/ {
+	if ( !that ) return NULL;
+
+	CNEntity *this = BMContextCell( ctx );
+	if ( this==that )
+		return BMContextSelf( ctx );
+
+	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		// Assumption: there is at most one ((this,~NULL), . )
+		if ( connection->sub[ 1 ]==that )
+			return connection->as_sub[ 0 ]->ptr; }
+
+	return ( inform ? new_proxy(this,that,db) : NULL ); }
+
+//===========================================================================
+//	bm_inform / bm_list_inform
+//===========================================================================
+CNInstance *
+bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
+	if ( !dst ) return x;
+	if ( !x ) return NULL;
+	CNDB *db_dst = BMContextDB( dst );
+	if ( db_dst==db_src ) {
+		if ( !db_deprecated(x,db_dst) )
+			return x; }
+	struct { listItem *src, *dst; } stack = { NULL, NULL };
+	CNInstance *instance, *e=x;
+	int ndx = 0;
+	for ( ; ; ) {
+		if (( CNSUB(e,ndx) )) {
+			add_item( &stack.src, ndx );
+			addItem( &stack.src, e );
+			e = e->sub[ ndx ];
+			ndx = 0; continue; }
+		if ( cnIsProxy(e) ) { // proxy e:(( this, that ), NULL )
+			CNEntity *that = CNProxyThat( e );
+			instance = proxy_that( that, dst, db_dst, 1 ); }
+		else if ( cnIsShared(e) )
+			instance = bm_arena_transpose( e, db_dst );
+		else {
+			char *p = CNIdentifier( e );
+			instance = db_register( p, db_dst ); }
+		if ( !instance ) goto FAIL;
+		for ( ; ; ) {
+			if ( !stack.src ) return instance;
+			e = popListItem( &stack.src );
+			if (( ndx = pop_item( &stack.src ) )) {
+				CNInstance *f = popListItem( &stack.dst );
+				instance = db_instantiate( f, instance, db_dst );
+				if ( !instance ) goto FAIL; }
+			else {
+				addItem( &stack.dst, instance );
+				ndx=1; break; } } }
+FAIL:
+	freeListItem( &stack.src );
+	freeListItem( &stack.dst );
+	errout( CellInform, db_src, x );
+	return NULL; }
+
+//---------------------------------------------------------------------------
+//	bm_list_inform
+//---------------------------------------------------------------------------
+listItem *
+bm_list_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
+	if ( !dst || !*list ) return *list;
+	listItem *results = NULL;
+	CNInstance *e;
+	if (( nb )&&( *nb < 1 )) {
+		CNDB *db_dst = BMContextDB( dst );
+		while (( e=popListItem(list) ) &&
+		       (( e=bm_intake( dst, db_dst, e, db_src ) ) ||
+		       !( e=bm_inform( dst, e, db_src ) ))) {}
+		*nb = (( e )? 1 : -1 ); // inform newborn flag
+		if (( e )) addItem( &results, e ); }
+	while (( e=popListItem(list) )) {
+		e = bm_inform( dst, e, db_src );
+		if (( e )) addItem( &results, e ); }
+	return results; }
+
+//===========================================================================
 //	bm_tag, bm_untag
 //===========================================================================
 // bm_tag: see include/context.h
-
-static void untag_CB( Registry *registry, Pair *entry );
-
 void
 bm_untag( BMContext *ctx, char *tag ) {
 	registryCBDeregister( ctx, untag_CB, tag ); }
-
-static void
-untag_CB( Registry *registry, Pair *entry ) {
-	if ( !is_separator( *(char *)entry->name ) ) {
-		free( entry->name );
-		freeListItem((listItem **) &entry->value ); } }
-
-//===========================================================================
-//	newContext / freeContext
-//===========================================================================
-BMContext *
-newContext( CNEntity *cell ) {
-	CNDB *db = newCNDB();
-	CNInstance *self = new_proxy( NULL, cell, db );
-	Pair *id = newPair( self, NULL );
-	Pair *active = newPair( newPair( NULL, NULL ), NULL );
-	Pair *perso = newPair( self, newRegistry(IndexedByNameRef) );
-	Pair *shared = newPair( NULL, NULL );
-
-	Registry *ctx = newRegistry( IndexedByNameRef );
-	registryRegister( ctx, "", db ); // BMContextDB( ctx )
-	registryRegister( ctx, "%", id ); // aka. [ %%, .. ]
-	registryRegister( ctx, "@", active ); // active connections (proxies)
-	registryRegister( ctx, ".", newItem( perso ) ); // perso stack
-	registryRegister( ctx, "^", NULL ); // aka. [ ^^, *^^ ]
-	registryRegister( ctx, "?", NULL ); // aka. [ %!, %? ]
-	registryRegister( ctx, "|", NULL ); // aka. %|
-	registryRegister( ctx, "<", NULL ); // aka. [ [ %<!>, %<?> ], %< ]
-	registryRegister( ctx, "$", shared );
-	return ctx; }
-
-static freeRegistryCB free_tag_CB;
-void
-freeContext( BMContext *ctx )
-/*
-	Assumptions - cf freeCell()
-		. CNDB is free from any proxy and arena attachment
-		. id Self and Parent proxies have been released
-		. ctx registry all flushed out
-*/ {
-	// free active connections register
-	ActiveRV *active = BMContextActive( ctx );
-	freeListItem( &active->buffer->activated );
-	freeListItem( &active->buffer->deactivated );
-	freePair((Pair *) active->buffer );
-	freeListItem( &active->value );
-	freePair((Pair *) active );
-
-	// free context id register value
-	Pair *id = BMContextId( ctx );
-	freePair( id );
-
-	// free perso stack
-	listItem *stack = registryLookup( ctx, "." )->value;
-	freeRegistry(((Pair *) stack->ptr )->value, NULL );
-	freePair( stack->ptr );
-	freeItem( stack );
-
-	// free shared entity indexes
-	Pair *shared = registryLookup( ctx, "$" )->value;
-	freeListItem((listItem **) &shared->name );
-	freeListItem((listItem **) &shared->value );
-	freePair( shared );
-
-	// free CNDB & context registry
-	CNDB *db = BMContextDB( ctx );
-	freeCNDB( db );
-	freeRegistry( ctx, untag_CB ); }
-
 

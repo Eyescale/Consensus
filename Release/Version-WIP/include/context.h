@@ -10,7 +10,9 @@ typedef struct {
 	union { listItem *list; Pair *record; } match;
 } BMMark;
 
-int		bm_context_load( BMContext *ctx, char *path );
+BMContext *	newContext( CNEntity *cell );
+void		freeContext( BMContext * );
+
 void		bm_context_init( BMContext * );
 int		bm_context_update( BMContext *, CNStory * );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
@@ -28,12 +30,12 @@ void		bm_context_debug( BMContext *, char * );
 
 void *		bm_lookup( int, char *, BMContext *, CNDB * );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
-void		bm_untag( BMContext *, char * );
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
 int		bm_register_locale( BMContext *, char * );
-
-BMContext *	newContext( CNEntity *cell );
-void		freeContext( BMContext * );
+CNInstance *	bm_intake( BMContext *, CNDB *, CNInstance *, CNDB * );
+CNInstance *	bm_inform( BMContext *, CNInstance *, CNDB * );
+listItem *	bm_list_inform( BMContext *, listItem **, CNDB *, int * );
+void		bm_untag( BMContext *, char * );
 
 static inline Pair * bm_tag( BMContext *ctx, char *tag, void *value ) {
 	return registryRegister( ctx, strmake(tag), value ); }
@@ -41,7 +43,6 @@ static inline Pair * BMTag( BMContext *ctx, char *tag ) {
 	return registryLookup( ctx, tag ); }
 static inline void * BMVal( BMContext *ctx, char *p ) {
 	return bm_lookup( 0, p, ctx, NULL ); }
-
 
 typedef struct {
 	struct { listItem *activated, *deactivated; } *buffer;
@@ -55,14 +56,14 @@ typedef struct {
 
 static inline CNDB * BMContextDB( BMContext *ctx ) {
 	return registryLookup( ctx, "" )->value; }
-static inline Pair * BMContextShared( BMContext *ctx ) {
-	return registryLookup( ctx, "$" )->value; }
 static inline Pair * BMContextId( BMContext *ctx ) {
-	return registryLookup( ctx, "%" )->value; }
+	return (Pair *) BMContextDB(ctx)->nil->sub; }
 static inline CNInstance * BMContextSelf( BMContext *ctx ) {
 	return BMContextId( ctx )->name; }
 static inline CNInstance * BMContextParent( BMContext *ctx ) {
 	return BMContextId( ctx )->value; }
+static inline Pair * BMContextShared( BMContext *ctx ) {
+	return registryLookup( ctx, "$" )->value; }
 static inline CNEntity * BMContextCell( BMContext *ctx ) {
 	return CNProxyThat( BMContextSelf(ctx) ); }
 static inline ActiveRV * BMContextActive( BMContext *ctx ) {

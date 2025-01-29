@@ -23,11 +23,21 @@ TODO
 	. reimplement string shared arena (see above)
 		. SUSPECT: isBase(e) => used only in flareable
 		  return !CNSUB(e,0) => e.g. proxy/shared are flareable - I guess so?
+		  also db_match_identifier: so far not addressing strings
+		. Next: implement proxies as ( sub:[this,that], as_sub ) resp.
+		  ( sub:[NULL,this], as_sub ) => transport "this" with every CNSUB
+		. Next: implement shared as ( sub:[NULL,index], as_sub )
+		  where index is replacing string in narrative(s) - whereas
+		  at the moment we have shared:( sub:[NULL,[s,ref]], as_sub )
+		  Q: what becomes of ref:{[db,e]} ?
+		  A: index indicates the appropriate pool/type => *if* we need ref
+		     it's in the dereferenced value pool[index]
+		  Note: self is also sub:[NULL,this] => really must transport this
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
 	. parser: forbid 'en' command in post-frame narrative
-	. feature complete Examples/6_Proto
+	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!
 		[ DONE ] output system as is => in .:output
@@ -153,6 +163,11 @@ NOTES
 		// post-frame
 
 DONE
+	. redefined db->nil as cn_new( self, parent ), so that
+	  "on init" same as "on "%%" / "do exit" same as "do ~(%%)"
+	  and	BMContextID(ctx)==BMContextDB(ctx)->nil->sub
+		BMContextSelf(ctx)==BMContextID(ctx)->name
+		BMContextParent(ctx)==BMContextID(ctx)->value
 	. remapped ^. into BMContext("~") (transcient)
 	  cf. Test/63_... and Test/64_...
 	. SOLVED: NASCENT expr flag in parser.c set upon "!!" allowing
