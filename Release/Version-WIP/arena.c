@@ -4,19 +4,55 @@
 #include "arena.h"
 
 //===========================================================================
+//	newArena / freeArena
+//===========================================================================
+/*
+   A CNArena is a pair [ BTree('$'), BTree('!') ] of binary trees mapping,
+   respectively:
+		index <-> [ string, ref:{[db,e]} ]
+		index <-> ref:{[db,e]}
+   where
+	a CNDB Shared Arena entity is an entity in the form
+		e:( NULL, ndx:uint[2] )
+		  ^	  ^-------------------- shared arena part
+		   ---------------------------- db-specific
+	where
+		e->ndx[0]:=type  // '$' for string; '!' for ube
+		e->ndx[1]:=index // the corresponding Shared Arena BTree index
+*/
+CNArena *
+newArena( void ) {
+	return NULL;
+	Pair *arena = newPair( newBTree('$'), newBTree('!') );
+	return (CNArena *) arena; }
+
+static freeRegistryCB free_string_CB;
+static freeRegistryCB free_ref_CB;
+void
+freeArena( CNArena *arena ) {
+	return;
+	Registry *string_arena = arena->name;
+	freeRegistry( string_arena, free_string_CB );
+	listItem **ube_arena = (listItem **) &arena->value;
+	for ( Pair *ube;( ube=popListItem(ube_arena) ); ) {
+		freeRegistry( ube->value, free_ref_CB );
+		freePair( ube ); }
+	freePair( arena ); }
+
+static void free_string_CB( Registry *arena, Pair *entry ) {
+	Registry *ref = entry->value;
+	freeRegistry( ref, free_ref_CB ); }
+
+static void free_ref_CB( Registry *registry, Pair *entry ) {
+	CNInstance *e = entry->value;
+	e->sub[ 1 ] = NULL;
+	cn_prune( e ); }
+
+//===========================================================================
 //	bm_arena_register
 //===========================================================================
 CNInstance *
-bm_arena_register( CNArena *arena, char *s, CNDB *db )
-/*
-   returns
-		e:( NULL, [ s, ref:{[db,e]} ] ) 
-		  ^	  ^-------------------- shared arena part
-		   ---------------------------- db-specific
-
-	ube arena is a list of all registered [ NULL, {[db,e]} ]
-	string arena is a {[ s, {[db,e]} ]} registry
-*/ {
+bm_arena_register( CNArena *arena, char *s, CNDB *db ) {
 	CNInstance *e;
 	Pair *entry, *r;
 	Registry *ref;
@@ -135,7 +171,6 @@ bm_arena_flush( CNArena *arena, Pair *shared, CNDB *db, listItem **trace ) {
 		listItem **base = (listItem **) &arena->value;
 		flush( base, list, db, NULL ); } }
 
-static freeRegistryCB flush_CB;
 static inline void
 flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
 	listItem *next_i, *last_i=NULL;
@@ -145,7 +180,7 @@ flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
 		if ( r!=list->ptr ) last_i = i;
 		else {
 			Registry *ref = r->value;
-			registryCBDeregister( ref, flush_CB, db );
+			registryCBDeregister( ref, free_ref_CB, db );
 			if ( !ref->entries ) {
 				if (( trace )) addItem( trace, list->ptr );
 				freeRegistry( ref, NULL );
@@ -154,34 +189,4 @@ flush( listItem **base, listItem *list, CNDB *db, listItem **trace ) {
 				if (( last_i )) last_i->next = next_i;
 				else *base = next_i; }
 			list = list->next; } } }
-
-static void flush_CB( Registry *registry, Pair *entry ) {
-	CNInstance *e = entry->value;
-	e->sub[ 1 ] = NULL;
-	cn_prune( e ); }
-
-//===========================================================================
-//	newArena / freeArena
-//===========================================================================
-static freeRegistryCB free_string_CB;
-
-CNArena *
-newArena( void ) {
-	Pair *arena = newPair( NULL, NULL );
-	arena->name = newRegistry( IndexedByName );
-	return (CNArena *) arena; }
-
-void
-freeArena( CNArena *arena ) {
-	Registry *string_arena = arena->name;
-	freeRegistry( string_arena, free_string_CB );
-	listItem **ube_arena = (listItem **) &arena->value;
-	for ( Pair *ube;( ube=popListItem(ube_arena) ); ) {
-		freeRegistry( ube->value, flush_CB );
-		freePair( ube ); }
-	freePair( arena ); }
-
-static void free_string_CB( Registry *arena, Pair *entry ) {
-	Registry *ref = entry->value;
-	freeRegistry( ref, flush_CB ); }
 

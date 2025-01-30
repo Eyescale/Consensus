@@ -6,6 +6,7 @@ SHELL = /bin/sh
 SRCS =	registry.c \
 		pair.c \
 		list.c \
+	btree.c \
 	string_util.c \
 		prune.c \
 	entity.c

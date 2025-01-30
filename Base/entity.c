@@ -116,8 +116,7 @@ cn_release( CNEntity *e )
 void
 cn_free( CNEntity *e ) {
 	if ( e == NULL ) return;
-	if (( e->sub )&&( e!=e->sub[1] ))
-		freePair((Pair *) e->sub );
+	if (( e->sub )) freePair((Pair *) e->sub );
 	freeListItem( &e->as_sub[ 0 ] );
 	freeListItem( &e->as_sub[ 1 ] );
 	freePair((Pair *) e->as_sub );

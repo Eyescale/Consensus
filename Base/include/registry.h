@@ -4,7 +4,9 @@
 #include "pair.h"
 #include "list.h"
 
-typedef struct { int type; listItem *entries; } Registry;
+typedef struct {
+	union { void *ptr; uint value[2]; } type; // 64-bit
+	listItem *entries; } Registry;
 typedef enum {
 	IndexedByAddress = 0, // default
 	IndexedByNameRef,

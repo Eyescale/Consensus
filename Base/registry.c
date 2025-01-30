@@ -14,11 +14,13 @@ static int compare( RegistryType, Pair *entry, void *name );
 //===========================================================================
 Registry *
 newRegistry( RegistryType type ) {
-	return (Registry *) newPair( cast_ptr(type), NULL ); }
+	Registry *registry = (Registry *) newPair( NULL, NULL );
+	registry->type.value[ 0 ] = type;
+	return registry; }
 
 void
 freeRegistry( Registry *registry, freeRegistryCB cb ) {
-	RegistryType type = registry->type;
+	RegistryType type = registry->type.value[ 0 ];
 	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		if (( cb )) cb( registry, entry );
@@ -35,7 +37,7 @@ newRegistryEntry( RegistryType type, void *name, void *value ) {
 
 Pair *
 registryRegister( Registry *registry, void *name, void *value ) {
-	RegistryType type = registry->type;
+	RegistryType type = registry->type.value[ 0 ];
 	switch ( type ) {
 	case IndexedByName:
 	case IndexedByNameRef:
@@ -70,7 +72,7 @@ registryRegister( Registry *registry, void *name, void *value ) {
 void
 registryCBDeregister( Registry *registry, freeRegistryCB cb, void *name ) {
 	Pair *r;
-	RegistryType type = registry->type;
+	RegistryType type = registry->type.value[ 0 ];
 	listItem *i, *next_i, *last_i=NULL;
 	for ( i=registry->entries; i!=NULL; i=next_i ) {
 		r = i->ptr;
@@ -89,7 +91,7 @@ registryCBDeregister( Registry *registry, freeRegistryCB cb, void *name ) {
 static freeRegistryCB free_CB;
 void
 registryDeregister( Registry *registry, void *name, ... ) {
-	RegistryType type = registry->type;
+	RegistryType type = registry->type.value[ 0 ];
 	freeRegistryCB *cb = ( type==IndexedByName ? free_CB : NULL );
 	if (( name ))
 		registryCBDeregister( registry, cb, name );
@@ -117,7 +119,7 @@ static void free_CB( Registry *registry, Pair *entry ) {
 Pair *
 registryLookup( Registry *registry, void *name, ... ) {
 	if (( name )) {
-		RegistryType type = registry->type;
+		RegistryType type = registry->type.value[ 0 ];
         	for ( listItem *i=registry->entries; i!=NULL; i=i->next ) {
 			Pair *r = i->ptr;
 			int comparison = compare( type, r, name );
@@ -149,7 +151,7 @@ registryRemove( Registry *registry, Pair *entry ) {
 
 Registry *
 registryDuplicate( Registry *registry ) {
-	int type = registry->type;
+	int type = registry->type.value[ 0 ];
 	Registry *copy = newRegistry( type );
 
 	/* copy entries in the same order

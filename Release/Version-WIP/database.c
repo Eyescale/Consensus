@@ -35,7 +35,9 @@ freeCNDB( CNDB *db )
 static void
 free_CB( Registry *registry, Pair *entry ) {
 	free( entry->name );
-	cn_prune((CNInstance *) entry->value ); }
+	CNInstance *e = entry->value;
+	e->sub = NULL;
+	cn_prune( e ); }
 
 //===========================================================================
 //	new_proxy / free_proxy
@@ -88,10 +90,7 @@ db_register( char *p, CNDB *db )
 //	db_deregister
 //===========================================================================
 void
-db_deregister( CNInstance *e, CNDB *db )
-/*
-	Assumption: e->sub[0]==NULL
-*/ {
+db_deregister( CNInstance *e, CNDB *db ) {
 	// remove entry from db->index
 	Pair *entry = (Pair *) e->sub;
 	registryRemove( db->index, entry );

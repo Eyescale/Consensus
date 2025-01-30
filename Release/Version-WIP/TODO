@@ -20,12 +20,17 @@ MUST DO:
 		=> would facilitate bm_lookup_string()
 
 TODO
-	. reimplement string shared arena (see above)
+	. shared arena implementation
+	  [DONE] Base/registry.c: re-typedef struct {
+		union { void *ptr; uint value[2]; } type; // 64-bits
+		listItem *entries; } Registry;
+	  [DONE] implemented Base/btree.c - cf. arena.c usage
+	  	CNArena:[ BTree('$'), BTree('!') ]
+		and arena.c file header comments
+	  [WIP] reimplement string shared arena (see above)
 		. SUSPECT: isBase(e) => used only in flareable
 		  return !CNSUB(e,0) => e.g. proxy/shared are flareable - I guess so?
 		  also db_match_identifier: so far not addressing strings
-		. Next: implement proxies as ( sub:[this,that], as_sub ) resp.
-		  ( sub:[NULL,this], as_sub ) => transport "this" with every CNSUB
 		. Next: implement shared as ( sub:[NULL,index], as_sub )
 		  where index is replacing string in narrative(s) - whereas
 		  at the moment we have shared:( sub:[NULL,[s,ref]], as_sub )
@@ -33,6 +38,7 @@ TODO
 		  A: index indicates the appropriate pool/type => *if* we need ref
 		     it's in the dereferenced value pool[index]
 		  Note: self is also sub:[NULL,this] => really must transport this
+	  . update design/specs/bm-ARENA.txt
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
@@ -164,11 +170,11 @@ NOTES
 
 DONE
 	. redefined db->nil as cn_new( self, parent ), so that
-	  "on init" same as "on "%%" / "do exit" same as "do ~(%%)"
+	  "on init" <=> "on "%%" and "do exit" <=> "do ~(%%)"
 	  and	BMContextID(ctx)==BMContextDB(ctx)->nil->sub
 		BMContextSelf(ctx)==BMContextID(ctx)->name
 		BMContextParent(ctx)==BMContextID(ctx)->value
-	. remapped ^. into BMContext("~") (transcient)
+	. remapped ^. into BMContext("~") (transient)
 	  cf. Test/63_... and Test/64_...
 	. SOLVED: NASCENT expr flag in parser.c set upon "!!" allowing
 	  to limit ^^ and *^^ RV usage to *type&DO && !(FILTERED|query), vs.
@@ -184,7 +190,7 @@ DONE
 		./B% -p Examples/6_System/system.story
 		./B% -p Test/69_inc
 		./B% -p Test/53_output-system-launch-formula
-	. implemented prepocessor "unpounding" directive
+	. implemented preprocessor "unpounding" directive
 		cf. Examples/6_System/lineno.bm
 	  Toggling between #~# and ## allows e.g.
 	  #	this is commented
