@@ -200,17 +200,11 @@ jump_start( fprintExprData *data, char *p ) {
 	case ':':
 		p = p_prune( PRUNE_LEVEL, p+1 );
 		if ( !*p ) return p;
-		p++; // skip ','
-		if ( *p!='!' ) return p;
-		// no break
+		if ( p[1]!='!' ) return p+1;
+		p++; // skip ',' // no break
 	case '!':
 		p+=2;
-		switch ( *p ) {
-		case '\0':
-			return NULL;
-		default:
-			if ( is_separator(*p) )
-				return p; }
+		if ( is_separator(*p) ) return p;
 		do p++; while ( !is_separator(*p) );
 		return retab( data, p );
 	default:

@@ -1,10 +1,6 @@
 See Also: design/story/interactive.story
 
 TODO
-	. rename *^? into *^%?
-		*^ means: dereference in current assignment buffer - if there is
-		*^^ means: assigner - vs. ^^ which means assignee
-	. parser: forbid 'en' command in post-frame narrative
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!
@@ -28,9 +24,8 @@ TODO
 	. TBD: use cosystem names vs. proxy => change EVA definition
 	       this makes the cosystem generic, ie. co-actor can be changed /
 	       handy in TM Cell implementation / e.g. current cell actor
-	  issue: newly assigned cosystems must know system rules and actors
-	. TBD: publish %. // better than "this" ?
-	. NTH: tag list feature completion
+	       issue: newly assigned cosystems must know system rules and actors
+	. TBD: tag list feature completion
 	  . .%list < expression, ... > just adds entries to existing list
 	    .%list~ < expression, ... > could be used to reset and re-initialize
 	  . %list and |^tag currently cannot be used in DO and ON and PER
@@ -42,10 +37,6 @@ TODO
 	  . Do we even use .%list <_> ? idea was .%onoff < ON, OFF >
 		=> see when engineering complete
 		=> remove feature if not used
-	. NTH: expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
-	. NTH: do >format:args | format:args | format:args
-	. NTH: global function scope
-	. NTH: parser_macros: extract REENTER + put caught in io struct
 
 [*] 	See under ./design/story/proto/
 		system.spec - TM system external specifications
@@ -137,6 +128,12 @@ NOTES
 		// post-frame
 
 DONE
+	. parser.c: forbid 'en' command in post-frame narrative
+	. parser.c: forbid narrative post-frame double-def
+	. renamed *^? into *^%? - consistent with
+		*^^ meaning: assigner - vs. ^^ which means assignee
+		*^%? means: dereference %? in current assignment buffer - if there is
+	  cf. Test/58_EYEYE-ube
 	. Shared Arena implementation - refactored
 	  . cf. updated design/specs/bm-ARENA.txt
 	  . implemented Base/btree.c - cf. db_arena.c usage
@@ -564,16 +561,17 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. parser_macros: extract REENTER + put caught in io struct
+	. expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
+	. do >format:args | format:args | format:args
+	. global function scope
 	. do ~{ started, finish } for releasing all inside
 	. do "occurrence" | ...
 	. implement p_prune() using bm_traverse() ?
 		. pros: less complexity in Base + consistent w/ code
 		. cons: test each character
-	. byref vs. BYREF (traversal flag of its own)
-	  issue: major compatibility breach
 	. query, scan, feel, etc. could take &p as argument, so that
 	       on return we have p = post-expression
-	. replace ... with …
 	. extend do :_:_ | ... to ALL assignment operations, supporting
 		^^ = current assignee / *^^ = current value
 		?:(_)(_) and ?:(_){_} and ?!:_ and _^

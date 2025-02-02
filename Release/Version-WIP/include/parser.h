@@ -51,6 +51,7 @@ typedef struct {
 
 typedef enum {
 	ProtoSet = 1,
+	EnTake,
 	OccurrenceTake,
 	TagTake,
 	ExpressionTake,
@@ -68,6 +69,8 @@ typedef enum {
 	ErrNarrativeEmpty,
 	ErrNarrativeNoEntry,
 	ErrNarrativeDoubleDef,
+	ErrPostFrameDoubleDef,
+	ErrPostFrameEnCmd,
 	ErrEllipsisLevel,
 	ErrIndentation,
 	ErrSyntaxError,

@@ -50,44 +50,28 @@ Consensus B% Version-WIP
 		!!	!!$	!!$_	expr
 		.	expr
 			term
+		^	expr
+			*^%?
 		*	*^	expr
-				*^?	expr
-					:_sub
+				*^%	*^%?	expr
+						:_sub
 			*_	expr
 				term
-		)^	)^(	)^(.	)^(.,	)^(.,.	expr
-		^	expr
 		:_sub	expr
 			:sub 	expr
 				:sub_ 	expr
 					:sub
 		?	?:	expr
 				?:%	%(
-		?:(_)	expr
 		%term	expr
 		term	expr
-		char	char_	expr
-			char\\	char_
-				char\\x	char\\x_ char_
+		?:(_)	expr
+		)^	)^(	)^(.	)^(.,	)^(.,.	expr
 		(:?	(:?)	expr
 		(_?	expr
 			(_?:	expr
 		(_?_:	expr
-		(:	expr
-			(:\\	(:
-				(:\\x	(:\\x_	(:
-			(:%	(:
-				(:%$	(:
-					(:%$'	(:
-			(::	(:
-				expr
 		@	@<	expr
-		/	expr
-			/\\	/
-				/\\x	/\\x_	/
-			/[	/
-				/[\\	/[
-					/[\\x	/[\\x_	/[
 		>	>:	expr
 			>&	>:
 				>\"
@@ -105,6 +89,29 @@ Consensus B% Version-WIP
 		|	expr
 		{_,	expr
 			_\\n
+
+    parser.c: bm_parse_char()
+		char	char_	expr
+			char\\	char_
+				char\\x	char\\x_ char_
+
+    parser.c: bm_parse_regex()
+		/	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
+
+    parser.c: bm_parse_seq()
+		(:	expr
+			(:\\	(:
+				(:\\x	(:\\x_	(:
+			(:%	(:
+				(:%$	(:
+					(:%$'	(:
+			(::	(:
+				expr
 
     parser.c: bm_load()
 	base	""

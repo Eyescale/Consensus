@@ -595,13 +595,28 @@ BM_PARSE_FUNC( bm_parse_expr )
 						f_set( INFORMED )
 		on_other	do_( "term" )	s_take
 		end
+	in_( "^" ) bgn_
+		on_( '^' ) if ( !expr(NASCENT) ) {
+				do_( "expr" )	s_take
+						f_set( INFORMED )
+						f_set_BYREF }
+			else if ( !is_f(byref|FILTERED) ) {
+				do_( "*^%?" )	s_take }
+			else if ( is_f(FORE) ) {
+				do_( "expr" )	s_take
+						f_set( INFORMED )
+						f_tag( stack, PROTECTED ) }
+		on_( '.' )	do_( "expr" )	s_take
+						f_set( INFORMED )
+						f_set_BYREF
+		end
 	in_( "*" ) bgn_
 		on_( '^' )	do_( "*^" )	s_take
 		on_other	do_( "*_" )	REENTER
 		end
 		in_( "*^" ) bgn_
-			on_( '?' ) if ( *type&DO && !is_f(byref|FILTERED) ) {
-					do_( "*^?" )	s_take }
+			on_( '%' ) if ( *type&DO && !is_f(byref|FILTERED) ) {
+					do_( "*^%" )	s_take }
 			on_( '^' ) if ( !expr(NASCENT) ) {
 					do_( "expr" )	s_take
 							f_set( INFORMED|STARRED )
@@ -611,7 +626,10 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( INFORMED )
 							f_tag( stack, PROTECTED ) }
 			end
-		in_( "*^?" ) bgn_
+		in_( "*^%" ) bgn_
+			on_( '?' )	do_( "*^%?" )	s_take
+			end
+		in_( "*^%?" ) bgn_
 			on_( ':' )	do_( ":_sub" )  s_take
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
@@ -631,37 +649,6 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( STARRED )
 							f_set_BYREF
 			end
-	in_( ")^" ) bgn_
-		on_( '(' )	do_( ")^(" )	s_take
-		on_other	do_( "expr" )	REENTER
-		end
-		in_( ")^(" ) bgn_
-			on_( '.' )	do_( ")^(." )	s_take
-			end
-		in_( ")^(." ) bgn_
-			on_( ',' )	do_( ")^(.," )	s_take
-			end
-		in_( ")^(.," ) bgn_
-			on_( '.' )	do_( ")^(.,." )	s_take
-			end
-		in_( ")^(.,." ) bgn_
-			on_( ')' )	do_( "expr" )	s_take
-			end
-	in_( "^" ) bgn_
-		on_( '^' ) if ( !expr(NASCENT) ) {
-				do_( "expr" )	s_take
-						f_set( INFORMED )
-						f_set_BYREF }
-			else if ( !is_f(byref|FILTERED) ) {
-				do_( "*^?" )	s_take }
-			else if ( is_f(FORE) ) {
-				do_( "expr" )	s_take
-						f_set( INFORMED )
-						f_tag( stack, PROTECTED ) }
-		on_( '.' )	do_( "expr" )	s_take
-						f_set( INFORMED )
-						f_set_BYREF
-		end
 	in_( ":_sub" ) bgn_
 		on_( '(' )	do_( ":sub" )	REENTER
 						f_set( PROPPED )
@@ -805,6 +792,22 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 			if ( is_f(SUB_EXPR) ) {	f_clr( MARKED ) }
 						f_set( FILTERED )
 		end
+	in_( ")^" ) bgn_
+		on_( '(' )	do_( ")^(" )	s_take
+		on_other	do_( "expr" )	REENTER
+		end
+		in_( ")^(" ) bgn_
+			on_( '.' )	do_( ")^(." )	s_take
+			end
+		in_( ")^(." ) bgn_
+			on_( ',' )	do_( ")^(.," )	s_take
+			end
+		in_( ")^(.," ) bgn_
+			on_( '.' )	do_( ")^(.,." )	s_take
+			end
+		in_( ")^(.,." ) bgn_
+			on_( ')' )	do_( "expr" )	s_take
+			end
 	in_( "(:?" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ')' )	do_( "(:?)" )	s_take
@@ -1674,8 +1677,8 @@ CB_if_( ProtoSet, mode, data ) {
 				do_( "else" )	REENTER
 						*type = ELSE; }
 		on_separator if ( !s_cmp( "en" ) ) {
-				do_( "cmd_" )	REENTER
-						*type |= EN; }
+CB_if_( EnTake, mode, data ) {	do_( "cmd_" )	REENTER
+						*type |= EN; } }
 			else if ( !s_cmp( "in" ) ) {
 				do_( "cmd_" )	REENTER
 						*type |= IN; }
@@ -1748,7 +1751,7 @@ CB_if_( OccurrenceTake, mode, data ) {
 			on_( ')' )	errnum = ErrEllipsisLevel;
 			on_other	errnum = ErrSyntaxError;
 			end
-		in_( "cmd" )		errnum = ErrUnknownCommand;
+		in_( "cmd" )		errnum = data->errnum ? data->errnum : ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
 		in_other		errnum = ErrSyntaxError;
 	PARSER_END }
@@ -1842,6 +1845,8 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrNarrativeEmpty, "narrative empty\n" )_narg
 		err_case( ErrNarrativeNoEntry, "sub-narrative has no story entry\n" )_narg
 		err_case( ErrNarrativeDoubleDef, "narrative already defined\n" )_narg
+		err_case( ErrPostFrameDoubleDef, "narrative post_frame already defined\n" )_narg
+		err_case( ErrPostFrameEnCmd, "'en' command not allowed in post-frame narrative\n" )_narg
 		err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg
 		err_case( ErrIndentation, "indentation error\n" )_narg
 		err_case( ErrExpressionSyntaxError, "syntax error in expression\n" )_narg

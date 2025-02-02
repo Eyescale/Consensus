@@ -85,6 +85,7 @@ readStory( char *path, int ignite ) {
 //---------------------------------------------------------------------------
 //	build_CB
 //---------------------------------------------------------------------------
+static inline int known( listItem *i, char *proto );
 #define BAR_DANGLING( o ) \
 	if ((o) && cast_i(o->data->type)&(IN|ON|ON_X)) return 0;
 
@@ -110,14 +111,25 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 		else if ( is_separator( *proto ) ) {
 			if ( !data->entry ) {
 				data->errnum = ErrNarrativeNoEntry;
+				free(proto);
 				return 0; }
-			else narrative->proto = proto; } // double-def accepted
+			else if ( !strcmp(proto,".:&") && known( data->entry->value, proto ) ) {
+				data->errnum = ErrPostFrameDoubleDef;
+				free(proto);
+				return 0; }
+			narrative->proto = proto; } // double-def accepted
 		else if ( !registryLookup( data->narratives, proto ) )
 			narrative->proto = proto;
 		else {
 			data->errnum = ErrNarrativeDoubleDef;
 			free(proto);
 			return 0; }
+		break;
+	case EnTake:
+		if (( data->narrative )&&( data->narrative->proto )) {
+			if ( !strcmp(data->narrative->proto,".:&") ) {
+				data->errnum = ErrPostFrameEnCmd;
+				return 0; } }
 		break;
 	case OccurrenceTake: ;
 		if ( !indentation_check( data ) ) return 0;
@@ -184,6 +196,14 @@ fprintf( stderr, "end narrative: %s\n", proto );
 			freeListItem( &data->stack.occurrences );
 			addItem( &data->stack.occurrences, data->narrative->root ); } }
 	return 1; }
+
+static inline int
+known( listItem *i, char *proto ) {
+	for ( ; i!=NULL; i=i->next ) {
+		CNNarrative *n = i->ptr;
+		if (( n->proto )&& !strcmp(n->proto,proto) )
+			return 1; }
+	return 0; }
 
 static inline int l_case( CNOccurrence *sibling, BMParseData *data );
 static inline int

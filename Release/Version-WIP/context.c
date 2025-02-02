@@ -626,12 +626,13 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
 			return NULL;
-		case '?':
+		case '%':
 			entry = registryLookup( ctx, "?" );
 			if (!( i=entry->value )) return NULL;
 			CNInstance *e = ((Pair *) i->ptr )->value;
-			if ( p[2]==':' ) {
-				listItem *xpn = xpn_make( p+3 );
+			p+=4; // Assumption: we had p:"*^%?"
+			if ( *p==':' ) {
+				listItem *xpn = xpn_make( p+1 );
 				e = xpn_sub( e, xpn );
 				freeListItem( &xpn ); }
 			if (( e )&&( entry=registryLookup( ctx, ":" ) )) {

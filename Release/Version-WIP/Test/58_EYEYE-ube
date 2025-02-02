@@ -8,7 +8,7 @@
 	else on cosystem
 		do :%( cosystem, ? ): !! | {
 			(( proxy, *^^ ), ^^ ),
-			?:( cosystem, ?:~(^^) ) (( connection, ^^ ), *^? ) }
+			?:( cosystem, ?:~(^^) ) (( connection, ^^ ), *^%? ) }
 	else
 		// note: relying on stdout to serialize inputs, here
 		do >:.
