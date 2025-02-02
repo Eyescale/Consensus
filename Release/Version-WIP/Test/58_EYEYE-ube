@@ -1,20 +1,20 @@
-/*	ISSUE:  do : toto : !! | { ( ^^, titi ), ( *^^, tata ) }
-		( *^^, tata ) will not show on its own, as UBE not in DBLog
+/*
+	ISSUE:  do : toto : !! | { ( ^^, titi ), ( *^^, tata ) }
+		( *^^, tata ) will not show on its own
+		as UBE not in DBLog
 */
-
 	on init
 		do ( cosystem, { A, B, C } )
 	else on cosystem
 		do :%( cosystem, ? ): !! | {
-			(( proxy, ^^ ), *^^ ),
-			?:%( cosystem, ?:~^^ ) (( connection, ^^ ), *^? ) }
+			(( proxy, *^^ ), ^^ ),
+			?:( cosystem, ?:~(^^) ) (( connection, ^^ ), *^? ) }
 	else
 		// note: relying on stdout to serialize inputs, here
 		do >:.
 		per ( cosystem, ? )
-			do >"cosystem: %_\n\tproxy: %_\n\tconnections: %_\n":<
+			do >"cosystem: %_\n\tproxy for: %_\n\tconnections: %_\n":<
 				%?,
-				%((proxy,%?),?),
-//				%((*,?),%((connection,%?),?)) >
+				%((proxy,?),%?),
 				%(*?:%((connection,%?),?)) >
 		do exit

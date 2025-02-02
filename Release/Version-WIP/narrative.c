@@ -83,6 +83,8 @@ narrative_reorder( CNNarrative *narrative ) {
 //===========================================================================
 //	narrative_output
 //===========================================================================
+void db_arena_output( FILE *, char *, char * ); // cf. db_arena.c
+
 static inline void output_proto( FILE *, char * );
 static inline int output_cmd( FILE *, int, int );
 static inline void output_expr( FILE *, char *, int, int );
@@ -114,10 +116,13 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 				return 0; } } } }
 
 static inline void
-output_proto( FILE *stream, char *proto ) {
-	if (( proto )) {
-		if ( *proto==':' ) fprintf( stream, ".%s\n", proto );
-		else fprintf( stream, "%s\n", proto ); } }
+output_proto( FILE *stream, char *p ) {
+	if ( !p ) return;
+	else if ( *p==':' ) fprintf( stream, ".%s\n", p );
+	else {
+		do fputc( *p++, stream ); while ( !is_separator(*p) );
+		if ( p[1]=='"' ) db_arena_output( stream, ":%_\n", p+1 );
+		else fprintf( stream, "%s\n", p ); } }
 
 #define if_( a, b ) if (type&(a)) fprintf(stream,b);
 static inline int
@@ -139,10 +144,12 @@ output_cmd( FILE *stream, int type, int level ) {
 		return 1; } }
 
 static inline void
-output_expr( FILE *stream, char *expression, int level, int type ) {
-	if ( type&(DO|OUTPUT) && strlen(expression)>=40 )
-		fprint_expr( stream, expression, level, type );
-	else fprintf( stream, "%s", expression );
+output_expr( FILE *stream, char *p, int level, int type ) {
+	if ( type&(DO|OUTPUT) )
+		fprint_expr( stream, p, level, type );
+	else if ( type&IN && !strncmp(p,"?:\"",3) )
+		db_arena_output( stream, "?:%_", p+2 );
+	else fprintf( stream, "%s", p );
 	fprintf( stream, "\n" ); }
 
 //===========================================================================
@@ -167,7 +174,12 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 	data.level = level;
 	data.type = type;
 	p = jump_start( &data, p );
-	if (( p )) {
+	if ( *p=='"' ) {
+		for ( char*q=data.p; q!=p; q++ )
+			fputc( *q, stream );
+		db_arena_output( stream, "%_", p );
+		return; }
+	else if ( *p && strlen(data.p)>=40 ) {
 		BMTraverseData traversal;
 		traversal.user_data = &data;
 		traversal.stack = &data.stack.flags;
@@ -184,17 +196,12 @@ jump_start( fprintExprData *data, char *p ) {
 		p++;
 		if ( *p=='&' ) p++;
 		if ( *p=='"' ) p = p_prune( PRUNE_IDENTIFIER, p );
-		return *p ? p+1 : NULL;
+		return *p ? p+1 : p;
 	case ':':
 		p = p_prune( PRUNE_LEVEL, p+1 );
-		switch ( *p ) {
-		case '\0':
-			return NULL;
-		case ',':
-			p++;
-			if ( *p!='!' )
-				return p;
-			break; }
+		if ( !*p ) return p;
+		p++; // skip ','
+		if ( *p!='!' ) return p;
 		// no break
 	case '!':
 		p+=2;
@@ -244,7 +251,8 @@ case_( bgn_pipe_CB )
 	if ( p[1]!='{' ) retab( data, p );
 	_break
 case_( bgn_set_CB )
-	int check = ( *p=='{' || ( *p=='<' && data->type&OUTPUT ));
+	int mode = data->type;
+	int check = ( *p=='{' || ( *p=='<' && mode&OUTPUT ));
 	if ( check ) {
 		char *partition = p_prune( PRUNE_LEVEL, p+1 );
 		if ( *partition!=',' )
@@ -257,7 +265,8 @@ case_( end_set_CB )
 	popListItem( &data->stack.level );
 	_break
 case_( comma_CB )
-	int check = is_f(SET) || ( is_f(VECTOR) && data->type&OUTPUT );
+	int mode = data->type;
+	int check = is_f(SET) || ( is_f(VECTOR) && mode&OUTPUT );
 	if ( check && !is_f(LEVEL|SUB_EXPR) ) {
 		int level = cast_i( data->stack.level->ptr );
 		if ( level ) {

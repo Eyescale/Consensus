@@ -27,6 +27,7 @@ typedef struct {
 	} stack; 
 	CNIO *		io;
 	CNString *	string;
+	CNString *	txt;
 	int		tab[4], type;
 // bm_read() only
 	BMContext *	ctx;

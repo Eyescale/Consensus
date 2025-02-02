@@ -112,7 +112,8 @@ in_condition( int as_per, char *expression, BMContext *ctx, BMMark **mark )
 	void *found;
 	if ( !strncmp( expression, "?:\"", 3 ) ) {
 		as_per = 0; // no need
-		found = bm_lookup_string( ctx, expression+2 );
+		CNDB *db = BMContextDB( ctx );
+		found = db_arena_lookup( expression+2, db );
 		if (( found )) success = 1; }
 	else if ( strcmp( expression, "~." ) ) {
 		if ( !strncmp( expression, "(~.:", 4 ) ) {
@@ -313,10 +314,10 @@ do_action( char *expression, BMContext *ctx, CNStory *story ) {
 //---------------------------------------------------------------------------
 //	do_enable
 //---------------------------------------------------------------------------
-static inline void query( char *, BMContext *, CNNarrative *, char *, Registry * );
+static inline void query( char *, BMContext *, CNNarrative *, void *, Registry * );
 typedef struct {
 	CNNarrative *narrative;
-	void *string_ref;
+	void *key;
 	Registry *subs;
 	Pair *entry;
 	} EnableData;
@@ -336,23 +337,16 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 				return 1; } }
 		return 0; }
 	// en query
-	Registry *string_arena = story->arena->name;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;
 		if ( *p!='.' || p[2]=='&' ) continue;
 		p = p_prune( PRUNE_IDENTIFIER, p+1 );
 		p++; // skip leading ':'
-		void *string_ref = NULL;
 		CNString *s = NULL;
 		switch ( *p ) {
 		case '"':
-			string_ref = narrative->root->data->expression;
-			if ( !string_ref ) { // cache arena string's [ s, ref ]
-				string_ref = registryLookup( string_arena, p );
-				if ( !string_ref ) continue;
-				narrative->root->data->expression = string_ref; }
-			query( en, ctx, narrative, string_ref, subs );
+			query( en, ctx, narrative, db_arena_key(p), subs );
 			break;
 		default:
 			// build query string "proto:en"
@@ -371,27 +365,29 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 
 static BMQueryCB enable_CB;
 static inline void
-query( char *q, BMContext *ctx, CNNarrative *n, char *s, Registry *subs ) {
+query( char *q, BMContext *ctx, CNNarrative *n, void *key, Registry *subs ) {
 	EnableData data;
 	data.subs = subs;
 	data.narrative = n;
-	data.string_ref = s;
+	data.key = key;
 	data.entry = NULL;
 	bm_query( BM_CONDITION, q, ctx, enable_CB, &data ); }
 
 static BMQTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableData *data = user_data;
-	void *string_ref = data->string_ref;
-	if ( !string_ref ) {
+	if (( data->key )) {
+		uint *master = (uint *) &data->key;
+		uint *key = CNSharedKey( e );
+		if ( cnIsShared(e) && key[0]==master[0] && key[1]==master[1] ) {
+			registryRegister( data->subs, data->narrative, newItem(e) );
+			return BMQ_DONE; } }
+	else {
 		Pair *entry = data->entry;
 		if ( !entry ) {
 			entry = registryRegister( data->subs, data->narrative, NULL );
 			data->entry = entry; }
 		addIfNotThere((listItem **) &entry->value, e ); }
-	else if ( e->sub[1]==string_ref ) {
-		registryRegister( data->subs, data->narrative, newItem(e) );
-		return BMQ_DONE; }
 	return BMQ_CONTINUE; }
 
 //---------------------------------------------------------------------------

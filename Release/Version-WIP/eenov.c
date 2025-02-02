@@ -88,13 +88,13 @@ eenov_op( EEnovQueryOp op, CNInstance *e, CNDB *db, EEnovData *data ) {
 		bm_out_put( data->param.output.od, e, db );
 		return BM_CONTINUE;
 	case EEnovInformOp:
-		e = bm_inform( data->param.inform.ctx, e, db );
+		e = bm_translate( data->param.inform.ctx, e, db, 1 );
 		if (( e )) addItem( &data->param.inform.result, e );
 		return BM_CONTINUE;
 	case EEnovLookupOp:
-		if ( !data->param.lookup.db || ( e = bm_intake(
-			data->param.lookup.ctx, data->param.lookup.db,
-			e, db )) ) { data->result = e; return BM_DONE; }
+		if ( !data->param.lookup.db ||
+		   ( e=bm_translate( data->param.lookup.ctx, e, db, 0 )) )
+			data->result = e; return BM_DONE;
 		break;
 	case EEnovMatchOp:
 		if ( db_match( data->param.match.x, data->param.match.db,
@@ -173,15 +173,16 @@ eenov_output( char *p, BMContext *ctx, OutputData *od ) {
 listItem *
 eenov_inform( BMContext *ctx, CNDB *db, char *p, BMContext *dst ) {
 	EEnovData data;	// mem NOT set
+	CNInstance *e;
 	switch ( eenov_type(ctx,p,&data) ) {
 	case EEnovNone:
 	case EEvaType:
 		return NULL;
-	case EEnovSrcType: ;
-		CNInstance *e = bm_inform( dst, data.src, db );
+	case EEnovSrcType:
+		e = bm_translate( dst, data.src, db, 1 );
 		return ((e) ? newItem(e) : NULL );
 	case EEnovInstanceType:
-		e = bm_inform( ((dst)?dst:ctx), data.instance, data.db );
+		e = bm_translate( ((dst)?dst:ctx), data.instance, data.db, 1 );
 		return ((e) ? newItem(e) : NULL );
 	case EEnovExprType:
 		data.param.inform.ctx = ((dst)?dst:ctx);
@@ -204,7 +205,7 @@ eenov_lookup( BMContext *ctx, CNDB *db, char *p )
 		return data.src;
 	case EEnovInstanceType:
 		if ( !db ) return data.instance;
-		return bm_intake( ctx, db, data.instance, data.db );
+		return bm_translate( ctx, data.instance, data.db, 0 );
 	case EEnovExprType:
 		data.param.lookup.ctx = ctx;
 		data.param.lookup.db = db;
@@ -237,7 +238,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	if ( p[2]=='.' ) return EEvaType;
-	EEnoRV *eenov = BMContextEENOVCurrent( ctx );
+	EEnoRV *eenov = BMContextEENOV( ctx );
 	if (( eenov )) {
 		data->success = 1; // initialize
 		CNInstance *src = eenov->src;
@@ -292,8 +293,8 @@ eeva( CNInstance *e, CNDB *db )
 	if ( !db_dst || !( e=e->sub[ 0 ] ))
 		return NULL;
 	CNInstance *star = db_lookup( 0, "*", db_dst );
-	CNInstance *x = bm_intake( dst, db_dst, e->sub[ 0 ], db );
-	CNInstance *y = bm_intake( dst, db_dst, e->sub[ 1 ], db );
+	CNInstance *x = bm_translate( dst, e->sub[ 0 ], db, 0 );
+	CNInstance *y = bm_translate( dst, e->sub[ 1 ], db, 0 );
 	if ( !star || !x || !y )
 		return NULL;
 	listItem *s = NULL;

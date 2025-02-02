@@ -48,6 +48,8 @@ main( int argc, char *argv[] ) {
 
 	// execute B% command
 
+	cnInit();
+
 	if ( printini )
 		cnPrintOut( stdout, path[0], 1 );
 	else if ( printout ) {

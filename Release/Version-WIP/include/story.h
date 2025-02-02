@@ -2,15 +2,11 @@
 #define	STORY_H
 
 #include "registry.h"
-#include "arena.h"
 
 //===========================================================================
 //	Story types
 //===========================================================================
-typedef struct {
-	Registry *narratives;
-	CNArena *arena;
-} CNStory;
+typedef Registry CNStory;
 
 //===========================================================================
 //	Public Interface
@@ -22,7 +18,7 @@ void		freeStory( CNStory * );
 
 static inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;
-	Pair *entry = registryLookup( story->narratives, "" );
+	Pair *entry = registryLookup( story, "" );
 	// we have entry:[ "", {[ proto, root ]} ]
 	return (( entry )&&( entry->value )) ? entry : NULL; }
 

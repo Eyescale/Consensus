@@ -9,7 +9,7 @@
 // #define DEBUG
 
 //===========================================================================
-//	newCell / freeCell / bm_bond
+//	newCell / freeCell
 //===========================================================================
 CNCell *
 newCell( Pair *narrative ) {
@@ -19,7 +19,7 @@ newCell( Pair *narrative ) {
 	return this; }
 
 void
-freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
+freeCell( CNCell *cell )
 /*
 	. prune CNDB proxies & release cell's input connections (cell,.)
 	  this includes Parent connection & associated proxy if set
@@ -31,8 +31,7 @@ freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
 	. connection->as_sub[ 1 ]==NULL
 	. subscriber is responsible for handling dangling connections
 	  see bm_context_update()
-*/
-{
+*/ {
 	if ( !cell ) return;
 	listItem **connections;
 	CNEntity *connection, *that;
@@ -52,11 +51,13 @@ freeCell( CNCell *cell, freeCellCB user_CB, void *user_data )
 		cn_prune( connection->as_sub[0]->ptr );
 		cn_free( connection ); } // remove self
 
-	if ( user_CB ) user_CB( cell, user_data );
 	freePair((Pair *) cell->sub[ 0 ] );
 	freeContext((BMContext *) cell->sub[ 1 ] );
 	cn_free( cell ); }
 
+//===========================================================================
+//	bm_bond
+//===========================================================================
 void
 bm_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
 	BMContext *ctx;

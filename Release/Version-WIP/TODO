@@ -1,44 +1,6 @@
 See Also: design/story/interactive.story
 
-MUST DO:
-	. reimplement string shared arena interface, ie.
-	  replace any string in narrative with $address in arena
-		  => no more messing up with ROOT expression
-		  => use strcomp => allow strings everywhere
-		  => in expression : on $ => knows what to do
-	  => MUST update ./design/specs/bm-ARENA.txt - esp. for strings
-	  starting with local base entity definition e:[ NULL, CNDB::entry ]
-			that is	e.sub[1]==[ s, e ]
-		  vs. e shared:	e.sub[1]==[ s, arena::ref ]!=e
-	  but also how string narrative hold string entity in root->expression
-	  and how we cache local shared entities in context '$' entry, which
-	  . is used on cell release to flush arena - cf. program.c:cell_release()
-	  . keeps not the e but the e->sub[1] where e is a shared entity -
-	    cf.  context.h:bm_register_string() bm_register_ube()
-	  etc.
-	  + TBD: why do I store e->sub[1] in ctx->shared and not e?
-		=> would facilitate bm_lookup_string()
-
 TODO
-	. shared arena implementation
-	  [DONE] Base/registry.c: re-typedef struct {
-		union { void *ptr; uint value[2]; } type; // 64-bits
-		listItem *entries; } Registry;
-	  [DONE] implemented Base/btree.c - cf. arena.c usage
-	  	CNArena:[ BTree('$'), BTree('!') ]
-		and arena.c file header comments
-	  [WIP] reimplement string shared arena (see above)
-		. SUSPECT: isBase(e) => used only in flareable
-		  return !CNSUB(e,0) => e.g. proxy/shared are flareable - I guess so?
-		  also db_match_identifier: so far not addressing strings
-		. Next: implement shared as ( sub:[NULL,index], as_sub )
-		  where index is replacing string in narrative(s) - whereas
-		  at the moment we have shared:( sub:[NULL,[s,ref]], as_sub )
-		  Q: what becomes of ref:{[db,e]} ?
-		  A: index indicates the appropriate pool/type => *if* we need ref
-		     it's in the dereferenced value pool[index]
-		  Note: self is also sub:[NULL,this] => really must transport this
-	  . update design/specs/bm-ARENA.txt
 	. rename *^? into *^%?
 		*^ means: dereference in current assignment buffer - if there is
 		*^^ means: assigner - vs. ^^ which means assignee
@@ -68,8 +30,6 @@ TODO
 	       handy in TM Cell implementation / e.g. current cell actor
 	  issue: newly assigned cosystems must know system rules and actors
 	. TBD: publish %. // better than "this" ?
-	. NTH: since we keep list of locally shared entities in context '$' entry
-		=> bm_query() could parse them in no pivot case
 	. NTH: tag list feature completion
 	  . .%list < expression, ... > just adds entries to existing list
 	    .%list~ < expression, ... > could be used to reset and re-initialize
@@ -118,14 +78,22 @@ TODO
 			do %?|^guard
 
 BUGS
+	. NTH: parser.c: in "^" on '^' if ( is_f(FORE) ) ...
+	  strictly speaking we should verify either
+		are_f(ASSIGN|PRIMED|CARRY|FORE) or
+		are_f(ASSIGN|PRIMED|UBE|PIPED|FORE)
+	  but ASSIGN and PIPED flags are gone...
+	  Anyway not a bug, as ^^ will return NULL and expression will fail
+	  but less user assistance than ideal, as we would like to verify
+	  ASSIGN|PRIMED to allow ^^ and *^^ and *^%?
+	. in context.c:bm_translate()
+		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
+		done in case of identifier, but not for proxy nor shared
 	. in system.story, if ~(s) instead of (s,~.) => crash
 	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
 	  => that's because parser replaces %( with default format %_
 	     should actually exit on error
-	. do :( A | B | C ) => deternarize memory leak!!! => test again
-	  but do :( A | (B|C) ) => no problem
 	. do ~({titi,toto}) accepted but what does nothing !?
-	. do ~{ started, finish } to be implemented
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
 	. passthrough "this" (cf. context_rebase) not good,
@@ -169,6 +137,25 @@ NOTES
 		// post-frame
 
 DONE
+	. Shared Arena implementation - refactored
+	  . cf. updated design/specs/bm-ARENA.txt
+	  . implemented Base/btree.c - cf. db_arena.c usage
+	  	CNArena:[ BTree('$'), BTree('!') ]
+	    NOTE: Base/registry.c: re-typed to
+		  typedef struct {
+			union { void *ptr; uint value[2]; } type; // 64-bits
+			listItem *entries; } Registry;
+	  . database.c:db_outputf() - uses db_arena.c:db_arena_identifier()
+	    operation.c:do_enable() - uses db_arena.c:db_arena_key()
+	    parser.c:bm_parse_expr/bm_parse_cmd - use db_arena.c:db_arena_encode()
+	  . Test/{ 78_shared-string, 58_EYEYE-ube }
+	  . narrative.c:narrative_output() - uses db_arena:db_arena_output()
+		4 use cases:
+			: "_"		// => output_proto
+			in ?:"_"	// => output_expr
+			do "_"		// => fprint_expr
+			do :_:"_"	// => fprint_expr
+	   cf. ./B% -p Test/78_shared-string
 	. redefined db->nil as cn_new( self, parent ), so that
 	  "on init" <=> "on "%%" and "do exit" <=> "do ~(%%)"
 	  and	BMContextID(ctx)==BMContextDB(ctx)->nil->sub
@@ -409,7 +396,6 @@ DONE
 		  on (_) or {_} when BASE and INFORMED => traverse_data->done = 1
 		  allows markscan / bm_query() to return after FORE
 	  cf Test/56_Loop
-	. bm_arena_flush() and freeArena() invoke cn_prune vs. cn_release
 	. implemented EEVA as %<.> - we do not implement EENOC in this release
 		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
 		=> locate_pivot.c: ignore %<.>
@@ -421,8 +407,6 @@ DONE
 		. retype arena into e.g. [ string, ube ]
 		. cache sub-narrative string in n->root->data->expression
 		. register shared entities in context's "$" entry
-		. implement cell-out and bm_arena_flush()
-	. bm_arena_register: manifest new instantiated entities
 	. string sub-narratives
 		cf. Test/59_string-sub-narrative
 	  Note: ultimately strings will be allocated in B% process arena,
@@ -434,9 +418,6 @@ DONE
 		=> DONE: cf. cell.c:bm_inform()
 	. Shared entities comparison/translation/transposition [DONE]
 		database.c: outputf - DBIdentifier(e)
-			    db_match => bm_arena_compare()
-		cell.c: bm_inform => bm_arena_transpose()
-			bm_intake => bm_arena_translate()
 		eenov.c: identifier_CB => db_match_identifier( x, p )
 		context.c: bm_match => db_match_identifier( x, p )
 	. re-fixed "?:" in eeno_query => using wildcard_CB to skip "?:"
@@ -583,9 +564,8 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. do ~{ started, finish } for releasing all inside
 	. do "occurrence" | ...
-	  requires own stringRegister/stringLookup in bm_arena_register()
-	  as we only want to compare what is inside "_"
 	. implement p_prune() using bm_traverse() ?
 		. pros: less complexity in Base + consistent w/ code
 		. cons: test each character

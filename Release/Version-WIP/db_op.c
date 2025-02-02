@@ -104,7 +104,7 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 // cf design/specs/db-update.txt
 
 void
-db_update( CNDB *db, DBRemoveCB user_CB, void *user_data ) {
+db_update( CNDB *db ) {
 	CNInstance *nil = db->nil;
 	CNInstance *f, *g, *x;
 #ifdef DEBUG
@@ -181,10 +181,9 @@ fprintf( stderr, "db_update: 4. actualize to-be-released entities\n" );
 fprintf( stderr, "db_update: 5. remove released entities\n" );
 #endif
 	while (( x=popListItem( &released ) )) {
-		if (( user_CB ) && user_CB( db, x, user_data ) )
-			continue; // takes care of shared
-		else if ( !isBase(x) ) cn_release( x );
-		else if ( cnIsProxy(x) ) free_proxy( x );
+		if ( !isBase(x) ) cn_release( x );
+		else if ( cnIsShared(x) ) db_arena_deregister( x, db );
+		else if ( cnIsProxy(x) ) free_proxy( x, db );
 		else db_deregister( x, db ); }
 #ifdef DEBUG
 fprintf( stderr, "--\n" );

@@ -10,20 +10,22 @@
 //===========================================================================
 //	public interface
 //===========================================================================
+#define CB( value ) if ((cb(key,value),++key[1])>=ndx) break;
+
 BTree *
-newBTree( int user_type ) {
+newBTree( uint user_type ) {
 	BTree *btree = (BTree *) newPair( NULL, NULL );
-	btree->type.value[ 0 ] = user_type;
+	btree->type.key[ 0 ] = user_type;
 	return btree; }
 
 void
 freeBTree( BTree *btree, freeBTreeCB cb ) {
-	uint type=btree->type.value[ 0 ];
-	uint ndx=btree->type.value[ 1 ];
+	uint type=btree->type.key[ 0 ];
+	uint ndx=btree->type.key[ 1 ];
 	Pair *entry = btree->root;
 	freePair((Pair *) btree );
 	if ( !ndx ) return;
-	uint mask, index=0;
+	uint mask, key[2]={type,0};
 	listItem *stack = NULL;
 	for ( mask=1; mask<ndx; mask<<=1 ) {}
 	for ( ; ; ) {
@@ -31,11 +33,11 @@ freeBTree( BTree *btree, freeBTreeCB cb ) {
 			addItem( &stack, entry );
 			entry = entry->name; }
 		if (( cb )) {
-			cb( type, index, entry->name );
-			if ( index+1 < ndx )
-				cb( type, index+1, entry->value ); }
-		index += 2;
-		if ( index >= ndx ) break;
+			CB( entry->name )
+			CB( entry->value ) }
+		else {
+			key[1] += 2;
+			if ( key[1] >= ndx ) break; }
 		for ( mask=2; ; mask<<=1 ) {
 			Pair *parent = stack->ptr;
 			freePair( entry );
@@ -44,13 +46,15 @@ freeBTree( BTree *btree, freeBTreeCB cb ) {
 			else {
 				entry = parent->value;
 				break; } } }
-RETURN:
 	do freePair( entry );
 	while (( entry=popListItem(&stack) )); }
 
+//---------------------------------------------------------------------------
+//	btreeAdd
+//---------------------------------------------------------------------------
 uint
 btreeAdd( BTree *btree, void *value ) {
-	uint mask, ndx=btree->type.value[ 1 ]++;
+	uint mask, ndx=btree->type.key[ 1 ]++;
 	for ( mask=!!ndx; mask<ndx; mask<<=1 ) {}
 	Pair *entry = btree->root;
 	if ( mask==ndx ) { // ndx is either a power of 2, or 0
@@ -72,9 +76,13 @@ btreeAdd( BTree *btree, void *value ) {
 	else	entry->name = value;
 	return ndx; }
 
+//---------------------------------------------------------------------------
+//	btreeLookup
+//---------------------------------------------------------------------------
 void *
-btreeLookup( BTree *btree, uint index ) {
-	uint mask, ndx=btree->type.value[ 1 ];
+btreeLookup( BTree *btree, uint key[2] ) {
+	uint ndx=btree->type.key[ 1 ];
+	uint mask, index=key[1];
 	if ( index < ndx ) {
 		Pair *entry = btree->root;
 		for ( mask=1; mask<ndx; mask<<=1 ) {}
@@ -82,4 +90,39 @@ btreeLookup( BTree *btree, uint index ) {
 			entry = index&mask ? entry->value : entry->name;
 		return index&1 ? entry->value : entry->name; }
 	return NULL; }
+
+//---------------------------------------------------------------------------
+//	btreeShake
+//---------------------------------------------------------------------------
+#define SHAKE( value ) \
+	if ( !cb( key, value, user_data ) ) return 1; \
+	if ( ++key[1] >= ndx ) break;
+
+int
+btreeShake( BTree *btree, shakeBTreeCB cb, void *user_data )
+/*
+	Assumption: cb!=NULL
+*/ {
+	uint type=btree->type.key[ 0 ];
+	uint ndx=btree->type.key[ 1 ];
+	Pair *entry = btree->root;
+	if ( !ndx ) return 0;
+	uint mask, key[2]={type,0};
+	listItem *stack = NULL;
+	for ( mask=1; mask<ndx; mask<<=1 ) {}
+	for ( ; ; ) {
+		for ( mask>>=1; mask>1; mask>>=1 ) {
+			addItem( &stack, entry );
+			entry = entry->name; }
+		SHAKE( entry->name )
+		SHAKE( entry->value )
+		for ( mask=2; ; mask<<=1 ) {
+			Pair *parent = stack->ptr;
+			if ( entry==parent->value )
+				entry = popListItem( &stack );
+			else {
+				entry = parent->value;
+				break; } } }
+	freeListItem( &stack );
+	return 0; }
 

@@ -4,14 +4,16 @@
 #include "pair.h"
 
 typedef struct {
-	union { void *ptr; uint value[2]; } type; // 64-bit
+	union { void *ptr; uint key[2]; } type; // 64-bit
 	Pair *root; } BTree;
 
-typedef void freeBTreeCB( int user_type, int ndx, void *value );
+typedef int freeBTreeCB( uint key[2], void *value );
+typedef int shakeBTreeCB( uint key[2], void *value, void *user_data );
 
-BTree *	newBTree( int user_type );
+BTree *	newBTree( uint user_type );
 void	freeBTree( BTree *, freeBTreeCB );
 uint	btreeAdd( BTree *, void * );
-void *	btreeLookup( BTree *, uint );
+void *	btreeLookup( BTree *, uint key[2] );
+int	btreeShake( BTree *, shakeBTreeCB, void * );
 
 #endif // BTREE_H

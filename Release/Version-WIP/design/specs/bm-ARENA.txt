@@ -1,58 +1,96 @@
-Objective
-	Allocate shared entities (UBE and Strings) from story arena
+Use Cases
+	We allow the following expressions, corresponding to the creation
+	and usage of the following types of shared entities
 
-Description
-	bm_arena_register( arena, s, db ) returns
-		e:( NULL, [ s, {[db,e]} ] ) 
+		1. shared string entities (ste) type
+
+			do "any text"
+			do : expr : "any text"
+			in ?: "any text"
+
+		   : "any text" // narrative definition
+
+		2. unnamed base entities (ube) type
+
+			do !! | {_}
+			do : expr : !!
+			do : expr : !! | {_}
+
+	Reference to the thus created unnamed and string entities can
+	be shared (via EENO and carry and modulo local representation)
+	across all running CNDB's, which involves a globally accessible
+	CNDB Shared Arena memory space to centralize these entities.
+
+	Note that, concerning shared string entities,
+
+	1. None of the following expressions are supported
+
+		in ~.: "_"
+		on "_"
+		on ?: "_"
+		on ~( "_" )
+
+	2. We do allow sub-narrative definition
+
+		: "any text"
+
+	the latter being the reason why we introduced BTree key encoding
+	and replacement (in the text) of these entities, as we don't want
+	to strcmp the whole story's list of string protos every frame to
+	satisfy a do_enable()
+
+CNInstance vs. CNEntity
+	a CNInstance is a CNEntity in the form
+		e:( sub:(source,target), as_sub )
+	where e verifies
+		cnIsIdentifier(e)
+			iff e:(( $ , e ), as_sub ) i.e. e->sub[1]==e
+		cnIsShared(e)
+		 	iff e:((NULL,key), as_sub ) i.e. !e->sub[0]
+		cnIsProxy(e)
+			iff e:((connection:(this,that),NULL), as_sub )
+			i.e. !e->sub[1]
+		cnIsSelf(e)
+			iff e:((connection:(NULL,this),NULL), as_sub )
+			i.e. ( !e->sub[1] && !e->sub[0]->sub[0] )
+	failing which
+		e is the Relationship Instance connecting two entities
+
+CNDB Shared Entities
+	a CNDB Shared Arena entity is a CNDB base entity in the form
+		e:( NULL, key:uint[2] )
 		  ^	  ^-------------------- shared arena part
 		   ---------------------------- db-specific
+	where
+		e->key:=(unsigned int *) e->sub[ 1 ]
+		e->key[0]:=type  // '$' for string; '!' for ube
+		e->key[1]:=index // the corresponding Shared Arena BTree index
 
-	ube arena is a list of all registered [ NULL, {[db,e]} ]
-	string arena is the {[ s, {[db,e]} ]} registry
+CNDB Shared Arena
+	The CNDB Shared Arena is a globally accessible (B%-process-wide) pair
+	of binary trees
 
-	In addition, the registering context maintains the "$" lists
-	of all [ ., {[db,e]} ] pertaining to the context's DB
-		=> added upon instantiation
-		=> removed upon db_udpdate() or cell out
+		DBSharedArena:[ BTree('$'), BTree('!') ]
 
-Use case cell out
-	When a cell goes out we must deregister the cell's db from all
-	shared entities, for which we use the cell's context's "$" lists
+	mapping, for each CNDB Shared Entities in the B% process, the key
+	representing that entity to its value, as follow:
 
-	Right now bm_arena_deregister() removes dangling entities
-	directly, but actually should be listed, so that bm_arena_flush()
-	can be implemented as below - and the whole arena traversed only
-	once.
+		('$',index) to [ string, ref:{[db,e]} ]	// string shared entity
+		('!',index) to ref:{[db,e]} // unnamed base entity (ube)
 
-	=> must retype story arena from registry to something else, e.g.
-	[[ strings:Registry, ube:Registry ], discard:listItem ]
-
-Use case string lookup
-	In case of string shared entity we need to be able to lookup
-	a string in the string Registry, as the same string may be
-	referenced in various ways from various narratives:
-
-		do "string"		// instantiation
-		do :_:"string"		// assignment
-		:"string"		// sub-narrative
-
-	In case of sub-narrative, we cache string entity when found as
-		narrative->root->expression
-
-	This requires it to be reset to NULL when entity removed, via
-
-void
-bm_arena_flush( CNStory *story, listItem *list )
-/*
-	where list is the list of removed string entities
-*/ {
-	for ( listItem *i=story->narratives->entries; i!=NULL; i=i->next ) {
-		Pair *entry = i->ptr;
-		listItem *narratives = entry->value;
-		for ( listITem *j=narratives->next; j!=NULL; j=j->next ) {
-			CNNarrative *narrative = j->ptr;
-			CNInstance *e = (CNInstance *) narrative->root->expression;
-			if (( e )&&( lookupIfThere(list,e) ))
-				narrative->root->expression=NULL; } } }
-
+Implementation notes
+	. Nothing in db_lookup/db_match...() addresses shared entities.
+	  This is because - as per this version - either:
+		these are strings => hard-coded by parser
+	    or	these are unnamed => only accessed by reference,
+		from RV or as as_sub[] from other entities
+	. There is no btreeRemove() interface => once allocated, btree
+	  leaves *remain* in btrees, even with their ref-registry empty,
+	  until bm_arena_exit() is called.
+	  This can be easily extended, by maintaining a list of free
+	  indexes and freeing the leave or even whole sub-trees when
+	  the entity is completely unref'd
+	. The current implementation limits the number of shared entities
+	  to the 32-bit range (per type), but again this could be extended
+	  by reducing the number of bits reserved for type
 

@@ -4,7 +4,10 @@ Consensus B% Version-WIP
     parser.c: bm_parse_expr()
 	expr	expr_	base
 			""
+		\"$	expr
+			\"$\\	\"$
 		\"	expr
+			\"\\	\"
 		~	expr
 			~.	expr
 				term

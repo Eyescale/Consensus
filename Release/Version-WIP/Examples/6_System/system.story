@@ -10,10 +10,8 @@
 		on : input : ~. // EOF
 			in : ps
 				do : take | (cmd,~.)
-			else in : base
-				in (cmd,.)
-					do : err
-				else do : ( ready ? output : ~. )
+			else in : ((cmd,.)?~.: base )
+				do : ( ready ? output : ~. )
 			else do : err
 		else on : ~.
 			do exit
@@ -63,12 +61,12 @@
 
 .: flush
 	on : input :
-		'\n'
-			do ~( space )
-			do : cmd : ( cmd, ~. )
-			do : ( *s ? take : base )
 		/[ \t]/
 			do ~.
+		'\n'
+			do : ( *s ? take : base )
+			do : cmd : ( cmd, ~. )
+			do ~( space )
 		.
 			do : ( space ? err : . )
 	else en &

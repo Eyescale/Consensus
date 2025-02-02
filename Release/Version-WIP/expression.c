@@ -34,7 +34,7 @@ listItem *
 bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
 	if ( !strncmp( expression, "*^", 2 ) ) {
-		CNInstance *e = BMVal( ctx, expression );
+		CNInstance *e = BMContextRVV( ctx, expression );
 		if (( e )) results = newItem( e ); }
 	else {
 		bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
@@ -379,14 +379,12 @@ out_pass( int is_last, char *fmt, OutputData *data, CNDB *db ) {
 		case 0: // not last pass
 			db_outputf( db, stream, (( data->first ) ?
 				*fmt=='s' ? "\\{ %s" : "{ %_" :
-				*fmt=='s' ? ", %s" : ", %_"
-				), e );
+				*fmt=='s' ? ", %s" : ", %_" ), e );
 			data->first = 0;
 			break;
 		default:
 			db_outputf( db, stream, (( data->first ) ?
 				*fmt=='s' ? "%s" : "%_" :
-				*fmt=='s' ? ", %s }" : ", %_ }"
-				), e ); } }
+				*fmt=='s' ? ", %s }" : ", %_ }" ), e ); } }
 	return 1; }
 

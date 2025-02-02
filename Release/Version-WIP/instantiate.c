@@ -17,7 +17,7 @@
 //===========================================================================
 static void bm_assign( char *, BMTraverseData *, CNStory * );
 static void assign_new( listItem **, char *, CNStory *, BMTraverseData * );
-static void assign_string( listItem **, char *, CNStory *, BMTraverseData * );
+static void assign_string( listItem **, char *, BMTraverseData * );
 static inline void cleanup( BMTraverseData *, char * );
 
 void
@@ -37,7 +37,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 	switch ( *expression ) {
 	case ':': bm_assign( expression, &traversal, story ); break;
 	case '!': assign_new( NULL, expression, story, &traversal ); break;
-	case '"': assign_string( NULL, expression, story, &traversal ); break;
+	case '"': assign_string( NULL, expression, &traversal ); break;
 	default:
 		traversal.done = INFORMED|LITERAL;
 		instantiate_traversal( expression, &traversal, FIRST );
@@ -51,7 +51,7 @@ cleanup( BMTraverseData *traversal, char *expression ) {
 	if ( !data->sub[0] && ( expression ))
 		errout( InstantiatePartial, expression );
 	if ((data->sub[1]) || (data->stack.flags) || (data->results) ||
-	    (BMVal( data->ctx, "%|" ))) {
+	    (BMContextRVV( data->ctx, "%|" ))) {
 		fprintf( stderr, ">>>>> B%%: Error: bm_instantiate: memory leak" );
 		if (( expression )) {
 			fprintf( stderr, "\t\tdo %s\n\t<<<<< failed", expression );
@@ -65,7 +65,7 @@ cleanup( BMTraverseData *traversal, char *expression ) {
 			if (!data->sub[0]) fprintf( stderr, "/!data->sub[ 0 ]" ); }
 		if ((data->stack.flags)) fprintf( stderr, " data->stack.flags" );
 		if ((data->results)) fprintf( stderr, " data->results" );
-		if ((BMVal(data->ctx,"%|"))) fprintf( stderr, " %%|" );
+		if ((BMContextRVV(data->ctx,"%|"))) fprintf( stderr, " %%|" );
 		fprintf( stderr, "\n" );
 
 		loopPop( data, 0 );
@@ -282,7 +282,7 @@ case_( collect_CB )
 		listItem *results = bm_scan( p, data->ctx );
 		p = p_prune( PRUNE_TERM, p+1 );
 		int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
-		data->sub[ NDX ] = bm_list_inform( data->carry, &results, data->db, nb );
+		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db, nb );
 		_continue( p ) }
 case_( comma_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
@@ -347,39 +347,39 @@ case_( register_variable_CB )
 		data->sub[ NDX ] = found;
 		break;
 	case '|':
-		found = BMVal( data->ctx, p );
+		found = BMContextRVV( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
 		sub = &data->sub[ NDX ];
 		listItem *xpn = ( p[2]==':' ? xpn_make(p+3) : NULL );
 		for ( listItem *i=found; i!=NULL; i=i->next )
 			if (( e=xpn_sub(i->ptr,xpn) )) {
-				e = bm_inform( carry, e, db );
+				e = bm_translate( carry, e, db, 1 );
 				if (( e )) addItem( sub, e ); }
 		freeListItem( &xpn );
 		break;
 	case '?':
 	case '!':
-		e = BMVal( data->ctx, p );
+		e = BMContextRVV( data->ctx, p );
 		if (( e )&&( p[2]==':' )) {
 			listItem *xpn = xpn_make(p+3);
 			e = xpn_sub( e, xpn );
 			freeListItem( &xpn ); }
-		if (( e )) e = bm_inform( carry, e, db );
+		if (( e )) e = bm_translate( carry, e, db, 1 );
 		if (( e )) data->sub[ NDX ] = newItem( e );
 		else _prune( BM_PRUNE_LEVEL, p );
 		break;
 	default:
 		if ( is_separator(p[1]) && p[1]!='@' ) {
-			e = BMVal( data->ctx, p );
-			if (( e )) e = bm_inform( carry, e, db );
+			e = BMContextRVV( data->ctx, p );
+			if (( e )) e = bm_translate( carry, e, db, 1 );
 			if (( e )) data->sub[ NDX ] = newItem( e );
 			else _prune( BM_PRUNE_LEVEL, p ) }
 		else {
-			found = BMVal( data->ctx, p );
+			found = BMContextRVV( data->ctx, p );
 			if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
 			sub = &data->sub[ NDX ];
 			for ( listItem *i=found; i!=NULL; i=i->next ) {
-				e = bm_inform( carry, i->ptr, db );
+				e = bm_translate( carry, i->ptr, db, 1 );
 				if (( e )) addItem( sub, e ); } } }
 	_break
 case_( literal_CB )
@@ -408,7 +408,7 @@ case_( dot_expression_CB )
 		listItem *results = bm_scan( p+1, data->ctx );
 		p = p_prune( PRUNE_TERM, p+1 );
 		int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
-		data->sub[ NDX ] = bm_list_inform( carry, &results, data->db, nb );
+		data->sub[ NDX ] = bm_inform( carry, &results, data->db, nb );
 		_continue( p ) }
 	_break
 case_( dot_identifier_CB )
@@ -418,8 +418,8 @@ case_( dot_identifier_CB )
 	CNInstance *e = NULL;
 	if (( carry )) {
 		// Special case: looking for locale here
-		if (( e=BMVal( ctx, p+1 ) ))
-			e = bm_inform( carry, e, db ); }
+		if (( e=BMContextRVV( ctx, p+1 ) ))
+			e = bm_translate( carry, e, db, 1 ); }
 	else {
 		CNInstance *perso = BMContextPerso( ctx );
 		e = bm_register( ctx, p+1, db );
@@ -693,7 +693,7 @@ bm_assign( char *expression, BMTraverseData *traversal, CNStory *story )
 		data->sub[ 0 ] = NULL;
 		switch ( *p ) {
 		case '!': assign_new( sub, p, story, traversal ); break;
-		case '"': assign_string( sub, p, story, traversal ); break;
+		case '"': assign_string( sub, p, traversal ); break;
 		case '<': assign_one2v( sub, p, traversal ); break;
 		default:
 			assign_v2one( sub, p, traversal, expression ); } } }
@@ -761,7 +761,7 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traversal ) {
 //---------------------------------------------------------------------------
 //	assign_new
 //---------------------------------------------------------------------------
-static void inform_UBE( Registry *, char *, CNArena *, BMTraverseData * );
+static void inform_UBE( Registry *, char *, BMTraverseData * );
 static void inform_carry( Registry *, char *, CNCell *, BMTraverseData * );
 
 static void
@@ -776,27 +776,24 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal 
 	//	UBE assignment
 	//-----------------------------------------------------------
 	if ( !*p ) { // do :_: !!
-		CNArena *arena = story->arena;
 		CNInstance *ube, *x;
 		while (( x=popListItem( list ))) {
-			ube = bm_arena_register( arena, NULL, db );
-			bm_cache_ube( ctx, ube );
+			ube = db_arena_register( NULL, db );
 			db_assign( x, ube, db ); }
 		return; }
 	else if ( *p=='|' ) {
-		CNArena *arena = story->arena;
 		buffer = newRegistry( IndexedByAddress );
 		registryRegister( ctx, ":", buffer );
 		CNInstance *ube, *x = (list) ? popListItem(list) : NULL;
-		do {	ube = bm_arena_register( arena, NULL, db );
+		do {	ube = db_arena_register( NULL, db );
 			registryRegister( buffer, x, ube );
 			} while (( list )&&( x=popListItem(list) ));
 		p++; // skip '|'
-		inform_UBE( buffer, p, arena, traversal ); }
+		inform_UBE( buffer, p, traversal ); }
 	//-----------------------------------------------------------
 	//	carry assignment
 	//-----------------------------------------------------------
-	else if (( entry=registryLookup( story->narratives, p ) )) {
+	else if (( entry=registryLookup( story, p ) )) {
 		buffer = newRegistry( IndexedByAddress );
 		registryRegister( ctx, ":", buffer );
 		CNCell *this = BMContextCell( ctx );
@@ -818,26 +815,23 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal 
 	freeRegistry( buffer, NULL ); }
 
 static void
-inform_UBE( Registry *buffer, char *p, CNArena *arena, BMTraverseData *traversal ) {
+inform_UBE( Registry *buffer, char *p, BMTraverseData *traversal ) {
 	InstantiateData *data = traversal->user_data;
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
 	char *start_p = p;
-	listItem *current = newItem( NULL );
 	listItem *pipe_mark = newItem( NULL );
-	bm_context_push( ctx, "^", current );
 	bm_context_push( ctx, "|", pipe_mark );	
 	// inform each UBE's connections
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
-		current->ptr = entry;
+		bm_context_push( ctx, "^", entry );
 		pipe_mark->ptr = entry->value;
 		ifn_instantiate_traversal( p, 0 )
 			cleanup( traversal, NULL );
-		else freeListItem( &data->sub[ 0 ] ); }
+		else freeListItem( &data->sub[ 0 ] );
+		bm_context_pop( ctx, "^" ); }
 	bm_context_pop( ctx, "|" );
-	bm_context_pop( ctx, "^" );
-	freeItem( current );
 	freeItem( pipe_mark );
 	// assign or deregister UBE depending on connected
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next ) {
@@ -846,10 +840,8 @@ inform_UBE( Registry *buffer, char *p, CNArena *arena, BMTraverseData *traversal
 		CNInstance *ube = entry->value;
 		if ( !x && !CONNECTED(ube) ) {
 			errout( InstantiateUBENotConnected, start_p );
-			bm_arena_deregister( arena, ube, db ); }
-		else {
-			if (( x )) db_assign( x, ube, db );
-			bm_cache_ube( ctx, ube ); } } }
+			db_arena_deregister( ube, db ); }
+		else if (( x )) db_assign( x, ube, db ); } }
 
 static void
 inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traversal ) {
@@ -857,11 +849,9 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traversal
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
 	char *start_p = p;
-	listItem *current = newItem( NULL );
-	bm_context_push( ctx, "^", current );
 	for ( listItem *i=buffer->entries; i!=NULL; i=i->next, p=start_p ) {
 		Pair *entry = i->ptr;
-		current->ptr = entry;
+		bm_context_push( ctx, "^", entry );
 		CNInstance *x = entry->name;
 		CNInstance *proxy = entry->value;
 		CNCell *child = CNProxyThat( proxy );
@@ -877,19 +867,17 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traversal
 			db_deprecate( proxy, db ); }
 		else {
 			if (( x )) db_assign( x, proxy, db );
-			bm_bond( this, child, proxy ); } }
-	bm_context_pop( ctx, "^" );
-	freeItem( current ); }
+			bm_bond( this, child, proxy ); }
+		bm_context_pop( ctx, "^" ); } }
 
 //---------------------------------------------------------------------------
 //	assign_string
 //---------------------------------------------------------------------------
 static void
-assign_string( listItem **list, char *s, CNStory *story, BMTraverseData *traversal ) {
+assign_string( listItem **list, char *s, BMTraverseData *traversal ) {
 	InstantiateData *data = traversal->user_data;
 	CNDB *db = data->db;
-	CNInstance *e = bm_arena_register( story->arena, s, db );
-	bm_cache_string( data->ctx, e );
+	CNInstance *e = db_arena_register( s, db );
 	if (( list )) {
 		for ( CNInstance *x;(x=popListItem( list ));)
 			db_assign( x, e, db ); } }

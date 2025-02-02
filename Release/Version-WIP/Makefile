@@ -7,11 +7,11 @@ SRCS =	story.c \
 		narrative.c \
 		parser.c \
 		parser_io.c \
-		arena.c \
 	program.c \
 		cell.c \
 			context.c \
 				database.c \
+				db_arena.c \
 				db_op.c \
 		operation.c \
 			deternarize.c \

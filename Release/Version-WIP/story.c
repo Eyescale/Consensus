@@ -12,18 +12,16 @@
 //===========================================================================
 CNStory *
 newStory( void ) {
-	Registry *narratives = newRegistry( IndexedByNameRef );
+	Registry *story = newRegistry( IndexedByNameRef );
 	CNNarrative *base = newNarrative();
-	registryRegister( narratives, "", newItem( base ) );
-	return (CNStory *) newPair( narratives, newArena() ); }
+	registryRegister( story, "", newItem( base ) );
+	return story; }
 
 static freeRegistryCB free_CB;
 void
 freeStory( CNStory *story ) {
-	if (( story )) {
-		freeRegistry( story->narratives, free_CB );
-		freeArena( story->arena );
-		freePair((Pair *) story ); } }
+	if (( story ))
+		freeRegistry( story, free_CB ); }
 static void
 free_CB( Registry *registry, Pair *entry ) {
 	char *def = entry->name;
@@ -81,11 +79,15 @@ readStory( char *path, int ignite ) {
 	io_exit( &io );
 	fclose( stream );
 	return ( data.narratives ) ?
-		(CNStory *) newPair( data.narratives, newArena() ) :
+		(CNStory *) data.narratives :
 		NULL; }
 
+//---------------------------------------------------------------------------
+//	build_CB
+//---------------------------------------------------------------------------
 #define BAR_DANGLING( o ) \
 	if ((o) && cast_i(o->data->type)&(IN|ON|ON_X)) return 0;
+
 static int
 build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 	BMParseData *data = user_data;
@@ -283,8 +285,7 @@ l_case( CNOccurrence *sibling, BMParseData *data ) {
 int
 cnStoryOutput( FILE *stream, CNStory *story ) {
 	if ( story == NULL ) return 0;
-	Registry *narratives = story->narratives;
-	for ( listItem *i=narratives->entries; i!=NULL; i=i->next ) {
+	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		char *name = entry->name;
 		if ( *name )

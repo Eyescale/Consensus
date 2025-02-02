@@ -10,6 +10,18 @@
 // #define DEBUG
 
 //===========================================================================
+//	cnInit / cnExit
+//===========================================================================
+void
+cnInit( void ) {
+	db_arena_init(); }
+void
+cnExit( int report )  {
+	db_arena_exit();
+	if ( report && CNMemoryUsed )
+		errout( BMMemoryLeak ); }
+
+//===========================================================================
 //	newProgram / freeProgram
 //===========================================================================
 static int bm_load( BMContext *ctx, char *path );
@@ -25,7 +37,7 @@ newProgram( CNStory *story, char *inipath ) {
 	if (( inipath )) {
 		int errnum = bm_load( BMCellContext(cell), inipath );
 		if ( errnum ) {
-			freeCell( cell, NULL, NULL );
+			freeCell( cell );
 			errout( CellLoad, inipath );
 			return NULL; } }
 	if ( !cell ) return NULL;
@@ -35,17 +47,16 @@ newProgram( CNStory *story, char *inipath ) {
 	program->threads->new = newItem( newItem( cell ) );
 	return program; }
 
-static freeCellCB cell_release;
 void
 freeProgram( CNProgram *program ) {
 	if ( !program ) return;
 	CNCell *cell;
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
-	while (( cell = popListItem(active) )) {
-		freeCell( cell, cell_release, program->story ); }
-	while (( cell = popListItem(new) )) {
-		freeCell( cell, cell_release, program->story ); }
+	while (( cell = popListItem(active) ))
+		freeCell( cell );
+	while (( cell = popListItem(new) ))
+		freeCell( cell );
 	freePair((Pair *) program->threads );
 	freePair((Pair *) program ); }
 
@@ -87,35 +98,6 @@ load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 		bm_instantiate( expression, data->ctx, NULL );
 		StringReset( data->string, CNStringAll ); }
 	return 1; }
-
-//---------------------------------------------------------------------------
-//	cell_release
-//---------------------------------------------------------------------------
-static void
-cell_release( CNCell *cell, void *user_data ) {
-	listItem *flushed = NULL;
-	CNStory *story = user_data;
-
-	BMContext *ctx = BMCellContext( cell );
-	Pair *shared = BMContextShared( ctx );
-	CNDB *db = BMContextDB( ctx );
-	bm_arena_flush( story->arena, shared, db, &flushed );
-	if ( !flushed ) return;
-
-	/* Must parse all story narratives here, not just the cell's, as
-	   although a narrative string is only cached in relation with a
-	   referencing cell, that cell may not be the last one to go out
-	*/
-	listItem *narratives = story->narratives->entries;
-	for ( listItem *i=narratives; i!=NULL; i=i->next ) {
-		Pair *entry = i->ptr;
-		narratives = entry->value;
-		for ( listItem *j=narratives->next; j!=NULL; j=j->next ) {
-			CNNarrative *narrative = j->ptr;
-			void *cached = narrative->root->data->expression;
-			if (( cached )&&( lookupIfThere(flushed,cached) ))
-				narrative->root->data->expression = NULL; } }
-	freeListItem( &flushed ); }
 
 //===========================================================================
 //	cnPrintout
@@ -225,21 +207,9 @@ cnOperate( CNCell **this, CNProgram *program ) {
 			last_i = i; } }
 	// free out cells
 	while (( cell = popListItem(&out) ))
-		freeCell( cell, cell_release, program->story );
+		freeCell( cell) ;
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new)); }
-
-//===========================================================================
-//	cnExit
-//===========================================================================
-void
-cnExit( int status )  {
-	switch ( status ) {
-	case 0 :
-		break;
-	default:
-		if ( CNMemoryUsed ) errout( BMMemoryLeak );
-		break; } }
 

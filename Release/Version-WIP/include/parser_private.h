@@ -30,6 +30,9 @@ static BMParseFunc bm_parse_char, bm_parse_regex, bm_parse_eenov, bm_parse_seq;
 //===========================================================================
 //	private parser macros
 //===========================================================================
+#define t_take \
+	StringAppend( t, event );
+
 #define f_tag( stack, b ) \
 	f_tag_( &flags, stack, (b) );
 #define f_parent( b ) \
@@ -168,6 +171,7 @@ char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	CNIO *io = data->io;	\
 	listItem **	stack	= &data->stack.flags;	\
 	CNString *	s	= data->string;		\
+	CNString *	t	= data->txt;		\
 	int *		tab	= data->tab;		\
 	int *		type	= &data->type;		\
 	char *		state	= data->state;		\

@@ -7,10 +7,9 @@
 #include "story.h"
 
 typedef CNEntity CNCell;
-typedef void freeCellCB( CNCell *, void * );
 
 CNCell * newCell( Pair *narrative );
-void	freeCell( CNCell *, freeCellCB, void * );
+void	freeCell( CNCell * );
 void	bm_bond( CNEntity *, CNEntity *, CNInstance * );
 int	bm_cell_read( CNCell **, CNStory * );
 void	bm_cell_operate( CNCell *, CNStory * );
@@ -29,7 +28,7 @@ static inline BMContext * BMMakeCurrent( CNCell *cell ) {
 static inline void bm_cell_init( CNCell *cell ) {
 	bm_context_init( BMCellContext(cell) ); }
 static inline int bm_cell_update( CNCell *cell, CNStory *story ) {
-	return bm_context_update( BMCellContext(cell), story ); }
+	return bm_context_update( BMCellContext(cell) ); }
 
 #define bm_cell_mark_out(cell) \
 	{ *BMCellCarry( cell ) = (void *) cell; }

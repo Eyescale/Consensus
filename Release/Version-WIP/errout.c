@@ -109,7 +109,7 @@ errout( ErrOutType type, ... ) {
 		db = va_arg( ap, CNDB * );
 		e = va_arg( ap, CNInstance * );
 		db_outputf( db, stderr,
-			HEAD "bm_inform() instance\n"
+			HEAD "bm_transpose() instance\n"
 			BODY "%_\n"
 			FOOT "transposition failed\n", e );
 		break;

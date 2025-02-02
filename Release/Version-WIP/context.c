@@ -21,7 +21,6 @@ newContext( CNEntity *cell ) {
 	CNInstance *self = new_proxy( NULL, cell, db );
 	Pair *active = newPair( newPair( NULL, NULL ), NULL );
 	Pair *perso = newPair( self, newRegistry(IndexedByNameRef) );
-	Pair *shared = newPair( NULL, NULL );
 
 	Registry *ctx = newRegistry( IndexedByNameRef );
 	registryRegister( ctx, "", db ); // BMContextDB( ctx )
@@ -31,7 +30,6 @@ newContext( CNEntity *cell ) {
 	registryRegister( ctx, "?", NULL ); // aka. [ %!, %? ]
 	registryRegister( ctx, "|", NULL ); // aka. %|
 	registryRegister( ctx, "<", NULL ); // aka. [ [ %<!>, %<?> ], %< ]
-	registryRegister( ctx, "$", shared );
 	return ctx; }
 
 static freeRegistryCB untag_CB;
@@ -57,15 +55,12 @@ freeContext( BMContext *ctx )
 	freePair( stack->ptr );
 	freeItem( stack );
 
-	// free shared entity indexes
-	Pair *shared = registryLookup( ctx, "$" )->value;
-	freeListItem((listItem **) &shared->name );
-	freeListItem((listItem **) &shared->value );
-	freePair( shared );
-
-	// free CNDB & context registry
+	// free CNDB
 	CNDB *db = BMContextDB( ctx );
+	db_arena_unref( db );
 	freeCNDB( db );
+
+	// last, but not least
 	freeRegistry( ctx, untag_CB ); }
 
 static void
@@ -104,12 +99,11 @@ update_active( ActiveRV *active ) {
 static DBRemoveCB remove_CB;
 typedef struct {
 	CNInstance *parent;
-	CNArena *arena;
 	BMContext *ctx;
 	} RemoveData;
 
 int
-bm_context_update( BMContext *ctx, CNStory *story ) {
+bm_context_update( BMContext *ctx ) {
 #ifdef DEBUG
 	fprintf( stderr, "bm_context_update: bgn\n" );
 #endif
@@ -129,9 +123,8 @@ bm_context_update( BMContext *ctx, CNStory *story ) {
 	// invoke db_update
 	RemoveData data;
 	data.parent = BMContextParent( ctx );
-	data.arena = story->arena;
 	data.ctx = ctx;
-	db_update( db, remove_CB, &data );
+	db_update( db );
 
 	// update active registry wrt deprecated connections
 	listItem **entries = &active->value;
@@ -145,17 +138,6 @@ bm_context_update( BMContext *ctx, CNStory *story ) {
 	fprintf( stderr, "bm_context_update: end\n" );
 #endif
 	return DBExitOn( db ); }
-
-static int
-remove_CB( CNDB *db, CNInstance *x, void *user_data ) {
-	RemoveData *data = user_data;
-	if ( x==data->parent )
-		return 1;
-	else if ( cnIsShared(x) ) {
-		bm_arena_deregister( data->arena, x, db );
-		bm_uncache( data->ctx, x );
-		return 1; }
-	return 0; }
 
 //===========================================================================
 //	bm_context_actualize
@@ -773,39 +755,64 @@ bm_register_locale( BMContext *ctx, char *p ) {
 	return 1; }
 
 //===========================================================================
-//	bm_intake
+//	bm_inform / bm_translate
 //===========================================================================
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 
+listItem *
+bm_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
+	if ( !dst || !*list ) return *list;
+	listItem *results = NULL;
+	CNInstance *e;
+	if (( nb )&&( *nb < 1 )) {
+		CNDB *db_dst = BMContextDB( dst );
+		while (( e=popListItem(list) ) &&
+		       (( e=bm_translate( dst, e, db_src, 0 ) ) ||
+		       !( e=bm_translate( dst, e, db_src, 1 ) ))) {}
+		*nb = (( e )? 1 : -1 ); // inform newborn flag
+		if (( e )) addItem( &results, e ); }
+	while (( e=popListItem(list) )) {
+		e = bm_translate( dst, e, db_src, 1 );
+		if (( e )) addItem( &results, e ); }
+	return results; }
+
 CNInstance *
-bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
+bm_translate( BMContext *dst, CNInstance *x, CNDB *db_x, int inform ) {
+	if ( !dst ) return x;
 	if ( !x ) return NULL;
-	if ( db_dst==db_x ) return x;
+	CNDB *db_dst = BMContextDB( dst );
+	if ( db_dst==db_x ) {
+		if ( !inform || !db_deprecated(x,db_dst) )
+			return x; }
 
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance;
+	CNInstance *instance, *e = x;
 	int ndx = 0;
 	for ( ; ; ) {
-		if (( CNSUB(x,ndx) )) {
+		if (( CNSUB(e,ndx) )) {
 			add_item( &stack.src, ndx );
-			addItem( &stack.src, x );
-			x = x->sub[ ndx ];
+			addItem( &stack.src, e );
+			e = e->sub[ ndx ];
 			ndx = 0; continue; }
-		if ( cnIsProxy(x) ) { // proxy x:(( this, that ), NULL )
-			CNEntity *that = CNProxyThat( x );
-			instance = proxy_that( that, dst, db_dst, 0 ); }
-		else if ( cnIsShared(x) )
-			instance = bm_arena_translate( x, db_dst );
+		if ( cnIsProxy(e) ) { // proxy e:(( this, that ), NULL )
+			CNEntity *that = CNProxyThat( e );
+			instance = proxy_that( that, dst, db_dst, inform ); }
+		else if ( cnIsShared(e) )
+			instance = db_arena_translate( e, db_dst, inform );
 		else {
-			char *p = CNIdentifier( x );
-			instance = db_lookup( 0, p, db_dst ); }
+			char *p = CNIdentifier( e );
+			instance = inform ?
+				db_register( p, db_dst ) :
+				db_lookup( 0, p, db_dst ); }
 		if ( !instance ) break;
 		for ( ; ; ) {
 			if ( !stack.src ) return instance;
 			x = popListItem( &stack.src );
 			if (( ndx = pop_item( &stack.src ) )) {
 				CNInstance *f = popListItem( &stack.dst );
-				instance = cn_instance( f, instance, 0 ); }
+				instance = inform ?
+					db_instantiate( f, instance, db_dst ) :
+					cn_instance( f, instance, 0 ); }
 				if ( !instance ) goto FAIL;
 			else {
 				addItem( &stack.dst, instance );
@@ -813,6 +820,7 @@ bm_intake( BMContext *dst, CNDB *db_dst, CNInstance *x, CNDB *db_x ) {
 FAIL:
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
+	if ( inform ) errout( CellInform, db_x, x );
 	return NULL; }
 
 static inline CNInstance *
@@ -834,71 +842,6 @@ proxy_that( CNEntity *that, BMContext *ctx, CNDB *db, int inform )
 			return connection->as_sub[ 0 ]->ptr; }
 
 	return ( inform ? new_proxy(this,that,db) : NULL ); }
-
-//===========================================================================
-//	bm_inform / bm_list_inform
-//===========================================================================
-CNInstance *
-bm_inform( BMContext *dst, CNInstance *x, CNDB *db_src ) {
-	if ( !dst ) return x;
-	if ( !x ) return NULL;
-	CNDB *db_dst = BMContextDB( dst );
-	if ( db_dst==db_src ) {
-		if ( !db_deprecated(x,db_dst) )
-			return x; }
-	struct { listItem *src, *dst; } stack = { NULL, NULL };
-	CNInstance *instance, *e=x;
-	int ndx = 0;
-	for ( ; ; ) {
-		if (( CNSUB(e,ndx) )) {
-			add_item( &stack.src, ndx );
-			addItem( &stack.src, e );
-			e = e->sub[ ndx ];
-			ndx = 0; continue; }
-		if ( cnIsProxy(e) ) { // proxy e:(( this, that ), NULL )
-			CNEntity *that = CNProxyThat( e );
-			instance = proxy_that( that, dst, db_dst, 1 ); }
-		else if ( cnIsShared(e) )
-			instance = bm_arena_transpose( e, db_dst );
-		else {
-			char *p = CNIdentifier( e );
-			instance = db_register( p, db_dst ); }
-		if ( !instance ) goto FAIL;
-		for ( ; ; ) {
-			if ( !stack.src ) return instance;
-			e = popListItem( &stack.src );
-			if (( ndx = pop_item( &stack.src ) )) {
-				CNInstance *f = popListItem( &stack.dst );
-				instance = db_instantiate( f, instance, db_dst );
-				if ( !instance ) goto FAIL; }
-			else {
-				addItem( &stack.dst, instance );
-				ndx=1; break; } } }
-FAIL:
-	freeListItem( &stack.src );
-	freeListItem( &stack.dst );
-	errout( CellInform, db_src, x );
-	return NULL; }
-
-//---------------------------------------------------------------------------
-//	bm_list_inform
-//---------------------------------------------------------------------------
-listItem *
-bm_list_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
-	if ( !dst || !*list ) return *list;
-	listItem *results = NULL;
-	CNInstance *e;
-	if (( nb )&&( *nb < 1 )) {
-		CNDB *db_dst = BMContextDB( dst );
-		while (( e=popListItem(list) ) &&
-		       (( e=bm_intake( dst, db_dst, e, db_src ) ) ||
-		       !( e=bm_inform( dst, e, db_src ) ))) {}
-		*nb = (( e )? 1 : -1 ); // inform newborn flag
-		if (( e )) addItem( &results, e ); }
-	while (( e=popListItem(list) )) {
-		e = bm_inform( dst, e, db_src );
-		if (( e )) addItem( &results, e ); }
-	return results; }
 
 //===========================================================================
 //	bm_tag, bm_untag

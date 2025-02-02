@@ -1,0 +1,12 @@
+
+	on init
+		do : string : "hello, world\n"
+		do toto
+	else in ?: "hello, world\n"
+		en %?
+		do >"string found: %_\n": %?
+		do exit
+
+: "hello, world\n"
+	on this
+		do >"hey, guys!\n"

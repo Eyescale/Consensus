@@ -44,7 +44,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
 				do_( "@" )	s_take }
-		on_( '"' ) if (( *type&DO && s_empty ) || ( *type&OUTPUT && f_outputable(stack) )) {
+		on_( '"' ) if ( *type&DO && s_empty ) {
+				do_( "\"$" )	s_take }
+			else if ( *type&OUTPUT && f_outputable(stack) ) {
 				do_( "\"" )	s_take }
 		on_( '!' ) if ( *type&DO && !is_f(INFORMED) ) {
 				do_( "!" ) }
@@ -110,7 +112,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_push( stack )
 							f_clr( FIRST|INFORMED|PRIMED ) } }
 			else if ( ( *type&(IN|ON) && !expr(CONTRARY) && f_markable(stack) ) ||
-				  ( is_f(SUB_EXPR) && !is_f(MARKED|NEGATED) ) ) {
+				  ( is_f(SUB_EXPR|FORE) && !is_f(MARKED|NEGATED) ) ) {
 					do_( same )	s_take
 							f_set( MARKED|INFORMED ) }
 			else if ( *type&DO && !is_f(byref) ) { // FORE loop bgn
@@ -206,20 +208,26 @@ BM_PARSE_FUNC( bm_parse_expr )
 						*type &= ~IN;
 						f_clr( SET|VECTOR )
 		end
+	in_( "\"$" ) bgn_
+		on_( '\\' )	do_( "\"$\\" )	t_take
+		on_( '"' )	do_( "expr" )	db_arena_encode( s, t );
+						s_take
+						f_set( INFORMED )
+						f_tag( stack, PROTECTED )
+		on_other	do_( same )	t_take
+		end
+		in_( "\"$\\" ) bgn_
+			on_any	do_( "\"$" )	t_take
+			end
 	in_( "\"" ) bgn_
-		on_( '\t' )	do_( same )	s_add( "\\t" )
-		on_( '\n' )	do_( same )	s_add( "\\n" )
-		on_( '\\' )	do_( "\"\\" )
+		on_( '\\' )	do_( "\"\\" )	s_take
 		on_( '"' )	do_( "expr" )	s_take
 						f_set( INFORMED )
 						f_tag( stack, PROTECTED )
 		on_other	do_( same )	s_take
 		end
 		in_( "\"\\" ) bgn_
-			on_( '\n' )	do_( "\"" )
-			on_( '\t' )	do_( "\"" )	REENTER
-			on_other	do_( "\"" )	s_add( "\\" )
-							s_take
+			on_any	do_( "\"" )	s_take
 			end
 	in_( "~" ) bgn_
 		ons( " \t" )	do_( same )
@@ -465,7 +473,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "_," )	REENTER
 						f_set( FILTERED ) }
 		on_( '"' ) if ( *type&IN && !s_cmp("?") ) {
-				do_( "\"" )	s_add( ":\"" )
+				do_( "\"$" )	s_add( ":\"" )
 						f_set( FILTERED ) }
 			else if ( *type&DO && !is_f(LEVEL|SET) ) {
 				do_( "_," )	REENTER
@@ -496,7 +504,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 	in_( "::" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
 		ons( " \t" )	do_( same )
 		on_( '"' ) if ( *type&DO && is_f(PRIMED) && !s_at('|') ) {
-				do_( "\"" )	s_take }
+				do_( "\"$" )	s_take }
 		on_( '<' ) if ( !s_at('|') ) {
 				do_( ":<")	s_take } // Special: getchar()
 		on_( '!' ) if ( is_f(PRIMED) && !s_at('|') ) {
@@ -556,6 +564,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 			end
 	in_( "!!" ) bgn_
 		ons( " \t" )	do_( same )
+		on_( '\n' )	do_( "expr" )	REENTER
+						f_set( INFORMED )
 		on_( '|' )	do_( "expr" )	s_take
 						f_set( PIPED|PROTECTED )
 		on_separator	; // err
@@ -642,12 +652,12 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "expr" )	s_take
 						f_set( INFORMED )
 						f_set_BYREF }
-			else if ( are_f(CARRY|FORE) ) {
+			else if ( !is_f(byref|FILTERED) ) {
+				do_( "*^?" )	s_take }
+			else if ( is_f(FORE) ) {
 				do_( "expr" )	s_take
 						f_set( INFORMED )
 						f_tag( stack, PROTECTED ) }
-			else if ( !is_f(byref|FILTERED) ) {
-				do_( "*^?" )	s_take }
 		on_( '.' )	do_( "expr" )	s_take
 						f_set( INFORMED )
 						f_set_BYREF
@@ -1528,55 +1538,49 @@ CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
 		on_other if ( !s_cmp( ".:" ) ) {
 				do_( ":$" )	s_take }
 		end
-		in_( ":\"" ) bgn_
-			on_( '\t' )	do_( same )	s_add( "\\t" )
-			on_( '\n' )	do_( same )	s_add( "\\n" )
-			on_( '\\' )	do_( ":\"\\" )	s_take
-			on_( '"' )	do_( "def_" )	s_take
-			on_other	do_( same )	s_take
+	in_( ":\"" ) bgn_
+		on_( '\\' )	do_( ":\"\\" )	t_take
+		on_( '"' )	do_( "def_" )	db_arena_encode( s, t );
+						s_take
+		on_other	do_( same )	t_take
+		end
+		in_( ":\"\\" ) bgn_
+			on_any		do_( ":\"" )	t_take
 			end
-			in_( ":\"\\" ) bgn_
-				on_any		do_( "\"" )	s_take
-				end
-		in_( ":%" ) bgn_
-			on_( '(' )	do_( ":_" )	s_take
-							f_push( stack )
-							f_set( SUB_EXPR|FIRST )
-			end
-		in_( ":_" ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
-					do_( "def_" )	REENTER
-							f_reset( FIRST, 0 ) }
-			on_( '(' ) if ( !is_f(INFORMED) || !is_f(MARKED|LEVEL|SUB_EXPR) ) {
-					do_( same )	S_HACK // remove leading '.' in ".:func"
-							s_take
-							f_push( stack )
-							f_clr( INFORMED )
-							f_set( LEVEL|FIRST ) }
-			on_( '?' ) if ( is_f(SUB_EXPR) && !is_f(INFORMED|MARKED) ) {
-					do_( same )	s_take
-							f_set( INFORMED|MARKED ) }
-			on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( ":." )	}
-			on_( ',' ) if ( is_f(LEVEL|SUB_EXPR) && are_f(INFORMED|FIRST) ) {
-					do_( same )	s_take
-							f_clr( FIRST|INFORMED ) }
-			on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && is_f(INFORMED) ) {
-					do_( same )	s_take
-							f_pop( stack, INFORMED|MARKED ) }
-			on_( '%' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( ":%_" )	s_take }
-			on_separator	; // err
-			on_other
-				if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
-					do_( ":$" )	s_take }
-			end
-		in_( ":$" ) bgn_
-			on_separator	do_( ":_" )	REENTER
-							f_set( INFORMED )
-			on_other	do_( same )	s_take
-			end
+	in_( ":%" ) bgn_
+		on_( '(' )	do_( ":_" )	s_take
+						f_push( stack )
+						f_set( SUB_EXPR|FIRST )
+		end
+	in_( ":_" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '\n' ) if ( is_f(INFORMED) && !is_f(LEVEL) ) {
+				do_( "def_" )	REENTER
+						f_reset( FIRST, 0 ) }
+		on_( '(' ) if ( !is_f(INFORMED) || !is_f(MARKED|LEVEL|SUB_EXPR) ) {
+				do_( same )	S_HACK // remove leading '.' in ".:func"
+						s_take
+						f_push( stack )
+						f_clr( INFORMED )
+						f_set( LEVEL|FIRST ) }
+		on_( '?' ) if ( is_f(SUB_EXPR) && !is_f(INFORMED|MARKED) ) {
+				do_( same )	s_take
+						f_set( INFORMED|MARKED ) }
+		on_( '.' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+				do_( ":." )	}
+		on_( ',' ) if ( is_f(LEVEL|SUB_EXPR) && are_f(INFORMED|FIRST) ) {
+				do_( same )	s_take
+						f_clr( FIRST|INFORMED ) }
+		on_( ')' ) if ( is_f(LEVEL|SUB_EXPR) && is_f(INFORMED) ) {
+				do_( same )	s_take
+						f_pop( stack, INFORMED|MARKED ) }
+		on_( '%' ) if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+				do_( ":%_" )	s_take }
+		on_separator	; // err
+		on_other
+			if ( is_f(LEVEL|SUB_EXPR) && !is_f(INFORMED) ) {
+				do_( ":$" )	s_take }
+		end
 		in_( ":%_" ) bgn_
 			on_( '%' )	do_( ":_" )	s_take
 							f_set( INFORMED )
@@ -1650,6 +1654,11 @@ CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
 				on_separator	; // err
 				on_other	do_( ":_" )	REENTER
 				end
+	in_( ":$" ) bgn_
+		on_separator	do_( ":_" )	REENTER
+						f_set( INFORMED )
+		on_other	do_( same )	s_take
+		end
 	in_( "def_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
@@ -1889,6 +1898,7 @@ void
 bm_parse_init( BMParseData *data, BMParseMode mode )
 {
 	data->string = newString();
+	data->txt = newString();
 	data->state = "base";
 	data->TAB_LAST = -1;
 	data->flags = FIRST;
@@ -1902,5 +1912,6 @@ bm_parse_exit( BMParseData *data )
 	freeListItem( &data->stack.flags );
 	freeListItem( &data->stack.tags );
 	freeString( data->string );
+	freeString( data->txt );
 	data->expr = 0; }
 

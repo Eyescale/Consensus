@@ -27,7 +27,7 @@ static inline int
 bm_case( char *expression, BMContext *ctx ) {
 	return !strcmp( expression, "." ) ?
 		1 : !strcmp( expression, "~." ) ?
-		!BMVal( ctx, "*^^" ) : !!bm_query_assignee( 0, expression, ctx ); }
+		!BMContextRVV( ctx, "*^^" ) : !!bm_query_assignee( 0, expression, ctx ); }
 
 //---------------------------------------------------------------------------
 //	bufferized output

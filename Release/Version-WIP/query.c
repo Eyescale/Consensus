@@ -846,7 +846,7 @@ bm_query_assignee( int type, char *expression, BMContext *ctx )
 */ {
 	if ( !type ) {
 		// bm_case() usage
-		CNInstance *e = BMVal( ctx, "*^^" );
+		CNInstance *e = BMContextRVV( ctx, "*^^" );
 		if ( !e ) return NULL;
 		BMQueryData data;
 		memset( &data, 0, sizeof(data) );

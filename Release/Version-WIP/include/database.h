@@ -22,6 +22,9 @@ void	freeCNDB( CNDB * );
 //===========================================================================
 typedef int DBTraverseCB( CNInstance *, CNDB *, void * );
 
+CNInstance *	db_share( uint master[2], Registry *ref, CNDB * );
+CNInstance *	new_proxy( CNEntity *, CNEntity *, CNDB * );
+void		free_proxy( CNEntity *, CNDB * );
 CNInstance *	db_register( char *identifier, CNDB * );
 void		db_deregister( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
@@ -36,8 +39,6 @@ CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
 int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );
-CNInstance *	new_proxy( CNEntity *, CNEntity *, CNDB * );
-void		free_proxy( CNEntity *e );
 void		db_fire( CNInstance *, CNDB * );
 
 //---------------------------------------------------------------------------
@@ -68,10 +69,10 @@ static inline int cnStarMatch( CNInstance *e ) {
 
 static inline int cnIsShared( CNInstance *e ) {
 	return ( !e->sub[ 0 ] ); }
-static inline char * CNSharedIdentifier( CNInstance *e ) {
-	return (char *) ((Pair *)e->sub[1])->name; }
+static inline uint * CNSharedKey( CNInstance *e ) {
+	return (uint *) &e->sub[1]; }
 static inline int cnIsUnnamed( CNInstance *e ) {
-	return !CNSharedIdentifier(e); }
+	return CNSharedKey(e)[0]=='!'; }
 
 static inline int cnIsProxy( CNInstance *e ) {
 	return ((e->sub[0]) && !e->sub[1]); }
@@ -81,6 +82,9 @@ static inline CNEntity * CNProxyThat( CNInstance *proxy ) {
 	return (CNEntity*) proxy->sub[0]->sub[1]; }
 static inline int cnIsSelf( CNInstance *proxy ) {
 	return !CNProxyThis(proxy); }
+
+static inline CNEntity * DBCell( CNDB *db ) {
+	return CNProxyThat( db->nil->sub[0] ); }
 
 //===========================================================================
 //	operation (nil-based)
@@ -158,10 +162,10 @@ static inline int db_has_newborn( listItem *list, int sub, CNDB *db )
 //---------------------------------------------------------------------------
 //	db_init, db_exit, DBInitOn, DBExitOn
 //---------------------------------------------------------------------------
-#define SELF_PROXY(db) ((CNInstance *)db->nil->sub[0])
+#define SELF_PROXY(db) ((CNInstance *) db->nil->sub[0] )
 
 static inline void db_init( CNDB *db ) {
-	db_update( db, NULL, NULL ); }
+	db_update( db ); }
 static inline void db_exit( CNDB *db ) {
 	db_op( DB_DEPRECATE_OP, SELF_PROXY(db), db ); }
 static inline int DBInitOn( CNDB *db ) {
@@ -175,6 +179,12 @@ static inline int DBExitOn( CNDB *db ) {
 static inline int DBActive( CNDB *db ) {
 	listItem **as_sub = db->nil->as_sub;
 	return ((as_sub[ 0 ]) || (as_sub[ 1 ]) || DBInitOn(db) || DBExitOn(db)); }
+
+
+//===========================================================================
+//	CNDB Shared Arena interface
+//===========================================================================
+#include "db_arena.h"
 
 
 #endif	// DATABASE_H

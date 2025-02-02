@@ -9,7 +9,8 @@ static BMTraversal fprint_expr_traversal;
 	fprintExprData *data = traversal->user_data; char *p = *q;
 
 static BMTraverseCB
-	bgn_pipe_CB, bgn_set_CB, end_set_CB, comma_CB, filter_CB, open_CB, close_CB;
+	bgn_pipe_CB, bgn_set_CB, end_set_CB, comma_CB, filter_CB, format_CB,
+	open_CB, close_CB;
 
 #define BMBgnPipeCB		bgn_pipe_CB
 #define BMBgnSetCB		bgn_set_CB

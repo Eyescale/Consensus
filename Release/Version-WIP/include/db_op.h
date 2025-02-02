@@ -1,8 +1,6 @@
 #ifndef DB_OP_H
 #define	DB_OP_H
 
-#include "arena.h"
-
 //===========================================================================
 //	operations (nil-based)
 //===========================================================================
@@ -16,7 +14,7 @@ typedef enum {
 int	db_op( DBOperation op, CNInstance *e, CNDB *db );
 
 typedef int DBRemoveCB( CNDB *, CNInstance *, void * );
-void	db_update( CNDB *, DBRemoveCB *, void * );
+void	db_update( CNDB * );
 
 CNInstance * DBLog( int first, int released, CNDB *, listItem ** );
 

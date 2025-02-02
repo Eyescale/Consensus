@@ -53,17 +53,31 @@ new_proxy( CNEntity *this, CNEntity *that, CNDB *db )
 	return proxy; }
 
 void
-free_proxy( CNEntity *proxy )
+free_proxy( CNEntity *proxy, CNDB *db )
 /*
 	Assumption: e is proxy:( connection:(this,that), NULL )
 	where this==NULL denotes current cell's Self proxy.
 	cn_release( connection ) will remove connection
 	from this->as_sub[ 0 ] and from that->as_sub[ 1 ]
 */ {
-	CNEntity *connection = proxy->sub[ 0 ];
-	if (( connection->sub[ 0 ] )) { // !this
+	Pair *id = (Pair *) db->nil->sub; // [ %%, .. ]
+	if ( proxy!=id->name && proxy!=id->value ) {
+		CNEntity *connection = proxy->sub[ 0 ];
 		cn_release( proxy );
 		cn_release( connection ); } }
+
+//===========================================================================
+//	db_share
+//===========================================================================
+CNInstance *
+db_share( uint master[2], Registry *ref, CNDB *db ) {
+	CNInstance *e = cn_new( NULL, NULL );
+	uint *key = CNSharedKey( e );
+	key[ 0 ] = master[ 0 ];
+	key[ 1 ] = master[ 1 ];
+	registryRegister( ref, db, e );
+	db_op( DB_MANIFEST_OP, e, db );
+	return e; }
 
 //===========================================================================
 //	db_register
@@ -299,7 +313,7 @@ db_match( CNInstance *x, CNDB *db_x, CNInstance *y, CNDB *db_y )
 			if ( !cnIsProxy(x) || CNProxyThat(x)!=CNProxyThat(y) )
 				goto FAIL; }
 		else if ( cnIsShared(y) ) {
-			if ( bm_arena_cmp( x, y ) )
+			if ( CNSharedKey( x )!=CNSharedKey( y ) )
 				goto FAIL; }
 		else if ( !cnIsIdentifier(x) )
 			goto FAIL;
@@ -591,11 +605,14 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			addItem( &stack, e );
 			e = e->sub[ ndx ];
 			ndx=0; continue; }
-		else if ( cnIsProxy(e) )
-			fprintf( stream, "%s", ((e->sub[0]->sub[0])?"@@@":"%%"));
+		else if ( cnIsProxy(e) ) {
+			fprintf( stream, "%s", cnIsSelf(e)?"%%":"@@@" ); }
 		else if ( cnIsShared(e) ) {
-			char *p = CNSharedIdentifier( e );
-			fprintf( stream, "%s", ((p)?p:"!!") ); }
+			if ( cnIsUnnamed(e) ) fprintf( stream, "!!" );
+			else {
+				char *p = db_arena_identifier( e );
+				if ( type=='s' ) fprintf( stream, "%s", p );
+				else fprintf( stream, "\"%s\"", p ); } }
 		else {
 			char *p = CNIdentifier( e );
 			if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
