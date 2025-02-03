@@ -12,17 +12,19 @@ typedef struct {
 	} *threads;
 } CNProgram;
 
+typedef struct {
+	int interactive;
+	CNCell *this;
+	listItem *flags;
+} ProgramData;
+
 void cnInit( void );
 void cnExit( int report );
 
-CNProgram *newProgram( CNStory *, char *inipath );
-void	freeProgram( CNProgram * );
-int	cnPrintOut( FILE *, char *path, int level );
+CNProgram *newProgram( char *inipath, CNStory **, ProgramData * );
+void	freeProgram( CNProgram *, ProgramData * );
 void	cnSync( CNProgram * );
-int	cnOperate( CNCell **, CNProgram * );
-
-static inline CNCell * CNProgramStem( CNProgram *p ) {
-	return ((listItem*) p->threads->new->ptr )->ptr; }
-
+int	cnOperate( CNProgram *, ProgramData * );
+int	cnPrintOut( FILE *, char *path, listItem * );
 
 #endif	// PROGRAM_H

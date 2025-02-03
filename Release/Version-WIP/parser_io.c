@@ -10,9 +10,13 @@
 static int io_pop( CNIO * );
 
 void
-io_init( CNIO *io, void *stream, char *path, IOType type ) {
+io_init( CNIO *io, void *stream, char *path, IOType type, listItem *flags ) {
 	memset( io, 0, sizeof(CNIO) );
-	io->control.registry = newRegistry( IndexedByName );
+	Registry *registry = newRegistry( IndexedByName );
+	for ( listItem *i=flags; i!=NULL; i=i->next ) {
+		char *flag = strdup((char *) i->ptr );
+		registryRegister( registry, flag, NULL ); }
+	io->control.registry = registry;
 	io->string = newString();
 	io->stream = stream;
 	io->path = path;
@@ -419,9 +423,9 @@ io_pragma_execute( CNIO *io ) {
 			if ( !errnum ) StringReset( s, CNStringMode );
 			break;
 		case IOPragma_define:
-			entry = registryRegister( io->control.registry, param, NULL );
-			if ( !entry ) errnum = IOErrAlreadyDefined;
-			else StringReset( s, CNStringMode );
+			if (( !registryLookup( io->control.registry, param ) )) {
+				registryRegister( io->control.registry, param, NULL );
+				StringReset( s, CNStringMode ); }
 			break;
 		case IOPragma_undef:
 			registryDeregister( io->control.registry, param );

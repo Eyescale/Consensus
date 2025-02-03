@@ -72,7 +72,7 @@ typedef struct {
 } CNIO;
 
 void	io_reset( CNIO *, int l, int c );
-void	io_init( CNIO *, void *, char *, IOType );
+void	io_init( CNIO *, void *, char *, IOType, listItem * );
 void	io_exit( CNIO * );
 int	io_getc( CNIO *, int );
 int	io_read( CNIO *, int );

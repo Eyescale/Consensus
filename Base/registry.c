@@ -53,7 +53,7 @@ registryRegister( Registry *registry, void *name, void *value ) {
                 if ( comparison < 0 ) {
                         last_i = i;
                         continue; }
-                if ( comparison == 0 ) {
+                if ( comparison==0 ) {
 #ifdef DEBUG
 			fprintf( stderr, "registryRegister: Warning: entry already registered\n" );
 #endif

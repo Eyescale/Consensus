@@ -24,31 +24,39 @@ cnExit( int report )  {
 //===========================================================================
 //	newProgram / freeProgram
 //===========================================================================
-static int bm_load( BMContext *ctx, char *path );
+static int bm_load( BMContext *ctx, char *path, listItem *flags );
 
 CNProgram *
-newProgram( CNStory *story, char *inipath ) {
-	if ( !story ) return NULL;
-	Pair *entry = CNStoryMain( story );
+newProgram( char *inipath, CNStory **story, ProgramData *data ) {
+	if ( !*story ) {
+		if ( !data->interactive ) return NULL;
+		*story = newStory(); }
+	else if ( !registryLookup( *story, "" ) ) {
+		if ( !data->interactive ) return NULL;
+		CNNarrative *base = newNarrative();
+		registryRegister( *story, "", newItem(base) ); }
+	Pair *entry = CNStoryMain( *story );
 	if ( !entry ) {
 		errout( ProgramStory );
 		return NULL; }
 	CNCell *cell = newCell( entry );
 	if (( inipath )) {
-		int errnum = bm_load( BMCellContext(cell), inipath );
+		int errnum = bm_load( BMCellContext(cell), inipath, data->flags );
 		if ( errnum ) {
 			freeCell( cell );
 			errout( CellLoad, inipath );
 			return NULL; } }
 	if ( !cell ) return NULL;
 	Pair *threads = newPair( NULL, NULL );
-	CNProgram *program = (CNProgram *) newPair( story, threads );
+	CNProgram *program = (CNProgram *) newPair( *story, threads );
 	// threads->new is a list of lists
 	program->threads->new = newItem( newItem( cell ) );
+	if ( data->interactive ) data->this = cell;
 	return program; }
 
 void
-freeProgram( CNProgram *program ) {
+freeProgram( CNProgram *program, ProgramData *data ) {
+	freeListItem( &data->flags );
 	if ( !program ) return;
 	CNCell *cell;
 	listItem **active = &program->threads->active;
@@ -66,11 +74,11 @@ freeProgram( CNProgram *program ) {
 static BMParseCB load_CB;
 
 static int
-bm_load( BMContext *ctx, char *path ) {
+bm_load( BMContext *ctx, char *path, listItem *flags ) {
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) return( errout( ContextLoad, path ), -1 );
 	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
+	io_init( &io, stream, path, IOStreamFile, flags );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
@@ -97,48 +105,6 @@ load_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 		char *expression = StringFinish( data->string, 0 );
 		bm_instantiate( expression, data->ctx, NULL );
 		StringReset( data->string, CNStringAll ); }
-	return 1; }
-
-//===========================================================================
-//	cnPrintout
-//===========================================================================
-static BMParseCB output_CB;
-
-int
-cnPrintOut( FILE *output_stream, char *path, int level ) {
-	FILE *stream = fopen( path, "r" );
-	if ( !stream ) return errout( ProgramPrintout, path );
-	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
-	BMParseData data;
-	memset( &data, 0, sizeof(BMParseData) );
-	data.entry = newPair( output_stream, cast_ptr( level ) );
-        data.io = &io;
-	bm_parse_init( &data, BM_LOAD );
-	//-----------------------------------------------------------------
-	int event = 0;
-	do {	event = io_read( &io, event );
-		if ( io.errnum ) data.errnum = io_report( &io );
-		else data.state = bm_parse_load( event, BM_LOAD, &data, output_CB );
-		} while ( strcmp( data.state, "" ) && !data.errnum );
-	//-----------------------------------------------------------------
-	freePair( data.entry );
-	bm_parse_exit( &data );
-	io_exit( &io );
-	fclose( stream );
-	return data.errnum; }
-
-static int
-output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
-	BMParseData *data = user_data;
-	FILE *stream = data->entry->name;
-	int level = cast_i( data->entry->value );
-	if ( op==ExpressionTake ) {
-		TAB( level );
-		char *expression = StringFinish( data->string, 0 );
-		fprint_expr( stream, expression, level, DO );
-		StringReset( data->string, CNStringAll );
-		fprintf( stream, "\n" ); }
 	return 1; }
 
 //===========================================================================
@@ -177,17 +143,19 @@ cnSync( CNProgram *program ) {
 //	cnOperate
 //===========================================================================
 int
-cnOperate( CNCell **this, CNProgram *program ) {
+cnOperate( CNProgram *program, ProgramData *data ) {
 #ifdef DEBUG
 	fprintf( stderr, "cnOperate: bgn\n" );
 #endif
 	if ( !program ) return 0;
 	// user interaction
 	CNStory *story = program->story;
-	CNCell *cell = ((this) ? *this : NULL );
+	CNCell *cell = data->this;
 	if (( cell )) {
-		int done = bm_cell_read( this, story );
-		if ( done==2 ) return 0; }
+		if ( !bm_cell_out( cell ) ) {
+			int done = bm_cell_read( cell, story );
+			if ( done==2 ) return 0; }
+		else data->this = NULL; }
 	// operate active cells
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
@@ -212,4 +180,46 @@ cnOperate( CNCell **this, CNProgram *program ) {
 	fprintf( stderr, "cnOperate: end\n" );
 #endif
 	return ((*active)||(*new)); }
+
+//===========================================================================
+//	cnPrintout
+//===========================================================================
+static BMParseCB output_CB;
+
+int
+cnPrintOut( FILE *stream, char *path, listItem *flags ) {
+	BMParseData data;
+	memset( &data, 0, sizeof(BMParseData) );
+	data.printout.stream = stream;
+	data.printout.level = 1;
+	CNIO io;
+        data.io = &io;
+	stream = fopen( path, "r" );
+	if ( !stream ) return errout( ProgramPrintout, path );
+	io_init( &io, stream, path, IOStreamFile, flags );
+	bm_parse_init( &data, BM_LOAD );
+	//-----------------------------------------------------------------
+	int event = 0;
+	do {	event = io_read( &io, event );
+		if ( io.errnum ) data.errnum = io_report( &io );
+		else data.state = bm_parse_load( event, BM_LOAD, &data, output_CB );
+		} while ( strcmp( data.state, "" ) && !data.errnum );
+	//-----------------------------------------------------------------
+	bm_parse_exit( &data );
+	io_exit( &io );
+	fclose( stream );
+	return data.errnum; }
+
+static int
+output_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
+	BMParseData *data = user_data;
+	FILE *stream = data->printout.stream;
+	int level = data->printout.level;
+	if ( op==ExpressionTake ) {
+		TAB( level );
+		char *expression = StringFinish( data->string, 0 );
+		fprint_expr( stream, expression, level, DO );
+		StringReset( data->string, CNStringAll );
+		fprintf( stream, "\n" ); }
+	return 1; }
 

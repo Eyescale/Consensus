@@ -11,7 +11,7 @@ typedef Registry CNStory;
 //===========================================================================
 //	Public Interface
 //===========================================================================
-CNStory *	readStory( char *path, int interactive );
+CNStory *	readStory( char *path, listItem *flags );
 int		cnStoryOutput( FILE *, CNStory * );
 CNStory *	newStory( void );
 void		freeStory( CNStory * );

@@ -35,6 +35,10 @@ typedef struct {
 	CNNarrative *	narrative;
 	Registry *	narratives;
 	Pair *		entry;
+	struct {
+		FILE * stream;
+		int level;
+	} printout;
 // bm_parse() only
 	char *		state;
 	int		errnum;

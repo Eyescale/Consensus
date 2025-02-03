@@ -38,14 +38,14 @@ static inline int indentation_check( BMParseData *data );
 static BMParseCB build_CB;
 
 CNStory *
-readStory( char *path, int ignite ) {
-	if ( !path ) return ( ignite ? newStory() : NULL );
+readStory( char *path, listItem *flags ) {
+	if ( !path ) return NULL;
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
 		errout( StoryLoad, path );
 		return NULL; }
 	CNIO io;
-	io_init( &io, stream, path, IOStreamFile );
+	io_init( &io, stream, path, IOStreamFile, flags );
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
         data.io = &io;
@@ -72,15 +72,10 @@ readStory( char *path, int ignite ) {
 		freeNarrative( data.narrative );
 		freeRegistry( data.narratives, free_CB );
 		data.narratives = NULL; }
-	else if ( !registryLookup( data.narratives, "" ) && ignite ) {
-		CNNarrative *base = newNarrative();
-		registryRegister( data.narratives, "", newItem( base ) ); }
 	bm_parse_exit( &data );
 	io_exit( &io );
 	fclose( stream );
-	return ( data.narratives ) ?
-		(CNStory *) data.narratives :
-		NULL; }
+	return (CNStory *) data.narratives; }
 
 //---------------------------------------------------------------------------
 //	build_CB

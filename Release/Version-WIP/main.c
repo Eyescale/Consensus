@@ -4,7 +4,8 @@
 #include "main.h"
 
 void
-usage( void ) {
+usage( ProgramData *data ) {
+	if (( data )) freeListItem( &data->flags );
 	fprintf( stderr, "B%%: Usage\n"
 		"\t./B%% file.story\n"
 		"\t./B%% -p file.story\n"
@@ -18,32 +19,41 @@ usage( void ) {
 
 #define bar_i( n ) \
 	if ( argc==n+1 && !strncmp( argv[n], "-i", 2 ) ) \
-		interactive = n; \
+		data.interactive = n; \
 	else
 int
 main( int argc, char *argv[] ) {
 
+	if ( argc < 2 ) usage( NULL );
+
+	ProgramData data;
+	memset( &data, 0, sizeof(data) );
+
+	int i;
+	for ( i=1; i<argc && !strncmp(argv[i],"-D",2); i++ )
+		addItem( &data.flags, argv[i]+2 );
+	i--; argc-=i; argv+=i;
+
 	// interprete B% command args
 
-	char *path[2] = { NULL, NULL };
+	char *inipath, *storypath;
 	int printout = 0;
 	int printini = 0;
-	int interactive = 0;
-	if ( argc < 2 ) usage();
 
 	if ( !strncmp( argv[1], "-p", 2 ) ) {
-		if ( argc < 3 ) usage();
-		path[1] = argv[2];
+		if ( argc < 3 ) usage( &data );
+		storypath = argv[2];
 		printout = 1; }
 	else if ( !strncmp( argv[1], "-f", 2 ) ) {
-		if ( argc < 4 ) usage();
-		path[0] = argv[2];
+		if ( argc < 4 ) usage( &data );
+		inipath = argv[2];
 		bar_i( 3 ) {
-			path[1] = argv[3];
-			printini = !strcmp( path[1], "-p" );
+			if ( !strcmp( argv[3], "-p" ) )
+				printini = 1;
+			else storypath = argv[3];
 			bar_i( 4 ) ; } }
 	else bar_i( 1 ) {
-		path[1] = argv[1];
+		storypath = argv[1];
 		bar_i( 2 ) ; }
 
 	// execute B% command
@@ -51,23 +61,16 @@ main( int argc, char *argv[] ) {
 	cnInit();
 
 	if ( printini )
-		cnPrintOut( stdout, path[0], 1 );
+		cnPrintOut( stdout, inipath, data.flags );
 	else if ( printout ) {
-		CNStory *story = readStory( path[1], 0 );
+		CNStory *story = readStory( storypath, data.flags );
 		cnStoryOutput( stdout, story );
 		freeStory( story ); }
-	else if ( interactive ) {
-		CNStory *story = readStory( path[1], 1 );
-		CNProgram *threads = newProgram( story, path[0] );
-		CNCell *this = CNProgramStem( threads );
-		do cnSync(threads); while ( cnOperate( &this, threads ) );
-		freeProgram( threads );
-		freeStory( story ); }
 	else {
-		CNStory *story = readStory( path[1], 0 );
-		CNProgram *threads = newProgram( story, path[0] );
-		do cnSync(threads); while ( cnOperate( NULL, threads ) );
-		freeProgram( threads );
+		CNStory *story = readStory( storypath, data.flags );
+		CNProgram *threads = newProgram( inipath, &story, &data );
+		do cnSync(threads); while ( cnOperate( threads, &data ) );
+		freeProgram( threads, &data );
 		freeStory( story ); }
 
 	cnExit( 1 ); }

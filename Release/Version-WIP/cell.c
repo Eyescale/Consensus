@@ -81,15 +81,14 @@ bm_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
 //	bm_cell_read
 //===========================================================================
 int
-bm_cell_read( CNCell **this, CNStory *story ) {
-	if ( bm_cell_out(*this) ) { *this=NULL; return 1; }
+bm_cell_read( CNCell *cell, CNStory *story ) {
 	CNIO io;
 	memset( &io, 0, sizeof(CNIO) );
 	io.stream = stdin;
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
 	data.io = &io;
-	data.ctx = BMMakeCurrent( *this );
+	data.ctx = BMMakeCurrent( cell );
 	int done = 0;
 	do {	printf( "B%% " ); // prompt
 		io_reset( &io, 1, 3 );

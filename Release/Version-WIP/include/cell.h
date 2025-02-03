@@ -11,7 +11,7 @@ typedef CNEntity CNCell;
 CNCell * newCell( Pair *narrative );
 void	freeCell( CNCell * );
 void	bm_bond( CNEntity *, CNEntity *, CNInstance * );
-int	bm_cell_read( CNCell **, CNStory * );
+int	bm_cell_read( CNCell *, CNStory * );
 void	bm_cell_operate( CNCell *, CNStory * );
 
 static inline Pair * BMCellEntry( CNCell *cell )

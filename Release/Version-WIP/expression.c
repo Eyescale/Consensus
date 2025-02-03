@@ -241,7 +241,7 @@ bm_input( char *fmt, char *arg, BMContext *ctx ) {
 static char *
 bm_read( FILE *stream ) {
 	CNIO io;
-	io_init( &io, stream, NULL, IOStreamInput );
+	io_init( &io, stream, NULL, IOStreamInput, NULL );
 
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );

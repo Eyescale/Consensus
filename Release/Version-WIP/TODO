@@ -128,6 +128,8 @@ NOTES
 		// post-frame
 
 DONE
+	. allowed predefines as command line option, e.g.
+		./B% -DDEBUG file.story
 	. parser.c: forbid 'en' command in post-frame narrative
 	. parser.c: forbid narrative post-frame double-def
 	. renamed *^? into *^%? - consistent with
