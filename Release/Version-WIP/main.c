@@ -59,7 +59,6 @@ main( int argc, char *argv[] ) {
 	// execute B% command
 
 	cnInit();
-
 	if ( printini )
 		cnPrintOut( stdout, inipath, data.flags );
 	else if ( printout ) {
@@ -72,6 +71,6 @@ main( int argc, char *argv[] ) {
 		do cnSync(threads); while ( cnOperate( threads, &data ) );
 		freeProgram( threads, &data );
 		freeStory( story ); }
-
+	freeListItem( &data.flags );
 	cnExit( 1 ); }
 

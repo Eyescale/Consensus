@@ -56,7 +56,6 @@ newProgram( char *inipath, CNStory **story, ProgramData *data ) {
 
 void
 freeProgram( CNProgram *program, ProgramData *data ) {
-	freeListItem( &data->flags );
 	if ( !program ) return;
 	CNCell *cell;
 	listItem **active = &program->threads->active;
