@@ -26,41 +26,66 @@ System Description
 	  are B% entity [aka. state variable], and the occurrences are B%
 	  instructions (performative)
 
-System Completion
-	The system is complete when
-
-	. Each condition has a corresponding action or event occurrence
-	  specified and in use
-
-	. Each event occurrence is either
-	  . corresponding to an action specified and in use
-	  . specified as originating from an action, whose B% Narrative
-	    generates the event via
-
-		in ?: "occurrence"
-			.%action <(%?,ON|OFF)>
-
 System Rules
-	. Each action occurrence also represents its corresponding
+	. Each DO or CL action occurrence substantiates its corresponding
 	  event and condition occurrences, i.e.
-		DO "occurrence" => IN/ON "occurrence" allowed
-	. DO action occurrences may be specified as other event originators,
-	  in which case they must be associated with a B% narrative
-	  generating the event
-	. When not specified as event originator, DO action occurrences
-	  do not require a B% narrative - System events/conditions
+		DO "occurrence" => IN/ON "occurrence" substantiated
+	. DO action occurrences may be specified as occurrence originators,
+	  via
+		DO "action occurrence"
+		> "generated occurrence"
+		...
+	. occurrence-generating action occurrences MUST be associated with
+	  a B% narrative generating the event, via
+		: "action occurrence"
+			...
+			in ?: "generated occurrence"
+				.%action <(%?,ON|OFF)>
+	  This includes
+		DO "action occurrence"
+		> &
 	. When an action narrative is specified, then the corresponding
-	  CL action can not be specified outside that narrative - and the
-	  corresponding OFF event occurrence, if used, must be generated
-	  from inside that same narrative, via
-		in ?:this
-			.%action <(%?,OFF)>
-	. CL action occurrences therefore are not permitted a B% narrative, 
-	  whereas OFF event occurrences which are not CL-actioned require
-	  a B% narrative to generate the event - via
-		in ?: "occurrence"
-			.%action <(%?,OFF)>
+	  CL action can not be specified outside that narrative.
+	  The corresponding OFF event occurrence, if used as IN/ON/OFF,
+	  must be generated from inside that same narrative, via
+		: "action occurrence"
+			...
+			.%action <(this,OFF)>
+	. Conversely neither CL action nor generated occurrences are permitted
+	  a B% narrative, whereas DO action occurrences which are neither
+	  also specified as CL action occurrences nor generating occurrences
+	  may or may not have associated B% narrative - in the negative, they
+	  then substantiate System events/conditions.
+	. TBD: whether multiple actions can generate the same occurrence(s)
+	  and whether a CL occurrence can also be generated remains to be
+	  decided, which has bearing on whether CL and generated occurrences
+	  require a System cosystem instance, and/or whether generated occurrences
+	  pertain to the originating cosystem, in which case
+	  . a System cosystem instance is only required in case of CL occurrences
+	  . one additional level of indirection is required to translate
+	    generated occurrences into system occurrences
 
+Rule Summary
+	"Generated cannot be generating, and vice-versa"
+	where
+		CL occurrences are considered generated occurrences
+
+System Completion
+	The system is complete when every IN/ON/OFF occurrence has
+	a corresponding action or generated occurrence, i.e.
+	. Each event or condition occurrence is either
+	  . corresponding to an action specified and in use
+	  . specified as originating from an action, via
+		: "action occurrence" // B% narrative
+			...
+			in ?: "event or condition occurrence"
+				.%action <(%?,ON|OFF)>
+
+Notes
+	. If the system is not complete, then the user must be informed as to
+	  which IN/ON/OFF occurrence does not have an originator
+	. Some action or generated occurrences may not be used as IN/ON/OFF
+	  occurrences, in which case the user must be warned
 
 Task List
 	. Extract occurrences from System description

@@ -123,7 +123,7 @@ CB_NotCB				if is_f( NEGATED )
 				break;
 			case '*':
 				if ( p[1]=='^' ) {
-CB_DereferenceCB			if ( p[2]=='%' ) p = p_prune( PRUNE_TERM, p );
+CB_RegisterVariableCB			if ( p[2]=='%' ) p = p_prune( PRUNE_TERM, p );
 					else p+=3; // Assumption: *^^
 					f_set( INFORMED ) }
 				else if ( !is_separator(p[1]) || strmatch("*.%(?",p[1]) ) {

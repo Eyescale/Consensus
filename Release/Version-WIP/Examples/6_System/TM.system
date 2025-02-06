@@ -1,10 +1,41 @@
 
 # The following pseudo-narrative allows us to inform our data structure
-# Note that & stands for the last ***specified*** action occurrence
+# Note that '&' stands for the last specified action occurrence
 
-%
+in "init"
+	on "init"
+		do "head initializes
+			. state to A
+			. registry to { { ... }, ... }"
+		do "tape initializes
+			. default symbol to 0
+			. start cell to { default symbol, - , - }
+			. list of cells to { start cell }
+			. current cell to start cell"
+	else off &
+		cl "init" do "output"
 
-in "operation"
+else in "output"
+	on "output"
+		do "starting with leftmost cell"
+		> "output cell has right cell"
+		> "update output cell"
+	else off "update output cell"
+		do "output start symbol '|'"
+	else off &
+		do "output head's state"
+	else off &
+		do "output cell symbol"
+	else off &
+		in "output cell has right cell"
+			do "shift output cell right"
+			> "output cell has right cell"
+			> "update output cell"
+		else in "head's state is Halt"
+			do "exit"
+		else cl "output" do "operation"
+
+else in "operation"
 	on "operation"
 		do "current cell communicates its symbol to head"
 	else on &
@@ -40,37 +71,4 @@ in "operation"
 			off "allocate new left cell"
 				do "shift current to left"
 		else cl "operation" do "output"
-
-else in "output"
-	on "output"
-		do "starting with leftmost cell"
-		> "output cell has right cell"
-		> "update output cell"
-	else off "update output cell"
-		do "output start symbol '|'"
-	else off &
-		do "output head's state"
-	else off &
-		do "output cell symbol"
-	else off &
-		in "output cell has right cell"
-			do "shift output cell right"
-			> "output cell has right cell"
-			> "update output cell"
-		else in "head's state is Halt"
-			do "exit"
-		else cl "output" do "operation"
-
-else in "init"
-	on "init"
-		do "head initializes
-			. state to A
-			. registry to { { ... }, ... }"
-		do "tape initializes
-			. default symbol to 0
-			. start cell to { default symbol, - , - }
-			. list of cells to { start cell }
-			. current cell to start cell"
-	else off &
-		cl "init" do "output"
 

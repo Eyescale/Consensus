@@ -35,15 +35,26 @@ Description
 Data Model
 	We use the following Data Model when the System is in execution,
 
-			         .------------- Guard
-			         v                ^
-			 .-------+----- Trigger   |
-			 v		   ^      |
-	              Action               |      |
-		         |----------------- 	  |
-			  ------------------------
+					O
+				       -:-
+				       / \
+	 .---> condition .
+	 |	  ...      } guard ----.
+	 .---> condition .	        |
+	 |			        |
+	 |			        |
+	 |  .---> event .	        v
+	  --|	    ...   } trigger ----+---> action ----.
+	    .---> event .			          |
+	    ^ 					          |
+	    | 					          |
+	     ------------- [ B% Narrative ] --------------
+
+
+				     Machine
+
 	where
-		Action: ((occurrence,ON|OFF),cosystem)
+		action: ((occurrence,ON|OFF),cosystem)
 
 	. Occurrences are statements representing cosystem conditions
 	. Each occurrence actually doubles as (occurrence,{ON,OFF}) to allow 
@@ -253,31 +264,30 @@ System launch
 			// foreach (trigger, action) instantiate same, for which
 			?:( ., %? ) { ( %?:(?,.)^, %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
-				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)),
+				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)),
 				// foreach guard:%(?,(trigger,action)) instantiate same, for which
 				?:( ?, %? ) { ( (%?)^, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					!?:( ?, %? ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
-				} } } )
+					!?:( ?, %? ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)) }}}})
 
 	That is, without the comments:
 
 	do : %cosystem : !! Cosystem(
 		?:((.,ON|OFF),^^) { ( %?:(?,.), *^^ ) |
 			?:(.,%?) { ( %?:(?,.)^, %| ) | {
-				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)),
+				!?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)),
 				?:(?,%?) { ( (%?)^, %| ) |
-					!?:(?,%?) (( %?:(?,.), *^?:(.,?) ), %|:(?,.)) }
-				} } } )
+					!?:(?,%?) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)) }}}})
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized
+		^^ represents the current assignee's value in the assignment buffer
+		*^^ represents the current assigner's value in the assignment buffer
+		*^%?:sub represents %?:sub's value in the assignment buffer
 		(_)^ means "mark if new", and !?: means "iff marked" (opt)
-		^^ represents the current assignee in the assignment buffer
-		*^^ represents the current value in the assignment buffer
-		*^?:sub represents %(%?:sub)'s value in the assignment buffer
 
-		Note: *%(%?:sub) would represent %(%?:sub)'s value ** in CNDB **
-		Likewise *(^^) would represent ^^'s previous value ** in CNDB **
+	Note
+	. *(^^) and *%?:sub would represent resp. ^^'s and *%?:sub's values in CNDB,
+	  whereas *^^ and *^%?:sub represent these values in the assignment buffer
 
 System init
 	System launch ensures that each cosystem knows how to play its part,

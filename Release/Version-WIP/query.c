@@ -77,7 +77,6 @@ bm_query( int type, char *expression, BMContext *ctx,
 
 static BMQTake
 verify_candidate( CNInstance *e, char *expression, BMQueryData *data ) {
-	CNDB *db;
 	switch ( data->type ) {
 	case BM_INSTANTIATED:
 		if ( db_manifested(e,data->db) && xp_verify(e,expression,data) ) {
@@ -162,7 +161,6 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 			freeListItem( &xpn );
 			freeListItem( &data->exponent );
 			return 0; } }
-
 	CNInstance *e = bm_lookup( privy, p, data->ctx, data->db );
 	if (( e )) {
 		data->pivot = newPair( p, e );
@@ -244,12 +242,12 @@ POP_stack:		POP( stack, exponent, PUSH_stack )
 		for ( ; ; ) {
 PUSH_xpn:		PUSH( stack.xpn, xpn, POP_xpn )
 PUSH_list:		LUSH( stack.list, lm, POP_list )
-			if ( lm!=2 ) { // ward off doublons Here
+			if ( lm&1 ) { // ward off doublons Here
 				if ( !addIfNotThere( &trail, e ) )
 					goto POP_list;
 				if ( lm==1 ) e = e->sub[ 1 ]; }
 PUSH_exp:		PUSH( stack.exp, exponent, POP_exp )
-			if (( lm!=2 || ( addIfNotThere( &trail, e ) )) &&
+			if (( lm&1 || ( addIfNotThere( &trail, e ) )) &&
 			    ( verify_CB( e, expression, data )==BMQ_DONE )) {
 				success = e; break; }
 POP_exp:		POP( stack.exp, exponent, PUSH_exp )
@@ -558,12 +556,8 @@ case_( dot_identifier_CB )
 	popListItem( &data->stack.exponent );
 	_break
 case_( dereference_CB )
-	if ( p[1]=='^' )
-		switch_over( match_CB, p, p )
-	else {
-		xpn_add( &data->mark_exp, SUB, 1 );
-		_return( 1 ) }
-	_break
+	xpn_add( &data->mark_exp, SUB, 1 );
+	_return( 1 )
 case_( sub_expression_CB )
 	char *mark = bm_locate_mark( p+1, &data->mark_exp );
 	if (( data->mark_exp )) {

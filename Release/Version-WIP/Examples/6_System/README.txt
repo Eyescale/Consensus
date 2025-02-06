@@ -3,6 +3,7 @@ Name
 
 Usage
 	../../B% system.story < TM.system
+	../../B% output.story < TM.system
 
 File Format Description
 	tabs else
@@ -12,8 +13,6 @@ File Format Description
 	tabs > "_"
 
 Rules
-	. The implementation allows to start at a higher margin, and
-	  then to decrease (but never go back higher!)
 	. type '>' cannot be ELSE, must be level, and preceded by DO 
 	. '&' references the last CL resp. DO string in narrative,
 	  regardless of level - we call it 'that' -
@@ -38,10 +37,11 @@ Implementation
 
 		: *tab : (((( .(*tab), (IN,$)), (ELSE_IN,$)), ... ), (ELSE_OFF,$))
 			      ^------ ( %%, *tab )
-		where
-			$ is ( %( s, ... ), %% ) // aka. string
+	where
+		$ is (( '\0', ... ), %((?,...):*s) ) /* aka. string, which
+					is input (s,...) in reverse */
 
-	as illustrated below:
+	and as illustrated below:
 	
 			**tab grows vertically
 				 |
@@ -70,13 +70,14 @@ Implementation
 	  . Note that we also do not accept ELSE_XX if last condition is ELSE
 	. if less tabs than are in *tab were entered, then we do
 		: tab : ( *current, ~. )
-		// which btw here may leave (ELSE_OFF,$) dangling
+		// which btw here would leave (ELSE_OFF,$) dangling
 	  and apply the same rules as above, with the exception that here, ie.
 	  after we pop, we do accept ELSE_XX iff current tab is not marked, and
 	  the last condition is not ELSE
 
+	Note: implementation follows these rules without marking
+
 TODO:
 	. output
-	. better err vs. EOF management
 	. create in CNDB
 	. integrate with cosystem

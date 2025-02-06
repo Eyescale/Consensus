@@ -336,15 +336,24 @@ case_( wildcard_CB )
 		data->sub[ NDX ] = newItem( NULL ); }
 	_break
 case_( register_variable_CB )
+	// Note: we cannot just invoke collect_CB because of the
+	// instantiate-special sub treatment for %?, %! and %|
 	BMContext *carry = data->carry;
 	CNDB *db = data->db;
 	listItem *found;
 	listItem **sub;
 	CNInstance *e;
 	switch ( p[1] ) {
-	case '<': ;
-		found = eenov_inform( data->ctx, db, p, carry );
-		data->sub[ NDX ] = found;
+	case '?':
+	case '!':
+		e = BMContextRVV( data->ctx, p );
+		if (( e )&&( p[2]==':' )) {
+			listItem *xpn = xpn_make(p+3);
+			e = xpn_sub( e, xpn );
+			freeListItem( &xpn ); }
+		if (( e )) e = bm_translate( carry, e, db, 1 );
+		if (( e )) data->sub[ NDX ] = newItem( e );
+		else _prune( BM_PRUNE_LEVEL, p );
 		break;
 	case '|':
 		found = BMContextRVV( data->ctx, p );
@@ -357,30 +366,29 @@ case_( register_variable_CB )
 				if (( e )) addItem( sub, e ); }
 		freeListItem( &xpn );
 		break;
-	case '?':
-	case '!':
+	case '<':
+		found = eenov_inform( data->ctx, db, p, carry );
+		data->sub[ NDX ] = found;
+		break;
+	case '%':
 		e = BMContextRVV( data->ctx, p );
-		if (( e )&&( p[2]==':' )) {
-			listItem *xpn = xpn_make(p+3);
-			e = xpn_sub( e, xpn );
-			freeListItem( &xpn ); }
 		if (( e )) e = bm_translate( carry, e, db, 1 );
 		if (( e )) data->sub[ NDX ] = newItem( e );
-		else _prune( BM_PRUNE_LEVEL, p );
+		else _prune( BM_PRUNE_LEVEL, p )
 		break;
 	default:
-		if ( is_separator(p[1]) && p[1]!='@' ) {
-			e = BMContextRVV( data->ctx, p );
-			if (( e )) e = bm_translate( carry, e, db, 1 );
-			if (( e )) data->sub[ NDX ] = newItem( e );
-			else _prune( BM_PRUNE_LEVEL, p ) }
-		else {
+		if ( p[1]=='@' || !is_separator(p[1]) ) {
 			found = BMContextRVV( data->ctx, p );
 			if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
 			sub = &data->sub[ NDX ];
 			for ( listItem *i=found; i!=NULL; i=i->next ) {
 				e = bm_translate( carry, i->ptr, db, 1 );
-				if (( e )) addItem( sub, e ); } } }
+				if (( e )) addItem( sub, e ); } }
+		else {
+			e = BMContextRVV( data->ctx, p );
+			if (( e )) e = bm_translate( carry, e, db, 1 );
+			if (( e )) data->sub[ NDX ] = newItem( e );
+			else _prune( BM_PRUNE_LEVEL, p ) } }
 	_break
 case_( literal_CB )
 	/* We have	(:_sequence_:)

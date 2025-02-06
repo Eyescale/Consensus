@@ -12,6 +12,12 @@ TODO
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
 		. finalize and test TM.system example (manual)
+	. cache shared arena entities - cf. Examples/6_System/system.spec
+	. deternarize.c:optimize() - if (p[1]!='^') newborn: to be removed
+	. generalize support for (~.:_) - vs. specific ternary expression
+		=> would simplify parser.c and deternarize.c
+	. remove newborn feature - why is there 
+	. reorder Test/ directory
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
 	. TBD: I would like to replace else on/off & etc. with
@@ -69,6 +75,7 @@ TODO
 			do %?|^guard
 
 BUGS
+	. in system.story, if ~(s) instead of (s,~.) => crash
 	. NTH: parser.c: in "^" on '^' if ( is_f(FORE) ) ...
 	  strictly speaking we should verify either
 		are_f(ASSIGN|PRIMED|CARRY|FORE) or
@@ -80,7 +87,6 @@ BUGS
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
 		done in case of identifier, but not for proxy nor shared
-	. in system.story, if ~(s) instead of (s,~.) => crash
 	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
 	  => that's because parser replaces %( with default format %_
 	     should actually exit on error
@@ -128,6 +134,16 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented %$ special case support in expression.c:bm_output()
+	  	do > "%$": %((?,...):*p) // will take (.,?)
+	  instead of, previously
+	  	do > "%$": %(%((?,...):*p):(.,?))
+		where
+			*p : (( tab, ... ), '\t' )
+	  cf. PivotQueryOptimization.spec for performance win
+	. allowed > & as generated occurrence - only way to specify action's
+	  generated occurrence without NCR
+	. *^^ and *^%? now handled through traversal.h:CB_RegisterVariableCB
 	. allowed predefines as command line option, e.g.
 		./B% -DDEBUG file.story
 	. parser.c: forbid 'en' command in post-frame narrative
@@ -215,13 +231,6 @@ DONE
 	  where the first term is not BYREF
 	  cf. design/specs/bm-PARSE-implementation.txt
 	. renamed traversal_flags.h into parser_flags.h
-	. implemented %sub$ in output format - used in system.story
-	  	do > "%(.,?)$": %((?,...):*p)
-	  instead of, previously
-	  	do > "%$": %(%((?,...):*p):(.,?))
-		where
-			*p : (( tab, ... ), '\t' )
-	  cf. PivotQueryOptimization.spec for performance win
 	. implemented string as output argument - e.g.
 		do >"hello, %s\n": "world"
 	  RESTRICTIONS: base level only - base ternary term included
@@ -563,6 +572,7 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. do : expr : . // reassign expr - as we have already do : .
 	. parser_macros: extract REENTER + put caught in io struct
 	. expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
 	. do >format:args | format:args | format:args

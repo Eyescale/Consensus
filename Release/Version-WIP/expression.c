@@ -33,12 +33,8 @@ static BMQueryCB scan_CB;
 listItem *
 bm_scan( char *expression, BMContext *ctx ) {
 	listItem *results = NULL;
-	if ( !strncmp( expression, "*^", 2 ) ) {
-		CNInstance *e = BMContextRVV( ctx, expression );
-		if (( e )) results = newItem( e ); }
-	else {
-		bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
-		reorderListItem( &results ); }
+	bm_query( BM_CONDITION, expression, ctx, scan_CB, &results );
+	reorderListItem( &results );
 	return results; }
 
 static BMQTake
@@ -288,11 +284,9 @@ bm_outputf( FILE *stream, char *fmt, listItem *args, BMContext *ctx )
 				else if ((args)) {
 					char *arg = args->ptr;
 					bm_output( stream, fmt+1, arg, ctx );
-					args = args->next;
-					if ( fmt[1]=='(' ) {
-						fmt = prune_xsub(fmt+1) + 1;
-						break; } }
-				fmt+=2; break;
+					args = args->next; }
+				fmt += 2;
+				break;
 			default:
 				if (( delta=charscan( fmt, &q ) )) {
 					fprintf( stream, "%c", q.value );
@@ -329,11 +323,17 @@ bm_output( FILE *stream, char *fmt, char *arg, BMContext *ctx )
 			fprintf( stream, "%c", *c );
 		return 0; }
 
-	OutputData data = { stream, fmt, 1, NULL };
+	OutputData data;
+	data.stream = stream;
+	data.fmt = fmt;
+	data.first = 1;
+	data.last = NULL;
 
 	// special case: EEnoRV as-is
 	if ( !strncmp(arg,"%<",2) && strmatch("s$_",*fmt) && !p_filtered(arg) )
 		return eenov_output( arg, ctx, &data );
+	else if ( *fmt=='$' && !strncmp(arg,"%((?,...)",9) ) 
+		data.fmt = ".";
 
 	bm_query( BM_CONDITION, arg, ctx, output_CB, &data );
 	return bm_out_last( &data, BMContextDB(ctx) ); }
@@ -346,45 +346,27 @@ output_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //===========================================================================
 //	bm_out_put / bm_out_last
 //===========================================================================
-static inline int out_pass( int pass, char *, OutputData *, CNDB * );
-
 void
-bm_out_put( OutputData *data, CNInstance *e, CNDB *db ) {
-	char *fmt = data->fmt;
-	if ( *fmt=='(' ) {
-		listItem *xpn = xpn_make( fmt );
-		if ( !xpn ) return;
-		e = xpn_sub( e, xpn );
-		freeListItem( &xpn );
-		if ( !e ) return;
-		fmt = prune_xsub( fmt ); }
-	out_pass( 0, fmt, data, db );
-	data->last = e; }
+bm_out_put( OutputData *data, CNInstance *f, CNDB *db ) {
+	CNInstance *e = data->last;
+	if (( e )) {
+		char *fmt = (*data->fmt=='.') ? "$" : data->fmt;
+		db_outputf( db, data->stream,
+			*fmt=='$' ? "%s" : data->first ?
+				*fmt=='s' ? "\\{ %s" : "{ %_" :
+				*fmt=='s' ? ", %s" : ", %_", e );
+		data->first = 0; }
+	data->last = (*data->fmt=='.') ? CNSUB(f,1) : f; }
 
 int
 bm_out_last( OutputData *data, CNDB *db ) {
-	char *fmt = data->fmt;
-	if ( *fmt=='(' ) fmt = prune_xsub( fmt );
-	return out_pass( 1, fmt, data, db ); }
-
-static inline int
-out_pass( int is_last, char *fmt, OutputData *data, CNDB *db ) {
 	CNInstance *e = data->last;
 	if ( !e ) return 0;
-	FILE *stream = data->stream;
-	if ( *fmt=='$' )
-		db_outputf( db, stream, "%s", e );
 	else {
-		switch ( is_last ) {
-		case 0: // not last pass
-			db_outputf( db, stream, (( data->first ) ?
-				*fmt=='s' ? "\\{ %s" : "{ %_" :
-				*fmt=='s' ? ", %s" : ", %_" ), e );
-			data->first = 0;
-			break;
-		default:
-			db_outputf( db, stream, (( data->first ) ?
+		char *fmt = (*data->fmt=='.') ? "$" : data->fmt;
+		db_outputf( db, data->stream,
+			*fmt=='$' ? "%s" : data->first ?
 				*fmt=='s' ? "%s" : "%_" :
-				*fmt=='s' ? ", %s }" : ", %_ }" ), e ); } }
-	return 1; }
+				*fmt=='s' ? ", %s }" : ", %_ }", e );
+		return 1; } }
 

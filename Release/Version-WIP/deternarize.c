@@ -106,7 +106,9 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 static int
 pass_CB( char *guard, void *user_data ) {
 	BMContext *ctx = user_data;
-	return !!bm_feel( BM_CONDITION, guard, ctx ); }
+	return !strncmp( guard, "(~.:", 4 ) ?
+		!bm_feel( BM_CONDITION, guard+4, ctx ) :
+		!!bm_feel( BM_CONDITION, guard, ctx ); }
 
 static void
 s_scan( CNString *s, listItem *sequence )

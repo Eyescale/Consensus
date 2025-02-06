@@ -96,22 +96,24 @@ case_( star_character_CB )
 case_( register_variable_CB )
 	int mark = 0;
 	switch ( *p ) {
-	case '^':
-		switch ( p[1] ) {
-		case '^': mark = EYEYE; break;
-		case '.': mark = TAG; }
-		break;
 	case '%':
 		switch ( p[1] ) {
 		case '?': mark = QMARK; break;
 		case '!': mark = EMARK; break;
-		case '.': mark = PARENT; break;
 		case '%': mark = SELF; break;
 		case '@': mark = ACTIVE; break;
 		case '<': if ( p[2]=='.' ) break;
 			{ mark = EENOK; break; }
 		default: if ( !is_separator(p[1]) )
-			{ mark = TAG; } } }
+			{ mark = TAG; } }
+		break;
+	case '.': mark = PARENT; break;
+	case '*': mark = EYEYE; break;
+	case '^':
+		switch ( p[1] ) {
+		case '^': mark = EYEYE; break;
+		case '.': mark = TAG; }
+		break; }
 	if ( mark ) {
 		if CHECK( mark )
 			_return( 2 ) }

@@ -619,14 +619,12 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 			return ((entry) ? entry->value : NULL ); }
 		break;
 	case '*':
-		// assuming p[1]=='^'
-		switch ( p[2] ) {
-		case '^':
+		if ( !strncmp(p+1,"^^",2) ) {
 			entry = registryLookup( ctx, "^" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
-			return NULL;
-		case '%':
+			return NULL; }
+		else if ( !strncmp(p+1,"^%",2) ) {
 			entry = registryLookup( ctx, "?" );
 			if (!( i=entry->value )) return NULL;
 			CNInstance *e = ((Pair *) i->ptr )->value;
