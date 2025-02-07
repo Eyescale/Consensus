@@ -1,14 +1,16 @@
 #ifndef LINENO_BM
 #define LINENO_BM
 
-#~#	// uncomment to unpound the pounded lines below
+// #~#	// uncomment to unpound the pounded lines below
 // ##	// uncomment to repound the pounded lines below
 
 //---------------------------------------------------------------------------
 //	LineNo
 //---------------------------------------------------------------------------
 : LineNo
-	on buffer < ..
+	on : line < ..
+		do (((..,l),...), %(l,?:...))
+	else on buffer < ..
 		// input buffer starts with '\n' of current line
 		do ( c, ~. )
 	else on : input : ? < ..

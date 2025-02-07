@@ -112,7 +112,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_push( stack )
 							f_clr( FIRST|INFORMED|PRIMED ) } }
 			else if ( ( *type&(IN|ON) && !expr(CONTRARY) && f_markable(stack) ) ||
-				  ( is_f(SUB_EXPR|FORE) && !is_f(MARKED|NEGATED) ) ) {
+				  ( is_f(SUB_EXPR|FORE) && !is_f(MARKED|NEGATED|CONTRA) ) ) {
 					do_( same )	s_take
 							f_set( MARKED|INFORMED ) }
 			else if ( *type&DO && !is_f(byref) ) { // FORE loop bgn

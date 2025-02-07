@@ -1,22 +1,59 @@
 See Also: design/story/interactive.story
 
+REFACTORING [WIP]
+	. remove newborn optimization // clarify launch formula
+		. instantiate.c
+		. database.c
+		. deternarize.c:optimize() - if (p[1]!='^') newborn: to be removed
+		. traversal.h
+		. ../../Base/prune.c
+		. Examples/53_...
+	  previously DONE
+	  > implemented (_)^ use case, as per design/story/interactive.story
+	    => instantiate.c: collect_CB uses bm_list_inform() which first tests
+	       results via bm_intake so as to set data->newborn.current flag
+	  > implemented (_)^
+		. database.h => db_has_newborn( listItem *, CNDB * );
+		. instantiate.c:case_( wildcard_CB )
+		. traversal.h: case '!' => CB_WildCardCB
+		. Testing: cf Test/55-bingo_bonga
+		  implemented !^:(_)(_) - so that
+			newborn_authorized => instantiate 1st (_)
+			otherwise => instantiate 2nd (_)
+	  > implemented sub-mark optimization - cf. new design / double trigger
+		allow (_)^(.,.)	to enable sub-mark
+		allowing !^(?,.) or !^(.,?) or !^(?,?) or !^(.,.)
+			to precondition instantiation loop
+		or branch e.g. !^(?,.):(1)(2) means
+			if mark.sub[ 0 ] has newborn then do 1 else do 2
+			cf. Test/55_bingo-bonga
+		Note that in include/traversal.h
+			)^_ invokes CB_NewBornCB, on the caret
+			!^_ invokes CB_WildCardCB, on the exclamation mark
+
 TODO
+	. pass ./B% -p inform.story
+		?:!!		// match unnamed
+		$(s,?:...)	// match or generate string
+		/(ON|OFF)/	// pivot case? could use %/ to store results
+		EVA		// if no proxy => check local assignment event
+		do : take |: !! | {_}
+	  Notes
+		$((?,...):*s)	// do later
+		$<(!,?:...)>	// do later
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!
-		[ DONE ] output system as is => in .:output
-		. create data structure & output as per system model [*]
+		[ DONE ] output system as is => cf output.story
+		[ WIP ] create data structure  => cf inform.story
+		[ WIP ] inform.story: implement NCR in :err
+		[ WIP ] inform.story: output data structure as per system model [*]
 		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
-		. allow {ON,OFF} in query ?
 		. cosystem init
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
 		. finalize and test TM.system example (manual)
-	. cache shared arena entities - cf. Examples/6_System/system.spec
-	. deternarize.c:optimize() - if (p[1]!='^') newborn: to be removed
-	. generalize support for (~.:_) - vs. specific ternary expression
-		=> would simplify parser.c and deternarize.c
-	. remove newborn feature - why is there 
+	. cleanup & complete design/story/ contents
 	. reorder Test/ directory
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
@@ -299,16 +336,6 @@ DONE
 	. .:function ( parameters ) // function definition
 	  RESTRICTION: func multiple definitions allowed but not executed
 		as operation.c:do_enable() returns on first match
-	. implemented sub-mark optimization - cf. new design / double trigger
-		allow (_)^(.,.)	to enable sub-mark
-		allowing !^(?,.) or !^(.,?) or !^(?,?) or !^(.,.)
-			to precondition instantiation loop
-		or branch e.g. !^(?,.):(1)(2) means
-			if mark.sub[ 0 ] has newborn then do 1 else do 2
-			cf. Test/55_bingo-bonga
-		Note that in include/traversal.h
-			)^_ invokes CB_NewBornCB, on the caret
-			!^_ invokes CB_WildCardCB, on the exclamation mark
 	. implemented
 		in ?: "string"	// cf. Test/67_in-str
 	  in addition to
@@ -381,9 +408,6 @@ DONE
 		~.(	must be written verbatim (no space)
 		?:...	must be written verbatim (no space)
 	. RE-REVISION 2.2: using %|:sub instead of %|^sub - more understandable
-	. implemented %(_)^ use case, as per design/story/interactive.story
-	  => instantiate.c: collect_CB uses bm_list_inform() which first tests
-	     results via bm_intake so as to set data->newborn.current flag
 	. p_prune( PRUNE_TERM, p ) now returns on '^' if follows ')'
 	. p_prune( PRUNE_LEVEL, p ) / integrated in prune.c / handles '^'
 	. bm_traverse(): handles '^' use cases:
@@ -468,14 +492,6 @@ DONE
 		Note that in traversal.h NEGATED only applies
 		to term - i.e. is NOT passed inside (_)
 	. redesigned context.c:bm_mark() and operation.c interface
-	. implemented (_)^
-		. database.h => db_has_newborn( listItem *, CNDB * );
-		. instantiate.c:case_( wildcard_CB )
-		. traversal.h: case '!' => CB_WildCardCB
-		. Testing: cf Test/55-bingo_bonga
-		  implemented !^:(_)(_) - so that
-			newborn_authorized => instantiate 1st (_)
-			otherwise => instantiate 2nd (_)
 	. icast stuff moved to Base/pair.h
 	. fprint_expr completed - test cases
 		./B% -p Test/50_carry-piped

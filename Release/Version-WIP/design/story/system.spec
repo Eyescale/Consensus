@@ -66,14 +66,16 @@ System Rules
 	    generated occurrences into system occurrences
 
 Rule Summary
-	"Generated cannot be generating, and vice-versa"
+		"Generated cannot be generative, & vice-versa"
 	where
 		CL occurrences are considered generated occurrences
+		DO occurrences are considered generative if they are
+		   explicitely specified as generating occurrences
 
 System Completion
 	The system is complete when every IN/ON/OFF occurrence has
-	a corresponding action or generated occurrence, i.e.
-	. Each event or condition occurrence is either
+	a corresponding action or generated occurrence, that is:
+	Each event or condition occurrence is either
 	  . corresponding to an action specified and in use
 	  . specified as originating from an action, via
 		: "action occurrence" // B% narrative

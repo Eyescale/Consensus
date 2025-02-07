@@ -246,22 +246,18 @@ case_( bgn_pipe_CB )
 	_break
 case_( bgn_set_CB )
 	int mode = data->type;
-	int check = ( *p=='{' || ( *p=='<' && mode&OUTPUT ));
-	if ( check ) {
-		char *partition = p_prune( PRUNE_LEVEL, p+1 );
-		if ( *partition!=',' )
-			add_item( &data->stack.level, 0 );
-		else {
+	if ( *p=='{' || ( *p=='<' && mode&OUTPUT )) {
+		if ( is_f(PIPED) || *p_prune( PRUNE_LEVEL, p+1 )==',' ) {
 			add_item( &data->stack.level, data->level );
-			retab( data, p ); } }
+			retab( data, p ); }
+		else add_item( &data->stack.level, 0 ); }
 	_break
 case_( end_set_CB )
 	popListItem( &data->stack.level );
 	_break
 case_( comma_CB )
 	int mode = data->type;
-	int check = is_f(SET) || ( is_f(VECTOR) && mode&OUTPUT );
-	if ( check && !is_f(LEVEL|SUB_EXPR) ) {
+	if (( is_f(SET) || ( is_f(VECTOR) && mode&OUTPUT )) && !is_f(LEVEL|SUB_EXPR) ) {
 		int level = cast_i( data->stack.level->ptr );
 		if ( level ) {
 			data->level = level;
