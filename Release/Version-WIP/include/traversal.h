@@ -97,8 +97,8 @@ CB_BgnSetCB			f_push( stack )
 				p++;
 CB_TermCB			break;
 			case '!':
-				if ( p[1]=='!' )
-					p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				if ( p[1]=='!' ) {
+CB_BangBangCB				p+=2; }
 				else {
 					f_set( INFORMED )
 CB_EMarkCB				p++; }

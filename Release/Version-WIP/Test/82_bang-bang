@@ -1,0 +1,6 @@
+
+	on init
+		do : take |: !! | { ( c, %| ) }
+	else in : take : !!
+		do >: .
+		do exit

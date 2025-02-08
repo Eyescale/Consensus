@@ -640,6 +640,7 @@ match( char *p, BMQueryData *data )
 	CNInstance *x = x_sub( data->instance, data->stack.exponent, data->base );
 	if ( !x ) return -1;
 	if ( !p ) return 1; // wildcard
+	if ( !strncmp(p,"!!",2) ) return cnIsShared(x) && cnIsUnnamed(x);
 	if (( data->pivot ) && p==data->pivot->name ) {
 		if ( *p=='%' && ( p[1]=='@' || !is_separator(p[1]) ) )
 			return !!lookupIfThere( data->pivot->value, x );

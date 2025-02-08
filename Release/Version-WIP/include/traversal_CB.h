@@ -69,6 +69,7 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMFilterCB
 	BMPipeAssignCB
 	BMWildCardCB
+	BMBangBangCB
 	BMDotExpressionCB
 	BMDotIdentifierCB
 	BMFormatCB
@@ -221,6 +222,12 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 #define CB_WildCardCB	_CB( BMWildCardCB )
 #else
 #define CB_WildCardCB
+#endif
+
+#ifdef BMBangBangCB
+#define CB_BangBangCB	_CB( BMBangBangCB )
+#else
+#define CB_BangBangCB
 #endif
 
 #ifdef BMDotExpressionCB

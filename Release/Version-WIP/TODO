@@ -2,10 +2,10 @@ See Also: design/story/interactive.story
 
 TODO
 	. inform.story - must pass ./B% -p
-		?:!!		// match unnamed
 		/(ON|OFF)/	// pivot case? could use %/ to store results
-		$(s,?:...)	// match or generate string
+		$(s,?:...)	// generate string - reuse if existing
 	  Notes
+		$(s,?:...)	// do later: match string
 		$((?,...):*s)	// do later
 		$<(!,?:...)>	// do later
 	. feature complete Examples/6_System
@@ -138,6 +138,7 @@ NOTES
 		// post-frame
 
 DONE
+	. allowed !! in *type&(IN|ON) expressions, passing if UBE
 	. implemented do : expr |: !! | {_}
 	. extended eenov.c:lookup_EEVA( e, db ) to look for ((*,x),y)
 	  in db_dst's manifested log where, EITHER

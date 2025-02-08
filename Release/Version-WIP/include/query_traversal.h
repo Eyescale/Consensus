@@ -21,6 +21,7 @@ static BMTraverseCB
 #define BMCharacterCB		match_CB
 #define BMRegexCB		match_CB
 #define BMIdentifierCB		match_CB
+#define BMBangBangCB		match_CB
 #define BMDotIdentifierCB	dot_identifier_CB
 #define BMDereferenceCB		dereference_CB
 #define BMSubExpressionCB	sub_expression_CB

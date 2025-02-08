@@ -39,14 +39,13 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) { do_( "(" )	s_take }
 		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) 	s_take }
+		on_( '!' ) if ( !is_f(INFORMED) ) { do_( "!" ) }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 			   else if ( *type&DO ) { do_( "@" )	s_take }
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
 		on_( '^' ) if ( !is_f(INFORMED) ) { do_( "^" )	s_take }
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
 				do_( "@" )	s_take }
-		on_( '!' ) if ( *type&DO && !is_f(INFORMED) ) {
-				do_( "!" ) }
 		on_( '"' ) if ( *type&DO && s_empty ) {
 				do_( "\"$" )	s_take }
 			else if ( *type&OUTPUT && f_outputable(stack) ) {
@@ -484,6 +483,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "|" )	s_add( ":|" )
 						f_clr( byref|NEGATED|STARRED )
 						f_set( PIPED ) }
+		on_( '!' ) if ( *type&(IN|ON) ) {
+				do_( ":!" )	s_add( ":!" )
+						f_set( FILTERED ) }
 		on_( '?' )	; // err
 		on_other	do_( "expr" )	REENTER
 						s_add( ":" )
@@ -524,12 +526,18 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_reset( FIRST|VECTOR, 0 )
 			end
 		in_( ":!" ) bgn_
-			on_( '!' )	do_( "!!" )	s_take
+			on_( '!' ) if ( *type&(IN|ON) ) {
+					do_( "expr" )	s_take
+							f_set( INFORMED ) }
+				else {	do_( "!!" )	s_take
 							expr_set( NASCENT )
-							f_clr( ASSIGN|PRIMED )
+							f_clr( ASSIGN|PRIMED ) }
 			end
 	in_( "!" ) bgn_
-		on_( '!' ) if ( s_empty ) {
+		on_( '!' ) if ( *type&(IN|ON) ) {
+				do_( "expr" )	s_add( "!!" )
+						f_set( INFORMED ) }
+			else if ( s_empty ) {
 				do_( "!!" )	s_add( "!!" ) }
 		end
 	in_( "!!" ) bgn_
