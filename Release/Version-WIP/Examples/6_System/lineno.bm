@@ -8,7 +8,7 @@
 //	LineNo
 //---------------------------------------------------------------------------
 : LineNo
-	on : line < ..
+	on : .. : line < ..
 		do (((..,l),...), %(l,?:...))
 	else on buffer < ..
 		// input buffer starts with '\n' of current line

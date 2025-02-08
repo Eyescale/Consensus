@@ -2,7 +2,6 @@ See Also: design/story/interactive.story
 
 TODO
 	. inform.story - must pass ./B% -p
-		do : take |: !! | {_}
 		?:!!		// match unnamed
 		/(ON|OFF)/	// pivot case? could use %/ to store results
 		$(s,?:...)	// match or generate string
@@ -139,6 +138,7 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented do : expr |: !! | {_}
 	. extended eenov.c:lookup_EEVA( e, db ) to look for ((*,x),y)
 	  in db_dst's manifested log where, EITHER
 		db_dst: BMProxyDB( e->sub[1] )
