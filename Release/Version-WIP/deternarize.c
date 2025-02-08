@@ -273,12 +273,11 @@ optimize( Pair *segment, char *p )
 /*
 	remove expression's result's enclosing parentheses if possible
 */ {
-	if ( p[1]!='^' ) {
-		segment = segment->name;
-		char *bgn = segment->name;
-		char *end = segment->value; // segment ended after '('
-		if (( bgn==end-1 ) || !strmatch( "~*%.)", *(end-2) ))
-			{ segment->value--; return p+1; } }
+	segment = segment->name;
+	char *bgn = segment->name;
+	char *end = segment->value; // segment ended after '('
+	if (( bgn==end-1 ) || !strmatch( "~*%.)", *(end-2) )) {
+		segment->value--; return p+1; }
 	return p; }
 
 //===========================================================================

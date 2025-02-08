@@ -1,38 +1,7 @@
 See Also: design/story/interactive.story
 
-REFACTORING [WIP]
-	. remove newborn optimization // clarify launch formula
-		. instantiate.c
-		. database.c
-		. deternarize.c:optimize() - if (p[1]!='^') newborn: to be removed
-		. traversal.h
-		. ../../Base/prune.c
-		. Examples/53_...
-	  previously DONE
-	  > implemented (_)^ use case, as per design/story/interactive.story
-	    => instantiate.c: collect_CB uses bm_list_inform() which first tests
-	       results via bm_intake so as to set data->newborn.current flag
-	  > implemented (_)^
-		. database.h => db_has_newborn( listItem *, CNDB * );
-		. instantiate.c:case_( wildcard_CB )
-		. traversal.h: case '!' => CB_WildCardCB
-		. Testing: cf Test/55-bingo_bonga
-		  implemented !^:(_)(_) - so that
-			newborn_authorized => instantiate 1st (_)
-			otherwise => instantiate 2nd (_)
-	  > implemented sub-mark optimization - cf. new design / double trigger
-		allow (_)^(.,.)	to enable sub-mark
-		allowing !^(?,.) or !^(.,?) or !^(?,?) or !^(.,.)
-			to precondition instantiation loop
-		or branch e.g. !^(?,.):(1)(2) means
-			if mark.sub[ 0 ] has newborn then do 1 else do 2
-			cf. Test/55_bingo-bonga
-		Note that in include/traversal.h
-			)^_ invokes CB_NewBornCB, on the caret
-			!^_ invokes CB_WildCardCB, on the exclamation mark
-
 TODO
-	. pass ./B% -p inform.story
+	. inform.story - must pass ./B% -p
 		?:!!		// match unnamed
 		$(s,?:...)	// match or generate string
 		/(ON|OFF)/	// pivot case? could use %/ to store results
@@ -171,12 +140,11 @@ NOTES
 		// post-frame
 
 DONE
-	. implemented %$ special case support in expression.c:bm_output()
+	. special case support in expression.c:bm_output()
 	  	do > "%$": %((?,...):*p) // will take (.,?)
 	  instead of, previously
 	  	do > "%$": %(%((?,...):*p):(.,?))
-		where
-			*p : (( tab, ... ), '\t' )
+		where e.g. : p : (( tab, ... ), '\t' )
 	  cf. PivotQueryOptimization.spec for performance win
 	. allowed > & as generated occurrence - only way to specify action's
 	  generated occurrence without NCR

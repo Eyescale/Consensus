@@ -58,7 +58,7 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMTagCB
 	BMModCharacterCB
 	BMStarCharacterCB
-	BMEMarkCharacterCB
+	BMEMarkCB
 	BMRegisterVariableCB
 	BMTernaryOperatorCB
 	BMSubExpressionCB
@@ -157,10 +157,10 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 #define CB_StarCharacterCB
 #endif
 
-#ifdef BMEMarkCharacterCB
-#define CB_EMarkCharacterCB	_CB( BMEMarkCharacterCB )
+#ifdef BMEMarkCB
+#define CB_EMarkCB	_CB( BMEMarkCB )
 #else
-#define CB_EMarkCharacterCB
+#define CB_EMarkCB
 #endif
 
 #ifdef BMRegisterVariableCB

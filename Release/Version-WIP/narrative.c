@@ -158,7 +158,7 @@ output_expr( FILE *stream, char *p, int level, int type ) {
 typedef struct {
 	FILE *stream;
 	char *p;
-	int level, type;
+	int level, type, piped;
 	struct { char *p; int level; } ternary;
 	struct { listItem *level, *flags; } stack;
 	} fprintExprData;
@@ -242,14 +242,15 @@ retab( fprintExprData *data, char *p ) {
 */
 BMTraverseCBSwitch( fprint_expr_traversal )
 case_( bgn_pipe_CB )
-	if ( p[1]!='{' ) retab( data, p );
+	if ( p[1]=='{' ) data->piped = 1;
+	else retab( data, p );
 	_break
 case_( bgn_set_CB )
 	int mode = data->type;
 	if ( *p=='{' || ( *p=='<' && mode&OUTPUT )) {
-		if ( is_f(PIPED) || *p_prune( PRUNE_LEVEL, p+1 )==',' ) {
+		if ( data->piped || *p_prune( PRUNE_LEVEL, p+1 )==',' ) {
 			add_item( &data->stack.level, data->level );
-			retab( data, p ); }
+			retab( data, p ); data->piped = 0; }
 		else add_item( &data->stack.level, 0 ); }
 	_break
 case_( end_set_CB )

@@ -42,14 +42,15 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 			   else if ( *type&DO ) { do_( "@" )	s_take }
 		on_( '*' ) if ( !is_f(INFORMED) ) { do_( "*" )	s_take }
+		on_( '^' ) if ( !is_f(INFORMED) ) { do_( "^" )	s_take }
 		on_( '@' ) if ( *type&DO && is_f(INFORMED) ) {
 				do_( "@" )	s_take }
+		on_( '!' ) if ( *type&DO && !is_f(INFORMED) ) {
+				do_( "!" ) }
 		on_( '"' ) if ( *type&DO && s_empty ) {
 				do_( "\"$" )	s_take }
 			else if ( *type&OUTPUT && f_outputable(stack) ) {
 				do_( "\"" )	s_take }
-		on_( '!' ) if ( *type&DO && !is_f(INFORMED) ) {
-				do_( "!" ) }
 		on_( ',' ) if ( !is_f(INFORMED) || is_f(TERNARY|CONTRA) ||
 				( *type&DO && is_f(FILTERED) && !is_f(byref) ) )
 				; // err
@@ -190,11 +191,6 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take
 						expr_set( P_CHAR ) }
-		on_( '^' ) if ( is_f(INFORMED) ) {
-				if ( *type&DO && s_at(')') && !is_f(byref|FILTERED) ) {
-					do_( ")^" )	s_take
-							f_tag( stack, PROTECTED ) } }
-			else {	do_( "^" )	s_take }
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
 				do_( "term" )	s_take }
@@ -537,31 +533,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 	in_( "!" ) bgn_
 		on_( '!' ) if ( s_empty ) {
 				do_( "!!" )	s_add( "!!" ) }
-		on_( '^' ) if ( s_at('|') || ( !is_f(LEVEL|byref) && !s_empty )) {
-				do_( "!^" )	s_add( "!^" ) }
-		on_( '?' ) if ( s_at('|') || ( !is_f(LEVEL|byref) && !s_empty )) {
-				do_( "?" )	s_add( "!?" ) }
 		end
-		in_( "!^" ) bgn_
-			on_( ':' )	do_( "?" )	REENTER
-			on_( '(' )	do_( "!^(" )	s_take
-			end
-		in_( "!^(" ) bgn_
-			ons( "?." )	do_( "!^(." )	s_take
-			end
-		in_( "!^(." ) bgn_
-			on_( ',' )	do_( "!^(.," )	s_take
-			end
-		in_( "!^(.," ) bgn_
-			ons( "?." )	do_( "!^(.,." )	s_take
-			end
-		in_( "!^(.,." ) bgn_
-			on_( ')' )	do_( "!^(.,.)" ) s_take
-			end
-		in_( "!^(.,.)" ) bgn_
-			on_( ':' )	do_( "?" )	REENTER
-			on_( '?' )	do_( "?" )	s_take
-			end
 	in_( "!!" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "expr" )	REENTER
@@ -792,22 +764,6 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 			if ( is_f(SUB_EXPR) ) {	f_clr( MARKED ) }
 						f_set( FILTERED )
 		end
-	in_( ")^" ) bgn_
-		on_( '(' )	do_( ")^(" )	s_take
-		on_other	do_( "expr" )	REENTER
-		end
-		in_( ")^(" ) bgn_
-			on_( '.' )	do_( ")^(." )	s_take
-			end
-		in_( ")^(." ) bgn_
-			on_( ',' )	do_( ")^(.," )	s_take
-			end
-		in_( ")^(.," ) bgn_
-			on_( '.' )	do_( ")^(.,." )	s_take
-			end
-		in_( ")^(.,." ) bgn_
-			on_( ')' )	do_( "expr" )	s_take
-			end
 	in_( "(:?" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( ')' )	do_( "(:?)" )	s_take

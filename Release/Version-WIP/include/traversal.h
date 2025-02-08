@@ -99,15 +99,9 @@ CB_TermCB			break;
 			case '!':
 				if ( p[1]=='!' )
 					p = p_prune( PRUNE_IDENTIFIER, p+2 );
-				else if ( p[1]=='?' ) {
-CB_WildCardCB				f_set( INFORMED )
-					p+=3; }
-				else if ( p[1]=='^' ) {
-CB_WildCardCB				f_set( INFORMED )
-					p+= p[2]=='(' ? p[7]==':' ? 8 : 7 : 3; }
 				else {
 					f_set( INFORMED )
-CB_EMarkCharacterCB			p++; }
+CB_EMarkCB				p++; }
 				break;
 			case '@':
 				// Assumption: p[1]=='<' && p[2]=='\0'
@@ -239,8 +233,6 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 				f_next = cast_i((*stack)->ptr);
 CB_CloseCB			f_pop( stack, 0 );
 				p++; // move past ')'
-				if ( *p=='^' ) {
-CB_NewBornCB				p+=(p[1]=='('?6:1); }
 				if ( *p=='|' ) {
 					f_set( INFORMED )
 					break; }

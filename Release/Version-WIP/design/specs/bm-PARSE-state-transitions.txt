@@ -43,11 +43,8 @@ Consensus B% Version-WIP
 			~
 			:<	expr
 			:!	!!
-		!	?
-			!!
-			!^	?
-				!^(	!^(.	!^(.,	!^(.,.	!^(.,.)	?
-		!!	!!$	!!$_	expr
+		!	!!	expr
+				!!$	!!$_	expr
 		.	expr
 			term
 		^	expr
@@ -66,7 +63,6 @@ Consensus B% Version-WIP
 		%term	expr
 		term	expr
 		?:(_)	expr
-		)^	)^(	)^(.	)^(.,	)^(.,.	expr
 		(:?	(:?)	expr
 		(_?	expr
 			(_?:	expr

@@ -759,18 +759,10 @@ bm_register_locale( BMContext *ctx, char *p ) {
 static inline CNInstance *proxy_that( CNEntity *, BMContext *, CNDB *, int );
 
 listItem *
-bm_inform( BMContext *dst, listItem **list, CNDB *db_src, int *nb ) {
+bm_inform( BMContext *dst, listItem **list, CNDB *db_src ) {
 	if ( !dst || !*list ) return *list;
 	listItem *results = NULL;
-	CNInstance *e;
-	if (( nb )&&( *nb < 1 )) {
-		CNDB *db_dst = BMContextDB( dst );
-		while (( e=popListItem(list) ) &&
-		       (( e=bm_translate( dst, e, db_src, 0 ) ) ||
-		       !( e=bm_translate( dst, e, db_src, 1 ) ))) {}
-		*nb = (( e )? 1 : -1 ); // inform newborn flag
-		if (( e )) addItem( &results, e ); }
-	while (( e=popListItem(list) )) {
+	for ( CNInstance *e; ( e=popListItem(list) ); ) {
 		e = bm_translate( dst, e, db_src, 1 );
 		if (( e )) addItem( &results, e ); }
 	return results; }

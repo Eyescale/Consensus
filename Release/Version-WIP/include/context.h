@@ -31,7 +31,7 @@ void *		bm_lookup( int, char *, BMContext *, CNDB * );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
 int		bm_register_locale( BMContext *, char * );
-listItem *	bm_inform( BMContext *, listItem **, CNDB *, int * );
+listItem *	bm_inform( BMContext *, listItem **, CNDB * );
 CNInstance *	bm_translate( BMContext *, CNInstance *, CNDB *, int );
 void		bm_untag( BMContext *, char * );
 

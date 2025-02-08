@@ -122,8 +122,6 @@ case_( bgn_set_CB )
 		addItem( &data->results, data->sub[ 0 ] );
 		data->sub[ 0 ] = NULL; }
 	addItem( &data->results, NULL );
-	add_item( &data->newborn.stack, data->newborn.current );
-	data->newborn.current = 0;
 	_break
 case_( end_set_CB )
 	/* Assumption:	!is_f(LEVEL|SUB_EXPR)
@@ -135,7 +133,6 @@ case_( end_set_CB )
 	else {
 		data->sub[ 0 ] = popListItem( &data->results );
 		data->sub[ 1 ] = instances; }
-	data->newborn.current = pop_item( &data->newborn.stack );
 	_break
 case_( bgn_pipe_CB )
 	listItem *r;
@@ -152,8 +149,6 @@ case_( bgn_pipe_CB )
 			addItem( &data->results, r );
 			data->sub[ 1 ] = NULL; }
 		data->sub[ 0 ] = NULL;
-		add_item( &data->newborn.stack, data->newborn.current );
-		data->newborn.current = 0;
 		_break }
 	else _prune( BM_PRUNE_LEVEL, p+1 )
 case_( end_pipe_CB )
@@ -163,7 +158,6 @@ case_( end_pipe_CB )
 		data->sub[ 0 ] = r = popListItem( &data->results );
 	else {	data->sub[ 1 ] = r = popListItem( &data->results );
 		data->sub[ 0 ] = popListItem( &data->results ); }
-	data->newborn.current = pop_item( &data->newborn.stack );
 	if ( pprv!=r ) freeListItem( &pprv );
 	_break
 case_( open_CB )
@@ -210,25 +204,6 @@ case_( close_CB )
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
 		_prune( BM_PRUNE_LEVEL, p+1 ) }
-case_( newborn_CB )
-	/* mask is either 0 (untested) or we have
-	   mask & 1 => newborn entity detected
-	   mask & 2 => newborn entity.sub[0] detected
-	   mask & 4 => newborn entity.sub[1] detected
-	   mask & 8 => no newborn entity detected
-	*/
-	listItem *list = data->sub[ NDX ];
-	int mask = data->newborn.current;
-	CNDB *db = data->db;
-	if ( p[1]=='(' ) {
-		if ( !mask&4 && db_has_newborn( list, 1, db ) )
-			mask = (mask&7)|3;
-		if ( !mask&16 && db_has_newborn( list, 2, db ) )
-			mask = (mask&7)|5; }
-	if ( !mask&1 )
-	 	mask = db_has_newborn( list, 0, db ) ? 1 : 8;
-	data->newborn.current = mask;
-	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin
 	LoopData *loop = ((data->loop) ? data->loop->ptr : NULL );
@@ -274,16 +249,13 @@ case_( activate_CB )
 			addIfNotThere( buffer, e ); }
 	_break
 case_( collect_CB )
-	if ( !strncmp(p,"~(",2) && is_f(SET) && !data->carry && !is_f(VECTOR|SUB_EXPR|LEVEL) ) {
+	if ( !strncmp(p,"~(",2) && is_f(SET) && !data->carry && !is_f(VECTOR|SUB_EXPR|LEVEL) )
 		bm_release( p+1, data->ctx );
-		p = p_prune( PRUNE_TERM, p+1 );
-		_continue( p ); }
 	else {
 		listItem *results = bm_scan( p, data->ctx );
-		p = p_prune( PRUNE_TERM, p+1 );
-		int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
-		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db, nb );
-		_continue( p ) }
+		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }
+	p = p_prune( PRUNE_TERM, p+1 );
+	_continue( p )
 case_( comma_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
 		listItem **results = &data->results;
@@ -300,25 +272,6 @@ case_( comma_CB )
 	_break
 case_( wildcard_CB )
 	switch ( *p ) {
-	case '!': ;
-		int mask; // cf. newborn_authorized()
-		if ( p[1]=='^' && p[2]=='(' ) {
-			mask = ( p[3]=='?' ? 2 : 0 );
-			if ( p[5]=='?' ) mask |= 4;
-			p += 7; }
-		else {
-			mask = 1;
-			p += ( p[1]=='^' ? 2 : 1 ); }
-		switch ( *p ) {
-		case ':':
-			if ( !newborn_authorized( data, mask ) )
-				_prune( BM_PRUNE_TERM, p+1 )
-			else _break
-		default:
-			// Assumption here: *p=='?'
-			if ( !newborn_authorized( data, mask ) )
-				_prune( BM_PRUNE_LEVEL, p+2 ) }
-		// no break
 	case '?':
 		p+=2;
 		listItem *results = bm_scan( p, data->ctx );
@@ -370,12 +323,6 @@ case_( register_variable_CB )
 		found = eenov_inform( data->ctx, db, p, carry );
 		data->sub[ NDX ] = found;
 		break;
-	case '%':
-		e = BMContextRVV( data->ctx, p );
-		if (( e )) e = bm_translate( carry, e, db, 1 );
-		if (( e )) data->sub[ NDX ] = newItem( e );
-		else _prune( BM_PRUNE_LEVEL, p )
-		break;
 	default:
 		if ( p[1]=='@' || !is_separator(p[1]) ) {
 			found = BMContextRVV( data->ctx, p );
@@ -414,9 +361,8 @@ case_( dot_expression_CB )
 	BMContext *carry = data->carry;
 	if (( carry )) { // null-carry case handled in close_CB
 		listItem *results = bm_scan( p+1, data->ctx );
+		data->sub[ NDX ] = bm_inform( carry, &results, data->db );
 		p = p_prune( PRUNE_TERM, p+1 );
-		int *nb = ( *p=='^' ?( p++, &data->newborn.current ): NULL );
-		data->sub[ NDX ] = bm_inform( carry, &results, data->db, nb );
 		_continue( p ) }
 	_break
 case_( dot_identifier_CB )

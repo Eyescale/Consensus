@@ -63,8 +63,6 @@ prune_level( char *p ) {
 			do p = prune_term( p+1, PRUNE_TERM );
 			while ( *p!='}' );
 			p++; break;
-		case '^':
-			p++; break;
 		default:
 			return p; } } }
 
@@ -80,12 +78,8 @@ prune_term( char *p, PruneType type ) {
 		switch ( *p ) {
 		case '(':
 			p = prune_sub( p );
-			switch ( *p ) {
-			case '(':
-			case '{':
+			if ( *p=='(' || *p=='{' )
 				return p;
-			case '^':
-				return p+1; }
 			informed = 1;
 			break;
 		case ':':
@@ -243,9 +237,10 @@ prune_sub( char *p )
 			p++; break;
 		case ')':
 			level--;
+			p++;
 			if ( !level )
-				return p[1]=='^' ? p+2 : p+1;
-			p++; break;
+				return p;
+			break;
 		case '\\':
 			if ( p[1] ) p++;
 			p++; break;

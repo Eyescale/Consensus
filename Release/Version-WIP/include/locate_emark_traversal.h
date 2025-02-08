@@ -11,10 +11,10 @@ static BMTraversal locate_emark_traversal;
 static BMTraverseCB
 	emark_CB, open_CB, comma_CB, close_CB;
 
-#define BMEMarkCharacterCB	emark_CB
-#define BMOpenCB		open_CB
-#define BMCommaCB		comma_CB
-#define BMCloseCB		close_CB
+#define BMEMarkCB	emark_CB
+#define BMOpenCB	open_CB
+#define BMCommaCB	comma_CB
+#define BMCloseCB	close_CB
 
 #include "traversal.h"
 
