@@ -2,11 +2,10 @@ See Also: design/story/interactive.story
 
 TODO
 	. inform.story - must pass ./B% -p
-		?:!!		// match unnamed
-		$(s,?:...)	// match or generate string
-		/(ON|OFF)/	// pivot case? could use %/ to store results
-		EVA		// if no proxy => check local assignment event
 		do : take |: !! | {_}
+		?:!!		// match unnamed
+		/(ON|OFF)/	// pivot case? could use %/ to store results
+		$(s,?:...)	// match or generate string
 	  Notes
 		$((?,...):*s)	// do later
 		$<(!,?:...)>	// do later
@@ -22,8 +21,8 @@ TODO
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
 		. finalize and test TM.system example (manual)
-	. cleanup & complete design/story/ contents
-	. reorder Test/ directory
+	. cleanup & complete contents of design/story/
+	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
 	. TBD: I would like to replace else on/off & etc. with
@@ -140,6 +139,15 @@ NOTES
 		// post-frame
 
 DONE
+	. extended eenov.c:lookup_EEVA( e, db ) to look for ((*,x),y)
+	  in db_dst's manifested log where, EITHER
+		db_dst: BMProxyDB( e->sub[1] )
+		x: db_dst( e->sub[0]->sub[0] )
+		y: db_dst( e->sub[0]->sub[1] )
+	  OR, if the above fails
+		db_dst: db
+		x: e->sub[0]
+		y: e->sub[1]
 	. special case support in expression.c:bm_output()
 	  	do > "%$": %((?,...):*p) // will take (.,?)
 	  instead of, previously
@@ -399,7 +407,7 @@ DONE
 	. implemented EEVA as %<.> - we do not implement EENOC in this release
 		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
 		=> locate_pivot.c: ignore %<.>
-		=> eenov.c: implemented eeva( CNInstance *, CNDB * )
+		=> eenov.c: implemented lookup_EEVA( CNInstance *, CNDB * )
 	  cf. Test/60_EEVA
 	. NOTE: strings are not authorized in inifile as we may not have a story
 	  at that stage.

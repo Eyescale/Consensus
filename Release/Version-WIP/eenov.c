@@ -14,7 +14,7 @@
 //===========================================================================
 static EEnovType eenov_type( BMContext *, char *, EEnovData * );
 static CNInstance * eenov_query( EEnovQueryOp, BMContext *, char *, EEnovData * );
-static CNInstance * eeva( CNInstance *, CNDB * );
+static CNInstance * lookup_EEVA( CNInstance *, CNDB * );
 
 int
 eenov_output( char *p, BMContext *ctx, OutputData *od ) {
@@ -87,7 +87,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	case EEnovNone:
 		return 0;
 	case EEvaType:
-		return !!eeva( x, db_x );
+		return !!lookup_EEVA( x, db_x );
 	case EEnovSrcType:
 		return db_match( x, db_x, data.src, BMContextDB(ctx) ); 
 	case EEnovInstanceType:
@@ -137,35 +137,43 @@ eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	return EEnovNone; }
 
 //---------------------------------------------------------------------------
-//	eeva
+//	lookup_EEVA
 //---------------------------------------------------------------------------
 CNInstance *
-eeva( CNInstance *e, CNDB *db )
+lookup_EEVA( CNInstance *e, CNDB *db )
 /*
 	we want to find ((*,x),y) in db_dst's manifested log
-	where
+	where either
 		db_dst: BMProxyDB( e->sub[1] )
 		x: db_dst( e->sub[0]->sub[0] )
 		y: db_dst( e->sub[0]->sub[1] )
-*/
-{
-	CNInstance *proxy = e->sub[ 1 ];
-	if ( !cnIsProxy(proxy) )
-		return NULL;
-	CNCell *that = CNProxyThat( proxy );
-	BMContext *dst = BMCellContext( that );
-	CNDB *db_dst = BMContextDB( dst );
-	if ( !db_dst || !( e=e->sub[ 0 ] ))
-		return NULL;
-	CNInstance *star = db_lookup( 0, "*", db_dst );
-	CNInstance *x = bm_translate( dst, e->sub[ 0 ], db, 0 );
-	CNInstance *y = bm_translate( dst, e->sub[ 1 ], db, 0 );
-	if ( !star || !x || !y )
-		return NULL;
+	  or, if the above fails
+		db_dst: db
+		x: e->sub[0]
+		y: e->sub[1]
+*/ {
+	CNDB *db_dst;
+	CNInstance *star;
+	CNInstance *f = CNSUB(e,0);
+	CNInstance *g = CNSUB(e,1);
+	if ( !f || !g ) return NULL;
+	CNInstance *x = CNSUB(f,0);
+	CNInstance *y = CNSUB(f,1);
+	if (( x )&&( y )&&( cnIsProxy(g) )) {
+		CNCell *that = CNProxyThat( g );
+		BMContext *dst = BMCellContext( that );
+		db_dst = BMContextDB( dst );
+		if ( !db_dst ) return NULL;
+		x = bm_translate( dst, x, db, 0 );
+		y = bm_translate( dst, y, db, 0 );
+		if ( !x || !y ) return NULL; }
+	else { db_dst=db; x=f; y=g; }
+	star = db_lookup( 0, "*", db_dst );
+	if ( !star ) return NULL;
 	listItem *s = NULL;
 	for ( e=DBLog(1,0,db_dst,&s); e!=NULL; e=DBLog(0,0,db_dst,&s) ) {
 		if ( e->sub[ 1 ]!=y ) continue;
-		CNInstance *f = e->sub[ 0 ];
+		CNInstance *f = CNSUB(e,0);
 		if (( f ) && f->sub[0]==star && f->sub[1]==x ) {
 			freeListItem( &s );
 			return e; } } // return ((*,x),y)
