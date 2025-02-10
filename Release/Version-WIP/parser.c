@@ -15,9 +15,10 @@ BM_PARSE_FUNC( bm_parse_expr )
 	Assumption: data->expr!=0
 */ {
 	if expr( P_CHAR ) return bm_parse_char( event, mode, data, cb );
-	if expr( P_REGEX ) return bm_parse_regex( event, mode, data, cb );
-	if expr( P_LITERAL ) return bm_parse_seq( event, mode, data, cb );
-	if expr( P_EENOV ) return bm_parse_eenov( event, mode, data, cb );
+	else if expr( P_REGEX ) return bm_parse_regex( event, mode, data, cb );
+	else if expr( P_LITERAL ) return bm_parse_seq( event, mode, data, cb );
+	else if expr( P_EENOV ) return bm_parse_eenov( event, mode, data, cb );
+	else if expr( P_STRING ) return bm_parse_string( event, mode, data, cb );
 	PARSER_BGN( "bm_parse_expr" )
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
@@ -115,7 +116,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				  ( is_f(SUB_EXPR|FORE) && !is_f(MARKED|NEGATED|CONTRA) ) ) {
 					do_( same )	s_take
 							f_set( MARKED|INFORMED ) }
-			else if ( *type&DO && !is_f(byref) ) { // FORE loop bgn
+			else if ( *type&DO && !is_f(byref|FILTERED) ) { // FORE loop bgn
 					do_( "?" ) 	s_take }
 		on_( ')' ) if ( is_f(LEVEL|SUB_EXPR|FORE) ) {
 				if ( is_f(TERNARY) ) {
@@ -143,7 +144,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED|PROTECTED ) }
-		on_( '/' ) if ( !is_f(INFORMED) && !(*type&DO) ) {
+		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO)||is_f(FORE|SUB_EXPR) )  ) {
 				do_( "/" )	s_take
 						expr_set( P_REGEX )
 						f_push( stack )
@@ -190,6 +191,11 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take
 						expr_set( P_CHAR ) }
+		on_( '$' ) if ( !is_f(INFORMED) && !is_f(byref|FILTERED) ) {
+				do_( "$" )	s_take
+						expr_set( P_STRING )
+						f_push( stack )
+						f_reset( FIRST, 0 ) }
 		on_separator	; // err
 		on_other if ( !is_f(INFORMED) ) {
 				do_( "term" )	s_take }
@@ -261,9 +267,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "expr" )	s_add( "~.:" )
 						f_set( CONTRA ) }
 		on_( '?' ) 	; // err
-		on_separator if ( is_f(TERNARY) || !s_cmp("~(") ||
-				 ( !is_f(SUB_EXPR|CARRY) &&
-				 ( !is_f(LEVEL) || (*type&DO && !is_f(FIRST)) ) )) {
+		on_separator if ( is_f(TERNARY) || !s_cmp("~(") || ( !is_f(byref|FILTERED|CARRY) &&
+				 ( !is_f(LEVEL) || (*type&DO && s_at(',')) ) )) {
 				do_( "expr" )	REENTER
 						s_add( "~." )
 						f_set( INFORMED ) }
@@ -1030,6 +1035,69 @@ CB_( ExpressionTake, mode, data )
 			end
 	PARSER_END }
 
+static BM_PARSE_FUNC( bm_parse_string ) {
+	PARSER_BGN( "bm_parse_string" )
+	in_( "$" ) bgn_
+		on_( '(' )	do_( "$(" )	s_take
+		end
+	in_( "$(" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '(' )	do_( "$((" )	s_take
+		on_separator	; // err
+		on_other	do_( "$(_" )	s_take
+		end
+	in_( "$((" ) bgn_
+		ons( " \t" )	do_( same )
+		on_separator	; // err
+		on_other	do_( "$(_" )	s_take
+						f_push( stack )
+						f_set( LEVEL )
+		end
+	in_( "$(_" ) bgn_
+		on_separator	do_( "$(_." )	REENTER
+		on_other	do_( same )	s_take
+		end
+	in_( "$(_." ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ',' ) if ( is_f(LEVEL) ) {
+				do_( "$((_," )	s_take }
+			else {	do_( "$(_," )	s_take }
+		end
+	in_( "$((_," ) bgn_
+		ons( " \t" ) if ( s_at(',') || s_at('.') ) {
+				do_( same ) }
+		on_( '~' ) if ( s_at(',') ) {
+				do_( same )	s_take }
+		on_( '.' ) if ( s_at('~') ) {
+				do_( same )	s_take }
+		on_( ')' ) if ( s_at('.') ) {
+				do_( "$(_." )	s_take
+						f_pop( stack, 0 ) }
+		end
+	in_( "$(_," ) bgn_
+		ons( " \t" ) if ( s_at(',') ) {
+				do_( same ) }
+		on_( '?' ) if ( s_at(',') ) {
+				do_( same )	s_take }
+		on_( ':' ) if ( s_at('?') ) {
+				do_( same )	s_take }
+		on_( '.' ) if ( s_at(':') ) {
+				do_( same )	s_take }
+			else if ( s_at('.') ) {
+				do_( "$(_,.." )	s_take }
+		end
+		in_( "$(_,.." ) bgn_
+			on_( '.' )	do_( "$(_,_" )	s_take
+			end
+	in_( "$(_,_" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( ')' )	do_( "expr" )	s_take
+						f_pop( stack, 0 )
+						f_set( INFORMED|PROTECTED )
+						expr_clr( P_STRING )
+		end
+	PARSER_DEFAULT_END }
+	
 static BM_PARSE_FUNC( bm_parse_char ) {
 	PARSER_BGN( "bm_parse_char" )
 	in_( "char" ) bgn_

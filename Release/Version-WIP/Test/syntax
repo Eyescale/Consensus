@@ -71,6 +71,8 @@
 		do %!~
 	else in :titi
 	else
+		do ( toto, $((titi,~.),?:...) )
+		do ( $(toto,?:...), titi )
 		do exit
 
 :( %%, ... )

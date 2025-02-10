@@ -18,14 +18,17 @@
 #define NASCENT		(1<<3)
 #define P_CHAR		(1<<4)
 #define P_REGEX		(1<<5)
-#define P_EENOV		(1<<6)
-#define P_LITERAL	(1<<7)
+#define P_LITERAL	(1<<6)
+#define P_EENOV		(1<<7)
+#define P_STRING	(1<<8)
 
 #define expr(a)		(data->expr&(a))
 #define expr_set(a)	data->expr|=(a);
 #define expr_clr(a)	data->expr&=~(a);
 
-static BMParseFunc bm_parse_char, bm_parse_regex, bm_parse_eenov, bm_parse_seq;
+static BMParseFunc
+	bm_parse_string, bm_parse_char, bm_parse_regex,
+	bm_parse_eenov, bm_parse_seq;
 
 //===========================================================================
 //	private parser macros

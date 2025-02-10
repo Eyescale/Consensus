@@ -206,7 +206,7 @@ jump_start( fprintExprData *data, char *p ) {
 		p+=2;
 		if ( is_separator(*p) ) return p;
 		do p++; while ( !is_separator(*p) );
-		return retab( data, p );
+		if ( *p=='(' ) return retab( data, p );
 	default:
 		return p; } }
 

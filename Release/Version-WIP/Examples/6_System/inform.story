@@ -182,18 +182,18 @@
 			do : err |: ( NCR, %? )
 		else in ((?:!!,'>'), *s )
 			do : err |: ( NCR, %? )
-		else in ((?:!!),DO), *s )
+		else in ((?:!!,DO), *s )
 			do : take |: %?
 		else do : take |: !! | {
-			((%|,IN), $(line,?:...)) }
+			((%|,IN), $(line,?:...)),
 			((%|,DO), *s ) }
 	else in ( type, CL )
 		in ((?:!!,DO), *s )
 			do : err |: ( NCR, %? )
-		in ((?:!!),CL), *s )
+		in ((?:!!,CL), *s )
 			do : take |: %?
-		else do : take |: || {
-			((%|,IN), $(line,?:...),
+		else do : take |: !! | {
+			((%|,IN), $(line,?:...)),
 			((%|,CL), *s ) }
 	else // ( type, '>' )
 		in ((?:!!,DO), *s )
@@ -268,12 +268,12 @@
 					((%?,OFF), (%((%?,.),(.,?)),ON)) :
 					(%?,OFF))
 			else
-				in ?:%( (%?,(IN,?)) ?: (%?,((.,IN),?)) )
-					do :< condition, event >:< %?, ~. >
-				else in ?:%( (%?,(ON,?)) ?: (%?,((.,ON),?)) )
-					do :< condition, event >:< ~., (%?,ON) >
-				else in ?:%( (%?,(OFF,?)) ?: (%?,((.,OFF),?)) )
-					do :< condition, event >:< ~., (%?,OFF) >
+				in ?:( (%?,(IN,.)) ?: (%?,((.,IN),.)) )
+					do :< condition, event >:< %?:(.,(.,?)), ~. >
+				else in ?:( (%?,(ON,.)) ?: (%?,((.,ON),.)) )
+					do :< condition, event >:< ~., (%?:(.,(.,?)),ON) >
+				else in ?:( (%?,(OFF,.)) ?: (%?,((.,OFF),.)) )
+					do :< condition, event >:< ~., (%?:(.,(.,?)),OFF) >
 				else // standalone ELSE
 					do :< condition, event >: ~.
 
@@ -287,7 +287,7 @@
 				do ( %?, *on )
 				do : event : ~.
 			in : condition : ?
-				do (( %?, ON ) *guard )
+				do (( %?, ON ), *guard )
 				do : condition : ~.
 			do : q : %?
 		else in ?:( %?, '\t' )
@@ -307,16 +307,16 @@
 		/* try and reuse existing guard and trigger bar/on, from
 		   ( .guard:!!, ( .trigger:(!!,!!), (occurrence,ON|OFF) ))
 		*/
-		per ?:%( ?:~%(~%(?,*guard),?), ( ., (.,ON|OFF) ))
+		per ?:%( ?:~%(~%(?,*guard),?), ( ., (.,/(ON|OFF)/) ))
 			in ~.:( ~%(?,%?), *guard )
 				do { ~(*guard), ((*,guard),%?) }
 
-		per ?:%( ., ((?:~%(~%(?,*bar),?),.), (.,ON|OFF) ))
+		per ?:%( ., ((?:~%(~%(?,*bar),?),.), (.,/(ON|OFF)/) ))
 			in ~.:( ~%(?,%?), *bar )
 				do { ~(*bar), ((*,bar),%?) }
 
-		in ?:%( ., ((.,?:~%(~%(?,*on),?)), (.,ON|OFF) ))
-			in ~.:( ~%(?,%|), *on )
+		in ?:%( ., ((.,?:~%(~%(?,*on),?)), (.,/(ON|OFF)/) ))
+			in ~.:( ~%(?,%?), *on )
 				do { ~(*on), ((*,on),%?) }
 	else
 		do ( *guard, ((*bar,*on), ( *action:((.,OFF),(.,ON)) ?

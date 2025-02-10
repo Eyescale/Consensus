@@ -1,19 +1,12 @@
 See Also: design/story/interactive.story
 
 TODO
-	. fix Examples/4_Yak/yak-drive.story
-	. inform.story - must pass ./B% -p
-		$(s,?:...)	// generate string - reuse if existing
-	  NTH
-		$(s,?:...)	// match string - do later
-		$((?,...):*s)	// do later
-		$<(!,?:...)>	// do later
-		$/regex/	// for "_"
+	. $(s,?:...) // generate or reuse string
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
-		[ DONE ] handle backslash in : string => nope! these are natural!!
 		[ DONE ] output system as is => cf output.story
-		[ WIP ] create data structure  => cf inform.story
+		[ DONE ] create internal data structure  => cf inform.story
+		[ WIP ] inform.story - must pass ./B% -p
 		[ WIP ] inform.story: implement NCR in :err
 		[ WIP ] inform.story: output data structure as per system model [*]
 		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
@@ -78,14 +71,6 @@ TODO
 
 BUGS
 	. in system.story, if ~(s) instead of (s,~.) => crash
-	. NTH: parser.c: in "^" on '^' if ( is_f(FORE) ) ...
-	  strictly speaking we should verify either
-		are_f(ASSIGN|PRIMED|CARRY|FORE) or
-		are_f(ASSIGN|PRIMED|UBE|PIPED|FORE)
-	  but ASSIGN and PIPED flags are gone...
-	  Anyway not a bug, as ^^ will return NULL and expression will fail
-	  but less user assistance than ideal, as we would like to verify
-	  ASSIGN|PRIMED to allow ^^ and *^^ and *^%?
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
 		done in case of identifier, but not for proxy nor shared
@@ -565,7 +550,18 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
-	. do : expr : . // reassign expr - as we have already do : .
+	. $(s,?:...)	// match string - do later
+	  $((?,...):*s)	// do later
+	  $<(!,?:...)>	// do later
+	  $/regex/	// for "_"
+	. parser.c: in "^" on '^' if ( is_f(FORE) ) ...
+	  strictly speaking we should verify either
+		are_f(ASSIGN|PRIMED|CARRY|FORE) or
+		are_f(ASSIGN|PRIMED|UBE|PIPED|FORE)
+	  but ASSIGN and PIPED flags are gone...
+	  Anyway not a bug, as ^^ will return NULL and expression will fail
+	  but less user assistance than ideal, as we would like to verify
+	  ASSIGN|PRIMED to allow ^^ and *^^ and *^%?
 	. parser_macros: extract REENTER + put caught in io struct
 	. expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
 	. do >format:args | format:args | format:args
