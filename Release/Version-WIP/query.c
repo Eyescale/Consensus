@@ -161,12 +161,15 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 			freeListItem( &xpn );
 			freeListItem( &data->exponent );
 			return 0; } }
+
 	CNInstance *e = bm_lookup( privy, p, data->ctx, data->db );
 	if (( e )) {
-		data->pivot = newPair( p, e );
+		Pair *pivot = data->pivot = newPair( p, e );
 		if ( !xp_traverse( expression, data, cb, user_data ) )
 			data->instance = NULL;
-		freePair( data->pivot );
+		if ( *p=='/' )
+			freeListItem((listItem **) &pivot->value );
+		freePair( pivot );
 		data->pivot = NULL; }
 
 	data->privy = privy;
@@ -182,6 +185,9 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 //---------------------------------------------------------------------------
 //	xp_traverse
 //---------------------------------------------------------------------------
+#define is_multi( pv ) \
+	( *pv=='/' || (( *pv=='%' )&&( pv[1]=='@' || !is_separator(pv[1]) )))
+
 static CNInstance *
 xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *verify_CB, void *user_data )
 /*
@@ -201,12 +207,9 @@ xp_traverse( char *expression, BMQueryData *data, XPTraverseCB *verify_CB, void 
 	Pair *pivot = data->pivot;
 	char *p = pivot->name;
 
-	// %| no longer authorized in query expressions
-	int pv = (( *p=='%' )&&( p[1]=='@' || !is_separator(p[1]) ));
-
 	listItem *i, *j, *pvi;
 	CNInstance *e, *f;
-	if ( pv ) {
+	if is_multi( p ) {
 		i = pivot->value;
 		e = i->ptr;
 		pvi = NULL; }
@@ -640,11 +643,10 @@ match( char *p, BMQueryData *data )
 	CNInstance *x = x_sub( data->instance, data->stack.exponent, data->base );
 	if ( !x ) return -1;
 	if ( !p ) return 1; // wildcard
-	if ( !strncmp(p,"!!",2) ) return cnIsShared(x) && cnIsUnnamed(x);
 	if (( data->pivot ) && p==data->pivot->name ) {
-		if ( *p=='%' && ( p[1]=='@' || !is_separator(p[1]) ) )
-			return !!lookupIfThere( data->pivot->value, x );
-		else	return ( x==data->pivot->value ); }
+		return is_multi( p ) ?
+			!!lookupIfThere( data->pivot->value, x ) :
+			x==data->pivot->value; }
 	return bm_match( data->ctx, data->db, p, x, data->db ); }
 
 static char *

@@ -445,7 +445,7 @@ db_unassign( CNInstance *x, CNDB *db )
 	return e; }
 
 //===========================================================================
-//	db_lookup
+//	db_lookup / db_scan
 //===========================================================================
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db ) {
@@ -453,6 +453,15 @@ db_lookup( int privy, char *p, CNDB *db ) {
 	Pair *entry = registryLookup( db->index, p );
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL; }
+
+listItem *
+db_rxscan( int privy, char *regex, CNDB *db ) {
+	listItem *list = NULL;
+	for ( listItem *i = db->index->entries; i!=NULL; i=i->next ) {
+		Pair *entry = i->ptr;
+		if ( !strcomp( regex, entry->name, 2 ) )
+			addIfNotThere( &list, entry->value ); }
+	return list; }
 
 //===========================================================================
 //	CNIdentifier, cnIsUnnamed, cnStarMatch, cnIsShared

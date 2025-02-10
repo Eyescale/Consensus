@@ -15,8 +15,7 @@
 				(( Rule, term ), ( Schema, (:%test.:)))
 				(( Rule, test ), ( Schema, {
 					(:\d:)
-					(:%test\d:)	} ))
-				)
+					(:%test\d:) })))
 		do : INPUT
 
 	else in : INPUT

@@ -36,6 +36,7 @@ CNInstance *	db_instantiate( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_assign( CNInstance *, CNInstance *, CNDB * );
 CNInstance *	db_unassign( CNInstance *, CNDB * );
 CNInstance *	db_lookup( int privy, char *identifier, CNDB * );
+listItem *	db_rxscan( int privy, char *regex, CNDB * );
 int		db_traverse( int privy, CNDB *, DBTraverseCB, void * );
 CNInstance *	DBFirst( CNDB *, listItem ** );
 CNInstance *	DBNext( CNDB *, CNInstance *, listItem ** );

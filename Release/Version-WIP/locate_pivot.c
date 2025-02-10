@@ -81,6 +81,10 @@ case_( identifier_CB )
 	if CHECK( IDENTIFIER )
 		_return( 2 )
 	_break
+case_( regex_CB )
+	if CHECK( REGEX )
+		_return( 2 )
+	_break
 case_( character_CB )
 	if CHECK( CHARACTER )
 		_return( 2 )

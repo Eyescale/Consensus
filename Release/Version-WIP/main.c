@@ -5,7 +5,6 @@
 
 void
 usage( ProgramData *data ) {
-	if (( data )) freeListItem( &data->flags );
 	fprintf( stderr, "B%%: Usage\n"
 		"\t./B%% file.story\n"
 		"\t./B%% -p file.story\n"
@@ -15,24 +14,19 @@ usage( ProgramData *data ) {
 		"\t./B%% file.bm -i\n"
 		"\t./B%% -f file.ini -i\n"
 		"\t./B%% -f file.ini file.bm -i\n" );
+	cnExit( 1, data );
 	exit(-1); }
 
 #define bar_i( n ) \
 	if ( argc==n+1 && !strncmp( argv[n], "-i", 2 ) ) \
-		data.interactive = n; \
+		cnProgramSetInteractive( data ); \
 	else
 int
 main( int argc, char *argv[] ) {
 
 	if ( argc < 2 ) usage( NULL );
 
-	ProgramData data;
-	memset( &data, 0, sizeof(data) );
-
-	int i;
-	for ( i=1; i<argc && !strncmp(argv[i],"-D",2); i++ )
-		addItem( &data.flags, argv[i]+2 );
-	i--; argc-=i; argv+=i;
+	ProgramData *data = cnInit( &argc, &argv );
 
 	// interprete B% command args
 
@@ -41,11 +35,11 @@ main( int argc, char *argv[] ) {
 	int printini = 0;
 
 	if ( !strncmp( argv[1], "-p", 2 ) ) {
-		if ( argc < 3 ) usage( &data );
+		if ( argc < 3 ) usage( data );
 		storypath = argv[2];
 		printout = 1; }
 	else if ( !strncmp( argv[1], "-f", 2 ) ) {
-		if ( argc < 4 ) usage( &data );
+		if ( argc < 4 ) usage( data );
 		inipath = argv[2];
 		bar_i( 3 ) {
 			if ( !strcmp( argv[3], "-p" ) )
@@ -58,19 +52,18 @@ main( int argc, char *argv[] ) {
 
 	// execute B% command
 
-	cnInit();
 	if ( printini )
-		cnPrintOut( stdout, inipath, data.flags );
+		cnPrintOut( stdout, inipath, data );
 	else if ( printout ) {
-		CNStory *story = readStory( storypath, data.flags );
+		CNStory *story = readStory( storypath, data );
 		cnStoryOutput( stdout, story );
 		freeStory( story ); }
 	else {
-		CNStory *story = readStory( storypath, data.flags );
-		CNProgram *threads = newProgram( inipath, &story, &data );
-		do cnSync(threads); while ( cnOperate( threads, &data ) );
-		freeProgram( threads, &data );
+		CNStory *story = readStory( storypath, data );
+		CNProgram *threads = newProgram( inipath, &story, data );
+		do cnSync(threads); while ( cnOperate( threads, data ) );
+		freeProgram( threads, data );
 		freeStory( story ); }
-	freeListItem( &data.flags );
-	cnExit( 1 ); }
+
+	cnExit( 1, data ); }
 

@@ -15,6 +15,7 @@
 #define CHARACTER	(1<<11)
 #define	LIST_EXPR	(1<<12)
 #define	STAR		(1<<13)
+#define REGEX		(1<<14)
 
 #define	AS_PER		(1<<20)
 #define	LMARK		(1<<21)

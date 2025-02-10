@@ -1,0 +1,6 @@
+
+	on init
+		do { titi, toto, tata }
+	else
+		do >: /(toto|titi)/
+		do exit

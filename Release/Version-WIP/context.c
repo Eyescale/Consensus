@@ -572,7 +572,7 @@ void *
 bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 /*
 	Assumption: only used directly by query.c:pivot_query()
-	otherwise as BMVar => rv or locales only
+	otherwise as BMContextRVV => rv or locales only
 */ {
 	// lookup first in ctx registry
 	int rv = 1;
@@ -594,7 +594,8 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 	// not found in ctx registry
 	if (( db )) {
 		switch ( *p ) {
-		case '\'': ; // looking up single character identifier instance
+		case '/': return db_rxscan( privy, p, db );
+		case '\'': // looking up single character identifier instance
 			for ( char_s q; charscan( p+1, &q ); )
 				return db_lookup( privy, q.s, db );
 			break;
@@ -698,7 +699,9 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 		return 0; }
 
 	// not a register variable
-	if ( !strncmp( p, "(:", 2 ) )
+	if ( !strncmp(p,"!!",2) )
+		return cnIsShared(x) && cnIsUnnamed(x);
+	else if ( !strncmp( p, "(:", 2 ) )
 		return ( db==db_x ?
 			cnStarMatch(x->sub[ 0 ]) && x->sub[ 1 ]==BMContextSelf(ctx) :
 			!!errout( ContextEENOSelfAssignment, p ) );
@@ -772,9 +775,8 @@ bm_translate( BMContext *dst, CNInstance *x, CNDB *db_x, int inform ) {
 	if ( !dst ) return x;
 	if ( !x ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
-	if ( db_dst==db_x ) {
-		if ( !inform || !db_deprecated(x,db_dst) )
-			return x; }
+	if ( db_dst==db_x && ( !inform || !db_deprecated(x,db_x) ))
+		return x;
 
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance, *e = x;
@@ -798,17 +800,18 @@ bm_translate( BMContext *dst, CNInstance *x, CNDB *db_x, int inform ) {
 		if ( !instance ) break;
 		for ( ; ; ) {
 			if ( !stack.src ) return instance;
-			x = popListItem( &stack.src );
+			e = popListItem( &stack.src );
 			if (( ndx = pop_item( &stack.src ) )) {
 				CNInstance *f = popListItem( &stack.dst );
 				instance = inform ?
 					db_instantiate( f, instance, db_dst ) :
-					cn_instance( f, instance, 0 ); }
-				if ( !instance ) goto FAIL;
+					cn_instance( f, instance, 0 );
+				if ( !instance ) goto FAIL; }
 			else {
 				addItem( &stack.dst, instance );
 				ndx=1; break; } } }
 FAIL:
+fprintf( stderr, "AFTER\n" );
 	freeListItem( &stack.src );
 	freeListItem( &stack.dst );
 	if ( inform ) errout( CellInform, db_x, x );

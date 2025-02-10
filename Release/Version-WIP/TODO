@@ -1,13 +1,14 @@
 See Also: design/story/interactive.story
 
 TODO
+	. fix Examples/4_Yak/yak-drive.story
 	. inform.story - must pass ./B% -p
-		/(ON|OFF)/	// pivot case? could use %/ to store results
 		$(s,?:...)	// generate string - reuse if existing
-	  Notes
-		$(s,?:...)	// do later: match string
+	  NTH
+		$(s,?:...)	// match string - do later
 		$((?,...):*s)	// do later
 		$<(!,?:...)>	// do later
+		$/regex/	// for "_"
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] handle backslash in : string => nope! these are natural!!
@@ -28,10 +29,7 @@ TODO
 		eg. on which / off which and else on that / else off that
 		but in fact can keep '&' - just need to remove else in current narrative !
 		but then "else" meaning: none of the above => no clamping ??
-	. TBD: ( guard ?: term ) should NOT insert guard if passes => then what?
-		if just '.' => on . requires event (can be release)
-		do . => in fact does nothing, same as do ~. EXCEPT in couple!
-	. TBD: use cosystem names vs. proxy => change EVA definition
+	. TBD: use cosystem names vs. proxy => change EEVA definition
 	       this makes the cosystem generic, ie. co-actor can be changed /
 	       handy in TM Cell implementation / e.g. current cell actor
 	       issue: newly assigned cosystems must know system rules and actors
@@ -138,6 +136,8 @@ NOTES
 		// post-frame
 
 DONE
+	. re-implemented regex - usable as pivot in query.c (not eeno)
+	  cf. Test/83_regex-query
 	. allowed !! in *type&(IN|ON) expressions, passing if UBE
 	. implemented do : expr |: !! | {_}
 	. extended eenov.c:lookup_EEVA( e, db ) to look for ((*,x),y)

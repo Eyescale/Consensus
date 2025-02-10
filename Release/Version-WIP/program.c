@@ -12,14 +12,29 @@
 //===========================================================================
 //	cnInit / cnExit
 //===========================================================================
+ProgramData *
+cnInit( int *argc, char ***argv ) {
+	ProgramData *data = (ProgramData *) newPair( NULL, NULL );
+	db_arena_init();
+	int i, narg = *argc;
+	char **arg = *argv;
+	for ( i=1; i<narg && !strncmp(arg[i],"-D",2); i++ )
+		addItem( &data->flags, arg[i]+2 );
+	i--; *argc-=i; *argv+=i;
+	return data; }
+
 void
-cnInit( void ) {
-	db_arena_init(); }
-void
-cnExit( int report )  {
+cnExit( int report, ProgramData *data )  {
+	if (( data )) {
+		freeListItem( &data->flags );
+		freePair((Pair *) data ); }
 	db_arena_exit();
 	if ( report && CNMemoryUsed )
 		errout( BMMemoryLeak ); }
+
+void
+cnProgramSetInteractive( ProgramData *data ) {
+	if ( !data->ui.this ) data->ui.on = 1; }
 
 //===========================================================================
 //	newProgram / freeProgram
@@ -29,10 +44,10 @@ static int bm_load( BMContext *ctx, char *path, listItem *flags );
 CNProgram *
 newProgram( char *inipath, CNStory **story, ProgramData *data ) {
 	if ( !*story ) {
-		if ( !data->interactive ) return NULL;
+		if ( !data->ui.on ) return NULL;
 		*story = newStory(); }
 	else if ( !registryLookup( *story, "" ) ) {
-		if ( !data->interactive ) return NULL;
+		if ( !data->ui.on ) return NULL;
 		CNNarrative *base = newNarrative();
 		registryRegister( *story, "", newItem(base) ); }
 	Pair *entry = CNStoryMain( *story );
@@ -49,9 +64,9 @@ newProgram( char *inipath, CNStory **story, ProgramData *data ) {
 	if ( !cell ) return NULL;
 	Pair *threads = newPair( NULL, NULL );
 	CNProgram *program = (CNProgram *) newPair( *story, threads );
-	// threads->new is a list of lists
+	// program->threads->new is a list of lists
 	program->threads->new = newItem( newItem( cell ) );
-	if ( data->interactive ) data->this = cell;
+	if ( data->ui.on ) data->ui.this = cell;
 	return program; }
 
 void
@@ -149,12 +164,12 @@ cnOperate( CNProgram *program, ProgramData *data ) {
 	if ( !program ) return 0;
 	// user interaction
 	CNStory *story = program->story;
-	CNCell *cell = data->this;
+	CNCell *cell = data->ui.this;
 	if (( cell )) {
 		if ( !bm_cell_out( cell ) ) {
 			int done = bm_cell_read( cell, story );
 			if ( done==2 ) return 0; }
-		else data->this = NULL; }
+		else data->ui.this = NULL; }
 	// operate active cells
 	listItem **active = &program->threads->active;
 	listItem **new = &program->threads->new;
@@ -186,7 +201,7 @@ cnOperate( CNProgram *program, ProgramData *data ) {
 static BMParseCB output_CB;
 
 int
-cnPrintOut( FILE *stream, char *path, listItem *flags ) {
+cnPrintOut( FILE *stream, char *path, ProgramData *pdata ) {
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
 	data.printout.stream = stream;
@@ -195,7 +210,7 @@ cnPrintOut( FILE *stream, char *path, listItem *flags ) {
         data.io = &io;
 	stream = fopen( path, "r" );
 	if ( !stream ) return errout( ProgramPrintout, path );
-	io_init( &io, stream, path, IOStreamFile, flags );
+	io_init( &io, stream, path, IOStreamFile, pdata->flags );
 	bm_parse_init( &data, BM_LOAD );
 	//-----------------------------------------------------------------
 	int event = 0;

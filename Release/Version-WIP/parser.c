@@ -145,7 +145,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 						f_set( INFORMED|PROTECTED ) }
 		on_( '/' ) if ( !is_f(INFORMED) && !(*type&DO) ) {
 				do_( "/" )	s_take
-						expr_set( P_REGEX ) }
+						expr_set( P_REGEX )
+						f_push( stack )
+						f_reset( FIRST, 0 ) }
 		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|VECTOR) || !is_f(INFORMED) )
 				; // err
 			else if ( *type&ON && (is_f(ASSIGN)?is_f(PRIMED):is_f(FIRST)) ) {
@@ -274,6 +276,11 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '|' ) if ( is_f(PIPED) ) {
 				do_( "%|" )	s_add( "%|" )
 						f_set( INFORMED ) }
+		on_( '/' )	do_( "/" )	s_take
+						f_set_BYREF
+						expr_set( P_REGEX )
+						f_push( stack )
+						f_reset( FIRST, 0 )
 		ons( "?!" )	do_( "%?" )	s_add( "%" )
 						s_take
 						f_set( INFORMED )
@@ -462,6 +469,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '/' )	do_( "/" )	s_add( ":/" )
 						expr_set( P_REGEX )
 						f_set( FILTERED )
+						f_push( stack )
+						f_reset( FIRST, 0 )
 		on_( '<' ) if ( *type&DO && !is_f(LEVEL|SET) ) {
 				do_( "_," )	REENTER
 						f_set( FILTERED ) }
@@ -1047,21 +1056,33 @@ static BM_PARSE_FUNC( bm_parse_char ) {
 static BM_PARSE_FUNC( bm_parse_regex ) {
 	PARSER_BGN( "bm_parse_regex" )
 	in_( "/" ) bgn_
-		on_( '/' )	do_( "expr" )	s_take
-						f_set( INFORMED )
+		on_( '/' ) if ( !is_f(LEVEL) ) {
+				do_( "expr" )	s_take
+						f_pop( stack, 0 )
 						expr_clr( P_REGEX )
+						f_set( INFORMED ) }
+		on_( '(' )	do_( same )	s_take
+						f_push( stack )
+						f_clr( FIRST )
+						f_set( LEVEL )
+		on_( '|' ) if ( is_f(LEVEL) ) {
+				do_( same )	s_take }
+		on_( ')' ) if ( !is_f(FIRST) ) {
+				do_( same )	s_take
+						f_pop( stack, 0 ) }
 		on_( '\\' )	do_( "/\\" )	s_take
 		on_( '[' )	do_( "/[" )	s_take
 		on_printable	do_( same )	s_take
 		end
 		in_( "/\\" ) bgn_
-			ons( "nt0\\./[]" ) do_( "/" )	s_take
-			on_( 'x' )	do_( "/\\x" )	s_take
+			ons( "nt0\\./[](|)" )
+					do_( "/" )	s_take
+			on_( 'x' )	do_( "/x" )	s_take
 			end
-		in_( "/\\x" ) bgn_
-			on_xdigit	do_( "/\\x_" )	s_take
+		in_( "/x" ) bgn_
+			on_xdigit	do_( "/x_" )	s_take
 			end
-		in_( "/\\x_" ) bgn_
+		in_( "/x_" ) bgn_
 			on_xdigit	do_( "/" )	s_take
 			end
 		in_( "/[" ) bgn_
@@ -1071,12 +1092,12 @@ static BM_PARSE_FUNC( bm_parse_regex ) {
 			end
 		in_( "/[\\" ) bgn_
 			ons( "nt0\\[]" ) do_( "/[" )	s_take
-			on_( 'x' )	do_( "/[\\x" )	s_take
+			on_( 'x' )	do_( "/[x" )	s_take
 			end
-		in_( "/[\\x" ) bgn_
-			on_xdigit	do_( "/[\\x_" ) s_take
+		in_( "/[x" ) bgn_
+			on_xdigit	do_( "/[x_" ) s_take
 			end
-		in_( "/[\\x_" ) bgn_
+		in_( "/[x_" ) bgn_
 			on_xdigit	do_( "/[" )	s_take
 			end
 	PARSER_DEFAULT_END }
@@ -1112,7 +1133,9 @@ static BM_PARSE_FUNC( bm_parse_eenov ) {
 						f_set( EMARKED|INFORMED ) }
 		on_( '/' ) if ( !is_f(INFORMED) ) {
 				do_( "/" )	s_take
-						expr_set( P_REGEX ) }
+						expr_set( P_REGEX )
+						f_push( stack )
+						f_reset( FIRST, 0 ) }
 		on_( '\'' ) if ( !is_f(INFORMED) ) {
 				do_( "char" )	s_take
 						expr_set( P_CHAR ) }

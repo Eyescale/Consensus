@@ -13,18 +13,26 @@ typedef struct {
 } CNProgram;
 
 typedef struct {
-	int interactive;
-	CNCell *this;
+	union { int on; CNCell *this; } ui;
 	listItem *flags;
 } ProgramData;
 
-void cnInit( void );
-void cnExit( int report );
+ProgramData * cnInit( int *, char *** );
+void cnExit( int report, ProgramData * );
+void cnProgramSetInteractive( ProgramData * );
 
 CNProgram *newProgram( char *inipath, CNStory **, ProgramData * );
 void	freeProgram( CNProgram *, ProgramData * );
 void	cnSync( CNProgram * );
 int	cnOperate( CNProgram *, ProgramData * );
-int	cnPrintOut( FILE *, char *path, listItem * );
+int	cnPrintOut( FILE *, char *path, ProgramData * );
+
+static inline CNStory *
+readStory( char *path, ProgramData *data ) {
+	return story_read( path, data->flags ); }
+
+static inline void
+cnStoryOutput( FILE *stream, CNStory *story ) {
+	story_output( stream, story ); }
 
 #endif	// PROGRAM_H

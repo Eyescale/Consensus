@@ -254,7 +254,7 @@ case_( collect_CB )
 	else {
 		listItem *results = bm_scan( p, data->ctx );
 		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }
-	p = p_prune( PRUNE_TERM, p+1 );
+	p = p_prune( PRUNE_TERM, p );
 	_continue( p )
 case_( comma_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
@@ -289,8 +289,6 @@ case_( wildcard_CB )
 		data->sub[ NDX ] = newItem( NULL ); }
 	_break
 case_( register_variable_CB )
-	// Note: we cannot just invoke collect_CB because of the
-	// instantiate-special sub treatment for %?, %! and %|
 	BMContext *carry = data->carry;
 	CNDB *db = data->db;
 	listItem *found;
@@ -301,9 +299,12 @@ case_( register_variable_CB )
 	case '!':
 		e = BMContextRVV( data->ctx, p );
 		if (( e )&&( p[2]==':' )) {
-			listItem *xpn = xpn_make(p+3);
-			e = xpn_sub( e, xpn );
-			freeListItem( &xpn ); }
+			if ( !is_xpn_expr(p+3) )
+				switch_over( collect_CB, p, p )
+			else {
+				listItem *xpn = xpn_make(p+3);
+				e = xpn_sub( e, xpn );
+				freeListItem( &xpn ); } }
 		if (( e )) e = bm_translate( carry, e, db, 1 );
 		if (( e )) data->sub[ NDX ] = newItem( e );
 		else _prune( BM_PRUNE_LEVEL, p );
@@ -324,18 +325,7 @@ case_( register_variable_CB )
 		data->sub[ NDX ] = found;
 		break;
 	default:
-		if ( p[1]=='@' || !is_separator(p[1]) ) {
-			found = BMContextRVV( data->ctx, p );
-			if ( !found ) _prune( BM_PRUNE_LEVEL, p+2 )
-			sub = &data->sub[ NDX ];
-			for ( listItem *i=found; i!=NULL; i=i->next ) {
-				e = bm_translate( carry, i->ptr, db, 1 );
-				if (( e )) addItem( sub, e ); } }
-		else {
-			e = BMContextRVV( data->ctx, p );
-			if (( e )) e = bm_translate( carry, e, db, 1 );
-			if (( e )) data->sub[ NDX ] = newItem( e );
-			else _prune( BM_PRUNE_LEVEL, p ) } }
+		switch_over( collect_CB, p, p ) }
 	_break
 case_( literal_CB )
 	/* We have	(:_sequence_:)

@@ -2,6 +2,7 @@
 #define	STORY_H
 
 #include "registry.h"
+#include "registry.h"
 
 //===========================================================================
 //	Story types
@@ -11,10 +12,10 @@ typedef Registry CNStory;
 //===========================================================================
 //	Public Interface
 //===========================================================================
-CNStory *	readStory( char *path, listItem *flags );
-int		cnStoryOutput( FILE *, CNStory * );
 CNStory *	newStory( void );
 void		freeStory( CNStory * );
+CNStory *	story_read( char *path, listItem * );
+int		story_output( FILE *, CNStory * );
 
 static inline Pair *CNStoryMain( CNStory *story ) {
 	if ( !story ) return NULL;

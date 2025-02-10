@@ -32,13 +32,13 @@ free_CB( Registry *registry, Pair *entry ) {
 		freeNarrative( narrative ); }
 
 //===========================================================================
-//	readStory
+//	story_read
 //===========================================================================
 static inline int indentation_check( BMParseData *data );
 static BMParseCB build_CB;
 
 CNStory *
-readStory( char *path, listItem *flags ) {
+story_read( char *path, listItem *flags ) {
 	if ( !path ) return NULL;
 	FILE *stream = fopen( path, "r" );
 	if ( !stream ) {
@@ -295,10 +295,10 @@ l_case( CNOccurrence *sibling, BMParseData *data ) {
 	else return 0; }
 
 //===========================================================================
-//	cnStoryOutput
+//	story_output
 //===========================================================================
 int
-cnStoryOutput( FILE *stream, CNStory *story ) {
+story_output( FILE *stream, CNStory *story ) {
 	if ( story == NULL ) return 0;
 	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;

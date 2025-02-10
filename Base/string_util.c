@@ -261,6 +261,113 @@ charscan( char *p, char_s *q ) {
 		q->value = p[0]; return 1; } }
 
 //---------------------------------------------------------------------------
+//	strmake
+//---------------------------------------------------------------------------
+char *
+strmake( char *p ) {
+	CNString *s = newString();
+	if ( is_separator(*p) )
+		StringAppend( s, *p );
+	else do {
+		StringAppend( s, *p++ );
+		} while ( !is_separator(*p) );
+	p = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	freeString( s );
+	return p; }
+
+//---------------------------------------------------------------------------
+//	strcomp
+//---------------------------------------------------------------------------
+static int rxcomp( char *regex, char *p );
+
+int
+strcomp( char *p, char *q, int cmptype ) {
+	switch ( cmptype ) {
+	case 0:	// both p and q are null-terminated
+		for ( ; *p; p++, q++ ) {
+			if ( *p == *q ) continue;
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
+		return - *(const unsigned char*)q;
+	case 1:	// both p and q are separator-terminated
+		if ( is_separator(*p) ) {
+			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
+			return *(const unsigned char*)p - *(const unsigned char*)q; }
+		else if ( is_separator(*q) ) {
+			return *(const unsigned char*)p; }
+		else for ( ; !is_separator(*p); p++, q++ ) {
+			if ( *p == *q ) continue;
+			return is_separator(*q) ?
+				*(const unsigned char*)p :
+				*(const unsigned char*)p - *(const unsigned char*)q; }
+		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
+	case 2:
+		return rxcomp( p, q );
+	default:
+		return 1; } }
+
+static inline char *rxnext( char *r );
+static int
+rxcomp( char *regex, char *p )
+/*
+	regex is assumed syntactically correct
+	p is null-terminated
+*/ {
+	listItem *backup = NULL;
+	int cmp=0, level=0, prune=0;
+	for ( char *r=regex+1; ; )
+		do {
+			switch ( *r ) {
+			case '/':
+				return *p;
+			case '|':
+				switch ( prune ) {
+				case -1: p=backup->ptr; prune=0; break;
+				case 0: prune=1; break;
+				case 1: prune=0; }
+				r++; break;
+			case '(':
+				level++;
+				if ( !prune ) addItem( &backup, p );
+				else if ( prune > 0 ) prune++;
+				else if ( prune < 0 ) prune--;
+				r++; break;
+			case ')':
+				level--;
+				if ( !prune ) popListItem( &backup );
+				else if ( prune > 0 ) {
+					prune--;
+					if ( !prune )
+						popListItem( &backup ); }
+				else if ( prune < 0 ) {
+					prune++;
+					if ( !prune ) {
+						if ( level ) prune = -1;
+						else {
+							freeListItem( &backup );
+							return cmp; } } }
+				r++; break;
+			default:
+				if ( !prune ) {
+					if ( !*p ) {
+						freeListItem( &backup );
+						return rxcmp( r, '\0' ); }
+					else if (( cmp = rxcmp( r, *p++ ) )) {
+						if ( level ) prune = -1;
+						else return cmp; } }
+				r = rxnext( r ); }
+		} while ( prune ); }
+
+static inline char *
+rxnext( char *r ) {
+	if ( *r=='[' ) {
+		do r += *r=='\\' ? r[1]=='x' ? 4:2:1; while ( *r!=']' );
+		return r+1; }
+	else {
+		r += *r=='\\' ? r[1]=='x' ? 4:2:1;
+		return  r; } }
+
+//---------------------------------------------------------------------------
 //	rxcmp
 //---------------------------------------------------------------------------
 int
@@ -308,118 +415,6 @@ rxcmp( char *regex, int event ) {
 			*(const unsigned char*)q.s : *(const unsigned char*)(r+1) );
 	default:
 		return event - *(const unsigned char*)r; } }
-
-//---------------------------------------------------------------------------
-//	strmake
-//---------------------------------------------------------------------------
-char *
-strmake( char *p ) {
-	CNString *s = newString();
-	if ( is_separator(*p) )
-		StringAppend( s, *p );
-	else do {
-		StringAppend( s, *p++ );
-		} while ( !is_separator(*p) );
-	p = StringFinish( s, 0 );
-	StringReset( s, CNStringMode );
-	freeString( s );
-	return p; }
-
-//---------------------------------------------------------------------------
-//	strcomp
-//---------------------------------------------------------------------------
-static int equivocal( char *regex, char *p );
-static int rxnext( char *regex, char **r );
-
-int
-strcomp( char *p, char *q, int cmptype ) {
-	switch ( cmptype ) {
-	case 0:	// both p and q are null-terminated
-		for ( ; *p; p++, q++ ) {
-			if ( *p == *q ) continue;
-			return *(const unsigned char*)p - *(const unsigned char*)q; }
-		return - *(const unsigned char*)q;
-	case 1:	// both p and q are separator-terminated
-		if ( is_separator(*p) ) {
-			if ( !is_separator(*q) ) return - *(const unsigned char*)q;
-			return *(const unsigned char*)p - *(const unsigned char*)q; }
-		else if ( is_separator(*q) ) {
-			return *(const unsigned char*)p; }
-		else for ( ; !is_separator(*p); p++, q++ ) {
-			if ( *p == *q ) continue;
-			return is_separator(*q) ?
-				*(const unsigned char*)p :
-				*(const unsigned char*)p - *(const unsigned char*)q; }
-		return is_separator(*q) ? 0 : - *(const unsigned char*)q;
-	case 2:; // p is a regex, q is null-terminated
-		char *r = p+1; // skip the leading '/'
-#define RXCMP(r,e) \
-		(( *r=='\0' || *r=='/' ) ? e : ( e ? rxcmp(r,e) : -1 ))
-		int comparison;
-		for ( ; *q; q++, rxnext(p,&r) ) {
-			if (( comparison = RXCMP( r, *q ) )) {
-				if ( equivocal(p,r) ) return -1;
-				else return comparison; } }
-		if (( comparison = RXCMP( r, *q ) )) {
-			if ( equivocal(p,r) ) return -1;
-			else return comparison; }
-		return 0;
-	default:
-		return 1; } }
-
-static int
-equivocal( char *regex, char *p ) {
-	switch ( *p ) {
-	case '.':
-	case '[':
-		return 1;
-	case '\\':
-		switch ( p[1] ) {
-		case 'd':
-		case 'h':
-		case 'l':
-			return 1; } }
-	char *r = regex+1; // skip the leading '/'
-	while ( r != p ) {
-		switch ( *r ) {
-		case '.':
-		case '[':
-			return 1;
-		case '\\':
-			switch ( r[1] ) {
-			case 'd':
-			case 'h':
-			case 'l':
-				return 1; }
-			r += ( r[1]=='x' ? 4 : 2 );
-			break;
-		default:
-			r++; } }
-	return 0; }
-
-static int
-rxnext( char *regex, char **p ) {
-	char *r = *p;
-	if ( *r=='/' ) return 0;
-	int bracket = 0;
-	do {
-		switch ( *r ) {
-		case '\0':
-			return 0;
-		case '[':
-			bracket = 1;
-			r++; break;
-		case ']':
-			bracket = 0;
-			r++; break;
-		case '\\':
-			r += ( r[1]=='x' ? 4 : 2 );
-			break;
-		default:
-			r++; }
-		} while ( bracket );
-	*p = r;
-	return 1; }
 
 //---------------------------------------------------------------------------
 //	strscanid

@@ -155,8 +155,8 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				case '|':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( *p==':' ) {
-						p = p_prune( PRUNE_TERM, p+1 ); }
+					if ( *p==':' )
+						p = p_prune( PRUNE_TERM, p+1 );
 					break;
 				case '?':
 				case '!':
