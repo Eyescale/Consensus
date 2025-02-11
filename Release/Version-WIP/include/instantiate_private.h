@@ -13,11 +13,6 @@ typedef struct {
 	CNDB *db;
 	} InstantiateData;
 
-typedef struct {
-	struct { void *level; char *p; } *bgn;
-	struct { BMMark *mark; listItem *results; } *end;
-	} LoopData;
-
 #define NDX \
 	( is_f( FIRST ) ? 0 : 1 )
 #define CONNECTED( e )	\
@@ -36,5 +31,59 @@ typedef struct {
 	for (CNInstance*e;(e=popListItem( &sub[0] ));) \
 		db_unassign( e, db );
 
+typedef struct {
+	struct { void *level; char *p; } *bgn;
+	struct { BMMark *mark; listItem *results; } *end;
+	} LoopData;
+
+static inline void
+loopPop( InstantiateData *data, int once ) {
+	listItem **stack = &data->loop;
+	for ( ; ; ) {
+		LoopData *loop = popListItem( stack );
+		if ( !loop ) return;
+		if ( !once ) freeListItem( &loop->end->results );
+		freePair((Pair *) loop->bgn );
+		freePair((Pair *) loop->end );
+		freePair((Pair *) loop );
+		if ( once ) return; } }
+
+#ifdef DEBUG
+#define DBG_CLEANUP dbg_cleanup
+#else
+#define DBG_CLEANUP( data, expression )
+#endif
+static inline void
+dbg_cleanup( InstantiateData *data, char *expression ) {
+	if ( !data->sub[0] && ( expression ))
+		errout( InstantiatePartial, expression );
+	if ( !data->sub[1] && !data->stack.flags && !data->results && !BMContextRVV(data->ctx,"%|") )
+		return;
+
+	fprintf( stderr, ">>>>> B%%: Error: bm_instantiate: memory leak" );
+	if (( expression )) {
+		fprintf( stderr, "\t\tdo %s\n\t<<<<< failed", expression );
+		if ( !strmatch(":!\"", *expression ) ) {
+			fprintf( stderr, " in expression\n" ); }
+		else	fprintf( stderr, " in assignment\n" ); }
+	else fprintf( stderr, " in assignment\n" );
+	fprintf( stderr, " on:" );
+	if ((data->sub[1])) {
+		fprintf( stderr, " data->sub[ 1 ]" );
+		if (!data->sub[0]) fprintf( stderr, "/!data->sub[ 0 ]" ); }
+	if ((data->stack.flags)) fprintf( stderr, " data->stack.flags" );
+	if ((data->results)) fprintf( stderr, " data->results" );
+	if ((BMContextRVV(data->ctx,"%|"))) fprintf( stderr, " %%|" );
+	fprintf( stderr, "\n" );
+
+	loopPop( data, 0 );
+	freeListItem( &data->sub[ 1 ] );
+	freeListItem( &data->stack.flags );
+	listItem *instances;
+	listItem **results = &data->results;
+	while (( instances = popListItem(results) ))
+		freeListItem( &instances );
+	bm_context_pipe_flush( data->ctx );
+	exit( -1 ); }
 
 #endif	// INSTANTIATE_PRIVATE_H

@@ -43,55 +43,12 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 		instantiate_traversal( expression, &traversal, FIRST );
 		cleanup( &traversal, expression ); } }
 
-static inline void loopPop( InstantiateData *data, int once );
 static inline void
 cleanup( BMTraverseData *traversal, char *expression ) {
 	InstantiateData *data = traversal->user_data;
-#ifdef DEBUG
-	if ( !data->sub[0] && ( expression ))
-		errout( InstantiatePartial, expression );
-	if ((data->sub[1]) || (data->stack.flags) || (data->results) ||
-	    (BMContextRVV( data->ctx, "%|" ))) {
-		fprintf( stderr, ">>>>> B%%: Error: bm_instantiate: memory leak" );
-		if (( expression )) {
-			fprintf( stderr, "\t\tdo %s\n\t<<<<< failed", expression );
-			if ( !strmatch(":!\"", *expression ) ) {
-				fprintf( stderr, " in expression\n" ); }
-			else	fprintf( stderr, " in assignment\n" ); }
-		else fprintf( stderr, " in assignment\n" );
-		fprintf( stderr, " on:" );
-		if ((data->sub[1])) {
-			fprintf( stderr, " data->sub[ 1 ]" );
-			if (!data->sub[0]) fprintf( stderr, "/!data->sub[ 0 ]" ); }
-		if ((data->stack.flags)) fprintf( stderr, " data->stack.flags" );
-		if ((data->results)) fprintf( stderr, " data->results" );
-		if ((BMContextRVV(data->ctx,"%|"))) fprintf( stderr, " %%|" );
-		fprintf( stderr, "\n" );
-
-		loopPop( data, 0 );
-		freeListItem( &data->sub[ 1 ] );
-		freeListItem( &data->stack.flags );
-		listItem *instances;
-		listItem **results = &data->results;
-		while (( instances = popListItem(results) ))
-			freeListItem( &instances );
-		bm_context_pipe_flush( data->ctx );
-		exit( -1 ); }
-#endif
+	DBG_CLEANUP( data, expression )
 	freeListItem( &data->sub[ 0 ] );
 	traversal->done = 0; }
-
-static inline void
-loopPop( InstantiateData *data, int once ) {
-	listItem **stack = &data->loop;
-	for ( ; ; ) {
-		LoopData *loop = popListItem( stack );
-		if ( !loop ) return;
-		if ( !once ) freeListItem( &loop->end->results );
-		freePair((Pair *) loop->bgn );
-		freePair((Pair *) loop->end );
-		freePair((Pair *) loop );
-		if ( once ) return; } }
 
 //---------------------------------------------------------------------------
 //	instantiate_traversal
@@ -102,14 +59,27 @@ static listItem *instantiate_list( char **, listItem **, CNDB * );
 static listItem *instantiate_xpan( listItem **, CNDB * );
 
 BMTraverseCBSwitch( instantiate_traversal )
+case_( string_CB )
+	// p is either $(s,?:...) or $((s,~.),?:...)
+	CNDB *db = data->db;
+	char *s = p[2]=='(' ? p+3 : p+2;
+	CNInstance *e = db_lookup( 0, s, db );
+	CNInstance *ste = ( data->carry ) ?
+		db_arena_makeup( e, db, BMContextDB(data->carry) ) :
+		db_arena_makeup( e, db, db );
+	if ( s==p+3 ) db_clear( e, 0, db );
+	if (( ste )) data->sub[ NDX ] = newItem( ste );
+	// skip "s,~.),?:...)" resp. "s,?:...)"
+	s += strlen(s) + (( s==p+3 )? 11 : 7 );
+	if ( !ste ) _prune( BM_PRUNE_LEVEL, s )
+	else _continue( s )
 case_( filter_CB )
 	/* Assumption: p at filter pipe :|
 	   all other cases (byref) have been verified by parser
 	   so as to be handled by collect_CB
 	*/
 	listItem *r = data->sub[ NDX ];
-	if ( !r )
-		_prune( BM_PRUNE_LEVEL, p+2 )
+	if ( !r ) _prune( BM_PRUNE_LEVEL, p+2 )
 	else if ( !is_f(PIPED) )
 		switch_over( bgn_pipe_CB, p+1, p )
 	else {
@@ -265,7 +235,9 @@ case_( comma_CB )
 	else if ( !data->sub[ 0 ] )
 		_prune( BM_PRUNE_LEVEL, p+1 )
 	else if ( !strncmp( p+1, "~.)", 3 ) ) {
-		db_clear( data->sub[ 0 ], data->db );
+		CNDB *db = data->db;
+		for ( listItem *i=data->sub[0]; i!=NULL; i=i->next )
+			db_clear( i->ptr, 0, db );
 		data->sub[ 1 ] = data->sub[ 0 ];
 		data->sub[ 0 ] = NULL;
 		_continue( p+3 ) }

@@ -63,6 +63,10 @@ prune_level( char *p ) {
 			do p = prune_term( p+1, PRUNE_TERM );
 			while ( *p!='}' );
 			p++; break;
+		case '<':
+			do p = prune_term( p+1, PRUNE_TERM );
+			while ( *p!='>' );
+			p++; break;
 		default:
 			return p; } } }
 
@@ -169,6 +173,7 @@ prune_ternary( char *p )
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
+		case '{':
 			p = prune_sub( p );
 			informed = 1; break;
 		case ',':
@@ -226,18 +231,26 @@ RETURN:
 static char *
 prune_sub( char *p )
 /*
-	Assumption: *p=='(' and no format string authorized in level
-	return after closing ')'
+	Assumption: *p=='(' or '{' and no format string authorized in level.
+	return after closing ')' resp. '}'
 */ {
 	int level = 0;
+	int curly = *p=='{';
 	while ( *p ) {
 		switch ( *p ) {
+		case '{':
+			if ( !curly ) {
+				p++; break; }
+			// no break
 		case '(':
 			level++;
 			p++; break;
+		case '}':
+			if ( !curly ) {
+				p++; break; }
+			// no break
 		case ')':
-			level--;
-			p++;
+			level--; p++;
 			if ( !level )
 				return p;
 			break;

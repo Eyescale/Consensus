@@ -1,12 +1,11 @@
 See Also: design/story/interactive.story
 
 TODO
-	. $(s,?:...) // generate or reuse string
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] output system as is => cf output.story
 		[ DONE ] create internal data structure  => cf inform.story
-		[ WIP ] inform.story - must pass ./B% -p
+		[ DONE ] pass ./B% -p Examples/6_System/inform.story
 		[ WIP ] inform.story: implement NCR in :err
 		[ WIP ] inform.story: output data structure as per system model [*]
 		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
@@ -14,6 +13,7 @@ TODO
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
 		. finalize and test TM.system example (manual)
+	. integrate p_prune and bm_traverse()
 	. cleanup & complete contents of design/story/
 	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
@@ -97,9 +97,8 @@ NOTES
 	  should not have .ON, .OFF or use something special
 	. ?:_ => invokes
 		CB_WildCardCB on '?' then, having set INFORMED,
-		CB_FilterCB on ':' which is kind of a contradication (?)
+		CB_FilterCB on ':' which is kind of a contradiction (?)
 	  could actually skip the ':' after WildCardCB => leave INFORMED unset
-	. integrate db_debug.c from Version-1.1 into db_op.c
 	. Note: in the future I want to be able to
 		do list:"%$"<"string"	or do list < "string"
 	  so that
@@ -121,6 +120,10 @@ NOTES
 		// post-frame
 
 DONE
+	. $(s,?:...) // generate or reuse string
+		[DONE] parser.c:bm_parse_string()
+		[DONE] implement in instantiate.c
+	  	cf. Test/84_string-makeup
 	. re-implemented regex - usable as pivot in query.c (not eeno)
 	  cf. Test/83_regex-query
 	. allowed !! in *type&(IN|ON) expressions, passing if UBE
@@ -562,6 +565,7 @@ NICE TO HAVE
 	  Anyway not a bug, as ^^ will return NULL and expression will fail
 	  but less user assistance than ideal, as we would like to verify
 	  ASSIGN|PRIMED to allow ^^ and *^^ and *^%?
+	. re-integrate db_debug.c from Version-1.1 into db_op.c
 	. parser_macros: extract REENTER + put caught in io struct
 	. expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!
 	. do >format:args | format:args | format:args

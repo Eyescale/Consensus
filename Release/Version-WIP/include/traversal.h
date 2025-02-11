@@ -127,6 +127,8 @@ CB_DereferenceCB			f_clr( INFORMED )
 CB_StarCharacterCB			f_set( INFORMED )
 					p++; }
 				break;
+			case '$':
+CB_StrExpressionCB		p++; break;
 			case '%':
 				switch ( p[1] ) {
 				case '(':

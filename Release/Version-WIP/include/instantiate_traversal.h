@@ -10,9 +10,9 @@ static BMTraversal instantiate_traversal;
 
 static BMTraverseCB
 	filter_CB, bgn_set_CB, end_set_CB, bgn_pipe_CB, end_pipe_CB, open_CB,
-	close_CB, newborn_CB, loop_CB, activate_CB, collect_CB, comma_CB,
-	wildcard_CB, register_variable_CB, literal_CB, list_CB, dot_expression_CB,
-	dot_identifier_CB, identifier_CB, signal_CB;
+	close_CB, loop_CB, activate_CB, collect_CB, comma_CB, wildcard_CB,
+	register_variable_CB, literal_CB, list_CB, dot_expression_CB,
+	dot_identifier_CB, identifier_CB, signal_CB, string_CB;
 
 #define BMFilterCB		filter_CB
 #define BMBgnSetCB		bgn_set_CB
@@ -21,12 +21,12 @@ static BMTraverseCB
 #define BMEndPipeCB		end_pipe_CB
 #define BMOpenCB		open_CB
 #define BMCloseCB		close_CB
-#define BMNewBornCB		newborn_CB
 #define BMLoopCB		loop_CB
 #define BMActivateCB		activate_CB
 #define BMDereferenceCB		collect_CB
 #define BMNotCB			collect_CB
 #define BMSubExpressionCB	collect_CB
+#define BMStrExpressionCB	string_CB
 #define BMCommaCB		comma_CB
 #define BMWildCardCB		wildcard_CB
 #define BMRegisterVariableCB	register_variable_CB

@@ -158,7 +158,7 @@ output_expr( FILE *stream, char *p, int level, int type ) {
 typedef struct {
 	FILE *stream;
 	char *p;
-	int level, type, piped;
+	int level, piped;
 	struct { char *p; int level; } ternary;
 	struct { listItem *level, *flags; } stack;
 	} fprintExprData;
@@ -172,7 +172,6 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 	data.stream = stream;
 	data.p = p;
 	data.level = level;
-	data.type = type;
 	p = jump_start( &data, p );
 	if ( *p=='"' ) {
 		for ( char*q=data.p; q!=p; q++ )
@@ -206,7 +205,8 @@ jump_start( fprintExprData *data, char *p ) {
 		p+=2;
 		if ( is_separator(*p) ) return p;
 		do p++; while ( !is_separator(*p) );
-		if ( *p=='(' ) return retab( data, p );
+		if ( *p=='(' && strlen(data->p)>=40 )
+			return retab( data, p );
 	default:
 		return p; } }
 
@@ -246,19 +246,16 @@ case_( bgn_pipe_CB )
 	else retab( data, p );
 	_break
 case_( bgn_set_CB )
-	int mode = data->type;
-	if ( *p=='{' || ( *p=='<' && mode&OUTPUT )) {
-		if ( data->piped || *p_prune( PRUNE_LEVEL, p+1 )==',' ) {
-			add_item( &data->stack.level, data->level );
-			retab( data, p ); data->piped = 0; }
-		else add_item( &data->stack.level, 0 ); }
+	if ( !is_f(LEVEL) ) {
+		add_item( &data->stack.level, data->level );
+		retab( data, p ); data->piped = 0; }
+	else add_item( &data->stack.level, 0 );
 	_break
 case_( end_set_CB )
 	popListItem( &data->stack.level );
 	_break
 case_( comma_CB )
-	int mode = data->type;
-	if (( is_f(SET) || ( is_f(VECTOR) && mode&OUTPUT )) && !is_f(LEVEL|SUB_EXPR) ) {
+	if ( is_f(SET|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
 		int level = cast_i( data->stack.level->ptr );
 		if ( level ) {
 			data->level = level;

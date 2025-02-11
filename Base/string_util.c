@@ -336,16 +336,13 @@ rxcomp( char *regex, char *p )
 				level--;
 				if ( !prune ) popListItem( &backup );
 				else if ( prune > 0 ) {
-					prune--;
-					if ( !prune )
+					if ( !--prune )
 						popListItem( &backup ); }
 				else if ( prune < 0 ) {
-					prune++;
-					if ( !prune ) {
+					if ( !++prune ) {
+						popListItem( &backup );
 						if ( level ) prune = -1;
-						else {
-							freeListItem( &backup );
-							return cmp; } } }
+						else return cmp; } }
 				r++; break;
 			default:
 				if ( !prune ) {

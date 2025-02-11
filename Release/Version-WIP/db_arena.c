@@ -43,8 +43,12 @@ free_CB( uint key[2], void *value ) {
 	return 1; }
 
 //===========================================================================
-//	db_arena_encode
+//	db_arena_encode / db_arena_key
 //===========================================================================
+/*
+	note that code stores least significant hextet first
+*/
+#define i2hex( i ) (i&=63,i+offset(i))
 static inline int offset( int );
 static shakeBTreeCB strcmp_CB;
 typedef struct {
@@ -65,10 +69,7 @@ db_arena_encode( CNString *code, CNString *string ) {
 		Registry *ref = newRegistry( IndexedByAddress );
 		index = btreeAdd( DBSharedArena->name, newPair(data.s,ref) ); }
 	// got index => now encode
-	do {
-		int tmp = ( index & 63 );
-		StringAppend( code, tmp+offset(tmp) );
-		} while (( index>>=6 )); }
+	do StringAppend( code, i2hex(index) ); while (( index>>=6 )); }
 
 static int
 strcmp_CB( uint key[2], void *value, void *user_data ) {
@@ -87,17 +88,18 @@ offset( int tmp ) {
 		  tmp > 96 ? 61 : // a-z: 36-61
 		  32 ); } // ^_: 62-63
 
-//===========================================================================
+//---------------------------------------------------------------------------
 //	db_arena_key
-//===========================================================================
+//---------------------------------------------------------------------------
+#define hex2i( h ) (h-offset(h))
 void *
 db_arena_key( char *code ) {
 	union { uint value[2]; void *ptr; } key;
 	key.value[ 0 ] = '$';
 	key.value[ 1 ] = 0;
 	code++; // skip leading '"'
-	for ( int shift=0, tmp; (tmp=*code)!='"'; code++, shift+=6 )
-		key.value[ 1 ] |= (tmp-offset(tmp)) << shift;
+	for ( int shift=0; *code!='"'; code++, shift+=6 )
+		key.value[ 1 ] |= hex2i(*code) << shift;
 	return key.ptr; }
 
 //===========================================================================
@@ -129,6 +131,36 @@ db_arena_lookup( char *code, CNDB *db ) {
 		entry = registryLookup( entry->value, db );
 		return (( entry )? entry->value : NULL ); }
 	return NULL; }
+
+//===========================================================================
+//	db_arena_makeup
+//===========================================================================
+CNInstance *
+db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
+/*
+	build $(e,?:...) and return shared arena string
+*/ {
+	if ( !e || db_private(0,e,db)) return NULL;
+	CNString *string = newString();
+	for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; ) {
+		if ( e=i->ptr, !db_private(0,e,db) ) {
+			CNInstance *f = e->sub[ 1 ];
+			if ( !cnIsIdentifier(f) ) break;
+			int event = *CNIdentifier( f );
+			if ( !event ) break;
+			StringAppend( string, event );
+			i = e->as_sub[ 0 ]; }
+		else i = i->next; }
+	if ( !StringInformed(string) ) return NULL;
+	CNString *code = newString();
+	StringAppend( code, '"' );
+	db_arena_encode( code, string );
+	StringAppend( code, '"' );
+	freeString( string );
+	char *s = StringFinish(code,0);
+	e = db_arena_register( s, db_dst );
+	freeString( code );
+	return e; }
 
 //===========================================================================
 //	db_arena_output

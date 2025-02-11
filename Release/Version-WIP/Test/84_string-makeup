@@ -1,0 +1,16 @@
+
+	on init
+		do ((( toto, a ), b ), c )
+		do : c : '/'
+		do : tata : "ad
+	etiou
+		\ done !\n"
+	else on toto
+		do : titi : $(toto,?:...)
+	else
+		do >: *titi
+		do >":tata: \"%_\"\n": *tata
+		do >":tata: %s\n": *tata
+		do >":c:%_\n": *c
+		do >":c:%s\n": *c
+		do exit

@@ -62,6 +62,7 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMRegisterVariableCB
 	BMTernaryOperatorCB
 	BMSubExpressionCB
+	BMStrExpressionCB
 	BMDereferenceCB
 	BMLiteralCB
 	BMListCB
@@ -77,7 +78,6 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMRegexCB
 	BMIdentifierCB
 	BMSignalCB
-	BMNewBornCB
 	BMLoopCB
 */
 #ifdef BMOpenCB
@@ -182,6 +182,12 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 #define CB_SubExpressionCB
 #endif
 
+#ifdef BMStrExpressionCB
+#define CB_StrExpressionCB	_CB( BMStrExpressionCB )
+#else
+#define CB_StrExpressionCB
+#endif
+
 #ifdef BMDereferenceCB
 #define CB_DereferenceCB	_CB( BMDereferenceCB )
 #else
@@ -270,12 +276,6 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 #define CB_SignalCB	_CB( BMSignalCB )
 #else
 #define CB_SignalCB
-#endif
-
-#ifdef BMNewBornCB
-#define CB_NewBornCB	_CB( BMNewBornCB )
-#else
-#define CB_NewBornCB
 #endif
 
 #ifdef BMLoopCB

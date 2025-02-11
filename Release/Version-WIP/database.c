@@ -176,21 +176,6 @@ deprecatable( CNInstance *e, CNDB *db )
 	return ( !f || ( f->as_sub[0] && !f->as_sub[1] )); }
 
 //===========================================================================
-//	db_clear
-//===========================================================================
-static inline void deprecate_as_sub( CNInstance *, int ndx, CNDB * );
-
-void
-db_clear( listItem *instances, CNDB *db ) {
-	for ( listItem *i=instances; i!=NULL; i=i->next )
-		deprecate_as_sub( i->ptr, 0, db ); }
-
-static inline void
-deprecate_as_sub( CNInstance *e, int ndx, CNDB *db ) {
-	for ( listItem *j=e->as_sub[ndx]; j!=NULL; j=j->next )
-		db_deprecate( j->ptr, db ); }
-
-//===========================================================================
 //	db_signal
 //===========================================================================
 static inline int flareable( CNInstance *, CNDB * );
@@ -282,7 +267,7 @@ db_fire( CNInstance *proxy, CNDB *db )
 */ {
 	if ( deprecatable( proxy, db ) ) {
 		if (( CNProxyThat( proxy ) ))
-			deprecate_as_sub( proxy, 0, db );
+			db_clear( proxy, 0, db );
 		else deprecate( proxy, db ); } }
 
 //===========================================================================
@@ -621,7 +606,12 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			else {
 				char *p = db_arena_identifier( e );
 				if ( type=='s' ) fprintf( stream, "%s", p );
-				else fprintf( stream, "\"%s\"", p ); } }
+				else for ( ; *p; p++ )
+					switch ( *p ) {
+					case '\n': fprintf( stream, "\\n" ); break;
+					case '\t': fprintf( stream, "\\t" ); break;
+					case '\\': fprintf( stream, "\\\\" ); break;
+					default: fprintf( stream, "%c", *p ); } } }
 		else {
 			char *p = CNIdentifier( e );
 			if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )

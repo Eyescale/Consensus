@@ -146,7 +146,7 @@
 			do : err
 	else en &
 
-: ps
+.: ps
 	// try to concatenate _" "_
 	on : input :
 		'"' // success
@@ -213,13 +213,11 @@
 		in ( type, ?:~ELSE )
 			in (( %?:CL )?:( %?:DO ))
 				/* in pending DO force DO to register at same level,
-				   otherwise set ready to enable output - barring '>'
-				*/
+				   otherwise set ready */
 				do ((cmd,.) ? (type,ELSE) : ready )
 
 				/* in (type,ELSE) **tab is informed, by preceding
-				   IN or ON or OFF
-				*/
+				   IN or ON or OFF */
 				do :< *tab, that >:< ((type,ELSE) ?
 					( **tab, ((ELSE,%?),*s) ) :
 					((.(*tab),~.),(%?,*s))), *s >
@@ -293,6 +291,7 @@
 		else in ?:( %?, '\t' )
 			do : p : %?
 	else in ready
+		do :< condition, event >: ~.
 		do :< guard, bar, on >: !!
 		do : p : root
 		do ~( ready )
@@ -303,20 +302,22 @@
 	else do : err
 
 .: register
+/*
+	try and reuse existing guard and triggers bar/on, from
+	   ( .guard, ( .trigger:(.bar,.on), .action:(.occurrence,ON|OFF) ))
+	and instantiate result
+*/
 	on : .
-		/* try and reuse existing guard and trigger bar/on, from
-		   ( .guard:!!, ( .trigger:(!!,!!), (occurrence,ON|OFF) ))
-		*/
 		per ?:%( ?:~%(~%(?,*guard),?), ( ., (.,/(ON|OFF)/) ))
-			in ~.:( ~%(?,%?), *guard )
+			in ~.:( ~%(?,%?), *guard ) // all conditions apply
 				do { ~(*guard), ((*,guard),%?) }
 
 		per ?:%( ., ((?:~%(~%(?,*bar),?),.), (.,/(ON|OFF)/) ))
-			in ~.:( ~%(?,%?), *bar )
+			in ~.:( ~%(?,%?), *bar ) // all events apply
 				do { ~(*bar), ((*,bar),%?) }
 
 		in ?:%( ., ((.,?:~%(~%(?,*on),?)), (.,/(ON|OFF)/) ))
-			in ~.:( ~%(?,%?), *on )
+			in ~.:( ~%(?,%?), *on ) // all events apply
 				do { ~(*on), ((*,on),%?) }
 	else
 		do ( *guard, ((*bar,*on), ( *action:((.,OFF),(.,ON)) ?
