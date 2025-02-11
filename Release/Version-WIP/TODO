@@ -12,7 +12,7 @@ TODO
 		. cosystem init
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
-		. finalize and test TM.system example (manual)
+		. finalize and actually run TM.system example (manual)
 	. integrate p_prune and bm_traverse()
 	. cleanup & complete contents of design/story/
 	. reorder Test/ directory contents

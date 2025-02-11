@@ -24,7 +24,7 @@ main( int argc, char **argv ) {
 		index[ i ] = btreeAdd( btree, value+i );
 	for ( int i=0; i<NUM; i++ ) {
 		uint key[2] = { '$', index[i] };
-		printf( "storing: %d : %c%d\n", *(int*)btreeLookup( btree, key ), key[0], key[1] ); }
+		printf( "storing: %d : %c%d\n", *(int*)btreePick( btree, key ), key[0], key[1] ); }
 	printf( "--\n" );
 	freeBTree( btree, free_CB );
 	if ( CNMemoryUsed ) {

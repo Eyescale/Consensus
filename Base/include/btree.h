@@ -13,7 +13,7 @@ typedef int shakeBTreeCB( uint key[2], void *value, void *user_data );
 BTree *	newBTree( uint user_type );
 void	freeBTree( BTree *, freeBTreeCB );
 uint	btreeAdd( BTree *, void * );
-void *	btreeLookup( BTree *, uint key[2] );
+void *	btreePick( BTree *, uint key[2] );
 int	btreeShake( BTree *, shakeBTreeCB, void * );
 
 #endif // BTREE_H

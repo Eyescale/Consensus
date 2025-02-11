@@ -111,7 +111,7 @@ db_arena_register( char *code, CNDB *db ) {
 	Registry *ref;
 	if (( code )) {
 		key.ptr = db_arena_key( code );
-		Pair *entry = btreeLookup( DBSharedArena->name, key.value );
+		Pair *entry = btreePick( DBSharedArena->name, key.value );
 		ref = entry->value; }
 	else {
 		key.value[ 0 ] = '!';
@@ -126,7 +126,7 @@ CNInstance *
 db_arena_lookup( char *code, CNDB *db ) {
 	union { uint value[2]; void *ptr; } key;
 	key.ptr = db_arena_key( code );
-	Pair *entry = btreeLookup( DBSharedArena->name, key.value );
+	Pair *entry = btreePick( DBSharedArena->name, key.value );
 	if (( entry )) {
 		entry = registryLookup( entry->value, db );
 		return (( entry )? entry->value : NULL ); }
@@ -189,7 +189,7 @@ static inline void
 output( FILE *stream, char *code ) {
 	union { uint value[2]; void *ptr; } key;
 	key.ptr = db_arena_key( code );
-	Pair *entry = btreeLookup( DBSharedArena->name, key.value );
+	Pair *entry = btreePick( DBSharedArena->name, key.value );
 	if (( entry )) fprintf( stream, "\"%s\"", entry->name ); }
 
 //===========================================================================
@@ -205,12 +205,12 @@ db_arena_deregister( CNInstance *e, CNDB *db )
 	uint *key = CNSharedKey( e );
 	switch ( key[0] ) {
 	case '$': ;
-		Pair *entry = btreeLookup( DBSharedArena->name, key );
+		Pair *entry = btreePick( DBSharedArena->name, key );
 		if (( entry ))
 			registryCBDeregister( entry->value, deregister_CB, db );
 		break;
 	case '!': ;
-		Registry *ref = btreeLookup( DBSharedArena->value, key );
+		Registry *ref = btreePick( DBSharedArena->value, key );
 		if (( ref ))
 			registryCBDeregister( ref, deregister_CB, db );
 		break; } }
@@ -230,7 +230,7 @@ db_arena_identifier( CNInstance *e )
 	Assumption: e->sub[0]==NULL
 */ {
 	uint *key = CNSharedKey( e );
-	Pair *entry = btreeLookup( DBSharedArena->name, key );
+	Pair *entry = btreePick( DBSharedArena->name, key );
 	if (( entry )) return entry->name;
 	else return NULL; }
 
@@ -247,12 +247,12 @@ db_arena_translate( CNInstance *e, CNDB *db, int transpose )
 	Pair *entry;
 	switch ( key[0] ) {
 	case '$':
-		entry = btreeLookup( DBSharedArena->name, key );
+		entry = btreePick( DBSharedArena->name, key );
 		if ( !entry ) return NULL;
 		ref = entry->value;
 		break;
 	case '!':
-		ref = btreeLookup( DBSharedArena->value, key );
+		ref = btreePick( DBSharedArena->value, key );
 		if ( !ref ) return NULL;
 		break; }
 

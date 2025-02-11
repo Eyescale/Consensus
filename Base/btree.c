@@ -77,10 +77,10 @@ btreeAdd( BTree *btree, void *value ) {
 	return ndx; }
 
 //---------------------------------------------------------------------------
-//	btreeLookup
+//	btreePick
 //---------------------------------------------------------------------------
 void *
-btreeLookup( BTree *btree, uint key[2] ) {
+btreePick( BTree *btree, uint key[2] ) {
 	uint ndx=btree->type.key[ 1 ];
 	uint mask, index=key[1];
 	if ( index < ndx ) {
