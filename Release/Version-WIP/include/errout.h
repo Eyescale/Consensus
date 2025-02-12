@@ -4,6 +4,7 @@
 typedef enum {
 	ErrOutNone = 0,
 	BMMemoryLeak,
+	BMTraverseSyntax,
 	CellLoad,
 	CellInform,
 	ContextLoad,

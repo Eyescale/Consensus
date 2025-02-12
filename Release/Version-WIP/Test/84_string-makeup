@@ -8,7 +8,7 @@
 	else on toto
 		do : titi : $(toto,?:...)
 	else
-		do >: *titi
+		do >":titi: %_\n": *titi
 		do >":tata: \"%_\"\n": *tata
 		do >":tata: %s\n": *tata
 		do >":c:%_\n": *c

@@ -70,7 +70,7 @@ case_( string_CB )
 	if ( s==p+3 ) db_clear( e, 0, db );
 	if (( ste )) data->sub[ NDX ] = newItem( ste );
 	// skip "s,~.),?:...)" resp. "s,?:...)"
-	s += strlen(s) + (( s==p+3 )? 11 : 7 );
+	s = p_prune( PRUNE_IDENTIFIER, s ) + (( s==p+3 )? 11 : 7 );
 	if ( !ste ) _prune( BM_PRUNE_LEVEL, s )
 	else _continue( s )
 case_( filter_CB )

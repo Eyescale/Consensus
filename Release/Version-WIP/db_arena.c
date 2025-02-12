@@ -97,8 +97,8 @@ db_arena_key( char *code ) {
 	union { uint value[2]; void *ptr; } key;
 	key.value[ 0 ] = '$';
 	key.value[ 1 ] = 0;
-	code++; // skip leading '"'
-	for ( int shift=0; *code!='"'; code++, shift+=6 )
+	if ( *code=='"' ) code++;
+	for ( int shift=0; *code && *code!='"'; code++, shift+=6 )
 		key.value[ 1 ] |= hex2i(*code) << shift;
 	return key.ptr; }
 
@@ -153,9 +153,7 @@ db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
 		else i = i->next; }
 	if ( !StringInformed(string) ) return NULL;
 	CNString *code = newString();
-	StringAppend( code, '"' );
 	db_arena_encode( code, string );
-	StringAppend( code, '"' );
 	freeString( string );
 	char *s = StringFinish(code,0);
 	e = db_arena_register( s, db_dst );

@@ -100,6 +100,14 @@ errout( ErrOutType type, ... ) {
 	//----------------------------------------------------------------------
 	//	Unformatted
 	//----------------------------------------------------------------------
+	case BMTraverseSyntax:
+		expression = va_arg( ap, char * );
+		p = va_arg( ap, char * );
+		fprintf( stderr,
+			HEAD "bm_traverse(): syntax error in expression\n"
+			BODY "%s\n"
+			FOOT "at "RESET"%s\n", expression, p );
+		break;
 	case BMMemoryLeak:
 		fprintf( stderr, ERR "Memory Leak: "
 			"%llu/%llu Pair items unaccounted for\n",

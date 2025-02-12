@@ -6,6 +6,7 @@
 // Assumption: "traversal.h" already included
 #include "parser_flags.h"
 #include "traversal_CB.h"
+#include "errout.h"
 
 #define BASE !is_f(VECTOR|SET|SUB_EXPR|LEVEL) && !(mode&TERNARY)
 
@@ -329,9 +330,7 @@ CB_SignalCB					p++; }
 CB_EndPipeCB	f_pop( stack, 0 ) } while ( 0 );
 
 	switch ( traversal->done ) {
-	case BMTraverseError:
-		fprintf( stderr, ">>>>> B%%: Error: bm_traverse: syntax error "
-			"in expression: %s, at %s\n", expression, p ); }
+	case BMTraverseError: errout( BMTraverseSyntax, expression, p ); }
 	traversal->flags = flags;
 	traversal->p = p;
 	return p; }
