@@ -150,7 +150,7 @@
 	// try to concatenate _" "_
 	on : input :
 		'"' // success
-			do ~( ps )
+			do : string | { ~( ps ) }
 		'\n'
 			// backup starting with newline
 			do : ps : (( ps, *^^ ), ~. )
@@ -169,7 +169,7 @@
 				do : cmd : ( cmd, ~. )
 			else in (( type, CL )?( *^^:'d' ):)
 				// take CL pending DO
-				do : cmd : ((cmd,~.),*^^)
+				do : cmd : ((cmd,~.), *^^ )
 				do : s : $((s,~.),?:...)
 				do : ward
 			else do : err
@@ -324,4 +324,36 @@
 			{ %(*action:(?,.)), %(*action:(.,?)) } :
 			*action )))
 		do :( *input ? take :)
+
+.: err
+	on : . // lc coming up next
+		on ~(:?) // just transitioned from
+			do >"[%_:] Error: ": %?
+	else on ~( %%, l ) < *lc
+		do >"l%$": %<(!,?:...)>
+	else
+		in : err :
+			(NCR,?)
+				do >": ErrGenerativeVsGenerated, re. l%$\n": %((%?,IN),?)
+			.
+				do > ": %_\n": %?
+		else in : input :
+			'\t'
+				do >": ErrUnexpectedTab\n"
+			'\n'
+				do >": ErrUnexpectedCR\n"
+			~.
+				do >": ErrUnexpectedEOF\n"
+			.
+				do >": ErrUnexpectedCharacter: '%s'\n": *^^
+		do : ~.
+
+.: &
+	// post-frame narrative: read input on demand
+	in : buffer : ?
+		in ?: ( %?, . )
+			do :< input, buffer >:< %?:(.,?), %? >
+		else do ~( buffer )
+	else
+		do input : "%c" <
 

@@ -27,7 +27,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 			else if ( is_f(LEVEL|SUB_EXPR) ||
 				  ( *type&DO && is_f(FILTERED) && !is_f(byref) ) ||
 				  ( *type&ON && expr(RELEASED) && is_f(MARKED) ) ||
-				  (( *type&(DO|CASE) || s_at(',')) && is_f(MARKED) ) )
+				  (( *type&DO || s_at(',')) && is_f(MARKED) ) )
 				; // err
 			else if ( *type&(IN|ON) && is_f(ASSIGN) && s_at(',') ) {
 				do_( "expr_" )	REENTER
@@ -943,7 +943,7 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 		end
 	in_( "|" ) bgn_ // allow \nl after '|'
 		ons( " \t\n" )	do_( same )
-		on_( ':' ) if ( is_f(ASSIGN) && !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
+		ons( ":," ) if ( is_f(ASSIGN) && !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
 				do_( "::" )	s_add( "," )
 						f_clr( NEGATED|STARRED|BYREF|FIRST|INFORMED )
 						f_set( PRIMED ) }

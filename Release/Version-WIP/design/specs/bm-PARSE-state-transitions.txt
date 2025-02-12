@@ -85,6 +85,7 @@ Consensus B% Version-WIP
 		|	expr
 		{_,	expr
 			_\\n
+		$	// cf. bm_parse_string below
 
     parser.c: bm_parse_char()
 		char	char_	expr
@@ -108,6 +109,11 @@ Consensus B% Version-WIP
 					(:%$'	(:
 			(::	(:
 				expr
+
+    parser.c: bm_parse_string()
+		$	$(	$((	$(_
+				$(_	$(_.	$((_,	$(_.
+						$(_,	$(_,..	$(_,_	expr
 
     parser.c: bm_load()
 	base	""

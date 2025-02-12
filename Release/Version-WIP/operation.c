@@ -143,7 +143,11 @@ in_case( int type, char *expression, BMContext *ctx, BMMark **mark )
 			if (( mark )) *mark = bm_lmark( found );
 			else freePair( found );
 			success = 1; } }
-	else success = bm_case( expression, ctx );
+	else {
+		success = bm_case( expression, ctx );
+		if ( success && ( mark )) {
+			CNInstance *found = BMContextRVV( ctx, "*^^" );
+			*mark = bm_mark( expression, NULL, 0, found ); } }
 	DBG_IN_CASE_END
 	return success; }
 

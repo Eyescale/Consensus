@@ -13,8 +13,6 @@
 #define PROMPT
 :
 	on init
-		in ( Rule, . )
-			do exit
 		// base rule definition must exist and have non-null schema
 		in (( Rule, base ), ( Schema, ~'\0' ))
 			do : record : (record,*)

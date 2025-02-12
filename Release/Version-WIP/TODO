@@ -6,14 +6,12 @@ TODO
 		[ DONE ] output system as is => cf output.story
 		[ DONE ] create internal data structure  => cf inform.story
 		[ DONE ] pass ./B% -p Examples/6_System/inform.story
-		[ WIP ] inform.story: implement NCR in :err
+		[ DONE ] inform.story: implement NCR in :err
 		[ WIP ] inform.story: output data structure as per system model [*]
-		. launch formula: must pass ((action,ON),.)->((.,OFF),.)
 		. cosystem init
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
 		. finalize and actually run TM.system example (manual)
-	. integrate p_prune and bm_traverse()
 	. cleanup & complete contents of design/story/
 	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec

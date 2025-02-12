@@ -81,7 +81,7 @@ f_markable_( int flags, listItem **stack )
 	by verifying, in this case, that we have %(_) e.g.
 		%( guard ? term : term )
 */ {
-	if ( is_f(MARKED|NEGATED|CONTRA) ||( is_f(STARRED) && !is_f(SUB_EXPR) ))
+	if ( is_f(MARKED|NEGATED|CONTRA) || ( is_f(STARRED) && !is_f(SUB_EXPR) ))
 		return 0;
 	listItem *i, *next_i=*stack;
 	for ( ; ; ) {

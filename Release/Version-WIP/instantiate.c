@@ -105,6 +105,7 @@ case_( end_set_CB )
 		data->sub[ 1 ] = instances; }
 	_break
 case_( bgn_pipe_CB )
+	if ( p[1]==',' ) _return( 1 );
 	listItem *r;
 	if is_f( PIPED ) { // keep %| as-it-is in this case
 		// and discard previous pipe_expr results
@@ -224,8 +225,7 @@ case_( collect_CB )
 	else {
 		listItem *results = bm_scan( p, data->ctx );
 		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }
-	p = p_prune( PRUNE_TERM, p );
-	_continue( p )
+	_prune( PRUNE_TERM, p )
 case_( comma_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
 		listItem **results = &data->results;

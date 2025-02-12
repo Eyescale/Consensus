@@ -54,6 +54,11 @@
 			do : err
 	else en &
 
+.: flush
+	on : input : '\n'
+		do : base
+	else en &
+
 .: check
 	in : cmd :
 		((((.,e),l),s),e)
@@ -111,23 +116,22 @@
 				do ~.
 			'&'
 				in ( *that ? (~.:((type,CL)?:(type,DO))) :)
-					do : s : ( s, '&' )
-					do : flush |: space
+					do : s : '&'
+					do : finish
 				else do : err
 			.
 				do : err
 		else en &
 
-.: flush
+.: finish
 	on : input :
 		/[ \t]/
 			do ~.
 		'\n'
-			do : ( *s ? take : base )
+			do : take
 			do : cmd : ( cmd, ~. )
-			do ~( space )
 		.
-			do : ( space ? err : . )
+			do : err
 	else en &
 
 .: ps
@@ -185,14 +189,14 @@
 							((*,that), %| ) } )
 			else in %?: '>' // no ELSE
 				// **tab is informed, by preceding DO
-				in ( s, '&' )
+				in : s : '&'
 					do : *tab : ( **tab, (%?,'&') )
 				else do ( '\0' |
 					?:%((?,...):*s):(.,?) (%|,%?):|
 						((*,*tab), (**tab, (%?,%|)) ))
 			else // [ ELSE ] IN, ON, OFF
 				do : tab : ( *tab, '\t' ) // set new tab
-				in ( s, '&' )
+				in : s : '&'
 					do : *tab : (( type, ELSE ) ?
 						( **tab, ((ELSE,%?),*that) ) :
 						( .(*tab), (%?,*that) ))
@@ -206,7 +210,7 @@
 			do : *tab : ( **tab, ELSE ) // inform current
 
 		in : input : .
-			do : base | { (s,~.), ~((cmd,.)?(type,CL):(type,.)) }
+			do : base | { ((*,s),~.), ~((cmd,.)?(type,CL):(type,.)) }
 		else do : output
 
 .: output

@@ -430,7 +430,7 @@ db_unassign( CNInstance *x, CNDB *db )
 	return e; }
 
 //===========================================================================
-//	db_lookup / db_scan
+//	db_lookup 
 //===========================================================================
 CNInstance *
 db_lookup( int privy, char *p, CNDB *db ) {
@@ -439,6 +439,9 @@ db_lookup( int privy, char *p, CNDB *db ) {
 	return (( entry ) && !db_private( privy, entry->value, db )) ?
 		entry->value : NULL; }
 
+//===========================================================================
+//	db_rxscan 
+//===========================================================================
 listItem *
 db_rxscan( int privy, char *regex, CNDB *db ) {
 	listItem *list = NULL;

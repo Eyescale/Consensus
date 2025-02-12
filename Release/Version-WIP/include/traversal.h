@@ -23,14 +23,8 @@ CB_TermCB	} while ( 0 );
 	while ( *p && !traversal->done ) {
 		switch ( *p ) {
 			case '^':
-				if ( strmatch("^.",p[1]) ) {
-CB_RegisterVariableCB			f_set( INFORMED )
-					p+=2; }
-				else if ( p[1]=='?' ) {
-					p=p_prune( PRUNE_TERM, p+1 );
-					f_set( INFORMED ) }
-				else p++;
-				break;
+CB_RegisterVariableCB		f_set( INFORMED )
+				p+=2; break;
 			case '{':
 				if ( is_f(INFORMED) && BASE ) {
 					traversal->done = 1; // forescan
@@ -63,7 +57,7 @@ CB_TagCB				if ( p[2]=='.' ) p+=3;
 				else if is_f( PIPED ) {
 CB_BgnPipeCB				f_clr( NEGATED|INFORMED|FILTERED )
 					p++; }
-				else if ( BASE && !(mode&CARRY) && (!(mode&ASSIGN) || p[1]==':')) {
+				else if ( BASE && !(mode&(CARRY|ASSIGN))) {
 					traversal->done = 1; }
 				else {
 CB_BgnPipeCB				f_push( stack )
@@ -117,7 +111,8 @@ CB_NotCB				if is_f( NEGATED )
 				break;
 			case '*':
 				if ( p[1]=='^' ) {
-CB_RegisterVariableCB			if ( p[2]=='%' ) p = p_prune( PRUNE_TERM, p );
+CB_RegisterVariableCB			if ( p[2]=='%' )
+						p = p_prune( PRUNE_TERM, p+3 );
 					else p+=3; // Assumption: *^^
 					f_set( INFORMED ) }
 				else if ( !is_separator(p[1]) || strmatch("*.%(?",p[1]) ) {
@@ -225,6 +220,7 @@ CB_TermCB			break;
 				if ( p[1]=='(' && !(mode&TERNARY) ) {
 					// ?:(_)(_) skip to last parenthesis
 					p = p_prune( PRUNE_TERM, p+1 );
+					// note the special case ?:(_)(_):|)
 					p -= ( *p==')' && p[-1]=='|' ? 3 : 1 ); }
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					f_next = cast_i((*stack)->ptr);
