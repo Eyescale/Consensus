@@ -71,8 +71,7 @@ case_( string_CB )
 	if (( ste )) data->sub[ NDX ] = newItem( ste );
 	// skip "s,~.),?:...)" resp. "s,?:...)"
 	s = p_prune( PRUNE_IDENTIFIER, s ) + (( s==p+3 )? 11 : 7 );
-	if ( !ste ) _prune( BM_PRUNE_LEVEL, s )
-	else _continue( s )
+	_continue( s )
 case_( filter_CB )
 	/* Assumption: p at filter pipe :|
 	   all other cases (byref) have been verified by parser
@@ -157,7 +156,7 @@ case_( close_CB )
 	if (( instances )) {
 		if ( is_f(DOT) ) {
 			// case carry here handled in dot_expression_CB
-			CNInstance *perso = BMContextPerso( data->ctx );
+			CNInstance *perso = BMContextPerso( data->ctx )->value;
 			data->sub[ 0 ] = newItem( perso );
 			data->sub[ 1 ] = instances;
 			instances = instantiate_couple( data->sub, data->db );
@@ -337,7 +336,7 @@ case_( dot_identifier_CB )
 		if (( e=BMContextRVV( ctx, p+1 ) ))
 			e = bm_translate( carry, e, db, 1 ); }
 	else {
-		CNInstance *perso = BMContextPerso( ctx );
+		CNInstance *perso = BMContextPerso( ctx )->value;
 		e = bm_register( ctx, p+1, db );
 		e = db_instantiate( perso, e, db ); }
 	if (( e )) data->sub[ NDX ] = newItem( e );

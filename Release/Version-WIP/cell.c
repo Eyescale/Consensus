@@ -78,17 +78,19 @@ bm_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
 	id->value = proxy; }
 
 //===========================================================================
-//	bm_cell_read
+//	bm_cell_input
 //===========================================================================
 int
-bm_cell_read( CNCell *cell, CNStory *story ) {
+bm_cell_input( CNCell *cell, CNStory *story ) {
 	CNIO io;
 	memset( &io, 0, sizeof(CNIO) );
 	io.stream = stdin;
 	BMParseData data;
 	memset( &data, 0, sizeof(BMParseData) );
 	data.io = &io;
-	data.ctx = BMMakeCurrent( cell );
+	data.ctx = BMCellContext( cell );
+	Pair *perso = BMContextPerso( data.ctx );
+	perso->value = BMContextSelf( data.ctx );
 	int done = 0;
 	do {	printf( "B%% " ); // prompt
 		io_reset( &io, 1, 3 );
@@ -168,10 +170,10 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 			bm_context_actualize( ctx, narrative->proto, current );
 			bm_operate( narrative, ctx, story, narratives, subs );
 			enlist( subs, enabled[1], invoked[1], warden, &pf );
-			CNInstance *parent = current;
+			CNInstance *caller = current;
 			while ( SWAP( invoked ) ) {
 				FOREACH( invoked ) // { {
-					bm_context_push( ctx, ".", parent );
+					bm_context_push( ctx, ".", caller );
 					bm_context_actualize( ctx, narrative->proto, current );
 					bm_operate( narrative, ctx, story, narratives, subs );
 					enlist( subs, enabled[1], invoked[1], warden, &pf );

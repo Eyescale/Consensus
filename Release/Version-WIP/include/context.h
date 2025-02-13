@@ -19,6 +19,7 @@ void		bm_context_release( BMContext * );
 
 BMMark *	bm_mark( char *, char *, unsigned int flags, void * );
 BMMark *	bm_lmark( Pair * );
+void		bm_vmark( BMContext *, char *, BMMark * );
 void		bm_context_mark( BMContext *, BMMark * );
 BMMark *	bm_context_unmark( BMContext *, BMMark * );
 int 		bm_context_check( BMContext *, BMMark * );
@@ -30,7 +31,7 @@ void		bm_context_debug( BMContext *, char * );
 void *		bm_lookup( int, char *, BMContext *, CNDB * );
 int		bm_match( BMContext *, CNDB *, char *, CNInstance *, CNDB * );
 CNInstance *	bm_register( BMContext *, char *, CNDB * );
-int		bm_register_locale( BMContext *, char * );
+int		bm_register_locales( BMContext *, char * );
 listItem *	bm_inform( BMContext *, listItem **, CNDB * );
 CNInstance *	bm_translate( BMContext *, CNInstance *, CNDB *, int );
 void		bm_untag( BMContext *, char * );
@@ -68,12 +69,10 @@ static inline void * BMContextEENOV( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "<" );
         return (( entry->value ) ? ((listItem *) entry->value )->ptr : NULL ); }
 
-static inline Pair * BMContextCurrent( BMContext *ctx ) {
+static inline Registry * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
-static inline CNInstance * BMContextPerso( BMContext *ctx ) {
-	return BMContextCurrent( ctx )->name; }
-static inline Registry * BMContextLocales( BMContext *ctx ) {
-	return BMContextCurrent( ctx )->value; }
+static inline Pair * BMContextPerso( BMContext *ctx ) {
+	return registryLookup( BMContextCurrent(ctx), "." ); }
 
 static inline Pair *Mset( BMContext *ctx, void *value ) {
 	return registryRegister( ctx, "~", value ); }
@@ -90,8 +89,8 @@ static inline void bm_context_pipe_flush( BMContext *ctx ) {
 static inline void context_rebase( BMContext *ctx ) {
 	CNDB *db = BMContextDB( ctx );
 	CNInstance *self = BMContextSelf( ctx );
-	Pair *entry = BMContextCurrent( ctx );
-	entry->name = db_instantiate( self, entry->name, db ); }
+	Pair *perso = BMContextPerso( ctx );
+	perso->value = db_instantiate( self, perso->value, db ); }
 
 
 #endif	// CONTEXT_H

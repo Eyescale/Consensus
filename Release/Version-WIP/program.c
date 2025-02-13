@@ -167,7 +167,7 @@ cnOperate( CNProgram *program, ProgramData *data ) {
 	CNCell *cell = data->ui.this;
 	if (( cell )) {
 		if ( !bm_cell_out( cell ) ) {
-			int done = bm_cell_read( cell, story );
+			int done = bm_cell_input( cell, story );
 			if ( done==2 ) return 0; }
 		else data->ui.this = NULL; }
 	// operate active cells

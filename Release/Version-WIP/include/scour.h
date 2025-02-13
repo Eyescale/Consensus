@@ -19,6 +19,7 @@
 
 #define	AS_PER		(1<<20)
 #define	LMARK		(1<<21)
+#define	VMARK		(1<<22)
 
 
 #endif	// SCOUR_H

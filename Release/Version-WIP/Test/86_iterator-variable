@@ -1,0 +1,15 @@
+
+	on init
+		do { (a,b), (a,c) }
+	else on a
+		// multiple iterations on same %?
+		per ( ?, . )
+			do >: %?
+		// multiple iterations with no mark
+		per %( a, ? )
+			do >"bingo\n"
+	else
+		// multiple iterations with iterator
+		per .action: %( a, ? )
+			do >: action
+		do exit

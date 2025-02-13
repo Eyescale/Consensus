@@ -1,6 +1,13 @@
 See Also: design/story/interactive.story
 
 TODO
+	. parser.c
+		. change %?:sub (ambiguous) into %?^sub
+		. on/per .variable: expression < src => must not allow
+	. TODO: review system launch formula in light of the fact that
+		FORE will loop over all matches regardless of '?'
+		e.g. ?:(?,.)(_) may cause several iterations for the same %?
+	. TODO: implement arena cache
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] output system as is => cf output.story
@@ -118,6 +125,13 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented in/on/per .variable: expression
+	  after which variable allows to access expression's result
+
+	. allowed CASE expression to be marked, e.g.
+		in :err:
+			(NCR,?)
+				...
 	. $(s,?:...) // generate or reuse string
 		[DONE] parser.c:bm_parse_string()
 		[DONE] implement in instantiate.c
@@ -688,6 +702,13 @@ NICE TO HAVE
 	  The thing I am interested in being the relationship between %% and nil
 
 TODOC
+	. FORE and PER register ALL matches regardless of mark
+	  e.g. the following will output a twice, resp. (a,b) and (a,c)
+		on init
+			do { (a,b), (a,c) }
+		else per ( ?, . )
+			do >: %? // resp. >: %!
+			do exit
 	. cf. Test/37_include: path is relative to the story file path,
 	  not to the current B% working directory
 	. [sub]narrative definition CAN start at tab 0 after declaration

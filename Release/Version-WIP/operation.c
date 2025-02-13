@@ -4,7 +4,7 @@
 
 // #define DEBUG
 // #define TRACE
-#include "debug.h"
+#include "dbg.h"
 #undef DEBUG
 #undef TRACE
 
@@ -97,37 +97,58 @@ RETURN:
 	DBG_OPERATE_END }
 
 //---------------------------------------------------------------------------
-//	in_condition, in_case
+//	in_condition
 //---------------------------------------------------------------------------
+static inline char * vmark( char **expression, int *flags );
+
 static int
-in_condition( int as_per, char *expression, BMContext *ctx, BMMark **mark )
+in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 /*
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
 	DBG_IN_CONDITION_BGN
+	char *vm = NULL;
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) )
 		{ negated=1; expression+=3; }
 
 	void *found;
-	if ( !strncmp( expression, "?:\"", 3 ) ) {
-		as_per = 0; // no need
+	if ( !strcmp( expression, "~." ) ) ; // nop
+	else if ( !strncmp( expression, "?:\"", 3 ) ) {
+		flags = 0; // no need
 		CNDB *db = BMContextDB( ctx );
 		found = db_arena_lookup( expression+2, db );
 		if (( found )) success = 1; }
-	else if ( strcmp( expression, "~." ) ) {
-		if ( !strncmp( expression, "(~.:", 4 ) ) {
+	else {
+		if ( *expression=='.' ) vm = vmark( &expression, &flags );
+		else if ( !strncmp( expression, "(~.:", 4 ) ) {
 			expression += 4; negated = !negated; }
-		if ( as_per ) found = bm_scan( expression, ctx );
+		if ( flags&AS_PER ) found = bm_scan( expression, ctx );
 		else found = bm_feel( BM_CONDITION, expression, ctx );
 		if (( found )) success = 1; }
 
 	if ( negated ) success = !success;
-	else if ( success && ( mark ))
-		*mark = bm_mark( expression, NULL, as_per, found );
+	else if ( success && ( mark )) {
+		*mark = bm_mark( expression, NULL, flags, found );
+		if (( vm )) bm_vmark( ctx, vm, *mark ); }
 	DBG_IN_CONDITION_END
 	return success; }
 
+static inline char *
+vmark( char **expression, int *flags ) {
+	char *p = *expression;
+	do p++; while ( !is_separator( *p ) );
+	if ( *p==':' ) {
+		char *v = *expression + 1;
+		if ( p!=v ) {
+			*flags |= VMARK;
+			*expression = p+1;
+			return v; } }
+	return NULL; }
+
+//---------------------------------------------------------------------------
+//	in_case
+//---------------------------------------------------------------------------
 static int
 in_case( int type, char *expression, BMContext *ctx, BMMark **mark )
 /*
@@ -152,7 +173,7 @@ in_case( int type, char *expression, BMContext *ctx, BMMark **mark )
 	return success; }
 
 //---------------------------------------------------------------------------
-//	on_event, on_case, case_on
+//	on_event
 //---------------------------------------------------------------------------
 static int
 on_event( char *expression, BMContext *ctx, BMMark **mark )
@@ -160,7 +181,8 @@ on_event( char *expression, BMContext *ctx, BMMark **mark )
 	Assumption: if (( mark )) then *mark==NULL to begin with
 */ {
 	DBG_ON_EVENT_BGN
-	int success=0, negated=0;
+	char *vm = NULL;
+	int success=0, negated=0, flags=0;
 	if ( !strncmp(expression,"~.:",3) )
 		{ negated=1; expression+=3; }
 
@@ -176,29 +198,16 @@ on_event( char *expression, BMContext *ctx, BMMark **mark )
 		found = bm_feel( BM_RELEASED, expression, ctx );
 		if (( found )) success = 2; }
 	else {
+		if ( *expression=='.' ) vm = vmark( &expression, &flags );
 		found = bm_feel( BM_INSTANTIATED, expression, ctx );
 		if (( found )) success = 2; }
 
 	if ( negated ) success = !success;
-	else if ( success==2 && ( mark ))
-		*mark = bm_mark( expression, NULL, 0, found );
+	else if ( success==2 && ( mark )) {
+		*mark = bm_mark( expression, NULL, flags, found );
+		if (( vm )) bm_vmark( ctx, vm, *mark ); }
 	DBG_ON_EVENT_END
 	return success; }
-
-static int
-on_case( char *expression, BMContext *ctx, BMMark **mark )
-/*
-	evaluate ON ":expression:" and inform lmark:[ ^^, *^^ ] if success
-	Note: *^^ can be NULL
-*/ {
-	return 1; }
-
-static int
-case_on( char *expression, BMContext *ctx, BMMark **mark )
-/*
-	evaluate ON "expression" (including "~.") and push qmark if there is
-*/ {
-	return 1; }
 
 //---------------------------------------------------------------------------
 //	on_event_x
@@ -244,10 +253,11 @@ on_event_x( int as_per, char *expression, BMContext *ctx, BMMark **mark )
 	if ( negated ) {
 		success = !success;
 		eeno_release( as_per, found ); }
-	else if ( success && ( mark ))
+	else if ( success && ( mark )) {
 		*mark = success==2 ? 
 			bm_mark( expression, src, as_per|EENOK, found ) :
 			bm_mark( NULL, src, as_per|EENOK, found );
+		if ( !*mark ) eeno_release( as_per, found ); }
 	DBG_ON_EVENT_X_END
 	return success; }
 
@@ -357,11 +367,7 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 			s_add( ":" )
 			s_add( en )
 			q = StringFinish( s, 0 );
-#ifdef DEBUG
-			fprintf( stderr, "do_enable: built '%s'\n", q );
-			if ( !strncmp( q, "%(.,...):", 9 ) )
-				errout( OperationProtoPassThrough, p );
-#endif
+			DBG_PASS_THROUGH
 			query( q, ctx, narrative, NULL, subs );
 			freeString( s ); } }
 	return 1; }
@@ -512,10 +518,10 @@ do_output( char *expression, BMContext *ctx )
 //---------------------------------------------------------------------------
 static int
 set_locale( char *expression, BMContext *ctx ) {
-	DBG_SET_LOCALE
 #ifdef DBG_TRACE_LOCALE
 	printf( "( %s, \"%s\", ctx )\n", "LOCALE", expression );
 #endif
+	DBG_SET_LOCALE
 	listItem **list;
 	if ( !strncmp(expression,".%",2) ) {
 		expression+=2; // skip '.%'
@@ -531,7 +537,7 @@ set_locale( char *expression, BMContext *ctx ) {
 			case '\0': return bm_tag_clear( expression, ctx ); } }
 		return 0; }
 	else {
-		return bm_register_locale( ctx, expression ); } }
+		return bm_register_locales( ctx, expression ); } }
 
 //===========================================================================
 //	bm_op, bm_vop	- useful for debugging

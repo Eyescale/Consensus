@@ -11,7 +11,7 @@ typedef CNEntity CNCell;
 CNCell * newCell( Pair *narrative );
 void	freeCell( CNCell * );
 void	bm_bond( CNEntity *, CNEntity *, CNInstance * );
-int	bm_cell_read( CNCell *, CNStory * );
+int	bm_cell_input( CNCell *, CNStory * );
 void	bm_cell_operate( CNCell *, CNStory * );
 
 static inline Pair * BMCellEntry( CNCell *cell )
@@ -20,10 +20,6 @@ static inline listItem ** BMCellCarry( CNCell *cell )
 	{ return (listItem **) &((Pair *) cell->sub[ 0 ] )->value; }
 static inline BMContext * BMCellContext( CNCell *cell )
 	{ return (BMContext *) cell->sub[ 1 ]; }
-static inline BMContext * BMMakeCurrent( CNCell *cell ) {
-	BMContext *ctx = BMCellContext(cell);
-	BMContextCurrent(ctx)->name = BMContextSelf(ctx);
-	return ctx; }
 
 static inline void bm_cell_init( CNCell *cell ) {
 	bm_context_init( BMCellContext(cell) ); }

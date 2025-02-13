@@ -1,5 +1,5 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef DBG_H
+#define DBG_H
 
 #ifdef MAIN_H
 
@@ -73,6 +73,10 @@ extern int dbg_frame;
 	fprintf( stderr, "do_output bgn: %s\n", expression );
 #define DBG_SET_LOCALE \
 	fprintf( stderr, "set_locale bgn: %s\n", expression );
+#define DBG_PASS_THROUGH \
+	fprintf( stderr, "do_enable: built '%s'\n", q ); \
+	if ( !strncmp( q, "%(.,...):", 9 ) ) \
+		errout( OperationProtoPassThrough, p );
 
 #define DBG_OPERATE_END		fprintf( stderr, "operate end\n" );
 #define DBG_IN_CONDITION_END	fprintf( stderr, "in/per condition end\n" );
@@ -96,6 +100,7 @@ extern int dbg_frame;
 #define DBG_DO_INPUT_BGN
 #define DBG_DO_OUTPUT_BGN
 #define DBG_SET_LOCALE
+#define DBG_PASS_THROUGH
 
 #define DBG_OPERATE_END	
 #define DBG_IN_CONDITION_END
@@ -110,4 +115,4 @@ extern int dbg_frame;
 #endif	// TRACE
 #endif	// MAIN_H
 
-#endif	// DEBUG_H
+#endif	// DBG_H
