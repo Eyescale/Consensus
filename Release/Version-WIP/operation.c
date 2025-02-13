@@ -12,6 +12,7 @@
 #include "operation.h"
 #include "deternarize.h"
 #include "deparameterize.h"
+#include "eenov.h"
 #include "expression.h"
 #include "instantiate.h"
 #include "eeno_query.h"
@@ -109,24 +110,26 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 	DBG_IN_CONDITION_BGN
 	char *vm = NULL;
 	int success=0, negated=0;
-	if ( !strncmp( expression, "~.:", 3 ) )
-		{ negated=1; expression+=3; }
+	if ( !strncmp( expression, "~.:", 3 ) ) {
+		negated=1; expression+=3; }
 
 	void *found;
 	if ( !strcmp( expression, "~." ) ) ; // nop
 	else if ( !strncmp( expression, "?:\"", 3 ) ) {
 		flags = 0; // no need
 		CNDB *db = BMContextDB( ctx );
-		found = db_arena_lookup( expression+2, db );
-		if (( found )) success = 1; }
+		found = db_arena_lookup( expression+2, db ); }
+	else if ( !strncmp(expression,"%<",2) && !(flags&AS_PER) && !p_filtered(expression) )
+		found = eenov_lookup( ctx, NULL, expression );
 	else {
-		if ( *expression=='.' ) vm = vmark( &expression, &flags );
+		if ( *expression=='.' )
+			vm = vmark( &expression, &flags );
 		else if ( !strncmp( expression, "(~.:", 4 ) ) {
-			expression += 4; negated = !negated; }
-		if ( flags&AS_PER ) found = bm_scan( expression, ctx );
-		else found = bm_feel( BM_CONDITION, expression, ctx );
-		if (( found )) success = 1; }
+			negated=!negated; expression+=4; }
+		found = (flags&AS_PER) ? (void *) bm_scan( expression, ctx ) :
+			bm_feel( BM_CONDITION, expression, ctx ); }
 
+	if (( found )) success = 1;
 	if ( negated ) success = !success;
 	else if ( success && ( mark )) {
 		*mark = bm_mark( expression, NULL, flags, found );
@@ -141,8 +144,8 @@ vmark( char **expression, int *flags ) {
 	if ( *p==':' ) {
 		char *v = *expression + 1;
 		if ( p!=v ) {
-			*flags |= VMARK;
 			*expression = p+1;
+			*flags |= VMARK;
 			return v; } }
 	return NULL; }
 

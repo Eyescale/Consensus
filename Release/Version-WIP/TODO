@@ -1,11 +1,13 @@
 See Also: design/story/interactive.story
 
 TODO
-	. parser.c
+	. TODO: parser.c
 		. change %?:sub (ambiguous) into %?^sub
-		. on/per .variable: expression < src => must not allow
+		  Note: using '!' instead of '?' in sub would make it as_sub
+		. disallow on/per .variable: expression < src
+		. in .variable:eenov => eenov must be translated
 	. TODO: review system launch formula in light of the fact that
-		FORE will loop over all matches regardless of '?'
+	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
 	. TODO: implement arena cache
 	. feature complete Examples/6_System
@@ -43,6 +45,9 @@ TODO
 	  . Do we even use .%list <_> ? idea was .%onoff < ON, OFF >
 		=> see when engineering complete
 		=> remove feature if not used
+	. NOTE: to enlist occurrence - e.g.
+		in ?: "....."
+			do %?|^guard
 
 [*] 	See under ./design/story/proto/
 		system.spec - TM system external specifications
@@ -52,7 +57,7 @@ TODO
 	  2. extract occurrences, associate cosystems
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
-	  5. output system model [in html] as
+	  5. output system model [in html?] as
 		cosystem
 		: action <={ trigger, guard },{ ... }=>{ occurrences } 
 		: action <={ trigger, guard },{ ... }=>{ occurrences } 
@@ -60,19 +65,6 @@ TODO
 		cosystem 
 		...
 	  => allows to navigate
-
-	Note: when I parse my pseudo-narrative
-		=> I have a current guard = { conditions }
-		=> I have a current trigger = ( { bar }, { on } )
-		=> for all subsequent actions
-			instantiate ( guard, ( trigger, %? ))
-	I can make list as I go, starting with : guard : ( guard, * )
-		and then do : guard : ( *guard, condition )
-	so popping is easy
-	and list in extenso: (((((guard, *), 1 ), 2 ), 3), etc. )
-
-		in ?: "....."
-			do %?|^guard
 
 BUGS
 	. in system.story, if ~(s) instead of (s,~.) => crash

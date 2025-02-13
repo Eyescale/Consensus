@@ -336,7 +336,7 @@
 			(NCR,?)
 				do >": ErrGenerativeVsGenerated, re. l%$\n": %((%?,IN),?)
 			.
-				do > ": %_\n": %?
+				do > ": %_\n": *^^
 		else in : input :
 			'\t'
 				do >": ErrUnexpectedTab\n"
