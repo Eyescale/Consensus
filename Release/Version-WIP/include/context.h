@@ -71,8 +71,16 @@ static inline void * BMContextEENOV( BMContext *ctx ) {
 
 static inline Registry * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
-static inline Pair * BMContextPerso( BMContext *ctx ) {
-	return registryLookup( BMContextCurrent(ctx), "." ); }
+static inline Pair * BMLocaleEntry( BMContext *ctx, char *p ) {
+	listItem *stack = registryLookup( ctx, "." )->value;
+	for ( listItem *i=stack; i!=NULL; i=i->next ) {
+		Pair *entry = registryLookup( i->ptr, p );
+		if (( entry )) return entry; }
+	return NULL; }
+static inline CNInstance * BMContextPerso( BMContext *ctx ) {
+	return BMLocaleEntry(ctx,".")->value; }
+static inline void bm_context_rebase( BMContext *ctx, CNInstance *perso ) {
+	BMLocaleEntry(ctx,".")->value = (perso)?perso:BMContextSelf(ctx); }
 
 static inline Pair *Mset( BMContext *ctx, void *value ) {
 	return registryRegister( ctx, "~", value ); }
@@ -85,12 +93,6 @@ static inline void Mclr( BMContext *ctx ) {
 static inline void bm_context_pipe_flush( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "|" );
 	freeListItem((listItem **) &entry->value ); }
-
-static inline void context_rebase( BMContext *ctx ) {
-	CNDB *db = BMContextDB( ctx );
-	CNInstance *self = BMContextSelf( ctx );
-	Pair *perso = BMContextPerso( ctx );
-	perso->value = db_instantiate( self, perso->value, db ); }
 
 
 #endif	// CONTEXT_H

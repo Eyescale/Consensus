@@ -18,12 +18,11 @@
 					[ELSE] CL
 					[ELSE] DO
 				   and kept until the next, not '>' command
-				   => warding has been performed
-				*/
+				   => warding has been performed */
 				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
-			do exit
+			do : report
 		else en %(:?)
 
 .: base
@@ -325,6 +324,27 @@
 			*action )))
 		do :( *input ? take :)
 
+.: report
+	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
+		do >": \"%s\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
+		per .guard: %( ?, ((.,.), action ))
+			do >"  in\n"
+			per ( ?, guard )
+				do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+			per ( guard, ( ?, action ))
+				do >"    on\n"
+				per ( ?, %?^(.,?) )
+					do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+				do >"      /\n"
+				per ( ?, %?^(?,.) )
+					do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+		in ((?:!!,DO), %(action:(?,.)))
+			in ((%?,'>'),.)
+				do >"::\n"
+				per ((%?,'>'),?)
+					do >"\t\"%_\"\n": %?
+	do exit
+
 .: err
 	on : . // lc coming up next
 		on ~(:?) // just transitioned from
@@ -334,7 +354,9 @@
 	else
 		in : err :
 			(NCR,?)
-				do >": ErrGenerativeVsGenerated, re. l%$\n": %((%?,IN),?)
+				do >": [generative vs. generated] usage inconsistent "
+					"with previous occurrence reference, "
+					"in l%$\n": %((%?,IN),?)
 			.
 				do > ": %_\n": *^^
 		else in : input :

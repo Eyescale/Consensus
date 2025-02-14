@@ -25,6 +25,15 @@ static BMTraverseCB
 
 #include "traversal.h"
 
+#ifdef DEBUG
+#define DBG_ACTUALIZE_TRAVERSAL \
+	if (( data.stack.flags )||( data.stack.level )) \
+		fprintf( stderr, "Error: context_actualize: Memory Leak\n" ); \
+	freeListItem( &data.stack.flags ); \
+	freeListItem( &data.stack.level );
+#else
+#define DBG_ACTUALIZE_TRAVERSAL
+#endif		
 
 #endif	// ACTUALIZE_TRAVERSAL_H
 

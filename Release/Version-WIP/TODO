@@ -1,22 +1,24 @@
 See Also: design/story/interactive.story
 
 TODO
-	. TODO: parser.c
-		. change %?:sub (ambiguous) into %?^sub
-		  Note: using '!' instead of '?' in sub would make it as_sub
-		. disallow on/per .variable: expression < src
-		. in .variable:eenov => eenov must be translated
+	. TODO: parser.c, etc.
+		change %?:sub (ambiguous) into %?^sub
+		Note: using '!' instead of '?' in sub would make it as_sub
+	. TODO: finish and test inform.story
+	. TODO: implement arena cache
+	. TODO:	parser.c
+		disallow on/per .variable: expression < src
 	. TODO: review system launch formula in light of the fact that
 	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
-	. TODO: implement arena cache
 	. feature complete Examples/6_System
 		[ DONE ] output l%dc%d on error
 		[ DONE ] output system as is => cf output.story
 		[ DONE ] create internal data structure  => cf inform.story
 		[ DONE ] pass ./B% -p Examples/6_System/inform.story
 		[ DONE ] inform.story: implement NCR in :err
-		[ WIP ] inform.story: output data structure as per system model [*]
+		[ WIP ] inform.story: output data structure as per format
+			described in Examples/6_System/README.txt
 		. cosystem init
 		. create (.,(Status,.)) and clear guard Status -
 		. capture all proxies (and subscribe) on init
@@ -57,14 +59,6 @@ TODO
 	  2. extract occurrences, associate cosystems
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
-	  5. output system model [in html?] as
-		cosystem
-		: action <={ trigger, guard },{ ... }=>{ occurrences } 
-		: action <={ trigger, guard },{ ... }=>{ occurrences } 
-		...
-		cosystem 
-		...
-	  => allows to navigate
 
 BUGS
 	. in system.story, if ~(s) instead of (s,~.) => crash
@@ -117,13 +111,13 @@ NOTES
 		// post-frame
 
 DONE
-	. implemented in/on/per .variable: expression
-	  after which variable allows to access expression's result
-
-	. allowed CASE expression to be marked, e.g.
+	. implemented in/on/per .locale: expression
+		cf design/specs/bm-CONTEXT-data-structure.txt
+	. allowed marked CASE expression, e.g. in
+	  Examples/6_System/inform.story
 		in :err:
 			(NCR,?)
-				...
+				do >"err line %$\n": %((IN,%?),?)
 	. $(s,?:...) // generate or reuse string
 		[DONE] parser.c:bm_parse_string()
 		[DONE] implement in instantiate.c

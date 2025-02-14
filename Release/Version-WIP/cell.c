@@ -89,8 +89,7 @@ bm_cell_input( CNCell *cell, CNStory *story ) {
 	memset( &data, 0, sizeof(BMParseData) );
 	data.io = &io;
 	data.ctx = BMCellContext( cell );
-	Pair *perso = BMContextPerso( data.ctx );
-	perso->value = BMContextSelf( data.ctx );
+	bm_context_rebase( data.ctx, NULL );
 	int done = 0;
 	do {	printf( "B%% " ); // prompt
 		io_reset( &io, 1, 3 );

@@ -121,9 +121,8 @@ output.story
 		> ....		| or
 	   	> ....		|	... #2
 	   or			|	ELSE DO ...
-		CL ...   #1	|	~.
-	   	ELSE DO ...	| or
-				|	...
+		CL ...   #1	| or
+	   	ELSE DO ...	|	... #2
 				|	ELSE CL ... #1
 				|	ELSE DO ...
 
@@ -132,12 +131,44 @@ output.story
 
 inform.story
 	The idea is to build the ( guard, ( trigger:(bar,on), action ) )
-	each corresponding to oen of the above-described action-threads.
+	each corresponding to one of the above-described action-threads,
+	and when all are instantiated to generate the following report
+	from the internalized data structure, per action
+
+	: "occurrence" ON|OFF	// action
+	  in
+		"occurrence" ON|OFF
+		"occurrence" ON|OFF
+		...
+	    on
+		"occurrence" ON|OFF
+		"occurrence" ON|OFF
+		...
+	      /
+		"occurrence" ON|OFF
+		"occurrence" ON|OFF
+		...
+	    on
+		...
+	      /
+		...
+	  in
+		...
+	    on
+		...
+	      /
+		...
+	:: // action-generated occurrences, if there are
+		"occurrence"
+		"occurrence"
+		...
+	
+	The construction takes place in :inform which replaces :output
+	from output.story.
+
 	We start with
-
 		do :< guard, bar, on >: !!
-
-	then, on the way to the action, we traverse the levels, each
+	Then, on the way to the action, we traverse the levels, each
 	consisting of a number of
 			IN	// starting the level only*
 			ON	// starting the level only*
@@ -158,7 +189,7 @@ inform.story
 		   	DO
 			DO followed by a number of >
 
-	In order to build guard
+	To build guard along the way, we use the following logic
 		only the last [ELSE] IN per level may represent a condition ON
 		and that is only if it is not followed at that level by ELSE .
 		all prior [ELSE] IN at that level are condition OFF
@@ -175,8 +206,10 @@ inform.story
 			in : condition : ?
 				do (( %?, ON ), *guard )
 
-	For trigger
-		same logic, except :event:OFF is not the same as ~.::event:ON
+	We use the same logic to build trigger, with the difference that
+		:event:OFF is not the same as ~.::event:ON
+		:event:ON  is not the same as ~.::event:OFF
+	therefore we must use a double trigger { bar, on }
 
 		So when we meet either [ELSE] ON or [ELSE] OFF ?
 			in : event : ? // dispose of previous candidate
@@ -197,7 +230,7 @@ inform.story
 	    when we meet [ELSE] CL ?
 		if ELSE
 			in : event : ?
-				do ( %?, *off )
+				do ( %?, *bar )
 				do : event : ~.
 			in : condition : ?
 				do ((%?,OFF), *guard )
@@ -216,31 +249,22 @@ inform.story
 
 	    otherwise when we meet [ELSE] DO ?
 		if ELSE
-			in : event : ?
-				do ( %?, *off )
-				do : event : ~.
-			in : condition : ?
-				do ((%?,OFF), *guard )
-				do : condition : ~.
+			same as above
 		otherwise
-			in : event : ?
-				do ( %?, *on )
-				do : event : ~.
-			in : condition : ?
-				do ((%?,ON), *guard )
-				do : condition : ~.
+			same as above
 
-		do : action : ((%?,ON)|(*guard,(*bar,*on),%|))
-		then foreach following > ?
+		do ( *guard, ((*bar,*on),(%?,ON)))
+		do : action : %?
+		so that foreach following > ?
 			do ( *action, %? )
 
 	All this put together, PLUS
 
 	1. create occurrence from string, as per
 	   	do : s : $((s,~.),?:...)
-	   which will look up / register string in CND string arena
-	   This is performed upon leaving :string in ps, to go to
-	   either :ward or :take (as states)
+	   which will look up and/or register string in string arena
+	   This is performed upon leaving :ps on the way either to
+	   either :ward (see below) or directly to :take 
 
 	2. verify compliance with rule
 		"Generated cannot be generative, & v.v."
@@ -253,37 +277,39 @@ inform.story
 	   and when we meet DO ?
 		we need to ward %? against all prior generated occurrences
 
-	   This is implemented in :ward which, depending on both current
-	   type and the first character of the upcoming command - '>'
-	   indicates either a generative DO or a generated occurrence -
-	   is entered after :string
+	   This is implemented in :ward which is entered from :ps depending
+	   on both current type and the first character of the upcoming
+	   command - as '>' indicates either a generative DO or a generated
+	   occurrence
 
 	   Note that, in case of no-compliance, the user must be informed
 	   as to what prior statement caused the conflict, on what line.
 	   For this LineNo notifies the current line number as soon as
-	   parent enters :line, prior to :string
+	   parent enters :line, prior to :string. The current line number
+	   is stored along with the current generative action or generated
+	   occurrence in :ward
 
-	   The current line number is stored along with the current generative
-	   action or generated occurrence in :ward
-
-	3. reuse existing guard or trigger:{bar,on}
+	3. reuse existing guard or triggers { bar, on }
 	   After :inform - which sorts out conditions and events to inform
-	   current action's guard and trigger:{bar,on} - we want to reuse
-	   existing guard and trigger:{bar,on} from instantiated
+	   current action's guard and triggers { bar, on } - we want tocw
+	   reuse existing guard and triggers { bar, on } from the already
+	   instantiated
 
 		( .guard, ( .trigger:(.bar,.on), (.occurrence,ON|OFF) ))
 
 	   according to
+		// find %? so that all *guard conditions apply to %?
 		per ?:%( ?:~%(~%(?,*guard),?), ( ., (.,ON|OFF) ))
-			// all *guard conditions apply to %?
+			// verify that all %? conditions apply to *guard
 			in ~.:( ~%(?,%?), *guard )
-				// all %? conditions apply to *guard
+				// free current *guard and use existing
 				do { ~(*guard), ((*,guard),%?) }
 
-	   which, if found, frees previous and use existing to instantiate
-		   do ( *guard, ((*bar,*on), *action ))
+		and likewise for *bar and for *on
 
-	  This is implemented in :register which is entered after :inform
+	   This is implemented in :register which is entered after :inform
+	   and eventually performs
+		   do ( *guard, ((*bar,*on), *action ))
 
 NOTES
 	. currently we do allow CL string DO string // with same string

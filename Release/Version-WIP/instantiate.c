@@ -156,7 +156,7 @@ case_( close_CB )
 	if (( instances )) {
 		if ( is_f(DOT) ) {
 			// case carry here handled in dot_expression_CB
-			CNInstance *perso = BMContextPerso( data->ctx )->value;
+			CNInstance *perso = BMContextPerso( data->ctx );
 			data->sub[ 0 ] = newItem( perso );
 			data->sub[ 1 ] = instances;
 			instances = instantiate_couple( data->sub, data->db );
@@ -336,7 +336,7 @@ case_( dot_identifier_CB )
 		if (( e=BMContextRVV( ctx, p+1 ) ))
 			e = bm_translate( carry, e, db, 1 ); }
 	else {
-		CNInstance *perso = BMContextPerso( ctx )->value;
+		CNInstance *perso = BMContextPerso( ctx );
 		e = bm_register( ctx, p+1, db );
 		e = db_instantiate( perso, e, db ); }
 	if (( e )) data->sub[ NDX ] = newItem( e );

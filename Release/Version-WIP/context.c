@@ -156,14 +156,13 @@ typedef struct {
 
 void
 bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
-	Pair *perso = BMContextPerso( ctx );
 	if ( !proto || !instance ) {
-		perso->value = (instance) ? instance : BMContextSelf(ctx);
-		return; }
+		bm_context_rebase( ctx, instance ); return; }
 	else if ( *proto==':' ) {
 		proto = p_prune( PRUNE_IDENTIFIER, proto+1 );
-		if ( !*proto ) { perso->value = instance; return; } }
-	else perso->value = instance;
+		if ( !*proto ) {
+			bm_context_rebase( ctx, instance ); return; } }
+	else bm_context_rebase( ctx, instance );
 
 	ActualizeData data;
 	memset( &data, 0, sizeof(ActualizeData) );
@@ -176,13 +175,7 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 	traversal.done = FILTERED;
 	
 	actualize_traversal( proto, &traversal, FIRST );
-#ifdef DEBUG
-	if (( data.stack.flags )||( data.stack.level ))
-	fprintf( stderr, "Error: context_actualize: Memory Leak\n" );
-	freeListItem( &data.stack.flags );
-	freeListItem( &data.stack.level );
-#endif		
-	}
+	DBG_ACTUALIZE_TRAVERSAL }
 
 //---------------------------------------------------------------------------
 //	actualize_traversal
@@ -221,7 +214,11 @@ case_( wildcard_CB )
 	if is_f( ELLIPSIS ) {
 		listItem *xpn = data->exponent;
 		if ((cast_i(xpn->ptr)&1) && !xpn->next ) { // B% vararg
-			context_rebase( data->ctx ); } }
+			BMContext *ctx = data->ctx;
+			bm_context_rebase( ctx, db_instantiate(
+				BMContextSelf(ctx),
+				BMContextPerso(ctx),
+				BMContextDB(ctx))); } }
 #endif
 	_break
 case_( dot_identifier_CB )
@@ -344,14 +341,9 @@ bm_lmark( Pair *match ) {
 
 void
 bm_vmark( BMContext *ctx, char *vm, BMMark *mark ) {
-	// push context locales and register vm
-	Pair *entry = registryLookup( ctx, "." );
-	Registry *locales = ((listItem*)entry->value)->ptr;
-	Pair *perso = registryLookup( locales, "." );
-	locales = newRegistry( IndexedByNameRef );
-	addItem((listItem **)&entry->value, locales );
-	registryRegister( locales, ".", perso->value );
-	entry = registryRegister( locales, strdup(vm), NULL );
+	bm_context_push( ctx, ".", NULL );
+	Registry *locales = BMContextCurrent( ctx );
+	Pair *entry = registryRegister( locales, strdup(vm), NULL );
 	addItem( &mark->data->xpn, entry ); }
 
 //---------------------------------------------------------------------------
@@ -510,7 +502,7 @@ bm_context_push( BMContext *ctx, char *p, void *value ) {
 		switch ( *p ) {
 		case '.': ;
 			Registry *locales = newRegistry( IndexedByNameRef );
-			registryRegister( locales, ".", value );
+			if (( value )) registryRegister( locales, ".", value );
 			addItem((listItem **) &entry->value, locales );
 			break;
 		default:
@@ -567,7 +559,6 @@ bm_context_debug( BMContext *ctx, char *p ) {
 //	bm_lookup
 //===========================================================================
 static inline void * lookup_rv( BMContext *, char *, int *rv );
-static inline Pair * lookup_locale( BMContext *, char * );
 
 void *
 bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
@@ -589,7 +580,7 @@ bm_lookup( int privy, char *p, BMContext *ctx, CNDB *db )
 		CNInstance *self = BMContextSelf( ctx );
 		return (( star ) ? cn_instance( star, self, 0 ) : NULL ); }
 	else if ( !is_separator( *p ) ) {
-		Pair *entry = lookup_locale( ctx, p );
+		Pair *entry = BMLocaleEntry( ctx, p );
 		if (( entry )) return entry->value; }
 
 	// not found in ctx registry
@@ -677,17 +668,9 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 	case '.':
 		return ( p[1]=='.' ) ?
 			BMContextParent( ctx ) :
-			BMContextPerso( ctx )->value; }
+			BMContextPerso( ctx ); }
 
 	*rv = 0; // not a register variable
-	return NULL; }
-
-static inline Pair *
-lookup_locale( BMContext *ctx, char *p ) {
-	listItem *stack = registryLookup( ctx, "." )->value;
-	for ( listItem *i=stack; i!=NULL; i=i->next ) {
-		Pair *entry = registryLookup( i->ptr, p );
-		if (( entry )) return entry; }
 	return NULL; }
 
 //===========================================================================
@@ -715,7 +698,7 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 			cnStarMatch(x->sub[ 0 ]) && x->sub[ 1 ]==BMContextSelf(ctx) :
 			!!errout( ContextEENOSelfAssignment, p ) );
 	else if ( db==db_x && !is_separator( *p ) ) {
-		Pair *entry = lookup_locale( ctx, p );
+		Pair *entry = BMLocaleEntry( ctx, p );
 		if (( entry )) return x==entry->value; }
 
 	// not found in ctx registry
@@ -735,7 +718,7 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 			return db_register( q.s, db );
 		return NULL; }
 	else if (( ctx ) && !is_separator(*p) ) {
-		Pair *entry = lookup_locale( ctx, p );
+		Pair *entry = BMLocaleEntry( ctx, p );
 		if (( entry )) return entry->value; }
 
 	return db_register( p, db ); }
@@ -743,7 +726,7 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 int
 bm_register_locales( BMContext *ctx, char *p ) {
 	Registry *locales = BMContextCurrent( ctx );
-	CNInstance *perso = registryLookup( locales, "." )->value;
+	CNInstance *perso = BMContextPerso( ctx );
 	CNDB *db = BMContextDB( ctx );
 	while ( *p=='.' ) {
 		p++;
