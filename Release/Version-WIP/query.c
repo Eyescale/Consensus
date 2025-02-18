@@ -163,6 +163,10 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 			return 0; } }
 
 	CNInstance *e = bm_lookup( privy, p, data->ctx, data->db );
+	if (( e ) && *p=='%' && p[2]=='^' ) {
+		listItem *xpn = xpn_make( p+3 );
+		e = xpn_sub( e, xpn );
+		freeListItem( &xpn ); }
 	if (( e )) {
 		Pair *pivot = data->pivot = newPair( p, e );
 		if ( !xp_traverse( expression, data, cb, user_data ) )

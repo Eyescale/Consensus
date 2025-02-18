@@ -34,26 +34,23 @@ bm_locate_pivot( char *expression, listItem **xpn )
 	traversal.user_data = &data;
 	traversal.stack = &data.stack.flags;
 	traversal.done = 0;
+	char *p;
 
-	char *p = locate_pivot_traversal( expression, &traversal, FIRST );
-	if ( traversal.done==2 ) {
-		freeListItem( &data.stack.flags );
-		freeListItem( &data.stack.level );
-		freeListItem( &data.stack.premark );
-		return p; }
-	else if ( data.secondary ) {
+	for ( int primary=1; ; primary=0 ) {
+	p = locate_pivot_traversal( expression, &traversal, FIRST );
+	if ( traversal.done==2 ) break;
+	if ( primary && data.secondary ) {
 		xpn_free( xpn, NULL );
 		traversal.done = 0;
-		data.primary = data.secondary;
-		p = locate_pivot_traversal( expression, &traversal, FIRST );
-		if ( traversal.done==2 ) {
-			freeListItem( &data.stack.flags );
-			freeListItem( &data.stack.level );
-			freeListItem( &data.stack.premark );
-			return p; } }
+		data.primary = data.secondary; }
+	else {
+		xpn_free( xpn, NULL );
+		return NULL; } }
 
-	xpn_free( xpn, NULL );
-	return NULL; }
+	freeListItem( &data.stack.flags );
+	freeListItem( &data.stack.level );
+	freeListItem( &data.stack.premark );
+	return p; }
 
 //---------------------------------------------------------------------------
 //	locate_pivot_traversal

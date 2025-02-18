@@ -28,7 +28,7 @@ db_arena_exit( void ) {
 	freePair( DBSharedArena );
 	DBSharedArena = NULL; }
 
-static freeRegistryCB deregister_CB; // see below db_arena_deregister
+static freeRegistryCB deregister_CB;
 static int
 free_CB( uint key[2], void *value ) {
 	switch ( key[0] ) {
@@ -36,11 +36,17 @@ free_CB( uint key[2], void *value ) {
 		Pair *entry = value;
 		free( entry->name );
 		freeRegistry( entry->value, deregister_CB );
-		freePair((Pair *) entry );
+		freePair( entry );
 		break;
 	case '!':
 		freeRegistry( value, deregister_CB ); }
 	return 1; }
+
+static void
+deregister_CB( Registry *registry, Pair *entry ) {
+	CNInstance *e = entry->value;
+	e->sub[ 1 ] = NULL;
+	cn_prune( e ); }
 
 //===========================================================================
 //	db_arena_encode / db_arena_key
@@ -48,11 +54,10 @@ free_CB( uint key[2], void *value ) {
 /*
 	note that code stores least significant hextet first
 */
-#define i2hex( i ) (i&=63,i+offset(i))
-static inline int offset( int );
+typedef struct { char *s; uint index; Registry *ref; } StrcmpData;
+static inline int i2hex( int i );
+static inline int hex2i( int h );
 static shakeBTreeCB strcmp_CB;
-typedef struct {
-	char *s; uint index; Registry *ref; } StrcmpData;
 
 void
 db_arena_encode( CNString *code, CNString *string ) { 
@@ -69,7 +74,7 @@ db_arena_encode( CNString *code, CNString *string ) {
 		Registry *ref = newRegistry( IndexedByAddress );
 		index = btreeAdd( DBSharedArena->name, newPair(data.s,ref) ); }
 	// got index => now encode
-	do StringAppend( code, i2hex(index) ); while (( index>>=6 )); }
+	do StringAppend( code, i2hex(index&63) ); while ((index>>=6)); }
 
 static int
 strcmp_CB( uint key[2], void *value, void *user_data ) {
@@ -81,17 +86,9 @@ strcmp_CB( uint key[2], void *value, void *user_data ) {
 		return 0; }
 	return 1; }
 
-static inline int
-offset( int tmp ) {
-	return	( tmp < 58 ? 48 : // 0-9: 00-09
-		  tmp < 91 ? 55 : // A-Z: 10-35
-		  tmp > 96 ? 61 : // a-z: 36-61
-		  32 ); } // ^_: 62-63
-
 //---------------------------------------------------------------------------
 //	db_arena_key
 //---------------------------------------------------------------------------
-#define hex2i( h ) (h-offset(h))
 void *
 db_arena_key( char *code ) {
 	union { uint value[2]; void *ptr; } key;
@@ -101,6 +98,23 @@ db_arena_key( char *code ) {
 	for ( int shift=0; *code && *code!='"'; code++, shift+=6 )
 		key.value[ 1 ] |= hex2i(*code) << shift;
 	return key.ptr; }
+
+//---------------------------------------------------------------------------
+//	i2hex / hex2i
+//---------------------------------------------------------------------------
+static inline int i2hex( int i ) {
+	return i + (
+		i < 10 ? 48 :	// 00-09: 0-9
+		i < 36 ? 55 :	// 10-35: A-Z
+		i < 62 ? 61 :	// 36-61: a-z
+		32 ); }		// 62-63: ^_
+
+static inline int hex2i( int h ) {
+	return h - (
+		h < 58 ? 48 :	// 0-9: 00-09
+		h < 91 ? 55 :	// A-Z: 10-35
+		h > 96 ? 61 :	// a-z: 36-61
+		32 ); }		//  ^_: 62-63
 
 //===========================================================================
 //	db_arena_register
@@ -112,7 +126,8 @@ db_arena_register( char *code, CNDB *db ) {
 	if (( code )) {
 		key.ptr = db_arena_key( code );
 		Pair *entry = btreePick( DBSharedArena->name, key.value );
-		ref = entry->value; }
+		entry = registryLookup( (ref=entry->value), db );
+		if (( entry )) return entry->value; }
 	else {
 		key.value[ 0 ] = '!';
 		ref = newRegistry( IndexedByAddress );
@@ -129,7 +144,7 @@ db_arena_lookup( char *code, CNDB *db ) {
 	Pair *entry = btreePick( DBSharedArena->name, key.value );
 	if (( entry )) {
 		entry = registryLookup( entry->value, db );
-		return (( entry )? entry->value : NULL ); }
+		if (( entry )) return entry->value; }
 	return NULL; }
 
 //===========================================================================
@@ -138,26 +153,40 @@ db_arena_lookup( char *code, CNDB *db ) {
 CNInstance *
 db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
 /*
-	build $(e,?:...) and return shared arena string
+	build $(e,?:...) and return shared arena string entity
 */ {
-	if ( !e || db_private(0,e,db)) return NULL;
-	CNString *string = newString();
+	
+	if ( !e || db_private(0,e,db) ) return NULL;
+	CNString *s = newString();
 	for ( listItem *i=e->as_sub[ 0 ]; i!=NULL; ) {
-		if ( e=i->ptr, !db_private(0,e,db) ) {
+		e = i->ptr;
+		if ( !db_private(0,e,db) ) {
 			CNInstance *f = e->sub[ 1 ];
 			if ( !cnIsIdentifier(f) ) break;
 			int event = *CNIdentifier( f );
 			if ( !event ) break;
-			StringAppend( string, event );
+			StringAppend( s, event );
 			i = e->as_sub[ 0 ]; }
 		else i = i->next; }
-	if ( !StringInformed(string) ) return NULL;
-	CNString *code = newString();
-	db_arena_encode( code, string );
-	freeString( string );
-	char *s = StringFinish(code,0);
-	e = db_arena_register( s, db_dst );
-	freeString( code );
+	if ( !StringInformed(s) ) return NULL;
+	StrcmpData data;
+	data.s = StringFinish( s, 0 );
+	StringReset( s, CNStringMode );
+	if ( btreeShake( DBSharedArena->name, strcmp_CB, &data ) ) {
+		free( data.s );
+		Pair *entry = registryLookup( data.ref, db_dst );
+		if (( entry )) { e=entry->value; goto FOUND; } }
+	else {
+		data.ref = newRegistry( IndexedByAddress );
+		Pair *entry = newPair( data.s, data.ref );
+		data.index = btreeAdd( DBSharedArena->name, entry ); }
+	freeString( s );
+	union { uint value[2]; void *ptr; } key;
+	key.value[ 0 ] = '$';
+	key.value[ 1 ] = data.index;
+	return db_share( key.value, data.ref, db_dst );
+FOUND:
+	freeString( s );
 	return e; }
 
 //===========================================================================
@@ -213,12 +242,6 @@ db_arena_deregister( CNInstance *e, CNDB *db )
 			registryCBDeregister( ref, deregister_CB, db );
 		break; } }
 
-static void
-deregister_CB( Registry *registry, Pair *entry ) {
-	CNInstance *e = entry->value;
-	e->sub[ 1 ] = NULL;
-	cn_prune( e ); }
-
 //===========================================================================
 //	db_arena_identifier
 //===========================================================================
@@ -255,9 +278,10 @@ db_arena_translate( CNInstance *e, CNDB *db, int transpose )
 		break; }
 
 	entry = registryLookup( ref, db );
-	if (( entry )) return entry->value;
+	if (( entry ))
+		return entry->value;
 	else if ( transpose )
-		return db_share( key, ref, db );
+		return db_share(key,ref,db);
 	else return NULL; }
 
 //===========================================================================

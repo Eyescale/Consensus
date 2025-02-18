@@ -153,18 +153,18 @@ CB_RegisterVariableCB			f_set( INFORMED )
 				case '|':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( *p==':' )
+					if ( *p=='^' )
 						p = p_prune( PRUNE_TERM, p+1 );
 					break;
 				case '?':
 				case '!':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
-					if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
+					if( *p=='^' )
+						p = p_prune( PRUNE_FILTER, p+1 );
+					else if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
 						if ( *p=='~' && p[1]!='<' ) {
-CB_SignalCB						p++; }
-						else if( *p==':' && is_xpn_expr(p+1) ) {
-							p = p_prune( PRUNE_TERM, p+1 ); } }
+CB_SignalCB						p++; } }
 					break;
 				default:
 					if ( !is_separator( p[1] ) ) {

@@ -23,7 +23,7 @@
 	else in : IN
 		on : . // start base rule instance - feeding base also as subscriber schema
 			do (((rule,base), (']',*record)) | {
-				(((schema, %((Rule,base),(Schema,?:~'\0'))), %|:(.,?)), %| ),
+				(((schema, %((Rule,base),(Schema,?:~'\0'))), %|^(.,?)), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
 			en .

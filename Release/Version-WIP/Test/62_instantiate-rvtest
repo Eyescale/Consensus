@@ -1,9 +1,9 @@
 	on init
 		do (toto,titi)
 	else on ?:(toto,titi)
-//		do ( %?:(.,titi), tata ) // B% screams
-//		do ( %?:(?,titi), tata ) // B% screams
-		do ( %?:(?,.), tata ) // B% happy
+//		do ( %?^(.,titi), tata ) // B% screams
+//		do ( %?^(?,titi), tata ) // B% screams
+		do ( %?^(?,.), tata ) // B% happy
 	else
 		do >:.
 		do exit

@@ -81,6 +81,7 @@ prune_term( char *p, PruneType type ) {
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
+		case '{':
 			p = prune_sub( p );
 			if ( *p=='(' || *p=='{' )
 				return p;
@@ -111,7 +112,9 @@ prune_term( char *p, PruneType type ) {
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '^':
-			p+=2; break;
+			if ( p[1]=='(' ) p++;
+			else p+=2;
+			break;
 		case '"':
 			p = prune_format( p );
 			informed = 1; break;
@@ -126,7 +129,7 @@ prune_term( char *p, PruneType type ) {
 			if ( p[1]=='<' )
 				return p;
 			// no break
-		case '{':
+		case '$':
 		case '!':
 			p++; break;
 		case '|':

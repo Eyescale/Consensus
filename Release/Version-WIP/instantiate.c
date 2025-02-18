@@ -64,14 +64,13 @@ case_( string_CB )
 	CNDB *db = data->db;
 	char *s = p[2]=='(' ? p+3 : p+2;
 	CNInstance *e = db_lookup( 0, s, db );
-	CNInstance *ste = ( data->carry ) ?
-		db_arena_makeup( e, db, BMContextDB(data->carry) ) :
-		db_arena_makeup( e, db, db );
-	if ( s==p+3 ) db_clear( e, 0, db );
+	CNInstance *ste = db_arena_makeup( e, db,
+		(data->carry) ? BMContextDB(data->carry) : db );
 	if (( ste )) data->sub[ NDX ] = newItem( ste );
+	if ( s==p+3 ) db_clear( e, 0, db );
 	// skip "s,~.),?:...)" resp. "s,?:...)"
-	s = p_prune( PRUNE_IDENTIFIER, s ) + (( s==p+3 )? 11 : 7 );
-	_continue( s )
+	p = p_prune( PRUNE_IDENTIFIER, s ) + ( s==p+3 ? 11 : 7 );
+	_continue( p )
 case_( filter_CB )
 	/* Assumption: p at filter pipe :|
 	   all other cases (byref) have been verified by parser
@@ -269,7 +268,7 @@ case_( register_variable_CB )
 	case '?':
 	case '!':
 		e = BMContextRVV( data->ctx, p );
-		if (( e )&&( p[2]==':' )) {
+		if (( e )&&( p[2]=='^' )) {
 			if ( !is_xpn_expr(p+3) )
 				switch_over( collect_CB, p, p )
 			else {
@@ -284,7 +283,7 @@ case_( register_variable_CB )
 		found = BMContextRVV( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
 		sub = &data->sub[ NDX ];
-		listItem *xpn = ( p[2]==':' ? xpn_make(p+3) : NULL );
+		listItem *xpn = ( p[2]=='^' ? xpn_make(p+3) : NULL );
 		for ( listItem *i=found; i!=NULL; i=i->next )
 			if (( e=xpn_sub(i->ptr,xpn) )) {
 				e = bm_translate( carry, e, db, 1 );
@@ -573,13 +572,12 @@ bm_assign( char *expression, BMTraverseData *traversal, CNStory *story )
 	And that nothing is done with the excess, if there is -
 		case sub[1]==NULL excepted
 */ {
-	InstantiateData *data = traversal->user_data;
-	char *p = expression+1; // skip leading ':'
-	CNInstance *self;
-	// special cases
-	if ( *p=='<' && assign_v2v( expression, traversal ) )
+	if ( assign_v2v( expression, traversal ) )
 		return;
-	else if ( !strcmp( p, "~." ) ) {
+	CNInstance *self;
+	InstantiateData *data = traversal->user_data;
+	char *p = expression + 1; // skip leading ':'
+	if ( !strcmp( p, "~." ) ) {
 		self = BMContextSelf( data->ctx );
 		db_unassign( self, data->db );
 		return; }
@@ -618,15 +616,16 @@ bm_assign( char *expression, BMTraverseData *traversal, CNStory *story )
 //---------------------------------------------------------------------------
 static int
 assign_v2v( char *expression, BMTraverseData *traversal ) {
-	char *q, *p = expression+1; // skip leading ':'
+	char *q, *p=expression+1; // skip leading ':'
+	if ( *p!='<' ) return 0;
 	listItem *vector[ 2 ] = { NULL, NULL };
 	for ( q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		addItem( &vector[ 0 ], q );
-	if ( q[1]=='<' ) {
-		for ( q++; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
-			addItem( &vector[ 1 ], q ); }
-	else {	freeListItem( &vector[ 0 ] );
+	if ( q[1]!='<' ) {
+		freeListItem( &vector[ 0 ] );
 		return 0; }
+	for ( q++; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
+		addItem( &vector[ 1 ], q );
 
 	InstantiateData *data = traversal->user_data;
 	CNDB *db = data->db;

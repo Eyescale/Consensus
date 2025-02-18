@@ -246,7 +246,7 @@ case_( bgn_pipe_CB )
 	else retab( data, p );
 	_break
 case_( bgn_set_CB )
-	if ( !is_f(LEVEL) ) {
+	if ( !is_f(LEVEL) && *p_prune(PRUNE_LEVEL,p+1)==',' ) {
 		add_item( &data->stack.level, data->level );
 		retab( data, p ); data->piped = 0; }
 	else add_item( &data->stack.level, 0 );

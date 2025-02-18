@@ -95,7 +95,8 @@ btreePick( BTree *btree, uint key[2] ) {
 //	btreeShake
 //---------------------------------------------------------------------------
 #define SHAKE( value ) \
-	if ( !cb( key, value, user_data ) ) return 1; \
+	if ( !cb( key, value, user_data ) ) { \
+		freeListItem(&stack); return 1; } \
 	if ( ++key[1] >= ndx ) break;
 
 int

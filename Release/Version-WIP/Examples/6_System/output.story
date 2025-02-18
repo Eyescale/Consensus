@@ -20,13 +20,15 @@
 .: base
 	on : input :
 		/[inofelscd>]/
-			in ~.:: tab : .
-				do : tab : *level
-			do : cmd : ( *cmd, *^^ )
+			in ((cmd,' ')?( *^^:'>' ):( *^^:~'>' ))
+				in ~.:: tab : .
+					do : tab : *level
+				do : cmd : ( *cmd, *^^ )
+			else do : err
 		' '
 			in ( cmd, . )
 				do : check
-			else do : err
+			else do : cmd : ( cmd, *^^ )
 		'\t'
 			in ( cmd, . )
 				do : check
@@ -280,7 +282,7 @@
 	// post-frame narrative: read input on demand
 	in : buffer : ?
 		in ?: ( %?, . )
-			do :< input, buffer >:< %?:(.,?), %? >
+			do :< input, buffer >:< %?^(.,?), %? >
 		else do ~( buffer )
 	else
 		do input : "%c" <

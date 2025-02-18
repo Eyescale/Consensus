@@ -622,7 +622,7 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 			if (!( i=entry->value )) return NULL;
 			CNInstance *e = ((Pair *) i->ptr )->value;
 			p+=4; // Assumption: we had p:"*^%?"
-			if ( *p==':' ) {
+			if ( *p=='^' ) {
 				listItem *xpn = xpn_make( p+1 );
 				e = xpn_sub( e, xpn );
 				freeListItem( &xpn ); }
@@ -636,26 +636,28 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 	case '%':
 		switch ( p[1] ) {
 		case '?':
+			if ( p[2]=='^' ) *rv = 4;
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
 			return NULL;
 		case '!':
+			if ( p[2]=='^' ) *rv = 4;
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->name;
 			return NULL;
-		case '%':
-			return BMContextSelf( ctx );
 		case '<':
 			*rv = 2;
 			return NULL;
-		case '|': ;
-			*rv = 3;
+		case '|':
+			*rv = ( p[2]=='^' ) ? 5 : 3;
 			entry = registryLookup( ctx, "|" );
 			if (( i=entry->value ))
 				return i->ptr;
 			return NULL;
+		case '%':
+			return BMContextSelf( ctx );
 		case '@':
 			*rv = 3;
 			return BMContextActive( ctx )->value;
@@ -679,6 +681,7 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 int
 bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 	// lookup & match first in ctx registry
+	listItem *xpn;
 	int rv = 1;
 	void *rvv = lookup_rv( ctx, p, &rv );
 	switch ( rv ) {
@@ -688,6 +691,18 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 	case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
 			if ( db_match( x, db_x, i->ptr, db ) )
 				return 1;
+		return 0;
+	case 4: xpn = xpn_make( p+3 );
+		rvv = xpn_sub( rvv, xpn );
+		freeListItem( &xpn );
+		return db_match( x, db_x, rvv, db );
+	case 5: xpn = xpn_make( p+3 );
+		for ( listItem *i=rvv; i!=NULL; i=i->next ) {
+			rvv = xpn_sub( i->ptr, xpn );
+			if (( rvv ) && db_match( x, db_x, rvv, db ) ) {
+				freeListItem( &xpn );
+				return 1; } }
+		freeListItem( &xpn );
 		return 0; }
 
 	// not a register variable

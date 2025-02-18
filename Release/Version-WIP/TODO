@@ -1,28 +1,36 @@
 See Also: design/story/interactive.story
 
 TODO
-	. TODO: parser.c, etc.
-		change %?:sub (ambiguous) into %?^sub
-		Note: using '!' instead of '?' in sub would make it as_sub
-	. TODO: finish and test inform.story
+	. [DONE] inform.story
 	. TODO: implement arena cache
 	. TODO:	parser.c
 		disallow on/per .variable: expression < src
-	. TODO: review system launch formula in light of the fact that
+	. feature complete Examples/6_System
+	  [ DONE ] output l%dc%d on error
+	  [ DONE ] output system as is => cf output.story
+	  [ DONE ] create internal data structure  => cf inform.story
+	  [ DONE ] pass ./B% -p Examples/6_System/inform.story
+	  [ DONE ] inform.story: implement NCR in :err
+	  [ DONE ] inform.story: report as per Examples/6_System/README.txt
+	  [ WIP ] system.story - final
+	  . review system launch formula in light of the fact that:
 	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
-	. feature complete Examples/6_System
-		[ DONE ] output l%dc%d on error
-		[ DONE ] output system as is => cf output.story
-		[ DONE ] create internal data structure  => cf inform.story
-		[ DONE ] pass ./B% -p Examples/6_System/inform.story
-		[ DONE ] inform.story: implement NCR in :err
-		[ WIP ] inform.story: output data structure as per format
-			described in Examples/6_System/README.txt
-		. cosystem init
-		. create (.,(Status,.)) and clear guard Status -
-		. capture all proxies (and subscribe) on init
-		. finalize and actually run TM.system example (manual)
+	  . cosystem init
+	  . create (.,(Status,.)) and clear guard Status -
+	  . capture all proxies (and subscribe) on init
+	  . finalize and actually run TM.system example (manual)
+	. NTH: inform.story
+		. refine report, e.g.
+			. on "occurrence" with only CL specified*
+			. off "occurrence" with only DO specified
+			. cl-do same occurrence
+		  *currently the case for "init"
+		. do "" / on "" for do exit / on init
+			=> db_arena_makeup must accept NULL
+	. NTH: db_arena_makeup() improvement: currently takes the first
+	  character of each identifier. Why not whole identifier?
+		=> allows to compose sentences
 	. cleanup & complete contents of design/story/
 	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
@@ -111,6 +119,11 @@ NOTES
 		// post-frame
 
 DONE
+	. replaced %?:sub with %?^sub (and likewise for %! and %|)
+	  Note: using '!' instead of '?' in sub would make it as_sub
+	  cf. Test/{
+		61_instantiate-rvsub, 62_instantiate-rvtest,
+		69_inc, 53_output-system-launch-formula }
 	. implemented in/on/per .locale: expression
 		cf design/specs/bm-CONTEXT-data-structure.txt
 	. allowed marked CASE expression, e.g. in
