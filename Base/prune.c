@@ -88,7 +88,7 @@ prune_term( char *p, PruneType type ) {
 			informed = 1;
 			break;
 		case ':':
-			if ( p[1]=='|' ) {
+			if ( p[1]=='|' || p[1]==':' ) {
 				p+=2; break; }
 			if ( type==PRUNE_FILTER )
 				return p;
@@ -106,7 +106,7 @@ prune_term( char *p, PruneType type ) {
 			break;
 		case '*':
 			if ( p[1]=='^' )
-				{ p+=2; break; }
+				{ p++; break; }
 			// no break
 		case '.':
 			if ( p[1]=='?' ) p+=2;
@@ -190,7 +190,7 @@ prune_ternary( char *p )
 			else informed = 1;
 			p++; break;
 		case ':':
-			if ( p[1]=='|' ) {
+			if ( p[1]=='|' || p[1]==':' ) {
 				p+=2; break; }
 			if ( ternary ) {
 				ternary--;
