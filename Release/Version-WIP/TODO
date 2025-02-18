@@ -2,8 +2,6 @@ See Also: design/story/interactive.story
 
 TODO
 	. TODO: implement arena cache
-	. TODO:	parser.c
-		disallow on/per .variable: expression < src
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
 	  [ DONE ] output system as is => cf output.story
@@ -118,6 +116,7 @@ NOTES
 		// post-frame
 
 DONE
+	. disallowed on/per .variable: expression < src // VMARKED vs. ON_X
 	. replaced %?^sub with %?::sub (and likewise for %! and %|)
 	  Note: using '!' instead of '?' in sub would make it as_sub
 	  cf. Test/{

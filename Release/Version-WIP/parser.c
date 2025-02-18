@@ -37,9 +37,13 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '&' ) if ( *type&EN && s_empty ) {
 				do_( same )	s_take
 						f_set( INFORMED ) }
+		on_( '.' ) if ( s_empty && *type&(ON|PER) ) {
+				do_( "." )	s_take
+						expr_set( VMARKED ) }
+			else if ( !is_f(INFORMED) ) {
+				do_( "." )	s_take }
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) { do_( "(" )	s_take }
-		on_( '.' ) if ( !is_f(INFORMED) ) { do_( "." ) 	s_take }
 		on_( '!' ) if ( !is_f(INFORMED) ) { do_( "!" ) }
 		on_( '~' ) if ( !is_f(INFORMED) ) { do_( "~" ) }
 			   else if ( *type&DO ) { do_( "@" )	s_take }
@@ -151,7 +155,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 						f_reset( FIRST, 0 ) }
 		on_( '<' ) if ( is_f(SET|LEVEL|SUB_EXPR|VECTOR) || !is_f(INFORMED) )
 				; // err
-			else if ( *type&ON && (is_f(ASSIGN)?is_f(PRIMED):is_f(FIRST)) ) {
+			else if ( *type&ON && !expr(VMARKED) &&
+				  (is_f(ASSIGN)?is_f(PRIMED):is_f(FIRST)) ) {
 				do_( "_<" )	s_take
 						*type = (*type&~ON)|ON_X; }
 			else if ( *type&DO && !is_f(ASSIGN|ELLIPSIS) ) {
@@ -565,15 +570,17 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( INFORMED|PROTECTED )
 			end
 	in_( "." ) bgn_
-		ons( " \t" )	do_( same )
 		on_( '.' )	do_( "expr" )	s_take
+						expr_clr( VMARKED )
 						f_set( INFORMED )
 						f_set_BYREF
 		on_( '(' )	do_( "expr" )	REENTER
+						expr_clr( VMARKED )
 		on_( '?' ) if ( is_f(SUB_EXPR) ) {
 				do_( "expr" )	REENTER }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
+						expr_clr( VMARKED )
 		on_other	do_( "term" )	s_take
 		end
 	in_( "^" ) bgn_
@@ -726,13 +733,15 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 				do_( same ) 	f_set( INFORMED ) }
 			else {	do_( "expr" )	f_set( INFORMED ) }
 		on_( '~' ) if ( *type&DO && !s_at('~') ) {
-				do_( f_signalable(stack) ? same : "@" )
-						s_take
-						f_set( INFORMED ) }
+				if ( f_signalable(stack) ) {
+					do_( same )	s_take
+							f_set( INFORMED ) }
+				else {	do_( "@" )	s_take
+							f_set( INFORMED ) } }
 		on_( '<' ) if ( s_at('~') ) {
 				do_( "@<" )	s_take
 						bm_parse_caution( data, WarnUnsubscribe, mode ); }
-		on_( '%' ) if ( !s_at('%') && *type&EN && !is_f(LEVEL|SUB_EXPR) ) {
+		on_( '%' ) if ( *type&EN && !is_f(LEVEL|SUB_EXPR) && !s_at('%') ) {
 				do_( same )	s_take
 						f_set( INFORMED ) }
 		on_( '(' ) if ( *type&EN && !is_f(LEVEL|SUB_EXPR) ) {
@@ -740,10 +749,15 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 						*type |= PER;
 						f_clr( INFORMED ) }
 		on_( '?' ) if ( !s_at('~') ) {
+				do_( "expr" )	REENTER // ternary operator
+						expr_clr( VMARKED )
+						f_set( INFORMED ) }
+		on_( ':' ) if ( !s_at('~') ) {
 				do_( "expr" )	REENTER
 						f_set( INFORMED ) }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
+						expr_clr( VMARKED )
 			     if ( s_at('~') ) {	f_tag( stack, PROTECTED ) }
 		on_other if ( !is_f(INFORMED) ) {
 				do_( same )	s_take }
