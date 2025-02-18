@@ -2,7 +2,7 @@
 	on init
 		do ( toto, titi )
 	else on ?:( toto, titi )
-		do ( %?^(.,?), tata )
+		do ( %?::(.,?), tata )
 	else
 		do >:.
 		do exit

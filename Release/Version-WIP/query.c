@@ -163,8 +163,8 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 			return 0; } }
 
 	CNInstance *e = bm_lookup( privy, p, data->ctx, data->db );
-	if (( e ) && *p=='%' && p[2]=='^' ) {
-		listItem *xpn = xpn_make( p+3 );
+	if (( e ) && *p=='%' && !strncmp(p+2,"::",2) ) {
+		listItem *xpn = xpn_make( p+4 );
 		e = xpn_sub( e, xpn );
 		freeListItem( &xpn ); }
 	if (( e )) {

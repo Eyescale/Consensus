@@ -9,24 +9,35 @@
 	else
 		on : input : ~. // EOF
 			in : ps
-				do : take | (cmd,~.)
-			else in : ((cmd,.)?~.: base )
-				do : ( ready ? output : ~. )
+				do : s : $((s,~.),?:...)
+				in ( type, '>' )
+					do : cmd : ( cmd, ~. )
+					do : ward
+				else
+					do : ((type,CL) ? ward : take )
+					in ~.: ready
+						do : cmd : ( cmd, ~. )
+			else in ((:base)?(~.:(cmd,.)):)
+				// ready => warding has been performed
+				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
-			do exit
+			do :< guard, on, bar >: ~.
+			do : report
 		else en %(:?)
 
 .: base
 	on : input :
 		/[inofelscd>]/
-			in ~.:: tab : .
-				do : tab : *level
-			do : cmd : ( *cmd, *^^ )
+			in ((cmd,' ')?( *^^:'>' ):( *^^:~'>' ))
+				do : cmd : ( *cmd, *^^ )
+				in ~.:: tab : .
+					do : tab : *level
+			else do : err
 		' '
 			in ( cmd, . )
 				do : check
-			else do : err
+			else do : cmd : ( cmd, *^^ )
 		'\t'
 			in ( cmd, . )
 				do : check
@@ -56,7 +67,7 @@
 
 .: flush
 	on : input : '\n'
-		do : base
+		do :( ps ?: base )
 	else en &
 
 .: check
@@ -69,23 +80,23 @@
 				do : cmd : ( cmd, ~. )
 				do : ( *input:'\n' ? . : base )
 		((.,i),n)
-			do : string | ( type, IN )
+			do : line | ( type, IN )
 		((.,o),n)
-			do : string | ( type, ON )
+			do : line | ( type, ON )
 		(((.,o),f),f)
-			do : string | ( type, OFF )
+			do : line | ( type, OFF )
 		((.,d),o)
-			do : string | ( type, DO )
+			do : line | ( type, DO )
 		((.,c ),l)
-			do : string | ( type, CL )
+			do : line | ( type, CL )
 		(.,'>')
 			in ((type,ELSE)?:(~.:(*level:*tab)))
-				do : err
+				do : err |: ErrStripeCommand
 			else in : *tab : (.,(?,.))
 				in (( %?:DO )?:( %?:'>' ))
-					do : string | ( type, '>' )
-				else do : err
-			else do : err
+					do : line | ( type, '>' )
+				else do : err |: ErrStripeCommand
+			else do : err |: ErrStripeCommand
 		^^
 			// standalone ELSE
 			in : *level : (.,(?,.))
@@ -99,24 +110,27 @@
 		.
 			do : err |: ErrUnknownCommand
 
+.: line
+	on ~( %%, l ) < ?:*lc
+		do : string | (((line,~.),...),%<(!,?:...)>)
+
 .: string
 	in : s : ? // started
 		on : input :
-			'"'
-				do : ps // unquote
+			'"' // unquote
+				do : ps
 			.
-				// record string
-				do : s : ( %?, *^^ )
+				do : s : ( %?, *^^ ) // record
 		else en &
 	else
 		on : input :
-			'"'
-				do : s : s // quote
+			'"' // quote
+				do : s : s
 			/[ \t]/
 				do ~.
 			'&'
 				in ( *that ? (~.:((type,CL)?:(type,DO))) :)
-					do : s : '&'
+					do : s : *that
 					do : finish
 				else do : err
 			.
@@ -129,7 +143,9 @@
 			do ~.
 		'\n'
 			do : take
-			do : cmd : ( cmd, ~. )
+			do : cmd : (cmd,~.)
+			in (type,'>')
+				do ((*take,'>'),'&')
 		.
 			do : err
 	else en &
@@ -138,149 +154,239 @@
 	// try to concatenate _" "_
 	on : input :
 		'"' // success
-			do : string | { ~(ps) }
+			do : string | {~(ps)}
 		'\n'
-			// backup start on newline
-			do : ps : (( ps, *^^ ), ~. )
+			// backup starting with newline
+			do : ps : (( ps, ~. ), *^^ )
 		/[ \t]/
 			in : ps : ?
 				do : ps : ( %?, *^^ )
+		'#'
+			in ( ps, '\n' )
+				do : flush
+			else do : err
 		.
 			in : s : s // empty string
 				do : err |: ErrStringEmpty
 			else in : ps : .
 				// restore backup as input queue
 				do : buffer : ( buffer | ((%|,...),< %(ps,?:...), *^^ >) )
-				do : cmd : ( cmd, ~. )
-				do : take 
+				do :< cmd, s >:< (cmd,~.), $((s,~.),?:...) >
+				// this is where we know whether DO is generative or not
+				do : ( ((type,CL)?:(type,'>')?:(*^^:'>')) ? ward : take )
 			else in (( type, CL )?( *^^:'d' ):)
 				// take CL pending DO
-				do : cmd : (( cmd, ~.  ), *^^ )
-				do : take
+				do :< cmd, s >:< ((cmd,~.),*^^), $((s,~.),?:...) >
+				do : ward
 			else do : err
 			do ~( ps )
 	else en &
 
+.: ward
+	in ( type, CL )
+		in ((?:!!,DO), *s )
+			do : err |: ( NCR, %? )
+		else in ((?:!!,CL), *s )
+			do : take |: %?
+		else do : take |: !! | {
+			((%|,IN), $(line,?:...)),
+			((%|,CL), *s ) }
+	else in ( type, DO ) // assumed generative
+		in ((?:!!,CL), *s )
+			do : err |: ( NCR, %? )
+		else in ((?:!!,'>'), *s )
+			do : err |: ( NCR, %? )
+		else in ((?:!!,DO), *s )
+			do : take |: %?
+		else do : take |: !! | {
+			((%|,IN), $(line,?:...)),
+			((%|,DO), *s ) }
+	else // ( type, '>' )
+		in ((?:!!,DO), *s )
+			do : err |: ( NCR, %? )
+		else do : take |
+			((*take,'>'), *s )
+
 .: take
 	on : .
-		in (( type, '>' )?:( ~.: ready ))
+		in ( type, '>' )
+			in : input : .
+				do : level : root
+				do : base | { ((*,s),~.), ~(type,.) }
+			else do : inform
+		else in ready
+			do : inform
+		else
 			// clamp tab to level and reset level
 			in ~.:: tab : *level
 				do : tab : ( *level, ~. )
 			in ~.: (cmd,.)
 				do : level : root
-		else do : output
 	else
 		in ( type, ?:~ELSE )
 			in (( %?:CL )?:( %?:DO ))
-				// in CL_DO force DO to register at same level
-				// otherwise enable output - barring '>'
-				do (( cmd, . ) ? ( type, ELSE ) : ready )
-				in ( type, ELSE ) // ELSE CL or ELSE DO
-					// **tab is informed, by preceding IN or ON or OFF
-					do ( '\0' |
-						?:%((?,...):*s):(.,?) (%|,%?) :| {
-							((*,*tab), ( **tab, ((ELSE,%?),%|))),
-							((*,that), %| ) } )
-				else // CL or DO
-					do ( '\0' |
-						?:%((?,...):*s):(.,?) (%|,%?):| {
-							((*,*tab), ((.(*tab),~.),(%?,%|))),
-							((*,that), %| ) } )
-			else in %?: '>' // no ELSE
-				// **tab is informed, by preceding DO
-				in : s : '&'
-					do : *tab : ( **tab, (%?,'&') )
-				else do ( '\0' |
-					?:%((?,...):*s):(.,?) (%|,%?):|
-						((*,*tab), (**tab, (%?,%|)) ))
-			else // [ ELSE ] IN, ON, OFF
-				do : tab : ( *tab, '\t' ) // set new tab
-				in : s : '&'
-					do : *tab : (( type, ELSE ) ?
-						( **tab, ((ELSE,%?),*that) ) :
-						( .(*tab), (%?,*that) ))
-				else do ( '\0' |
-					?:%((?,...):*s):(.,?) (%|,%?):|
-						((*,*tab), ( ( type, ELSE ) ?
-							(**tab, ((ELSE,%?),%|)) :
-							((.(*tab),~.),(%?,%|)) )))
+				in : input : . // CL-DO possibility
+					do ((cmd,.) ? (type,ELSE) : ready )
+				else do ready
+				do : that : *s
+			else do : tab : ( *tab, '\t' )
+			do : *tab : (( type, ELSE ) ?
+				( **tab, ((ELSE,%?),*s) ) :
+				( (.(*tab),~.), (%?,*s) ))
 		else // standalone ELSE
 			do : tab : (*tab,'\t') // set new tab
 			do : *tab : ( **tab, ELSE ) // inform current
 
 		in : input : .
 			do : base | { ((*,s),~.), ~((cmd,.)?(type,CL):(type,.)) }
-		else do : output
+		else do : inform
 
-.: output
-	on : r : ?
-		// we have ((%?,...),(cmd,string))
-		in (((%?,(CL,.)) ?: (%?,((.,CL),.))) ? ((%?,.),((.,DO),.)) :)
-			do > "%sCL \"%$\" DO \"%$\"\n":<
-				((%?,((.,.),.)) ? "ELSE " :),
-				%((?,...):%(%?,(.,?)))
-				%((?,...):%((%?,.),(.,?))) >
+.: inform
+	on : q : ?
+		in ( %?, (DO,?))
+			do : action : (%?,ON)
+		else in ( %?, (CL,.))
+			do : action : (((%?,.),.) ? // CL-DO
+				((%(%?,(.,?)),OFF), (%((%?,.),(.,?)),ON)) :
+				(%(%?,(.,?)),OFF))
 		else
-			in ( %?, ?:((.,.),.))
-				do >"ELSE %s \"%$\"\n":<
-					%(%?:((.,?),.)),
-					%((?,...):%(%?:(.,?))) >
-			else in ( %?, ?:(.,.))
-				in %?:('>','&')
-					do >"> &\n"
-				else do >"%s \"%$\"\n":<
-					%(%?:(?,.)),
-					%((?,...):%(%?:(.,?))) >
-			else do >"ELSE\n"
+			in : condition : ?
+				do (( %?, OFF ), *guard )
+			in : event : ?
+				do ( %?, *bar )
 
-			in ( ?:(%?,.), . )
-				do : q : %?
-			else in ?:( *p, '\t' )
-				do : p : %?
-	else on : q : ?
-		do > "%$": %((?,...):*p)
-		do : r : %?
+			in ( %?, ((.,DO),?))
+				do : action : (%?,ON)
+			else in ( %?, ((.,CL),.))
+				do : action : (((%?,.),.) ? // ELSE CL-DO
+					((%(%?,(.,?)),OFF), (%((%?,.),(.,?)),ON)) :
+					(%(%?,(.,?)),OFF))
+			else
+				in ?:( %(%?,(IN,?)) ?: %(%?,((.,IN),?)) )
+					do : condition : %?
+					do : event : ~.
+				else in ?:( %(%?,(ON,?)) ?: %(%?,((.,ON),?)) )
+					do : condition : ~.
+					do : event : ( %?, ON )
+				else in ?:( %(%?,(OFF,?)) ?: %(%?,((.,OFF),?)) )
+					do : condition : ~.
+					do : event : ( %?, OFF )
+				else // standalone ELSE
+					do :< condition, event >: ~.
+
+				in ( ?:(%?,.), . )
+					do : q : %?
+				else in ?:( *p, '\t' )
+					do : p : %?
 	else on : p : ?
 		in ?:( take, %? )
 			do : q : %?
+			// register last condition/event from previous level
+			in : condition : ?
+				do (( %?, ON ), *guard )
+				do : condition : ~.
+			in : event : ?
+				do ( %?, *on )
+				do : event : ~.
 		else in ?:( %?, '\t' )
 			do : p : %?
 	else in ready
-		do >"--------------------------------------------------------\n"
+		do :< guard, on, bar >: !!
 		do : p : root
 		do ~( ready )
 	else on : . // just entered, from take, not ready
 		do : err
-	else in : input : .
-		do : take
-	else do : ~.
+	else in : action : .
+		do :< condition, event >: ~.
+		do : instantiate
+	else do : err |: ErrNoAction
+
+.: instantiate
+	on : .
+		// try to reuse existing guard and triggers { on, bar }
+		per ?:%( ?:~%(~%(?,*guard),?), ((!!,!!), (.,/(ON|OFF)/) ))
+			in ~.:( ~%(?,%?):~(*,.), *guard ) // all *guard conditions apply
+				do { ~(*guard), ((*,guard),%?) }
+
+		per ?:%( !!, ((?:~%(~%(?,*on),?),!!), (.,/(ON|OFF)/) ))
+			in ~.:( ~%(?,%?):~(*,.), *on ) // all *on events apply
+				do { ~(*on), ((*,on),%?) }
+
+		per ?:%( !!, ((!!,?:~%(~%(?,*bar):~!!,?)), (.,/(ON|OFF)/) ))
+			in ~.:( ~%(?,%?):~(*,.), *bar ) // all *bar events apply
+				do { ~(*bar), ((*,bar),%?) }
+	else
+		// instantiate ( *guard, ((*on,*bar), *action[s] ))
+		in : action : ?
+			in %?: ((.,OFF),(.,ON))
+				do ( *guard, ((*on,*bar), { %?::(?,.), %?::(.,?) } ))
+				do ~( %? )
+			else do ( *guard, ((*on,*bar), %? ))
+
+		in : input : .
+			do : take
+		else in ( cmd, . )
+			do : cmd : (cmd,~.)
+			do : take
+		else do : ~.
+
+.: report
+	on : .
+		per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
+			do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
+			in ((?:!!,DO), %(action:(?,.))) // generative action
+				per ((%?,'>'),?) // generated occurrences
+					in ~.:( %?:'&' )
+						do >"  > \"%_\"\n": %?
+					else do >"  > &\n"
+			per .guard: %( ?, ((.,.), action ))
+				do >"  guard\n"
+				per ( ?, guard ) // guard condition
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+				per ( guard, ( ?, action ))
+					do >"    trigger\n"
+					per ( ?, %?::(?,.) ) // on event
+						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+					do >"      /\n"
+					per ( ?:~!!, %?::(.,?) ) // bar event
+						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+			do >:
+
+		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,.)))
+			do >&"Warning: ErrUnspecifiedOrigin: \"%s\"\n": %?
+			do : err |: ErrSystemIncomplete
+	else
+		do exit
 
 .: err
 	on : . // lc coming up next
 		on ~(:?) // just transitioned from
-			do >"[%_:] Error: ": %?
+			do >&"[%_:] Error: ": %?
 	else on ~( %%, l ) < *lc
-		do >"l%$": %<(!,?:...)>
+		do >&"l%$": %<(!,?:...)>
 	else
-		in : err : ?
-			do > ": %_\n": %?
+		in : err :
+			(NCR,?)
+				do >&": generative vs. generated usage: "
+					"prior reference in l%$\n": %((%?,IN),?)
+			.
+				do >&": %_\n": *^^
 		else in : input :
 			'\t'
-				do >": ErrUnexpectedTab\n"
+				do >&": ErrUnexpectedTab\n"
 			'\n'
-				do >": ErrUnexpectedCR\n"
+				do >&": ErrUnexpectedCR\n"
 			~.
-				do >": ErrUnexpectedEOF\n"
+				do >&": ErrUnexpectedEOF\n"
 			.
-				do >": ErrUnexpectedCharacter: '%s'\n": *^^
-		do : ~.
+				do >&": ErrUnexpectedCharacter: '%s'\n": *^^
+		do exit
 
 .: &
 	// post-frame narrative: read input on demand
 	in : buffer : ?
 		in ?: ( %?, . )
-			do :< input, buffer >:< %?^(.,?), %? >
+			do :< input, buffer >:< %?::(.,?), %? >
 		else do ~( buffer )
 	else
 		do input : "%c" <

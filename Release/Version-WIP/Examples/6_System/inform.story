@@ -17,7 +17,7 @@
 					do : ((type,CL) ? ward : take )
 					in ~.: ready
 						do : cmd : ( cmd, ~. )
-			else in : ((cmd,.)?~.: base )
+			else in ((:base)?(~.:(cmd,.)):)
 				// ready => warding has been performed
 				do : ( ready ? inform : ~. )
 			else do : err
@@ -281,7 +281,7 @@
 	else on : p : ?
 		in ?:( take, %? )
 			do : q : %?
-			// take last condition/event from previous level
+			// register last condition/event from previous level
 			in : condition : ?
 				do (( %?, ON ), *guard )
 				do : condition : ~.
@@ -319,7 +319,7 @@
 		// instantiate ( *guard, ((*on,*bar), *action[s] ))
 		in : action : ?
 			in %?: ((.,OFF),(.,ON))
-				do ( *guard, ((*on,*bar), { %?^(?,.), %?^(.,?) } ))
+				do ( *guard, ((*on,*bar), { %?::(?,.), %?::(.,?) } ))
 				do ~( %? )
 			else do ( *guard, ((*on,*bar), %? ))
 
@@ -342,14 +342,14 @@
 			per .guard: %( ?, ((.,.), action ))
 				do >"  guard\n"
 				per ( ?, guard ) // guard condition
-					do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 				per ( guard, ( ?, action ))
 					do >"    trigger\n"
-					per ( ?, %?^(?,.) ) // on event
-						do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+					per ( ?, %?::(?,.) ) // on event
+						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 					do >"      /\n"
-					per ( ?:~!!, %?^(.,?) ) // bar event
-						do >"\t\"%_\" %_\n":< %?^(?,.), %?^(.,?) >
+					per ( ?:~!!, %?::(.,?) ) // bar event
+						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 			do >:
 
 		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,.)))
@@ -386,7 +386,7 @@
 	// post-frame narrative: read input on demand
 	in : buffer : ?
 		in ?: ( %?, . )
-			do :< input, buffer >:< %?^(.,?), %? >
+			do :< input, buffer >:< %?::(.,?), %? >
 		else do ~( buffer )
 	else
 		do input : "%c" <

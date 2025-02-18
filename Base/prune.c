@@ -88,7 +88,8 @@ prune_term( char *p, PruneType type ) {
 			informed = 1;
 			break;
 		case ':':
-			if ( p[1]=='|' ) { p+=2; break; }
+			if ( p[1]=='|' || p[1]==':' ) {
+				p+=2; break; }
 			if ( type==PRUNE_FILTER )
 				return p;
 			informed = 0;
@@ -105,16 +106,15 @@ prune_term( char *p, PruneType type ) {
 			break;
 		case '*':
 			if ( p[1]=='^' )
-				{ p++; break; }
+				{ p+=2; break; }
 			// no break
 		case '.':
 			if ( p[1]=='?' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '^':
-			if ( p[1]=='(' ) p++;
-			else p+=2;
-			break;
+			p+=2;
+			informed = 1; break;
 		case '"':
 			p = prune_format( p );
 			informed = 1; break;

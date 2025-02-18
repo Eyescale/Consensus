@@ -1,7 +1,6 @@
 See Also: design/story/interactive.story
 
 TODO
-	. [DONE] inform.story
 	. TODO: implement arena cache
 	. TODO:	parser.c
 		disallow on/per .variable: expression < src
@@ -119,7 +118,7 @@ NOTES
 		// post-frame
 
 DONE
-	. replaced %?:sub with %?^sub (and likewise for %! and %|)
+	. replaced %?^sub with %?::sub (and likewise for %! and %|)
 	  Note: using '!' instead of '?' in sub would make it as_sub
 	  cf. Test/{
 		61_instantiate-rvsub, 62_instantiate-rvtest,

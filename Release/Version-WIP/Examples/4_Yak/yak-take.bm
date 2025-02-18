@@ -67,7 +67,7 @@
 						do .( %?, s )
 						do ( %?:r ? .CYCLIC :)
 					else do ( ((rule,%?), ('[',*record)) | {
-						(((schema, %((Rule,%?),(Schema,?))), %|^(.,?)), %| ),
+						(((schema, %((Rule,%?),(Schema,?))), %|::(.,?)), %| ),
 						.( %|, s ) } )
 				else
 					do >"Error: Yak: rule '%_' not found or invalid\n": %?
@@ -123,7 +123,7 @@
 					do .( %?, s )
 					do ( %?:r ? .CYCLIC :)
 				else do ( ((rule,%?), (']',*record)) | {
-					(((schema, %((Rule,%?),(Schema,?))), %|^(.,?)), %| ),
+					(((schema, %((Rule,%?),(Schema,?))), %|::(.,?)), %| ),
 					.( %|, s ) } )
 			else
 				do >"Error: Yak: rule '%_' not found or invalid\n": %?

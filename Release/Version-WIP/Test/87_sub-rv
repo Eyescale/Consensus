@@ -2,6 +2,6 @@
 	on init
 		do : c : ( a, bingo )
 	else in : c : ?
-		in ?: %?^(.,?)
+		in ?: %?::(.,?)
 			do >: %?
 		do exit

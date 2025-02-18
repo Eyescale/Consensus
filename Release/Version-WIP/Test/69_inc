@@ -24,7 +24,7 @@ else on : ~.
 		in ~.: %((%?,.), ... ):( ., ~9 )
 			// replace last subsequence's digit with digit successor in dial
 			// Assumption: No (digit,(.,.)) instance exists other than in dial
-			do ( (( %?^(?,.), ~. ), %( %?^(.,?), (?,.) )) | ?:%(%?,?:...) (%|,0):| )
+			do ( (( %?::(?,.), ~. ), %( %?::(.,?), (?,.) )) | ?:%(%?,?:...) (%|,0):| )
 	else in ?: N // either all %(N,...) digits are 9 or N has no digit association
 		// replace N's all successor digits with 0, preceded by 1
 		do ((( %?, ~. ), 1 ) | ?:%(%?,?:...) (%|,0):| )
@@ -37,8 +37,8 @@ else on : ~.
 			// replace last subsequence's digit with digit predecessor in dial
 			// Assumption: No (.,(digit,.)) instance exists other than in dial
 			do ( %?:(N,1) ? // special case: N is 1 followed by nothing but 0
-				( ( %?^(?,.), ~. ) | ?:%(%?,?:...) (%|,9):| ) :
-				( (( %?^(?,.), ~. ), %( ?, (%?^(.,?),.))) | ?:%(%?,?:...) (%|,9):| ) )
+				( ( %?::(?,.), ~. ) | ?:%(%?,?:...) (%|,9):| ) :
+				( (( %?::(?,.), ~. ), %( ?, (%?::(.,?),.))) | ?:%(%?,?:...) (%|,9):| ) )
 	else // either all %(N,...) digits are 0 or N has no digit association
 		do (( N, 0 ), ~. )
 

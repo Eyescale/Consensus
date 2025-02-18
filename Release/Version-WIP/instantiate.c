@@ -268,11 +268,11 @@ case_( register_variable_CB )
 	case '?':
 	case '!':
 		e = BMContextRVV( data->ctx, p );
-		if (( e )&&( p[2]=='^' )) {
-			if ( !is_xpn_expr(p+3) )
+		if (( e )&&( p[2]==':' )) {
+			if ( p[3]!=':' )
 				switch_over( collect_CB, p, p )
 			else {
-				listItem *xpn = xpn_make(p+3);
+				listItem *xpn = xpn_make(p+4);
 				e = xpn_sub( e, xpn );
 				freeListItem( &xpn ); } }
 		if (( e )) e = bm_translate( carry, e, db, 1 );
@@ -283,12 +283,17 @@ case_( register_variable_CB )
 		found = BMContextRVV( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
 		sub = &data->sub[ NDX ];
-		listItem *xpn = ( p[2]=='^' ? xpn_make(p+3) : NULL );
-		for ( listItem *i=found; i!=NULL; i=i->next )
-			if (( e=xpn_sub(i->ptr,xpn) )) {
-				e = bm_translate( carry, e, db, 1 );
-				if (( e )) addItem( sub, e ); }
-		freeListItem( &xpn );
+		if ( strncmp(p+2,"::",2) ) {
+			for ( listItem *i=found; i!=NULL; i=i->next ) {
+				e = bm_translate( carry, i->ptr, db, 1 );
+				if (( e )) addItem( sub, e ); } }
+		else {
+			listItem *xpn = xpn_make(p+4);
+			for ( listItem *i=found; i!=NULL; i=i->next )
+				if (( e=xpn_sub(i->ptr,xpn) )) {
+					e = bm_translate( carry, e, db, 1 );
+					if (( e )) addItem( sub, e ); }
+			freeListItem( &xpn ); }
 		break;
 	case '<':
 		found = eenov_inform( data->ctx, db, p, carry );

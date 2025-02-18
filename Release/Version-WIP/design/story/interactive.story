@@ -260,24 +260,24 @@ System launch
 
 	do : %cosystem : !! Cosystem(
 		// foreach action instantiate same (with proxy vs. cosystem), for which
-		?:(( ., ON|OFF ), ^^ ) { ( %?:(?,.), *^^ ) |
+		?:(( ., ON|OFF ), ^^ ) { ( %?::(?,.), *^^ ) |
 			// foreach (trigger, action) instantiate same, for which
-			?:( ., %? ) { ( %?:(?,.), %| ) | {
+			?:( ., %? ) { ( %?::(?,.), %| ) | {
 				// for each (event,trigger) instantiate same (with proxy vs. cosystem)
-				?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)),
+				?:( ?, %?::(?,.) ) (( %?::(?,.), *^%?::(.,?) ), %|::(?,.)),
 				// foreach guard:%(?,(trigger,action)) instantiate same, for which
 				?:( ?, %? ) { ( %?, %| ) |
 					// for each (condition,guard) instantiate same (with proxy vs. cosystem)
-					?:( ?, %? ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)) }}}})
+					?:( ?, %? ) (( %?::(?,.), *^%?::(.,?) ), %|::(?,.)) }}}})
 
 	That is, without the comments:
 
 	do : %cosystem : !! Cosystem(
-		?:((.,ON|OFF),^^) { ( %?:(?,.), *^^ ) |
-			?:(.,%?) { ( %?:(?,.), %| ) | {
-				?:( ?, %(%?:(?,.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)),
+		?:((.,ON|OFF),^^) { ( %?::(?,.), *^^ ) |
+			?:(.,%?) { ( %?::(?,.), %| ) | {
+				?:( ?, %(%?::(?,.)) ) (( %?::(?,.), *^%?::(.,?) ), %|::(?,.)),
 				?:(?,%?) { ( %?, %| ) |
-					?:(?,%?) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)) }}}})
+					?:(?,%?) (( %?::(?,.), *^%?::(.,?) ), %|::(?,.)) }}}})
 	where
 		do : %cosystem : !! Cosystem(_) is internally bufferized
 		^^ represents the current assignee's value in the assignment buffer
@@ -291,17 +291,17 @@ System launch
 	  actually need a double-trigger:(bar,on), and the following modifications
 
 	do : %cosystem : !! Cosystem(
-		?:((.,ON|OFF),^^) { ( %?:(?,.), *^^ ) |
-			?:(.,%?) { ( %?:(?,.), %| ) | {
-				?:( ?, %(%?:((?,.),.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:((?,.),.)),
-				?:( ?, %(%?:((.,?),.)) ) (( %?:(?,.), *^%?:(.,?) ), %|:((.,?),.)),
+		?:((.,ON|OFF),^^) { ( %?::(?,.), *^^ ) |
+			?:(.,%?) { ( %?::(?,.), %| ) | {
+				?:( ?, %?::((?,.),.) ) (( %?:(?,.), *^%?::(.,?) ), %|::((?,.),.)),
+				?:( ?, %?::((.,?),.) ) (( %?:(?,.), *^%?::(.,?) ), %|::((.,?),.)),
 				?:( ?, %? ) { ( %?, %| ) |
-					?:( ?, %? ) (( %?:(?,.), *^%?:(.,?) ), %|:(?,.)) }}}})
+					?:( ?, %? ) (( %?::(?,.), *^%?::(.,?) ), %|::(?,.)) }}}})
 
 	per %( %guard, ( .:(~%(%<.>,?),~%(~%<.>,?)), (?,%%) ) )
-			^  ^	      ^----- on: none of these EVA does not pass
-			|   ---------------- bar: none of these EVA passes
-			 ------------------- trigger
+			 ^  ^	       ^----- bar: none of these EVA passes
+			 |   ---------------- on: none of these EVA does not pass
+			  ------------------- trigger
 System init
 	System launch ensures that each cosystem knows how to play its part,
 	that is: which action is triggered by which events depending on which

@@ -279,11 +279,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '(' )	do_( "%(" )	f_push( stack )
 						f_reset( FIRST|SUB_EXPR, 0 )
 		on_( '|' ) if ( is_f(PIPED) ) {
-				do_( "%|" )	s_add( "%|" )
-						f_set( INFORMED ) }
+				do_( "%|" )	s_add( "%|" ) }
 		ons( "?!" )	do_( "%?" )	s_add( "%" )
 						s_take
-						f_set( INFORMED )
 		ons( "%@" )	do_( "expr" )	s_add( "%" )
 						s_take
 						f_set( INFORMED )
@@ -307,17 +305,17 @@ BM_PARSE_FUNC( bm_parse_expr )
 							s_add( "%(" )
 			end
 		in_( "%|" ) bgn_
-			on_( '^' )	do_( "^_sub" )	s_take
-							f_clr( INFORMED )
+			on_( ':' )	do_( ":_sub" )	f_set( PROTECTED )
 			on_other	do_( "expr" )	REENTER
-							f_set( PROTECTED )
+							f_set( INFORMED )
 			end
 		in_( "%?" ) bgn_
-			on_( '^' ) do_( "^_sub" )	s_take
-							f_clr( INFORMED )
+			on_( ':' )	do_( ":_sub" )
 			on_( '~' ) if ( *type&DO && !is_f(byref|FILTERED) ) {
-					do_( "term" )	REENTER }
+					do_( "term" )	REENTER
+							f_set( INFORMED ) }
 			on_other	do_( "expr" )	REENTER
+							f_set( INFORMED )
 							f_set_BYREF
 			end
 		in_( "%<" ) bgn_
@@ -613,10 +611,9 @@ BM_PARSE_FUNC( bm_parse_expr )
 			on_( '?' )	do_( "*^%?" )	s_take
 			end
 		in_( "*^%?" ) bgn_
-			on_( '^' )	do_( "^_sub" )  s_take
+			on_( ':' )	do_( ":_sub" )	f_set( PROTECTED )
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
-							f_tag( stack, PROTECTED )
 			end
 		in_( "*_" ) bgn_
 			ons( "~{<" )	; //err
@@ -632,13 +629,26 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( STARRED )
 							f_set_BYREF
 			end
-	in_( "^_sub" ) bgn_
-		on_( '(' )	do_( "^sub" )	REENTER
+	in_( ":_sub" ) bgn_
+		on_( ':' ) if ( !s_at(':') ) {
+				do_( same )	s_add( "::" ) }
+		on_( '(' ) if ( s_at(':') ) {
+				do_( ":sub" )	REENTER
 						f_push( stack )
-						f_clr( MARKED|INFORMED )
-						f_set( PROPPED )
+						f_clr( MARKED )
+						f_set( PROPPED ) }
+			else if ( !is_f(PROTECTED) ) {
+				do_( "expr" )	REENTER
+						s_add( ":" )
+						f_set_BYREF
+						f_set( FILTERED ) }
+		on_other if ( !is_f(PROTECTED) ) {
+				do_( "expr" )	REENTER
+						s_add( ":" )
+						f_set_BYREF
+						f_set( FILTERED ) }
 		end
-		in_( "^sub" ) bgn_
+		in_( ":sub" ) bgn_
 			on_( '(' ) if ( !is_f(MARKED|INFORMED) ) {
 					do_( same )	s_take
 							f_push( stack )
@@ -654,13 +664,13 @@ BM_PARSE_FUNC( bm_parse_expr )
 					do_( same )	s_take
 							f_clr( FIRST|INFORMED ) }
 			on_( ')' ) if ( is_f(INFORMED) && !is_f(FIRST) ) {
-					do_( "^sub_" )	s_take
+					do_( ":sub_" )	s_take
 							f_pop( stack, MARKED )
 							f_set( INFORMED ) }
 			end
-		in_( "^sub_" ) bgn_
+		in_( ":sub_" ) bgn_
 			ons( ",)" ) if ( !is_f(PROPPED) ) {
-					do_( "^sub" )	REENTER }
+					do_( ":sub" )	REENTER }
 				else if ( is_f(MARKED) ) {
 					do_( "expr" )	REENTER
 							f_pop( stack, 0 )

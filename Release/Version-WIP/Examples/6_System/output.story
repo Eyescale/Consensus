@@ -282,7 +282,7 @@
 	// post-frame narrative: read input on demand
 	in : buffer : ?
 		in ?: ( %?, . )
-			do :< input, buffer >:< %?^(.,?), %? >
+			do :< input, buffer >:< %?::(.,?), %? >
 		else do ~( buffer )
 	else
 		do input : "%c" <
