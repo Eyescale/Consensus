@@ -636,13 +636,13 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 	case '%':
 		switch ( p[1] ) {
 		case '?':
-			if ( !strncmp(p+2,"!!",2) ) *rv = 4;
+			if ( !strncmp(p+2,"::",2) ) *rv = 4;
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
 			return NULL;
 		case '!':
-			if ( !strncmp(p+2,"!!",2) ) *rv = 4;
+			if ( !strncmp(p+2,"::",2) ) *rv = 4;
 			entry = registryLookup( ctx, "?" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->name;

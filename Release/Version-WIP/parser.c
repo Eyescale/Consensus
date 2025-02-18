@@ -37,11 +37,10 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_( '&' ) if ( *type&EN && s_empty ) {
 				do_( same )	s_take
 						f_set( INFORMED ) }
-		on_( '.' ) if ( s_empty && *type&(ON|PER) ) {
+		on_( '.' ) if ( !is_f(INFORMED) ) {
 				do_( "." )	s_take
-						expr_set( VMARKED ) }
-			else if ( !is_f(INFORMED) ) {
-				do_( "." )	s_take }
+				if ( s_empty && *type&(ON) ) {
+						expr_set( VMARKED ) } }
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) { do_( "(" )	s_take }
 		on_( '!' ) if ( !is_f(INFORMED) ) { do_( "!" ) }
