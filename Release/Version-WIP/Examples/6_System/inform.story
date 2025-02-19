@@ -352,6 +352,7 @@
 						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 			do >:
 
+#		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,ON)))
 		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,.)))
 			do >&"Warning: ErrUnspecifiedOrigin: \"%s\"\n": %?
 			do : err |: ErrSystemIncomplete

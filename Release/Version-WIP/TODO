@@ -1,7 +1,6 @@
 See Also: design/story/interactive.story
 
 TODO
-	. TODO: implement arena cache
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
 	  [ DONE ] output system as is => cf output.story
@@ -116,6 +115,7 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented cache in db_arena.c
 	. disallowed on/per .variable: expression < src // VMARKED vs. ON_X
 	. replaced %?^sub with %?::sub (and likewise for %! and %|)
 	  Note: using '!' instead of '?' in sub would make it as_sub
