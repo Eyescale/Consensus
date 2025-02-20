@@ -105,8 +105,9 @@ prune_term( char *p, PruneType type ) {
 				informed = 1; }
 			break;
 		case '*':
-			if ( p[1]=='^' )
-				{ p++; break; }
+			if ( p[1]=='^' ) {
+				p += p[2]=='%'? 2 : 1;
+				break; }
 			// no break
 		case '.':
 			if ( p[1]=='?' ) p+=2;

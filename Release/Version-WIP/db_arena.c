@@ -62,13 +62,13 @@ deregister_CB( Registry *registry, Pair *entry ) {
 //===========================================================================
 //	db_arena_register
 //===========================================================================
-typedef struct { char *s; uint index; Registry *ref; } StrcmpData;
-static inline int db_arena_uncache( StrcmpData *data );
+typedef struct { uint index; char *s; Registry *ref; } IndexData;
+static inline int db_arena_uncache( IndexData *data );
 
 CNInstance *
 db_arena_register( char *code, CNDB *db ) {
 	union { uint value[2]; void *ptr; } key;
-	StrcmpData data;
+	IndexData data;
 	data.s = NULL;
 	if (( code )) {
 		key.ptr = db_arena_key( code );
@@ -86,7 +86,7 @@ db_arena_register( char *code, CNDB *db ) {
 	return db_share( key.value, data.ref, db ); }
 
 static inline int
-db_arena_uncache( StrcmpData *data ) {
+db_arena_uncache( IndexData *data ) {
 	Pair *entry;
 	Registry *ref;
 	if (( data->s )) {
@@ -141,7 +141,7 @@ db_arena_cache( uint index, Registry *ref, Pair *entry ) {
 	if (( entry )) {
 		free((char *) entry->name );
 		entry->name = NULL;
-		entry = newPair( cast_ptr(index), ref );
+		entry = newPair( cast_ptr(index), entry );
 		addItem((listItem **) &DBArenaCache->name, entry ); }
 	else {
 		entry = newPair( cast_ptr(index), ref );
@@ -159,7 +159,7 @@ db_arena_encode( CNString *code, CNString *string )
 	Note: code string starts with least significant hextet
 */ {
 	// register string and/or get index
-	StrcmpData data;
+	IndexData data;
 	data.s = StringFinish( string, 0 );
 	if ( !data.s ) data.s = strdup( "" );
 	StringReset( string, CNStringMode );
@@ -173,7 +173,7 @@ db_arena_encode( CNString *code, CNString *string )
 
 static int
 strcmp_CB( uint key[2], void *value, void *user_data ) {
-	StrcmpData *data = user_data;
+	IndexData *data = user_data;
 	Pair *entry = value;
 	if ((entry->name) && !strcmp(entry->name,data->s) ) {
 		data->index = key[ 1 ];
@@ -247,7 +247,7 @@ db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
 			i = e->as_sub[ 0 ]; }
 		else i = i->next; }
 	if ( !StringInformed(s) ) return NULL;
-	StrcmpData data;
+	IndexData data;
 	data.s = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	if ( btreeShake( DBSharedArena->name, strcmp_CB, &data ) ) {
@@ -346,24 +346,26 @@ db_arena_unref( CNDB *db )
 /*
 	Assumption: called by freeContext() right before freeCNDB()
 */ {
-	btreeShake( DBSharedArena->name, unref_CB, NULL );
-	btreeShake( DBSharedArena->value, unref_CB, NULL ); }
+	btreeShake( DBSharedArena->name, unref_CB, db );
+	btreeShake( DBSharedArena->value, unref_CB, db ); }
 
 static int
 unref_CB( uint key[2], void *value, void *user_data ) {
+	CNDB *db = user_data;
 	Registry *ref;
 	switch ( key[0] ) {
 	case '$':;
 		Pair *entry = value;
+		if ( !entry->name ) break;
 		ref = entry->value;
-		registryCBDeregister( ref, deregister_CB, NULL );
+		registryCBDeregister( ref, deregister_CB, db );
 		if ( !ref->entries ) {
 			free((char *) entry->name );
 			entry->name = NULL; }
 		break;
 	case '!':
 		ref = value;
-		registryCBDeregister( ref, deregister_CB, NULL );
+		registryCBDeregister( ref, deregister_CB, db );
 		break; }
 	return 1; }
 

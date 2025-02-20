@@ -587,7 +587,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "expr" )	s_take
 						f_set( INFORMED )
 						f_set_BYREF }
-			else if ( !is_f(byref|FILTERED) ) {
+			else if ( *type&DO && !is_f(byref|FILTERED) ) {
 				do_( "*^%?" )	s_take }
 			else if ( is_f(FORE) ) {
 				do_( "expr" )	s_take
