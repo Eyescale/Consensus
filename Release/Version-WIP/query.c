@@ -339,16 +339,12 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					exponent = exponent->next;
 					i = j; continue; }
 				else x = NULL; }
-			else { // Assumption: star case only
-				CNInstance *y = CNSUB( x, 0 );
-				if ( y && cnStarMatch( y->sub[0] ) ) {
-					x = CNSUB( x, exp.value&1 );
-					if (( x )) {
-						addItem( &stack.as_sub, i );
-						addItem( &stack.as_sub, exponent );
-						exponent = exponent->next;
-						i = newItem( x );
-						continue; } } } }
+			else if (( x=CNSUB(x,exp.value) )) {
+				addItem( &stack.as_sub, i );
+				addItem( &stack.as_sub, exponent );
+				exponent = exponent->next;
+				i = newItem( x );
+				continue; } }
 
 		if (( x )) {
 			if ( op==BM_BGN ) {
@@ -607,16 +603,12 @@ case_( open_CB )
 		xpn_add( stack, AS_SUB, 0 ); }
 	_break
 case_( comma_CB )
-	if ( data->stack.flags==data->OOS ) {
-		_return( 1 ) }
-	if ( !data->success ) {
-		_prune( BM_PRUNE_LEVEL, p+1 ) }
-	else {
-		xpn_set( data->stack.exponent, AS_SUB, 1 );
-		_break }
+	if ( data->stack.flags==data->OOS ) _return( 1 )
+	if ( !data->success ) _prune( BM_PRUNE_LEVEL, p+1 )
+	xpn_set( data->stack.exponent, AS_SUB, 1 );
+	_break
 case_( close_CB )
-	if ( data->stack.flags==data->OOS )
-		_return( 1 )
+	if ( data->stack.flags==data->OOS ) _return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	else if is_f( ASSIGN ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );

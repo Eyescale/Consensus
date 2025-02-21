@@ -209,13 +209,11 @@
 
 .: take
 	on : .
-		in ( type, '>' )
-			in : input : .
+		in ready
+			in ( *input ? (type,'>') :)
 				do : level : root
 				do : base | { ((*,s),~.), ~(type,.) }
 			else do : inform
-		else in ready
-			do : inform
 		else
 			// clamp tab to level and reset level
 			in ~.:: tab : *level
@@ -223,13 +221,16 @@
 			in ~.: (cmd,.)
 				do : level : root
 	else
-		in ( type, ?:~ELSE )
-			in (( %?:CL )?:( %?:DO ))
-				in : input : . // CL-DO possibility
-					do ((cmd,.) ? (type,ELSE) : ready )
-				else do ready
-				do : that : *s
-			else do : tab : ( *tab, '\t' )
+		in ?:(( type, CL )?:( type, DO ))
+			in ( *input ? (cmd,.) :) // CL->DO
+				do ( type, ELSE )
+			else do ready
+			do : *tab : (( type, ELSE ) ?
+				( **tab, ((ELSE,%?::(.,?)),*s) ) :
+				( (.(*tab),~.), (%?::(.,?),*s) ))
+			do : that : *s
+		else in ( type, ?:~ELSE )
+			do : tab : ( *tab, '\t' )
 			do : *tab : (( type, ELSE ) ?
 				( **tab, ((ELSE,%?),*s) ) :
 				( (.(*tab),~.), (%?,*s) ))
@@ -237,7 +238,7 @@
 			do : tab : (*tab,'\t') // set new tab
 			do : *tab : ( **tab, ELSE ) // inform current
 
-		in : input : .
+		in *input
 			do : base | { ((*,s),~.), ~((cmd,.)?(type,CL):(type,.)) }
 		else do : inform
 
@@ -335,10 +336,10 @@
 		per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
 			do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
 			in ((?:!!,DO), %(action:(?,.))) // generative action
-				per ((%?,'>'),?) // generated occurrences
-					in ~.:( %?:'&' )
-						do >"  > \"%_\"\n": %?
-					else do >"  > &\n"
+				per ((%?,'>'),?:~'&') // generated occurrences
+					do >"  > \"%_\"\n": %?
+				in ((%?,'>'),'&')
+					do >"  > &\n"
 			per .guard: %( ?, ((.,.), action ))
 				do >"  guard\n"
 				per ( ?, guard ) // guard condition

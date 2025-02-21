@@ -751,9 +751,9 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 				do_( "expr" )	REENTER // ternary operator
 						expr_clr( VMARKED )
 						f_set( INFORMED ) }
-		on_( ':' ) if ( !s_at('~') ) {
-				do_( "expr" )	REENTER
-						f_set( INFORMED ) }
+		on_( ':' )	do_( "expr" )	REENTER
+						f_set( INFORMED )
+			     if ( s_at('~') ) {	f_tag( stack, PROTECTED ) }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 						expr_clr( VMARKED )
