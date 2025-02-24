@@ -3,6 +3,7 @@
 
 #include "scour.h"
 #include "locate_mark.h"
+#include "locate_emark.h"
 #include "locate_pivot.h"
 #include "locate_pivot_traversal.h"
 
@@ -34,23 +35,23 @@ bm_locate_pivot( char *expression, listItem **xpn )
 	traversal.user_data = &data;
 	traversal.stack = &data.stack.flags;
 	traversal.done = 0;
-	char *p;
+	int primary = 1;
+	for ( ; ; ) {
+		char *p = locate_pivot_traversal( expression, &traversal, FIRST );
+		if ( traversal.done==2 ) {
+			freeListItem( &data.stack.flags );
+			freeListItem( &data.stack.level );
+			freeListItem( &data.stack.premark );
+			return p; }
+		if ( primary && data.secondary ) {
+			primary = 0;
+			traversal.done = 0;
+			xpn_free( xpn, NULL );
+			data.primary = data.secondary; }
+		else {
+			xpn_free( xpn, NULL );
+			return NULL; } } }
 
-	for ( int primary=1; ; primary=0 ) {
-	p = locate_pivot_traversal( expression, &traversal, FIRST );
-	if ( traversal.done==2 ) break;
-	if ( primary && data.secondary ) {
-		xpn_free( xpn, NULL );
-		traversal.done = 0;
-		data.primary = data.secondary; }
-	else {
-		xpn_free( xpn, NULL );
-		return NULL; } }
-
-	freeListItem( &data.stack.flags );
-	freeListItem( &data.stack.level );
-	freeListItem( &data.stack.premark );
-	return p; }
 
 //---------------------------------------------------------------------------
 //	locate_pivot_traversal
@@ -64,6 +65,20 @@ bm_locate_pivot( char *expression, listItem **xpn )
 BMTraverseCBSwitch( locate_pivot_traversal )
 case_( not_CB )
 	_prune( BM_PRUNE_FILTER, p+1 )
+case_( bgn_selection_CB )
+	listItem *mark_exp = NULL;
+	bm_locate_emark( p+3, &mark_exp );
+	listItem **exponent = data->exponent;
+	addItem( &data->stack.premark, *exponent );
+	while (( mark_exp ))
+		addItem( exponent, popListItem(&mark_exp) );
+	_continue( p+3 )
+case_( end_selection_CB )
+	xpn_free( data->exponent, data->level );
+	data->level = popListItem( &data->stack.level );
+	listItem *base = popListItem( &data->stack.premark );
+	if (( base )) xpn_free( data->exponent, base );
+	_break;
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
 	if CHECK( PERSO ) {
@@ -133,7 +148,7 @@ case_( dereference_CB )
 	_break
 case_( sub_expression_CB )
 	listItem *mark_exp = NULL;
-	char *mark = bm_locate_mark( p+1, &mark_exp );
+	char *mark = bm_locate_mark( SUB_EXPR, p+1, &mark_exp );
 	if (( mark_exp )) {
 		if ( !strncmp( mark, "...", 3 ) ||	// %(list,...)
 		     !strncmp( mark+1, ":...", 4 ) ||	// %(list,?:...)
@@ -146,8 +161,8 @@ case_( sub_expression_CB )
 			_prune( BM_PRUNE_FILTER, p+1 ) } }
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.premark, *exponent );
-	while (( mark_exp )) {
-		addItem( exponent, popListItem(&mark_exp) ); }
+	while (( mark_exp ))
+		addItem( exponent, popListItem(&mark_exp) );
 	_break
 case_( dot_expression_CB )
 	listItem **exponent = data->exponent;
@@ -172,6 +187,8 @@ case_( open_CB )
 	_break
 case_( filter_CB )
 	xpn_free( data->exponent, data->level );
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) )
+		_prune( PRUNE_TERM, p+1 );
 	_break
 case_( comma_CB )
 	xpn_free( data->exponent, data->level );
@@ -187,7 +204,7 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	if ( is_f(SUB_EXPR) && !is_f(LEVEL) ) {
-		listItem *tag = popListItem( &data->stack.premark );
-		if ((tag)) xpn_free( data->exponent, tag ); }
+		listItem *base = popListItem( &data->stack.premark );
+		if (( base )) xpn_free( data->exponent, base ); }
 	_break;
 BMTraverseCBEnd

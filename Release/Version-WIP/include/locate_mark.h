@@ -3,7 +3,7 @@
 
 #include "list.h"
 
-char *	bm_locate_mark( char *, listItem **xpn );
+char *	bm_locate_mark( int sub_expr, char *, listItem **xpn );
 
 
 #endif	// LOCATE_MARK_H

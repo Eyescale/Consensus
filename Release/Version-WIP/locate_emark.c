@@ -20,6 +20,8 @@ bm_locate_emark( char *expression, listItem **exponent )
 /*
 	returns position of '!' in %<(...)>, together with exponent
 		expression ----------^
+	Also called on expression in %!/(...):%(_)/
+		where expression is assumed to contain '!'
 */ {
 	listItem *base = *exponent;
 
@@ -46,13 +48,13 @@ case_( emark_CB )
 	_return( 2 )
 case_( open_CB )
 	if is_f_next( COUPLE )
-		xpn_add( data->exponent, AS_SUB, 0 );
+		xpn_add( data->exponent, SUB, 0 );
 	addItem( &data->stack.level, data->level );
 	data->level = *data->exponent;
 	_break
 case_( comma_CB )
 	xpn_free( data->exponent, data->level );
-	xpn_set( *data->exponent, AS_SUB, 1 );
+	xpn_set( *data->exponent, SUB, 1 );
 	_break
 case_( close_CB )
 	xpn_free( data->exponent, data->level );
@@ -60,5 +62,9 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	_break;
+case_( prune_CB )
+	_prune( BM_PRUNE_TERM, p+1 )
+case_( end_CB )
+	_return( 1 )
 BMTraverseCBEnd
 

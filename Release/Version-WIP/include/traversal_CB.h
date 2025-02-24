@@ -62,6 +62,8 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	BMRegisterVariableCB
 	BMTernaryOperatorCB
 	BMSubExpressionCB
+	BMBgnSelectionCB
+	BMEndSelectionCB
 	BMStrExpressionCB
 	BMDereferenceCB
 	BMLiteralCB
@@ -180,6 +182,18 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 #define CB_SubExpressionCB	_CB( BMSubExpressionCB )
 #else
 #define CB_SubExpressionCB
+#endif
+
+#ifdef BMBgnSelectionCB
+#define CB_BgnSelectionCB	_CB( BMBgnSelectionCB )
+#else
+#define CB_BgnSelectionCB
+#endif
+
+#ifdef BMEndSelectionCB
+#define CB_EndSelectionCB	_CB( BMEndSelectionCB )
+#else
+#define CB_EndSelectionCB
 #endif
 
 #ifdef BMStrExpressionCB

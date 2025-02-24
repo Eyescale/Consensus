@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// #define DEBUG
+#include "parser_macros.h"
 #include "parser_io.h"
 
 //===========================================================================
@@ -17,20 +19,31 @@ io_init( CNIO *io, void *stream, char *path, IOType type, listItem *flags ) {
 		char *flag = strdup((char *) i->ptr );
 		registryRegister( registry, flag, NULL ); }
 	io->control.registry = registry;
+	io->term.string = newString();
 	io->string = newString();
+	io->text = newString();
 	io->stream = stream;
 	io->path = path;
 	io->type = type;
 	io->state = "";
 	io->line = 1; }
 
+static freeRegistryCB free_CB;
 void
 io_exit( CNIO *io ) {
-	freeRegistry( io->control.registry, NULL );
+	freeRegistry( io->control.registry, free_CB );
 	freeListItem( &io->control.stack );
+	freeString( io->term.string );
 	freeListItem( &io->buffer );
 	freeString( io->string );
+	freeString( io->text );
 	while (( io->stack )) io_pop( io ); }
+
+static void
+free_CB( Registry *registry, Pair *entry ) {
+	free((char *) entry->name );
+	if (( entry->value ))
+		free((char *) entry->value ); }
 
 void
 io_reset( CNIO *io, int l, int c ) {
@@ -49,97 +62,124 @@ io_getc( CNIO *io, int last_event ) {
 //===========================================================================
 //	io_read
 //===========================================================================
+#define BGN { for ( ; ; ) {
+#define END } }
+static inline int read_event( CNIO * );
 static IOEventAction preprocess( CNIO *, int event );
 static int io_push( CNIO *, IOType, char * );
 static int io_pragma_execute( CNIO * );
 
 int
-io_read( CNIO *io, int last_event )
+io_read( CNIO *io, int last_event ) BGN
 /*
 	filters out comments and \cr line continuation from input
-*/ {
+*/
 	listItem **buffer;
-	int event;
+	int event, action;
+	char *term;
 	do {
-		for ( ; ; ) {
-			if ( last_event=='\n' ) { io->line++; io->column = 0; }
-			do {
-				switch ( io->type ) {
-				case IOStreamFile:
-				case IOStreamInput:
-					event = fgetc( io->stream );
-					break;
-				case IOBuffer:
-					event = pop_item((listItem **) &io->stream );
-					// Assumption: EOF can only be last in IOBuffer
-					if ( !event || event==EOF ) // pop IOBuffer
-						io_pop( io ); // while passing event
-					break; }
-			} while ( !event );
-
-			int action = preprocess( io, event );
-			if ( io->errnum ) goto RETURN; // err
-
-			switch ( action ) {
-			case IOEventPragma:
-				if ( io_pragma_execute( io ) )
-					goto RETURN; // err
-				last_event = event; // presumably '\n'
-				break;
-			case IOEventTake:
-				if ( event==EOF ) {
-					if ( !io_pop( io ) ) {
-						last_event = 0;
-						break; } }
-				goto TAKE;
-			case IOEventPass:
-				// update io->line and io->column wrt io->buffer
-				if (( io->buffer )) {
-					buffer = &io->buffer;  // flush
-					reorderListItem( buffer );
-					while (( last_event=pop_item( buffer ) )) {
-						if ( last_event=='\n' ) {
-							io->line++; io->column=0; }
-						else io->column++; } }
-				// update io->column wrt event
-				if ( event!='\n' ) io->column++;
-				last_event = event;
-				break;
-			case IOEventQueue:
-				add_item( &io->buffer, event );
-				last_event = 0;
-				break;
-			case IOEventRestore:
-				buffer = &io->buffer;
-				add_item( buffer, event );
-				reorderListItem( buffer );
-				io_push( io, IOBuffer, NULL );
-				last_event = 0;
-				break; } }
-TAKE:
-		if ( event==EOF ) {
-			if ( io->control.mode & ~IO_UNPOUND )
-				io->errnum = IOErrUnterminatedIf; }
+		if (( io->term.ptr )) {
+			event = io->term.ptr[0];
+			if ( event ) {
+				io->term.ptr++;
+				return event; }
+			event = io->term.restore;
+			io->term.ptr = NULL;
+			StringReset( io->term.string, CNStringAll ); }
 		else {
-			if (( io->buffer )) io_push( io, IOBuffer, NULL );
+			if ( last_event=='\n' ) { io->line++; io->column = 0; }
+			event = read_event( io ); }
+		action = preprocess( io, event );
+		if ( io->errnum ) return event; // err
+		switch ( action ) {
+		case IOEventTake:
+			if ( event!=EOF || io_pop( io ) )
+				action = IOEventDone;
+			else last_event = 0;
+			break;
+		case IOEventTerm:
+			StringAppend( io->term.string, event );
+			last_event = event;
+			io->column++;
+			break;
+		case IOEventTranslate:
+			io->term.restore = event;
+			term = StringFinish( io->term.string, 0 );
+			Pair *entry = registryLookup( io->control.registry, term );
+			io->term.ptr = (entry) ?
+				(entry->value) ? entry->value : "" :
+				term;
+			break;
+		case IOEventPragma:
+			if ( io_pragma_execute( io ) )
+				return event; // err
+			last_event = event; // presumably '\n'
+			break;
+		case IOEventPass:
+			// update io->line and io->column wrt io->buffer
+			if (( io->buffer )) {
+				buffer = &io->buffer;  // flush
+				reorderListItem( buffer );
+				while (( last_event=pop_item( buffer ) )) {
+					if ( last_event=='\n' ) {
+						io->line++; io->column=0; }
+					else io->column++; } }
+			// update io->column wrt event
 			if ( event!='\n' ) io->column++;
-			if ( io->control.mode & IO_SILENT ) {
-				last_event = event;
-				event = 0; } }
-	} while ( !event );
-RETURN:
-	return event; }
+			last_event = event;
+			break;
+		case IOEventQueue:
+			add_item( &io->buffer, event );
+			last_event = 0;
+			break;
+		case IOEventRestore:
+			buffer = &io->buffer;
+			add_item( buffer, event );
+			reorderListItem( buffer );
+			io_push( io, IOBuffer, NULL );
+			last_event = 0;
+			break; }
+	} while ( action != IOEventDone );
+	if ( event==EOF ) {
+		if ( io->control.mode & ~IO_UNPOUND )
+			io->errnum = IOErrUnterminatedIf; }
+	else {
+		if ( event!='\n' ) io->column++;
+		if (( io->buffer )) io_push( io, IOBuffer, NULL );
+		if ( io->control.mode & IO_SILENT ) {
+			last_event = event;
+			event = 0; } }
+	if ( event )
+		return event;
+	END
+
+static inline int
+read_event( CNIO *io ) BGN
+	int event;
+	switch ( io->type ) {
+	case IOStreamFile:
+	case IOStreamInput:
+		event = fgetc( io->stream );
+		break;
+	case IOBuffer:
+		event = pop_item((listItem **) &io->stream );
+		// Assumption: EOF can only be last in IOBuffer
+		if ( !event || event==EOF ) // pop IOBuffer
+			io_pop( io ); } // while passing event
+	if ( event )
+		return event;
+	END
 
 //---------------------------------------------------------------------------
 //	preprocess
 //---------------------------------------------------------------------------
-// #define DEBUG
-#include "parser_macros.h"
 static inline IOControlPragma pragma_type( CNIO * );
+#define t_take	StringAppend( t, event );
 
 static IOEventAction
 preprocess( CNIO *io, int event ) {
 	CNString *s = io->string;
+	CNString *t = io->text;
 	char *	state = io->state;
 	int	line = io->line,
 		column = io->column,
@@ -162,12 +202,19 @@ preprocess( CNIO *io, int event ) {
 		on_( '#' )
 			if ( column || io->type==IOStreamInput ) {
 				do_( "//" )	action = IOEventPass; }
-			else {	do_( "_#" )	action = IOEventPass; }
+			else {	do_( "#" )	action = IOEventPass; }
 		on_( '/' )	do_( "/" )	action = IOEventQueue;
 		on_( '\\' )	do_( "\\" )	action = IOEventQueue;
 		on_( '"' )	do_( "\"" )	action = IOEventTake;
 		on_( '\'' )	do_( "'" )	action = IOEventTake;
-		on_other	do_( same )	action = IOEventTake;
+		on_separator	do_( same )	action = IOEventTake;
+		on_other if ( io->control.mode & IO_SILENT ) {
+				do_( same )	action = IOEventTake; }
+			else {	do_( "term" )	action = IOEventTerm; }
+		end
+	in_( "term" ) bgn_
+		on_separator	do_( "" )	action = IOEventTranslate;
+		on_other	do_( same )	action = IOEventTerm;
 		end
 	in_( "\\" ) bgn_
 		on_( '\n' )	do_( "\\_" )	action = IOEventPass;
@@ -231,24 +278,27 @@ preprocess( CNIO *io, int event ) {
 			on_( '\n' )	do_( "" )	action = IOEventTake;
 			on_other	do_( same )	action = IOEventPass;
 			end
-	in_( "_#" ) bgn_
+	in_( "#" ) bgn_
 		on_( '#' )	do_( "//" )	action = IOEventPass;
 						io->control.mode &= ~IO_UNPOUND;
-		on_( '~' )	do_( "_#~" )	action = IOEventPass;
+		on_( '~' )	do_( "#~" )	action = IOEventPass;
 		on_separator if ( io->control.mode & IO_UNPOUND ) {
 				do_( "" )	REENTER } // unpounding
-			else {	do_( "#" )	REENTER }
-		on_other	do_( "#" )	REENTER
+			else {	do_( "#?" )	REENTER }
+		on_other	do_( "#?" )	REENTER
 		end
-		in_( "_#~" ) bgn_
-			on_( '#' )	do_( "" )	action = IOEventPass;
-							io->control.mode |= IO_UNPOUND;
-			on_other	do_( "//" )	REENTER
-			end
-	in_( "#" ) bgn_
+	in_( "#~" ) bgn_
+		on_( '#' )	do_( "" )	action = IOEventPass;
+						io->control.mode |= IO_UNPOUND;
+		on_other	do_( "//" )	REENTER
+		end
+	in_( "#?" ) bgn_
 		ons( " \t" ) switch ( pragma_type( io ) ) {
 			case IOPragma_include:
 				do_( "#<" )	action = IOEventPass;
+						break;
+			case IOPragma_define:
+				do_( "#D" )	action = IOEventPass;
 						break;
 			case IOPragmaNary:
 				do_( "#$" )	action = IOEventPass;
@@ -261,6 +311,7 @@ preprocess( CNIO *io, int event ) {
 						break; }
 		on_( '\n' ) switch ( pragma_type( io ) ) {
 			case IOPragma_include:
+			case IOPragma_define:
 			case IOPragmaNary:
 				do_( "" )	errnum = IOErrPragmaIncomplete;
 						break;
@@ -292,6 +343,30 @@ preprocess( CNIO *io, int event ) {
 								s_take
 								action = IOEventPass;
 				end
+		in_( "#D" ) bgn_
+			ons( " \t" )	do_( same )	action = IOEventPass;
+			on_separator	do_( "" )	errnum = IOErrPragmaIncomplete;
+			on_other	do_( "#D?" )	s_take
+							action = IOEventPass;
+			end
+			in_( "#D?" ) bgn_
+				ons( " \t" )	do_( "#D$" )	action = IOEventPass;
+				on_( '\n' )	do_( "" )	action = IOEventPragma;
+				on_separator	do_( "" )	errnum = IOErrTrailingChar;
+				on_other	do_( same )	s_take
+								action = IOEventPass;
+			end
+			in_( "#D$" ) bgn_
+				ons( " \t" )	do_( same )	action = IOEventPass;
+				on_( '\n' )	do_( "" )	action = IOEventPragma;
+				on_other	do_( "#D_" )	t_take
+								action = IOEventPass;
+				end
+			in_( "#D_" ) bgn_
+				on_( '\n' )	do_( "" )	action = IOEventPragma;
+				on_other	do_( same )	t_take
+								action = IOEventPass;
+				end
 		in_( "#$" ) bgn_
 			ons( " \t" )	do_( same )	action = IOEventPass;
 			on_separator	do_( "" )	errnum = IOErrPragmaIncomplete;
@@ -299,15 +374,14 @@ preprocess( CNIO *io, int event ) {
 							action = IOEventPass;
 			end
 			in_( "#$_" ) bgn_
-				on_( '\n' )	do_( "#_//" )	REENTER
-				on_separator	do_( "#_" )	action = IOEventPass;
+				on_separator	do_( "#_" )	REENTER
 				on_other	do_( same )	s_take
 								action = IOEventPass;
-			end
+				end
 		in_( "#_" ) bgn_
 			ons( " \t" )	do_( same )	action = IOEventPass;
 			on_( '/' )	do_( "#_/" )	action = IOEventPass;
-			on_( '\n' )	do_( "#_//" )	REENTER
+			on_( '\n' )	do_( "" )	action = IOEventPragma;
 			on_other	do_( "" )	errnum = IOErrTrailingChar;
 			end
 			in_( "#_/" ) bgn_
@@ -342,12 +416,12 @@ pragma_type( CNIO *io ) {
 
 	switch (( io->control.pragma = type )) {
 	case IOPragma_include:
+	case IOPragma_define:
 		break;
 	case IOPragma_else:
 	case IOPragma_endif:
 		type = IOPragmaUnary;
 		break;
-	case IOPragma_define:
 	case IOPragma_undef:
 	case IOPragma_ifdef:
 	case IOPragma_ifndef:
@@ -369,6 +443,7 @@ static int
 io_pragma_execute( CNIO *io ) {
 	union { void *ptr; int value; } parent_mode;
 	CNString *s = io->string;
+	CNString *t = io->text;
 	char *param = StringFinish( s, 0 );
 	int pragma = io->control.pragma;
 	int mode = io->control.mode;
@@ -424,8 +499,11 @@ io_pragma_execute( CNIO *io ) {
 			break;
 		case IOPragma_define:
 			if (( !registryLookup( io->control.registry, param ) )) {
-				registryRegister( io->control.registry, param, NULL );
+				char *args = StringFinish( t, 0 );
+				StringReset( t, CNStringMode );
+				registryRegister( io->control.registry, param, args );
 				StringReset( s, CNStringMode ); }
+			else errnum = IOErrAlreadyDefined;
 			break;
 		case IOPragma_undef:
 			registryDeregister( io->control.registry, param );
@@ -461,7 +539,9 @@ io_pragma_execute( CNIO *io ) {
 			if ( mode ) io->control.mode = pop_item( &io->control.stack );
 			else errnum = IOErrEndifWithoutIf;
 			break; } }
-	if ( !errnum ) StringReset( s, CNStringAll );
+	if ( !errnum ) {
+		StringReset( s, CNStringAll );
+		StringReset( t, CNStringAll ); }
 	io->control.pragma = 0;
 	io->errnum = errnum;
 	return errnum; }
@@ -583,6 +663,7 @@ io_pop( CNIO *io )
 IOErr
 io_report( CNIO *io ) {
 	CNString *s = io->string;
+	CNString *t = io->text;
 	char *stump = StringFinish( s, 0 );
 	fprintf( stderr, "Error: bm_preprocess: " );
 	if (( io->path )) fprintf( stderr, "in %s, ", io->path );
@@ -595,7 +676,7 @@ io_report( CNIO *io ) {
 	err_case( IOErrTrailingChar, "trailing characters\n" )_narg
 	err_case( IOErrPragmaIncomplete, "pragma directive #%s incomplete\n" )_( stump );
 	err_case( IOErrPragmaUnknown, "pragma directive #%s unknown\n" )_( stump );
-	err_case( IOErrAlreadyDefined, "macro already defined - use #undef\n" )_narg
+	err_case( IOErrAlreadyDefined, "%s macro redefined - use #undef\n" )_( stump )
 	err_case( IOErrElseWithoutIf, "#else without #if\n" )_narg
 	err_case( IOErrEndifWithoutIf, "#endif without #if\n" )_narg
 	err_case( IOErrElseAgain, "#else after #else\n" )_narg
@@ -603,5 +684,6 @@ io_report( CNIO *io ) {
 	err_default( "syntax error\n" )_narg }
 
 	StringReset( s, CNStringAll );
+	StringReset( t, CNStringAll );
 	return io->errnum; }
 

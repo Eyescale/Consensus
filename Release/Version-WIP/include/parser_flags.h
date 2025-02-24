@@ -37,6 +37,7 @@
 #define PROPPED		(1<<25)
 #define CONTRA		(1<<26)
 #define BYREF		(1<<27)
+#define SEL_EXPR	(1<<28)
 
 #define are_f( b ) \
 	((flags&(b))==(b))

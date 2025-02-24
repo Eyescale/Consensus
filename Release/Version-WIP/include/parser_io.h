@@ -31,7 +31,10 @@ typedef enum {
 	IOErrSyntaxError
 } IOErr;
 typedef enum {
-	IOEventTake = 0,
+	IOEventDone = 1,
+	IOEventTake,
+	IOEventTerm,
+	IOEventTranslate,
 	IOEventPragma,
 	IOEventPass,
 	IOEventQueue,
@@ -60,9 +63,14 @@ typedef struct {
 	int	line, column;
 // private:
 	char *	state;
-	CNString *string;
+	CNString *string, *text;
 	listItem *stack;
 	listItem *buffer;
+	struct {
+		CNString *string;
+		char *ptr;
+		int restore;
+	} term;
 	struct {
 		int mode;
 		listItem *stack;

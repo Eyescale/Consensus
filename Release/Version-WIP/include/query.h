@@ -27,7 +27,7 @@ typedef struct {
 	int type, privy, op, success, list_expr;
 	Pair *pivot, *list;
 	CNInstance *instance, *star;
-	listItem *exponent, *mark_exp, *base, *OOS;
+	listItem *exponent, *mark_exp, *base, *OOS, *mark_sel;
 	struct { listItem *flags, *scope, *exponent, *base; } stack;
 	BMQueryCB *user_CB;
 	void *user_data;

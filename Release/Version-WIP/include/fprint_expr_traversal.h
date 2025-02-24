@@ -10,7 +10,7 @@ static BMTraversal fprint_expr_traversal;
 
 static BMTraverseCB
 	bgn_pipe_CB, bgn_set_CB, end_set_CB, comma_CB, filter_CB, format_CB,
-	open_CB, close_CB;
+	open_CB, close_CB, wildcard_CB;
 
 #define BMBgnPipeCB		bgn_pipe_CB
 #define BMBgnSetCB		bgn_set_CB
@@ -20,6 +20,7 @@ static BMTraverseCB
 #define BMLoopCB		filter_CB
 #define BMOpenCB		open_CB
 #define BMCloseCB		close_CB
+// #define BMWildCardCB		wildcard_CB
 
 #include "traversal.h"
 

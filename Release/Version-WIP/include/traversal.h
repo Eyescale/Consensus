@@ -112,9 +112,8 @@ CB_NotCB				if is_f( NEGATED )
 				break;
 			case '*':
 				if ( p[1]=='^' ) {
-CB_RegisterVariableCB			if ( p[2]=='%' )
-						p = p_prune( PRUNE_TERM, p+3 );
-					else p+=3; // Assumption: *^^
+CB_RegisterVariableCB			if ( p[2]=='^' ) p+=3;
+					else p = p_prune( PRUNE_TERM, p+2 );
 					f_set( INFORMED ) }
 				else if ( !is_separator(p[1]) || strmatch("*.%(?",p[1]) ) {
 CB_DereferenceCB			f_clr( INFORMED )
@@ -128,7 +127,7 @@ CB_StrExpressionCB		p++; break;
 			case '%':
 				switch ( p[1] ) {
 				case '(':
-CB_SubExpressionCB			p++;
+CB_SubExpressionCB			p++; // skip '%', now on '('
 					if ( p[1]==':' )
 						f_next = FIRST|SUB_EXPR|ASSIGN;
 					else if ( !(mode&INFORMED) && !p_single(p) )
@@ -137,8 +136,8 @@ CB_SubExpressionCB			p++;
 					f_next |= is_f(SET);
 CB_OpenCB				f_push( stack )
 					f_reset( f_next, 0 )
-					if ( *++p==':' ) p++;
-					break;
+					if ( p[1]==':' ) p++;
+					p++; break;
 				case '<':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
@@ -156,8 +155,14 @@ CB_RegisterVariableCB			f_set( INFORMED )
 					if ( !strncmp(p,"::",2) )
 						p = p_prune( PRUNE_TERM, p+2 );
 					break;
-				case '?':
 				case '!':
+					if ( p[2]=='/' ) {
+						f_push( stack )
+						f_reset( SEL_EXPR, 0 )
+CB_BgnSelectionCB				p = p_prune( PRUNE_TERM, p+3 );
+						break; }
+					// no break
+				case '?':
 CB_RegisterVariableCB			f_set( INFORMED )
 					p+=2;
 					if( !strncmp(p,"::",2) )
@@ -194,9 +199,6 @@ CB_TermCB				p+=2; break; }
 				else {	p++;
 CB_TermCB				break; }
 			case ':':
-				if ( p[1]=='<' ) {
-					f_clr( NEGATED|INFORMED|FILTERED )
-					p++; break; }
 CB_FilterCB			if ( p[1]=='|' ) {
 					if ( !is_f(PIPED) ) {
 						f_push( stack )
@@ -205,6 +207,8 @@ CB_FilterCB			if ( p[1]=='|' ) {
 					p+=2; break; }
 				else {
 					f_clr( NEGATED|INFORMED )
+					if ( p[1]=='<' ) f_clr( FILTERED )
+					else f_set( FILTERED )
 					p++; break; }
 			case ',':
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
@@ -252,8 +256,8 @@ CB_LoopCB			f_set( INFORMED )
 CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED ) }
 				else {
 CB_WildCardCB				if ( !strncmp( p+1, ":...", 4 ) )
-						p+=4; }
-					f_set( INFORMED )
+						p+=4;
+					f_set( INFORMED ) }
 				p++; break;
 			case '.':
 				if ( p[1]=='(' ) {
@@ -311,8 +315,15 @@ CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
 				f_set( INFORMED )
 				break;
 			case '/':
-CB_RegexCB			p = p_prune( PRUNE_FILTER, p );
-				f_set( INFORMED )
+				if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+CB_EndSelectionCB			f_pop( stack, 0 );
+					f_set( INFORMED );
+					p++; break; }
+				else if is_f( INFORMED ) {
+					p++; break; }
+				else {
+CB_RegexCB				p = p_prune( PRUNE_FILTER, p );
+					f_set( INFORMED ) }
 				break;
 			case '&':
 				p++; break;

@@ -19,10 +19,7 @@ static char *prune_regex( char * );
 static char *prune_list( char * );
 
 char *
-p_prune( PruneType type, char *p )
-/*
-	Assumption: *p==':' => assume we start inside of TERNARY
-*/ {
+p_prune( PruneType type, char *p ) {
 	switch ( type ) {
 	case PRUNE_LEVEL:
 		return prune_level( p );
@@ -75,18 +72,20 @@ prune_level( char *p ) {
 //---------------------------------------------------------------------------
 static char *
 prune_term( char *p, PruneType type ) {
-	if ( type==PRUNE_TERM && *p==':' )
-		return prune_ternary( p ); // return on closing ')'
 	int informed = 0;
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
 		case '{':
 			p = prune_sub( p );
-			if ( *p=='(' || *p=='{' )
-				return p;
+			if ( *p=='(' || *p=='{' || *p=='/' ) {
+				return p; }
 			informed = 1;
 			break;
+		case '?':
+			if ( informed ) return p;
+			informed = 1;
+			p++; break;
 		case ':':
 			if ( p[1]=='|' || p[1]==':' ) {
 				p+=2; break; }
@@ -94,12 +93,10 @@ prune_term( char *p, PruneType type ) {
 				return p;
 			informed = 0;
 			p++; break;
-		case '?':
-			if ( informed ) return p;
-			informed = 1;
-			p++; break;
 		case '%':
 			if ( p[1]=='(' ) p++;
+			else if ( p[1]=='!' )
+				p += p[2]=='/' ? 3 : 2;
 			else {
 				p = prune_mod( p );
 				informed = 1; }
@@ -110,29 +107,19 @@ prune_term( char *p, PruneType type ) {
 				break; }
 			// no break
 		case '.':
-			if ( p[1]=='?' ) p+=2;
+			if ( p[1]=='?' || p[1]=='.' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '^':
 			p+=2;
-			informed = 1; break;
-		case '"':
-			p = prune_format( p );
 			informed = 1; break;
 		case '\'':
 			p = prune_char( p );
 			informed = 1; break;
 		case '/':
 			p = prune_regex( p );
-			informed = 1; break;
-		case '~':
-		case '@':
-			if ( p[1]=='<' )
-				return p;
-			// no break
-		case '$':
-		case '!':
-			p++; break;
+			informed = 1;
+			break;
 		case '|':
 			if ( type==PRUNE_FILTER )
 				return p;
@@ -141,12 +128,23 @@ prune_term( char *p, PruneType type ) {
 				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
 				if ( *p=='~' ) p++; }
 			else return p;
+		case '~':
+		case '@':
+			if ( p[1]=='<' )
+				return p;
+			p++; break;
+		case '$':
+		case '!':
+			p++; break;
+		case '"':
+			p = prune_format( p );
+			informed = 1; break;
 		default:
 			if ( !is_separator( *p ) ) {
 				do p++; while ( !is_separator( *p ) );
 				informed = 1; }
 			else {
-				return p; } } } // cases ,<>)}|
+				return p; } } } // cases ,<>)}
 	return p; }
 
 //---------------------------------------------------------------------------
@@ -168,26 +166,22 @@ prune_ternary( char *p )
 	the expression it is passed. In both cases, the syntax is assumed to
 	have been checked beforehand.
 */ {
-	char *	candidate = NULL;
-	int	start = *p++,
-		informed = 0,
-		ternary = 0;
-	if ( start=='?' || start==':' )
-		ternary = 1;
+// fprintf( stderr, "PRUNE_TERNARY: bgn at %s\n", p );
+	int start = *p++;
+	int ternary = ( start=='?' || start==':' );
+	char *candidate = NULL;
+	int informed = 0;
 	while ( *p ) {
 		switch ( *p ) {
 		case '(':
 		case '{':
 			p = prune_sub( p );
+			if ( *p=='/' ) p++;
 			informed = 1; break;
-		case ',':
-		case ')':
-			goto RETURN;
 		case '?':
 			if ( informed ) {
 				if ( start=='(' ) goto RETURN;
-				ternary++;
-				informed = 0; }
+				informed = 0; ternary++; }
 			else informed = 1;
 			p++; break;
 		case ':':
@@ -203,30 +197,48 @@ prune_ternary( char *p )
 			p++; break;
 		case '%':
 			if ( p[1]=='(' ) p++;
+			else if ( p[1]=='!' )
+				p += p[2]=='/' ? 3 : 2;
 			else {
 				p = prune_mod( p );
 				informed = 1; }
 			break;
+		case '*':
+			if ( p[1]=='^' ) {
+				p += p[2]=='%'? 2 : 1;
+				break; }
+			// no break
+		case '.':
+			if ( p[1]=='?' || p[1]=='.' ) p+=2;
+			else do p++; while ( !is_separator(*p) );
+			informed = 1; break;
+		case '^':
+			p+=2;
+			informed = 1; break;
 		case '\'':
 			p = prune_char( p );
 			informed = 1; break;
 		case '/':
 			p = prune_regex( p );
-			informed = 1; break;
-		case '*':
-			if ( p[1]=='^' )
-				{ p++; break; }
-		case '.':
-			if ( p[1]=='?' || p[1]=='.' ) p+=2;
-			else do p++; while ( !is_separator(*p) );
-			informed = 1; break;
+			informed = 1;
+			break;
 		case '|':
-			informed = 0;
-			p++; break;
+			if ( p[1]=='^' ) {
+				if ( p[2]=='.' ) p+=3;
+				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
+				if ( *p=='~' ) p++; }
+			else {
+				informed = 0;
+				p++; }
+			break;
+		case ',':
+		case ')':
+			goto RETURN;
 		default:
 			do p++; while ( !is_separator(*p) );
 			informed = 1; } }
 RETURN:
+// fprintf( stderr, "PRUNE_TERNARY: end at %s\n", p );
 	if (( candidate )) return candidate;
 	else return p; }
 
@@ -256,8 +268,8 @@ prune_sub( char *p )
 			// no break
 		case ')':
 			level--; p++;
-			if ( !level )
-				return p;
+			if ( !level ) return p;
+			if ( *p=='/' ) p++;
 			break;
 		case '\\':
 			if ( p[1] ) p++;
@@ -267,6 +279,12 @@ prune_sub( char *p )
 			break;
 		case '/':
 			p = prune_regex( p );
+			break;
+		case '%':
+			if ( p[1]=='(' ) p++;
+			else if ( p[1]=='!' )
+				p += p[2]=='/' ? 3 : 2;
+			else p = prune_mod( p );
 			break;
 		case '.':
 			if ( !strncmp( p, "...", 3 ) ) {

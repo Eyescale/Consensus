@@ -3,20 +3,10 @@
 
 #include "main.h"
 
-void
-usage( ProgramData *data ) {
-	fprintf( stderr, "B%%: Usage\n"
-		"\t./B%% file.story\n"
-		"\t./B%% -p file.story\n"
-		"\t./B%% -f file.ini file.story\n"
-		"\t./B%% -f file.ini -p\n"
-		"\t./B%% -i\n"
-		"\t./B%% file.bm -i\n"
-		"\t./B%% -f file.ini -i\n"
-		"\t./B%% -f file.ini file.bm -i\n" );
-	cnExit( 1, data );
-	exit(-1); }
-
+//===========================================================================
+//	B% main
+//===========================================================================
+static void usage( ProgramData * );
 #define bar_i( n ) \
 	if ( argc==n+1 && !strncmp( argv[n], "-i", 2 ) ) \
 		cnProgramSetInteractive( data ); \
@@ -24,11 +14,8 @@ usage( ProgramData *data ) {
 int
 main( int argc, char *argv[] ) {
 
-	if ( argc < 2 ) usage( NULL );
-
 	ProgramData *data = cnInit( &argc, &argv );
-
-	// interprete B% command args
+	if ( !data ) usage( NULL );
 
 	char *inipath, *storypath;
 	int printout = 0;
@@ -66,4 +53,18 @@ main( int argc, char *argv[] ) {
 		freeStory( story ); }
 
 	cnExit( 1, data ); }
+
+static void
+usage( ProgramData *data ) {
+	fprintf( stderr, "B%%: Usage\n"
+		"\t./B%% file.story\n"
+		"\t./B%% -p file.story\n"
+		"\t./B%% -f file.ini file.story\n"
+		"\t./B%% -f file.ini -p\n"
+		"\t./B%% -i\n"
+		"\t./B%% file.bm -i\n"
+		"\t./B%% -f file.ini -i\n"
+		"\t./B%% -f file.ini file.bm -i\n" );
+	cnExit( 1, data );
+	exit(-1); }
 

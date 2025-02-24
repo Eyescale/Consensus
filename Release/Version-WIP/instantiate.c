@@ -220,6 +220,20 @@ case_( activate_CB )
 case_( collect_CB )
 	if ( !strncmp(p,"~(",2) && is_f(SET) && !data->carry && !is_f(VECTOR|SUB_EXPR|LEVEL) )
 		bm_release( p+1, data->ctx );
+	else if ( !strncmp(p,"*^%",3) ) {
+		listItem *results = bm_scan( p+2, data->ctx );
+		Pair *entry = registryLookup( data->ctx, ":" );
+		if (( entry )) {
+			Registry *buffer = entry->value;
+			for ( listItem *i=results, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
+				next_i = i->next;
+				if (( entry=registryLookup(buffer,i->ptr) )) {
+					i->ptr = entry->value;
+					last_i = i; }
+				else clipListItem( &results, i, last_i, next_i ); }
+			if (( results ))
+				data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }
+		else freeListItem( &results ); }
 	else {
 		listItem *results = bm_scan( p, data->ctx );
 		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }

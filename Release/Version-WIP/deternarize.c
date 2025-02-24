@@ -180,6 +180,9 @@ deternarize( char *p, listItem **s, BMTraverseData *traversal, char *expression 
 static char *optimize( Pair *, char * );
 
 BMTraverseCBSwitch( deternarize_traversal )
+case_( selection_CB )
+	p = p_prune( PRUNE_FILTER, p+3 );
+	_continue( *p==':' ? p+1 : p )
 case_( open_CB )
 	if ( p_ternary(p) ) {
 		data->ternary = 1;

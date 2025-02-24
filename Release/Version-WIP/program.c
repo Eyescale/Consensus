@@ -14,6 +14,7 @@
 //===========================================================================
 ProgramData *
 cnInit( int *argc, char ***argv ) {
+	if ( *argc < 2 ) return NULL;
 	ProgramData *data = (ProgramData *) newPair( NULL, NULL );
 	db_arena_init();
 	int i, narg = *argc;

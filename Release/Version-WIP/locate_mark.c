@@ -8,13 +8,14 @@
 //	bm_locate_mark
 //===========================================================================
 typedef struct {
+	int sub_expr;
 	listItem **exponent;
 	listItem *level;
 	struct { listItem *flags, *level; } stack;
 	} LocateMarkData;
 
 char *
-bm_locate_mark( char *expression, listItem **exponent )
+bm_locate_mark( int sub_expr, char *expression, listItem **exponent )
 /*
 	returns first '?' found in sub-expression, together with exponent
 	Assumption: negated mark is ruled out at expression creation time
@@ -24,6 +25,7 @@ bm_locate_mark( char *expression, listItem **exponent )
 	LocateMarkData data;
 	memset( &data, 0, sizeof(data) );
 	data.exponent = exponent;
+	data.sub_expr = sub_expr;
 
 	BMTraverseData traversal;
 	traversal.user_data = &data;
@@ -70,6 +72,8 @@ case_( open_CB )
 	data->level = *data->exponent;
 	_break
 case_( filter_CB )
+	if ( data->sub_expr && !is_f(LEVEL) )
+		_return( 1 )
 	xpn_free( data->exponent, data->level );
 	_break
 case_( comma_CB )

@@ -4,6 +4,7 @@
 #include "string_util.h"
 #include "locate_pivot.h"
 #include "locate_mark.h"
+#include "locate_emark.h"
 #include "eenov.h"
 #include "errout.h"
 
@@ -348,7 +349,8 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 
 		if (( x )) {
 			if ( op==BM_BGN ) {
-				if ( *p++=='*' ) {
+				if ( !strncmp(p,"%!/",3) ) p+=3;
+				else if ( *p++=='*' ) {
 					if (!( x=assignment_fetch( x, data ) )) {
 						success = 0;
 						goto POST_OP; } }
@@ -514,7 +516,7 @@ x_sub( CNInstance *x, listItem *exponent, listItem *base ) {
 static inline char *
 prune( char *p, int success ) {
 	p = p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 );
-	return ( p[0]==':' ? p[1]=='|' ? p+2 : p+1 : p ); }
+	return ( p[0]==':' ? p+1 : p ); }
 
 //===========================================================================
 //	query_traversal
@@ -531,8 +533,19 @@ case_( tag_CB )
 	else if (( p=tag(p,data) ))
 		_continue( p )
 	_break
+case_( bgn_selection_CB )
+	bm_locate_emark( p+3, &data->mark_exp );
+	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
+	for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
+		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
+	_return( 1 )
+case_( end_selection_CB )
+	freeListItem( &data->mark_sel );
+	traversal->done = 1; // after popping
+	_break
 case_( filter_CB )
-	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
+	else if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
 		_prune( BM_PRUNE_LEVEL, p+1 )
@@ -562,7 +575,7 @@ case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
 	_return( 1 )
 case_( sub_expression_CB )
-	char *mark = bm_locate_mark( p+1, &data->mark_exp );
+	char *mark = bm_locate_mark( SUB_EXPR, p+1, &data->mark_exp );
 	if (( data->mark_exp )) {
 		if ( !strncmp( mark, "...", 3 ) )
 			data->list_expr = 2;
@@ -570,6 +583,10 @@ case_( sub_expression_CB )
 			data->list_expr = 4;
 		else if ( !strncmp( mark+1, ",...", 4 ) )
 			data->list_expr = 6;
+		if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+			listItem **mark_exp = &data->mark_exp;
+			for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
+				addItem( mark_exp, i->ptr ); }
 		_return( 1 ) }
 	_break
 case_( dot_expression_CB )

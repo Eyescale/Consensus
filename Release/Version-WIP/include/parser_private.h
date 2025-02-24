@@ -16,12 +16,11 @@
 #define CONTRARY	(1<<1)
 #define RELEASED	(1<<2)
 #define VMARKED		(1<<3)
-#define NASCENT		(1<<4)
-#define P_CHAR		(1<<5)
-#define P_REGEX		(1<<6)
-#define P_LITERAL	(1<<7)
-#define P_EENOV		(1<<8)
-#define P_STRING	(1<<9)
+#define P_CHAR		(1<<4)
+#define P_REGEX		(1<<5)
+#define P_LITERAL	(1<<6)
+#define P_EENOV		(1<<7)
+#define P_STRING	(1<<8)
 
 #define expr(a)		(data->expr&(a))
 #define expr_set(a)	data->expr|=(a);

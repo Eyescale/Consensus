@@ -45,7 +45,7 @@ void	StringReset( CNString *, CNStringReset );
 //---------------------------------------------------------------------------
 
 #define s_take \
-	StringAppend( s, event ); // Assumption: event externally defined
+	StringAppend( s, event ); /* Assumption: event externally defined */
 #define s_put( event ) \
 	StringAppend( s, event );
 #define s_add( str ) \

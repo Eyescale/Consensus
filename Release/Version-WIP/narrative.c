@@ -283,5 +283,11 @@ case_( close_CB )
 	if ( p==data->ternary.p )
 		data->ternary.p = NULL;
 	_break
+case_( wildcard_CB )
+	if ( !strncmp(p,"?:",2) ) {
+		p = p_prune( PRUNE_TERM, p );
+		if ( *p=='(' ) retab( data, p-1 );
+		_continue( p ); }
+	_break;
 BMTraverseCBEnd
 

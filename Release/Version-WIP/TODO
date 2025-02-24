@@ -1,5 +1,24 @@
 See Also: design/story/interactive.story
 
+MUST DO
+	. implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
+	  in instantiate.c - To be tested
+	. write down design principle for the following TODO extensions
+	. implement
+			en ascribe((!!,DO),.)
+
+		.: ascribe(( .pivot, DO ), .occurrence )
+			do (( pivot, CO ), §( occurrence ))
+	  and
+		do : %((!!,CO),?) : !!^^( launch formula )
+
+	  Note: optimization
+			?*:( ?, %?::((?,.),.) ) (...)
+			?*:( ?:~!!, %?:((.,?),.) ) (...)
+				?*:( ?, %? ) (...)
+	  We want these loop to execute only if the second term - UBE -
+	  has no association in the *target* CNDB
+
 TODO
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
@@ -8,10 +27,10 @@ TODO
 	  [ DONE ] pass ./B% -p Examples/6_System/inform.story
 	  [ DONE ] inform.story: implement NCR in :err
 	  [ DONE ] inform.story: report as per Examples/6_System/README.txt
-	  [ WIP ] system.story - final
-	  . review system launch formula in light of the fact that:
+	  [ DONE ] review system launch formula in light of the fact that:
 	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
+	  [ WIP ] system.story - final
 	  . cosystem init
 	  . create (.,(Status,.)) and clear guard Status -
 	  . capture all proxies (and subscribe) on init
@@ -115,6 +134,18 @@ NOTES
 		// post-frame
 
 DONE
+	. parser_io.c: implemented
+		#define term sequence
+	. implemented "selection" expression - cf. Test/88_selection
+		%!/(_?_!_):%(_):%(_):.../
+	  same as	   ^--------v
+				 %(_._?_)
+	  e.g.
+		%!/((?,CO),!):%((?,.),%?)/
+	  is the same as      ^-----v
+				 %((%((?,.),%?),CO),?)
+	. p_prune.c: prune_term no longer call prune_ternary if *p==':'
+	. FIXED locate_mark.c in SUB_EXPR => filter_CB return if !is_f(LEVEL)
 	. implemented cache in db_arena.c
 	. disallowed on/per .variable: expression < src // VMARKED vs. ON_X
 	. replaced %?^sub with %?::sub (and likewise for %! and %|)

@@ -199,6 +199,8 @@ eenov_query( EEnovQueryOp op, BMContext *ctx, char *p, EEnovData *data )
 	listItem *xpn = NULL;
 
 	bm_locate_emark( p, &xpn );
+	for ( listItem *i=xpn; i!=NULL; i=i->next )
+		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 
 	BMTraverseData traversal;
 	traversal.user_data = data;

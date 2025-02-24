@@ -300,26 +300,26 @@ bm_mark( char *expression, char *src, unsigned int flags, void *match ) {
 	int type = 0;
 	listItem *xpn = NULL;
 
-	if (( src ) && *src!='{' && ( bm_locate_mark(src,&xpn) ))
+	if (( src ) && *src!='{' && ( bm_locate_mark(0,src,&xpn) ))
 		type = EENOK; // Assumption: xpn==NULL
 	else if ( !expression ) ;
 	else if ( *expression==':' ) {
 		char *value = p_prune( PRUNE_FILTER, expression+1 );
 		if ( *value++=='\0' ) { // move past ',' aka. ':' if there is
 			// we know instance to be ((*,.),e)
-			if (( bm_locate_mark( expression, &xpn ) ))
+			if (( bm_locate_mark( 0, expression, &xpn ) ))
 				type = EMARK|QMARK; }
 		else if ( !strncmp( value, "~.", 2 ) ) {
 			// we know instances will be ( *, e )
-			if (( bm_locate_mark( expression, &xpn ) ))
+			if (( bm_locate_mark( 0, expression, &xpn ) ))
 				type = EMARK|QMARK; }
-		else if (( bm_locate_mark( value, &xpn ) ))
+		else if (( bm_locate_mark( 0, value, &xpn ) ))
 			// we know instances will be ((*,.), e )
 			type = EMARK|QMARK;
-		else if (( bm_locate_mark( expression, &xpn ) ))
+		else if (( bm_locate_mark( 0, expression, &xpn ) ))
 			// we know instances will be ((*,e), . )
 			type = EMARK; }
-	else if (( bm_locate_mark( expression, &xpn ) ))
+	else if (( bm_locate_mark( 0, expression, &xpn ) ))
 		type = QMARK;
 
 	if (!((type|flags)&(QMARK|EMARK|EENOK|VMARK))) {
@@ -616,21 +616,6 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 			entry = registryLookup( ctx, "^" );
 			if (( i=entry->value ))
 				return ((Pair *) i->ptr )->value;
-			return NULL; }
-		else if ( !strncmp(p+1,"^%",2) ) {
-			entry = registryLookup( ctx, "?" );
-			if (!( i=entry->value )) return NULL;
-			CNInstance *e = ((Pair *) i->ptr )->value;
-			p+=4; // Assumption: we had p:"*^%?"
-			if ( !strncmp(p,"::",2) ) {
-				listItem *xpn = xpn_make( p+2 );
-				e = xpn_sub( e, xpn );
-				freeListItem( &xpn ); }
-			if (( e )&&( entry=registryLookup( ctx, ":" ) )) {
-				Registry *buffer = entry->value;
-				if (( entry=registryLookup( buffer, e ) ))
-					return entry->value;
-				else return e; }
 			return NULL; }
 		break;
 	case '%':
