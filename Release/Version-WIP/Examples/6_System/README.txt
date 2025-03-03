@@ -82,7 +82,7 @@ Data Structure
 output.story
 	generates the following output, which represents for each action
 	individually the complete set of enabling circumstances, as well
-	as its direct incidence on others, when explicitely required:
+	as its direct incidence on others when it is specified:
 
 	...
 	--------------------------------------------------------
@@ -310,6 +310,25 @@ inform.story
 	   and eventually performs the instantiation
 		   do ( *guard, ((*on,*bar), *action ))
 
+system.story
+	Finally system.story executes TM.system, using as includes the
+	appropriate cosystem/*.bm class definition files so as to
+
+	1. perform the occurrence <-> cosystem association as per
+			en ascribe(( !!, DO ), . )
+	   with
+		.: ascribe(( .pivot, DO ), .occurrence )
+			do (( pivot, CO ), ?::occurrence )
+	   where
+		?::occurrence returns the identifier of the cosystem
+		containing the occurrence's string narrative
+
+	2. launch all cosystem instances (aka. system's actors) as per
+			do : %((!!,CO),?) : !!( launch-formula )
+	   where
+		do : identifier : !!( launch-formula )
+		instantiates one 'identifier' class representative
+
 NOTES
 	. currently we do allow CL string DO string // with same string
 	. output.story allows in/on/off occurrences to be specified with
@@ -338,12 +357,6 @@ NOTES
 		do : action : ( action | ?:(expression) (%|,%?) )
 	  and traversing action list (then guard, then triggers) instead of
 	  relying on implementation to serialize output
-
-
-
-
-
-
 
 
 

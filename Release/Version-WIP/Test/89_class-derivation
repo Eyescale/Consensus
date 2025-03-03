@@ -1,0 +1,13 @@
+:
+	do !! system
+	do exit
+
+
+: Cosystem
+	do >"hello, world\n"
+	do exit
+
+: system < Cosystem
+
+:"titi"
+	do ~.

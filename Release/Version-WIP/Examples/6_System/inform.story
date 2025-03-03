@@ -210,7 +210,7 @@
 .: take
 	on : .
 		in ready
-			in ( *input ? (type,'>') :)
+			in ((type,'>') ? *input :)
 				do : level : root
 				do : base | { ((*,s),~.), ~(type,.) }
 			else do : inform
@@ -222,7 +222,7 @@
 				do : level : root
 	else
 		in ?:(( type, CL )?:( type, DO ))
-			in ( *input ? (cmd,.) :) // CL->DO
+			in ((cmd,.) ? *input :) // CL->DO
 				do ( type, ELSE )
 			else do ready
 			do : *tab : (( type, ELSE ) ?

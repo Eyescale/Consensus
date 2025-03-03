@@ -55,11 +55,13 @@ typedef struct {
 
 typedef enum {
 	ProtoSet = 1,
-	EnTake,
+	SwitchCase,
 	OccurrenceTake,
 	TagTake,
 	ExpressionTake,
-	NarrativeTake
+	NarrativeTake,
+	StringTake,
+	EnTake
 } BMParseOp;
 typedef enum {
 	ErrNone = 0,
@@ -73,6 +75,8 @@ typedef enum {
 	ErrNarrativeEmpty,
 	ErrNarrativeNoEntry,
 	ErrNarrativeDoubleDef,
+	ErrNarrativeBaseUnknown,
+	ErrNarrativeBaseNoBase,
 	ErrPostFrameDoubleDef,
 	ErrPostFrameEnCmd,
 	ErrEllipsisLevel,

@@ -253,12 +253,16 @@ CB_LoopCB			f_set( INFORMED )
 						traversal->done=1;
 						break; }
 					f_set( TERNARY )
-CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED ) }
+CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED )
+					p++; }
 				else {
-CB_WildCardCB				if ( !strncmp( p+1, ":...", 4 ) )
-						p+=4;
+CB_WildCardCB				if ( !strncmp(p+1,"::",2) )
+						p = p_prune( PRUNE_TERM, p+3 );
+					else if ( !strncmp( p+1, ":...", 4 ) )
+						p+=5;
+					else p++;
 					f_set( INFORMED ) }
-				p++; break;
+				break;
 			case '.':
 				if ( p[1]=='(' ) {
 CB_DotExpressionCB			p++;

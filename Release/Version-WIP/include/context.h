@@ -68,6 +68,13 @@ static inline ActiveRV * BMContextActive( BMContext *ctx ) {
 static inline void * BMContextEENOV( BMContext *ctx ) {
 	Pair *entry = registryLookup( ctx, "<" );
         return (( entry->value ) ? ((listItem *) entry->value )->ptr : NULL ); }
+static inline void *BMContextBaseClass( BMContext *ctx ) {
+	Pair *entry = registryLookup( ctx, ">" );
+	return (entry) ? entry->value : NULL; }
+static inline void *BMContextBase( listItem *narratives, BMContext *ctx ) {
+	Pair *entry = BMContextBaseClass( ctx );
+	if (( entry )) narratives = entry->value;
+	return narratives->ptr; }
 
 static inline Registry * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }

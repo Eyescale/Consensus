@@ -256,7 +256,15 @@ case_( comma_CB )
 	_break
 case_( wildcard_CB )
 	switch ( *p ) {
+	case '.':
+		data->sub[ NDX ] = newItem( NULL );
+		break;
 	case '?':
+		if ( !strncmp(p+1,"::",2) ) {
+			CNInstance *e = BMContextRVV( data->ctx, p+3 );
+			char *o = db_arena_origin( e );
+			if (( o )) switch_over( identifier_CB, o, p )
+			break; }
 		p+=2;
 		listItem *results = bm_scan( p, data->ctx );
 		if (( results )) {
@@ -268,9 +276,7 @@ case_( wildcard_CB )
 			addItem( &data->loop, newPair( bgn, end ));
 			bm_context_mark( data->ctx, mark );
 			_continue( p ) }
-		else _prune( BM_PRUNE_LEVEL, p )
-	case '.':
-		data->sub[ NDX ] = newItem( NULL ); }
+		else _prune( BM_PRUNE_LEVEL, p ) }
 	_break
 case_( register_variable_CB )
 	BMContext *carry = data->carry;
@@ -727,11 +733,15 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal 
 	//	carry assignment
 	//-----------------------------------------------------------
 	else if (( entry=registryLookup( story, p ) )) {
+		char *q = p_prune( PRUNE_IDENTIFIER, entry->name );
+		Pair *base = *q=='<' ? registryLookup( story, q+1 ) : NULL;
 		buffer = newRegistry( IndexedByAddress );
 		registryRegister( ctx, ":", buffer );
 		CNCell *this = BMContextCell( ctx );
 		CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
 		do {	CNCell *child = newCell( entry );
+			if (( base ))
+				registryRegister( BMCellContext(child), ">", base );
 			addItem( BMCellCarry(this), child );
 			proxy = new_proxy( this, child, db );
 			registryRegister( buffer, x, proxy );

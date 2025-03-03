@@ -139,7 +139,7 @@ static inline int SWAP( Registry *index[2] ) {
 #define FOREACH( index ) \
 	/* active is the list of narratives to be operated */	\
 	listItem **active = &index[ 0 ]->entries;		\
-	for ( Pair *entry;( entry = popListItem(active) ); freePair(entry) ) {	\
+	for ( Pair *entry;( entry=popListItem(active) ); freePair(entry) ) {	\
 		CNNarrative *narrative = entry->name;				\
 		listItem **instances = (listItem **) &entry->value;		\
 		while (( *instances )) {					\
@@ -157,11 +157,11 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 	invoked[ 0 ] = newRegistry( IndexedByAddress );
 	invoked[ 1 ] = newRegistry( IndexedByAddress );
 	subs = newRegistry( IndexedByAddress );
-
 	CNNarrative *pf = NULL;
+
 	BMContext *ctx = BMCellContext( cell );
 	listItem *narratives = BMCellEntry( cell )->value;
-	CNNarrative *base = narratives->ptr; // base narrative
+	CNNarrative *base = BMContextBase( narratives, ctx );
 	registryRegister( enabled[ 1 ], base, newItem( NULL ) );
 	while ( SWAP( enabled ) ) {
 		warden[ 1 ] = newRegistry( IndexedByAddress );
@@ -196,7 +196,7 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 #endif
 	}
 
-#define FETCH( ndx, narrative, instances ) if ( !instances ) { \
+#define FETCH( instances, narrative, ndx ) if ( !instances ) { \
 	Registry *index = ndx ? invoke : enable; \
 	Pair *entry = registryRegister( index, narrative, NULL ); \
 	instances = (listItem **) &entry->value; }
@@ -226,11 +226,11 @@ enlist( Registry *subs, Registry *enable, Registry *invoke, Registry *warden[2],
 			listItem **candidates = (listItem **) &sub->value;
 			while (( instance = popListItem(candidates) )) {
 				if (( addIfNotThere( enlisted, instance ) )) {
-					FETCH( ndx, narrative, instances )
+					FETCH( instances, narrative, ndx )
 					addItem( instances, instance ); } } }
 		else {
 			registryRegister( warden[ ndx ], narrative, sub->value );
-			FETCH( ndx, narrative, instances )
+			FETCH( instances, narrative, ndx )
 			for ( listItem *i=sub->value; i!=NULL; i=i->next )
 				addItem( instances, i->ptr ); }
 		freePair( sub ); } }

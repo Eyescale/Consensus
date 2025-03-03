@@ -165,7 +165,7 @@ is_base_ternary_term( listItem *stack, int extra )
 	return 1; }
 
 //===========================================================================
-//	PARSER_BGN / PARSER_END
+//	BM_PARSE_FUNC / PARSER_BGN / PARSER_END
 //===========================================================================
 #define BM_PARSE_FUNC( func ) \
 char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
@@ -184,6 +184,11 @@ char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	int		column	= io->column;		\
 	BMParseBegin( parser, state, event, line, column )
 
+#define PARSER_DEFAULT \
+	end \
+	if ( data->errnum ) errnum = data->errnum; \
+	else BMParseDefault
+
 #define PARSER_END \
 	BMParseEnd		\
 	data->errnum = errnum;	\
@@ -192,7 +197,7 @@ char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	return state;
 
 #define PARSER_DEFAULT_END \
-	BMParseDefault	\
+	PARSER_DEFAULT	\
 		on_( EOF )		errnum = ErrUnexpectedEOF;	\
 		in_none_sofar		errnum = ErrUnknownState;	\
 					data->state = state;		\

@@ -61,6 +61,7 @@ Consensus B% Version-WIP
 					:sub
 		?	?:	expr
 				?:%	%(
+				?::	expr
 		%term	expr
 		term	expr
 		/_	expr
@@ -147,20 +148,26 @@ Consensus B% Version-WIP
 		""
 
     parser.c: bm_parse_cmd()
-	base	+	base
-		-	base
-		""
-		expr
-		tab
-	tab	.	.$ 	.$_	.
-					_expr
-		:	.id:
-			def	def_
-			::	.id:
-				::_	::
-				::_.	::_._	.id:
-			:%	:_
+	base	""
+		:
+		.
+		case	expr
 		cmd
+	.	.%	.%$	.%$_	_expr
+				.%$.	_expr
+					.%$
+					.
+		.$ 	.$_	_expr
+				.id:
+				.
+	:	.id:
+		def	def_
+			def.	def_
+				def<	def<_	base
+		::	.id:
+			::_	::
+			::_.	::_._	.id:
+		:%	:_
 	.id:	:%	:_
 		:_	def_
 			:%_	:_
@@ -173,6 +180,8 @@ Consensus B% Version-WIP
 							:.$,.	:_
 								:.$
 								:.$,..	:_
+	def.	def_
+		def<	def_
 	def_	base
 	cmd	%_	_expr
 		cmd_	_expr

@@ -24,8 +24,8 @@ static int in_case( int, char *, BMContext *, BMMark ** );
 static int on_event( char *, BMContext *, BMMark ** );
 static int on_event_x( int, char *, BMContext *, BMMark ** );
 static int do_action( char *, BMContext *, CNStory * );
-static int do_enable( char *, BMContext *, listItem *, CNStory *, Registry * );
-static int do_enable_x( char *, BMContext *, listItem *, CNStory *, Registry * );
+static int do_enable( char *, BMContext *, listItem *, Registry * );
+static int do_enable_x( char *, BMContext *, listItem *, Registry * );
 static int do_input( char *, BMContext * );
 static int do_output( char *, BMContext * );
 static int set_locale( char *, BMContext * );
@@ -62,8 +62,8 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 			case ON_X:   passed = on_event_x( 0, expression, ctx, mark ); break;
 			case PER_X:  passed = on_event_x( AS_PER, expression, ctx, mark ); break;
 			case DO:     do_action( expression, ctx, story ); break;
-			case EN:     do_enable( expression, ctx, narratives, story, subs ); break;
-			case EN_X:   do_enable_x( expression, ctx, narratives, story, subs ); break;
+			case EN:     do_enable( expression, ctx, narratives, subs ); break;
+			case EN_X:   do_enable_x( expression, ctx, narratives, subs ); break;
 			case INPUT:  do_input( expression, ctx ); break;
 			case OUTPUT: do_output( expression, ctx ); break;
 			case LOCALE: set_locale( expression, ctx ); break; }
@@ -330,28 +330,29 @@ do_action( char *expression, BMContext *ctx, CNStory *story ) {
 //---------------------------------------------------------------------------
 //	do_enable
 //---------------------------------------------------------------------------
-static inline void query( char *, BMContext *, CNNarrative *, void *, Registry * );
+static inline int enable_pf( listItem *, Registry * );
+static BMQueryCB enable_CB;
 typedef struct {
 	CNNarrative *narrative;
 	void *key;
 	Registry *subs;
 	Pair *entry;
 	} EnableData;
+static inline void
+query( char *q, BMContext *ctx, CNNarrative *n, void *key, Registry *subs ) {
+	EnableData data = { n, key, subs, NULL };
+	bm_query( BM_CONDITION, q, ctx, enable_CB, &data ); }
 
 static int
-do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Registry *subs ) {
+do_enable( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE
 	// post-frame narrative query
 	if ( *en=='&' ) {
-		for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
-			CNNarrative *narrative = i->ptr;
-			char *p = narrative->proto;
-			if ( *p=='.' && p[2]=='&' ) {
-				registryRegister( subs, narrative, NULL );
-				// multiple definitions allowed but not executed
-				return 1; } }
-		return 0; }
+		Pair *entry = BMContextBaseClass( ctx );
+		return ((( entry ) && enable_pf( entry->value, subs )) ||
+			enable_pf( narratives, subs ) ); }
+	if ( !narratives ) return 0;
 	// en query
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
@@ -375,16 +376,6 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Regis
 			freeString( s ); } }
 	return 1; }
 
-static BMQueryCB enable_CB;
-static inline void
-query( char *q, BMContext *ctx, CNNarrative *n, void *key, Registry *subs ) {
-	EnableData data;
-	data.subs = subs;
-	data.narrative = n;
-	data.key = key;
-	data.entry = NULL;
-	bm_query( BM_CONDITION, q, ctx, enable_CB, &data ); }
-
 static BMQTake
 enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableData *data = user_data;
@@ -402,13 +393,40 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 		addIfNotThere((listItem **) &entry->value, e ); }
 	return BMQ_CONTINUE; }
 
+static inline int
+enable_pf( listItem *narratives, Registry *subs ) {
+	if ( !narratives ) return 0;
+	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		char *p = narrative->proto;
+		if ( !strcmp(p,".:&") ) {
+			registryRegister( subs, narrative, NULL );
+			return 1; } }
+	return 0; }
+
 //---------------------------------------------------------------------------
 //	do_enable_x
 //---------------------------------------------------------------------------
+static inline int enable_x( char *, BMContext *, listItem *, Registry * );
+
 static int
-do_enable_x( char *en, BMContext *ctx, listItem *narratives, CNStory *story, Registry *subs ) {
+do_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE_X
+	if ( *en=='.' ) { // we have en: ".func(_)" or ".func%(_)"
+		Pair *entry = BMContextBaseClass( ctx );
+		if (( entry )) narratives = entry->value;
+		return enable_x( en+1, ctx, narratives, subs ); }
+	else {
+		int retval = enable_x( en, ctx, narratives, subs );
+		if ( retval ) return 1;
+		Pair *entry = BMContextBaseClass( ctx );
+		if (( entry )) return enable_x( en, ctx, entry->value, subs );
+		return 0; } }
+
+static inline int
+enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
+	if ( !narratives ) return 0;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;
@@ -611,14 +629,12 @@ bm_vop( int type, ... ) {
 		va_arg( ap, char * ),		// expression
 		va_arg( ap, BMContext * ),	// ctx
 		va_arg( ap, listItem * ),	// narratives
-		va_arg( ap, CNStory * ),	// story
 		va_arg( ap, Registry * ) );	// subs
 		break;
 	case EN_X: do_enable_x(
 		va_arg( ap, char * ),		// expression
 		va_arg( ap, BMContext * ),	// ctx
 		va_arg( ap, listItem * ),	// narratives
-		va_arg( ap, CNStory * ),	// story
 		va_arg( ap, Registry * ) );	// subs
 		break;
 	case LOCALE: set_locale(

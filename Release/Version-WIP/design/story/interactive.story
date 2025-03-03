@@ -13,27 +13,8 @@ Objective
 	further bridging the gap between natural language and applications
 	software development.
 
-Description
-	Requirement Specifications can be reduced to short statements, which
-	we call occurrences, describing the System's conditions, events,
-	and actions, according to the syntax
-
-		in occurrence(s) // condition
-			on occurrence(s) // event
-				do occurrence(s) // action
-
-	The System's Requirement Specification process involves identifying,
-	for each occurrence
-
-	. the referent, i.e. the cosystem for which this occurrence
-	  represents a condition ON|OFF
-	. the ON|OFF set of triggers, each trigger composed of
-		its triggering set of occurrences ON|OFF (events)
-		its enabling set of guards, each guard composed of
-			its defining set of occurrences ON|OFF (conditions)
-
 Data Model
-	We use the following Data Model when the System is in execution,
+	We want our System to rely on the following Entity Relationship Model
 
 					O
 				       -:-
@@ -52,25 +33,48 @@ Data Model
 
 
 				     Machine
-
 	where
-		action: ((occurrence,ON|OFF),cosystem)
+		action: (( occurrence, /(ON|OFF)/ ), cosystem )
 
 	. Occurrences are statements representing cosystem conditions
-	. Each occurrence actually doubles as (occurrence,{ON,OFF}) to allow 
-	  the user to specify negated conditions, and coupled with cosystem
-	  it allows the same statement to originate from multiple cosystems
+	. Each occurrence doubles as (occurrence,{ON,OFF}) to allow the user
+	  to specify active as well as negated condition
 
-	hence
-		Occurrence:	%(?,ON|OFF)
-		Cosystem:	%((.,ON|OFF),?)
-		Action:		%(.,?:((.,ON|OFF),.))
-		Trigger:	%(?,((.,ON|OFF),.))
-		Guard:		%(?,(.,((.,ON|OFF),.)))
-		Event:		%(?:((.,ON|OFF),.),%(?,((.,ON|OFF),.)))
-		Condition:	%(?:((.,ON|OFF),.),%(?,(.,((.,ON|OFF),.))))
+	A System therefore is entirely defined by the set of relationship
+	instances
 
-	A System is entirely defined by its ON|OFF relationship instances
+		( .guard:!!, ( .trigger:(!!,!!), .action ) )
+			 ^		 ^  ^------- bar:=~on
+			 |		  ---------- on [event]
+			  -------------------------- in [condition]
+
+		!! references a Consensus B% Unnamed Based Entity (UBE)
+	where
+		action: (( occurrence, /(ON|OFF)/ ), cosystem )
+		event: %( ?:~!!, !!:{ %(trigger:(?,.)), %(trigger:(.,?)) } )
+		condition: %( ?, !!:guard)
+		events and conditions themselves in the form 
+			(( occurrence, /(ON|OFF)/ ), cosystem )
+
+Description
+	Requirement Specifications can be reduced to short statements, which
+	we call occurrences, describing the System's conditions, events,
+	and actions, according to the syntax
+
+		in occurrence(s) // condition
+			on occurrence(s) // event
+				do occurrence(s) // action
+
+	The System's Requirement Specification process involves identifying,
+	for each occurrence
+
+	. the referent, i.e. the cosystem for which this occurrence
+	  represents a condition ON|OFF
+	. the ON|OFF set of triggers, each trigger composed of
+		its triggering set of occurrences ON|OFF (events)
+		its enabling set of guards, each guard composed of
+			its defining set of occurrences ON|OFF (conditions)
+	  leading to its actuation ON|OFF
 
 System Execution
 	Once launched, we want our System to execute the following, which

@@ -288,10 +288,15 @@ preprocess( CNIO *io, int event ) {
 		on_other	do_( "#?" )	REENTER
 		end
 	in_( "#~" ) bgn_
-		on_( '#' )	do_( "" )	action = IOEventPass;
-						io->control.mode |= IO_UNPOUND;
+		on_( '#' )	do_( "#~#" )	action = IOEventPass;
 		on_other	do_( "//" )	REENTER
 		end
+		in_( "#~#" ) bgn_
+			on_( '#' )	do_( "#" )	action = IOEventPass;
+							io->control.mode |= IO_UNPOUND;
+			on_other	do_( "" )	REENTER
+							io->control.mode |= IO_UNPOUND;
+			end
 	in_( "#?" ) bgn_
 		ons( " \t" ) switch ( pragma_type( io ) ) {
 			case IOPragma_include:
@@ -393,7 +398,6 @@ preprocess( CNIO *io, int event ) {
 				on_other	do_( same )	action = IOEventPass;
 				end
 	BMParseEnd
-
 	io->errnum = errnum;
 	io->state = state;
 	return action; }

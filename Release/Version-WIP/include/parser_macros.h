@@ -1,9 +1,9 @@
 #ifndef PARSER_MACROS_H
 #define PARSER_MACROS_H
 
-#define CB_( op, mode, data ) \
+#define CB_( op ) \
 	if ((cb)) cb( op, mode, data );
-#define CB_if_( op, mode, data ) \
+#define CB_if_( op ) \
 	if ((!cb) || cb( op, mode, data ))
 
 //===========================================================================
@@ -80,8 +80,7 @@
 #define REENTER				caught |= CNCaughtReenter;
 #define end			}
 
-#define BMParseDefault		end \
-				if ( caught&CNCaughtTrans ) ; \
+#define BMParseDefault		if ( caught&CNCaughtTrans ) ; \
 				else bgn_
 
 #define BMParseEnd		end \

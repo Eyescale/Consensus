@@ -1,25 +1,28 @@
 See Also: design/story/interactive.story
 
-MUST DO
-	. implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
-	  in instantiate.c - To be tested
-	. write down design principle for the following TODO extensions
-	. implement
-			en ascribe((!!,DO),.)
-
+DONE - pending system.story finalization/testing
+	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
+	. class overloading
+		: cosystem < class
+	  where class overloads cosystem's base AND post-frame narratives
+	. parser.c: support expression "?::locale" where locale references string
+	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
+	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
+	  usage - cf. Examples/6_System/README.txt:#system.story
 		.: ascribe(( .pivot, DO ), .occurrence )
-			do (( pivot, CO ), §( occurrence ))
-	  and
-		do : %((!!,CO),?) : !!^^( launch formula )
-
-	  Note: optimization
-			?*:( ?, %?::((?,.),.) ) (...)
-			?*:( ?:~!!, %?:((.,?),.) ) (...)
-				?*:( ?, %? ) (...)
-	  We want these loop to execute only if the second term - UBE -
-	  has no association in the *target* CNDB
+			do (( pivot, CO ), ?::occurrence )
 
 TODO
+	. implement :_: !! (_) // cf PROXYCO.txt
+		do : %((!!,CO),?) : !!( launch formula )
+	. %!/_/ locate_pivot to enter all terms
+	. improve inform.story
+	  . include SET vs. generated
+	  . cleanup before report
+	  . also in system.story cleanup before launch
+	.  NEGATED or DOT not considered BYREF
+	   en %active => bm_query() => VERY INEFFICIENT
+
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
 	  [ DONE ] output system as is => cf output.story
@@ -27,25 +30,29 @@ TODO
 	  [ DONE ] pass ./B% -p Examples/6_System/inform.story
 	  [ DONE ] inform.story: implement NCR in :err
 	  [ DONE ] inform.story: report as per Examples/6_System/README.txt
-	  [ DONE ] review system launch formula in light of the fact that:
+	  [ DONE ] review system launch formula in light of the fact that
 	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
-	  [ WIP ] system.story - final
-	  . cosystem init
-	  . create (.,(Status,.)) and clear guard Status -
-	  . capture all proxies (and subscribe) on init
-	  . finalize and actually run TM.system example (manual)
+	  [ WIP ] system.story - finalize
+		  . cosystem init
+		  . create (.,(Status,.)) and clear guard Status -
+		  . capture all proxies (and subscribe) on init
+		  . finalize and actually run TM.system example (manual)
 	. NTH: inform.story
+		. do "" / on "" for do exit / on init
+			=> db_arena_makeup must accept NULL
+		  Note: B% does not support on "_" for the time being
 		. refine report, e.g.
 			. on "occurrence" with only CL specified*
 			. off "occurrence" with only DO specified
 			. cl-do same occurrence
 		  *currently the case for "init"
-		. do "" / on "" for do exit / on init
-			=> db_arena_makeup must accept NULL
-	. NTH: db_arena_makeup() improvement: currently takes the first
-	  character of each identifier. Why not whole identifier?
-		=> allows to compose sentences
+	. NTH: optimization
+			?*:( ?, %?::((?,.),.) ) (...)
+			?*:( ?:~!!, %?:((.,?),.) ) (...)
+				?*:( ?, %? ) (...)
+	  We want these loop to execute iff the second term - UBE - has
+	  no association in carry->db
 	. cleanup & complete contents of design/story/
 	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
@@ -134,8 +141,9 @@ NOTES
 		// post-frame
 
 DONE
-	. parser_io.c: implemented
-		#define term sequence
+	. db_arena_makeup() now puts whole identifier(s) into string
+	. Base/btree.c: integrated caching
+	. parser_io.c: implemented #define term sequence
 	. implemented "selection" expression - cf. Test/88_selection
 		%!/(_?_!_):%(_):%(_):.../
 	  same as	   ^--------v
@@ -147,6 +155,9 @@ DONE
 	. p_prune.c: prune_term no longer call prune_ternary if *p==':'
 	. FIXED locate_mark.c in SUB_EXPR => filter_CB return if !is_f(LEVEL)
 	. implemented cache in db_arena.c
+	  Note: string entities' key[0] is either
+		'$' if parser-allocated (!ref->entries possible)
+		's' otherwise, in which case it is recyclable, aka. cacheable
 	. disallowed on/per .variable: expression < src // VMARKED vs. ON_X
 	. replaced %?^sub with %?::sub (and likewise for %! and %|)
 	  Note: using '!' instead of '?' in sub would make it as_sub

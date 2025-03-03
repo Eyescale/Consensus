@@ -36,7 +36,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 				do_( "expr_" )	REENTER }
 		on_( '&' ) if ( *type&EN && s_empty ) {
 				do_( same )	s_take
-						f_set( INFORMED ) }
+						f_set( INFORMED|PROTECTED ) }
 		on_( '.' ) if ( !is_f(INFORMED) ) {
 				do_( "." )	s_take
 				if ( s_empty && *type&(ON) ) {
@@ -218,10 +218,10 @@ BM_PARSE_FUNC( bm_parse_expr )
 		end
 	in_( "\"$" ) bgn_
 		on_( '\\' )	do_( "\"$\\" )	t_take
-		on_( '"' )	do_( "expr" )	db_arena_encode( s, t );
-						s_take
+		on_( '"' )
+CB_if_( StringTake ) {		do_( "expr" )	s_take
 						f_set( INFORMED )
-						f_tag( stack, PROTECTED )
+						f_tag( stack, PROTECTED ) }
 		on_other	do_( same )	t_take
 		end
 		in_( "\"$\\" ) bgn_
@@ -297,7 +297,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 		on_separator	do_( "expr" )	REENTER
 						s_add( "%" )
 						f_set( INFORMED )
-		on_other if ( *type&(IN|OUTPUT) || is_f(SUB_EXPR) ) {
+		on_other if ( *type&(EN|IN|OUTPUT) || is_f(SUB_EXPR) ) {
 				do_( "%term" )	s_add( "%" )
 						s_take }
 		end
@@ -716,6 +716,8 @@ BM_PARSE_FUNC( bm_parse_expr )
 					do_( "expr" )	s_take
 							f_push( stack )
 							f_reset( FIRST|SET, 0 ) }
+			on_( ':' ) if ( !(*type&(ON_X|FORE)) ) {
+					do_( "?::" )	s_take }
 			on_other if ( *type&ON_X ) {
 				do_( "expr" )	REENTER }
 			end
@@ -725,12 +727,18 @@ BM_PARSE_FUNC( bm_parse_expr )
 				else {	do_( "%(" )	f_push( stack )
 							f_reset( FIRST|FORE|SUB_EXPR, PIPED|CARRY ) }
 			end
+		in_( "?::" ) bgn_
+			on_separator if ( !s_at(':') ) {
+					do_( "expr" )	REENTER
+							f_set( INFORMED|PROTECTED ) }
+			on_other	do_( same )	s_take
+			end
 	in_( "%term" ) bgn_
 		on_( '~' )
-CB_if_( TagTake, mode, data ) {	do_( "@" )	s_take
+CB_if_( TagTake ) {		do_( "@" )	s_take
 						f_set( INFORMED ) }
 		on_separator
-CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
+CB_if_( TagTake ) {		do_( "expr" )	REENTER
 						f_set( INFORMED ) }
 		on_other 	do_( same )	s_take
 		end
@@ -747,10 +755,10 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 		on_( '<' ) if ( s_at('~') ) {
 				do_( "@<" )	s_take
 						bm_parse_caution( data, WarnUnsubscribe, mode ); }
-		on_( '%' ) if ( *type&EN && !is_f(LEVEL|SUB_EXPR) && !s_at('%') ) {
+		on_( '%' ) if ( *type&EN && !is_f(LEVEL|FILTERED|byref) && !s_at('%') ) {
 				do_( same )	s_take
 						f_set( INFORMED ) }
-		on_( '(' ) if ( *type&EN && !is_f(LEVEL|SUB_EXPR) ) {
+		on_( '(' ) if ( *type&EN && !is_f(LEVEL|FILTERED|byref) ) {
 				do_( "expr" )	REENTER
 						*type |= PER;
 						f_clr( INFORMED ) }
@@ -986,9 +994,9 @@ CB_if_( TagTake, mode, data ) {	do_( "expr" )	REENTER
 			end
 		in_( "|^$" ) bgn_
 			on_( '~' )
-CB_if_( TagTake, mode, data ) {		do_( "expr" )	s_take }
+CB_if_( TagTake ) {			do_( "expr" )	s_take }
 			on_separator
-CB_if_( TagTake, mode, data ) {		do_( "expr" )	REENTER }
+CB_if_( TagTake ) {			do_( "expr" )	REENTER }
 			on_other	do_( same )	s_take
 			end
 	in_( "{_," ) bgn_ // Assumption: INFORMED is set
@@ -1003,7 +1011,7 @@ CB_if_( TagTake, mode, data ) {		do_( "expr" )	REENTER }
 	// bm_parse_expr:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
-CB_( ExpressionTake, mode, data )
+CB_( ExpressionTake )
 		bgn_ on_any
 		if ( mode==BM_STORY ) {
 			do_( "base" )	f_reset( FIRST, 0 );
@@ -1015,7 +1023,7 @@ CB_( ExpressionTake, mode, data )
 	//----------------------------------------------------------------------
 	// bm_parse_expr:	Error Handling
 	//----------------------------------------------------------------------
-	BMParseDefault
+	PARSER_DEFAULT
 		on_( EOF )		errnum = ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState; data->state = state;
 		in_( ">" )		errnum = ErrOutputScheme;
@@ -1273,7 +1281,7 @@ static BM_PARSE_FUNC( bm_parse_eenov ) {
 						f_set( INFORMED )
 		on_other 	do_( same )	s_take
 		end
-	BMParseDefault
+	PARSER_DEFAULT
 		on_( EOF )		errnum = ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState; data->state = state;
 		in_other bgn_
@@ -1464,7 +1472,7 @@ BM_PARSE_FUNC( bm_parse_load )
 	// bm_parse_load:	Expression End
 	//----------------------------------------------------------------------
 	in_( "expr_" )
-CB_( ExpressionTake, mode, data )
+CB_( ExpressionTake )
 		if ( mode==BM_LOAD ) {
 			bgn_ on_any
 				do_( "base" )	f_reset( FIRST, 0 )
@@ -1483,43 +1491,41 @@ BM_PARSE_FUNC( bm_parse_cmd )
 */ {
 	PARSER_BGN( "bm_parse_cmd" )
 	in_( "base" ) bgn_
-		on_( '+' ) if ( !TAB_CURRENT ) {
-				do_( "+" )	TAB_SHIFT++; }
-		on_( '-' ) if ( !TAB_CURRENT ) {
-				do_( "-" )	TAB_SHIFT--; }
-		on_( '\t' )	do_( same )	TAB_CURRENT++;
-		on_( '\n' )	do_( same )	TAB_CURRENT = 0;
 		on_( EOF )	do_( "" )
+		on_( '\n' )	do_( same )	TAB_CURRENT = 0;
+		on_( '\t' )	do_( same )	TAB_CURRENT++;
+		on_( ':' ) if ( column==1 ) {
+CB_if_( NarrativeTake ) {	do_( ":" )	TAB_SHIFT = 0; } }
+		on_( '+' ) if ( !TAB_CURRENT ) {
+				do_( same )	TAB_SHIFT++; }
+		on_( '-' ) if ( !TAB_CURRENT ) {
+				do_( same )	TAB_SHIFT--; }
+		on_( '.' )
+CB_if_( SwitchCase ) {		do_( "case" )	REENTER
+						TAB_CURRENT += TAB_SHIFT; }
+else {				do_( "." )	s_take
+						TAB_SHIFT = 0; }
+		on_separator
+CB_if_( SwitchCase ) {		do_( "case" )	REENTER
+						TAB_CURRENT += TAB_SHIFT; }
 		on_other
-CB_if_( OccurrenceTake, mode, data ) {
-			do_( "expr" )	TAB_LAST = TAB_CURRENT;
-					data->expr = EXPR;
-					f_set( ASSIGN|PRIMED ) }
-else {			do_( "tab" )	REENTER }
+CB_if_( SwitchCase ) {		do_( "case" )	REENTER
+						TAB_CURRENT += TAB_SHIFT; }
+else {				do_( "cmd" )	s_take
+						TAB_BASE = column; }
 		end
-	in_( "+" ) bgn_
-		on_( '+' )	do_( same )	TAB_SHIFT++;
-		on_other	do_( "base" )	REENTER
-		end
-	in_( "-" ) bgn_
-		on_( '-' )	do_( same )	TAB_SHIFT--;
-		on_other	do_( "base" )	REENTER
-		end
-	in_( "tab" ) bgn_
-		on_( '.' ) 	do_( "." )	s_take
-						TAB_BASE = column;
-		on_( ':' ) if ( !TAB_CURRENT ) {
-CB_if_( NarrativeTake, mode, data ) { // take previous narrative
-				do_( ":" )	TAB_SHIFT = 0; } }
-		on_separator	; // err
-		on_other	do_( "cmd" )	s_take
-						TAB_BASE = column;
-		end
+
+	in_( "case" )
+CB_if_( OccurrenceTake ) {
+		bgn_ on_any	do_( "expr" )	TAB_LAST = TAB_CURRENT;
+						f_set( ASSIGN|PRIMED )
+						data->expr = EXPR;
+			end }
 	//----------------------------------------------------------------------
 	// bm_parse_cmd:	Locale Declaration
 	//----------------------------------------------------------------------
 	in_( "." ) bgn_
-		on_( '%' ) if ( !(*type&LOCALE) || *type&IN ) {
+		on_( '%' ) if ( *type&IN || !(*type&LOCALE) ) {
 				do_( ".%" )	s_take }
 		on_( ':' )	do_( ".$_" )	REENTER
 		on_separator	; // err
@@ -1531,16 +1537,16 @@ CB_if_( NarrativeTake, mode, data ) { // take previous narrative
 			on_other	do_( ".%$" )	s_take
 			end
 		in_( ".%$" ) bgn_
-			ons( " \t" )	do_( ".%$ " )
-			on_( '\n' )	do_( ".%$ " )	REENTER
+			ons( " \t" )	do_( ".%$." )
+			on_( '\n' )	do_( ".%$." )	REENTER
 			on_( '~' ) if ( !(*type&LOCALE) ) {
-CB_( TagTake, mode, data ) {		do_( ".%$_" )	s_take
+CB_( TagTake ) {			do_( ".%$_" )	s_take
 							f_set( NEGATED ) } }
 			on_separator if ( !(*type&LOCALE) ) {
-CB_( TagTake, mode, data ) {		do_( ".%$_" )	REENTER } }
+CB_( TagTake ) {			do_( ".%$_" )	REENTER } }
 			on_other	do_( same )	s_take
 			end
-		in_( ".%$ " ) bgn_
+		in_( ".%$." ) bgn_
 			ons( " \t" )	do_( same )
 			on_( '\n' )	do_( "_expr" )	REENTER
 							TAB_CURRENT += TAB_SHIFT;
@@ -1583,7 +1589,7 @@ CB_( TagTake, mode, data ) {		do_( ".%$_" )	REENTER } }
 							*type = LOCALE;
 							f_set( INFORMED )
 			on_( ':' ) if ( !TAB_CURRENT && *type!=LOCALE ) {
-CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
+CB_if_( NarrativeTake ) {		do_( ".id:" )	s_take
 							TAB_SHIFT = 0; } }
 			end
 	//----------------------------------------------------------------------
@@ -1593,16 +1599,41 @@ CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
 		ons( " \t" )	do_( same )
 		ons( "\"(" )	do_( ".id:" )	REENTER
 						s_add( ".this:" )
-		on_( '\n' )	do_( "def" )	REENTER
+		on_( '\n' )	do_( "def_" )	REENTER
 		on_( '%' )	do_( ":%" )	s_add( ".this:%" )
 		on_separator	; // err
 		on_other	do_( "def" )	s_take
 		end
 	in_( "def" ) bgn_
-		ons( " \t\n" )	do_( "def_" )	REENTER
+		ons( " \t" )	do_( "def." )
+		on_( '<' )	do_( "def." )	s_take
+		on_( '\n' )	do_( "def_" )	REENTER
 		on_separator	; // err
 		on_other	do_( same )	s_take
 		end
+		in_( "def." ) bgn_
+			ons( " \t" )	do_( same )
+			on_( '\n' ) if ( !s_at('<') ) {
+					do_( "def_" )	REENTER }
+			on_( '<' ) if ( !s_at('<') ) {
+					do_( same )	s_take }
+			on_separator	; // err
+			on_other if( s_at('<') ) {
+					do_( "def<" )	s_take }
+			end
+		in_( "def<" ) bgn_
+			ons( " \t\n" )
+CB_if_( ProtoSet ) {			do_( "def<_" )	TAB_CURRENT = 0;
+							TAB_LAST = -1; }
+			on_separator	; // err
+			on_other	do_( same )	s_take
+			end
+		in_( "def<_" ) bgn_
+			ons( " \t\n" )	do_( same )
+			ons( ".:" ) if ( column==1 ) {
+					do_( "base" )	REENTER }
+			on_( EOF )	do_( "base" )	REENTER
+			end
 	in_( ".id:" ) bgn_
 		on_( '&' ) if s_at(':') {
 				do_( "def_" )	s_take }
@@ -1616,8 +1647,8 @@ CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
 		end
 	in_( ":\"" ) bgn_
 		on_( '\\' )	do_( ":\"\\" )	t_take
-		on_( '"' )	do_( "def_" )	db_arena_encode( s, t );
-						s_take
+		on_( '"' )
+CB_if_( StringTake ) {		do_( "def_" )	s_take }
 		on_other	do_( same )	t_take
 		end
 		in_( ":\"\\" ) bgn_
@@ -1738,8 +1769,7 @@ CB_if_( NarrativeTake, mode, data ) {	do_( ".id:" )	s_take
 	in_( "def_" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )
-CB_if_( ProtoSet, mode, data ) {
-				do_( "base" )	TAB_CURRENT = 0;
+CB_if_( ProtoSet ) {		do_( "base" )	TAB_CURRENT = 0;
 						TAB_LAST = -1; }
 		end
 	//----------------------------------------------------------------------
@@ -1750,7 +1780,7 @@ CB_if_( ProtoSet, mode, data ) {
 				do_( "else" )	REENTER
 						*type = ELSE; }
 		on_separator if ( !s_cmp( "en" ) ) {
-CB_if_( EnTake, mode, data ) {	do_( "cmd_" )	REENTER
+CB_if_( EnTake ) {		do_( "cmd_" )	REENTER
 						*type |= EN; } }
 			else if ( !s_cmp( "in" ) ) {
 				do_( "cmd_" )	REENTER
@@ -1790,7 +1820,7 @@ CB_if_( EnTake, mode, data ) {	do_( "cmd_" )	REENTER
 						s_reset( CNStringAll )
 		end
 	in_( "else." )
-CB_if_( OccurrenceTake, mode, data ) {
+CB_if_( OccurrenceTake ) {
 		bgn_ on_any
 			do_( "." )	s_add( "." )
 					TAB_LAST = TAB_CURRENT;
@@ -1802,7 +1832,7 @@ CB_if_( OccurrenceTake, mode, data ) {
 	// bm_parse_cmd:	Command End
 	//----------------------------------------------------------------------
 	in_( "_expr" )
-CB_if_( OccurrenceTake, mode, data ) {
+CB_if_( OccurrenceTake ) {
 		bgn_ on_any
 		if ( *type&LOCALE && is_f(NEGATED) ) {
 			do_( "expr" )	TAB_LAST = TAB_CURRENT;
@@ -1814,17 +1844,15 @@ CB_if_( OccurrenceTake, mode, data ) {
 	//----------------------------------------------------------------------
 	// bm_parse_cmd:	Error Handling
 	//----------------------------------------------------------------------
-	BMParseDefault
+	PARSER_DEFAULT
 		on_( EOF )		errnum = ErrUnexpectedEOF;
-		in_none_sofar		errnum = ErrUnknownState; data->state = state;
-		in_( "def" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( "def_" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
-		in_( ".id:" )		errnum = data->errnum ? data->errnum : ErrSyntaxError;
+		in_none_sofar		errnum = ErrUnknownState;
+					data->state = state;
 		in_( ":..." ) bgn_
 			on_( ')' )	errnum = ErrEllipsisLevel;
 			on_other	errnum = ErrSyntaxError;
 			end
-		in_( "cmd" )		errnum = data->errnum ? data->errnum : ErrUnknownCommand;
+		in_( "cmd" )		errnum = ErrUnknownCommand;
 		in_( "_expr" )		errnum = ErrIndentation; column=TAB_BASE;
 		in_other		errnum = ErrSyntaxError;
 	PARSER_END }
@@ -1855,7 +1883,7 @@ BM_PARSE_FUNC( bm_parse_ui ) {
 	//----------------------------------------------------------------------
 	// bm_parse_ui:		Error Handling
 	//----------------------------------------------------------------------
-	BMParseDefault
+	PARSER_DEFAULT
 		on_( EOF )		errnum = ErrUnexpectedEOF;
 		in_none_sofar		errnum = ErrUnknownState; data->state = state;
 		in_( "cmd" ) bgn_
@@ -1918,6 +1946,8 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrNarrativeEmpty, "narrative empty\n" )_narg
 		err_case( ErrNarrativeNoEntry, "sub-narrative has no story entry\n" )_narg
 		err_case( ErrNarrativeDoubleDef, "narrative already defined\n" )_narg
+		err_case( ErrNarrativeBaseUnknown, "unknown base narrative\n" )_narg
+		err_case( ErrNarrativeBaseNoBase, "base narrative is not base\n" )_narg
 		err_case( ErrPostFrameDoubleDef, "narrative post_frame already defined\n" )_narg
 		err_case( ErrPostFrameEnCmd, "'en' command not allowed in post-frame narrative\n" )_narg
 		err_case( ErrEllipsisLevel, "ellipsis usage not supported\n" )_narg

@@ -7,6 +7,8 @@
 #include "story.h"
 #include "errout.h"
 
+// #define DEBUG
+
 //===========================================================================
 //	newStory, freeStory
 //===========================================================================
@@ -113,27 +115,52 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 				free(proto);
 				return 0; }
 			narrative->proto = proto; } // double-def accepted
-		else if ( !registryLookup( data->narratives, proto ) )
-			narrative->proto = proto;
-		else {
+		else if ( registryLookup( data->narratives, proto ) ) {
 			data->errnum = ErrNarrativeDoubleDef;
-			free(proto);
+			free( proto );
 			return 0; }
-		break;
-	case EnTake:
-		if (( data->narrative )&&( data->narrative->proto )) {
-			if ( !strcmp(data->narrative->proto,".:&") ) {
-				data->errnum = ErrPostFrameEnCmd;
-				return 0; } }
+		else {
+			char *p = p_prune( PRUNE_IDENTIFIER, proto );
+			if ( *p=='<' ) {
+				Pair *entry = registryLookup( data->narratives, p+1 );
+				if ( !entry ) {
+					data->errnum = ErrNarrativeBaseUnknown;
+					free( proto );
+					return 0; }
+				p = p_prune( PRUNE_IDENTIFIER, entry->name );
+				if ( *p=='<' ) {
+					data->errnum = ErrNarrativeBaseNoBase;
+					free( proto );
+					return 0; } }
+			narrative->proto = proto; }
 		break;
 	case OccurrenceTake: ;
-		if ( !indentation_check( data ) ) return 0;
+		if ( !indentation_check( data ) ) {
+			data->errnum = ErrIndentation;
+			return 0; }
 		CNOccurrence *occurrence = newOccurrence( data->type );
 		CNOccurrence *parent = data->stack.occurrences->ptr;
 		addItem( &parent->sub, occurrence );
 		addItem( &data->stack.occurrences, occurrence );
 		data->occurrence = occurrence;
 		break;
+	case SwitchCase: ;
+		int *tab = data->tab;
+		if ( TAB_LAST==-1 ) // very first occurrence
+			return 0;
+		int tab_diff = TAB_LAST - TAB_CURRENT - TAB_SHIFT;
+		listItem *stack = data->stack.occurrences;
+		if ( tab_diff < 0 ) {
+			CNOccurrence *parent = stack->ptr;
+			int parent_type = cast_i( parent->data->type );
+			return ( parent_type & SWITCH ); }
+		else {
+			while ( tab_diff-- ) {
+				stack = stack->next;
+				if ( !stack ) return 0; }
+			CNOccurrence *sibling = stack->ptr;
+			int sibling_type = cast_i( sibling->data->type );
+			return ( sibling_type & CASE ); }
 	case TagTake:
 		// compare current term with registered tags
 		base = data->stack.tags;
@@ -168,6 +195,11 @@ fprintf( stderr, "end narrative: %s\n", proto );
 #endif
 		Pair *entry = data->entry;
 		if ( !narrative->root->sub ) {
+			if (( proto ) && *p_prune(PRUNE_IDENTIFIER,proto)=='<' ) {
+				data->entry = registryRegister( data->narratives, proto, NULL );
+				narrative->proto = NULL;
+				if ( !mode ) freeNarrative( narrative );
+				break; }
 			if ( !mode || entry ) {
 				data->errnum = ErrNarrativeEmpty;
 				return 0; }
@@ -189,7 +221,17 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		if ( mode ) {
 			data->narrative = newNarrative();
 			freeListItem( &data->stack.occurrences );
-			addItem( &data->stack.occurrences, data->narrative->root ); } }
+			addItem( &data->stack.occurrences, data->narrative->root ); }
+		break;
+	case EnTake:
+		if (( data->narrative )&&( data->narrative->proto )) {
+			if ( !strcmp(data->narrative->proto,".:&") ) {
+				data->errnum = ErrPostFrameEnCmd;
+				return 0; } }
+		break;
+	case StringTake:
+		db_arena_encode( data->string, data->txt, data->type ? NULL : data->entry );
+		break; }
 	return 1; }
 
 static inline int
@@ -294,6 +336,7 @@ l_case( CNOccurrence *sibling, BMParseData *data ) {
 		return 1; }
 	else return 0; }
 
+
 //===========================================================================
 //	story_output
 //===========================================================================
@@ -303,9 +346,16 @@ story_output( FILE *stream, CNStory *story ) {
 	for ( listItem *i=story->entries; i!=NULL; i=i->next ) {
 		Pair *entry = i->ptr;
 		char *name = entry->name;
-		if ( *name )
-			fprintf( stream, ": %s\n", name );
-		else	fprintf( stream, ":\n" );
+		if ( *name ) {
+			char *p = p_prune( PRUNE_IDENTIFIER, name );
+			if ( *p=='<' ) {
+				fprintf( stream, ": " );
+				do fputc( *name++, stream );  while ( name!=p );
+				fprintf( stream, " %c ", *p++ );
+				do fputc( *p++, stream ); while ( *p );
+				fprintf( stream, "\n\n" ); }
+			else fprintf( stream, ": %s\n", name ); }
+		else fprintf( stream, ":\n" );
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );

@@ -147,7 +147,7 @@ static inline void
 output_expr( FILE *stream, char *p, int level, int type ) {
 	if ( type&(DO|OUTPUT) )
 		fprint_expr( stream, p, level, type );
-	else if ( type&IN && !strncmp(p,"?:\"",3) )
+	else if ( type&(IN|ON) && !strncmp(p,"?:\"",3) )
 		db_arena_output( stream, "?:%_", p+2 );
 	else fprintf( stream, "%s", p );
 	fprintf( stream, "\n" ); }
