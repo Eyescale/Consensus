@@ -20,8 +20,7 @@ TODO
 	  . include SET vs. generated
 	  . cleanup before report
 	  . also in system.story cleanup before launch
-	.  NEGATED or DOT not considered BYREF
-	   en %active => bm_query() => VERY INEFFICIENT
+	. en %active => bm_query() => VERY INEFFICIENT
 
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error

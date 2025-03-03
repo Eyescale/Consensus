@@ -255,6 +255,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 						s_add( "~" )
 						f_clr( PIPED|PROTECTED )
 						f_set( NEGATED )
+						f_set_BYREF
 		end
 	in_( "~." ) bgn_
 		on_( '.' )	do_( "expr" )	s_add( "~.." )
