@@ -621,28 +621,29 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 	case '%':
 		switch ( p[1] ) {
 		case '?':
-			if ( !strncmp(p+2,"::",2) ) *rv = 4;
-			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->value;
-			return NULL;
 		case '!':
-			if ( !strncmp(p+2,"::",2) ) *rv = 4;
 			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value ))
-				return ((Pair *) i->ptr )->name;
+			if (( i=entry->value )) {
+				CNInstance *e = p[1]=='!' ?
+					((Pair *) i->ptr )->name :
+					((Pair *) i->ptr )->value;
+				if ( !strncmp(p+2,"::",2) ) {
+					listItem *xpn = xpn_make( p+4 );
+					e = xpn_sub( e, xpn );
+					freeListItem( &xpn ); }
+				return e; }
 			return NULL;
-		case '<':
-			*rv = 2;
-			return NULL;
+		case '%':
+			return BMContextSelf( ctx );
 		case '|':
-			*rv = !strncmp(p+2,"::",2) ? 5 : 3;
+			// Assumption: never from bm_match
 			entry = registryLookup( ctx, "|" );
 			if (( i=entry->value ))
 				return i->ptr;
 			return NULL;
-		case '%':
-			return BMContextSelf( ctx );
+		case '<':
+			*rv = 2;
+			return NULL;
 		case '@':
 			*rv = 3;
 			return BMContextActive( ctx )->value;
@@ -676,18 +677,6 @@ bm_match( BMContext *ctx, CNDB *db, char *p, CNInstance *x, CNDB *db_x ) {
 	case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
 			if ( db_match( x, db_x, i->ptr, db ) )
 				return 1;
-		return 0;
-	case 4: xpn = xpn_make( p+4 );
-		rvv = xpn_sub( rvv, xpn );
-		freeListItem( &xpn );
-		return db_match( x, db_x, rvv, db );
-	case 5: xpn = xpn_make( p+4 );
-		for ( listItem *i=rvv; i!=NULL; i=i->next ) {
-			rvv = xpn_sub( i->ptr, xpn );
-			if (( rvv ) && db_match( x, db_x, rvv, db ) ) {
-				freeListItem( &xpn );
-				return 1; } }
-		freeListItem( &xpn );
 		return 0; }
 
 	// not a register variable

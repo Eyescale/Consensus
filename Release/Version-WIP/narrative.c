@@ -127,8 +127,7 @@ output_proto( FILE *stream, char *p ) {
 #define if_( a, b ) if (type&(a)) fprintf(stream,b);
 static inline int
 output_cmd( FILE *stream, int type, int level ) {
-	if ( type==ROOT )
-		return 0;
+	if ( type==ROOT ) return 0;
 	else {
 		TAB( level );
 		if ( type==ELSE ) {

@@ -33,7 +33,7 @@ typedef struct {
 	BMContext *	ctx;
 	CNOccurrence *	occurrence;
 	CNNarrative *	narrative;
-	Registry *	narratives;
+	Registry *	story;
 	Pair *		entry;
 	struct {
 		FILE * stream;
@@ -86,6 +86,7 @@ typedef enum {
 	ErrInputScheme,
 	ErrOutputScheme,
 	ErrMarkDo,
+	ErrFilteredDo,
 	ErrMarkOn,
 	ErrMarkGuard,
 	ErrMarkTernary,

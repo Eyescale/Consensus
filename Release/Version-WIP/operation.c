@@ -352,12 +352,11 @@ do_enable( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 		Pair *entry = BMContextBaseClass( ctx );
 		return ((( entry ) && enable_pf( entry->value, subs )) ||
 			enable_pf( narratives, subs ) ); }
-	if ( !narratives ) return 0;
 	// en query
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;
-		if ( *p!='.' || p[2]=='&' ) continue;
+		if ( !strcmp(p,".:&") ) continue;
 		p = p_prune( PRUNE_IDENTIFIER, p+1 );
 		p++; // skip leading ':'
 		CNString *s = NULL;
@@ -395,7 +394,6 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 
 static inline int
 enable_pf( listItem *narratives, Registry *subs ) {
-	if ( !narratives ) return 0;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto;
@@ -426,7 +424,6 @@ do_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 
 static inline int
 enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
-	if ( !narratives ) return 0;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;

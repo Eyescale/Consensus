@@ -8,7 +8,7 @@
 
 typedef CNEntity CNCell;
 
-CNCell * newCell( Pair *narrative );
+CNCell * newCell( CNStory *, Pair *entry );
 void	freeCell( CNCell * );
 void	bm_bond( CNEntity *, CNEntity *, CNInstance * );
 int	bm_cell_input( CNCell *, CNStory * );

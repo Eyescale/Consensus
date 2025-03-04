@@ -36,7 +36,6 @@ free_CB( Registry *registry, Pair *entry ) {
 //===========================================================================
 //	story_read
 //===========================================================================
-static inline int indentation_check( BMParseData *data );
 static BMParseCB build_CB;
 
 CNStory *
@@ -54,7 +53,7 @@ story_read( char *path, listItem *flags ) {
 	bm_parse_init( &data, BM_STORY );
 	data.narrative = newNarrative();
 	data.occurrence = data.narrative->root;
-	data.narratives = newRegistry( IndexedByNameRef );
+	data.story = newRegistry( IndexedByNameRef );
 	addItem( &data.stack.occurrences, data.occurrence );
 	//-----------------------------------------------------------------
 #define PARSE( event, func ) \
@@ -72,17 +71,19 @@ story_read( char *path, listItem *flags ) {
 		errout( StoryUnexpectedEOF ); }
 	if ( data.errnum ) {
 		freeNarrative( data.narrative );
-		freeRegistry( data.narratives, free_CB );
-		data.narratives = NULL; }
+		freeRegistry( data.story, free_CB );
+		data.story = NULL; }
 	bm_parse_exit( &data );
 	io_exit( &io );
 	fclose( stream );
-	return (CNStory *) data.narratives; }
+	return (CNStory *) data.story; }
 
 //---------------------------------------------------------------------------
 //	build_CB
 //---------------------------------------------------------------------------
+static inline int indentation_check( BMParseData *data );
 static inline int known( listItem *i, char *proto );
+static inline int subclass( char *proto, BMParseData * );
 #define BAR_DANGLING( o ) \
 	if ((o) && cast_i(o->data->type)&(IN|ON|ON_X)) return 0;
 
@@ -102,7 +103,7 @@ build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 fprintf( stderr, "bgn narrative: %s\n", proto );
 #endif
 		if ( !proto ) { // main narrative definition start
-			if (( registryLookup( data->narratives, "" ) )) {
+			if (( registryLookup( data->story, "" ) )) {
 				data->errnum = ErrNarrativeDoubleDef;
 				return 0; } } // main already registered
 		else if ( is_separator( *proto ) ) {
@@ -115,14 +116,14 @@ fprintf( stderr, "bgn narrative: %s\n", proto );
 				free(proto);
 				return 0; }
 			narrative->proto = proto; } // double-def accepted
-		else if ( registryLookup( data->narratives, proto ) ) {
+		else if ( registryLookup( data->story, proto ) ) {
 			data->errnum = ErrNarrativeDoubleDef;
 			free( proto );
 			return 0; }
 		else {
 			char *p = p_prune( PRUNE_IDENTIFIER, proto );
 			if ( *p=='<' ) {
-				Pair *entry = registryLookup( data->narratives, p+1 );
+				Pair *entry = registryLookup( data->story, p+1 );
 				if ( !entry ) {
 					data->errnum = ErrNarrativeBaseUnknown;
 					free( proto );
@@ -195,12 +196,9 @@ fprintf( stderr, "end narrative: %s\n", proto );
 #endif
 		Pair *entry = data->entry;
 		if ( !narrative->root->sub ) {
-			if (( proto ) && *p_prune(PRUNE_IDENTIFIER,proto)=='<' ) {
-				data->entry = registryRegister( data->narratives, proto, NULL );
-				narrative->proto = NULL;
-				if ( !mode ) freeNarrative( narrative );
-				break; }
-			if ( !mode || entry ) {
+			if ( subclass( proto, data ) ) {
+				if ( data->errnum ) return 0; }
+			else if ( !mode || entry ) {
 				data->errnum = ErrNarrativeEmpty;
 				return 0; }
 			else break; } // first take
@@ -208,14 +206,14 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		narrative_reorder( narrative );
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->narratives, "", newItem(narrative) ); }	
+			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
 		else if ( is_separator( *proto ) ) {
 			addItem((listItem **) &entry->value, narrative );
 			if ( !mode ) // last take
 				reorderListItem((listItem **) &entry->value ); }
 		else {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
-			data->entry = registryRegister( data->narratives, proto, newItem(narrative) );
+			data->entry = registryRegister( data->story, proto, newItem(narrative) );
 			narrative->proto = NULL; } // first in class
 		// allocate new narrative
 		if ( mode ) {
@@ -233,14 +231,6 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		db_arena_encode( data->string, data->txt, data->type ? NULL : data->entry );
 		break; }
 	return 1; }
-
-static inline int
-known( listItem *i, char *proto ) {
-	for ( ; i!=NULL; i=i->next ) {
-		CNNarrative *n = i->ptr;
-		if (( n->proto )&& !strcmp(n->proto,proto) )
-			return 1; }
-	return 0; }
 
 static inline int l_case( CNOccurrence *sibling, BMParseData *data );
 static inline int
@@ -336,6 +326,22 @@ l_case( CNOccurrence *sibling, BMParseData *data ) {
 		return 1; }
 	else return 0; }
 
+static inline int
+known( listItem *i, char *proto ) {
+	for ( ; i!=NULL; i=i->next ) {
+		CNNarrative *n = i->ptr;
+		if (( n->proto )&& !strcmp(n->proto,proto) )
+			return 1; }
+	return 0; }
+
+static inline int
+subclass( char *proto, BMParseData *data ) {
+	if ( !proto ) return 0;
+	proto = p_prune( PRUNE_IDENTIFIER, proto );
+	if ( *proto!='<' ) return 0;
+	if ( !registryLookup( data->story, proto+1 ) )
+		data->errnum = ErrNarrativeBaseUnknown;
+	return 1; }
 
 //===========================================================================
 //	story_output
@@ -353,7 +359,7 @@ story_output( FILE *stream, CNStory *story ) {
 				do fputc( *name++, stream );  while ( name!=p );
 				fprintf( stream, " %c ", *p++ );
 				do fputc( *p++, stream ); while ( *p );
-				fprintf( stream, "\n\n" ); }
+				fputc( '\n', stream ); }
 			else fprintf( stream, ": %s\n", name ); }
 		else fprintf( stream, ":\n" );
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {

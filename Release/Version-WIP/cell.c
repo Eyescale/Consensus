@@ -12,10 +12,14 @@
 //	newCell / freeCell
 //===========================================================================
 CNCell *
-newCell( Pair *narrative ) {
+newCell( CNStory *story, Pair *entry ) {
 	CNEntity *this = cn_new( NULL, NULL );
-	this->sub[ 0 ] = (CNEntity *) newPair( narrative, NULL );
-	this->sub[ 1 ] = (CNEntity *) newContext( this );
+	BMContext *ctx = newContext( this );
+	char *q = p_prune( PRUNE_IDENTIFIER, entry->name );
+	Pair *base = *q=='<' ? registryLookup(story,q+1) : NULL;
+	bm_class_derive( ctx, base );
+	this->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
+	this->sub[ 1 ] = (CNEntity *) ctx;
 	return this; }
 
 void

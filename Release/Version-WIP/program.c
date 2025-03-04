@@ -55,7 +55,7 @@ newProgram( char *inipath, CNStory **story, ProgramData *data ) {
 	if ( !entry ) {
 		errout( ProgramStory );
 		return NULL; }
-	CNCell *cell = newCell( entry );
+	CNCell *cell = newCell( *story, entry );
 	if (( inipath )) {
 		int errnum = bm_load( BMCellContext(cell), inipath, data->flags );
 		if ( errnum ) {

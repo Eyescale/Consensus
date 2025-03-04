@@ -73,7 +73,7 @@ bm_deparameterize( char *proto )
 		case '.':
 			p = ((*end==':') ? end+1 : (StringAppend(s,'.'),end));
 			break; } }
-	do StringAppend(s,*p++); while ( *p );
+	s_add( p )
 	return s; }
 
 //---------------------------------------------------------------------------

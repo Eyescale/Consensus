@@ -80,7 +80,8 @@
 #define REENTER				caught |= CNCaughtReenter;
 #define end			}
 
-#define BMParseDefault		if ( caught&CNCaughtTrans ) ; \
+#define BMParseDefault( pass )	end \
+				if ( pass || caught&CNCaughtTrans ) ; \
 				else bgn_
 
 #define BMParseEnd		end \

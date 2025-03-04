@@ -76,6 +76,9 @@ static inline void *BMContextBase( listItem *narratives, BMContext *ctx ) {
 	if (( entry )) narratives = entry->value;
 	return narratives->ptr; }
 
+static inline void bm_class_derive( BMContext *ctx, Pair *base ) {
+	if (( base )) registryRegister( ctx, ">", base ); }
+
 static inline Registry * BMContextCurrent( BMContext *ctx ) {
 	return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
 static inline Pair * BMLocaleEntry( BMContext *ctx, char *p ) {
@@ -93,6 +96,7 @@ static inline Pair *Mset( BMContext *ctx, void *value ) {
 	return registryRegister( ctx, "~", value ); }
 static inline void Mclr( BMContext *ctx ) {
 	registryDeregister( ctx, "~" ); }
+
 
 //===========================================================================
 //	Utilities

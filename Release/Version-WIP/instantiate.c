@@ -282,27 +282,12 @@ case_( register_variable_CB )
 	BMContext *carry = data->carry;
 	CNDB *db = data->db;
 	listItem *found;
-	listItem **sub;
 	CNInstance *e;
 	switch ( p[1] ) {
-	case '?':
-	case '!':
-		e = BMContextRVV( data->ctx, p );
-		if (( e )&&( p[2]==':' )) {
-			if ( p[3]!=':' )
-				switch_over( collect_CB, p, p )
-			else {
-				listItem *xpn = xpn_make(p+4);
-				e = xpn_sub( e, xpn );
-				freeListItem( &xpn ); } }
-		if (( e )) e = bm_translate( carry, e, db, 1 );
-		if (( e )) data->sub[ NDX ] = newItem( e );
-		else _prune( BM_PRUNE_LEVEL, p );
-		break;
 	case '|':
 		found = BMContextRVV( data->ctx, p );
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
-		sub = &data->sub[ NDX ];
+		listItem **sub = &data->sub[ NDX ];
 		if ( strncmp(p+2,"::",2) ) {
 			for ( listItem *i=found; i!=NULL; i=i->next ) {
 				e = bm_translate( carry, i->ptr, db, 1 );
@@ -732,16 +717,15 @@ assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal 
 	//-----------------------------------------------------------
 	//	carry assignment
 	//-----------------------------------------------------------
-	else if (( entry=registryLookup( story, p ) )) {
-		char *q = p_prune( PRUNE_IDENTIFIER, entry->name );
-		Pair *base = *q=='<' ? registryLookup( story, q+1 ) : NULL;
+	else if ( *p=='(' || (entry=registryLookup(story,p)) ) {
 		buffer = newRegistry( IndexedByAddress );
 		registryRegister( ctx, ":", buffer );
 		CNCell *this = BMContextCell( ctx );
 		CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
-		do {	CNCell *child = newCell( entry );
-			if (( base ))
-				registryRegister( BMCellContext(child), ">", base );
+		do {	if ( *p=='(' && !( entry=cnIsIdentifier(x) ?
+			      registryLookup(story,CNIdentifier(x)) : NULL ))
+				continue; // class-actor assignment failed
+			CNCell *child = newCell( story, entry );
 			addItem( BMCellCarry(this), child );
 			proxy = new_proxy( this, child, db );
 			registryRegister( buffer, x, proxy );

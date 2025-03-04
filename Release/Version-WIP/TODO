@@ -2,25 +2,28 @@ See Also: design/story/interactive.story
 
 DONE - pending system.story finalization/testing
 	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
-	. class overloading
+	. class derivation - cf Test/89_class-derivation
 		: cosystem < class
 	  where class overloads cosystem's base AND post-frame narratives
-	. parser.c: support expression "?::locale" where locale references string
+	. parser.c: support expression
+			?::locale
+		where locale references string
 	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
 	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
 	  usage - cf. Examples/6_System/README.txt:#system.story
-		.: ascribe(( .pivot, DO ), .occurrence )
+		.: ascribe(( .pivot, DO ), .occurrence ) // set class origin
 			do (( pivot, CO ), ?::occurrence )
+	. implemented class-actor assignment
+			do :_: !! (_)
+	  e.g.	do : %((!!,CO),?) : !! ( launch-formula )
 
 TODO
-	. implement :_: !! (_) // cf PROXYCO.txt
-		do : %((!!,CO),?) : !!( launch formula )
+	. en %active => bm_query() => VERY INEFFICIENT
 	. %!/_/ locate_pivot to enter all terms
 	. improve inform.story
 	  . include SET vs. generated
 	  . cleanup before report
 	  . also in system.story cleanup before launch
-	. en %active => bm_query() => VERY INEFFICIENT
 
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error

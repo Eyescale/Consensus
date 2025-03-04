@@ -185,9 +185,7 @@ char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 	BMParseBegin( parser, state, event, line, column )
 
 #define PARSER_DEFAULT \
-	end \
-	if ( data->errnum ) errnum = data->errnum; \
-	else BMParseDefault
+	BMParseDefault( (errnum=data->errnum) )
 
 #define PARSER_END \
 	BMParseEnd		\

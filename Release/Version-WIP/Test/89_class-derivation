@@ -8,6 +8,5 @@
 	do exit
 
 : system < Cosystem
-
-:"titi"
+: "titi"
 	do ~.

@@ -121,7 +121,7 @@ BM_PARSE_FUNC( bm_parse_expr )
 							f_set( MARKED|INFORMED ) }
 			else if ( *type&DO && !is_f(byref|FILTERED) ) { // FORE loop bgn
 					do_( "?" ) 	s_take }
-		on_( ')' ) if ( is_f(LEVEL|SUB_EXPR|FORE) ) {
+		on_( ')' ) if ( is_f(SUB_EXPR|FORE|LEVEL) ) {
 				if ( is_f(TERNARY) ) {
 					if ( is_f(PRIMED) ) {
 						do_( same )	s_take
@@ -131,13 +131,14 @@ BM_PARSE_FUNC( bm_parse_expr )
 				else if ( is_f(INFORMED) ) {
 					if ( f_parent(SEL_EXPR) && !f_parent(LEVEL) ) {
 						do_( "/_" )	s_take
-								f_pop( stack, INFORMED|EMARKED ) }
+								f_pop( stack, EMARKED|INFORMED ) }
 					else if ( is_f(LEVEL) ) {
 						do_( same )	s_take
-								f_pop( stack, EMARKED|MARKED|INFORMED ) }
+								f_pop( stack, EMARKED|MARKED|INFORMED|FILTERED ) }
 					else if ( is_f(FORE) ) {
 						do_( "?:(_)" )	s_take }
-					else {	do_( same )	s_take
+					else { // is_f(SUB_EXPR)
+						do_( same )	s_take
 								f_pop( stack, INFORMED ) } }
 				else if ( s_at('|') ) {
 					do_(same)	s_take
@@ -569,6 +570,8 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 						f_set( INFORMED )
 		on_( '|' )	do_( "expr" )	s_take
 						f_set( PIPED|PROTECTED )
+		on_( '(' ) if ( s_cmp("!!") ) {
+				do_( "!!$_" )	REENTER }
 		on_separator	; // err
 		on_other	do_( "!!$" )	s_take
 		end
@@ -1037,25 +1040,25 @@ CB_( ExpressionTake )
 			on_( '?' )	errnum = ( *type&ON_X ? ErrMarkMultiple : ErrSyntaxError );
 			on_other	errnum = ErrSyntaxError;
 			end
-		in_other bgn_
-			on_( '\n' ) bgn_
-				in_( "expr" )	errnum = ( is_f( MARKED ) ?
-							(*type&ON && expr(RELEASED)) ? ErrMarkOn :
+		on_( '\n' ) bgn_
+			in_( "expr" )	errnum = ( is_f( MARKED ) ?
+						(*type&ON && expr(RELEASED)) ?
+							ErrMarkOn :
 							*type&DO ? ErrMarkDo : ErrUnexpectedCR :
-							ErrUnexpectedCR );
-				in_other	errnum = ErrUnexpectedCR;
-				end
-			on_( ' ' )	errnum = ErrUnexpectedSpace;
-			on_( '?' )	errnum = ( is_f(NEGATED) ? ErrMarkNegated :
-						   expr(CONTRARY) ? ErrMarkNegated :
-						   is_f(INFORMED) ? ErrMarkGuard :
-						   is_f(MARKED) ? ErrMarkMultiple :
-						   is_f(STARRED) ? ErrMarkStarred :
-						   !f_markable(stack) ? ErrMarkTernary :
-						   ErrSyntaxError );
-			on_( ':' )	errnum = !s_cmp( "~." ) ? ErrPerContrary : ErrSyntaxError;
-			on_other	errnum = ErrSyntaxError;
+						(*type&DO && is_f(FILTERED) && !is_f(byref) ) ?
+							ErrFilteredDo : ErrUnexpectedCR );
+			in_other	errnum = ErrUnexpectedCR;
 			end
+		on_( ' ' )	errnum = ErrUnexpectedSpace;
+		on_( '?' )	errnum = ( is_f(NEGATED) ? ErrMarkNegated :
+					   expr(CONTRARY) ? ErrMarkNegated :
+					   is_f(INFORMED) ? ErrMarkGuard :
+					   is_f(MARKED) ? ErrMarkMultiple :
+					   is_f(STARRED) ? ErrMarkStarred :
+					   !f_markable(stack) ? ErrMarkTernary :
+					   ErrSyntaxError );
+		on_( ':' )	errnum = !s_cmp( "~." ) ? ErrPerContrary : ErrSyntaxError;
+		on_other	errnum = ErrSyntaxError;
 	PARSER_END }
 
 static BM_PARSE_FUNC( bm_parse_string ) {
@@ -1957,6 +1960,7 @@ bm_parse_report( BMParseData *data, BMParseMode mode, int l, int c )
 		err_case( ErrInputScheme, "unsupported input scheme\n" )_narg
 		err_case( ErrOutputScheme, "unsupported output scheme\n" )_narg
 		err_case( ErrMarkDo, "do expression is marked\n" )_narg
+		err_case( ErrFilteredDo, "do expression is filtered\n" )_narg
 		err_case( ErrMarkOn, "on ~( expression is marked\n" )_narg
 		err_case( ErrMarkGuard, "'?' or other mark expression used as ternary guard\n" )_narg
 		err_case( ErrMarkTernary, "'?' requires %%(_) around ternary expression\n" )_narg
