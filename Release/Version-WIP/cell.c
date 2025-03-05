@@ -101,7 +101,7 @@ bm_cell_input( CNCell *cell, CNStory *story ) {
 		//------------------------------------------------------------
 		int event = 0;
 		do {	event = io_getc( &io, event );
-			data.state = data.expr ?
+			data.state = data.expr&EXPR ?
 				bm_parse_expr( event, BM_CMD, &data, NULL ) :
 				bm_parse_ui( event, BM_CMD, &data, NULL );
 			} while ( strcmp(data.state,"") && !data.errnum );

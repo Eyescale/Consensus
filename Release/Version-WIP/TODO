@@ -1,5 +1,12 @@
 See Also: design/story/interactive.story
 
+REFACTOR 'en' command and narrative prototype format
+	. removed sub-expression and ellipsis support from narrative declaration
+	  cf format description in design/specs/bm-EN-command.txt
+	. TODO: simplify deparameterize()
+	. TODO: rewrite operation.c:{ do_enable(), do_enable_x() }
+		with register_variable optimization
+
 DONE - pending system.story finalization/testing
 	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
 	. class derivation - cf Test/89_class-derivation
@@ -18,8 +25,8 @@ DONE - pending system.story finalization/testing
 	  e.g.	do : %((!!,CO),?) : !! ( launch-formula )
 
 TODO
-	. en %active => bm_query() => VERY INEFFICIENT
 	. %!/_/ locate_pivot to enter all terms
+	. en %active => bm_query() => VERY INEFFICIENT
 	. improve inform.story
 	  . include SET vs. generated
 	  . cleanup before report

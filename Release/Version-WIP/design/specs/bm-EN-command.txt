@@ -1,0 +1,34 @@
+Contents
+	'en' command and narrative prototype format description
+
+Description
+	. Now only supporting the following prototype formats
+		: identifier			// class definition
+		: identifier < identifier	// class definition
+		: "string"			// sub-narrative definition
+		: ( expr )			// sub-narrative definition
+		.identifier: "string"		// sub-narrative definition
+		.identifier: ( expr )		// sub-narrative definition
+		.: "string"			// sub-narrative definition
+		.: ( expr )			// sub-narrative definition
+		.: identifier			// sub-narrative definition
+		.: identifier ( expr )		// sub-narrative definition
+		.: &				// post-frame narrative
+
+	   where expr terms can be
+		term: identifier	// including !!, %% and ..
+		    | .identifier	// including .
+		    | .identifier: term
+		    | ( term )
+		    | ( term, term )
+
+	. And enabling expressions
+
+		en expression
+		en identifier( expression )	// NTH: expression( expression )
+		en identifier%( expression )	// NTH: expression%( expression )
+		en .identifier( expression )	// NTH: .expression( expression )
+		en .identifier%( expression )	// NTH: .expression%( expression )
+
+	   where expression can be any queryable expression
+

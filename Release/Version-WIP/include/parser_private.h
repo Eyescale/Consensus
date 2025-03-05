@@ -4,15 +4,13 @@
 #include "parser_flags.h"
 
 // remove leading '.' in ".:func" on '('
-#define S_HACK \
-	if is_f( INFORMED ) { \
-		listItem **s = (listItem **) &data->string->data; \
-		reorderListItem( s ); \
-		popListItem( s ); \
-		reorderListItem( s ); }
+#define S_HACK { \
+	listItem **s = (listItem **) &data->string->data; \
+	reorderListItem( s ); \
+	popListItem( s ); \
+	reorderListItem( s ); }
 
 // these flags characterize expression as a whole
-#define EXPR		1
 #define CONTRARY	(1<<1)
 #define RELEASED	(1<<2)
 #define VMARKED		(1<<3)
@@ -21,6 +19,7 @@
 #define P_LITERAL	(1<<6)
 #define P_EENOV		(1<<7)
 #define P_STRING	(1<<8)
+#define P_PROTO		(1<<9)
 
 #define expr(a)		(data->expr&(a))
 #define expr_set(a)	data->expr|=(a);
@@ -28,7 +27,7 @@
 
 static BMParseFunc
 	bm_parse_string, bm_parse_char, bm_parse_regex,
-	bm_parse_eenov, bm_parse_seq;
+	bm_parse_eenov, bm_parse_seq, bm_parse_proto;
 
 //===========================================================================
 //	private parser macros
@@ -169,6 +168,9 @@ is_base_ternary_term( listItem *stack, int extra )
 //===========================================================================
 #define BM_PARSE_FUNC( func ) \
 char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
+
+#define EXPR_CASE( case, func ) \
+	} else if expr( case ) { return func( event, mode, data, cb );
 
 #define PARSER_BGN( parser ) \
 	CNIO *io = data->io;	\

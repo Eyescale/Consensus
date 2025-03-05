@@ -161,14 +161,16 @@ Consensus B% Version-WIP
 				.id:
 				.
 	:	.id:
-		def	def_
-			def.	def_
-				def<	def<_	base
-		::	.id:
-			::_	::
-			::_.	::_._	.id:
 		:%	:_
-	.id:	:%	:_
+		def_	base
+		def.	def_	base
+			def	def_	base
+				def<.	def<_	base
+	.id:	def_	base
+		:\"	:\"\\	:\"
+			def_	base
+		:%	:_
+		:$	:_
 		:_	def_
 			:%_	:_
 			:$	:_
@@ -180,9 +182,6 @@ Consensus B% Version-WIP
 							:.$,.	:_
 								:.$
 								:.$,..	:_
-	def.	def_
-		def<	def_
-	def_	base
 	cmd	%_	_expr
 		cmd_	_expr
 		else	cmd

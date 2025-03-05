@@ -56,13 +56,14 @@ story_read( char *path, listItem *flags ) {
 	data.story = newRegistry( IndexedByNameRef );
 	addItem( &data.stack.occurrences, data.occurrence );
 	//-----------------------------------------------------------------
+#define is_EXPR	(data.expr&EXPR)
 #define PARSE( event, func ) \
 	data.state = func( event, BM_STORY, &data, build_CB );
 	int event = 0;
 	do {	event = io_read( &io, event );
 		if ( !io.errnum ) {
-			if ( !data.expr ) PARSE( event, bm_parse_cmd )
-			if ( data.expr )  PARSE( event, bm_parse_expr ) }
+			if ( !is_EXPR ) PARSE( event, bm_parse_cmd )
+			if ( is_EXPR )  PARSE( event, bm_parse_expr ) }
 		else data.errnum = io_report( &io );
 		} while ( strcmp( data.state, "" ) && !data.errnum );
 	//-----------------------------------------------------------------
@@ -83,7 +84,7 @@ story_read( char *path, listItem *flags ) {
 //---------------------------------------------------------------------------
 static inline int indentation_check( BMParseData *data );
 static inline int known( listItem *i, char *proto );
-static inline int subclass( char *proto, BMParseData * );
+static inline int subclassing( char *proto, BMParseData * );
 #define BAR_DANGLING( o ) \
 	if ((o) && cast_i(o->data->type)&(IN|ON|ON_X)) return 0;
 
@@ -196,7 +197,7 @@ fprintf( stderr, "end narrative: %s\n", proto );
 #endif
 		Pair *entry = data->entry;
 		if ( !narrative->root->sub ) {
-			if ( subclass( proto, data ) ) {
+			if ( subclassing( proto, data ) ) {
 				if ( data->errnum ) return 0; }
 			else if ( !mode || entry ) {
 				data->errnum = ErrNarrativeEmpty;
@@ -335,7 +336,7 @@ known( listItem *i, char *proto ) {
 	return 0; }
 
 static inline int
-subclass( char *proto, BMParseData *data ) {
+subclassing( char *proto, BMParseData *data ) {
 	if ( !proto ) return 0;
 	proto = p_prune( PRUNE_IDENTIFIER, proto );
 	if ( *proto!='<' ) return 0;

@@ -158,10 +158,11 @@ void
 bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 	if ( !proto || !instance ) {
 		bm_context_rebase( ctx, instance ); return; }
-	else if ( *proto==':' ) {
+	else if ( *proto==':' ) { // :func(_) or :
 		proto = p_prune( PRUNE_IDENTIFIER, proto+1 );
 		if ( !*proto ) {
-			bm_context_rebase( ctx, instance ); return; } }
+			bm_context_rebase( ctx, instance );
+			return; } }
 	else bm_context_rebase( ctx, instance );
 
 	ActualizeData data;
@@ -623,16 +624,15 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 		case '?':
 		case '!':
 			entry = registryLookup( ctx, "?" );
-			if (( i=entry->value )) {
-				CNInstance *e = p[1]=='!' ?
-					((Pair *) i->ptr )->name :
-					((Pair *) i->ptr )->value;
-				if ( !strncmp(p+2,"::",2) ) {
-					listItem *xpn = xpn_make( p+4 );
-					e = xpn_sub( e, xpn );
-					freeListItem( &xpn ); }
-				return e; }
-			return NULL;
+			if (!( i=entry->value )) return NULL;
+			CNInstance *e = p[1]=='!' ?
+				((Pair *) i->ptr )->name :
+				((Pair *) i->ptr )->value;
+			if ( !strncmp(p+2,"::",2) ) {
+				listItem *xpn = xpn_make( p+4 );
+				e = xpn_sub( e, xpn );
+				freeListItem( &xpn ); }
+			return e;
 		case '%':
 			return BMContextSelf( ctx );
 		case '|':

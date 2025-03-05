@@ -37,7 +37,6 @@ p_prune( PruneType type, char *p ) {
 		case '"':  return prune_format( p );
 		case '\'': return prune_char( p );
 		case '/':  return prune_regex( p );
-		case '(':  return prune_sub( p );
 		default:
 			while ( !is_separator(*p) ) p++;
 			return p; } } }
