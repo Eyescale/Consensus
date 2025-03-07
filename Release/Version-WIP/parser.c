@@ -326,7 +326,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 							f_set( INFORMED )
 			end
 		in_( "%!" ) bgn_
-			on_( '/' ) if ( s_at('!') ) {
+			on_( '/' ) if ( s_at('!') && f_selectable(stack) ) {
 					do_( "%!/" )	s_take
 							f_set_BYREF
 							f_push( stack )

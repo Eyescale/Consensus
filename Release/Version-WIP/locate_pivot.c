@@ -13,9 +13,8 @@
 typedef struct {
 	char *expression;
 	unsigned int primary, secondary;
-	listItem **exponent;
-	listItem *level;
-	struct { listItem *flags, *level, *premark; } stack;
+	listItem **exponent, *level, *mark_sel;
+	struct { listItem *flags, *level, *base; } stack;
 	} LocatePivotData;
 
 char *
@@ -41,7 +40,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 		if ( traversal.done==2 ) {
 			freeListItem( &data.stack.flags );
 			freeListItem( &data.stack.level );
-			freeListItem( &data.stack.premark );
+			freeListItem( &data.stack.base );
 			return p; }
 		if ( primary && data.secondary ) {
 			primary = 0;
@@ -69,14 +68,16 @@ case_( bgn_selection_CB )
 	listItem *mark_exp = NULL;
 	bm_locate_emark( p+3, &mark_exp );
 	listItem **exponent = data->exponent;
-	addItem( &data->stack.premark, *exponent );
+	addItem( &data->stack.base, *exponent );
 	while (( mark_exp ))
 		addItem( exponent, popListItem(&mark_exp) );
+	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
 	_continue( p+3 )
 case_( end_selection_CB )
+	freeListItem( &data->mark_sel );
 	xpn_free( data->exponent, data->level );
 	data->level = popListItem( &data->stack.level );
-	listItem *base = popListItem( &data->stack.premark );
+	listItem *base = popListItem( &data->stack.base );
 	if (( base )) xpn_free( data->exponent, base );
 	_break;
 case_( dot_identifier_CB )
@@ -149,18 +150,22 @@ case_( dereference_CB )
 case_( sub_expression_CB )
 	listItem *mark_exp = NULL;
 	char *mark = bm_locate_mark( SUB_EXPR, p+1, &mark_exp );
-	if (( mark_exp )) {
-		if ( !strncmp( mark, "...", 3 ) ||	// %(list,...)
-		     !strncmp( mark+1, ":...", 4 ) ||	// %(list,?:...)
-		     !strncmp( mark+1, ",...", 4 ) ) {	// %((?,...):list)
+	if (( mark ) && (
+		!strncmp( mark, "...", 3 ) ||	// %(list,...)
+		!strncmp( mark+1, ":...", 4 ) || // %(list,?:...)
+		!strncmp( mark+1, ",...", 4 ) ) ) { // %((?,...):list)
 			freeListItem( &mark_exp );
-			if CHECK( LIST_EXPR ) {
+			if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
+			else if CHECK( LIST_EXPR ) {
 				Pair * list_expr = newPair( p, mark );
 				addItem( data->exponent, list_expr );
 				_return( 2 ) }
-			_prune( BM_PRUNE_FILTER, p+1 ) } }
+			_prune( BM_PRUNE_FILTER, p+1 ) }
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+		for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
+			addItem( &mark_exp, i->ptr ); }
 	listItem **exponent = data->exponent;
-	addItem( &data->stack.premark, *exponent );
+	addItem( &data->stack.base, *exponent );
 	while (( mark_exp ))
 		addItem( exponent, popListItem(&mark_exp) );
 	_break
@@ -186,9 +191,8 @@ case_( open_CB )
 	data->level = *data->exponent;
 	_break
 case_( filter_CB )
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
 	xpn_free( data->exponent, data->level );
-	if ( is_f(SEL_EXPR) && !is_f(LEVEL) )
-		_prune( PRUNE_TERM, p+1 );
 	_break
 case_( comma_CB )
 	xpn_free( data->exponent, data->level );
@@ -204,7 +208,7 @@ case_( close_CB )
 		popListItem( data->exponent );
 	data->level = popListItem( &data->stack.level );
 	if ( is_f(SUB_EXPR) && !is_f(LEVEL) ) {
-		listItem *base = popListItem( &data->stack.premark );
+		listItem *base = popListItem( &data->stack.base );
 		if (( base )) xpn_free( data->exponent, base ); }
 	_break;
 BMTraverseCBEnd

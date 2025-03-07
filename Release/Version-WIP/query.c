@@ -571,19 +571,21 @@ case_( dereference_CB )
 	xpn_add( &data->mark_exp, SUB, 1 );
 	_return( 1 )
 case_( sub_expression_CB )
-	char *mark = bm_locate_mark( SUB_EXPR, p+1, &data->mark_exp );
-	if (( data->mark_exp )) {
-		if ( !strncmp( mark, "...", 3 ) )
+	listItem **mark_exp = &data->mark_exp;
+	char *mark = bm_locate_mark( SUB_EXPR, p+1, mark_exp );
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+		for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
+			addItem( mark_exp, i->ptr ); }
+	if (( mark )) {
+		if ( !strncmp( mark, "...", 3 ) ) // %(list,...)
 			data->list_expr = 2;
-		else if ( !strncmp( mark+1, ":...", 4 ) )
+		else if ( !strncmp( mark+1, ":...", 4 ) ) // %(list,?:...)
 			data->list_expr = 4;
-		else if ( !strncmp( mark+1, ",...", 4 ) )
+		else if ( !strncmp( mark+1, ",...", 4 ) ) // %((?,...):list)
 			data->list_expr = 6;
-		if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
-			listItem **mark_exp = &data->mark_exp;
-			for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
-				addItem( mark_exp, i->ptr ); }
 		_return( 1 ) }
+	else if (( data->mark_sel ))
+		_return( 1 )
 	_break
 case_( dot_expression_CB )
 	listItem **stack = &data->stack.exponent;

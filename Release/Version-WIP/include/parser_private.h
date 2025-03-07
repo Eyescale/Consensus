@@ -45,6 +45,8 @@
 	f_contrariable_( flags, stack )
 #define f_outputable( stack ) \
 	f_outputable_( flags, stack )
+#define f_selectable( stack ) \
+	f_selectable_( flags, stack )
 
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {
@@ -131,6 +133,14 @@ f_outputable_( int flags, listItem **stack )
 		return is_base_ternary_term( *stack, VECTOR );
 	else if (( *stack ))
 		return ( is_f(VECTOR) && !(*stack)->next );
+	return 1; }
+
+static inline int
+f_selectable_( int flags, listItem **stack ) {
+	if is_f( SEL_EXPR ) return 0;
+	for ( listItem *i=*stack; i!=NULL; i=i->next ) {
+		flags = cast_i(i->ptr);
+		if is_f( SEL_EXPR ) return 0; }
 	return 1; }
 
 static inline int

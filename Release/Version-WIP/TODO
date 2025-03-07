@@ -2,6 +2,7 @@ See Also: design/story/interactive.story
 
 DONE - pending system.story finalization/testing
 	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
+	. locate_pivot.c: %!/_/ locate_pivot now enters all terms
 	. class derivation - cf Test/89_class-derivation
 		: cosystem < class
 	  where class overloads cosystem's base AND post-frame narratives
@@ -18,7 +19,6 @@ DONE - pending system.story finalization/testing
 	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
 
 TODO
-	. %!/_/ locate_pivot to enter all terms
 	. improve inform.story
 	  . include SET vs. generated
 	  . cleanup before report
@@ -156,6 +156,7 @@ DONE
 		%!/((?,CO),!):%((?,.),%?)/
 	  is the same as      ^-----v
 				 %((%((?,.),%?),CO),?)
+	  NOTE: sub-selection not authorized - cf parser.c:f_selectable()
 	. p_prune.c: prune_term no longer call prune_ternary if *p==':'
 	. FIXED locate_mark.c in SUB_EXPR => filter_CB return if !is_f(LEVEL)
 	. implemented cache in db_arena.c
