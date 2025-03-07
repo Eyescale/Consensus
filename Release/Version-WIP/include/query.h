@@ -19,7 +19,8 @@ typedef BMQTake \
 	BMQueryCB( CNInstance *, BMContext *, void * );
 
 CNInstance *bm_query( int, char *, BMContext *, BMQueryCB, void * );
-CNInstance *bm_query_assignee( int, char *, BMContext * );
+CNInstance *bm_query_assignee( int type, char *, BMContext * );
+CNInstance *bm_query_assigner( char *, BMContext * );
 
 typedef struct {
 	BMContext *ctx;

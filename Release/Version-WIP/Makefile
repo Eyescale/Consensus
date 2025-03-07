@@ -15,7 +15,6 @@ SRCS =	story.c \
 				db_op.c \
 		operation.c \
 			deternarize.c \
-			deparameterize.c \
 			instantiate.c \
 				eenov.c \
 					locate_emark.c \

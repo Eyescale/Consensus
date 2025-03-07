@@ -151,37 +151,33 @@ Consensus B% Version-WIP
 	base	""
 		:
 		.
-		case	expr
 		cmd
-	.	.%	.%$	.%$_	_expr
+		case	expr
+	.	.$ 	.$_
+		.$_	_expr
+			.:
+			.
+		.%	.%$	.%$_	_expr
 				.%$.	_expr
 					.%$
 					.
-		.$ 	.$_	_expr
-				.id:
-				.
-	:	.id:
-		:%	:_
-		def_	base
-		def.	def_	base
-			def	def_	base
-				def<.	def<_	base
-	.id:	def_	base
-		:\"	:\"\\	:\"
-			def_	base
-		:%	:_
-		:$	:_
+	:	.:
+		def_
+		def.	def_
+			def	def_
+				def<.	def<_
+	.:	def_
+		:\"	def_
+			:\"\\	:\"
+		:$	:$.	:_
+				def_
 		:_	def_
+			:._	:_
+				:.$	:_
+			:!_	:_
 			:%_	:_
-			:$	:_
-			:.	:_
-				:..	:_
-					:...	:_
-				:.$	:.$_	:.$:	:_
-						:.$,	:_
-							:.$,.	:_
-								:.$
-								:.$,..	:_
+			:$_	:_
+	def_	base
 	cmd	%_	_expr
 		cmd_	_expr
 		else	cmd

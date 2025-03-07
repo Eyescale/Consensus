@@ -1,32 +1,24 @@
 See Also: design/story/interactive.story
 
-REFACTOR 'en' command and narrative prototype format
-	. removed sub-expression and ellipsis support from narrative declaration
-	  cf format description in design/specs/bm-EN-command.txt
-	. TODO: simplify deparameterize()
-	. TODO: rewrite operation.c:{ do_enable(), do_enable_x() }
-		with register_variable optimization
-
 DONE - pending system.story finalization/testing
 	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
 	. class derivation - cf Test/89_class-derivation
 		: cosystem < class
 	  where class overloads cosystem's base AND post-frame narratives
-	. parser.c: support expression
-			?::locale
-		where locale references string
-	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
-	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
-	  usage - cf. Examples/6_System/README.txt:#system.story
-		.: ascribe(( .pivot, DO ), .occurrence ) // set class origin
-			do (( pivot, CO ), ?::occurrence )
 	. implemented class-actor assignment
 			do :_: !! (_)
 	  e.g.	do : %((!!,CO),?) : !! ( launch-formula )
+	. parser.c: support expression
+			?::locale // retrieves string narrative class (origin)
+		where locale references string
+	  usage - cf. Examples/6_System/README.txt:#system.story
+		.: ascribe(( .pivot, DO ), .occurrence )
+			do (( pivot, CO ), ?::occurrence )
+	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
+	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
 
 TODO
 	. %!/_/ locate_pivot to enter all terms
-	. en %active => bm_query() => VERY INEFFICIENT
 	. improve inform.story
 	  . include SET vs. generated
 	  . cleanup before report
@@ -150,6 +142,9 @@ NOTES
 		// post-frame
 
 DONE
+	. refactored 'en' command and narrative prototype format
+	  removed sub-expression and ellipsis support from narrative declaration
+	  - cf format description in design/specs/bm-EN-command.txt
 	. db_arena_makeup() now puts whole identifier(s) into string
 	. Base/btree.c: integrated caching
 	. parser_io.c: implemented #define term sequence

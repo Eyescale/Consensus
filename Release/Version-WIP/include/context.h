@@ -17,6 +17,8 @@ int		bm_context_update( BMContext * );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
 void		bm_context_release( BMContext * );
 
+int		proto_verify( char *, CNInstance *, BMContext * );
+
 BMMark *	bm_mark( char *, char *, unsigned int flags, void * );
 BMMark *	bm_lmark( Pair * );
 void		bm_vmark( BMContext *, char *, BMMark * );
@@ -35,6 +37,8 @@ int		bm_register_locales( BMContext *, char * );
 listItem *	bm_inform( BMContext *, listItem **, CNDB * );
 CNInstance *	bm_translate( BMContext *, CNInstance *, CNDB *, int );
 void		bm_untag( BMContext *, char * );
+
+void *		BMContextRVTest( BMContext *, char *, int * );
 
 static inline Pair * bm_tag( BMContext *ctx, char *tag, void *value ) {
 	return registryRegister( ctx, strmake(tag), value ); }

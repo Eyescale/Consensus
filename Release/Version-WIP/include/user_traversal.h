@@ -1,5 +1,5 @@
-#ifndef TRAVERSAL_H
-#define TRAVERSAL_H
+#ifndef USER_TRAVERSAL_H
+#define USER_TRAVERSAL_H
 
 #include "entity.h"
 #include "string_util.h"
@@ -30,4 +30,4 @@ typedef enum {
 typedef char *BMTraversal( char *, BMTraverseData *, int );
 typedef BMCBTake BMTraverseCB( BMTraverseData *, char **p, int flags, int f_next );
 
-#endif	// TRAVERSAL_H
+#endif	// USER_TRAVERSAL_H

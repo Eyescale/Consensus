@@ -841,7 +841,7 @@ verify_variable( CNInstance *e, char *expression, BMQueryData *data )
 	return BMQ_CONTINUE; }
 
 //===========================================================================
-//	bm_query_assignee
+//	bm_query_assignee / bm_query_assigner
 //===========================================================================
 static XPTraverseCB verify_assignee;
 
@@ -850,49 +850,39 @@ bm_query_assignee( int type, char *expression, BMContext *ctx )
 /*
 	Assumption: expression not "~."
 */ {
-	if ( !type ) {
-		// bm_case() usage
-		CNInstance *e = BMContextRVV( ctx, "*^^" );
-		if ( !e ) return NULL;
-		BMQueryData data;
-		memset( &data, 0, sizeof(data) );
-		data.ctx = ctx;
-		data.db = BMContextDB( ctx );
-		return xp_verify( e, expression, &data ) ? e : NULL; }
-	else {
-		// bm_switch() usage
-		CNDB *db = BMContextDB( ctx );
-		BMQueryData data;
-		memset( &data, 0, sizeof(data) );
-		data.ctx = ctx;
-		data.db = db;
-		CNInstance *star = db_lookup( 0, "*", db );
-		if ( !star ) return NULL;
-		data.star = star;
-		data.type = type;
-		expression++; // skip leading ':'
-		if ( !pivot_query( 0, expression, &data, verify_assignee, NULL ) ) {
-			switch ( type ) {
-			case BM_CONDITION: ;
-				for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
-					CNInstance *e = i->ptr, *f;
-					if ( db_private(0,e,db) ) continue;
-					if ( xp_verify( e->sub[1], expression, &data ) ) {
-						// return ((*,.),.) or (*,.)
-						return (( f=assignment( e, db ) )) ? f : e; } }
-				return NULL;
-			default: ;
-				listItem *s = NULL;
-				CNInstance *fallback = NULL;
-				for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
-					CNInstance *f = CNSUB( e, 0 );
-					if ( f==star ) fallback = e;
-					if ( !f || f->sub[0]!=star ) continue;
-					if ( xp_verify( f->sub[ 1 ], expression, &data ) ) {
-						freeListItem( &s );
-						return e; } } // return ((*,.),.)
-				return fallback; } } // return (*,.)
-		return data.instance; } }
+	// bm_switch() usage
+	CNDB *db = BMContextDB( ctx );
+	BMQueryData data;
+	memset( &data, 0, sizeof(data) );
+	data.ctx = ctx;
+	data.db = db;
+	CNInstance *star = db_lookup( 0, "*", db );
+	if ( !star ) return NULL;
+	data.star = star;
+	data.type = type;
+	expression++; // skip leading ':'
+	if ( !pivot_query( 0, expression, &data, verify_assignee, NULL ) ) {
+		switch ( type ) {
+		case BM_CONDITION: ;
+			for ( listItem *i=star->as_sub[0]; i!=NULL; i=i->next ) {
+				CNInstance *e = i->ptr, *f;
+				if ( db_private(0,e,db) ) continue;
+				if ( xp_verify( e->sub[1], expression, &data ) ) {
+					// return ((*,.),.) or (*,.)
+					return (( f=assignment( e, db ) )) ? f : e; } }
+			return NULL;
+		default: ;
+			listItem *s = NULL;
+			CNInstance *fallback = NULL;
+			for ( CNInstance *e=DBLog(1,0,db,&s); e!=NULL; e=DBLog(0,0,db,&s) ) {
+				CNInstance *f = CNSUB( e, 0 );
+				if ( f==star ) fallback = e;
+				if ( !f || f->sub[0]!=star ) continue;
+				if ( xp_verify( f->sub[ 1 ], expression, &data ) ) {
+					freeListItem( &s );
+					return e; } } // return ((*,.),.)
+			return fallback; } } // return (*,.)
+	return data.instance; }
 
 static BMQTake
 verify_assignee( CNInstance *e, char *expression, BMQueryData *data )
@@ -922,4 +912,18 @@ verify_assignee( CNInstance *e, char *expression, BMQueryData *data )
 				data->instance = (( g=assignment(f,db) )) ? g: f;
 				return BMQ_DONE; } } }
 	return BMQ_CONTINUE; }
+
+CNInstance *
+bm_query_assigner( char *expression, BMContext *ctx )
+/*
+	Assumption: expression not "~."
+*/ {
+	// bm_case() usage
+	CNInstance *e = BMContextRVV( ctx, "*^^" );
+	if ( !e ) return NULL;
+	BMQueryData data;
+	memset( &data, 0, sizeof(data) );
+	data.ctx = ctx;
+	data.db = BMContextDB( ctx );
+	return xp_verify( e, expression, &data ) ? e : NULL; }
 

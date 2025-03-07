@@ -25,10 +25,6 @@
 #define expr_set(a)	data->expr|=(a);
 #define expr_clr(a)	data->expr&=~(a);
 
-static BMParseFunc
-	bm_parse_string, bm_parse_char, bm_parse_regex,
-	bm_parse_eenov, bm_parse_seq, bm_parse_proto;
-
 //===========================================================================
 //	private parser macros
 //===========================================================================

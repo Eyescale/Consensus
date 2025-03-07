@@ -11,7 +11,6 @@
 #include "string_util.h"
 #include "operation.h"
 #include "deternarize.h"
-#include "deparameterize.h"
 #include "eenov.h"
 #include "expression.h"
 #include "instantiate.h"
@@ -330,66 +329,51 @@ do_action( char *expression, BMContext *ctx, CNStory *story ) {
 //---------------------------------------------------------------------------
 //	do_enable
 //---------------------------------------------------------------------------
+typedef struct { listItem *narratives; Registry *subs; } EnableData;
 static inline int enable_pf( listItem *, Registry * );
 static BMQueryCB enable_CB;
-typedef struct {
-	CNNarrative *narrative;
-	void *key;
-	Registry *subs;
-	Pair *entry;
-	} EnableData;
-static inline void
-query( char *q, BMContext *ctx, CNNarrative *n, void *key, Registry *subs ) {
-	EnableData data = { n, key, subs, NULL };
-	bm_query( BM_CONDITION, q, ctx, enable_CB, &data ); }
 
 static int
 do_enable( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
+	else if ( !narratives->next ) return 1;
 	DBG_DO_ENABLE
-	// post-frame narrative query
 	if ( *en=='&' ) {
 		Pair *entry = BMContextBaseClass( ctx );
 		return ((( entry ) && enable_pf( entry->value, subs )) ||
 			enable_pf( narratives, subs ) ); }
-	// en query
+	else {
+		EnableData data = { narratives, subs };
+		int rv=1; void *rvv=BMContextRVTest( ctx, en, &rv );
+		switch ( rv ) {
+		case 0:	bm_query( BM_CONDITION, en, ctx, enable_CB, &data ); break;
+		case 1: enable_CB( rvv, ctx, &data ); break;
+		case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
+				enable_CB( i->ptr, ctx, &data ); } }
+	return 1; }
+
+static BMQTake
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	EnableData *data = user_data;
+	Registry *subs = data->subs;
+	listItem *narratives = data->narratives;
+	uint *key = cnIsShared(e) ? CNSharedKey( e ) : NULL;
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;
 		if ( !strcmp(p,".:&") ) continue;
 		p = p_prune( PRUNE_IDENTIFIER, p+1 );
 		p++; // skip leading ':'
-		CNString *s = NULL;
 		switch ( *p ) {
 		case '"':
-			query( en, ctx, narrative, db_arena_key(p), subs );
-			break;
+			if ( !db_arena_verify(key,p) ) continue;
+			registryRegister( subs, narrative, newItem(e) );
+			return BMQ_CONTINUE;
 		default:
-			// build query string "proto:en"
-			s = bm_deparameterize( p );
-			s_add( ":" )
-			s_add( en )
-			q = StringFinish( s, 0 );
-			DBG_PASS_THROUGH
-			query( q, ctx, narrative, NULL, subs );
-			freeString( s ); } }
-	return 1; }
-
-static BMQTake
-enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	EnableData *data = user_data;
-	if (( data->key )) {
-		uint *master = (uint *) &data->key;
-		uint *key = CNSharedKey( e );
-		if ( cnIsShared(e) && key[0]==master[0] && key[1]==master[1] ) {
-			registryRegister( data->subs, data->narrative, newItem(e) );
-			return BMQ_DONE; } }
-	else {
-		Pair *entry = data->entry;
-		if ( !entry ) {
-			entry = registryRegister( data->subs, data->narrative, NULL );
-			data->entry = entry; }
-		addIfNotThere((listItem **) &entry->value, e ); }
+			if ( !proto_verify(p,e,ctx) ) continue;
+			Pair *entry = registryLookup( subs, narrative );
+			if (( entry )) addIfNotThere((listItem **) &entry->value, e );
+			else registryRegister( subs, narrative, newItem(e) ); } }
 	return BMQ_CONTINUE; }
 
 static inline int
@@ -406,21 +390,21 @@ enable_pf( listItem *narratives, Registry *subs ) {
 //	do_enable_x
 //---------------------------------------------------------------------------
 static inline int enable_x( char *, BMContext *, listItem *, Registry * );
+typedef struct {
+	CNNarrative *narrative; char *p;
+	Registry *subs; Pair *entry;
+	} EnableXData;
+static BMQueryCB enable_x_CB;
 
 static int
 do_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE_X
-	if ( *en=='.' ) { // we have en: ".func(_)" or ".func%(_)"
-		Pair *entry = BMContextBaseClass( ctx );
-		if (( entry )) narratives = entry->value;
-		return enable_x( en+1, ctx, narratives, subs ); }
-	else {
-		int retval = enable_x( en, ctx, narratives, subs );
-		if ( retval ) return 1;
-		Pair *entry = BMContextBaseClass( ctx );
-		if (( entry )) return enable_x( en, ctx, entry->value, subs );
-		return 0; } }
+	if ( *en=='.' ) en++; // ".func(_)" or ".func%(_)"
+	else if ( enable_x( en, ctx, narratives, subs ) ) return 1;
+	Pair *entry = BMContextBaseClass( ctx );
+	if (( entry )) return enable_x( en, ctx, entry->value, subs );
+	return 1; }
 
 static inline int
 enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
@@ -432,16 +416,25 @@ enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 		if ( !strcomp( p, en, 1 ) ) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			q = p_prune( PRUNE_IDENTIFIER, en );
-			// build query string "(params):expr"
-			CNString *s = bm_deparameterize( p );
-			s_add( ":" )
-			s_add( q )
-			q = StringFinish( s, 0 );
-			query( q, ctx, narrative, NULL, subs );
-			freeString( s );
-			// multiple definitions allowed but not executed
+			EnableXData data = { narrative, p, subs, NULL };
+			int rv=( *q=='(' ? 1 : 0 ); void *rvv;
+			if ( rv ) rvv = BMContextRVTest( ctx, q+1, &rv );
+			switch ( rv ) {
+			case 0:	bm_query( BM_CONDITION, q, ctx, enable_x_CB, &data ); break;
+			case 1: enable_x_CB( rvv, ctx, &data ); break;
+			case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
+					enable_x_CB( i->ptr, ctx, &data ); }
 			return 1; } }
 	return 0; }
+
+static BMQTake
+enable_x_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	EnableXData *data = user_data;
+	if ( proto_verify( data->p, e, ctx ) ) {
+		Pair *entry = data->entry;
+		if (( entry )) addIfNotThere((listItem **) &entry->value, e );
+		else data->entry = registryRegister( data->subs, data->narrative, newItem(e) ); }
+	return BMQ_CONTINUE; }
 
 //---------------------------------------------------------------------------
 //	do_input

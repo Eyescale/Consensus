@@ -30,7 +30,7 @@ static inline int
 bm_case( char *expression, BMContext *ctx ) {
 	return !strcmp( expression, "." ) ?  1 :
 		!strcmp( expression, "~." ) ? !BMContextRVV( ctx, "*^^" ) :
-		!!bm_query_assignee( 0, expression, ctx ); }
+		!!bm_query_assigner( expression, ctx ); }
 
 //---------------------------------------------------------------------------
 //	bufferized output

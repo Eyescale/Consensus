@@ -15,4 +15,11 @@ char *		db_arena_identifier( CNInstance * );
 CNInstance *	db_arena_translate( CNInstance *, CNDB *, int );
 void		db_arena_unref( CNDB * );
 
+static inline int db_arena_verify( uint *master, char *code ) {
+	if ( !master ) return 0;
+	union { uint value[2]; void *ptr; } key;
+	key.ptr = db_arena_key( code );
+	return ( master[0]==key.value[0] && master[1]==key.value[1] ); }
+
+
 #endif // DB_ARENA_H

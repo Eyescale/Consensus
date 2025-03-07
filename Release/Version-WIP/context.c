@@ -8,9 +8,7 @@
 #include "instantiate.h"
 #include "parser.h"
 #include "errout.h"
-
 #include "context.h"
-#include "actualize_traversal.h"
 
 //===========================================================================
 //	newContext / freeContext
@@ -142,20 +140,11 @@ bm_context_update( BMContext *ctx ) {
 //===========================================================================
 //	bm_context_actualize
 //===========================================================================
-/*
-	invokes actualize_param() on each .param found in expression, plus
-	sets context's perso to context's (self,perso) in case of varargs.
-	Note that we do not enter negated, starred or %(...) expressions
-*/
-typedef struct {
-	CNInstance *instance;
-	BMContext *ctx;
-	listItem *exponent, *level;
-	struct { listItem *flags, *level; } stack;
-	} ActualizeData;
+static void proto_set( char *, CNInstance *, BMContext * );
 
 void
 bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
+	// set perso
 	if ( !proto || !instance ) {
 		bm_context_rebase( ctx, instance ); return; }
 	else if ( *proto==':' ) { // :func(_) or :
@@ -164,92 +153,102 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 			bm_context_rebase( ctx, instance );
 			return; } }
 	else bm_context_rebase( ctx, instance );
-
-	ActualizeData data;
-	memset( &data, 0, sizeof(ActualizeData) );
-	data.instance = instance;
-	data.ctx = ctx;
-	
-	BMTraverseData traversal;
-	traversal.user_data = &data;
-	traversal.stack = &data.stack.flags;
-	traversal.done = FILTERED;
-	
-	actualize_traversal( proto, &traversal, FIRST );
-	DBG_ACTUALIZE_TRAVERSAL }
+	// set locales
+	proto_set( proto, instance, ctx ); }
 
 //---------------------------------------------------------------------------
-//	actualize_traversal
+//	proto_set / proto_verify
 //---------------------------------------------------------------------------
-static void actualize_param( char *, CNInstance *, listItem *, BMContext * );
-
-BMTraverseCBSwitch( actualize_traversal )
-case_( sub_expression_CB )
-	_prune( BM_PRUNE_FILTER, p+1 )
-case_( dot_expression_CB )
-	xpn_add( &data->exponent, SUB, 1 );
-	_break
-case_( open_CB )
-	if is_f_next( COUPLE )
-		xpn_add( &data->exponent, SUB, 0 );
-	addItem( &data->stack.level, data->level );
-	data->level = data->exponent;
-	_break
-case_( filter_CB )
-	xpn_free( &data->exponent, data->level );
-	_break
-case_( comma_CB )
-	xpn_free( &data->exponent, data->level );
-	xpn_set( data->exponent, SUB, 1 );
-	_break
-case_( close_CB )
-	xpn_free( &data->exponent, data->level );
-	if is_f( COUPLE )
-		popListItem( &data->exponent );
-	if is_f( DOT )
-		popListItem( &data->exponent );
-	data->level = popListItem( &data->stack.level );
-	_break;
-case_( wildcard_CB )
-#if 0 // requires more thinking
-	if is_f( ELLIPSIS ) {
-		listItem *xpn = data->exponent;
-		if ((cast_i(xpn->ptr)&1) && !xpn->next ) { // B% vararg
-			BMContext *ctx = data->ctx;
-			bm_context_rebase( ctx, db_instantiate(
-				BMContextSelf(ctx),
-				BMContextPerso(ctx),
-				BMContextDB(ctx))); } }
-#endif
-	_break
-case_( dot_identifier_CB )
-	 actualize_param( p+1, data->instance, data->exponent, data->ctx );
-	_break
-BMTraverseCBEnd
-
-//---------------------------------------------------------------------------
-//	actualize_param
-//---------------------------------------------------------------------------
-#define inand( i, operand ) ((i) && !( operand & cast_i(i->ptr) ))
-
 static void
-actualize_param( char *p, CNInstance *instance, listItem *exponent, BMContext *ctx ) {
-	// Special case: ( .identifier, ... )
-	if ( inand( exponent, 1 ) ) {
-		char *q = p;
-		do q++; while ( !is_separator(*q) );
-		if ( !strncmp(q,",...",4) ) {
-			CNInstance *e;
-			while (( e=CNSUB(instance,0) )) instance = e;
-			goto RETURN; } }
-	// General case
-	listItem *xpn = NULL; // reorder exponent
-	for ( listItem *i=exponent; i!=NULL; i=i->next )
-		addItem( &xpn, i->ptr );
-	for ( int exp;( exp=pop_item( &xpn ) );)
-		instance = instance->sub[ exp& 1 ];
-RETURN:
-	registryRegister( BMContextCurrent(ctx), p, instance ); }
+proto_set( char *p, CNInstance *instance, BMContext *ctx ) {
+	Registry *locales = BMContextCurrent( ctx );
+	struct { listItem *instance, *flags; } stack = { NULL, NULL };
+	int coupled = 0;
+	while ( *p )
+		switch ( *p ) {
+		case '(':
+			if ( !p_single(p) ) {
+				addItem( &stack.instance, instance );
+				instance = instance->sub[ 0 ];
+				add_item( &stack.flags, coupled );
+				coupled = 1; }
+			else {
+				add_item( &stack.flags, coupled );
+				coupled = 0; }
+			p++; break;
+		case ',':
+			instance = stack.instance->ptr;
+			instance = instance->sub[ 1 ];
+			p++; break;
+		case ')':
+			if ( coupled ) instance = popListItem( &stack.instance );
+			coupled = pop_item( &stack.flags );
+			p++; break;
+		case '.':
+			p++;
+			if ( *p=='.' ) { p++; break; }
+			if ( !is_separator(*p) ) {
+				registryRegister( locales, p, instance );
+				p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
+			break;
+		case ':':
+			p++; break;
+		case '%':
+		case '!':
+			p+=2; break;
+		default:
+			p = p_prune( PRUNE_IDENTIFIER, p+1 ); } }
+
+int
+proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
+	struct { listItem *instance, *flags; } stack = { NULL, NULL };
+	CNDB *db = BMContextDB( ctx );
+	int coupled = 0;
+	while ( *p )
+		switch ( *p ) {
+		case '(':
+			if ( !p_single(p) ) {
+				addItem( &stack.instance, instance );
+				instance = CNSUB( instance, 0 );
+				if ( !instance ) goto FAIL;
+				add_item( &stack.flags, coupled );
+				coupled = 1; }
+			else {
+				add_item( &stack.flags, coupled );
+				coupled = 0; }
+			p++; break;
+		case ',':
+			instance = stack.instance->ptr;
+			instance = CNSUB( instance, 1 );
+			p++; break;
+		case ')':
+			if ( coupled ) instance = popListItem( &stack.instance );
+			coupled = pop_item( &stack.flags );
+			p++; break;
+		case '.':
+			p++;
+			if ( *p=='.' ) {
+				if ( instance!=BMContextParent(ctx) ) goto FAIL;
+				p++; break; }
+			if ( !is_separator(*p) )
+				p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			break;
+		case ':':
+			p++; break;
+		case '%':
+			if ( instance!=BMContextSelf(ctx) ) goto FAIL;
+			p+=2; break;
+		case '!':
+			if ( !cnIsShared(instance) ) goto FAIL;
+			p+=2; break;
+		default:
+			if ( instance!=db_lookup(0,p,db) ) goto FAIL;
+			p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
+	return 1;
+FAIL:
+	freeListItem( &stack.instance );
+	freeListItem( &stack.flags );
+	return 0; }
 
 //===========================================================================
 //	bm_context_release
@@ -660,6 +659,18 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 
 	*rv = 0; // not a register variable
 	return NULL; }
+
+void *
+BMContextRVTest( BMContext *ctx, char *p, int *rv )
+/*
+	optimization - cf operation.c:{ do_enable(), do_enable_x() }
+*/ {
+	void *rvv = lookup_rv( ctx, p, rv );
+	switch ( *rv ) {
+	case 1: case 3:
+		switch ( *p_prune( PRUNE_FILTER, p ) ) {
+		case '\0': case ')': return rvv; } }
+	*rv=0; return NULL; }
 
 //===========================================================================
 //	bm_match

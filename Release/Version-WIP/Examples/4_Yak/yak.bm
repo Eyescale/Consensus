@@ -9,7 +9,7 @@
 
 	else in : IN  // input
 		in .( ?, base )
-			en .
+			en (((schema,.),.),.)
 			in .READY
 				on ~( %%, ? ) < ..
 					do : record : (*record,%<?>)

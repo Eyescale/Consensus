@@ -7,6 +7,10 @@
 #include "parser.h"
 #include "parser_private.h"
 
+static BMParseFunc
+	bm_parse_char, bm_parse_regex, bm_parse_seq,
+	bm_parse_eenov, bm_parse_string;
+
 //===========================================================================
 //	bm_parse_expr
 //===========================================================================
@@ -1495,6 +1499,8 @@ CB_( ExpressionTake )
 //===========================================================================
 //	bm_parse_cmd
 //===========================================================================
+static BMParseFunc bm_parse_proto;
+
 BM_PARSE_FUNC( bm_parse_cmd )
 /*
 	Assumption: mode==BM_STORY, !expr( EXPR )
@@ -1718,7 +1724,6 @@ BM_PARSE_FUNC( bm_parse_proto )
 		ons( "\"(" )	do_( ".:" )	REENTER
 						s_add( ".this:" )
 		on_( '\n' )	do_( "def_" )	REENTER
-		on_( '%' )	do_( ":%" )	s_add( ".this:%" )
 		on_separator	; // err
 		on_other	do_( "def." )	s_take
 		end
