@@ -14,7 +14,7 @@ static BMParseFunc
 //===========================================================================
 //	bm_parse_expr
 //===========================================================================
-BM_PARSE_FUNC( bm_parse_expr )
+PARSER_FUNC( bm_parse_expr )
 /*
 	Assumption: data->expr & EXPR
 */ {
@@ -1068,7 +1068,7 @@ CB_( ExpressionTake )
 		on_other	errnum = ErrSyntaxError;
 	PARSER_END }
 
-static BM_PARSE_FUNC( bm_parse_string ) {
+static PARSER_FUNC( bm_parse_string ) {
 	PARSER_BGN( "bm_parse_string" )
 	in_( "$" ) bgn_
 		on_( '(' )	do_( "$(" )	s_take
@@ -1131,7 +1131,7 @@ static BM_PARSE_FUNC( bm_parse_string ) {
 		end
 	PARSER_DEFAULT_END }
 	
-static BM_PARSE_FUNC( bm_parse_char ) {
+static PARSER_FUNC( bm_parse_char ) {
 	PARSER_BGN( "bm_parse_char" )
 	in_( "char" ) bgn_
 		on_( '\\' )	do_( "char\\" )	s_take
@@ -1154,7 +1154,7 @@ static BM_PARSE_FUNC( bm_parse_char ) {
 			end
 	PARSER_DEFAULT_END }
 
-static BM_PARSE_FUNC( bm_parse_regex ) {
+static PARSER_FUNC( bm_parse_regex ) {
 	PARSER_BGN( "bm_parse_regex" )
 	in_( "/" ) bgn_
 		on_( '/' ) if ( !is_f(LEVEL) ) {
@@ -1203,7 +1203,7 @@ static BM_PARSE_FUNC( bm_parse_regex ) {
 			end
 	PARSER_DEFAULT_END }
 
-static BM_PARSE_FUNC( bm_parse_eenov ) {
+static PARSER_FUNC( bm_parse_eenov ) {
 	PARSER_BGN( "bm_parse_eenov" )
 	in_( "expr" ) bgn_
 		ons( " \t" )	do_( same )
@@ -1312,7 +1312,7 @@ static BM_PARSE_FUNC( bm_parse_eenov ) {
 			end
 	PARSER_END }
 
-static BM_PARSE_FUNC( bm_parse_seq ) {	// list and literal
+static PARSER_FUNC( bm_parse_seq ) {	// list and literal
 	PARSER_BGN( "bm_parse_seq" )
 	in_( "(:" ) bgn_
 		ons( "(\n" )	; // err
@@ -1365,7 +1365,7 @@ static BM_PARSE_FUNC( bm_parse_seq ) {	// list and literal
 //===========================================================================
 //	bm_parse_load
 //===========================================================================
-BM_PARSE_FUNC( bm_parse_load )
+PARSER_FUNC( bm_parse_load )
 /*
 	Assumption: mode==BM_LOAD or mode==BM_INPUT => do not involve
 	. VECTOR, CARRY, PIPED, SUB_EXPR, MARKED, ASSIGN, TERNARY,
@@ -1501,7 +1501,7 @@ CB_( ExpressionTake )
 //===========================================================================
 static BMParseFunc bm_parse_proto;
 
-BM_PARSE_FUNC( bm_parse_cmd )
+PARSER_FUNC( bm_parse_cmd )
 /*
 	Assumption: mode==BM_STORY, !expr( EXPR )
 */ {
@@ -1714,7 +1714,7 @@ CB_if_( OccurrenceTake ) {
 //---------------------------------------------------------------------------
 //	bm_parse_proto
 //---------------------------------------------------------------------------
-BM_PARSE_FUNC( bm_parse_proto )
+PARSER_FUNC( bm_parse_proto )
 /*
 	Assumption: mode==BM_STORY, data->expr==P_PROTO
 */ {
@@ -1849,7 +1849,7 @@ CB_if_( ProtoSet ) {		do_( "base" )	TAB_CURRENT = 0;
 //===========================================================================
 //	bm_parse_ui
 //===========================================================================
-BM_PARSE_FUNC( bm_parse_ui ) {
+PARSER_FUNC( bm_parse_ui ) {
 	PARSER_BGN( "bm_parse_ui" )
 	in_( "base" ) bgn_
 		on_( EOF )	do_( "" )

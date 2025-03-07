@@ -165,18 +165,7 @@ db_arena_encode( CNString *code, CNString *string, Pair *origin )
 
 static inline void
 set_origin( IndexData *data, char *name ) {
-	if ( !name ) return;
-	Registry *ref = data->ref;
-	if (( ref->entries )) {
-		Pair *entry = ref->entries->ptr;
-		if ( !entry->name ) { // already set
-			fprintf( stderr, "B%%: Warning: string narrative\n"
-				"\t: \"%s\"\n"
-				"multiple locations: '%s' - was '%s'\n",
-				data->s, name, (char *) entry->value );
-			entry->value = name;
-			return; } }
-	addItem( &ref->entries, newPair(NULL,name) ); }
+	if (( name )) registryRegister( data->ref, NULL, name ); }
 
 static int
 strcmp_CB( uint key[2], void *value, void *user_data ) {

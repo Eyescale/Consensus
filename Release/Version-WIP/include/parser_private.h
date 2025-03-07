@@ -170,9 +170,9 @@ is_base_ternary_term( listItem *stack, int extra )
 	return 1; }
 
 //===========================================================================
-//	BM_PARSE_FUNC / PARSER_BGN / PARSER_END
+//	PARSER_FUNC / PARSER_BGN / PARSER_END
 //===========================================================================
-#define BM_PARSE_FUNC( func ) \
+#define PARSER_FUNC( func ) \
 char *func( int event, BMParseMode mode, BMParseData *data, BMParseCB cb )
 
 #define EXPR_CASE( case, func ) \

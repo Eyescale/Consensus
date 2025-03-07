@@ -140,7 +140,7 @@ bm_context_update( BMContext *ctx ) {
 //===========================================================================
 //	bm_context_actualize
 //===========================================================================
-static void proto_set( char *, CNInstance *, BMContext * );
+static inline int proto_set( char *, CNInstance *, BMContext *, int check );
 
 void
 bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
@@ -154,55 +154,13 @@ bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
 			return; } }
 	else bm_context_rebase( ctx, instance );
 	// set locales
-	proto_set( proto, instance, ctx ); }
+	proto_set( proto, instance, ctx, 0 ); }
 
-//---------------------------------------------------------------------------
-//	proto_set / proto_verify
-//---------------------------------------------------------------------------
-static void
-proto_set( char *p, CNInstance *instance, BMContext *ctx ) {
-	Registry *locales = BMContextCurrent( ctx );
+static inline int
+proto_set( char *p, CNInstance *instance, BMContext *ctx, int check ) {
 	struct { listItem *instance, *flags; } stack = { NULL, NULL };
-	int coupled = 0;
-	while ( *p )
-		switch ( *p ) {
-		case '(':
-			if ( !p_single(p) ) {
-				addItem( &stack.instance, instance );
-				instance = instance->sub[ 0 ];
-				add_item( &stack.flags, coupled );
-				coupled = 1; }
-			else {
-				add_item( &stack.flags, coupled );
-				coupled = 0; }
-			p++; break;
-		case ',':
-			instance = stack.instance->ptr;
-			instance = instance->sub[ 1 ];
-			p++; break;
-		case ')':
-			if ( coupled ) instance = popListItem( &stack.instance );
-			coupled = pop_item( &stack.flags );
-			p++; break;
-		case '.':
-			p++;
-			if ( *p=='.' ) { p++; break; }
-			if ( !is_separator(*p) ) {
-				registryRegister( locales, p, instance );
-				p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
-			break;
-		case ':':
-			p++; break;
-		case '%':
-		case '!':
-			p+=2; break;
-		default:
-			p = p_prune( PRUNE_IDENTIFIER, p+1 ); } }
-
-int
-proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
-	struct { listItem *instance, *flags; } stack = { NULL, NULL };
-	CNDB *db = BMContextDB( ctx );
+	Registry *locales = check ? NULL : BMContextCurrent( ctx );
+	CNDB *db = check ? BMContextDB( ctx ) : NULL;
 	int coupled = 0;
 	while ( *p )
 		switch ( *p ) {
@@ -219,7 +177,7 @@ proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
 			p++; break;
 		case ',':
 			instance = stack.instance->ptr;
-			instance = CNSUB( instance, 1 );
+			instance = instance->sub[ 1 ];
 			p++; break;
 		case ')':
 			if ( coupled ) instance = popListItem( &stack.instance );
@@ -228,27 +186,34 @@ proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
 		case '.':
 			p++;
 			if ( *p=='.' ) {
-				if ( instance!=BMContextParent(ctx) ) goto FAIL;
+				if ( check && instance!=BMContextParent(ctx) )
+					goto FAIL;
 				p++; break; }
-			if ( !is_separator(*p) )
-				p = p_prune( PRUNE_IDENTIFIER, p+1 );
+			else if ( !is_separator(*p) ) {
+				if (( locales ))
+					registryRegister( locales, p, instance );
+				p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
 			break;
 		case ':':
 			p++; break;
 		case '%':
-			if ( instance!=BMContextSelf(ctx) ) goto FAIL;
+			if ( check && instance!=BMContextSelf(ctx) ) goto FAIL;
 			p+=2; break;
 		case '!':
-			if ( !cnIsShared(instance) ) goto FAIL;
+			if ( check && !cnIsShared(instance) ) goto FAIL;
 			p+=2; break;
 		default:
-			if ( instance!=db_lookup(0,p,db) ) goto FAIL;
+			if ( check && instance!=db_lookup(0,p,db) ) goto FAIL;
 			p = p_prune( PRUNE_IDENTIFIER, p+1 ); }
 	return 1;
 FAIL:
 	freeListItem( &stack.instance );
 	freeListItem( &stack.flags );
 	return 0; }
+
+int
+proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
+	return proto_set( p, instance, ctx, 1 ); }
 
 //===========================================================================
 //	bm_context_release

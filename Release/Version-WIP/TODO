@@ -10,8 +10,8 @@ DONE - pending system.story finalization/testing
 			do :_: !! (_)
 	  e.g.	do : %((!!,CO),?) : !! ( launch-formula )
 	. parser.c: support expression
-			?::locale // retrieves string narrative class (origin)
-		where locale references string
+		?::locale // retrieves string narrative class name (aka. origin)
+	  where locale references string
 	  usage - cf. Examples/6_System/README.txt:#system.story
 		.: ascribe(( .pivot, DO ), .occurrence )
 			do (( pivot, CO ), ?::occurrence )
