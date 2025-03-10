@@ -340,7 +340,6 @@
 		else do : ~.
 
 #define UNGEN	~%((!!,'>'),?):~%!/((?,DO),!):%((?,'>'),'&')/
-#define REPORT
 .: verify
 	on : .
 		in ?: "init"
@@ -369,10 +368,10 @@
 		else in ?:%(?,OFF):~%(.,((.,.),(?,OFF))):UNGEN
 			do >&"Warning: ErrNoActionGenerating: \"%s\" OFF\n": %?
 			do : err |: ErrSystemIncomplete
-#ifdef REPORT
-	else do : report
-#else
+#ifdef LAUNCH
 	else do : launch
+#else
+	else do : report
 #endif
 
 .: report
@@ -396,32 +395,6 @@
 					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 		do >:
 	do exit
-
-#define OCC	( %!/((?,.),!):%((.,CO),^^)/, . )
-#define COS	%!/((?,CO),!):%((?,.),%?::(?,.))/
-#define GEN	%!/((?,'>'),!):%((?,DO),%?::(.,(?,.)))/
-.: launch
-	on : .	// ascribe occurrence to cosystem
-		per .occurrence: %( ?, /(ON|OFF)/ )
-			in (( ?:!!, DO ), occurrence )
-				do (( %?, CO ), ?::occurrence )
-			else in (( !!, '>' ), occurrence )
-				// done as per DO
-			else do (( %?, CO ), system )
-	else in (?:!!,CO):~%(?,.)
-		do >&"Warning: origin not found: \"%s\"\n": %((%?,DO),?)
-		do : err |: ErrSystemIncomplete
-	else
-		do :%((.,CO),?): !! (
-			?:(*init:OCC)(%?,*^^),
-			?:(*exit:~OCC)(%?,*^COS),
-			?:((!!,!!),OCC){(%?)|{
-				?:(GEN)(%?,{ON,OFF}),
-				?:(?,%?::((?,.),.))((%?,*^COS),%|::((?,.),.)),
-				?:(?:~!!,%?::((.,?),.))((%?,*^COS),%|::((.,?),.)),
-				?:(?:!!,%?){(%?,%|)|
-					?:(?,%?)((%?,*^COS), %|::(?,.))}}} )
-		do exit
 
 .: err
 	on : . // lc coming up next

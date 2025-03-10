@@ -6,7 +6,7 @@
 //===========================================================================
 //	Main class definition
 //===========================================================================
-#define MAIN
+#define LAUNCH
 #include "inform.story"
 
 #define OCC	( %!/((?,.),!):%((.,CO),^^)/, . )
@@ -14,52 +14,25 @@
 #define GEN	%!/((?,'>'),!):%((?,DO),%?::(.,(?,.)))/
 
 .: launch
-	on : .
-		in ?: "init"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err |: ErrInitUsage
-			else in ( ?:(%?,ON), . )
-				in ~.:( ., %? )
-					do : init : %?
-				else do : err |: ErrInitUsage
-			else do : err |: ErrNoInit
-		else do : err |: ErrNoInit
-	else on : init : .
-		in ?: "exit"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err
-			else in ( ., ?:(%?,ON))
-				in ~.:( %?, . )
-					do : exit : %?
-				else do : err |: ErrExitUsage
-			else do : err |: ErrNoExit
-		else do : err |: ErrNoExit
-	else on : exit : .
+	on : .	// ascribe occurrence to cosystem
 		per .occurrence: %( ?, /(ON|OFF)/ )
 			in (( ?:!!, DO ), occurrence )
 				do (( %?, CO ), ?::occurrence )
 			else in (( !!, '>' ), occurrence )
 				// done as per DO
-			else in (( ?:!!, CL ), occurrence )
-				do (( %?, CO ), system )
-			else in occurrence:~%(.,((.,.),(?,.))):~%(*init:(?,.))
-				do >&"Warning: origin not specified: \"%s\"\n": occurrence
-				do : err |: ErrSystemIncomplete
-			else do !! | {
-				(( %|, SET ), occurrence ),
-				(( %|, CO ), system ) }
-	else per ( ?:!!, CO ):~%(?,.)
+			else do (( %?, CO ), system )
+	else in (?:!!,CO):~%(?,.)
 		do >&"Warning: origin not found: \"%s\"\n": %((%?,DO),?)
 		do : err |: ErrSystemIncomplete
 	else
 		do :%((.,CO),?): !! (
 			?:(*init:OCC)(%?,*^^),
 			?:(*exit:~OCC)(%?,*^COS),
-			?:((!!,!!),OCC){(%?)|
-				?:(GEN)(%?,{ON,OFF})
+			?:((!!,!!),OCC){(%?)|{
+				?:(GEN)(%?,{ON,OFF}),
 				?:(?,%?::((?,.),.))((%?,*^COS),%|::((?,.),.)),
 				?:(?:~!!,%?::((.,?),.))((%?,*^COS),%|::((.,?),.)),
 				?:(?:!!,%?){(%?,%|)|
-					?:(?,%?)((%?,*^COS), %|::(?,.))}} )
+					?:(?,%?)((%?,*^COS), %|::(?,.))}}} )
 		do exit
 

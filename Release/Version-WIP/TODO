@@ -27,7 +27,6 @@ WIP
 		  else off &
 			do "next action"
 	  ALTERNATIVELY could automatic switch SET to DO if event OFF
-	. NTH: report by action category - with generative actions last
 	. cosystems to be explicitely specified with <
 		do "action occurrence"
 		 > "generated occurrence"
@@ -48,7 +47,9 @@ TODO
 	  [DONE] we now have ((!!,/(DO|CL|SET|>)/),.occurrence)
 	  [DONE] cleanup build data structure before report
 		 do { ~(root), ~( /(ELSE|ON|OFF|CL|DO)/, . ) }
-	  . full verify section
+	  [DONE] implemented inform.story .: verify
+		 e.g.	on "occurrence" with only cl specified
+			off "occurrence" with only do specified
 	  [ WIP ] system.story - finalize
 		  . cosystem init
 		  . create (.,(Status,.)) and clear guard Status -
@@ -58,12 +59,9 @@ TODO
 		. do "" / on "" for do exit / on init
 			=> db_arena_makeup must accept NULL
 		  Note: B% does not support on "_" for the time being
-		. refine report, e.g.
-			. on "occurrence" with only CL specified*
-			. off "occurrence" with only DO specified
-			. cl-do same occurrence
-		  *currently the case for "init"
-	. NTH: optimization
+		. report by action category - with generative actions last
+		. cl-do same occurrence should not be allowed
+	. NTH: system.story optimization
 			?*:( ?, %?::((?,.),.) ) (...)
 			?*:( ?:~!!, %?:((.,?),.) ) (...)
 				?*:( ?, %? ) (...)
