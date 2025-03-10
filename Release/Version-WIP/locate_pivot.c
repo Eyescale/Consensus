@@ -41,6 +41,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 			freeListItem( &data.stack.flags );
 			freeListItem( &data.stack.level );
 			freeListItem( &data.stack.base );
+			freeListItem( &data.mark_sel );
 			return p; }
 		if ( primary && data.secondary ) {
 			primary = 0;
@@ -67,15 +68,16 @@ case_( not_CB )
 case_( bgn_selection_CB )
 	listItem *mark_exp = NULL;
 	bm_locate_emark( p+3, &mark_exp );
+	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
+	for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
+		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 	listItem **exponent = data->exponent;
 	addItem( &data->stack.base, *exponent );
 	while (( mark_exp ))
 		addItem( exponent, popListItem(&mark_exp) );
-	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
-	_continue( p+3 )
+	_break
 case_( end_selection_CB )
 	freeListItem( &data->mark_sel );
-	xpn_free( data->exponent, data->level );
 	data->level = popListItem( &data->stack.level );
 	listItem *base = popListItem( &data->stack.base );
 	if (( base )) xpn_free( data->exponent, base );
@@ -192,7 +194,7 @@ case_( open_CB )
 	_break
 case_( filter_CB )
 	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
-	xpn_free( data->exponent, data->level );
+	else xpn_free( data->exponent, data->level );
 	_break
 case_( comma_CB )
 	xpn_free( data->exponent, data->level );

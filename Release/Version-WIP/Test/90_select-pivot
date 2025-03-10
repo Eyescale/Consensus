@@ -1,0 +1,11 @@
+
+	on init
+		do ((toto,DO),titi)
+		do ((toto,'>'),'&')
+		do ( pivot, { toto, titi, tata } )
+	else
+//		per ?: %!/((?,.),!):%((?,'>'),'&')/
+//		per ?: %!/((?,DO),!):%((?,'>'),'&')/
+		per ?: %( pivot, ? ): ~%!/((?,DO),!):%((?,'>'),'&')/: ~tata
+			do >"%_\n": %?
+		do exit

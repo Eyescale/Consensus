@@ -92,7 +92,14 @@ CB_BgnSetCB			f_push( stack )
 				p++;
 CB_TermCB			break;
 			case '!':
-				if ( p[1]=='!' ) {
+				if ( p[1]=='/' ) {
+					f_push( stack )
+					f_reset( SEL_EXPR, 0 )
+					if ( mode&TERNARY ) {
+						p = p_prune( PRUNE_FILTER, p+2 ); 
+						if ( *p==':' ) p++; }
+					else p+=2; }
+				else if ( p[1]=='!' ) {
 CB_BangBangCB				p+=2; }
 				else {
 					f_set( INFORMED )
@@ -157,10 +164,7 @@ CB_RegisterVariableCB			f_set( INFORMED )
 					break;
 				case '!':
 					if ( p[2]=='/' ) {
-						f_push( stack )
-						f_reset( SEL_EXPR, 0 )
-CB_BgnSelectionCB				p = p_prune( PRUNE_TERM, p+3 );
-						break; }
+CB_BgnSelectionCB				p++; break; }
 					// no break
 				case '?':
 CB_RegisterVariableCB			f_set( INFORMED )
@@ -320,6 +324,7 @@ CB_CharacterCB			p = p_prune( PRUNE_FILTER, p );
 				break;
 			case '/':
 				if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+					f_next = cast_i((*stack)->ptr);
 CB_EndSelectionCB			f_pop( stack, 0 );
 					f_set( INFORMED );
 					p++; break; }

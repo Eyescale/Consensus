@@ -352,11 +352,16 @@ NOTES
 
 NOTES
 	. Design consistency
-		per .action:expression 
-	  should be achieved via
-		do : action : ( action | ?:(expression) (%|,%?) )
+			per .action:expression 
+		should be achieved via
+			do : action : ( action | ?:(expression) (%|,%?):| )
 	  and traversing action list (then guard, then triggers) instead of
-	  relying on implementation to serialize output
-
+	  relying on sequential 'per' execution
+	. event/condition origin - option FULL
+		"init" ON
+		"allocate new left cell" OFF	[*]
+		"allocate new right cell" OFF	[*]
+	  will be reported as ErrUnpecifiedOrigin as implementation stands
+	  [*] should definitely be made generative
 
 

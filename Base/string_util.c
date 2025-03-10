@@ -315,63 +315,59 @@ rxcomp( char *regex, char *p )
 */ {
 	listItem *backup = NULL;
 	int cmp=0, level=0, prune=0;
-	for ( char *r=regex+1; ; )
-		do {
-			switch ( *r ) {
-			case '/':
-				return *p;
-			case '|':
-				switch ( prune ) {
-				case -1: p=backup->ptr; prune=0; break;
-				case 0: prune=1; break;
-				case 1: prune=0; }
-				r++; break;
-			case '(':
-				level++;
-				if ( !prune ) addItem( &backup, p );
-				else if ( prune > 0 ) prune++;
-				else if ( prune < 0 ) prune--;
-				r++; break;
-			case ')':
-				level--;
-				if ( !prune ) popListItem( &backup );
-				else if ( prune > 0 ) {
-					if ( !--prune )
-						popListItem( &backup ); }
-				else if ( prune < 0 ) {
-					if ( !++prune ) {
-						popListItem( &backup );
-						if ( level ) prune = -1;
-						else return cmp; } }
-				r++; break;
-			default:
-				if ( !prune ) {
-					if ( !*p ) {
-						freeListItem( &backup );
-						return rxcmp( r, '\0' ); }
-					else if (( cmp = rxcmp( r, *p++ ) )) {
-						if ( level ) prune = -1;
-						else return cmp; } }
-				r = rxnext( r ); }
-		} while ( prune ); }
+	char *r = regex + 1;
+	for ( ; ; ) {
+		switch ( *r ) {
+		case '/':
+			return *p;
+		case '|':
+			switch ( prune ) {
+			case -1: prune=0; p=backup->ptr; break;
+			case 0: prune=1; break; }
+			r++; break;
+		case '(':
+			level++;
+			if ( !prune ) addItem( &backup, p );
+			else if ( prune > 0 ) prune++;
+			else if ( prune < 0 ) prune--;
+			r++; break;
+		case ')':
+			level--;
+			if ( !prune ) popListItem( &backup );
+			else if ( prune > 0 ) {
+				if ( !--prune )
+					popListItem( &backup ); }
+			else if ( prune < 0 ) {
+				if ( !++prune ) {
+					popListItem( &backup );
+					if ( level ) prune = -1;
+					else return cmp; } }
+			r++; break;
+		default:
+			if ( !prune ) {
+				if ( !*p ) {
+					freeListItem( &backup );
+					return rxcmp( r, '\0' ); }
+				else if (( cmp = rxcmp( r, *p++ ) )) {
+					if ( level ) prune = -1;
+					else return cmp; } }
+			r = rxnext( r ); } } }
 
+#define r_step ( *r=='\\' ? r[1]=='x' ? 4:2:1 )
 static inline char *
 rxnext( char *r ) {
 	if ( *r=='[' ) {
-		do r += *r=='\\' ? r[1]=='x' ? 4:2:1; while ( *r!=']' );
+		do r += r_step; while ( *r!=']' );
 		return r+1; }
-	else {
-		r += *r=='\\' ? r[1]=='x' ? 4:2:1;
-		return  r; } }
+	else return ( r + r_step ); }
 
 //---------------------------------------------------------------------------
 //	rxcmp
 //---------------------------------------------------------------------------
 int
-rxcmp( char *regex, int event ) {
+rxcmp( char *r, int event ) {
 	int delta, not;
 	char_s q;
-	char *r = regex;
 	switch ( *r ) {
 	case '.':
 		return 0;

@@ -11,7 +11,7 @@ static BMTraversal query_traversal;
 static BMTraverseCB
 	tag_CB, filter_CB, match_CB, dot_identifier_CB, dot_expression_CB,
 	dereference_CB, sub_expression_CB, open_CB, close_CB, wildcard_CB,
-	bgn_selection_CB, end_selection_CB, comma_CB;
+	selection_CB, comma_CB;
 
 
 #define BMTagCB			tag_CB
@@ -23,8 +23,7 @@ static BMTraverseCB
 #define BMRegexCB		match_CB
 #define BMIdentifierCB		match_CB
 #define BMBangBangCB		match_CB
-#define BMBgnSelectionCB	bgn_selection_CB
-#define BMEndSelectionCB	end_selection_CB
+#define BMBgnSelectionCB	selection_CB
 #define BMDotIdentifierCB	dot_identifier_CB
 #define BMDereferenceCB		dereference_CB
 #define BMSubExpressionCB	sub_expression_CB

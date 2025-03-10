@@ -9,21 +9,16 @@
 	else
 		on : input : ~. // EOF
 			in : ps
-				do : s : $((s,~.),?:...)
-				in ( type, '>' )
-					do : cmd : ( cmd, ~. )
-					do : ward
-				else
-					do : ((type,CL) ? ward : take )
-					in ~.: ready
-						do : cmd : ( cmd, ~. )
+				do :< cmd, s >:< (cmd,~.), $((s,~.),?:...) >
+				do : ward
 			else in ((:base)?(~.:(cmd,.)):)
 				// ready => warding has been performed
 				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
+			do { ~( root ), ~( /(ELSE|ON|OFF|CL|DO|>)/, . ) }
 			do :< guard, on, bar >: ~.
-			do : report
+			do : verify
 		else en %(:?)
 
 .: base
@@ -172,8 +167,7 @@
 				// restore backup as input queue
 				do : buffer : ( buffer | ((%|,...),< %(ps,?:...), *^^ >) )
 				do :< cmd, s >:< (cmd,~.), $((s,~.),?:...) >
-				// this is where we know whether DO is generative or not
-				do : ( ((type,CL)?:(type,'>')?:(*^^:'>')) ? ward : take )
+				do : ward
 			else in (( type, CL )?( *^^:'d' ):)
 				// take CL pending DO
 				do :< cmd, s >:< ((cmd,~.),*^^), $((s,~.),?:...) >
@@ -183,29 +177,43 @@
 	else en &
 
 .: ward
-	in ( type, CL )
-		in ((?:!!,DO), *s )
-			do : err |: ( NCR, %? )
-		else in ((?:!!,CL), *s )
-			do : take |: %?
-		else do : take |: !! | {
-			((%|,IN), $(line,?:...)),
-			((%|,CL), *s ) }
-	else in ( type, DO ) // assumed generative
-		in ((?:!!,CL), *s )
-			do : err |: ( NCR, %? )
-		else in ((?:!!,'>'), *s )
-			do : err |: ( NCR, %? )
-		else in ((?:!!,DO), *s )
-			do : take |: %?
-		else do : take |: !! | {
-			((%|,IN), $(line,?:...)),
-			((%|,DO), *s ) }
-	else // ( type, '>' )
-		in ((?:!!,DO), *s )
+	in ( type, '>' )
+		in ((?:!!,/(DO|CL|SET)/), *s )
 			do : err |: ( NCR, %? )
 		else do : take |
 			((*take,'>'), *s )
+	else in ( type, CL )
+		in ((?:!!,'>'), *s )
+			do : err |: ( NCR, %? )
+		else in ((?:!!,DO), *s )
+			do : err |: ( NCR, %? )
+		else in ((?:!!,CL), *s )
+			do : take
+		else do : take |: !! | {
+			((%|,IN), $(line,?:...)),
+			((%|,CL), *s ) }
+	else in ( type, DO )
+		in ((?:!!,'>'), *s )
+			do : err |: ( NCR, %? )
+		else in ~.:: input : '>'
+			in ((?:!!,/(DO|CL|SET)/), *s )
+				do : take
+			else do : take |: !! | {
+				((%|,IN), $(line,?:...)),
+				((%|,SET), *s ) }
+		else // generative DO
+			in ((?:!!,CL), *s )
+				do : err |: ( NCR, %? )
+			else in ((?:!!,DO), *s )
+				do : take |: %?
+			else in ((?:!!, SET), *s )
+				do (((%?,IN),~.), $(line,?:...))
+				do { ~(%?,SET), ((%?,DO), *s ) }
+				do : take |: %?
+			else do : take |: !! | {
+				((%|,IN), $(line,?:...)),
+				((%|,DO), *s ) }
+	else do : take
 
 .: take
 	on : .
@@ -331,33 +339,88 @@
 			do : take
 		else do : ~.
 
-.: report
+#define UNGEN	~%((!!,'>'),?):~%!/((?,DO),!):%((?,'>'),'&')/
+#define REPORT
+.: verify
 	on : .
-		per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
-			do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
-			in ((?:!!,DO), %(action:(?,.))) // generative action
-				per ((%?,'>'),?:~'&') // generated occurrences
-					do >"  > \"%_\"\n": %?
-				in ((%?,'>'),'&')
-					do >"  > &\n"
-			per .guard: %( ?, ((.,.), action ))
-				do >"  guard\n"
-				per ( ?, guard ) // guard condition
-					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-				per ( guard, ( ?, action ))
-					do >"    trigger\n"
-					per ( ?, %?::(?,.) ) // on event
-						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-					do >"      /\n"
-					per ( ?:~!!, %?::(.,?) ) // bar event
-						do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-			do >:
-
-#		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,ON)))
-		per ?:%(?:~ELSE,/(ON|OFF)/):~%((!!,'>'),?):~%(.,((.,.),(?,.)))
-			do >&"Warning: ErrUnspecifiedOrigin: \"%s\"\n": %?
+		in ?: "init"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do : err |: ErrInitUsage
+			else in ( ?:(%?,ON), . )
+				in ~.:( ., %? )
+					do : init : %?
+				else do : err |: ErrInitUsage
+			else do : err |: ErrNoInit
+		else do : err |: ErrNoInit
+	else on : init : .
+		in ?: "exit"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do : err
+			else in ( ., ?:(%?,ON))
+				in ~.:( %?, . )
+					do : exit : %?
+				else do : err |: ErrExitUsage
+			else do : err |: ErrNoExit
+		else do : err |: ErrNoExit
+	else on : exit : .
+		in ?:%((?,ON):~*init):~%(.,((.,.),(?,ON))):UNGEN
+			do >&"Warning: ErrNoActionGenerating: \"%s\" ON\n": %?
 			do : err |: ErrSystemIncomplete
+		else in ?:%(?,OFF):~%(.,((.,.),(?,OFF))):UNGEN
+			do >&"Warning: ErrNoActionGenerating: \"%s\" OFF\n": %?
+			do : err |: ErrSystemIncomplete
+#ifdef REPORT
+	else do : report
+#else
+	else do : launch
+#endif
+
+.: report
+	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
+		do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
+		in ((?:!!,DO), %(action:(?,.))) // generative action
+			per ((%?,'>'),?:~'&') // generated occurrences
+				do >"  > \"%_\"\n": %?
+			in ((%?,'>'),'&')
+				do >"  > &\n"
+		per .guard: %( ?, ((.,.), action ))
+			do >"  guard\n"
+			per ( ?, guard ) // guard condition
+				do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+			per ( guard, ( ?, action ))
+				do >"    trigger\n"
+				per ( ?, %?::(?,.) ) // on event
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+				do >"      /\n"
+				per ( ?:~!!, %?::(.,?) ) // bar event
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >:
+	do exit
+
+#define OCC	( %!/((?,.),!):%((.,CO),^^)/, . )
+#define COS	%!/((?,CO),!):%((?,.),%?::(?,.))/
+#define GEN	%!/((?,'>'),!):%((?,DO),%?::(.,(?,.)))/
+.: launch
+	on : .	// ascribe occurrence to cosystem
+		per .occurrence: %( ?, /(ON|OFF)/ )
+			in (( ?:!!, DO ), occurrence )
+				do (( %?, CO ), ?::occurrence )
+			else in (( !!, '>' ), occurrence )
+				// done as per DO
+			else do (( %?, CO ), system )
+	else in (?:!!,CO):~%(?,.)
+		do >&"Warning: origin not found: \"%s\"\n": %((%?,DO),?)
+		do : err |: ErrSystemIncomplete
 	else
+		do :%((.,CO),?): !! (
+			?:(*init:OCC)(%?,*^^),
+			?:(*exit:~OCC)(%?,*^COS),
+			?:((!!,!!),OCC){(%?)|{
+				?:(GEN)(%?,{ON,OFF}),
+				?:(?,%?::((?,.),.))((%?,*^COS),%|::((?,.),.)),
+				?:(?:~!!,%?::((.,?),.))((%?,*^COS),%|::((.,?),.)),
+				?:(?:!!,%?){(%?,%|)|
+					?:(?,%?)((%?,*^COS), %|::(?,.))}}} )
 		do exit
 
 .: err

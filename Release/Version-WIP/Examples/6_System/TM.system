@@ -7,25 +7,30 @@ in "init"
 		do "head initializes
 			. state to A
 			. registry to { { ... }, ... }"
+		 > &
 		do "tape initializes
 			. default symbol to 0
 			. start cell to { default symbol, - , - }
 			. list of cells to { start cell }
 			. current cell to start cell"
+		 > &
 	else off &
 		cl "init" do "output"
 
 else in "output"
 	on "output"
 		do "starting with leftmost cell"
-		 > "output cell has right cell"
 		 > "update output cell"
+		 > "output cell has right cell"
 	else off "update output cell"
 		do "output start symbol '|'"
+		 > &
 	else off &
 		do "output head's state"
+		 > &
 	else off &
 		do "output cell symbol"
+		 > &
 	else off &
 		in "output cell has right cell"
 			do "shift output cell right"
@@ -38,37 +43,47 @@ else in "output"
 else in "operation"
 	on "operation"
 		do "current cell communicates its symbol to head"
+		 > &
 	else on &
 		do "head looks up registry entry corresponding to "
-		   "current head's state and cell's passed symbol"
+		   "cell's passed symbol and current head's state"
+		 > &
 	else off &
 		do "head informs its own state from entry's new state"
 		 > "head's state is Halt"
 		do "head informs shift direction from entry's direction"
+		 > "shift right"
+		 > "shift left"
 		do "head communicates entry's new symbol to current cell"
+		 > &
 	else on &
 		do "current cell informs its symbol from head's passed symbol"
+		 > &
 	else off &
 		in "shift right"
-			in "current has right cell"
+			in "current cell has right cell"
 				do "right cell becomes current cell"
-				 > "current has left cell"
-				 > "current has right cell"
-				 > "shift right"
-			else do "allocate new right cell"
+				 > "current cell has left cell"
+				 > "current cell has right cell"
+			else
+				do "allocate new right cell"
+				 > &
 		else in "shift left"
-			in "current has left cell"
+			in "current cell has left cell"
 				do "left cell becomes current cell"
-				 > "current has right cell"
-				 > "current has left cell"
-				 > "shift left"
-			else do "allocate new left cell"
+				 > "current cell has right cell"
+				 > "current cell has left cell"
+			else
+				do "allocate new left cell"
+				 > &
 	else
 		in "shift right"
 			off "allocate new right cell"
 				do "shift current to right"
+				 > &
 		else in "shift left"
 			off "allocate new left cell"
 				do "shift current to left"
+				 > &
 		else cl "operation" do "output"
 

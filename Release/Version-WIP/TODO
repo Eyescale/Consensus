@@ -18,12 +18,23 @@ DONE - pending system.story finalization/testing
 	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
 	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
 
-TODO
-	. improve inform.story
-	  . include SET vs. generated
-	  . cleanup before report
-	  . also in system.story cleanup before launch
+WIP
+	. currently must follow do "_" with > & to ensure generative action
+	  and allow off & without causing ErrNoActionGenerating error
+		  ...
+			do "some action"
+			 > &
+		  else off &
+			do "next action"
+	  ALTERNATIVELY could automatic switch SET to DO if event OFF
+	. NTH: report by action category - with generative actions last
+	. cosystems to be explicitely specified with <
+		do "action occurrence"
+		 > "generated occurrence"
+		 < cosystem
+	  => no need for db_arena_origin() // hacky
 
+TODO
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
 	  [ DONE ] output system as is => cf output.story
@@ -34,6 +45,10 @@ TODO
 	  [ DONE ] review system launch formula in light of the fact that
 	 	FORE will loop over all matches regardless of '?' (Feature)
 		e.g. ?:(?,.)(_) may cause several iterations for the same %?
+	  [DONE] we now have ((!!,/(DO|CL|SET|>)/),.occurrence)
+	  [DONE] cleanup build data structure before report
+		 do { ~(root), ~( /(ELSE|ON|OFF|CL|DO)/, . ) }
+	  . full verify section
 	  [ WIP ] system.story - finalize
 		  . cosystem init
 		  . create (.,(Status,.)) and clear guard Status -
@@ -142,6 +157,8 @@ NOTES
 		// post-frame
 
 DONE
+	. finalized select implementation - cf Test/90_select-pivot
+	  locate_pivot now enters all select expression terms
 	. refactored 'en' command and narrative prototype format
 	  removed sub-expression and ellipsis support from narrative declaration
 	  - cf format description in design/specs/bm-EN-command.txt
@@ -156,7 +173,7 @@ DONE
 		%!/((?,CO),!):%((?,.),%?)/
 	  is the same as      ^-----v
 				 %((%((?,.),%?),CO),?)
-	  NOTE: sub-selection not authorized - cf parser.c:f_selectable()
+	  NOTE: embedded selection not allowed - cf parser.c:f_selectable()
 	. p_prune.c: prune_term no longer call prune_ternary if *p==':'
 	. FIXED locate_mark.c in SUB_EXPR => filter_CB return if !is_f(LEVEL)
 	. implemented cache in db_arena.c

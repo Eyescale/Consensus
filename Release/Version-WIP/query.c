@@ -163,7 +163,7 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 			freeListItem( &data->exponent );
 			return 0; } }
 
-	CNInstance *e = bm_lookup( privy, p, data->ctx, data->db );
+	void *e = bm_lookup( privy, p, data->ctx, data->db );
 	if (( e )) {
 		Pair *pivot = data->pivot = newPair( p, e );
 		if ( !xp_traverse( expression, data, cb, user_data ) )
@@ -345,8 +345,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 
 		if (( x )) {
 			if ( op==BM_BGN ) {
-				if ( !strncmp(p,"%!/",3) ) p+=3;
-				else if ( *p++=='*' ) {
+				if ( *p++=='*' ) {
 					if (!( x=assignment_fetch( x, data ) )) {
 						success = 0;
 						goto POST_OP; } }
@@ -391,6 +390,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					continue; }
 				else {
 					freeListItem( &data->mark_exp );
+					freeListItem( &data->mark_sel );
 					// move on past sub-expression
 					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
 					p = prune( p, success );
@@ -413,6 +413,7 @@ POST_OP:
 				LFLUSH( list_expr, i, list_i, stack.list_i );
 				do POP_STACK( start_p, i, mark_exp, list_expr, flags )
 				while is_DOUBLE_STARRED( start_p, expression, data );
+				freeListItem( &data->mark_sel );
 				// move on - p is already informed
 				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ) }
 				exponent = NULL;
@@ -438,9 +439,10 @@ POST_OP:
 					else {
 						// restore context & move on past sub-expression
 						POP_STACK( start_p, i, mark_exp, list_expr, flags )
+						freeListItem( &data->mark_sel );
 						// move on - p is already informed unless x==NULL
 						if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
-						if ( x==NULL ) { p = prune( start_p, success ); }
+						if ( x==NULL ) p = prune( start_p, success );
 						exponent = NULL;
 						op = BM_END;
 						break; } } } }
@@ -529,19 +531,14 @@ case_( tag_CB )
 	else if (( p=tag(p,data) ))
 		_continue( p )
 	_break
-case_( bgn_selection_CB )
+case_( selection_CB )
 	bm_locate_emark( p+3, &data->mark_exp );
 	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
 	for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
 		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 	_return( 1 )
-case_( end_selection_CB )
-	freeListItem( &data->mark_sel );
-	traversal->done = 1; // after popping
-	_break
 case_( filter_CB )
-	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
-	else if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
 		_prune( BM_PRUNE_LEVEL, p+1 )
@@ -584,7 +581,7 @@ case_( sub_expression_CB )
 		else if ( !strncmp( mark+1, ",...", 4 ) ) // %((?,...):list)
 			data->list_expr = 6;
 		_return( 1 ) }
-	else if (( data->mark_sel ))
+	else if (( mark_exp ))
 		_return( 1 )
 	_break
 case_( dot_expression_CB )

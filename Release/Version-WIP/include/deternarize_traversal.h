@@ -8,9 +8,8 @@
 
 static BMTraversal deternarize_traversal;
 static BMTraverseCB
-	selection_CB, open_CB, ternary_operator_CB, filter_CB, close_CB;
+	open_CB, ternary_operator_CB, filter_CB, close_CB;
 
-#define BMBgnSelectionCB	selection_CB
 #define BMOpenCB 		open_CB
 #define BMTernaryOperatorCB	ternary_operator_CB
 #define BMFilterCB		filter_CB

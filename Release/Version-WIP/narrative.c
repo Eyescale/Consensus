@@ -162,7 +162,7 @@ typedef struct {
 	struct { listItem *level, *flags; } stack;
 	} fprintExprData;
 static char *
-	jump_start( fprintExprData *, char * );
+	jump_start( fprintExprData *, char *, int * );
 
 void
 fprint_expr( FILE *stream, char *p, int level, int type ) {
@@ -171,7 +171,8 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 	data.stream = stream;
 	data.p = p;
 	data.level = level;
-	p = jump_start( &data, p );
+	int carry = 0;
+	p = jump_start( &data, p, &carry );
 	if ( *p=='"' ) {
 		for ( char*q=data.p; q!=p; q++ )
 			fputc( *q, stream );
@@ -183,12 +184,13 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 		traversal.stack = &data.stack.flags;
 		traversal.done = TERNARY|INFORMED;
 		if ( type&DO ) traversal.done |= LITERAL;
-		fprint_expr_traversal( p, &traversal, FIRST ); }
+		fprint_expr_traversal( p, &traversal, FIRST|carry );
+		if ( carry ) popListItem( &data.stack.level ); }
 	fprintf( stream, "%s", data.p ); }
 
 static inline char * retab( fprintExprData *, char * );
 static char *
-jump_start( fprintExprData *data, char *p ) {
+jump_start( fprintExprData *data, char *p, int *carry ) {
 	switch ( *p ) {
 	case '>':
 		p++;
@@ -202,10 +204,11 @@ jump_start( fprintExprData *data, char *p ) {
 		p++; // skip ',' // no break
 	case '!':
 		p+=2;
-		if ( is_separator(*p) ) return p;
-		do p++; while ( !is_separator(*p) );
-		if ( *p=='(' && strlen(data->p)>=40 )
-			return retab( data, p );
+		while ( !is_separator(*p) ) p++;
+		if ( *p=='(' && strlen(data->p)>=40 ) {
+			*carry = CARRY;
+			add_item( &data->stack.level, data->level );
+			return retab( data, p ); }
 	default:
 		return p; } }
 
@@ -254,7 +257,7 @@ case_( end_set_CB )
 	popListItem( &data->stack.level );
 	_break
 case_( comma_CB )
-	if ( is_f(SET|VECTOR) && !is_f(LEVEL|SUB_EXPR) ) {
+	if ( is_f(SET|VECTOR|CARRY) && !is_f(LEVEL|SUB_EXPR) ) {
 		int level = cast_i( data->stack.level->ptr );
 		if ( level ) {
 			data->level = level;

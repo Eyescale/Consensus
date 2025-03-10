@@ -158,7 +158,7 @@ PARSER_FUNC( bm_parse_expr )
 				do_( same )	s_take
 						f_pop( stack, 0 )
 						f_set( INFORMED|PROTECTED ) }
-		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO)||is_f(FORE|SUB_EXPR) )  ) {
+		on_( '/' ) if ( !is_f(INFORMED) && ( !(*type&DO)||is_f(byref)||expr(RELEASED) )  ) {
 				do_( "/" )	s_take
 						expr_set( P_REGEX )
 						f_push( stack )
