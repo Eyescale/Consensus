@@ -56,6 +56,82 @@ release_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 // see include/expression.h
 
 //===========================================================================
+//	bm_enable
+//===========================================================================
+static BMQueryCB enable_CB;
+
+void
+bm_enable( int rv, void *rvv, char *en, BMContext *ctx, EnableData *data ) {
+	switch ( rv ) {
+	case 0:	bm_query( BM_CONDITION, en, ctx, enable_CB, data ); break;
+	case 1: enable_CB( rvv, ctx, data ); break;
+	case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
+			enable_CB( i->ptr, ctx, data ); } }
+
+static BMQTake
+enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	EnableData *data = user_data;
+	Registry *subs = data->subs;
+	listItem *narratives = data->narratives;
+	uint *key = cnIsShared(e) ? CNSharedKey( e ) : NULL;
+	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		char *p = narrative->proto, *q;
+		if ( !strcmp(p,".:&") ) continue;
+		p = p_prune( PRUNE_IDENTIFIER, p+1 );
+		p++; // skip leading ':'
+		switch ( *p ) {
+		case '"':
+			if ( !db_arena_verify(key,p) ) continue;
+			registryRegister( subs, narrative, newItem(e) );
+			return BMQ_CONTINUE;
+		default:
+			if ( !proto_verify(p,e,ctx) ) continue;
+			Pair *entry = registryLookup( subs, narrative );
+			if (( entry )) addIfNotThere((listItem **) &entry->value, e );
+			else registryRegister( subs, narrative, newItem(e) ); } }
+	return BMQ_CONTINUE; }
+
+//===========================================================================
+//	bm_enable_x
+//===========================================================================
+typedef struct {
+	CNNarrative *narrative; char *p;
+	Registry *subs; Pair *entry;
+	} EnableXData;
+static BMQueryCB enable_x_CB;
+
+int
+bm_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
+	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
+		CNNarrative *narrative = i->ptr;
+		char *p = narrative->proto, *q;
+		if ( *p++!=':' ) continue;
+		// we have p: "func(params)" and en: "func expr"
+		if ( !strcomp( p, en, 1 ) ) {
+			p = p_prune( PRUNE_IDENTIFIER, p );
+			q = p_prune( PRUNE_IDENTIFIER, en );
+			EnableXData data = { narrative, p, subs, NULL };
+			int rv=( *q=='(' ? 1 : 0 ); void *rvv;
+			if ( rv ) rvv = BMContextRVTest( ctx, q+1, &rv );
+			switch ( rv ) {
+			case 0:	bm_query( BM_CONDITION, q, ctx, enable_x_CB, &data ); break;
+			case 1: enable_x_CB( rvv, ctx, &data ); break;
+			case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
+					enable_x_CB( i->ptr, ctx, &data ); }
+			return 1; } }
+	return 0; }
+
+static BMQTake
+enable_x_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
+	EnableXData *data = user_data;
+	if ( proto_verify( data->p, e, ctx ) ) {
+		Pair *entry = data->entry;
+		if (( entry )) addIfNotThere((listItem **) &entry->value, e );
+		else data->entry = registryRegister( data->subs, data->narrative, newItem(e) ); }
+	return BMQ_CONTINUE; }
+
+//===========================================================================
 //	bm_tag_register
 //===========================================================================
 int

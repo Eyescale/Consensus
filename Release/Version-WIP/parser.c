@@ -1726,6 +1726,7 @@ PARSER_FUNC( bm_parse_proto )
 		ons( "\"(" )	do_( ".:" )	REENTER
 						s_add( ".this:" )
 		on_( '\n' )	do_( "def_" )	REENTER
+		on_( '<' )	do_( "def" )	s_take
 		on_separator	; // err
 		on_other	do_( "def." )	s_take
 		end

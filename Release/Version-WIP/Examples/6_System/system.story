@@ -1,9 +1,12 @@
-#include "System.bm"
 #include "include/inform.bm"
 
-// :< inform
+#include "System.bm"
 
-#define UNGEN	~%((!!,'>'),?):~%!/((?,DO),!):%((?,'>'),'&')/
+//===========================================================================
+//	system.story main narrative - subclassed from inform
+//===========================================================================
+: < inform
+
 .: verify
 	on : .
 		in ?: "init"
@@ -26,12 +29,16 @@
 			else do : err |: ErrNoExit
 		else do : err |: ErrNoExit
 	else on : exit : .
-		in ?:%((?,ON):~*init):~%(.,((.,.),(?,ON))):UNGEN
-			do >&"Warning: ErrNotActuated: \"%s\" ON\n": %?
+		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
+			do >&"Warning: ErrNoActuation: \"%s\" ON\n": %?
 			do : err |: ErrSystemIncomplete
-		else in ?:%(?,OFF):~%(.,((.,.),(?,OFF))):UNGEN
-			do >&"Warning: ErrNotActuated: \"%s\" OFF\n": %?
-			do : err |: ErrSystemIncomplete
+		else per .occ:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+			in ((?:!!,SET),occ)
+				do >&"Warning: recasting \"%s\"\n": occ
+				do { ~(%?,SET), ((%?,DO),occ), ((%?,'>'),'&') }
+	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+		do >&"Warning: ErrNoActuation: \"%s\" OFF\n": %?
+		do : err |: ErrSystemIncomplete
 	else do : launch
 
 #define OCC	( %!/((?,.),!):%((.,CO),^^)/, . )

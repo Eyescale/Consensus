@@ -10,8 +10,9 @@ static BMTraversal locate_mark_traversal;
 
 static BMTraverseCB
 	dereference_CB, dot_identifier_CB, sub_expression_CB, dot_expression_CB, open_CB,
-	filter_CB, comma_CB, close_CB, wildcard_CB;
+	selection_CB, filter_CB, comma_CB, close_CB, wildcard_CB;
 
+#define BMBgnSelectionCB	selection_CB
 #define BMDereferenceCB		dereference_CB
 #define BMDotIdentifierCB	dot_identifier_CB
 #define BMSubExpressionCB	sub_expression_CB

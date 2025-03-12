@@ -329,52 +329,35 @@ do_action( char *expression, BMContext *ctx, CNStory *story ) {
 //---------------------------------------------------------------------------
 //	do_enable
 //---------------------------------------------------------------------------
-typedef struct { listItem *narratives; Registry *subs; } EnableData;
+static inline int en_base( Pair *entry, EnableData *data );
 static inline int enable_pf( listItem *, Registry * );
-static BMQueryCB enable_CB;
 
 static int
 do_enable( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
-	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
-	else if ( !narratives->next ) return 1;
+	if ( !subs ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE
-	if ( *en=='&' ) {
-		Pair *entry = BMContextBaseClass( ctx );
+	Pair *entry = BMContextBaseClass( ctx );
+	if ( *en=='&' )
 		return ((( entry ) && enable_pf( entry->value, subs )) ||
-			enable_pf( narratives, subs ) ); }
-	else {
-		EnableData data = { narratives, subs };
-		int rv=1; void *rvv=BMContextRVTest( ctx, en, &rv );
-		switch ( rv ) {
-		case 0:	bm_query( BM_CONDITION, en, ctx, enable_CB, &data ); break;
-		case 1: enable_CB( rvv, ctx, &data ); break;
-		case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
-				enable_CB( i->ptr, ctx, &data ); } }
+			enable_pf( narratives, subs ) );
+	EnableData data = { narratives, subs };
+	int rv=1; void *rvv=BMContextRVTest( ctx, en, &rv );
+	if (( narratives->next )) bm_enable( rv, rvv, en, ctx, &data );
+	if ( en_base(entry,&data) ) bm_enable( rv, rvv, en, ctx, &data );
 	return 1; }
 
-static BMQTake
-enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	EnableData *data = user_data;
-	Registry *subs = data->subs;
-	listItem *narratives = data->narratives;
-	uint *key = cnIsShared(e) ? CNSharedKey( e ) : NULL;
-	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
-		CNNarrative *narrative = i->ptr;
-		char *p = narrative->proto, *q;
-		if ( !strcmp(p,".:&") ) continue;
-		p = p_prune( PRUNE_IDENTIFIER, p+1 );
-		p++; // skip leading ':'
-		switch ( *p ) {
-		case '"':
-			if ( !db_arena_verify(key,p) ) continue;
-			registryRegister( subs, narrative, newItem(e) );
-			return BMQ_CONTINUE;
-		default:
-			if ( !proto_verify(p,e,ctx) ) continue;
-			Pair *entry = registryLookup( subs, narrative );
-			if (( entry )) addIfNotThere((listItem **) &entry->value, e );
-			else registryRegister( subs, narrative, newItem(e) ); } }
-	return BMQ_CONTINUE; }
+static inline int
+en_base( Pair *entry, EnableData *data ) {
+	if ( !entry ) return 0;
+	listItem *narratives = entry->value;
+	listItem *next = narratives->next;
+	if ( !next ) return 0;
+	else if ( !next->next ) {
+		CNNarrative *n = next->ptr;
+		if ( !strcmp(n->proto,".:&") )
+			return 0; }
+	data->narratives = narratives;
+	return 1; }
 
 static inline int
 enable_pf( listItem *narratives, Registry *subs ) {
@@ -389,52 +372,15 @@ enable_pf( listItem *narratives, Registry *subs ) {
 //---------------------------------------------------------------------------
 //	do_enable_x
 //---------------------------------------------------------------------------
-static inline int enable_x( char *, BMContext *, listItem *, Registry * );
-typedef struct {
-	CNNarrative *narrative; char *p;
-	Registry *subs; Pair *entry;
-	} EnableXData;
-static BMQueryCB enable_x_CB;
-
 static int
 do_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE_X
 	if ( *en=='.' ) en++; // ".func(_)" or ".func%(_)"
-	else if ( enable_x( en, ctx, narratives, subs ) ) return 1;
+	else if ( bm_enable_x( en, ctx, narratives, subs ) ) return 1;
 	Pair *entry = BMContextBaseClass( ctx );
-	if (( entry )) return enable_x( en, ctx, entry->value, subs );
+	if (( entry )) return bm_enable_x( en, ctx, entry->value, subs );
 	return 1; }
-
-static inline int
-enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
-	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
-		CNNarrative *narrative = i->ptr;
-		char *p = narrative->proto, *q;
-		if ( *p++!=':' ) continue;
-		// we have p: "func(params)" and en: "func expr"
-		if ( !strcomp( p, en, 1 ) ) {
-			p = p_prune( PRUNE_IDENTIFIER, p );
-			q = p_prune( PRUNE_IDENTIFIER, en );
-			EnableXData data = { narrative, p, subs, NULL };
-			int rv=( *q=='(' ? 1 : 0 ); void *rvv;
-			if ( rv ) rvv = BMContextRVTest( ctx, q+1, &rv );
-			switch ( rv ) {
-			case 0:	bm_query( BM_CONDITION, q, ctx, enable_x_CB, &data ); break;
-			case 1: enable_x_CB( rvv, ctx, &data ); break;
-			case 3: for ( listItem *i=rvv; i!=NULL; i=i->next )
-					enable_x_CB( i->ptr, ctx, &data ); }
-			return 1; } }
-	return 0; }
-
-static BMQTake
-enable_x_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	EnableXData *data = user_data;
-	if ( proto_verify( data->p, e, ctx ) ) {
-		Pair *entry = data->entry;
-		if (( entry )) addIfNotThere((listItem **) &entry->value, e );
-		else data->entry = registryRegister( data->subs, data->narrative, newItem(e) ); }
-	return BMQ_CONTINUE; }
 
 //---------------------------------------------------------------------------
 //	do_input

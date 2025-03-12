@@ -82,6 +82,7 @@ story_read( char *path, listItem *flags ) {
 //---------------------------------------------------------------------------
 //	build_CB
 //---------------------------------------------------------------------------
+static inline int subclass_check( char *p, BMParseData *data );
 static inline int indentation_check( BMParseData *data );
 static inline int known( listItem *i, char *proto );
 static inline int subclassing( char *proto, BMParseData * );
@@ -103,37 +104,29 @@ build_CB( BMParseOp op, BMParseMode mode, void *user_data ) {
 #ifdef DEBUG
 fprintf( stderr, "bgn narrative: %s\n", proto );
 #endif
-		if ( !proto ) { // main narrative definition start
+		if ( !proto || *proto=='<' ) { // main narrative definition start
 			if (( registryLookup( data->story, "" ) )) {
 				data->errnum = ErrNarrativeDoubleDef;
-				return 0; } } // main already registered
+				return 0; } // main already registered
+			else if (( proto )) {
+				if ( !subclass_check( proto+1, data ) ) {
+					free( proto ); return 0; }
+				narrative->proto = proto; } }
 		else if ( is_separator( *proto ) ) {
 			if ( !data->entry ) {
 				data->errnum = ErrNarrativeNoEntry;
-				free(proto);
-				return 0; }
+				free(proto); return 0; }
 			else if ( !strcmp(proto,".:&") && known( data->entry->value, proto ) ) {
 				data->errnum = ErrPostFrameDoubleDef;
-				free(proto);
-				return 0; }
+				free(proto); return 0; }
 			narrative->proto = proto; } // double-def accepted
 		else if ( registryLookup( data->story, proto ) ) {
-			data->errnum = ErrNarrativeDoubleDef;
-			free( proto );
-			return 0; }
+				data->errnum = ErrNarrativeDoubleDef;
+				free( proto ); return 0; }
 		else {
 			char *p = p_prune( PRUNE_IDENTIFIER, proto );
-			if ( *p=='<' ) {
-				Pair *entry = registryLookup( data->story, p+1 );
-				if ( !entry ) {
-					data->errnum = ErrNarrativeBaseUnknown;
-					free( proto );
-					return 0; }
-				p = p_prune( PRUNE_IDENTIFIER, entry->name );
-				if ( *p=='<' ) {
-					data->errnum = ErrNarrativeBaseNoBase;
-					free( proto );
-					return 0; } }
+			if ( *p=='<' && !subclass_check( p+1, data ) ) {
+				free( proto ); return 0; }
 			narrative->proto = proto; }
 		break;
 	case OccurrenceTake: ;
@@ -208,6 +201,9 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		if ( !proto ) {
 			if (( entry )) reorderListItem((listItem **) &entry->value );
 			data->entry = registryRegister( data->story, "", newItem(narrative) ); }	
+		else if ( *proto=='<' ) {
+			if (( entry )) reorderListItem((listItem **) &entry->value );
+			data->entry = registryRegister( data->story, "", newItem(narrative) ); }
 		else if ( is_separator( *proto ) ) {
 			addItem((listItem **) &entry->value, narrative );
 			if ( !mode ) // last take
@@ -232,6 +228,15 @@ fprintf( stderr, "end narrative: %s\n", proto );
 		db_arena_encode( data->string, data->txt, data->type ? NULL : data->entry );
 		break; }
 	return 1; }
+
+static inline int
+subclass_check( char *base, BMParseData *data ) {
+	Pair *entry = registryLookup( data->story, base );
+	if ( !entry )
+		data->errnum = ErrNarrativeBaseUnknown;
+	else if ( *p_prune( PRUNE_IDENTIFIER, entry->name )=='<' )
+		data->errnum = ErrNarrativeBaseNoBase;
+	return !data->errnum; }
 
 static inline int l_case( CNOccurrence *sibling, BMParseData *data );
 static inline int
@@ -358,11 +363,12 @@ story_output( FILE *stream, CNStory *story ) {
 			if ( *p=='<' ) {
 				fprintf( stream, ": " );
 				do fputc( *name++, stream );  while ( name!=p );
-				fprintf( stream, " %c ", *p++ );
-				do fputc( *p++, stream ); while ( *p );
-				fputc( '\n', stream ); }
+				fprintf( stream, " < %s\n", p+1 ); }
 			else fprintf( stream, ": %s\n", name ); }
-		else fprintf( stream, ":\n" );
+		else {
+			CNNarrative *n = ((listItem *) entry->value )->ptr;
+			if (( n->proto )) fprintf( stream, ": < %s\n", n->proto+1 );
+			else fprintf( stream, ":\n" ); }
 		for ( listItem *j=entry->value; j!=NULL; j=j->next ) {
 			CNNarrative *n = j->ptr;
 			narrative_output( stream, n, 0 );

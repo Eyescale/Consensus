@@ -15,9 +15,13 @@ CNCell *
 newCell( CNStory *story, Pair *entry ) {
 	CNEntity *this = cn_new( NULL, NULL );
 	BMContext *ctx = newContext( this );
-	char *q = p_prune( PRUNE_IDENTIFIER, entry->name );
-	Pair *base = *q=='<' ? registryLookup(story,q+1) : NULL;
-	bm_class_derive( ctx, base );
+	char *p = entry->name;
+	if ( !*p ) {
+		CNNarrative *n = ((listItem *) entry->value )->ptr;
+		if (( n->proto )) p = n->proto; }
+	else p = p_prune( PRUNE_IDENTIFIER, p );
+	Pair *base = *p=='<' ? registryLookup(story,p+1) : NULL;
+	bm_subclass( ctx, base );
 	this->sub[ 0 ] = (CNEntity *) newPair( entry, NULL );
 	this->sub[ 1 ] = (CNEntity *) ctx;
 	return this; }

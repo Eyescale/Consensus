@@ -12,6 +12,7 @@ static char *prune_level( char * );
 static char *prune_term( char *, PruneType );
 static char *prune_ternary( char * );
 static char *prune_sub( char * );
+static char *prune_selection( char * );
 static char *prune_mod( char * );
 static char *prune_format( char * );
 static char *prune_char( char * );
@@ -94,8 +95,10 @@ prune_term( char *p, PruneType type ) {
 			p++; break;
 		case '%':
 			if ( p[1]=='(' ) p++;
-			else if ( p[1]=='!' )
-				p += p[2]=='/' ? 3 : 2;
+			else if ( p[1]=='!' ) {
+				if ( p[2]=='/' )
+					p = prune_selection( p );
+				else p+=2; }
 			else {
 				p = prune_mod( p );
 				informed = 1; }
@@ -196,8 +199,10 @@ prune_ternary( char *p )
 			p++; break;
 		case '%':
 			if ( p[1]=='(' ) p++;
-			else if ( p[1]=='!' )
-				p += p[2]=='/' ? 3 : 2;
+			else if ( p[1]=='!' ) {
+				if ( p[2]=='/' )
+					p = prune_selection( p );
+				else p+=2; }
 			else {
 				p = prune_mod( p );
 				informed = 1; }
@@ -299,6 +304,19 @@ prune_sub( char *p )
 		default:
 			do p++; while ( !is_separator(*p) ); } }
 	return p; }
+
+//---------------------------------------------------------------------------
+//	prune_selection
+//---------------------------------------------------------------------------
+static char *
+prune_selection( char *p )
+/*
+	assumption: p = %!/(_)[:term[:term...]]/ where term: %(_) or ~%(_)
+*/ {
+	for ( p+=3; ; ) {
+		p = prune_sub( p );
+		if ( *p=='/' ) return p+1;
+		p += p[1]=='%' ? 2 : 3; } }
 
 //---------------------------------------------------------------------------
 //	prune_mod

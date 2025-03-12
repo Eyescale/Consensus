@@ -53,6 +53,8 @@ case_( dereference_CB )
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
 	_break
+case_( selection_CB )
+	_prune( BM_PRUNE_FILTER, p )
 case_( dot_identifier_CB )
 	if ( p[1]=='?' ) {
 		xpn_add( data->exponent, SUB, 1 );

@@ -15,7 +15,7 @@ extern int dbg_frame;
 		printf( "===================================================[ %d ]\n", dbg_frame++ ); \
 	else printf( "--------------------------------------------------- %s\n", narrative->proto ); }
 #define DBG_IN_CONDITION_BGN \
-	printf( "( %s, \"%s\", ctx, mark )\n", (as_per?"IN_X":"IN"), expression );
+	printf( "( %s, \"%s\", ctx, mark )\n", (flags&AS_PER?"IN_X":"IN"), expression );
 #define DBG_IN_CASE_BGN { \
 	char *s = type==IN_L ? "IN_L" :
 		  type==ON_L ? "ON_L" :
@@ -52,7 +52,7 @@ extern int dbg_frame;
 #define DBG_OPERATE_BGN \
 	fprintf( stderr, "operate bgn\n" );
 #define DBG_IN_CONDITION_BGN \
-	if ( as_per ) fprintf( stderr, "in_condition bgn: per %s\n", expression ); \
+	if ( flags&AS_PER ) fprintf( stderr, "in_condition bgn: per %s\n", expression ); \
 	else fprintf( stderr, "in_condition bgn: in %s\n", expression );
 #define DBG_IN_CASE_BGN \
 	fprintf( stderr, "in_case bgn: %s\n", expression );

@@ -308,7 +308,7 @@ void
 bm_vmark( BMContext *ctx, char *vm, BMMark *mark ) {
 	bm_context_push( ctx, ".", NULL );
 	Registry *locales = BMContextCurrent( ctx );
-	Pair *entry = registryRegister( locales, strdup(vm), NULL );
+	Pair *entry = registryRegister( locales, strmake(vm), NULL );
 	addItem( &mark->data->xpn, entry ); }
 
 //---------------------------------------------------------------------------

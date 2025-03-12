@@ -117,7 +117,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 
 static inline void
 output_proto( FILE *stream, char *p ) {
-	if ( !p ) return;
+	if ( !p || *p=='<' ) return;
 	else if ( *p==':' ) fprintf( stream, ".%s\n", p );
 	else {
 		do fputc( *p++, stream ); while ( !is_separator(*p) );

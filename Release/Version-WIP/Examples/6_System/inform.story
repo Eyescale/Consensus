@@ -1,8 +1,10 @@
 #include "include/inform.bm"
 
-// :< inform
+//===========================================================================
+//	inform.story main narrative - subclassed from inform
+//===========================================================================
+: < inform
 
-#define UNGEN	~%((!!,'>'),?):~%!/((?,DO),!):%((?,'>'),'&')/
 .: verify
 	on : .
 		in ?: "init"
@@ -25,38 +27,19 @@
 			else do : err |: ErrNoExit
 		else do : err |: ErrNoExit
 	else on : exit : .
-		in ?:%((?,ON):~*init):~%(.,((.,.),(?,ON))):UNGEN
-			do >&"Warning: ErrNotActuated: \"%s\" ON\n": %?
+		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
+			do >&"Warning: ErrNoActuation: \"%s\" ON\n": %?
 			do : err |: ErrSystemIncomplete
-		else in ?:%(?,OFF):~%(.,((.,.),(?,OFF))):UNGEN
-			do >&"Warning: ErrNotActuated: \"%s\" OFF\n": %?
-			do : err |: ErrSystemIncomplete
+		else per .occ:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+			in ((?:!!,SET),occ)
+				do >&"Warning: recasting \"%s\"\n": occ
+				do { ~(%?,SET), ((%?,DO),occ), ((%?,'>'),'&') }
+	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+		do >&"Warning: ErrNoActuation: \"%s\" OFF\n": %?
+		do : err |: ErrSystemIncomplete
 	else do : report
 
-#define TMP
-#ifdef TMP
-.: report
-	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
-		do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
-		in ((?:!!,DO), %(action:(?,.))) // generative action
-			per ((%?,'>'),?:~'&') // generated occurrences
-				do >"  > \"%_\"\n": %?
-			else in ((%?,'>'),'&')
-				do >"  > &\n"
-		per .guard: %( ?, ((.,.), action ))
-			do >"  guard\n"
-			per ( ?, guard ) // guard condition
-				do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-			per ( guard, ( ?, action ))
-				do >"    trigger\n"
-				per ( ?, %?::(?,.) ) // on event
-					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-				do >"      /\n"
-				per ( ?:~!!, %?::(.,?) ) // bar event
-					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-		do >:
-	do exit
-#else
+#ifdef PROPER
 .: report
 	on : .
 		in .%action: %(.,((.,.),?:(.,/(ON|OFF))))
@@ -122,4 +105,27 @@
 		in ?: ^bar
 			do : bar : %?
 		else do : trigger : ~.
+#else
+.: report
+	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
+		do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
+		in ((?:!!,DO), %(action:(?,.))) // generative action
+			per ((%?,'>'),?:~'&') // generated occurrences
+				do >"  > \"%_\"\n": %?
+			else in ((%?,'>'),'&')
+				do >"  > &\n"
+		per .guard: %( ?, ((.,.), action ))
+			do >"  guard\n"
+			per ( ?, guard ) // guard condition
+				do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+			per ( guard, ( ?, action ))
+				do >"    trigger\n"
+				per ( ?, %?::(?,.) ) // on event
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+				do >"      /\n"
+				per ( ?:~!!, %?::(.,?) ) // bar event
+					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >:
+	do exit
 #endif
+

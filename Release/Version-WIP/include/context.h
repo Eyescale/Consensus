@@ -80,7 +80,7 @@ static inline void *BMContextBase( listItem *narratives, BMContext *ctx ) {
 	if (( entry )) narratives = entry->value;
 	return narratives->ptr; }
 
-static inline void bm_class_derive( BMContext *ctx, Pair *base ) {
+static inline void bm_subclass( BMContext *ctx, Pair *base ) {
 	if (( base )) registryRegister( ctx, ">", base ); }
 
 static inline Registry * BMContextCurrent( BMContext *ctx ) {

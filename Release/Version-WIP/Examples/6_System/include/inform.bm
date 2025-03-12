@@ -2,7 +2,7 @@
 #define INFORM_BM
 
 #include "lineno.bm"
-:
+: inform
 	on init
 		do : lc : !! LineNo( (:0123456789:) )
 		do : level : root
@@ -142,8 +142,13 @@
 		'\n'
 			do : take
 			do : cmd : (cmd,~.)
-			in (type,'>')
+			in ( type, '>' )
 				do ((*take,'>'),'&')
+			else in ( type, OFF )
+				in ((!!,CL),*s)
+				else in ((?:!!,SET),*s)
+					do >&"Warning: off & - recasting \"%s\"\n": *s
+					do { ~(%?,SET), ((%?,DO),*s), ((%?,'>'),'&') }
 		.
 			do : err
 	else en &

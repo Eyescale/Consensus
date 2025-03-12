@@ -162,6 +162,16 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented base subclassing - cf Test/91_subclass-base
+	  see also Examples/6_System/inform.story
+	. rewrote Examples/6_System/TM.system
+	  . no bar event is used in this version - bar Use Case is when different
+	    events may occur simultaneously in a given state and in this case we
+	    want to handle only one of them by priority order.
+	  . inform.bm: .: finish //	v--------- if not CL
+		off & => replace ((?:!!,SET),*s) with ((%?,DO),*s)
+	  . inform.story: .: verify //		 v---------- if not CL
+		off occurrence => replace ((?:!!,SET),*s) with ((%?,DO),*s)
 	. parser.c: allowed ~%(_) as selection term %!/_:~%(_):_/
 	. finalized select implementation - cf Test/90_select-pivot
 	  locate_pivot.c: %!/_/ locate_pivot now enters all expression terms

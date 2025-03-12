@@ -7,8 +7,8 @@ in "init"
 		do "head initializes state and registry"
 		 > "head's state is Halt"
 		do "tape initializes start=point cell and default symbol"
-		 > point cell has right cell
-		 > point cell has left cell
+		 > "point cell has right cell"
+		 > "point cell has left cell"
 	off &
 		cl "init" do "rollcall"
 
@@ -34,7 +34,7 @@ else in "rollcall"
 		in "caller is start cell"
 			off "output start symbol '|'"
 				do "output blank"
-		else off "caller is set"
+		else on "caller is set"
 			do "output blank"
 		off &
 			do "output caller's symbol"
@@ -86,6 +86,6 @@ else in "operation"
 		do "point shifts to right cell"
 	off "allocate new left cell"
 		do "point shifts to left cell"
-	off "point is set"
+	on "point is set"
 		cl "operation" do "rollcall"
 
