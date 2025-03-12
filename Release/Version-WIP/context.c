@@ -729,8 +729,13 @@ bm_translate( BMContext *dst, CNInstance *x, CNDB *db_x, int inform ) {
 	if ( !dst ) return x;
 	if ( !x ) return NULL;
 	CNDB *db_dst = BMContextDB( dst );
+#if 0
 	if ( db_dst==db_x && ( !inform || !db_deprecated(x,db_x) ))
 		return x;
+#else
+	if ( db_dst==db_x && !inform )
+		return x;
+#endif
 
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance, *e = x;

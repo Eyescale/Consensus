@@ -581,7 +581,7 @@ case_( sub_expression_CB )
 		else if ( !strncmp( mark+1, ",...", 4 ) ) // %((?,...):list)
 			data->list_expr = 6;
 		_return( 1 ) }
-	else if (( mark_exp ))
+	else if (( *mark_exp ))
 		_return( 1 )
 	_break
 case_( dot_expression_CB )

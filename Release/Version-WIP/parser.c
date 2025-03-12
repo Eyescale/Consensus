@@ -797,6 +797,8 @@ CB_if_( TagTake ) {		do_( "expr" )	REENTER
 		end
 		in_( "/_:" ) bgn_
 			ons( " \t" )	do_( same )
+			on_( '~' ) if ( s_at(':') ) {
+					do_( same )	s_take }
 			on_( '%' )	do_( "/_:%" )
 			end
 		in_( "/_:%" ) bgn_

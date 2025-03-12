@@ -262,53 +262,53 @@ inform.story
 	1. create occurrence from string, as per
 	   	do : s : $((s,~.),?:...)
 	   which looks up and/or registers string in string arena.
-	   This is performed in :ps prior to transitioning out to
-	   either :ward (see below) or directly to :take 
+	   This is performed in :ps prior to transitioning to :ward
 
 	2. verify compliance with rule
-		"Generated cannot be generative, & v.v."
-	   where
-		generated means CL or >
-		generative means DO followed by >
+			"Generated cannot be generative, & v.v."
+		where
+			generated means CL or >
+			generative means DO followed by >
 
 	   So when we meet CL or > ?
 		we need to ward %? against all prior generative actions
 	   and when we meet DO ?
 		we need to ward %? against all prior generated occurrences
 
-	   This is implemented in :ward which is entered from :ps depending
-	   on both current type and the first character of the upcoming
-	   command - '>' indicating either a generative DO or a generated
-	   occurrence
+	   This is implemented in :ward which is entered from :ps and
+	   performs according to both current type and the first character
+	   of the upcoming command, as '>' indicates either a generative DO
+	   or a generated occurrence.
 
-	   Note that, in case of no-compliance, the user must be informed
-	   as to what prior statement caused the conflict, on what line.
-	   For this LineNo notifies the current line number as soon as
-	   parent enters :line, prior to :string. The current line number
-	   is stored along with the current generative action or generated
-	   occurrence during :ward
+	   There the current line number is stored along with the action
+	   occurrence & type, so that in case of non-compliance the user
+	   is informed as to what prior statement caused the conflict,
+	   on what line.
 
-	3. reuse existing guards or triggers { on, bar }
-	   After :inform - which sorts out conditions and events to inform
-	   current action's guard and triggers { on, bar } - we want to
-	   reuse existing guard and triggers { on, bar } from the already
-	   instantiated
+	   Note that generated occurrences must not be set or cleared
+	   anywhere else, which is also ascertained in :ward
 
+	3. instantiate
 		( .guard, ( .trigger:(.on,.bar), (.occurrence,ON|OFF) ))
 
-	   according to
-		// find %? so that all *guard conditions apply to %?
-		per ?:%( ?:~%(~%(?,*guard),?), ( ., (.,ON|OFF) ))
-			// verify that all %? conditions apply to *guard
-			in ~.:( ~%(?,%?), *guard )
-				// free current *guard and use existing
-				do { ~(*guard), ((*,guard),%?) }
-
-		and likewise for *on and for *bar
-
-	   This is implemented in :instantiate which is entered after :inform
-	   and eventually performs the instantiation
+	   This takes place in :instantiate which is entered after
+		:ward--see above--then
+	   	:take--which builds the current action's thread--then
+		:inform--which informs { guard, on, bar, action }
+	   and performs
 		   do ( *guard, ((*on,*bar), *action ))
+
+	   We reuse existing guards and/or triggers { on, bar } as per
+	   the following approach
+
+	   // find %? so that all *guard conditions apply to %?
+	   per ?:%( ?:~%(~%(?,*guard),?), ((!!,!!), (.,/(ON|OFF)/) ))
+		// verify that all %? conditions apply to *guard
+		in ~.:( ~%(?,%?):~(*,.), *guard )
+			// free current *guard and use existing
+			do { ~(*guard), ((*,guard),%?) }
+
+	   and likewise for *on and for *bar
 
 system.story
 	Finally system.story executes TM.system, using as includes the
@@ -327,13 +327,46 @@ system.story
 			do : %((!!,CO),?) : !!( launch-formula )
 	   where
 		do : identifier : !!( launch-formula )
-		instantiates one 'identifier' class representative
+		instantiates one identifier class actor
+
+  Special cases
+	init
+		Assuming that we have, in system.story
+			in ?: "init"
+				do : init : ( %?, ON )
+				do !! | {
+					((%|,SET),%?),
+					((%|,CO),System) }
+		and that Cosystem init performs
+			in ?: "init"
+				on ( %?, ON )
+					do : %? : ON
+		then in launch formula, we create
+			?:( *init:OCC )( %?, *^^ )
+	exit
+		Assuming that we have, in system.story
+			in ?: "exit"
+				do : exit : ( %?, ON )
+				do !! | {
+					((%|,SET),%?),
+					((%|,CO),System) }
+			as well as the causal relationship instance
+				( !!, ((!!,!!),*exit) )
+		and that all cosystems somehow implement
+			: "exit"
+				do exit
+		then in launch formula, we create
+			?:( *exit:~OCC )( %?, *^COS )
+
+	subscription
+		All cosystems must perform, upon initialization
+			do %(( ., /(ON|OFF)/), ?:~%% ) @<
 
 NOTES
 	. currently we do allow CL string DO string // with same string
 	. output.story allows in/on/off occurrences to be specified with
-	  no action at the end of system file. inform.story will report
-	  error and exit in this case.
+	  no action at the end of system description, whereas
+	  inform.story will report error and exit in this case.
 	. guard, on, bar may have no associated condition/event in which
 	  case inform.story will report - here with all three barren:
 		: "occurrence" ON|OFF
@@ -342,26 +375,12 @@ NOTES
 		      /
 		: "next occurrence" ON|OFF
 		  ...
-	. We could cover all occurrences using 
-			((!!,SET),?)	// currently not used
-			((!!,CL),?)
-			((!!,DO),?)	// generative only
-	  but then we must deregister occurrence from ((!!,SET),.) if
-	  it is found generative, and decide whether to allow occurrence
-	  in both or only one of ((!!,CL),.) and ((!!,SET),.) otherwise
-
-NOTES
 	. Design consistency
 			per .action:expression 
 		should be achieved via
 			do : action : ( action | ?:(expression) (%|,%?):| )
 	  and traversing action list (then guard, then triggers) instead of
-	  relying on sequential 'per' execution
-	. event/condition origin - option FULL
-		"init" ON
-		"allocate new left cell" OFF	[*]
-		"allocate new right cell" OFF	[*]
-	  will be reported as ErrUnpecifiedOrigin as implementation stands
-	  [*] should definitely be made generative
+	  relying on sequential execution of 'per' implementation -
+	  However we allow it for specific purpose (output)
 
 

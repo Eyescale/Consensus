@@ -1,4 +1,4 @@
-#include "lineno.bm"
+#include "include/lineno.bm"
 :
 	on init
 		do : lc : !! LineNo( (:0123456789:) )

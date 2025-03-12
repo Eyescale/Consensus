@@ -2,7 +2,6 @@ See Also: design/story/interactive.story
 
 DONE - pending system.story finalization/testing
 	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
-	. locate_pivot.c: %!/_/ locate_pivot now enters all terms
 	. class derivation - cf Test/89_class-derivation
 		: cosystem < class
 	  where class overloads cosystem's base AND post-frame narratives
@@ -20,18 +19,24 @@ DONE - pending system.story finalization/testing
 
 WIP
 	. currently must follow do "_" with > & to ensure generative action
-	  and allow off & without causing ErrNoActionGenerating error
+	  and allow off & without causing ErrNotActuated error
 		  ...
 			do "some action"
 			 > &
 		  else off &
 			do "next action"
 	  ALTERNATIVELY could automatic switch SET to DO if event OFF
+	  => would simplify TM.system
 	. cosystems to be explicitely specified with <
 		do "action occurrence"
 		 > "generated occurrence"
 		 < cosystem
 	  => no need for db_arena_origin() // hacky
+	. Syntax: change
+		.%tag~ { ^.:~%(.,(Status,?))|^guard }
+	  into	.%tag~:{ ^.:~%(.,(Status,?))|^guard }
+	. release event mark => only NOT deprecated - cf context.c:bm_translate()
+		operation.c: on_event / on_event_x
 
 TODO
 	. feature complete Examples/6_System
@@ -50,6 +55,7 @@ TODO
 	  [DONE] implemented inform.story .: verify
 		 e.g.	on "occurrence" with only cl specified
 			off "occurrence" with only do specified
+	  [DONE] Cosystem.bm: "%% cannot be part of %@" assumption verified
 	  [ WIP ] system.story - finalize
 		  . cosystem init
 		  . create (.,(Status,.)) and clear guard Status -
@@ -71,6 +77,7 @@ TODO
 	. reorder Test/ directory contents
 	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
+	. OPT: btreeCache(): should use addIfNotThere - but uint is an issue
 	. TBD: I would like to replace else on/off & etc. with
 		eg. on which / off which and else on that / else off that
 		but in fact can keep '&' - just need to remove else in current narrative !
@@ -155,9 +162,10 @@ NOTES
 		// post-frame
 
 DONE
+	. parser.c: allowed ~%(_) as selection term %!/_:~%(_):_/
 	. finalized select implementation - cf Test/90_select-pivot
-	  locate_pivot now enters all select expression terms
-	. refactored 'en' command and narrative prototype format
+	  locate_pivot.c: %!/_/ locate_pivot now enters all expression terms
+	. refactored 'en' command and sub-narrative prototype format -
 	  removed sub-expression and ellipsis support from narrative declaration
 	  - cf format description in design/specs/bm-EN-command.txt
 	. db_arena_makeup() now puts whole identifier(s) into string
@@ -609,6 +617,7 @@ DONE
 		> ^D
 	  Note: do ~(.) also releases %% - actually it's a FEATURE (!), as
 	 	do %% will rehabilitate %%, which was released - but not removed
+		UPDATE 2025-03-11: actually now should exit, as do ~(%%) does
 	. extended main.c to support
 		./B% -i
 		./B% file.bm -i
@@ -624,18 +633,20 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
-	. $(s,?:...)	// match string - do later
+	. support \ after #define in parser_io.c
+	  support func-like macros in parser_io.c
+	. in $(s,?:...)	// match string - do later
 	  $((?,...):*s)	// do later
 	  $<(!,?:...)>	// do later
 	  $/regex/	// for "_"
 	. parser.c: in "^" on '^' if ( is_f(FORE) ) ...
-	  strictly speaking we should verify either
-		are_f(ASSIGN|PRIMED|CARRY|FORE) or
-		are_f(ASSIGN|PRIMED|UBE|PIPED|FORE)
-	  but ASSIGN and PIPED flags are gone...
+		strictly speaking we should verify either
+			are_f(ASSIGN|PRIMED|CARRY|FORE) or
+			are_f(ASSIGN|PRIMED|UBE|PIPED|FORE)
+		but ASSIGN and PIPED flags are gone...
 	  Anyway not a bug, as ^^ will return NULL and expression will fail
 	  but less user assistance than ideal, as we would like to verify
-	  ASSIGN|PRIMED to allow ^^ and *^^ and *^%?
+	  ASSIGN|PRIMED are set in order to allow ^^ and *^^ and *^%?
 	. re-integrate db_debug.c from Version-1.1 into db_op.c
 	. parser_macros: extract REENTER + put caught in io struct
 	. expr1.expr1 would be ( expr1, expr 2 ) => deprecate list!

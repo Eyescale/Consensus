@@ -289,15 +289,13 @@ case_( register_variable_CB )
 		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
 		listItem **sub = &data->sub[ NDX ];
 		if ( strncmp(p+2,"::",2) ) {
-			for ( listItem *i=found; i!=NULL; i=i->next ) {
-				e = bm_translate( carry, i->ptr, db, 1 );
-				if (( e )) addItem( sub, e ); } }
+			for ( listItem *i=found; i!=NULL; i=i->next )
+				addItem( sub, i->ptr ); }
 		else {
 			listItem *xpn = xpn_make(p+4);
 			for ( listItem *i=found; i!=NULL; i=i->next )
-				if (( e=xpn_sub(i->ptr,xpn) )) {
-					e = bm_translate( carry, e, db, 1 );
-					if (( e )) addItem( sub, e ); }
+				if (( e=xpn_sub(i->ptr,xpn) ))
+					addItem( sub, e );
 			freeListItem( &xpn ); }
 		break;
 	case '<':

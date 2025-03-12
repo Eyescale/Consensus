@@ -4,86 +4,88 @@
 
 in "init"
 	on "init"
-		do "head initializes
-			. state to A
-			. registry to { { ... }, ... }"
-		 > &
-		do "tape initializes
-			. default symbol to 0
-			. start cell to { default symbol, - , - }
-			. list of cells to { start cell }
-			. current cell to start cell"
-		 > &
-	else off &
-		cl "init" do "output"
+		do "head initializes state and registry"
+		 > "head's state is Halt"
+		do "tape initializes start=point cell and default symbol"
+		 > point cell has right cell
+		 > point cell has left cell
+	off &
+		cl "init" do "rollcall"
 
-else in "output"
-	on "output"
+else in "rollcall"
+	on "rollcall"
 		do "starting with leftmost cell"
-		 > "update output cell"
-		 > "output cell has right cell"
-	else off "update output cell"
-		do "output start symbol '|'"
-		 > &
-	else off &
-		do "output head's state"
-		 > &
-	else off &
-		do "output cell symbol"
-		 > &
-	else off &
-		in "output cell has right cell"
-			do "shift output cell right"
-			 > "output cell has right cell"
-			 > "update output cell"
+		 > "caller is start cell"
+		 > "caller is point cell"
+		 > "caller has right cell"
+		 > "caller is set"
+	in "caller is start cell"
+		on "caller is set"
+			do "output start symbol '|'"
+	in "caller is point cell"
+		in "caller is start cell"
+			off "output start symbol '|'"
+				do "output head's state"
+		else on "caller is set"
+			do "output head's state"
+		off &
+			do "output caller's symbol"
+	else
+		in "caller is start cell"
+			off "output start symbol '|'"
+				do "output blank"
+		else off "caller is set"
+			do "output blank"
+		off &
+			do "output caller's symbol"
+	off &
+		in "caller has right cell"
+			do "output space"
+			do "rollcall shifts to right cell"
+			 > "caller is start cell"
+			 > "caller is point cell"
+			 > "caller has right cell"
+			 > "caller is set"
 		else in "head's state is Halt"
 			do "exit"
-		else cl "output" do "operation"
+		else cl "rollcall" do "operation"
 
 else in "operation"
 	on "operation"
-		do "current cell communicates its symbol to head"
+		do "point cell communicates its symbol to head"
 		 > &
-	else on &
+	on &
 		do "head looks up registry entry corresponding to "
 		   "cell's passed symbol and current head's state"
-		 > &
-	else off &
-		do "head informs its own state from entry's new state"
+	off &
+		do "head updates its own state from entry's state"
 		 > "head's state is Halt"
 		do "head informs shift direction from entry's direction"
 		 > "shift right"
 		 > "shift left"
-		do "head communicates entry's new symbol to current cell"
+		do "head communicates entry's symbol to point cell"
 		 > &
-	else on &
-		do "current cell informs its symbol from head's passed symbol"
-		 > &
-	else off &
+	on &
+		do "point cell updates its symbol from head's passed symbol"
+	off &
 		in "shift right"
-			in "current cell has right cell"
-				do "right cell becomes current cell"
-				 > "current cell has left cell"
-				 > "current cell has right cell"
-			else
-				do "allocate new right cell"
-				 > &
+			in "point cell has right cell"
+				do "point shifts to right cell"
+				 > "point cell has left cell"
+				 > "point cell has right cell"
+				 > "point is set"
+			else do "allocate new right cell"
 		else in "shift left"
-			in "current cell has left cell"
-				do "left cell becomes current cell"
-				 > "current cell has right cell"
-				 > "current cell has left cell"
-			else
-				do "allocate new left cell"
-				 > &
-	else
-		in "shift right"
-			off "allocate new right cell"
-				do "shift current to right"
-				 > &
-		else in "shift left"
-			off "allocate new left cell"
-				do "shift current to left"
-				 > &
-		else cl "operation" do "output"
+			in "point cell has left cell"
+				do "point shifts to left cell"
+				 > "point cell has left cell"
+				 > "point cell has right cell"
+				 > "point is set"
+			else do "allocate new left cell"
+	off "allocate new right cell"
+		do "point shifts to right cell"
+	off "allocate new left cell"
+		do "point shifts to left cell"
+	off "point is set"
+		cl "operation" do "rollcall"
 
