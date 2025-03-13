@@ -19,7 +19,7 @@
 				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
-			do { ~( root ), ~( /(ELSE|ON|OFF|CL|DO|>)/, . ) }
+			do { ~( root ), ~( /(ELSE|IN|ON|OFF|CL|DO|>)/, . ) }
 			do :< guard, on, bar >: ~.
 			do : verify
 		else en %(:?)
@@ -142,13 +142,14 @@
 		'\n'
 			do : take
 			do : cmd : (cmd,~.)
-			in ( type, '>' )
+			in (( type, OFF ) ? (~.:((!!,CL),*s)) :)
+				in ((?:!!,SET),*s)
++				do >&"Warning: inform: l%$: off & - recasting l%$: "
+					"do \"%s\" as generative action\n": <
+					%(line,?:...), %((%?,IN),?), *s >
+				do { ~(%?,SET), ((%?,DO),*s), ((%?,'>'),'&') }
+-			else in ( type, '>' )
 				do ((*take,'>'),'&')
-			else in ( type, OFF )
-				in ((!!,CL),*s)
-				else in ((?:!!,SET),*s)
-					do >&"Warning: off & - recasting \"%s\"\n": *s
-					do { ~(%?,SET), ((%?,DO),*s), ((%?,'>'),'&') }
 		.
 			do : err
 	else en &
@@ -345,6 +346,42 @@
 			do : cmd : (cmd,~.)
 			do : take
 		else do : ~.
+
+.: verify
+	on : .
+		in ?: "init"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do : err |: ErrInitUsage
+			else in ( ?:(%?,ON), . )
+				in ~.:( ., %? )
+					do : init : %?
+				else do : err |: ErrInitUsage
+			else do : err |: ErrNoInit
+		else do : err |: ErrNoInit
+	else on : init : .
+		in ?: "exit"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do : err |: ErrExitUsage
+			else in ( ., ?:(%?,ON))
+				in ~.:( %?, . )
+					do : exit : %?
+				else do : err |: ErrExitUsage
+			else do : err |: ErrNoExit
+		else do : err |: ErrNoExit
+	else on : exit : .
+		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
+			do >&"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
+			do : err |: ErrSystemIncomplete
+		else per .occ:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+			in ((?:!!,SET),occ)
++			do >&"Warning: verify: recasting l%$: "
+				"do \"%s\" as generative action\n":<
+				%((%?,IN),?), occ > 
+			do { ~(%?,SET), ((%?,DO),occ), ((%?,'>'),'&') }
+-	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+		do >&"Warning: verify: ErrNoActuation: OFF \"%s\"\n": %?
+		do : err |: ErrSystemIncomplete
+	else do : carry
 
 .: err
 	on : . // lc coming up next

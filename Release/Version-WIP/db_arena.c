@@ -258,7 +258,7 @@ db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
 			s_add( CNIdentifier(f) )
 			i = e->as_sub[ 0 ]; }
 		else i = i->next; }
-	if ( !StringInformed(s) ) return NULL;
+	if ( !StringInformed(s) ) { freeString(s); return NULL; }
 	IndexData data;
 	data.s = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );

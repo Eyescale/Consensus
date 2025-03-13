@@ -9,6 +9,7 @@
 #include "errout.h"
 
 // #define DEBUG
+#define ALMOST
 
 #include "query.h"
 #include "query_private.h"
@@ -264,7 +265,7 @@ POP_xpn:		POP( stack.xpn, xpn, PUSH_xpn )
 		freeListItem( &stack.list );
 		POP_ALL( stack.xpn ) }
 #ifdef DEBUG
-	db_outputf( db, stderr, "XP_TRAVERSE end: returning %_\n", success );
+	db_outputf( db, stderr, "XP_TRAVERSE end: returning '%_'\n", success );
 #endif
 	freeListItem( &trail );
 	if (( pvi )) freeItem( pvi );
@@ -274,6 +275,8 @@ POP_xpn:		POP( stack.xpn, xpn, PUSH_xpn )
 //	xp_verify	- also invoked by eeno_query.c: bm_eeno_scan()
 //---------------------------------------------------------------------------
 static inline void op_set( BMVerifyOp, BMQueryData *, CNInstance *, char *, int );
+static inline void push_mark_sel( char *, listItem **, listItem ** );
+static inline void pop_mark_sel( listItem **, listItem ** );
 static inline CNInstance * x_sub( CNInstance *, listItem *, listItem * );
 static inline char * prune( char *, int );
 typedef struct {
@@ -312,11 +315,11 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 	listItem *exponent = NULL;
 	listItem *list_i = NULL;
 	listItem *mark_exp = NULL;
+	listItem *mark_sel = NULL;
 	listItem *i = newItem( x ), *j;
 	int list_expr = 0;
 	int flags = FIRST;
 	int success = 0;
-
 	BMTraverseData traversal;
 	traversal.user_data = data;
 	traversal.stack = &data->stack.flags;
@@ -361,6 +364,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 
 			//----------------------------------------------------------
 			if (( data->mark_exp )) { // including new data->list_expr
+				push_mark_sel( p, &data->mark_sel, &mark_sel );
 				flags = traversal.flags;
 				listItem *base = data->base;
 				addItem( &data->stack.base, base );
@@ -390,7 +394,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					continue; }
 				else {
 					freeListItem( &data->mark_exp );
-					freeListItem( &data->mark_sel );
+					pop_mark_sel( &data->mark_sel, &mark_sel );
 					// move on past sub-expression
 					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
 					p = prune( p, success );
@@ -413,7 +417,6 @@ POST_OP:
 				LFLUSH( list_expr, i, list_i, stack.list_i );
 				do POP_STACK( start_p, i, mark_exp, list_expr, flags )
 				while is_DOUBLE_STARRED( start_p, expression, data );
-				freeListItem( &data->mark_sel );
 				// move on - p is already informed
 				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ) }
 				exponent = NULL;
@@ -439,7 +442,6 @@ POST_OP:
 					else {
 						// restore context & move on past sub-expression
 						POP_STACK( start_p, i, mark_exp, list_expr, flags )
-						freeListItem( &data->mark_sel );
 						// move on - p is already informed unless x==NULL
 						if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
 						if ( x==NULL ) p = prune( start_p, success );
@@ -481,6 +483,18 @@ op_set( BMVerifyOp op, BMQueryData *data, CNInstance *x, char *p, int success )
 	data->list_expr = 0;
 	data->mark_exp = NULL;
 	data->success = success; }
+
+static inline void
+push_mark_sel( char *p, listItem **mark_sel, listItem **backup ) {
+	if (( *mark_sel ) && strncmp(p,"%!",2)) {
+		addItem( backup, *mark_sel );
+		*mark_sel = NULL; }
+	else if (( *backup )) addItem( backup, NULL ); }
+
+static inline void
+pop_mark_sel( listItem **mark_sel, listItem **backup ) {
+	if ( *backup ) *mark_sel = popListItem( backup );
+	else freeListItem( mark_sel ); }
 
 static inline listItem *
 pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
@@ -531,12 +545,16 @@ case_( tag_CB )
 	else if (( p=tag(p,data) ))
 		_continue( p )
 	_break
-case_( selection_CB )
+case_( bgn_selection_CB )
 	bm_locate_emark( p+3, &data->mark_exp );
 	bm_locate_mark( SUB_EXPR, p+3, &data->mark_sel );
 	for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
 		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 	_return( 1 )
+case_( end_selection_CB )
+	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+		_return( 1 )
+	_break
 case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )

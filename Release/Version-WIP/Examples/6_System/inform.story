@@ -5,42 +5,8 @@
 //===========================================================================
 : < inform
 
-.: verify
-	on : .
-		in ?: "init"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err |: ErrInitUsage
-			else in ( ?:(%?,ON), . )
-				in ~.:( ., %? )
-					do : init : %?
-				else do : err |: ErrInitUsage
-			else do : err |: ErrNoInit
-		else do : err |: ErrNoInit
-	else on : init : .
-		in ?: "exit"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err |: ErrExitUsage
-			else in ( ., ?:(%?,ON))
-				in ~.:( %?, . )
-					do : exit : %?
-				else do : err |: ErrExitUsage
-			else do : err |: ErrNoExit
-		else do : err |: ErrNoExit
-	else on : exit : .
-		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
-			do >&"Warning: ErrNoActuation: \"%s\" ON\n": %?
-			do : err |: ErrSystemIncomplete
-		else per .occ:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
-			in ((?:!!,SET),occ)
-				do >&"Warning: recasting \"%s\"\n": occ
-				do { ~(%?,SET), ((%?,DO),occ), ((%?,'>'),'&') }
-	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
-		do >&"Warning: ErrNoActuation: \"%s\" OFF\n": %?
-		do : err |: ErrSystemIncomplete
-	else do : report
-
+.: carry
 #ifdef PROPER
-.: report
 	on : .
 		in .%action: %(.,((.,.),?:(.,/(ON|OFF))))
 			do : action : ^action
@@ -106,14 +72,14 @@
 			do : bar : %?
 		else do : trigger : ~.
 #else
-.: report
 	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
-		do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
 		in ((?:!!,DO), %(action:(?,.))) // generative action
+			do >": \"%_\"\n": %(action:(?,.))
 			per ((%?,'>'),?:~'&') // generated occurrences
 				do >"  > \"%_\"\n": %?
 			else in ((%?,'>'),'&')
 				do >"  > &\n"
+		else do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
 		per .guard: %( ?, ((.,.), action ))
 			do >"  guard\n"
 			per ( ?, guard ) // guard condition

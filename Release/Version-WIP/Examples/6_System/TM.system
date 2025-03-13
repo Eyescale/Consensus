@@ -41,6 +41,7 @@ else in "rollcall"
 	off &
 		in "caller has right cell"
 			do "output space"
+			 > &
 			do "rollcall shifts to right cell"
 			 > "caller is start cell"
 			 > "caller is point cell"

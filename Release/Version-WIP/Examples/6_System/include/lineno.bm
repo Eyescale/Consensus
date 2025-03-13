@@ -8,9 +8,7 @@
 //	LineNo
 //---------------------------------------------------------------------------
 : LineNo
-	on : .. : line < ..
-		do (((..,l),...), %(l,?:...))
-	else on buffer < ..
+	on buffer < ..
 		// input buffer starts with '\n' of current line
 		do ( c, ~. )
 	else on : input : ? < ..
@@ -32,8 +30,12 @@
 				do nl
 			else do (c,1)
 			do (l,1)
-	else on :..: err < ..
+	else on : .. : line < ..
+		do (((..,l),...), %(l,?:...))
+	else on : .. : err < ..
 		do ((( .., l ), ... ),< %(l,?:...), 'c', %(c,?:...) >)
+	else on : .. : ~. < ..
+		do exit
 	else on exit < ..
 		do exit
 

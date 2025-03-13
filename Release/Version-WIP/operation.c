@@ -252,10 +252,10 @@ on_event_x( int as_per, char *expression, BMContext *ctx, BMMark **mark )
 		found = eeno_feel( as_per, BM_INSTANTIATED, expression, &proxies, ctx );
 		if (( found )) success = 2; }
 
-	if ( negated ) {
-		success = !success;
+	if ( negated || !mark ) {
+		if ( negated ) success = !success;
 		eeno_release( as_per, found ); }
-	else if ( success && ( mark )) {
+	else if ( success ) {
 		*mark = success==2 ? 
 			bm_mark( expression, src, as_per|EENOK, found ) :
 			bm_mark( NULL, src, as_per|EENOK, found );

@@ -165,6 +165,7 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 #define OP_END( data ) op_end( data ); /* see below */
 
 #define POP_STACK( start_p, i, mark_exp, list_expr, flags ) { \
+	pop_mark_sel( &data->mark_sel, &mark_sel ); \
 	start_p = popListItem( &stack.p ); \
 	i = pop_as_sub( &stack, i, &mark_exp ); \
 	mark_exp = popListItem( &stack.mark_exp ); \

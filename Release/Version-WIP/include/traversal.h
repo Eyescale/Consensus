@@ -329,7 +329,7 @@ CB_EndSelectionCB			f_pop( stack, 0 );
 					f_set( INFORMED );
 					p++; break; }
 				else if is_f( INFORMED ) {
-					p++; break; }
+CB_EndSelectionCB			p++; break; }
 				else {
 CB_RegexCB				p = p_prune( PRUNE_FILTER, p );
 					f_set( INFORMED ) }
