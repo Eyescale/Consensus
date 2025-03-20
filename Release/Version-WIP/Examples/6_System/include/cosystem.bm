@@ -1,49 +1,55 @@
 #ifndef COSYSTEM_BM
 #define COSYSTEM_BM
 
+// #define TRACE
+
 //===========================================================================
-//	Cosystem	- base class definition
+//	Cosystem	class definition
 //===========================================================================
 /*
-    Usage
- 	: cosystem-name < Cosystem
+   Usage
+	: cosystem-name < Cosystem
 	: "occurrence" // cosystem occurrence sub-narrative
-		in ?:"generated occurrence"
-			en .actuate( %?, ON )
-		in ?:"generated occurrence"
-			en .actuate( %?, OFF )
+		on activation
+			...
+			in ?:"generated occurrence"
+				en .ON/OFF( %? )
+			...
+			deactivate
+   Where
+	occurrence sub-narrative can only be
+	. activated from base narrative, in which case 'this' is not set
+	. deactivated from within, in which case we have en .OFF( this )
 */
 : Cosystem
 	on init
-		// get own name from parent
-		on : ? : %% < ..
-			do : %<?> : %%
-		// subscribe to other cosystems
-		do %(( ., /(ON|OFF)/), ?:~%% ) @<
+		// get cosystem identifiers and subscribe if needed
+		per : . : ? < ..
+			do %<!> // ((*,identifier),proxy)
+			in ((.,/(ON|OFF)/),%<?>:~%%)
+				do %<?> @<
+
 		// initialize ( condition, ( Status, guard )), and
 		// commission condition-free guards
-		per %( ?, ((.,.), (.,/(ON|OFF)/)))
+		per ?: %( ?, ((.,.), (.,/(ON|OFF)/)))
 			do ((.,%?) ?
 				( %(?,%?), ( Status, %? )) :
 				%( %?|^guard ))
+
 		// register system "exit" and trigger "init"
 		in ?: "exit"
-			do : exit : %(( %?, ON ), . )
-		in ?: "init"
-			in (( %?, ON ), %% )
-				do : %? : ON
+			in ?:( %?, ON )
+				do : exit : %((%?,.)?:%?)
+	else on : exit : ?
+		in %?: ~((.,.),.) // system-only
+			in ?: "init"
+				en .ON( %? )
 	else in : exit : %<.>
 		do exit
 	else
-		// enable active occurrence sub-narratives
-		en %active
-
-		// actuate local actions based on guards and EVA
-		per ?: %( %guard, ((~%(~%<.>,?),~%(%<.>,?)), ? ))
-			// activate occurrence sub-narrative
-			in : exit : ~(.,%%) // not system
-				do %( %?::(?,.)|^active )
-			en .actuate( %? )
+		// flush tag list & commission condition-free guards
+		.%tag~: { ^.:~%(.,(Status,?))|^guard }
+		en %active // enable active occurrence sub-narratives
 
 		// update all guard status from EENO - for next frame
 		per : ? : . < .
@@ -56,55 +62,73 @@
 			// Status, and decommission these guards
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
 				do ( %?, %( Status, %(%?,?)|^guard~ ))
-		en &
 
-.: & // post-frame narrative
-	// flush tag list & commission condition-free guards
-	.%tag~ { ^.:~%(.,(Status,?))|^guard }
+		// actuate local actions based on %guard and EEVA
+		per ?: %( %guard, ((~%(~%<.>,?),~%(%<.>,?)), ? ))
+			in : exit : ((.,.),.) // not system
+				do %( %?::(?,.)|^active )
+			en .(%?:(.,ON)?ON:OFF)( %?::(?,.) )
 
-//---------------------------------------------------------------------------
-//	actuate
-//---------------------------------------------------------------------------
-/*
-    Usage
- 	: cosystem-name < Cosystem
-	: "occurrence" // cosystem occurrence sub-narrative
-		in ?:"generated occurrence"
-			en .actuate( %?, ON )
-		in ?:"generated occurrence"
-			en .actuate( %?, OFF )
-*/
-#define generative ( occurrence : %(.,((.,.),(?,.))) )
+//===========================================================================
+//	Cosystem	public interface
+//===========================================================================
+#define activation	: this : ON
+#define deactivate	en .OFF( this )
 
-.: actuate( .occurrence, .state )
-/*¶
-  |	occurrence sub-narrative can only be
-  |	. activated from cosystem narrative, in which case 'this' is not set
-  |	. deactivated from within, in which case occurrence is 'this'
-  L*/
-	in ~.: generative
-		do : occurrence : state
-	else in ( this ? ((state:ON)?:(occurrence:~this)) :)
-		do >&"Error: actuation not authorized\n"
-			"\tcosystem: %_\n"
+.: ON( .occurrence )
+#ifdef TRACE
+	do >&"ON........%_\n": occurrence
+#endif
+	in ( occurrence:%(.,((.,.),(?,.))) ? this :) // generative
+		do >&"Error: cosystem: %_\n"
 			"\tnarrative: %_\n"
-			"\toccurrence: %_\n":< %(*?:%%), this, occurrence >
-	else in ~.:: occurrence : state
-		// deactivate occurrence sub-narrative
-		do ( occurrence:this ? %( this|^active~ ) :)
-
+			"\toccurrence [ON]: %_\n"
+		"actuation not authorized\n":< %(*?:%%), this, occurrence >
+	else in ~.:: occurrence : ON
 		// actuate occurrence condition & event
-		do : occurrence : state
+		do : occurrence : ON
 
 		// remove corresponding condition from relevant guard
 		// Status, and tag these guards for next frame
-		in ?:(( occurrence, state ), %% )
+		in ?:(( occurrence, ON ), %% )
 			do ~( %?, %( Status, .|^tag ))
 
 		// add complementary condition to relevant guard
 		// Status, and decommission these guards
-		in ?:(( occurrence, ~state ), %% )
+		in ?:(( occurrence, OFF ), %% )
 			do ( %?, %( Status, %(%?,?)|^guard~ ))
+
+	else in occurrence: ~%(.,((.,.),(?,.))) // generated
+		do : occurrence : ON
+
+.: OFF( .occurrence )
+#ifdef TRACE
+	do >&"      OFF %_\n": occurrence
+#endif
+	in ( occurrence:%(.,((.,.),(?,.))) ? this ? (occurrence:~this) :)
+		do >&"Error: cosystem: %_\n"
+			"\tnarrative: %_\n"
+			"\toccurrence [OFF]: %_\n"
+		"actuation not authorized\n":< %(*?:%%), this, occurrence >
+	else in ~.:: occurrence : OFF
+		// deactivate occurrence sub-narrative
+		do ( occurrence:this ? %( this|^active~ ) :)
+
+		// actuate occurrence condition & event
+		do : occurrence : OFF
+
+		// remove corresponding condition from relevant guard
+		// Status, and tag these guards for next frame
+		in ?:(( occurrence, OFF ), %% )
+			do ~( %?, %( Status, .|^tag ))
+
+		// add complementary condition to relevant guard
+		// Status, and decommission these guards
+		in ?:(( occurrence, ON ), %% )
+			do ( %?, %( Status, %(%?,?)|^guard~ ))
+
+	else in occurrence: ~%(.,((.,.),(?,.))) // generated
+		do : occurrence : OFF
 
 
 #endif // COSYSTEM_BM

@@ -74,11 +74,11 @@ static inline CNInstance * proxy_verify( char *, EENOFeelData * );
 BMTraverseCBSwitch( eeno_query_traversal )
 case_( filter_CB )
 	errout( EENOQueryFiltered, p );
-	_prune( BM_PRUNE_TERM, p+1 )
+	_prune( BMT_PRUNE_TERM, p+1 )
 case_( verify_CB )
 	if ( !proxy_verify( p, data ) )
 		_return( 2 )
-	_prune( BM_PRUNE_TERM, p )
+	_prune( BMT_PRUNE_TERM, p )
 case_( open_CB )
 	if is_f_next( COUPLE ) {
 		CNInstance *x = data->x;

@@ -130,7 +130,12 @@ PARSER_FUNC( bm_parse_expr )
 					do_( "?" ) 	s_take }
 		on_( ')' ) if ( is_f(SUB_EXPR|FORE|LEVEL) ) {
 				if ( is_f(TERNARY) ) {
-					if ( is_f(PRIMED) ) {
+					if ( *type&EN && f_invokable(stack,s)) {
+						do_( "_)" )	s_take
+								f_pop( stack, 0 )
+								f_pop( stack, 0 )
+								f_set( INFORMED ) }
+					else if ( is_f(PRIMED) ) {
 						do_( same )	s_take
 								while (!is_f(FIRST)) f_pop( stack, 0 )
 								f_pop( stack, 0 ) // never pass MARKED
@@ -561,7 +566,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 							f_clr( ASSIGN|PRIMED ) }
 			end
 	in_( "!" ) bgn_
-		on_( '!' ) if ( *type&(IN|ON) || is_f(byref|FILTERED) ) {
+		on_( '!' ) if ( *type&(IN|ON|EN)||expr(RELEASED)||is_f(byref|FILTERED) ) {
 				do_( "expr" )	s_add( "!!" )
 						f_set( INFORMED ) }
 			else if ( s_empty ) {
@@ -739,10 +744,15 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 							f_reset( FIRST|FORE|SUB_EXPR, PIPED|CARRY ) }
 			end
 		in_( "?::" ) bgn_
+			on_( ':' ) if ( !s_at(':') ) {
+					do_( "?::_:" )	s_take }
 			on_separator if ( !s_at(':') ) {
 					do_( "expr" )	REENTER
 							f_set( INFORMED|PROTECTED ) }
 			on_other	do_( same )	s_take
+			end
+		in_( "?::_:" ) bgn_
+			on_( ':' )	do_( "?::" )	s_take
 			end
 	in_( "%term" ) bgn_
 		on_( '~' )
@@ -805,6 +815,13 @@ CB_if_( TagTake ) {		do_( "expr" )	REENTER
 			on_( '(' )	do_( "%(" )	f_push( stack )
 							f_reset( FIRST|SUB_EXPR, 0 )
 			end
+	in_( "_)" ) bgn_
+		ons( " \t" )	do_( same )
+		on_( '(' )	do_( "expr" )	REENTER
+						*type |= PER;
+						f_clr( INFORMED )
+		on_other	do_( "expr" )	REENTER
+		end
 	in_( "?:(_)" ) bgn_
 		ons( " \t" )	do_( same )
 		on_( '\n' )	do_( "?:(_)_" )
@@ -1577,24 +1594,16 @@ CB_if_( ProtoSet ) {		do_( "def<_" )	TAB_CURRENT = 0;
 			end
 		in_( ".%$" ) bgn_
 			ons( " \t" )	do_( ".%$." )
-			on_( '\n' )	do_( ".%$." )	REENTER
-			on_( '~' ) if ( !(*type&LOCALE) ) {
-CB_( TagTake ) {			do_( ".%$_" )	s_take
-							f_set( NEGATED ) } }
-			on_separator if ( !(*type&LOCALE) ) {
-CB_( TagTake ) {			do_( ".%$_" )	REENTER } }
-			on_other	do_( same )	s_take
-			end
-		in_( ".%$." ) bgn_
-			ons( " \t" )	do_( same )
-			on_( '\n' )	do_( "_expr" )	REENTER
-							TAB_CURRENT += TAB_SHIFT;
-							*type = LOCALE;
-							f_set( INFORMED )
-			on_( '.' )	do_( "." )	s_add( " " )
-							s_take
-							*type = IN|LOCALE;
-			on_separator	do_( ".%$" )	REENTER
+			on_( '\n' ) if ( s_at('~') ) {
+					do_( ".%$_" )	REENTER }
+			on_( '~' )
+CB_( TagTake )				do_( same )	s_take
+							f_set( NEGATED )
+			on_( ':' ) if ( !s_at('~') ) {
+CB_( TagTake )				do_( ".%$_" )	s_take }
+				else {	do_( ".%$_" )	s_take }
+			on_other if ( !s_at('~') ) {
+					do_( same )	s_take }
 			end
 		in_( ".%$_" ) bgn_
 			ons( " \t" )	do_( same )

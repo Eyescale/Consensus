@@ -736,7 +736,6 @@ bm_translate( BMContext *dst, CNInstance *x, CNDB *db_x, int inform ) {
 	if ( db_dst==db_x && !inform )
 		return x;
 #endif
-
 	struct { listItem *src, *dst; } stack = { NULL, NULL };
 	CNInstance *instance, *e = x;
 	int ndx = 0;

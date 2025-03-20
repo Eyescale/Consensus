@@ -2,7 +2,7 @@
 #define TRAVERSAL_FLAGS_H
 
 #define byref \
-	FORE|SUB_EXPR|BYREF
+	FORE|SUB_EXPR|SEL_EXPR|BYREF
 #define f_set_BYREF \
 	if ( !is_f(FILTERED) ) f_set( BYREF )
 

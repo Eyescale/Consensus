@@ -153,14 +153,11 @@ Consensus B% Version-WIP
 		.
 		cmd
 		case	expr
-	.	.$ 	.$_
+	.	.%	.%$	.%$_	_expr
+		.$ 	.$_
 		.$_	_expr
 			.:
 			.
-		.%	.%$	.%$_	_expr
-				.%$.	_expr
-					.%$
-					.
 	:	.:
 		def_
 		def.	def_

@@ -376,11 +376,14 @@ static int
 do_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 	if ( subs==NULL ) { errout( EnPostFrame, en ); return 1; }
 	DBG_DO_ENABLE_X
-	if ( *en=='.' ) en++; // ".func(_)" or ".func%(_)"
-	else if ( bm_enable_x( en, ctx, narratives, subs ) ) return 1;
 	Pair *entry = BMContextBaseClass( ctx );
-	if (( entry )) return bm_enable_x( en, ctx, entry->value, subs );
-	return 1; }
+	if (( entry )) {
+		if ( *en=='.' ) en++; // ".func(_)" or ".func%(_)"
+		else if ( bm_enable_x( en, ctx, narratives, subs ) ) return 1;
+		return bm_enable_x( en, ctx, entry->value, subs ); }
+	else {
+		if ( *en=='.' ) en++;
+		return bm_enable_x( en, ctx, narratives, subs ); } }
 
 //---------------------------------------------------------------------------
 //	do_input
@@ -483,15 +486,13 @@ set_locale( char *expression, BMContext *ctx ) {
 	if ( !strncmp(expression,".%",2) ) {
 		expression+=2; // skip '.%'
 		char *p = p_prune( PRUNE_IDENTIFIER, expression );
-		switch ( *p ) {
-		case '\0':
-		case ' ': return bm_tag_register( expression, p, ctx );
-		case '<': return bm_tag_inform( expression, p, ctx );
-		case '{': return bm_tag_traverse( expression, p, ctx );
-		case '~':
-			switch ( p[1] ) {
-			case '{': return bm_tag_traverse( expression, p, ctx );
-			case '\0': return bm_tag_clear( expression, ctx ); } }
+		if ( *p=='~' ) {
+			return p[1] ?
+				bm_tag_traverse( expression, p, ctx ) :
+				bm_tag_clear( expression, ctx ); }
+		else switch ( p[1] ) {
+			case '<': return bm_tag_inform( expression, p+1, ctx );
+			case '{': return bm_tag_traverse( expression, p+1, ctx ); }
 		return 0; }
 	else {
 		return bm_register_locales( ctx, expression ); } }

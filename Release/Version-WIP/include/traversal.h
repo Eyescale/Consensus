@@ -67,8 +67,7 @@ CB_BgnPipeCB				f_push( stack )
 				break;
 			case '>':
 				if is_f( EENOV ) {
-CB_EEnovEndCB				f_clr( EENOV )
-					f_set( INFORMED ) }
+CB_EEnovEndCB				f_clr( EENOV ) }
 				else if is_f( VECTOR ) {
 					f_next = cast_i((*stack)->ptr);
 CB_EndSetCB				f_pop( stack, 0 )
@@ -146,11 +145,11 @@ CB_OpenCB				f_push( stack )
 					if ( p[1]==':' ) p++;
 					p++; break;
 				case '<':
-CB_RegisterVariableCB			f_set( INFORMED )
-					p+=2;
-					if ( strmatch( "?!(.", *p ) ) {
-						f_set( EENOV )
-						p = p_prune( PRUNE_TERM, p ); }
+					f_set( INFORMED )
+CB_RegisterVariableCB			if ( strmatch( "?!(.", p[2] ) ) {
+						p = p_prune( PRUNE_TERM, p+2 );
+						f_set( EENOV ); }
+					else p+=2;
 					break;
 				case '%':
 				case '@':

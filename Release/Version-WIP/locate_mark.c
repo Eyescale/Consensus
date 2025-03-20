@@ -49,19 +49,23 @@ bm_locate_mark( int sub_expr, char *expression, listItem **exponent )
 BMTraverseCBSwitch( locate_mark_traversal )
 case_( dereference_CB )
 	listItem **exponent = data->exponent;
+#if 1
+	xpn_add( exponent, data->sub_expr & STARRED ? STAR_SUB : AS_SUB, 1 );
+#else
 	xpn_add( exponent, AS_SUB, 1 );
+#endif
 	xpn_add( exponent, SUB, 0 );
 	xpn_add( exponent, SUB, 1 );
 	_break
 case_( selection_CB )
-	_prune( BM_PRUNE_FILTER, p )
+	_prune( BMT_PRUNE_FILTER, p )
 case_( dot_identifier_CB )
 	if ( p[1]=='?' ) {
 		xpn_add( data->exponent, SUB, 1 );
 		_return( 2 ); }
 	_break
 case_( sub_expression_CB )
-	_prune( BM_PRUNE_FILTER, p+1 )
+	_prune( BMT_PRUNE_FILTER, p+1 )
 case_( dot_expression_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	_break

@@ -98,7 +98,7 @@ StringCompare( CNString *string, char *cmp )
 	return !( j==len && !i ); }
 
 //---------------------------------------------------------------------------
-//	StringFinish, StringReset
+//	StringFinish, StringReset, StringDup
 //---------------------------------------------------------------------------
 static char *l2s( listItem **list, int trim );
 
@@ -185,6 +185,22 @@ StringReset( CNString *string, CNStringReset target ) {
 			string->data = NULL;
 			string->mode = CNStringBytes;
 			break; } } }
+
+CNString *
+StringDup( CNString *string ) {
+	CNString *s = newString();
+	int mode = s->mode = string->mode;
+	if ( !string->data ) s->data = NULL;
+	else switch ( mode ) {
+	case CNStringBytes: ;
+		listItem **data = (listItem **) &s->data;
+		for ( listItem *i=string->data; i!=NULL; i=i->next )
+			addItem( data, i->ptr );
+		reorderListItem((listItem **) &s->data );
+		break;
+	case CNStringText:
+		s->data = strdup(string->data); }
+	return s; }
 
 /*===========================================================================
 |

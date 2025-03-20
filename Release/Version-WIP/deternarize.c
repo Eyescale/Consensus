@@ -224,7 +224,7 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERM, p+1 ) }
+		_prune( BMT_PRUNE_TERM, p+1 ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -237,7 +237,7 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		_prune( BM_PRUNE_TERM, p ) }
+		_prune( BMT_PRUNE_TERM, p ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {
@@ -276,7 +276,7 @@ optimize( Pair *segment, char *p )
 	segment = segment->name;
 	char *bgn = segment->name;
 	char *end = segment->value; // segment ended after '('
-	if (( bgn==end-1 ) || !strmatch( "~*%.)", *(end-2) )) {
+	if (( bgn==end-1 ) || !strmatch( "~*%)", *(end-2) )) {
 		segment->value--; return p+1; }
 	return p; }
 

@@ -31,7 +31,7 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 		union { void *ptr; int value; } exp; \
 		exp.ptr = exponent->ptr; \
 		if ( exp.value & SUB ) { \
-			e = CNSUB( e, exp.value&1 ); \
+			e = exp.value&1 ? CNSUB(e,1) : CNSUB(e,0); \
 			if (( e )) { \
 				addItem( &stack, i ); \
 				addItem( &stack, exponent ); \
@@ -39,7 +39,7 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 				i = newItem( e ); } \
 			else goto POP; } \
 		else { \
-			for ( j=e->as_sub[ exp.value & 1 ]; j!=NULL; j=j->next ) \
+			for ( j=e->as_sub[ exp.value ]; j!=NULL; j=j->next ) \
 				if ( !db_private( privy, j->ptr, db ) ) \
 					break; \
 			if (( j )) { \

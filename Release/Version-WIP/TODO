@@ -1,44 +1,4 @@
-See Also: design/story/interactive.story
-
-DONE - pending system.story finalization/testing
-	. instantiate.c: implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
-	. class derivation - cf Test/89_class-derivation
-		: cosystem < class
-	  where class overloads cosystem's base AND post-frame narratives
-	. implemented class-actor assignment
-			do :_: !! (_)
-	  e.g.	do : %((!!,CO),?) : !! ( launch-formula )
-	. parser.c: support expression
-		?::locale // retrieves string narrative class name (aka. origin)
-	  where locale references string
-	  usage - cf. Examples/6_System/README.txt:#system.story
-		.: ascribe(( .pivot, DO ), .occurrence )
-			do (( pivot, CO ), ?::occurrence )
-	  => instantiate.c: wildcard_CB => invoke db_arena_origin( CNInstance * )
-	  => story.c: StringTake: pass data->entry => db_arena.c: set_origin()
-
-WIP
-	. currently must follow do "_" with > & to ensure generative action
-	  and allow off & without causing ErrNotActuated error
-		  ...
-			do "some action"
-			 > &
-		  else off &
-			do "next action"
-	  ALTERNATIVELY could automatic switch SET to DO if event OFF
-	  => would simplify TM.system
-	. cosystems to be explicitely specified with <
-		do "action occurrence"
-		 > "generated occurrence"
-		 < cosystem
-	  => no need for db_arena_origin() // hacky
-	. Syntax: change
-		.%tag~ { ^.:~%(.,(Status,?))|^guard }
-	  into	.%tag~:{ ^.:~%(.,(Status,?))|^guard }
-	. release event mark => only NOT deprecated - cf context.c:bm_translate()
-		operation.c: on_event / on_event_x
-
-TODO
+DONE
 	. feature complete Examples/6_System
 	  [ DONE ] output l%dc%d on error
 	  [ DONE ] output system as is => cf output.story
@@ -55,12 +15,46 @@ TODO
 	  [DONE] implemented inform.story .: verify
 		 e.g.	on "occurrence" with only cl specified
 			off "occurrence" with only do specified
-	  [DONE] Cosystem.bm: "%% cannot be part of %@" assumption verified
-	  [ WIP ] system.story - finalize
+	  [DONE] Cosystem.bm: "%% cannot be part of %@" assumption - verified
+	  [DONE] off & => recast SET occurrences into generative DO
+	  [DONE] verify/off . => recast SET occurrences into generative DO
+	  [DONE] carry => ascribe SET occurrence to ?::occurrence::system
+	  [DONE] system.story - finalize
 		  . cosystem init
 		  . create (.,(Status,.)) and clear guard Status -
 		  . capture all proxies (and subscribe) on init
-		  . finalize and actually run TM.system example (manual)
+		  . finalize and actually run
+			../../B% system.story < TM.system
+			../../B% -Dverbose system.story < TM.system
+
+Release Checklist
+    TODO
+	. implement in .%identifier: expression / ^identifier
+	  cf. inform.story #ifdef CORRECT // simplify further?
+	. integrate inform.story and system.story => using -Dxxx
+	. categorize output by cosystem, including # > generated
+	. verify generated occurrences all come from the same cosystem
+	  (possibly different actions)
+	. Examples/6_System => bar event implemented but not tested
+
+    TODOC
+	. EEVA returns true if entity.as_sub[0] was released,
+	  allowing in condition / on condition
+	. Caution: system occurrences are considered generative
+		=> only actuated if ~.::occurrence:state
+
+	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
+
+    NICE TO HAVE
+	. allow '< cosystem' in TM.system
+		do "action occurrence"
+		 > "generated occurrence"
+		 < cosystem
+	  TBD: complement or replace db_arena_origin() ?
+	. allow commenting out sections of TM.system, useful for
+	  development / testing / debugging
+
+TODO
 	. NTH: inform.story
 		. do "" / on "" for do exit / on init
 			=> db_arena_makeup must accept NULL
@@ -86,18 +80,6 @@ TODO
 	       this makes the cosystem generic, ie. co-actor can be changed /
 	       handy in TM Cell implementation / e.g. current cell actor
 	       issue: newly assigned cosystems must know system rules and actors
-	. TBD: tag list feature completion
-	  . .%list < expression, ... > just adds entries to existing list
-	    .%list~ < expression, ... > could be used to reset and re-initialize
-	  . %list and |^tag currently cannot be used in DO and ON and PER
-	    we only support tagging in condition evaluation e.g. %(expression|^tag )
-	    which could be extended to cover e.g. OUTPUT, FORE, etc.
-	  . Note that .%tag~ {_} only performs condition evaluation (and tagging)
-	    of passed expressions, as we don't want to transport private entities
-	    and we need to support .%tag~ { ^.:~%(.,(Status,?))|^guard }
-	  . Do we even use .%list <_> ? idea was .%onoff < ON, OFF >
-		=> see when engineering complete
-		=> remove feature if not used
 	. NOTE: to enlist occurrence - e.g.
 		in ?: "....."
 			do %?|^guard
@@ -111,7 +93,11 @@ TODO
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
 
-BUGS
+KNOWN ISSUES and WORKAROUNDS
+	. context.bm_translate(): commented off if !db_deprecated()
+	  Assumption is that no translation can be asked of deprecated entity
+	  which is not true - e.g. on ~(:?) is supported
+	  => proper solution would be for bm_mark to check !db_deprecated()
 	. in system.story, if ~(s) instead of (s,~.) => crash
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
@@ -119,13 +105,11 @@ BUGS
 	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
 	  => that's because parser replaces %( with default format %_
 	     should actually exit on error
-	. do ~({titi,toto}) accepted but what does nothing !?
+	. do ~({titi,toto}) accepted but does nothing !?
 	. do :< a, b >: ({1,2},3)
 		=> wrong order of assignment
-	. passthrough "this" (cf. context_rebase) not good,
-	  as it is in turn passed to sub-narrative, etc.
-	. TBD: query.c: non-pivot case: shared entities not traversed
-		=> bug or feature?
+	. query.c: non-pivot case => shared entities are not traversed
+	  bug or feature?
 
 NOTES
 	. FEATURE: per-else sequences are accepted, e.g.
@@ -162,8 +146,27 @@ NOTES
 		// post-frame
 
 DONE
-	. implemented base subclassing - cf Test/91_subclass-base
-	  see also Examples/6_System/inform.story
+	. instantiate.c
+	  . implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
+	  . implemented class-actor assignment
+			do :_: !! (_)
+	    e.g.	do : %((!!,CO),?) : !! ( launch-formula )
+	  . implemented	?::locale // where locale references string
+	    usage - cf. Examples/6_System/system.story
+		.: ascribe(( .pivot, DO ), .occurrence )
+			do (( pivot, CO ), ?::occurrence )
+	    => instantiate.c: wildcard_CB => invoke db_arena_origin(CNInstance*)
+	    => story.c: StringTake: pass data->entry to db_arena.c: set_origin()
+	. changed %list syntax - supported expressions are now
+		.%list:<_> / .%list:{_} / .%list~ / .%list~:{_}
+	  . .%list:< expression, ... > now reset tag values
+	  . .%tag~:{_} only performs condition evaluation (and tagging) of
+	    passed expressions, as we don't want to transport private entities
+	    and we need to support .%tag~:{ ^.:~%(.,(Status,?))|^guard }
+	. class derivation - cf Test/{89_class-derivation,91_subclass-base}
+		: cosystem < class
+		: < class	// cf. Examples/6_System/inform.story
+	  where class overloads cosystem's main AND post-frame narratives
 	. rewrote Examples/6_System/TM.system
 	  . no bar event is used in this version - bar Use Case is when different
 	    events may occur simultaneously in a given state and in this case we
@@ -643,6 +646,9 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. %list and |^tag currently cannot be used in DO and ON and PER
+	  we only support tagging in condition evaluation e.g. %(expression|^tag )
+	  which could be extended to cover e.g. OUTPUT, FORE, etc.
 	. support \ after #define in parser_io.c
 	  support func-like macros in parser_io.c
 	. in $(s,?:...)	// match string - do later

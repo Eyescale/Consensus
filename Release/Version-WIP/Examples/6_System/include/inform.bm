@@ -19,9 +19,7 @@
 				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
-			do { ~( root ), ~( /(ELSE|IN|ON|OFF|CL|DO|>)/, . ) }
-			do :< guard, on, bar >: ~.
-			do : verify
+			do : carry
 		else en %(:?)
 
 .: base
@@ -142,14 +140,10 @@
 		'\n'
 			do : take
 			do : cmd : (cmd,~.)
-			in (( type, OFF ) ? (~.:((!!,CL),*s)) :)
-				in ((?:!!,SET),*s)
-+				do >&"Warning: inform: l%$: off & - recasting l%$: "
-					"do \"%s\" as generative action\n": <
-					%(line,?:...), %((%?,IN),?), *s >
-				do { ~(%?,SET), ((%?,DO),*s), ((%?,'>'),'&') }
--			else in ( type, '>' )
+			in ( type, '>' )
 				do ((*take,'>'),'&')
+			else in ( type, OFF )
+				en .recasting(( !!, SET ), *s:~%((.,CL),?) )
 		.
 			do : err
 	else en &
@@ -345,7 +339,10 @@
 		else in ( cmd, . )
 			do : cmd : (cmd,~.)
 			do : take
-		else do : ~.
+		else
+			do { ~( root ), ~( /(ELSE|IN|ON|OFF|CL|DO|>)/, . ) }
+			do :< guard, on, bar >: ~.
+			do : verify
 
 .: verify
 	on : .
@@ -372,19 +369,28 @@
 		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
 			do >&"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
 			do : err |: ErrSystemIncomplete
-		else per .occ:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
-			in ((?:!!,SET),occ)
-+			do >&"Warning: verify: recasting l%$: "
-				"do \"%s\" as generative action\n":<
-				%((%?,IN),?), occ > 
-			do { ~(%?,SET), ((%?,DO),occ), ((%?,'>'),'&') }
--	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
+		else en .recasting(( !!, SET ), %(?,OFF):~%((.,CL),?) )
+	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
 		do >&"Warning: verify: ErrNoActuation: OFF \"%s\"\n": %?
 		do : err |: ErrSystemIncomplete
-	else do : carry
+	else
+		do : ~.
+
+.: recasting(( .pivot, SET ), .occurrence )
+#ifdef verbose
+	in : verify
+		do >&"verify: recasting l%$: "
+			"do \"%s\" as generative\n":<
+			%((pivot,IN),?), occurrence >
+	else
+		do >&"l%$: off & - recasting l%$: "
+			"do \"%s\" as generative\n": <
+			%(line,?:...), %((pivot,IN),?), occurrence >
+#endif
+	do { ~(pivot,SET), ((pivot,DO),occurrence), ((pivot,'>'),'&') }
 
 .: err
-	on : . // lc coming up next
+	on : . // lc coming up next - if not verify
 		on ~(:?) // just transitioned from
 			do >&"[%_:] Error: ": %?
 	else on ~( %%, l ) < *lc

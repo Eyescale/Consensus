@@ -10,5 +10,7 @@ listItem * eenov_inform( BMContext *, CNDB *, char *, BMContext * );
 CNInstance * eenov_lookup( BMContext *, CNDB *, char * );
 int eenov_match( BMContext *, char *, CNInstance *, CNDB * );
 
+CNInstance *lookup_EEVA( CNInstance *, CNDB * );
+
 
 #endif	// EENOV_H

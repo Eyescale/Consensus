@@ -178,7 +178,7 @@ fprint_expr( FILE *stream, char *p, int level, int type ) {
 			fputc( *q, stream );
 		db_arena_output( stream, "%_", p );
 		return; }
-	else if ( *p && strlen(data.p)>=40 ) {
+	else if ( *p && ( carry || strlen(data.p)>=40 )) {
 		BMTraverseData traversal;
 		traversal.user_data = &data;
 		traversal.stack = &data.stack.flags;

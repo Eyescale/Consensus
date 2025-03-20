@@ -1,0 +1,66 @@
+#include "../include/cosystem.bm"
+
+//===========================================================================
+//		TM.system - head Cosystem's narrative
+//===========================================================================
+: head < Cosystem
+
+//---------------------------------------------------------------------------
+//		head Cosystem's actions sub-narratives
+//---------------------------------------------------------------------------
+: "head initializes state and registry"
+# > "head's state is Halt"
+	on activation
+		do ( TUPLE, {
+			(A,(0,(1,(RIGHT,B))))
+			(A,(1,(1,(RIGHT,H))))
+			(B,(0,(0,(RIGHT,C))))
+			(B,(1,(1,(RIGHT,B))))
+			(C,(0,(1,(LEFT,C))))
+			(C,(1,(1,(LEFT,A)))) } )
+		do : state : A
+	else on : state : .
+		in ?: "head's state is Halt"
+			en .( *state:H ? ON : OFF )( %? )
+		deactivate
+
+: "output head's state"
+# > &
+	on activation
+		do >"%_": *state
+		deactivate
+
+: "head looks up registry entry corresponding to "
+  "tape's passed symbol and current head's state"
+# > &
+	on ~( %%, symbol ) < ?:*tape
+		do : entry : %( TUPLE, ( *state, ( %<(!,?)>, ? )))
+		deactivate
+
+: "head updates its own state from entry's state"
+# > "head's state is Halt"
+	on activation
+		in : entry : (.,(.,?))
+			do : state : %?
+	else
+		in ?: "head's state is Halt"
+			en .( *state:H ? ON : OFF )( %? )
+		deactivate
+
+: "head informs shift direction from entry's direction"
+# > "shift right"
+# > "shift left"
+	on activation
+		in ?: "shift right"
+			en .( *entry:(.,(RIGHT,.)) ? ON : OFF )( %? )
+		in ?: "shift left"
+			en .( *entry:(.,(LEFT,.)) ? ON : OFF )( %? )
+		deactivate
+
+: "head communicates entry's symbol to tape"
+# > &
+	on activation
+		in : entry : (?,.)
+			do (( *tape, symbol ), %? )
+		deactivate
+

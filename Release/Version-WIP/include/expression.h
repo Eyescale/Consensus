@@ -9,7 +9,6 @@ typedef struct { listItem *narratives; Registry *subs; } EnableData;
 listItem *	bm_scan( char *, BMContext * );
 void		bm_enable( int, void *, char *, BMContext *, EnableData * );
 int		bm_enable_x( char *, BMContext *, listItem *, Registry * );
-int		bm_tag_register( char *, char *, BMContext * );
 int		bm_tag_traverse( char *, char *, BMContext * );
 int		bm_tag_inform( char *, char *, BMContext * );
 int		bm_tag_clear( char *, BMContext * );

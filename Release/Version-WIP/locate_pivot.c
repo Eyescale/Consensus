@@ -64,7 +64,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 
 BMTraverseCBSwitch( locate_pivot_traversal )
 case_( not_CB )
-	_prune( BM_PRUNE_FILTER, p+1 )
+	_prune( BMT_PRUNE_FILTER, p+1 )
 case_( bgn_selection_CB )
 	listItem *mark_exp = NULL;
 	bm_locate_emark( p+3, &mark_exp );
@@ -75,12 +75,49 @@ case_( bgn_selection_CB )
 	addItem( &data->stack.base, *exponent );
 	while (( mark_exp ))
 		addItem( exponent, popListItem(&mark_exp) );
+	addItem( &data->stack.level, data->level );
+	data->level = *exponent;
 	_break
 case_( end_selection_CB )
 	freeListItem( &data->mark_sel );
 	data->level = popListItem( &data->stack.level );
-	listItem *base = popListItem( &data->stack.base );
-	if (( base )) xpn_free( data->exponent, base );
+	xpn_free( data->exponent, data->level );
+	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
+		listItem *base = popListItem( &data->stack.base );
+		if (( base )) xpn_free( data->exponent, base ); }
+	_break;
+case_( filter_CB )
+	xpn_free( data->exponent, data->level );
+	_break
+case_( comma_CB )
+	xpn_free( data->exponent, data->level );
+	xpn_set( *data->exponent, AS_SUB, 1 );
+	_break
+case_( open_CB )
+	if is_f_next( ASSIGN ) {
+		listItem **exponent = data->exponent;
+		if CHECK( SELF ) {
+			xpn_add( exponent, AS_SUB, 0 );
+			_return( 2 ) }
+		// apply (: operator to whatever comes next
+		xpn_add( exponent, AS_SUB, 1 ); }
+	else if is_f_next( COUPLE )
+		xpn_add( data->exponent, AS_SUB, 0 );
+	addItem( &data->stack.level, data->level );
+	data->level = *data->exponent;
+	_break
+case_( close_CB )
+	xpn_free( data->exponent, data->level );
+	if is_f( ASSIGN )
+		popListItem( data->exponent );
+	else if is_f( COUPLE )
+		popListItem( data->exponent );
+	if is_f( DOT )
+		popListItem( data->exponent );
+	data->level = popListItem( &data->stack.level );
+	if ( is_f(SUB_EXPR) && !is_f(LEVEL) ) {
+		listItem *base = popListItem( &data->stack.base );
+		if (( base )) xpn_free( data->exponent, base ); }
 	_break;
 case_( dot_identifier_CB )
 	listItem **exponent = data->exponent;
@@ -162,7 +199,7 @@ case_( sub_expression_CB )
 				Pair * list_expr = newPair( p, mark );
 				addItem( data->exponent, list_expr );
 				_return( 2 ) }
-			_prune( BM_PRUNE_FILTER, p+1 ) }
+			_prune( BMT_PRUNE_FILTER, p+1 ) }
 	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
 		for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
 			addItem( &mark_exp, i->ptr ); }
@@ -179,38 +216,4 @@ case_( dot_expression_CB )
 	// apply dot operator to whatever comes next
 	xpn_add( exponent, AS_SUB, 1 );
 	_break
-case_( open_CB )
-	if is_f_next( ASSIGN ) {
-		listItem **exponent = data->exponent;
-		if CHECK( SELF ) {
-			xpn_add( exponent, AS_SUB, 0 );
-			_return( 2 ) }
-		// apply (: operator to whatever comes next
-		xpn_add( exponent, AS_SUB, 1 ); }
-	else if is_f_next( COUPLE )
-		xpn_add( data->exponent, AS_SUB, 0 );
-	addItem( &data->stack.level, data->level );
-	data->level = *data->exponent;
-	_break
-case_( filter_CB )
-	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {}
-	else xpn_free( data->exponent, data->level );
-	_break
-case_( comma_CB )
-	xpn_free( data->exponent, data->level );
-	xpn_set( *data->exponent, AS_SUB, 1 );
-	_break
-case_( close_CB )
-	xpn_free( data->exponent, data->level );
-	if is_f( ASSIGN )
-		popListItem( data->exponent );
-	else if is_f( COUPLE )
-		popListItem( data->exponent );
-	if is_f( DOT )
-		popListItem( data->exponent );
-	data->level = popListItem( &data->stack.level );
-	if ( is_f(SUB_EXPR) && !is_f(LEVEL) ) {
-		listItem *base = popListItem( &data->stack.base );
-		if (( base )) xpn_free( data->exponent, base ); }
-	_break;
 BMTraverseCBEnd

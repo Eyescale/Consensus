@@ -1,5 +1,4 @@
 
-#	.%tag .%guard	// no need
 	on init
 		do {	guardA |{
 				( %|, ( trigger, action )),
@@ -16,7 +15,7 @@
 				%( %?|^guard ) )
 		do : A
 	else on : A
-		do >"active: %_\n\treleasing conditionA\n": %guard
+		do >"active [=w/o condition]: %_\n\treleasing conditionA\n": %guard
 		do : set : conditionA
 	else on : B
 		do >"active: %_\n\treleasing conditionB\n": %guard
@@ -32,7 +31,7 @@
 			do ( %?, %( Status, %(conditionA,?)|^guard~ ) )
 	else in : .
 		// flush tag list and enrol tagged guard if status-free
-		.%tag~ { ^.:~%(.,(Status,?))|^guard }
+		.%tag~:{ ^.:~%(.,(Status,?))|^guard }
 		do :( %(:A) ? B :)
 	else
 		do >"active: %_\nSystem status:\n"

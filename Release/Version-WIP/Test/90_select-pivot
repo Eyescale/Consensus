@@ -1,11 +1,21 @@
 
+#define SELECT
+
 	on init
-		do ((toto,DO),titi)
-		do ((toto,'>'),'&')
-		do ( pivot, { toto, titi, tata } )
+		do : s : '&'
+		do ((pivot,DO),{titi,tata})
+		do ((pivot,'>'),'&')
+		do ( candidate, { toto, titi, tata } )
 	else
+#ifdef SELECT
 //		per ?: %!/((?,.),!):%((?,'>'),'&')/
-//		per ?: %!/((?,DO),!):%((?,'>'),'&')/
-		per ?: %( pivot, ? ): ~%!/((?,DO),!):%((?,'>'),'&')/: ~tata
+//		per ?: %!/((?,DO),!):%((?,'>'),*s)/: ~tata
+//		per ?: %!/((?,DO),!):%((?,'>'),*s)/: ~tata
+//		per ?: %( candidate, ? ): %!/((?,DO),!):%((?,'>'),*s)/: ~tata
+		per ?: %( candidate, ? ): ~%!/((?,DO),!):%((?,'>'),*s)/: ~tata
 			do >"%_\n": %?
+#else
+		in ?: %((.,DO),?):~tata
+			do >:%?
+#endif
 		do exit

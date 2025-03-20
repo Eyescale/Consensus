@@ -64,10 +64,10 @@ freeCell( CNCell *cell )
 	cn_free( cell ); }
 
 //===========================================================================
-//	bm_bond
+//	bm_cell_bond
 //===========================================================================
 void
-bm_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
+bm_cell_bond( CNEntity *this, CNEntity *child, CNInstance *proxy ) {
 	BMContext *ctx;
 
 	// activate connection from parent to child
@@ -172,8 +172,8 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 	CNNarrative *base = BMContextBase( narratives, ctx );
 	registryRegister( enabled[ 1 ], base, newItem( NULL ) );
 	while ( SWAP( enabled ) ) {
-		warden[ 1 ] = newRegistry( IndexedByAddress );
 		FOREACH( enabled ) // { {
+			warden[ 1 ] = newRegistry( IndexedByAddress );
 			bm_context_actualize( ctx, narrative->proto, current );
 			bm_operate( narrative, ctx, story, narratives, subs );
 			enlist( subs, enabled[1], invoked[1], warden, &pf );
@@ -185,8 +185,8 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 					bm_operate( narrative, ctx, story, narratives, subs );
 					enlist( subs, enabled[1], invoked[1], warden, &pf );
 					bm_context_pop( ctx, "." ); } } }
-			bm_context_release( ctx ); }
-		freeRegistry( warden[ 1 ], free_CB ); } }
+			freeRegistry( warden[ 1 ], free_CB );
+			bm_context_release( ctx ); } } }
 
 	if (( pf )) { // execute post-frame narrative
 		bm_context_actualize( ctx, pf->proto, NULL );

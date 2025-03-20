@@ -9,17 +9,17 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 	return bm_traverse( expression, traversal, flags );
 
 #define _prune( take, p )	return ( *q=(p), take );
-#define _return( val )		return ( traversal->done=(val), BM_DONE );
-#define _continue( p )		return ( *q=(p), BM_DONE );
-#define	_break			return BM_CONTINUE;
+#define _return( val )		return ( traversal->done=(val), BMT_DONE );
+#define _continue( p )		return ( *q=(p), BMT_DONE );
+#define	_break			return BMT_CONTINUE;
 
 #define switch_over( cb, p_in, p_out )	\
 	switch (*q=(p_in),cb(traversal,q,flags,f_next)) { \
-	case BM_DONE: return BM_DONE; \
-	case BM_CONTINUE: *q=p_out; return BM_CONTINUE; \
-	case BM_PRUNE_FILTER: return BM_PRUNE_FILTER; \
-	case BM_PRUNE_TERM: return BM_PRUNE_TERM; \
-	case BM_PRUNE_LEVEL: return BM_PRUNE_LEVEL; }
+	case BMT_DONE: return BMT_DONE; \
+	case BMT_CONTINUE: *q=p_out; return BMT_CONTINUE; \
+	case BMT_PRUNE_FILTER: return BMT_PRUNE_FILTER; \
+	case BMT_PRUNE_TERM: return BMT_PRUNE_TERM; \
+	case BMT_PRUNE_LEVEL: return BMT_PRUNE_LEVEL; }
 
 #define BMTraverseCBEnd		}
 
@@ -28,16 +28,16 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 //---------------------------------------------------------------------------
 #define _CB( cb ) \
 	switch ( cb(traversal,&p,flags,f_next) ) {	\
-	case BM_DONE: continue;				\
-	case BM_CONTINUE: break;			\
-	case BM_PRUNE_FILTER:				\
+	case BMT_DONE: continue;			\
+	case BMT_CONTINUE: break;			\
+	case BMT_PRUNE_FILTER:				\
 		f_cls					\
 		p = p_prune( PRUNE_FILTER, p );		\
 		continue;				\
-	case BM_PRUNE_TERM:				\
+	case BMT_PRUNE_TERM:				\
 		p = p_prune( PRUNE_TERM, p );		\
 		continue;				\
-	case BM_PRUNE_LEVEL:				\
+	case BMT_PRUNE_LEVEL:				\
 		p = p_prune( PRUNE_LEVEL, p );		\
 		continue; }
 

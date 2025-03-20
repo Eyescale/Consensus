@@ -39,6 +39,7 @@ typedef enum {
 
 char *	StringFinish( CNString *, int trim );
 void	StringReset( CNString *, CNStringReset );
+CNString *StringDup( CNString * );
 
 //---------------------------------------------------------------------------
 //	CNString macros

@@ -54,13 +54,14 @@ deregister_CB( Registry *registry, Pair *entry ) {
 //---------------------------------------------------------------------------
 //	db_arena_unref
 //---------------------------------------------------------------------------
-/*
-	Assumption: called by freeContext() right before freeCNDB()
-*/
+static inline uint strtype( Registry *ref );
 static btreeShakeCB unref_CB;
 
 void
-db_arena_unref( CNDB *db ) {
+db_arena_unref( CNDB *db )
+/*
+	Assumption: called by freeContext() right before freeCNDB()
+*/ {
 	btreeShake( DBSharedArena->name, unref_CB, db );
 	btreeShake( DBSharedArena->value, unref_CB, db ); }
 
@@ -69,11 +70,10 @@ unref_CB( uint key[2], void *entry, void *user_data ) {
 	CNDB *db = user_data;
 	Registry *ref;
 	switch ( key[0] ) {
-	case 's':
 	case '$':
 		ref = ((Pair *) entry )->value;
+		key[ 0 ] = strtype( ref );
 		registryCBDeregister( ref, deregister_CB, db );
-		// key[0]=='$' => narrative-registered (not cached)
 		if ( !ref->entries && key[0]=='s' ) {
 			free( ((Pair *) entry )->name );
 			freeRegistry( ref, NULL );
@@ -88,6 +88,13 @@ unref_CB( uint key[2], void *entry, void *user_data ) {
 			return BT_CACHE; }
 		break; }
 	return BT_CONTINUE; }
+
+static inline uint
+strtype( Registry *ref ) {
+	if ( !ref->entries ) return '$';
+	Pair *entry = ref->entries->ptr;
+	if ( !entry->name ) return '$';
+	return CNSharedKey( entry->value )[0]; }
 
 //===========================================================================
 //	db_arena_register
@@ -117,6 +124,8 @@ db_arena_register( char *code, CNDB *db ) {
 //===========================================================================
 //	db_arena_deregister
 //===========================================================================
+static btreeShakeCB pluck_CB;
+
 void
 db_arena_deregister( CNInstance *e, CNDB *db )
 /*
@@ -129,8 +138,32 @@ db_arena_deregister( CNInstance *e, CNDB *db )
 	uint key[2] = { master[0], master[1] };
 	switch ( key[0] ) {
 	case 's':
-	case '$': btreePluck( DBSharedArena->name, key, unref_CB, db ); break;
-	case '!': btreePluck( DBSharedArena->value, key, unref_CB, db ); } }
+	case '$': btreePluck( DBSharedArena->name, key, pluck_CB, db ); break;
+	case '!': btreePluck( DBSharedArena->value, key, pluck_CB, db ); } }
+
+static int
+pluck_CB( uint key[2], void *entry, void *user_data ) {
+	CNDB *db = user_data;
+	Registry *ref;
+	switch ( key[0] ) {
+	case 's':
+	case '$':
+		ref = ((Pair *) entry )->value;
+		registryCBDeregister( ref, deregister_CB, db );
+		if ( !ref->entries && key[0]=='s' ) {
+			free( ((Pair *) entry )->name );
+			freeRegistry( ref, NULL );
+			freePair((Pair *) entry );
+			return BT_CACHE; }
+		break;
+	case '!':
+		ref = (Registry *) entry;
+		registryCBDeregister( ref, deregister_CB, db );
+		if ( !ref->entries ) {
+			freeRegistry( ref, NULL );
+			return BT_CACHE; }
+		break; }
+	return BT_CONTINUE; }
 
 //===========================================================================
 //	db_arena_encode
@@ -190,7 +223,10 @@ i2hex( int i ) {
 //	db_arena_origin
 //===========================================================================
 char *
-db_arena_origin( CNInstance *e ) {
+db_arena_origin( CNInstance *e )
+/*
+	return class name of shared string entity's narrative - if it has
+*/ {
 	if ( !cnIsShared(e) ) return NULL;
 	uint *key = CNSharedKey( e );
 	if ( key[0]!='$' ) return NULL;
@@ -259,19 +295,22 @@ db_arena_makeup( CNInstance *e, CNDB *db, CNDB *db_dst )
 			i = e->as_sub[ 0 ]; }
 		else i = i->next; }
 	if ( !StringInformed(s) ) { freeString(s); return NULL; }
+	uint key[2];
 	IndexData data;
 	data.s = StringFinish( s, 0 );
 	StringReset( s, CNStringMode );
 	if ( btreeShake( DBSharedArena->name, strcmp_CB, &data ) ) {
 		free( data.s );
 		Pair *entry = registryLookup( data.ref, db_dst );
-		if (( entry )) { freeString(s); return entry->value; } }
+		if (( entry )) { freeString(s); return entry->value; }
+		key[ 0 ] = strtype( data.ref );
+		key[ 1 ] = data.index; }
 	else {
 		data.ref = newRegistry( IndexedByAddress );
 		Pair *entry = newPair( data.s, data.ref );
-		data.index = btreeAdd( DBSharedArena->name, entry ); }
+		key[ 1 ] = btreeAdd( DBSharedArena->name, entry );
+		key[ 0 ] = 's'; }
 	freeString( s );
-	uint key[2] = { 's', data.index };
 	return db_share( key, data.ref, db_dst ); }
 
 //===========================================================================
@@ -322,7 +361,7 @@ db_arena_identifier( CNInstance *e )
 //	db_arena_translate
 //===========================================================================
 CNInstance *
-db_arena_translate( CNInstance *e, CNDB *db, int transpose )
+db_arena_translate( CNInstance *e, CNDB *db, int inform )
 /*
 	Assumption: e->sub[ 0 ]==NULL
 */ {
@@ -344,7 +383,7 @@ db_arena_translate( CNInstance *e, CNDB *db, int transpose )
 	entry = registryLookup( ref, db );
 	if (( entry ))
 		return entry->value;
-	else if ( transpose )
+	else if ( inform )
 		return db_share( key, ref, db );
 	else return NULL; }
 

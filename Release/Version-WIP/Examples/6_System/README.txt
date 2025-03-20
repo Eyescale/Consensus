@@ -323,7 +323,7 @@ system.story
 		?::occurrence returns the identifier of the cosystem
 		containing the occurrence's string narrative
 
-	2. launch all cosystem instances (aka. system's actors) as per
+	2. launch all cosystem instances (aka. class actors) as per
 			do : %((!!,CO),?) : !!( launch-formula )
 	   where
 		do : identifier : !!( launch-formula )

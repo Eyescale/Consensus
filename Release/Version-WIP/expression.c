@@ -77,7 +77,7 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	for ( listItem *i=narratives->next; i!=NULL; i=i->next ) {
 		CNNarrative *narrative = i->ptr;
 		char *p = narrative->proto, *q;
-		if ( !strcmp(p,".:&") ) continue;
+		if ( *p==':' || !strcmp(p,".:&") ) continue;
 		p = p_prune( PRUNE_IDENTIFIER, p+1 );
 		p++; // skip leading ':'
 		switch ( *p ) {
@@ -96,8 +96,9 @@ enable_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //	bm_enable_x
 //===========================================================================
 typedef struct {
-	CNNarrative *narrative; char *p;
-	Registry *subs; Pair *entry;
+	CNNarrative *narrative;
+	char *p;
+	Registry *subs;
 	} EnableXData;
 static BMQueryCB enable_x_CB;
 
@@ -111,8 +112,8 @@ bm_enable_x( char *en, BMContext *ctx, listItem *narratives, Registry *subs ) {
 		if ( !strcomp( p, en, 1 ) ) {
 			p = p_prune( PRUNE_IDENTIFIER, p );
 			q = p_prune( PRUNE_IDENTIFIER, en );
-			EnableXData data = { narrative, p, subs, NULL };
-			int rv=( *q=='(' ? 1 : 0 ); void *rvv;
+			EnableXData data = { narrative, p, subs };
+			int rv=( *q=='(' ); void *rvv;
 			if ( rv ) rvv = BMContextRVTest( ctx, q+1, &rv );
 			switch ( rv ) {
 			case 0:	bm_query( BM_CONDITION, q, ctx, enable_x_CB, &data ); break;
@@ -126,38 +127,30 @@ static BMQTake
 enable_x_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	EnableXData *data = user_data;
 	if ( proto_verify( data->p, e, ctx ) ) {
-		Pair *entry = data->entry;
+		Registry *subs = data->subs;
+		CNNarrative *narrative = data->narrative;
+		Pair *entry = registryLookup( subs, narrative );
 		if (( entry )) addIfNotThere((listItem **) &entry->value, e );
-		else data->entry = registryRegister( data->subs, data->narrative, newItem(e) ); }
+		else registryRegister( subs, narrative, newItem(e) ); }
 	return BMQ_CONTINUE; }
-
-//===========================================================================
-//	bm_tag_register
-//===========================================================================
-int
-bm_tag_register( char *tag, char *p, BMContext *ctx ) {
-	for ( ; ; ) {
-		bm_tag( ctx, tag, NULL );
-		if ( *p==' ' ) {
-			tag = p+3; // skip ' .%'
-			p = p_prune( PRUNE_IDENTIFIER, tag ); }
-		else return 1; } }
 
 //===========================================================================
 //	bm_tag_traverse
 //===========================================================================
-static BMQueryCB continue_CB;
 int
-bm_tag_traverse( char *expression, char *p, BMContext *ctx )
+bm_tag_traverse( char *tag, char *p, BMContext *ctx )
 /*
-	Assumption: p: ~{_} or {_}
+	we have	  v---------------- tag
+		.%identifier:{_}
+			    v^--------------p
+		.%identifier~:{_}
 	Note that we do not free tag entry in context registry
 */ {
-	Pair *entry = BMTag( ctx, expression );
+	Pair *entry = BMTag( ctx, tag );
 	if ( !entry ) {
-//		errout( ExpressionTagUnknown, expression );
+//		errout( ExpressionTagUnknown, tag );
 		return 0; }
-	int released = ( *p=='~' ? (p++,1) : 0 );
+	int released = ( *p=='~' ? (p+=2,1) : 0 );
 
 	Pair *current = Mset( ctx, NULL );
 	listItem *next_i, *last_i=NULL;
@@ -167,29 +160,28 @@ bm_tag_traverse( char *expression, char *p, BMContext *ctx )
 		current->value = i->ptr;
 		int clip = released;
 		for ( char *q=p; *q++!='}'; q=p_prune(PRUNE_LEVEL,q) )
-			bm_query( BM_CONDITION, q, ctx, continue_CB, &clip );
+			bm_query( BM_CONDITION, q, ctx, NULL, &clip );
 		if (( clip ))
 			clipListItem( entries, i, last_i, next_i );
 		else last_i = i; }
 	Mclr( ctx );
-
 	return 1; }
-
-static BMQTake
-continue_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
-	return BMQ_CONTINUE; }
 
 //===========================================================================
 //	bm_tag_inform
 //===========================================================================
 static BMQueryCB inform_CB;
 int
-bm_tag_inform( char *expression, char *p, BMContext *ctx )
+bm_tag_inform( char *tag, char *p, BMContext *ctx )
 /*
-	Assumption: p: <_>
+	we have	  v---------------- tag
+		.%identifier:<_>
+			     ^--------------p
+	Note that we do reset tag values
 */ {
-	Pair *entry = BMTag( ctx, expression );
-	if ( !entry ) entry = bm_tag( ctx, expression, NULL );
+	Pair *entry = BMTag( ctx, tag );
+	if ( !entry ) entry = bm_tag( ctx, tag, NULL );
+	else freeListItem((listItem **) &entry->value );
 
 	for ( char *q=p; *q++!='>'; q=p_prune(PRUNE_LEVEL,q) )
 		bm_query( BM_CONDITION, q, ctx, inform_CB, &entry->value );
@@ -205,16 +197,17 @@ inform_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 //===========================================================================
 static freeRegistryCB clear_CB;
 int
-bm_tag_clear( char *expression, BMContext *ctx )
+bm_tag_clear( char *tag, BMContext *ctx )
 /*
-	Assumption: expression: identifier~
+	we have	  v---------------- tag
+		.%identifier~
 	Note that we do free tag entry in context registry
 */ {
-	Pair *entry = BMTag( ctx, expression );
+	Pair *entry = BMTag( ctx, tag );
 	if ( !entry ) {
-//		errout( ExpressionTagUnknown, expression );
+//		errout( ExpressionTagUnknown, tag );
 		return 0; }
-	bm_untag( ctx, expression );
+	bm_untag( ctx, tag );
 	return 1; }
 
 //===========================================================================

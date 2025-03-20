@@ -41,33 +41,32 @@ else in "rollcall"
 	off &
 		in "caller has right cell"
 			do "output space"
-			 > &
-			do "rollcall shifts to right cell"
+			do "call shifts to right cell"
 			 > "caller is start cell"
 			 > "caller is point cell"
 			 > "caller has right cell"
 			 > "caller is set"
-		else in "head's state is Halt"
+		else do "output CR"
+	off &
+		in "head's state is Halt"
 			do "exit"
 		else cl "rollcall" do "operation"
 
 else in "operation"
 	on "operation"
-		do "point cell communicates its symbol to head"
-		 > &
+		do "tape communicates point cell's symbol to head"
 	on &
 		do "head looks up registry entry corresponding to "
-		   "cell's passed symbol and current head's state"
+		   "tape's passed symbol and current head's state"
 	off &
 		do "head updates its own state from entry's state"
 		 > "head's state is Halt"
 		do "head informs shift direction from entry's direction"
 		 > "shift right"
 		 > "shift left"
-		do "head communicates entry's symbol to point cell"
-		 > &
+		do "head communicates entry's symbol to tape"
 	on &
-		do "point cell updates its symbol from head's passed symbol"
+		do "tape updates point cell's symbol from head's passed symbol"
 	off &
 		in "shift right"
 			in "point cell has right cell"

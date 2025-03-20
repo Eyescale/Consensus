@@ -47,6 +47,8 @@
 	f_outputable_( flags, stack )
 #define f_selectable( stack ) \
 	f_selectable_( flags, stack )
+#define f_invokable( stack, s ) \
+	f_invokable_( flags, stack, s )
 
 static inline void
 f_tag_( int *f, listItem **stack, int flags ) {
@@ -142,6 +144,29 @@ f_selectable_( int flags, listItem **stack ) {
 		flags = cast_i(i->ptr);
 		if is_f( SEL_EXPR ) return 0; }
 	return 1; }
+
+static inline int
+f_invokable_( int flags, listItem **stack, CNString *string )
+/*
+	used to allow
+		en ( expression ? identifier : identifier )( expression )
+		en .( expression ? identifier : identifier )( expression )
+	having string informed till ----------------------^
+*/ {
+	if ( !is_f(PRIMED) || (*stack)->next->next!=NULL ) return 0;
+	CNString *s = StringDup( string );
+	char *p = StringFinish( s, 0 );
+	if ( *p=='.' ) p++;
+	if ( *p++!='(' ) goto FAIL;
+	p = p_prune(PRUNE_TERM,p) + 1;
+	if ( is_separator(*p) ) goto FAIL;
+	else do p++; while ( !is_separator(*p) );
+	if ( *p++!=':' || is_separator(*p) ) goto FAIL;
+	else do p++; while ( !is_separator(*p) );
+	if ( !*p ) { freeString( s ); return 1; }
+FAIL:
+	freeString(s);
+	return 0; }
 
 static inline int
 is_base_ternary_term( listItem *stack, int extra )

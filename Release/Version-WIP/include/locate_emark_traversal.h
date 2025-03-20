@@ -12,16 +12,20 @@ static BMTraverseCB
 	emark_CB, prune_CB, open_CB, filter_CB, comma_CB, close_CB, end_CB;
 
 #define BMEMarkCB		emark_CB
+#if 0
 #define BMNotCB			prune_CB
 #define BMDereferenceCB		prune_CB
 #define BMDotIdentifierCB	prune_CB
 #define BMDotExpressionCB	prune_CB
 #define BMSubExpressionCB	prune_CB
 #define BMFilterCB		prune_CB
+#endif
 #define BMOpenCB		open_CB
 #define BMCommaCB		comma_CB
 #define BMCloseCB		close_CB
+#if 0
 #define BMEEnovEndCB		end_CB
+#endif
 
 #include "traversal.h"
 

@@ -10,7 +10,7 @@ typedef CNEntity CNCell;
 
 CNCell * newCell( CNStory *, Pair *entry );
 void	freeCell( CNCell * );
-void	bm_bond( CNEntity *, CNEntity *, CNInstance * );
+void	bm_cell_bond( CNEntity *, CNEntity *, CNInstance * );
 int	bm_cell_input( CNCell *, CNStory * );
 void	bm_cell_operate( CNCell *, CNStory * );
 

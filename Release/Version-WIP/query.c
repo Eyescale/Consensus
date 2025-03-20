@@ -9,7 +9,6 @@
 #include "errout.h"
 
 // #define DEBUG
-#define ALMOST
 
 #include "query.h"
 #include "query_private.h"
@@ -21,8 +20,8 @@
 static XPTraverseCB verify_candidate;
 
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
+static inline CNInstance * query_self( char *, BMQueryData * );
 static CNInstance * query_assignment( int, char *, BMQueryData * );
-static inline CNInstance * dotnext( CNDB *, listItem ** );
 
 CNInstance *
 bm_query( int type, char *expression, BMContext *ctx,
@@ -59,16 +58,7 @@ bm_query( int type, char *expression, BMContext *ctx,
 				if ( verify_candidate( e, expression, &data )==BMQ_DONE ) {
 					freeListItem( &s );
 					return e; }
-			e = BMContextSelf( ctx );
-			if ( !db_private( 0, e, db ) ) {
-				listItem *i = newItem( e );
-				for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
-					if ( verify_candidate( e, expression, &data )==BMQ_DONE ) {
-						freeListItem( &s );
-						break; }
-				freeItem( i );
-				return e; }
-			return NULL;
+			return query_self( expression, &data );
 		default:
 			for ( e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
@@ -96,6 +86,26 @@ verify_candidate( CNInstance *e, char *expression, BMQueryData *data ) {
 			data->instance = e;
 			return BMQ_DONE; } }
 	return BMQ_CONTINUE; }
+
+
+//---------------------------------------------------------------------------
+//	query_self
+//---------------------------------------------------------------------------
+static inline CNInstance * dotnext( CNDB *, listItem ** );
+
+static inline CNInstance *
+query_self( char *expression, BMQueryData *data ) {
+	BMContext *ctx = data->ctx;
+	CNDB *db = data->db;
+	listItem *s = NULL;
+	CNInstance *e = BMContextSelf( ctx );
+	listItem *i = newItem( e );
+	for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
+		if ( verify_candidate( e, expression, data )==BMQ_DONE ) {
+			freeListItem( &s );
+			break; }
+	freeItem( i );
+	return e; }
 
 static inline CNInstance *
 dotnext( CNDB *db, listItem **stack ) {
@@ -277,6 +287,7 @@ POP_xpn:		POP( stack.xpn, xpn, PUSH_xpn )
 static inline void op_set( BMVerifyOp, BMQueryData *, CNInstance *, char *, int );
 static inline void push_mark_sel( char *, listItem **, listItem ** );
 static inline void pop_mark_sel( listItem **, listItem ** );
+static inline CNInstance * star_sub( CNInstance *, CNDB *, int exp );
 static inline CNInstance * x_sub( CNInstance *, listItem *, listItem * );
 static inline char * prune( char *, int );
 typedef struct {
@@ -339,7 +350,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					exponent = exponent->next;
 					i = j; continue; }
 				else x = NULL; }
-			else if (( x=CNSUB(x,exp.value) )) {
+			else if (( x=star_sub( x, db, exp.value ) )) {
 				addItem( &stack.as_sub, i );
 				addItem( &stack.as_sub, exponent );
 				exponent = exponent->next;
@@ -515,13 +526,22 @@ pop_as_sub( XPVerifyStack *stack, listItem *i, listItem **mark_exp )
 	return popListItem( &stack->i ); }
 
 static inline CNInstance *
+star_sub( CNInstance *x, CNDB *db, int exp ) {
+#ifdef DEBUG
+	if (exp &STAR_SUB) db_outputf( db, stderr, "xp_verify: *** star_sub: %_\n", x );
+#endif
+	return ( exp & STAR_SUB ) ?
+		!CNSUB(x,0) || !cnStarMatch( CNSUB(x->sub[0],0) ) ?
+		NULL : CNSUB(x,1) : CNSUB(x,exp); }
+
+static inline CNInstance *
 x_sub( CNInstance *x, listItem *exponent, listItem *base ) {
 	listItem *xpn = NULL;
 	for ( listItem *i=exponent; i!=base; i=i->next )
 		addItem( &xpn, i->ptr );
 	while (( x ) && (xpn)) {
-		int exp = pop_item( &xpn );
-		x = CNSUB( x, exp&1 ); }
+		int exp = pop_item(&xpn) & 1;
+		x = CNSUB( x, exp ); }
 	if ( !x ) freeListItem( &xpn );
 	return x; }
 
@@ -538,8 +558,10 @@ static char *tag( char *, BMQueryData * );
 
 BMTraverseCBSwitch( query_traversal )
 case_( tag_CB )
-	if ( !data->success )
-		_prune( BM_PRUNE_LEVEL, p+1 )
+	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+		_return( 1 )
+	else if ( !data->success )
+		_prune( BMT_PRUNE_LEVEL, p+1 )
 	else if ( p[2]=='.' ) // special case: |^.
 		*(int *)data->user_data = (p[3]=='~');
 	else if (( p=tag(p,data) ))
@@ -552,14 +574,16 @@ case_( bgn_selection_CB )
 		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 	_return( 1 )
 case_( end_selection_CB )
-	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+	if ( data->stack.flags==data->OOS )
 		_return( 1 )
+	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
+		traversal->done = 1; // after popping
 	_break
 case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
-		_prune( BM_PRUNE_LEVEL, p+1 )
+		_prune( BMT_PRUNE_LEVEL, p+1 )
 	_break
 case_( match_CB )
 	switch ( match( p, data ) ) {
@@ -587,7 +611,7 @@ case_( dereference_CB )
 	_return( 1 )
 case_( sub_expression_CB )
 	listItem **mark_exp = &data->mark_exp;
-	char *mark = bm_locate_mark( SUB_EXPR, p+1, mark_exp );
+	char *mark = bm_locate_mark( SUB_EXPR|STARRED, p+1, mark_exp );
 	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
 		for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
 			addItem( mark_exp, i->ptr ); }
@@ -608,11 +632,11 @@ case_( dot_expression_CB )
 	switch ( match( p, data ) ) {
 	case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
-			_prune( BM_PRUNE_FILTER, p+1 ) }
+			_prune( BMT_PRUNE_FILTER, p+1 ) }
 		// no break
 	case -1:
 		data->success=0; popListItem( stack );
-		_prune( BM_PRUNE_LEVEL, p+1 )
+		_prune( BMT_PRUNE_LEVEL, p+1 )
 	default: xpn_set( *stack, AS_SUB, 1 ); }
 	_break
 case_( open_CB )
@@ -622,11 +646,11 @@ case_( open_CB )
 		switch ( match( p, data ) ) {
 		case 0: if is_f( NEGATED ) {
 				data->success=1; popListItem( stack );
-			 	_prune( BM_PRUNE_FILTER, p ) }
+			 	_prune( BMT_PRUNE_FILTER, p ) }
 			// no break
 		case -1:
 			data->success=0; popListItem( stack );
-			_prune( BM_PRUNE_LEVEL, p )
+			_prune( BMT_PRUNE_LEVEL, p )
 		default: xpn_set( *stack, AS_SUB, 1 ); } }
 	else if is_f_next( COUPLE ) {
 		listItem **stack = &data->stack.exponent;
@@ -634,7 +658,7 @@ case_( open_CB )
 	_break
 case_( comma_CB )
 	if ( data->stack.flags==data->OOS ) _return( 1 )
-	if ( !data->success ) _prune( BM_PRUNE_LEVEL, p+1 )
+	if ( !data->success ) _prune( BMT_PRUNE_LEVEL, p+1 )
 	xpn_set( data->stack.exponent, AS_SUB, 1 );
 	_break
 case_( close_CB )
@@ -679,25 +703,22 @@ static char *
 tag( char *p, BMQueryData *data ) {
 	CNInstance *x = x_sub( data->instance, data->stack.exponent, data->base );
 	if ( !x ) return NULL;
-	else {
-		p += 2;
-		Pair *entry = BMTag( data->ctx, p );
-		char *q = p_prune( PRUNE_IDENTIFIER, p );
+	p += 2;
+	Pair *entry = BMTag( data->ctx, p );
+	char *q = p_prune( PRUNE_IDENTIFIER, p );
+	switch ( *q ) {
+	case '~':
 		if (( entry )) {
 			listItem **tag = (listItem **) &entry->value;
-			switch ( *q ) {
-			case '~':
-				removeIfThere( tag, x );
-				q++; break;
-			default:
-				addIfNotThere( tag, x ); } }
-		else switch ( *q ) {
-			case '~':
-				q++; break;
-			default:
-				bm_tag( data->ctx, p, newItem(x) ); }
-		return q; } }
-
+			removeIfThere( tag, x ); }
+		q++; break;
+	default:
+		if ( !entry ) {
+			bm_tag( data->ctx, p, newItem(x) ); }
+		else {
+			listItem **tag = (listItem **) &entry->value;
+			addIfNotThere( tag, x ); } }
+	return q; }
 
 //---------------------------------------------------------------------------
 //	query_assignment

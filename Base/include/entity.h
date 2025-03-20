@@ -26,7 +26,7 @@ static inline int cn_hold( CNEntity *e, CNEntity *f ) {
 //	exponent utilities
 //---------------------------------------------------------------------------
 static inline void xpn_add( listItem **xp, int as_sub, int position ) {
-	int i = as_sub + position;
+	int i = as_sub | position;
 	addItem( xp, cast_ptr(i) ); }
 
 static inline void xpn_set( listItem *xp, int as_sub, int position ) {
@@ -80,13 +80,13 @@ static inline int is_xpn_expr( char *p ) {
 			return 0; } }
 
 static inline listItem * xpn_make( char *p ) {
-	if ( !is_xpn_expr( p ) ) return NULL;
-	listItem *sub = NULL;
+//	if ( !is_xpn_expr( p ) ) return NULL;
+	listItem *xpn = NULL;
 	int ndx = 0;
 	for ( ; ; ) switch ( *p++ ) {
-		case '(': add_item( &sub, ndx ); ndx=0; break;
-		case ',': ndx=1; sub->ptr=cast_ptr(ndx); break;
-		case '?': reorderListItem( &sub ); return sub; } }
+		case '(': ndx=0; add_item( &xpn, ndx ); break;
+		case ',': ndx=1; xpn->ptr=cast_ptr(ndx); break;
+		case '?': reorderListItem( &xpn ); return xpn; } }
 
 
 #endif	// ENTITY_H

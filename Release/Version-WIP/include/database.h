@@ -61,7 +61,8 @@ int	db_outputf( CNDB *, FILE *, char *fmt, ... );
 static inline CNEntity * xpn_sub( CNEntity *x, listItem *xpn ) {
 	if ( !xpn ) return x;
 	for ( listItem *i=xpn; i!=NULL; i=i->next ) {
-		x = CNSUB( x, cast_i(i->ptr) );
+		int ndx = cast_i( i->ptr );
+		x = CNSUB( x, ndx );
 		if ( !x ) return NULL; }
 	return x; }
 

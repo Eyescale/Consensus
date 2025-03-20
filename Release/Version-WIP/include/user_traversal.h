@@ -4,8 +4,9 @@
 #include "entity.h"
 #include "string_util.h"
 
-#define AS_SUB  0
-#define SUB     2
+#define AS_SUB 		0
+#define SUB     	2
+#define STAR_SUB	4
 
 //===========================================================================
 //	custom user_traversal interface
@@ -20,11 +21,11 @@ typedef struct {
 	} BMTraverseData;
 
 typedef enum {
-	BM_CONTINUE = 0,
-	BM_DONE,
-	BM_PRUNE_FILTER,
-	BM_PRUNE_TERM,
-	BM_PRUNE_LEVEL
+	BMT_CONTINUE = 0,
+	BMT_DONE,
+	BMT_PRUNE_FILTER,
+	BMT_PRUNE_TERM,
+	BMT_PRUNE_LEVEL
 	} BMCBTake;
 
 typedef char *BMTraversal( char *, BMTraverseData *, int );

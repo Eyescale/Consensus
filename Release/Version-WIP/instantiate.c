@@ -46,7 +46,7 @@ bm_instantiate( char *expression, BMContext *ctx, CNStory *story ) {
 static inline void
 cleanup( BMTraverseData *traversal, char *expression ) {
 	InstantiateData *data = traversal->user_data;
-	DBG_CLEANUP( data, expression )
+	DBG_CLEANUP( data, expression );
 	freeListItem( &data->sub[ 0 ] );
 	traversal->done = 0; }
 
@@ -77,7 +77,7 @@ case_( filter_CB )
 	   so as to be handled by collect_CB
 	*/
 	listItem *r = data->sub[ NDX ];
-	if ( !r ) _prune( BM_PRUNE_LEVEL, p+2 )
+	if ( !r ) _prune( BMT_PRUNE_LEVEL, p+2 )
 	else if ( !is_f(PIPED) )
 		switch_over( bgn_pipe_CB, p+1, p )
 	else {
@@ -119,7 +119,7 @@ case_( bgn_pipe_CB )
 			data->sub[ 1 ] = NULL; }
 		data->sub[ 0 ] = NULL;
 		_break }
-	else _prune( BM_PRUNE_LEVEL, p+1 )
+	else _prune( BMT_PRUNE_LEVEL, p+1 )
 case_( end_pipe_CB )
 	listItem *r, *pprv = bm_context_pop( data->ctx, "|" );
 	freeListItem( &data->sub[ 0 ] );
@@ -172,7 +172,7 @@ case_( close_CB )
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
-		_prune( BM_PRUNE_LEVEL, p+1 ) }
+		_prune( BMT_PRUNE_LEVEL, p+1 ) }
 case_( loop_CB )
 	// called past ) and } => test for a respin
 	LoopData *loop = ((data->loop) ? data->loop->ptr : NULL );
@@ -245,7 +245,7 @@ case_( comma_CB )
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
 		data->sub[ 0 ] = NULL; }
 	else if ( !data->sub[ 0 ] )
-		_prune( BM_PRUNE_LEVEL, p+1 )
+		_prune( BMT_PRUNE_LEVEL, p+1 )
 	else if ( !strncmp( p+1, "~.)", 3 ) ) {
 		CNDB *db = data->db;
 		for ( listItem *i=data->sub[0]; i!=NULL; i=i->next )
@@ -264,8 +264,10 @@ case_( wildcard_CB )
 			CNInstance *e = BMContextRVV( data->ctx, p+3 );
 			char *o = db_arena_origin( e );
 			if (( o )) switch_over( identifier_CB, o, p )
+			o = p_prune( PRUNE_IDENTIFIER, p+3 );
+			if ( !strncmp(o,"::",2) ) _continue( o+2 )
 			break; }
-		p+=2;
+		p+=2; // FORE loop bgn
 		listItem *results = bm_scan( p, data->ctx );
 		if (( results )) {
 			BMMark *mark = bm_mark( p, NULL, AS_PER|QMARK, results );
@@ -276,7 +278,8 @@ case_( wildcard_CB )
 			addItem( &data->loop, newPair( bgn, end ));
 			bm_context_mark( data->ctx, mark );
 			_continue( p ) }
-		else _prune( BM_PRUNE_LEVEL, p ) }
+		else {
+			_prune( BMT_PRUNE_LEVEL, p ) } }
 	_break
 case_( register_variable_CB )
 	BMContext *carry = data->carry;
@@ -286,7 +289,7 @@ case_( register_variable_CB )
 	switch ( p[1] ) {
 	case '|':
 		found = BMContextRVV( data->ctx, p );
-		if ( !found ) _prune( BM_PRUNE_LEVEL, p )
+		if ( !found ) _prune( BMT_PRUNE_LEVEL, p )
 		listItem **sub = &data->sub[ NDX ];
 		if ( strncmp(p+2,"::",2) ) {
 			for ( listItem *i=found; i!=NULL; i=i->next )
@@ -684,60 +687,72 @@ assign_one2v( listItem **sub, char *p, BMTraverseData *traversal ) {
 //	assign_new
 //---------------------------------------------------------------------------
 static void inform_UBE( Registry *, char *, BMTraverseData * );
+static inline CNInstance *carry( CNDB *, CNCell *, Registry *, Pair * );
 static void inform_carry( Registry *, char *, CNCell *, BMTraverseData * );
 
 static void
 assign_new( listItem **list, char *p, CNStory *story, BMTraverseData *traversal ) {
 	InstantiateData *data = traversal->user_data;
+	CNInstance *x, *ube, *proxy;
 	BMContext *ctx = data->ctx;
 	CNDB *db = data->db;
-	Registry *buffer;
-	Pair *entry;
 	p += 2; // skip '!!'
 	//-----------------------------------------------------------
 	//	UBE assignment
 	//-----------------------------------------------------------
 	if ( !*p ) { // do :_: !!
-		CNInstance *ube, *x;
 		while (( x=popListItem( list ))) {
 			ube = db_arena_register( NULL, db );
 			db_assign( x, ube, db ); }
 		return; }
-	else if ( *p=='|' ) {
-		buffer = newRegistry( IndexedByAddress );
-		registryRegister( ctx, ":", buffer );
-		CNInstance *ube, *x = (list) ? popListItem(list) : NULL;
-		do {	ube = db_arena_register( NULL, db );
-			registryRegister( buffer, x, ube );
-			} while (( list )&&( x=popListItem(list) ));
+	Registry *buffer = newRegistry( IndexedByAddress );
+	registryRegister( ctx, ":", buffer );
+	Pair *entry;
+	if ( *p=='|' ) {
+		if ( !list ) {
+			ube = db_arena_register( NULL, db );
+			registryRegister( buffer, NULL, ube ); }
+		else while (( x=popListItem( list ) )) {
+			ube = db_arena_register( NULL, db );
+			registryRegister( buffer, x, ube ); }
 		p++; // skip '|'
 		inform_UBE( buffer, p, traversal ); }
 	//-----------------------------------------------------------
 	//	carry assignment
 	//-----------------------------------------------------------
-	else if ( *p=='(' || (entry=registryLookup(story,p)) ) {
-		buffer = newRegistry( IndexedByAddress );
-		registryRegister( ctx, ":", buffer );
+	else if ( *p=='(' ) { // class-actor assignment
 		CNCell *this = BMContextCell( ctx );
-		CNInstance *proxy, *x = (list) ? popListItem(list) : NULL;
-		do {	if ( *p=='(' && !( entry=cnIsIdentifier(x) ?
-			      registryLookup(story,CNIdentifier(x)) : NULL ))
-				continue; // class-actor assignment failed
-			CNCell *child = newCell( story, entry );
-			addItem( BMCellCarry(this), child );
-			proxy = new_proxy( this, child, db );
-			registryRegister( buffer, x, proxy );
-			} while (( list )&&( x=popListItem(list) ));
+		while (( x=popListItem(list) )) {
+			if ( !cnIsIdentifier(x) ) continue;
+			entry = registryLookup( story, CNIdentifier(x) );
+			if ( !entry ) continue;
+			proxy = carry( db, this, story, entry );
+			registryRegister( buffer, x, proxy ); }
+		if ( !strncmp( p, "()", 2 ) ) p+=2;
+		inform_carry( buffer, p, this, traversal ); }
+	else if (( entry=registryLookup(story,p) )) {
+		CNCell *this = BMContextCell( ctx );
+		if ( !list ) {
+			proxy = carry( db, this, story, entry );
+			registryRegister( buffer, NULL, proxy ); }
+		else while (( x=popListItem(list) )) {
+			proxy = carry( db, this, story, entry );
+			registryRegister( buffer, x, proxy ); }
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		if ( !strncmp( p, "()", 2 ) ) p+=2;
 		inform_carry( buffer, p, this, traversal ); }
 	else {
-		fprintf( stderr, ">>>>> B%%: Error: class not found in expression\n" );
-		errout((list)?InstantiateClassNotFoundv:InstantiateClassNotFound, p );
-		if (( list )) freeListItem( list );
-		return; }
+		if ( !list ) errout( InstantiateClassNotFound, p );
+		else {	errout( InstantiateClassNotFoundv, p );
+			freeListItem( list ); } }
 	registryDeregister( ctx, ":" );
 	freeRegistry( buffer, NULL ); }
+
+static inline CNInstance *
+carry( CNDB *db, CNCell *this, Registry *story, Pair *entry ) {
+	CNCell *child = newCell( story, entry );
+	addItem( BMCellCarry(this), child );
+	return new_proxy( this, child, db ); }
 
 static void
 inform_UBE( Registry *buffer, char *p, BMTraverseData *traversal ) {
@@ -792,7 +807,7 @@ inform_carry( Registry *buffer, char *p, CNCell *this, BMTraverseData *traversal
 			db_deprecate( proxy, db ); }
 		else {
 			if (( x )) db_assign( x, proxy, db );
-			bm_bond( this, child, proxy ); }
+			bm_cell_bond( this, child, proxy ); }
 		bm_context_pop( ctx, "^" ); } }
 
 //---------------------------------------------------------------------------

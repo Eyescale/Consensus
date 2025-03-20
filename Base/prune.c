@@ -128,7 +128,8 @@ prune_term( char *p, PruneType type ) {
 			else if ( p[1]=='^' ) {
 				if ( p[2]=='.' ) p+=3;
 				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
-				if ( *p=='~' ) p++; }
+				if ( *p=='~' ) p++;
+				return p; }
 			else return p;
 		case '~':
 		case '@':
@@ -328,19 +329,22 @@ prune_mod( char *p )
 */ {
 	switch ( p[1] ) {
 	case '<':
-		switch ( p[2] ) {
+		p+=2;
+		switch ( *p ) {
 		case '?':
 		case '!':
-			for ( p+=3; *p!='>'; )
+			for ( p++; *p!='>'; )
 				switch ( *p ) {
 				case '(':  p = prune_sub( p ); break;
 				case '\'': p = prune_char( p ); break;
 				case '/':  p = prune_regex( p ); break;
-				default:
-					p++; }
+				default: p++; }
 			p++; break;
-		default:
-			p+=2; }
+		case '.':
+			p+=2; break;
+		case '(':
+			p = prune_sub( p ) + 1;
+			break; }
 		break;
 	case '?':
 	case '!':
