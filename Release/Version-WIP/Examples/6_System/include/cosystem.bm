@@ -41,7 +41,7 @@
 			in ?:( %?, ON )
 				do : exit : %((%?,.)?:%?)
 	else on : exit : ?
-		in %?: ~((.,.),.) // system-only
+		in %?: ~((.,.),.) // system
 			in ?: "init"
 				en .ON( %? )
 	else in : exit : %<.>
@@ -69,17 +69,19 @@
 				do %( %?::(?,.)|^active )
 			en .(%?:(.,ON)?ON:OFF)( %?::(?,.) )
 
+
 //===========================================================================
 //	Cosystem	public interface
 //===========================================================================
 #define activation	: this : ON
 #define deactivate	en .OFF( this )
+#define generative	%(.,((.,.),(?,.)))
 
 .: ON( .occurrence )
 #ifdef TRACE
 	do >&"ON........%_\n": occurrence
 #endif
-	in ( occurrence:%(.,((.,.),(?,.))) ? this :) // generative
+	in ( occurrence:generative ? this :)
 		do >&"Error: cosystem: %_\n"
 			"\tnarrative: %_\n"
 			"\toccurrence [ON]: %_\n"
@@ -97,15 +99,14 @@
 		// Status, and decommission these guards
 		in ?:(( occurrence, OFF ), %% )
 			do ( %?, %( Status, %(%?,?)|^guard~ ))
-
-	else in occurrence: ~%(.,((.,.),(?,.))) // generated
-		do : occurrence : ON
+	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
+		do : occurrence : ON // allow repetition
 
 .: OFF( .occurrence )
 #ifdef TRACE
 	do >&"      OFF %_\n": occurrence
 #endif
-	in ( occurrence:%(.,((.,.),(?,.))) ? this ? (occurrence:~this) :)
+	in ( occurrence:generative ? this ? (occurrence:~this) :)
 		do >&"Error: cosystem: %_\n"
 			"\tnarrative: %_\n"
 			"\toccurrence [OFF]: %_\n"
@@ -126,9 +127,8 @@
 		// Status, and decommission these guards
 		in ?:(( occurrence, ON ), %% )
 			do ( %?, %( Status, %(%?,?)|^guard~ ))
-
-	else in occurrence: ~%(.,((.,.),(?,.))) // generated
-		do : occurrence : OFF
+	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
+		do : occurrence : OFF // allow repetition
 
 
 #endif // COSYSTEM_BM

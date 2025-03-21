@@ -26,16 +26,11 @@
 # > "caller is start cell"
 # > "caller is point cell"
 # > "caller has right cell"
-# > "caller is set"
+# > "caller is ready"
 	on activation
 		do : caller : *leftmost
 	else on : caller : ?
-		en call_situ( %? )
-		do check~
-	else on ~( check )
-		in ?: "caller is set"
-			en .ON( %? )
-		deactivate
+		en call_check( %? )
 
 : "output start symbol '|'"
 # > &
@@ -67,18 +62,13 @@
 # > "caller is start cell"
 # > "caller is point cell"
 # > "caller has right cell"
-# > "caller is set"
+# > "caller is ready"
 	on activation
 		do ( *caller, right )
 	else on ~( %%, right ) < ?
 		do : caller : %<(!,?)>
 	else on : caller : ?
-		en call_situ( %? )
-		do check~
-	else on ~( check )
-		in ?: "caller is set"
-			en .ON( %? )
-		deactivate
+		en call_check( %? )
 
 : "output CR"
 # > &
@@ -147,15 +137,18 @@
 		deactivate
 
 //---------------------------------------------------------------------------
-//	call_situ / point_check
+//	call_check / point_check
 //---------------------------------------------------------------------------
-.: call_situ( .caller )
+.: call_check( .caller )
 	in ?: "caller is start cell"
 		en .( caller:*start ? ON : OFF )( %? )
 	in ?: "caller is point cell"
 		en .( caller:*point ? ON : OFF )( %? )
 	in ?: "caller has right cell"
 		en .( caller:*rightmost ? OFF : ON )( %? )
+	in ?: "caller is ready"
+		en .ON( %? )
+	deactivate
 
 .: point_check( .point )
 	in ?: "point cell has left cell"
