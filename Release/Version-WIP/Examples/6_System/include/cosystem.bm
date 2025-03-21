@@ -51,6 +51,12 @@
 		.%tag~: { ^.:~%(.,(Status,?))|^guard }
 		en %active // enable active occurrence sub-narratives
 
+		// actuate local actions based on %guard and EEVA
+		per ?: %( %guard, ((~%(~%<.>,?),~%(%<.>,?)), ? ))
+			in : exit : ((.,.),.) // not system
+				do %( %?::(?,.)|^active )
+			en .( %?:(.,ON) ? ON : OFF )( %?::(?,.) )
+
 		// update all guard status from EENO - for next frame
 		per : ? : . < .
 			// remove eeno-corresponding condition from relevant guard
@@ -62,12 +68,6 @@
 			// Status, and decommission these guards
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
 				do ( %?, %( Status, %(%?,?)|^guard~ ))
-
-		// actuate local actions based on %guard and EEVA
-		per ?: %( %guard, ((~%(~%<.>,?),~%(%<.>,?)), ? ))
-			in : exit : ((.,.),.) // not system
-				do %( %?::(?,.)|^active )
-			en .(%?:(.,ON)?ON:OFF)( %?::(?,.) )
 
 
 //===========================================================================

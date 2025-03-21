@@ -26,7 +26,6 @@
 # > "caller is start cell"
 # > "caller is point cell"
 # > "caller has right cell"
-# > "caller is ready"
 	on activation
 		do : caller : *leftmost
 	else on : caller : ?
@@ -62,7 +61,6 @@
 # > "caller is start cell"
 # > "caller is point cell"
 # > "caller has right cell"
-# > "caller is ready"
 	on activation
 		do ( *caller, right )
 	else on ~( %%, right ) < ?
@@ -146,8 +144,6 @@
 		en .( caller:*point ? ON : OFF )( %? )
 	in ?: "caller has right cell"
 		en .( caller:*rightmost ? OFF : ON )( %? )
-	in ?: "caller is ready"
-		en .ON( %? )
 	deactivate
 
 .: point_check( .point )

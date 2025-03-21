@@ -35,7 +35,7 @@ Release Checklist
 	. categorize output by cosystem, including # > generated
 	. verify generated occurrences all come from the same cosystem
 	  (possibly different actions)
-	. Examples/6_System => bar event implemented but not tested
+	. NOTE: bar EEVA implemented but not tested
 
     TODOC
 	. EEVA returns true if entity.as_sub[0] was released,

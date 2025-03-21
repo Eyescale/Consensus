@@ -18,8 +18,7 @@ else in "rollcall"
 		 > "caller is start cell"
 		 > "caller is point cell"
 		 > "caller has right cell"
-		 > "caller is ready"
-	on "caller is ready"
+	off &
 		do "callout"
 
 	in "caller is start cell"
@@ -49,7 +48,8 @@ else in "rollcall"
 			 > "caller is start cell"
 			 > "caller is point cell"
 			 > "caller has right cell"
-			 > "caller is ready"
+		off &
+			do "callout"
 	else
 		off "output caller's symbol"
 			do "output CR"
