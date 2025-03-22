@@ -111,40 +111,64 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) ) {
 		negated=1; expression+=3; }
-
-	void *found;
-	if ( !strcmp( expression, "~." ) ) ; // nop
-	else if ( !strncmp( expression, "?:\"", 3 ) ) {
-		flags = 0; // no need
-		CNDB *db = BMContextDB( ctx );
-		found = db_arena_lookup( expression+2, db ); }
-	else if ( !strncmp(expression,"%<",2) && !(flags&AS_PER) && !p_filtered(expression) )
+	int as_per = flags&AS_PER;
+	void *found = NULL;
+	switch ( *expression ) {
+	case '.':
+		vm = vmark( &expression, &flags );
+		break;
+	case '~':
+		if ( expression[1]=='.' ) goto RETURN;
+		break;
+	case '?':
+		switch ( expression[2] ) {
+		case '"':
+			flags = 0; // no need
+			CNDB *db = BMContextDB( ctx );
+			found = db_arena_lookup( expression+2, db );
+			goto RETURN;
+		case '^': ;
+			Pair *entry = BMTag( ctx, expression+3 );
+			if ( !entry ) goto RETURN;
+			listItem **list = (listItem **) &entry->value;
+			if ( as_per ) { found=*list; *list=NULL; }
+			else found = popListItem( list );
+			if ( !*list ) bm_untag( ctx, expression+3 );
+			goto RETURN; }
+		break;
+	case '%':
+		if (as_per||expression[1]!='<'||p_filtered(expression))
+			break;
 		found = eenov_lookup( ctx, NULL, expression );
-	else {
-		if ( *expression=='.' )
-			vm = vmark( &expression, &flags );
-		else if ( !strncmp( expression, "(~.:", 4 ) ) {
-			negated=!negated; expression+=4; }
-		found = (flags&AS_PER) ? (void *) bm_scan( expression, ctx ) :
-			bm_feel( BM_CONDITION, expression, ctx ); }
+		goto RETURN;
+	case '(':
+		if ( !strncmp( expression+1, "~.:", 3 ) ) {
+			negated = !negated;
+			expression += 4; } }
 
+	found = as_per ? (void *) bm_scan( expression, ctx ) :
+		bm_feel( BM_CONDITION, expression, ctx );
+RETURN:
 	if (( found )) success = 1;
 	if ( negated ) success = !success;
 	else if ( success && ( mark )) {
-		*mark = bm_mark( expression, NULL, flags, found );
-		if (( vm )) bm_vmark( ctx, vm, *mark ); }
+		if ( !vm || *vm!='%' ) {
+			*mark = bm_mark( expression, NULL, flags, found );
+			if (( vm )) bm_vmark( ctx, vm, *mark ); }
+		else bm_tag_set( vm+1, found, ctx ); }
 	DBG_IN_CONDITION_END
 	return success; }
 
 static inline char *
 vmark( char **expression, int *flags ) {
 	char *p = *expression;
+	if ( p[1]=='%' ) p++;
 	do p++; while ( !is_separator( *p ) );
 	if ( *p==':' ) {
 		char *v = *expression + 1;
 		if ( p!=v ) {
-			*expression = p+1;
 			*flags |= VMARK;
+			*expression = p+1;
 			return v; } }
 	return NULL; }
 

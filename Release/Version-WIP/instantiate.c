@@ -653,12 +653,15 @@ assign_v2v( char *expression, BMTraverseData *traversal ) {
 	freeListItem( &vector[ 1 ] );
 	return 1; }
 
+static inline void assign_tag( listItem **, char *, CNDB *, BMContext * );
 static inline void
 assign_v2one( listItem **sub, char *p, BMTraverseData *traversal, char *expression ) {
 	InstantiateData *data = traversal->user_data;
 	CNDB *db = data->db;
 	if ( !strncmp( p, "~.", 2 ) )
 		BM_UNASSIGN( sub, db )
+	else if ( *p=='^' )
+		assign_tag( sub, p+1, db, data->ctx );
 	else {
 		ifn_instantiate_traversal( p, 0 ) {
 			cleanup( traversal, expression );
@@ -667,6 +670,20 @@ assign_v2one( listItem **sub, char *p, BMTraverseData *traversal, char *expressi
 			sub[ 1 ] = data->sub[ 0 ];
 			data->sub[ 0 ] = NULL;
 			BM_ASSIGN( sub, db ); } } }
+static inline void
+assign_tag( listItem **sub, char *p, CNDB *db, BMContext *ctx ) {
+	if ( *p_prune(PRUNE_IDENTIFIER,p)!='~' ) return;
+	Pair *entry = BMTag( ctx, p );
+	if ( !entry ) BM_UNASSIGN( sub, db )
+	else {
+		CNInstance *e, *f;
+		listItem **list = (listItem **) &entry->value;
+		while((e=popListItem(&sub[0]))&&(f=popListItem(list)))
+			db_assign( e, f, db );
+		if (( *list )) freeListItem( &sub[0] );
+		else {
+			bm_untag( ctx, p );
+			BM_UNASSIGN( sub, db ) } } }
 
 static inline void
 assign_one2v( listItem **sub, char *p, BMTraverseData *traversal ) {

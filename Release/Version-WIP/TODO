@@ -1,57 +1,22 @@
-DONE
-	. feature complete Examples/6_System
-	  [ DONE ] output l%dc%d on error
-	  [ DONE ] output system as is => cf output.story
-	  [ DONE ] create internal data structure  => cf inform.story
-	  [ DONE ] pass ./B% -p Examples/6_System/inform.story
-	  [ DONE ] inform.story: implement NCR in :err
-	  [ DONE ] inform.story: report as per Examples/6_System/README.txt
-	  [ DONE ] review system launch formula in light of the fact that
-	 	FORE will loop over all matches regardless of '?' (Feature)
-		e.g. ?:(?,.)(_) may cause several iterations for the same %?
-	  [DONE] we now have ((!!,/(DO|CL|SET|>)/),.occurrence)
-	  [DONE] cleanup build data structure before report
-		 do { ~(root), ~( /(ELSE|ON|OFF|CL|DO)/, . ) }
-	  [DONE] implemented inform.story .: verify
-		 e.g.	on "occurrence" with only cl specified
-			off "occurrence" with only do specified
-	  [DONE] Cosystem.bm: "%% cannot be part of %@" assumption - verified
-	  [DONE] off & => recast SET occurrences into generative DO
-	  [DONE] verify/off . => recast SET occurrences into generative DO
-	  [DONE] carry => ascribe SET occurrence to ?::occurrence::system
-	  [DONE] system.story - finalize
-		  . cosystem init
-		  . create (.,(Status,.)) and clear guard Status -
-		  . capture all proxies (and subscribe) on init
-		  . finalize and actually run
-			../../B% system.story < TM.system
-			../../B% -Dverbose system.story < TM.system
-
 Release Checklist
-    TODO
-	. implement in .%identifier: expression / ^identifier
-	  cf. inform.story #ifdef CORRECT // simplify further?
-	. integrate inform.story and system.story => using -Dxxx
+    TODOC
+	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
+	. NOTE: EEVA returns true if entity.as_sub[0] was released,
+	  allowing in condition / on condition
+	. NOTE: bar EEVA implemented but not tested
+	. CAUTION: actuation allows repetition [Feature]
+	  see Examples/6_System/include/cosystem.bm:ON()/OFF()
+
+    NICE TO HAVE - Examples/6_System
 	. categorize output by cosystem, including # > generated
 	. verify generated occurrences all come from the same cosystem
 	  (possibly different actions)
-	. NOTE: bar EEVA implemented but not tested
-
-    TODOC
-	. EEVA returns true if entity.as_sub[0] was released,
-	  allowing in condition / on condition
-	. Caution: system occurrences are considered generative
-		=> only actuated if ~.::occurrence:state
-
-	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
-
-    NICE TO HAVE
 	. allow '< cosystem' in TM.system
 		do "action occurrence"
 		 > "generated occurrence"
 		 < cosystem
 	  TBD: complement or replace db_arena_origin() ?
-	. allow commenting out sections of TM.system, useful for
+	. allow commenting out sections of TM.system - useful for
 	  development / testing / debugging
 
 TODO
@@ -146,6 +111,39 @@ NOTES
 		// post-frame
 
 DONE
+	. implemented - cf. Test/93_loop-proper
+		in .%list: expression
+			do : variable : ^list~
+		in ?:^list~
+			do : variable : %?
+	  See also Examples/6_System/{inform,system}.story
+	. feature complete Examples/6_System
+	  [ DONE ] output l%dc%d on error
+	  [ DONE ] output system as is => cf output.story
+	  [ DONE ] create internal data structure  => cf inform.story
+	  [ DONE ] pass ./B% -p Examples/6_System/inform.story
+	  [ DONE ] inform.story: implement NCR in :err
+	  [ DONE ] inform.story: report as per Examples/6_System/README.txt
+	  [ DONE ] review system launch formula in light of the fact that
+	 	FORE will loop over all matches regardless of '?' (Feature)
+		e.g. ?:(?,.)(_) may cause several iterations for the same %?
+	  [DONE] we now have ((!!,/(DO|CL|SET|>)/),.occurrence)
+	  [DONE] cleanup build data structure before report
+		 do { ~(root), ~( /(ELSE|ON|OFF|CL|DO)/, . ) }
+	  [DONE] implemented inform.story .: verify
+		 e.g.	on "occurrence" with only cl specified
+			off "occurrence" with only do specified
+	  [DONE] Cosystem.bm: "%% cannot be part of %@" assumption - verified
+	  [DONE] off & => recast SET occurrences into generative DO
+	  [DONE] verify/off . => recast SET occurrences into generative DO
+	  [DONE] carry => ascribe SET occurrence to ?::occurrence::system
+	  [DONE] system.story - finalize
+		  . cosystem init
+		  . create (.,(Status,.)) and clear guard Status -
+		  . capture all proxies (and subscribe) on init
+		  . finalize and actually run
+			../../B% system.story < TM.system
+			../../B% -Dverbose system.story < TM.system
 	. instantiate.c
 	  . implemented *^_ ( covers *^%!/_/ as well as *^%? and *^%! )
 	  . implemented class-actor assignment

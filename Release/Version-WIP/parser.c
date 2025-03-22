@@ -34,6 +34,7 @@ PARSER_FUNC( bm_parse_expr )
 			else if ( is_f(LEVEL|SUB_EXPR) ||
 				  ( *type&DO && is_f(FILTERED) && !is_f(byref) ) ||
 				  ( *type&ON && expr(RELEASED) && is_f(MARKED) ) ||
+				  ( (*type&(ON|PER))==(ON|PER) && expr(VMARKED) && is_f(MARKED) ) ||
 				  (( *type&DO || s_at(',')) && is_f(MARKED) ) )
 				; // err
 			else if ( *type&(IN|ON) && is_f(ASSIGN) && s_at(',') ) {
@@ -44,10 +45,11 @@ PARSER_FUNC( bm_parse_expr )
 		on_( '&' ) if ( *type&EN && s_empty ) {
 				do_( same )	s_take
 						f_set( INFORMED|PROTECTED ) }
-		on_( '.' ) if ( !is_f(INFORMED) ) {
+		on_( '.' ) if ( s_empty && *type&ON ) {
 				do_( "." )	s_take
-				if ( s_empty && *type&(ON) ) {
-						expr_set( VMARKED ) } }
+						expr_set( VMARKED ) }
+			else  if ( !is_f(INFORMED) ) {
+				do_( "." )	s_take }
 		on_( '!' ) if ( !is_f(INFORMED) ) { do_( "!" ) }
 		on_( '%' ) if ( !is_f(INFORMED) ) { do_( "%" ) }
 		on_( '(' ) if ( !is_f(INFORMED) ) { do_( "(" )	s_take }
@@ -498,6 +500,12 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 		on_( '<' ) if ( *type&DO && !is_f(LEVEL|SET) ) {
 				do_( "_," )	REENTER
 						f_set( FILTERED ) }
+		on_( '^' ) if ( *type&(IN|PER) && !s_cmp("?") ) {
+				do_( ":^" )	s_add( ":^" )
+						f_clr( MARKED ) }
+			else {	do_( "expr" )	REENTER
+						s_add( ":" )
+						f_set( FILTERED ) }
 		on_( '"' ) if ( *type&IN && !s_cmp("?") ) {
 				do_( "\"$" )	s_add( ":\"" )
 						f_set( FILTERED ) }
@@ -532,6 +540,8 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 			end
 	in_( "::" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
 		ons( " \t" )	do_( same )
+		on_( '^' ) if ( *type&DO && is_f(PRIMED) && !s_at('|') ) {
+				do_( ":^" )	s_take }
 		on_( '"' ) if ( *type&DO && is_f(PRIMED) && !s_at('|') ) {
 				do_( "\"$" )	s_take }
 		on_( '<' ) if ( !s_at('|') ) {
@@ -608,10 +618,36 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 						expr_clr( VMARKED )
 		on_( '?' ) if ( is_f(SUB_EXPR) ) {
 				do_( "expr" )	REENTER }
+		on_( '%' ) if ( *type&IN && !s_cmp(".") ) {
+				do_( ".%" )	s_take
+						expr_set( VMARKED ) }
+			else {	do_( "expr" )	REENTER
+						f_set( INFORMED )
+						expr_clr( VMARKED ) }
 		on_separator	do_( "expr" )	REENTER
 						f_set( INFORMED )
 						expr_clr( VMARKED )
 		on_other	do_( "term" )	s_take
+		end
+	in_( ".%" ) bgn_
+		ons( " \t" ) if ( !s_at('%') ) {
+				do_( same )	f_set( INFORMED ) }
+		on_( '(' ) if ( s_at('%') ) {
+				do_( "expr" )	REENTER
+						expr_clr( VMARKED ) }
+		on_( ':' ) if ( !s_at('%') ) {
+				do_( "expr" )	REENTER
+						f_set( INFORMED )
+						*type &= ~IN;
+						*type |= PER|ON; }
+			else {	do_( "expr" )	REENTER
+						f_set( INFORMED )
+						expr_clr( VMARKED ) }
+		on_separator do_( "expr" )	REENTER
+						f_set( INFORMED )
+						expr_clr( VMARKED )
+		on_other if ( !is_f(INFORMED) ) {
+				do_( same )	s_take }
 		end
 	in_( "^" ) bgn_
 		on_( '^' )	do_( "expr" )	s_take
@@ -754,6 +790,15 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 		in_( "?::_:" ) bgn_
 			on_( ':' )	do_( "?::" )	s_take
 			end
+	in_( ":^" ) bgn_
+		on_( '~' ) if ( !s_at('^') ) {
+				do_( "expr" )	s_take
+						f_set( INFORMED )
+						expr_set( VMARKED )
+						f_tag( stack, PROTECTED ) }
+		on_separator	; //err
+		on_other	do_( same )	s_take
+		end
 	in_( "%term" ) bgn_
 		on_( '~' )
 CB_if_( TagTake ) {		do_( "@" )	s_take
@@ -787,9 +832,6 @@ CB_if_( TagTake ) {		do_( "expr" )	REENTER
 				do_( "expr" )	REENTER
 						expr_clr( VMARKED )
 						f_set( INFORMED ) }
-		on_( ':' )	do_( "expr" )	REENTER
-						f_set( INFORMED )
-			     if ( s_at('~') ) {	f_tag( stack, PROTECTED ) }
 		on_separator	do_( "expr" )	REENTER
 						expr_clr( VMARKED )
 						f_set( INFORMED )

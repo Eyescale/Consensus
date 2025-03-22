@@ -1,0 +1,12 @@
+
+	on init
+		do ( pivot, { titi, toto } )
+	else on pivot
+		in .%list : %( pivot, ? )
+			do : i : ^list~
+	else on : i : ?
+		do >"got i=%_\n": %?
+		in ?: ^list~
+			do : i : %?
+	else
+		do exit

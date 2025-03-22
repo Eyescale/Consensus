@@ -113,7 +113,8 @@ prune_term( char *p, PruneType type ) {
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '^':
-			p+=2;
+			if ( p[1]=='^' || p[1]=='.' ) p+=2;
+			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '\'':
 			p = prune_char( p );
@@ -218,7 +219,8 @@ prune_ternary( char *p )
 			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '^':
-			p+=2;
+			if ( p[1]=='^' || p[1]=='.' ) p+=2;
+			else do p++; while ( !is_separator(*p) );
 			informed = 1; break;
 		case '\'':
 			p = prune_char( p );

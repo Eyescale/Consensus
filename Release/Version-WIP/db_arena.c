@@ -227,7 +227,7 @@ db_arena_origin( CNInstance *e )
 /*
 	return class name of shared string entity's narrative - if it has
 */ {
-	if ( !cnIsShared(e) ) return NULL;
+	if ( !e || !cnIsShared(e) ) return NULL;
 	uint *key = CNSharedKey( e );
 	if ( key[0]!='$' ) return NULL;
 	Pair *entry = btreePick( DBSharedArena->name, key );

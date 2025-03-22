@@ -86,7 +86,7 @@ narrative_reorder( CNNarrative *narrative ) {
 void db_arena_output( FILE *, char *, char * ); // cf. db_arena.c
 
 static inline void output_proto( FILE *, char * );
-static inline int output_cmd( FILE *, int, int );
+static inline int output_cmd( FILE *, int, int, char * );
 static inline void output_expr( FILE *, char *, int, int );
 
 int
@@ -99,7 +99,7 @@ narrative_output( FILE *stream, CNNarrative *narrative, int level ) {
 		occurrence = i->ptr;
 		int type = cast_i( occurrence->data->type );
 		char *expression = occurrence->data->expression;
-		if ( output_cmd( stream, type, level ) )
+		if ( output_cmd( stream, type, level, expression ) )
 			output_expr( stream, expression, level, type );
 		listItem *j = occurrence->sub;
 		if (( j )) { addItem( &stack, i ); i=j; level++; }
@@ -124,23 +124,30 @@ output_proto( FILE *stream, char *p ) {
 		if ( p[1]=='"' ) db_arena_output( stream, ":%_\n", p+1 );
 		else fprintf( stream, "%s\n", p ); } }
 
-#define if_( a, b ) if (type&(a)) fprintf(stream,b);
+static inline int in_x( int type, char *p );
 static inline int
-output_cmd( FILE *stream, int type, int level ) {
+output_cmd( FILE *stream, int type, int level, char *expression ) {
 	if ( type==ROOT ) return 0;
-	else {
-		TAB( level );
-		if ( type==ELSE ) {
-			fprintf( stream, "else\n" );
-			return 0; }
-		else if ( !(type&CASE) ) {
-			if_( ELSE, "else " )
-			if_( EN, "en " )
-			else if_( PER, "per " )
-			else if_( IN, "in " )
-			else if_( ON|ON_X, "on " )
-			else if_( DO|INPUT|OUTPUT, "do " ) }
-		return 1; } }
+	TAB( level );
+	if ( type==ELSE ) {
+		fprintf( stream, "else\n" );
+		return 0; }
+	else if ( type&CASE )
+		return 1;
+	if ( type&ELSE ) fprintf( stream, "else " );
+	if ( type&EN ) fprintf( stream, "en " );
+	else if	( in_x(type,expression) ) fprintf( stream, "in " );
+	else if ( type&PER ) fprintf( stream, "per " );
+	else if ( type&IN ) fprintf( stream, "in " );
+	else if ( type&(ON|ON_X) ) fprintf( stream, "on " );
+	else if ( type&(DO|INPUT|OUTPUT) ) fprintf( stream, "do " );
+	return 1; }
+
+static inline int in_x( int type, char *p ) {
+	return	(type&(PER|ON))==(PER|ON) &&
+		!strncmp(p,".%",2) &&
+		!is_separator(p[2]) &&
+		*p_prune(PRUNE_IDENTIFIER,p+3)==':'; }
 
 static inline void
 output_expr( FILE *stream, char *p, int level, int type ) {

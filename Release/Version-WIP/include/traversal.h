@@ -25,7 +25,9 @@ CB_TermCB	} while ( 0 );
 		switch ( *p ) {
 			case '^':
 CB_RegisterVariableCB		f_set( INFORMED )
-				p+=2; break;
+				if ( p[1]=='^' || p[1]=='.' ) p+=2;
+				else do p++; while ( !is_separator(*p) );
+				break;
 			case '{':
 				if ( is_f(INFORMED) && BASE ) {
 					traversal->done = 1; // forescan

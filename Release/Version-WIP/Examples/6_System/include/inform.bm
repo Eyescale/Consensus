@@ -19,7 +19,7 @@
 				do : ( ready ? inform : ~. )
 			else do : err
 		else on : ~.
-			do : carry
+			do : verify
 		else en %(:?)
 
 .: base
@@ -142,8 +142,13 @@
 			do : cmd : (cmd,~.)
 			in ( type, '>' )
 				do ((*take,'>'),'&')
-			else in ( type, OFF )
-				en .recasting(( !!, SET ), *s:~%((.,CL),?) )
+			else in ?: ((type,OFF) ? %((?:!!,SET),*s:~%((.,CL),?)) :)
+#ifdef verbose
+				do >&"l%$: off & - recasting l%$: "
+					"do \"%s\" as generative\n": <
+					%(line,?:...), %((%?,IN),?), %((%?,SET),?) >
+#endif
+				do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }
 		.
 			do : err
 	else en &
@@ -342,57 +347,12 @@
 		else
 			do { ~( root ), ~( /(ELSE|IN|ON|OFF|CL|DO|>)/, . ) }
 			do :< guard, on, bar >: ~.
-			do : verify
-
-.: verify
-	on : .
-		in ?: "init"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err |: ErrInitUsage
-			else in ( ?:(%?,ON), . )
-				in ~.:( ., %? )
-					do : init : %?
-				else do : err |: ErrInitUsage
-			else do : err |: ErrNoInit
-		else do : err |: ErrNoInit
-	else on : init : .
-		in ?: "exit"
-			in (((!!,DO),%?) ?: ((!!,'>'),%?))
-				do : err |: ErrExitUsage
-			else in ( ., ?:(%?,ON))
-				in ~.:( %?, . )
-					do : exit : %?
-				else do : err |: ErrExitUsage
-			else do : err |: ErrNoExit
-		else do : err |: ErrNoExit
-	else on : exit : .
-		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
-			do >&"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
-			do : err |: ErrSystemIncomplete
-		else en .recasting(( !!, SET ), %(?,OFF):~%((.,CL),?) )
-	else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
-		do >&"Warning: verify: ErrNoActuation: OFF \"%s\"\n": %?
-		do : err |: ErrSystemIncomplete
-	else
-		do : ~.
-
-.: recasting(( .pivot, SET ), .occurrence )
-#ifdef verbose
-	in : verify
-		do >&"verify: recasting l%$: "
-			"do \"%s\" as generative\n":<
-			%((pivot,IN),?), occurrence >
-	else
-		do >&"l%$: off & - recasting l%$: "
-			"do \"%s\" as generative\n": <
-			%(line,?:...), %((pivot,IN),?), occurrence >
-#endif
-	do { ~(pivot,SET), ((pivot,DO),occurrence), ((pivot,'>'),'&') }
+			do : ~.
 
 .: err
 	on : . // lc coming up next - if not verify
 		on ~(:?) // just transitioned from
-			do >&"[%_:] Error: ": %?
+			do >&"Error: %_: ": %?
 	else on ~( %%, l ) < *lc
 		do >&"l%$": %<(!,?:...)>
 	else

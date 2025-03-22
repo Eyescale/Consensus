@@ -193,6 +193,18 @@ inform_CB( CNInstance *e, BMContext *ctx, void *user_data ) {
 	return BMQ_CONTINUE; }
 
 //===========================================================================
+//	bm_tag_set
+//===========================================================================
+int
+bm_tag_set( char *tag, listItem *results, BMContext *ctx ) {
+	Pair *entry = BMTag( ctx, tag );
+	if ( !entry ) entry = bm_tag( ctx, tag, results );
+	else {
+		freeListItem((listItem **) &entry->value );
+		entry->value = results; }
+	return 1; }
+
+//===========================================================================
 //	bm_tag_clear
 //===========================================================================
 static freeRegistryCB clear_CB;

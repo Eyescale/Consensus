@@ -11,6 +11,7 @@ void		bm_enable( int, void *, char *, BMContext *, EnableData * );
 int		bm_enable_x( char *, BMContext *, listItem *, Registry * );
 int		bm_tag_traverse( char *, char *, BMContext * );
 int		bm_tag_inform( char *, char *, BMContext * );
+int		bm_tag_set( char *, listItem *, BMContext * );
 int		bm_tag_clear( char *, BMContext * );
 void		bm_release( char *, BMContext * );
 int		bm_inputf( char *fmt, listItem *args, BMContext * );

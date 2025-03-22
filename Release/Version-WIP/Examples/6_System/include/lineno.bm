@@ -34,7 +34,7 @@
 		do (((..,l),...), %(l,?:...))
 	else on : .. : err < ..
 		do ((( .., l ), ... ),< %(l,?:...), 'c', %(c,?:...) >)
-	else on : .. : verify < ..
+	else on : .. : ~. < ..
 		do exit
 	else on exit < ..
 		do exit

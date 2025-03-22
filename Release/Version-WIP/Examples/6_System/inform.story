@@ -1,3 +1,4 @@
+#define verbose
 #include "include/inform.bm"
 
 //===========================================================================
@@ -5,16 +6,25 @@
 //===========================================================================
 : < inform
 
-.: carry
+.: verify
 	on : .
-		do >"--\nSystem Description\n\n"
-#ifdef PROPER
-		in .%action: %(.,((.,.),?:(.,/(ON|OFF))))
+		in .%recast: %((?:!!,SET),%(?,OFF):~%((.,CL),?))
+			do : recast : ^recast~
+		else do : recast : ~.
+	else on : recast : ?
+		do >"verify: recasting l%$: do \"%s\" as generative\n":<
+			%((%?,IN),?), %((%?,SET),?) >
+		do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }
+		do : recast : ^recast~
+	else on : recast : ~.
+		do >"--\nSystem Description\n"
+		in .%action: %(.,((.,.),?:(.,/(ON|OFF)/)))
 			do : action : ^action~
+		else do : action : ~.
 	else on : action : ?
-		do >": \"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >"\n: \"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 		in ((?:!!,DO), %?::(?,.)) // generative action
-			in .%generated: %((%?,'>'),?:~'&'))
+			in .%generated: %((%?,'>'),?:~'&')
 				do : generated : ^generated~
 			else do : generated : '&'
 		else do : generated : ~.
@@ -22,15 +32,13 @@
 		in %?: '&'
 			do >"  > &\n"
 		else	do >"  > \"%_\"\n": %?
-		in ?: ^generated~
-			do : generated : %?
-		else do : generated : ~.
+		do : generated : ^generated~
 	else on : generated : ~.
 		in .%guard : %( ?, ( ., *action ))
 			do : guard : ^guard~
 	else on : guard : ?
 		do >"  guard\n"
-		in .%condition: %( ?, %? )
+		in .%condition: %( ?:~(*,.), %? )
 			do : condition : ^condition~
 		else in .%trigger: %( %?, ( ?, *action ))
 			do : trigger : ^trigger~
@@ -47,48 +55,61 @@
 		else do : event : ~.
 	else on : event : ?
 		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-		in ?: ^event~
-			do : event : %?
-		else do : event : ~.
+		do : event : ^event~
 	else on : event : ~.
 		do >"      /\n"
 		in .%bar: %( ?:~!!, %(*trigger:(.,?)) )
 			do : bar : ^bar~
-		else do : trigger : ~.
+		else do : trigger : ^trigger~
 	else on : bar : ?
 		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 		in ?: ^bar~
 			do : bar : %?
-		else do : trigger : ~.
+		else do : trigger : ^trigger~
 	else on : trigger : ~.
-		in ?: ^trigger~
-			do : trigger : %?
-		else in ?: ^guard~
+		in ?: ^guard~
 			do : guard : %?
-		else in ?: ^action~
-			do : action : %?
-		else do exit
-#else
-+	per .action: %( ., ((.,.), ?:(.,/(ON|OFF)/)))
-		in ((?:!!,DO), %(action:(?,.))) // generative action
-			do >": \"%_\"\n": %(action:(?,.))
-			per ((%?,'>'),?:~'&') // generated occurrences
-				do >"  > \"%_\"\n": %?
-			else in ((%?,'>'),'&')
-				do >"  > &\n"
-		else do >": \"%_\" %_\n":< %(action:(?,.)), %(action:(.,?)) >
-		per .guard: %( ?, ((.,.), action ))
-			do >"  guard\n"
-			per ( ?, guard ) // guard condition
-				do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-			per ( guard, ( ?, action ))
-				do >"    trigger\n"
-				per ( ?, %?::(?,.) ) // on event
-					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-				do >"      /\n"
-				per ( ?:~!!, %?::(.,?) ) // bar event
-					do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		else do : action : ^action~
+	else on : action : ~.
+		do ~(/(recast|action|generated|guard|condition|trigger|event|bar)/)
 		do >:
--	else do exit
-#endif
+	else do : report
+
+.: report
+	on : .
+		in .%noset: %(?:~%?,ON):~%((!!,/(SET|DO|>)/),?)
+			do : noset : ^noset~
+			in ?: "init"
+				do : init : %?
+		else do : noset : ~.
+	else on : noset : ?
+		in ~.:: init : %?
+			do >"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
+		do : noset : ^noset~
+	else on : noset : ~.
+		in .%nocl: %(?,OFF):~%((!!,/(CL|DO|>)/),?)
+			do : nocl : ^nocl~
+		else do : nocl : ~.
+	else on : nocl : ?
+		do >&"Warning: verify: ErrNoActuation: OFF \"%s\"\n": %?
+		do : nocl : ^nocl~
+	else on : nocl : ~.
+		in ?: "init"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do >"Warning: verify: ErrInitGenerativeUsage\n"
+			else in ~.: ((%?,ON), . )
+				do >"Warning: verify: ErrNoInitAction\n"
+			else in ( ?, (%?,ON))
+				do >"Warning: verify: ErrInitActuated\n"
+		else do >"Warning: verify: ErrNoInit\n"
+	else
+		in ?: "exit"
+			in (((!!,DO),%?) ?: ((!!,'>'),%?))
+				do >"Warning: verify: ErrExitGenerativeUsage\n"
+			else in ~.:( ., (%?,ON))
+				do >"Warning: verify: ErrNoExitAction\n"
+			else in ((%?,ON), . )
+				do >"Warning: verify: ErrExitAsCondition\n"
+		else do >"Warning: verify: ErrNoExit\n"
+		do exit
 
