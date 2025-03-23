@@ -2,52 +2,17 @@ Release Checklist
     TODOC
 	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
 	. NOTE: EEVA returns true if entity.as_sub[0] was released,
-	  allowing in condition / on condition
+	  allowing on condition inside in same-condition
 	. NOTE: bar EEVA implemented but not tested
 	. CAUTION: actuation allows repetition [Feature]
 	  see Examples/6_System/include/cosystem.bm:ON()/OFF()
 
-    NICE TO HAVE - Examples/6_System
-	. categorize output by cosystem, including # > generated
-	. verify generated occurrences all come from the same cosystem
-	  (possibly different actions)
-	. allow '< cosystem' in TM.system
-		do "action occurrence"
-		 > "generated occurrence"
-		 < cosystem
-	  TBD: complement or replace db_arena_origin() ?
-	. allow commenting out sections of TM.system - useful for
-	  development / testing / debugging
-
 TODO
-	. NTH: inform.story
-		. do "" / on "" for do exit / on init
-			=> db_arena_makeup must accept NULL
-		  Note: B% does not support on "_" for the time being
-		. report by action category - with generative actions last
-		. cl-do same occurrence should not be allowed
-	. NTH: system.story optimization
-			?*:( ?, %?::((?,.),.) ) (...)
-			?*:( ?:~!!, %?:((.,?),.) ) (...)
-				?*:( ?, %? ) (...)
-	  We want these loop to execute iff the second term - UBE - has
-	  no association in carry->db
-	. cleanup & complete contents of design/story/
+	. cleanup & complete contents of design/story/ [*]
 	. reorder Test/ directory contents
-	. OPT: REALLY nice to have: design/specs/PivotQueryOptimization.spec
+	. OPT: nice to have: design/specs/PivotQueryOptimization.spec
 	. OPT: locate_pivot && query_traversal in case of **...*identifier
-	. OPT: btreeCache(): should use addIfNotThere - but uint is an issue
-	. TBD: I would like to replace else on/off & etc. with
-		eg. on which / off which and else on that / else off that
-		but in fact can keep '&' - just need to remove else in current narrative !
-		but then "else" meaning: none of the above => no clamping ??
-	. TBD: use cosystem names vs. proxy => change EEVA definition
-	       this makes the cosystem generic, ie. co-actor can be changed /
-	       handy in TM Cell implementation / e.g. current cell actor
-	       issue: newly assigned cosystems must know system rules and actors
-	. NOTE: to enlist occurrence - e.g.
-		in ?: "....."
-			do %?|^guard
+	. OPT: btreeCache(): could use addIfNotThere - but uint is an issue
 
 [*] 	See under ./design/story/proto/
 		system.spec - TM system external specifications
@@ -111,6 +76,11 @@ NOTES
 		// post-frame
 
 DONE
+	. Examples/6_System/system.story
+	  . verify generated occurrences all come from the same cosystem
+	    actor (possibly different actions)
+	  . list ALL origin-related errors when there is
+	. implemented db_arena_query => used by bm_query()
 	. implemented - cf. Test/93_loop-proper
 		in .%list: expression
 			do : variable : ^list~
@@ -644,6 +614,26 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. inform.story / system.story integration
+		categorize output by cosystem, including # > generated
+	. TM.system format extensions
+	  . allow '< cosystem' in TM.system
+		do "action occurrence"
+		 > "generated occurrence"
+		 < cosystem
+	    TBD: complement or replace db_arena_origin() ?
+	  . allow commenting out sections of TM.system - useful for
+	    development / testing / debugging
+	  . do "" / on "" for do exit / on init
+		=> db_arena_makeup must accept NULL
+	    Note: B% does not support on "_" for the time being
+	  . cl-do same occurrence - ?
+	. system.story launch optimization
+			?*:( ?, %?::((?,.),.) ) (...)
+			?*:( ?:~!!, %?:((.,?),.) ) (...)
+				?*:( ?, %? ) (...)
+	  We want these loop to execute iff the second term - UBE - has
+	  no association in carry->db
 	. %list and |^tag currently cannot be used in DO and ON and PER
 	  we only support tagging in condition evaluation e.g. %(expression|^tag )
 	  which could be extended to cover e.g. OUTPUT, FORE, etc.

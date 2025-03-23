@@ -32,7 +32,6 @@ static freeRegistryCB deregister_CB;
 static int
 free_CB( uint key[2], void *value ) {
 	switch ( key[0] ) {
-	case 's':
 	case '$':;
 		Pair *entry = value;
 		free( entry->name );
@@ -386,4 +385,37 @@ db_arena_translate( CNInstance *e, CNDB *db, int inform )
 	else if ( inform )
 		return db_share( key, ref, db );
 	else return NULL; }
+
+//===========================================================================
+//	db_arena_query
+//===========================================================================
+static btreeShakeCB query_CB;
+typedef struct {
+	CNDB *db;
+	char *expression;
+	DBAQueryCB *cb;
+	void *user_data;
+	CNInstance *result; } DBAQueryData;
+
+CNInstance *
+db_arena_query( CNDB *db, char *expression, DBAQueryCB cb, void *user_data ) {
+	DBAQueryData data = { db, expression, cb, user_data, NULL };
+	btreeShake( DBSharedArena->value, query_CB, db );
+	if (( data.result )) return data.result;
+	btreeShake( DBSharedArena->name, query_CB, &data );
+	if (( data.result )) return data.result;
+	return NULL; }
+
+static int
+query_CB( uint key[2], void *entry, void *user_data ) {
+	DBAQueryData *data = user_data;
+	CNDB *db = data->db;
+	Registry *ref = key[0]=='$' ? ((Pair *) entry )->value : entry;
+	Pair *candidate = registryLookup( ref, db );
+	if ( !candidate ) return BT_CONTINUE;
+	CNInstance *e = candidate->value;
+	if ( db_private( 0, e, db ) ) return BT_CONTINUE;
+	if (( e=data->cb( e, db, data->expression, data->user_data ) )) {
+		data->result=e; return BT_DONE; }
+	return BT_CONTINUE; }
 

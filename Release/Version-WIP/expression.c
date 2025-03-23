@@ -205,6 +205,20 @@ bm_tag_set( char *tag, listItem *results, BMContext *ctx ) {
 	return 1; }
 
 //===========================================================================
+//	bm_tag_pop
+//===========================================================================
+void *
+bm_tag_pop( int as_per, char *tag, BMContext *ctx ) {
+	void *retval = NULL;
+	Pair *entry = BMTag( ctx, tag );
+	if (( entry )) {
+		listItem **list = (listItem **) &entry->value;
+		if ( as_per ) { retval=*list; *list=NULL; }
+		else retval = popListItem( list );
+		if ( !*list ) bm_untag( ctx, tag ); }
+	return retval; }
+
+//===========================================================================
 //	bm_tag_clear
 //===========================================================================
 static freeRegistryCB clear_CB;

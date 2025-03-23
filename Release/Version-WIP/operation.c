@@ -127,20 +127,15 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 			CNDB *db = BMContextDB( ctx );
 			found = db_arena_lookup( expression+2, db );
 			goto RETURN;
-		case '^': ;
-			Pair *entry = BMTag( ctx, expression+3 );
-			if ( !entry ) goto RETURN;
-			listItem **list = (listItem **) &entry->value;
-			if ( as_per ) { found=*list; *list=NULL; }
-			else found = popListItem( list );
-			if ( !*list ) bm_untag( ctx, expression+3 );
+		case '^':
+			found = bm_tag_pop( as_per, expression+3, ctx );
 			goto RETURN; }
 		break;
 	case '%':
-		if (as_per||expression[1]!='<'||p_filtered(expression))
-			break;
-		found = eenov_lookup( ctx, NULL, expression );
-		goto RETURN;
+		if (!(as_per||expression[1]!='<'||p_filtered(expression))) {
+			found = eenov_lookup( ctx, NULL, expression );
+			goto RETURN; }
+		break;
 	case '(':
 		if ( !strncmp( expression+1, "~.:", 3 ) ) {
 			negated = !negated;

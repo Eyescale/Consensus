@@ -1,6 +1,10 @@
 #ifndef DB_ARENA_H
 #define DB_ARENA_H
 
+#include "database.h"
+
+typedef CNInstance * DBAQueryCB( CNInstance *, CNDB *, char *, void * );
+
 void		db_arena_init( void );
 void		db_arena_exit( void );
 CNInstance *	db_arena_register( char *, CNDB * );
@@ -14,6 +18,7 @@ void		db_arena_output( FILE *, char *, char * );
 char *		db_arena_identifier( CNInstance * );
 CNInstance *	db_arena_translate( CNInstance *, CNDB *, int );
 void		db_arena_unref( CNDB * );
+CNInstance *	db_arena_query( CNDB *, char *, DBAQueryCB, void * );
 
 static inline int db_arena_verify( uint *master, char *code ) {
 	if ( !master ) return 0;

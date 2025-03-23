@@ -32,11 +32,11 @@
 			else do : err
 		' '
 			in ( cmd, . )
-				do : check
+				do : type
 			else do : cmd : ( cmd, *^^ )
 		'\t'
 			in ( cmd, . )
-				do : check
+				do : type
 			else in ~.:: tab : .
 				do : level : ( *level, '\t' )
 			else in ?:( *level, '\t' ) // must exist
@@ -46,10 +46,10 @@
 			in ( type, ~ELSE )
 				do : err
 			else in : cmd : ((((.,e),l),s),e)
-				do : check // standalone ELSE
+				do : type // standalone ELSE
 			else in ~.:(cmd,.)
 				in ( type, . )
-					do : check // standalone ELSE
+					do : type // standalone ELSE
 				else // empty line
 					do : level : (*tab?root:(root,~.))
 			else do : err
@@ -66,7 +66,7 @@
 		do :( ps ?: base )
 	else en &
 
-.: check
+.: type
 	in : cmd :
 		((((.,e),l),s),e)
 			in ( type, ELSE )
@@ -347,10 +347,25 @@
 		else
 			do { ~( root ), ~( /(ELSE|IN|ON|OFF|CL|DO|>)/, . ) }
 			do :< guard, on, bar >: ~.
-			do : ~.
+			do : recast
+
+.: recast
+	on : .
+		in .%recast: %((?:!!,SET),%(?,OFF):~%((.,CL),?))
+			do : recast : ^recast~
+		else do : ~.
+	else on : recast : ?
+#ifdef verbose
+		do >&"EOF: recasting l%$: do \"%s\" as generative\n":<
+			%((%?,IN),?), %((%?,SET),?) >
+#endif
+		do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }
+		do : recast : ^recast~
+	else on : recast : ~.
+		do : ~.
 
 .: err
-	on : . // lc coming up next - if not verify
+	on : . // lc coming up next - if at all
 		on ~(:?) // just transitioned from
 			do >&"Error: %_: ": %?
 	else on ~( %%, l ) < *lc

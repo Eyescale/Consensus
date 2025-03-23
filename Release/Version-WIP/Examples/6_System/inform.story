@@ -8,45 +8,41 @@
 
 .: verify
 	on : .
-		in .%recast: %((?:!!,SET),%(?,OFF):~%((.,CL),?))
-			do : recast : ^recast~
-		else do : recast : ~.
-	else on : recast : ?
-		do >"verify: recasting l%$: do \"%s\" as generative\n":<
-			%((%?,IN),?), %((%?,SET),?) >
-		do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }
-		do : recast : ^recast~
-	else on : recast : ~.
-		do >"--\nSystem Description\n"
-		in .%action: %(.,((.,.),?:(.,/(ON|OFF)/)))
+		do >"\nSystem Definition\n\n"
+		in .%action: %(.,((.,.),?:( %((!!,DO),?), . )))
+			do : action : ^action~
+			do genpass
+		else in .%action: %(.,((.,.),?:(.,/(ON|OFF)/)))
 			do : action : ^action~
 		else do : action : ~.
 	else on : action : ?
-		do >"\n: \"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-		in ((?:!!,DO), %?::(?,.)) // generative action
-			in .%generated: %((%?,'>'),?:~'&')
+		in genpass
+			do >": \"%_\"\n": %?::(?,.)
+			in .%generated: %!/((?,'>'),!:~'&'):%((?,DO),%?::(?,.))/
 				do : generated : ^generated~
 			else do : generated : '&'
-		else do : generated : ~.
+		else
+			do >": \"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+			in .%guard : %( ?, ( ., *action ))
+				do : guard : ^guard~
 	else on : generated : ?
 		in %?: '&'
 			do >"  > &\n"
 		else	do >"  > \"%_\"\n": %?
 		do : generated : ^generated~
 	else on : generated : ~.
-		in .%guard : %( ?, ( ., *action ))
+		in .%guard : %( ?, ((.,.), *action ))
 			do : guard : ^guard~
 	else on : guard : ?
 		do >"  guard\n"
 		in .%condition: %( ?:~(*,.), %? )
 			do : condition : ^condition~
-		else in .%trigger: %( %?, ( ?, *action ))
-			do : trigger : ^trigger~
+		else do : condition : ~.
 	else on : condition : ?
 		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-		in ?: ^condition~
-			do : condition : %?
-		else in .%trigger: %( *guard, ( ?, *action ))
+		do : condition : ^condition~
+	else on : condition : ~.
+		in .%trigger: %( *guard, ( ?, *action ))
 			do : trigger : ^trigger~
 	else on : trigger : ?
 		do >"    trigger\n"
@@ -60,33 +56,39 @@
 		do >"      /\n"
 		in .%bar: %( ?:~!!, %(*trigger:(.,?)) )
 			do : bar : ^bar~
-		else do : trigger : ^trigger~
+		else do : bar : ~.
 	else on : bar : ?
 		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
-		in ?: ^bar~
-			do : bar : %?
-		else do : trigger : ^trigger~
-	else on : trigger : ~.
-		in ?: ^guard~
-			do : guard : %?
-		else do : action : ^action~
-	else on : action : ~.
-		do ~(/(recast|action|generated|guard|condition|trigger|event|bar)/)
-		do >:
-	else do : report
+		do : bar : ^bar~
+	else
+		on : bar : ~.
+			do : trigger : ^trigger~
+		else on : trigger : ~.
+			do : guard : ^guard~
+		else on : guard : ~.
+			do : action : ^action~
+			do >:
+		else on : action : ~.
+			in genpass
+				do ~( genpass )
+				in .%action: %(.,((.,.),?:( %((!!,/(CL|SET)/),?), . )))
+					do >"--\nnon-generative Actions\n\--\n\n"
+					do : action : ^action~
+				else do : report
+			else do : report
 
 .: report
 	on : .
-		in .%noset: %(?:~%?,ON):~%((!!,/(SET|DO|>)/),?)
-			do : noset : ^noset~
-			in ?: "init"
+		in .%noop: %(?,ON):~%((!!,/(SET|DO|>)/),?)
+			do : noop : ^noop~
+			in ?: "init" // excluded from noop
 				do : init : %?
-		else do : noset : ~.
-	else on : noset : ?
+		else do : noop : ~.
+	else on : noop : ?
 		in ~.:: init : %?
 			do >"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
-		do : noset : ^noset~
-	else on : noset : ~.
+		do : noop : ^noop~
+	else on : noop : ~.
 		in .%nocl: %(?,OFF):~%((!!,/(CL|DO|>)/),?)
 			do : nocl : ^nocl~
 		else do : nocl : ~.
@@ -98,7 +100,7 @@
 			in (((!!,DO),%?) ?: ((!!,'>'),%?))
 				do >"Warning: verify: ErrInitGenerativeUsage\n"
 			else in ~.: ((%?,ON), . )
-				do >"Warning: verify: ErrNoInitAction\n"
+				do >"Warning: verify: ErrNoInitSubscription\n"
 			else in ( ?, (%?,ON))
 				do >"Warning: verify: ErrInitActuated\n"
 		else do >"Warning: verify: ErrNoInit\n"

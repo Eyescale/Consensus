@@ -20,7 +20,7 @@
 static XPTraverseCB verify_candidate;
 
 static int pivot_query( int, char *, BMQueryData *, XPTraverseCB *, void * );
-static inline CNInstance * query_self( char *, BMQueryData * );
+static CNInstance * query_base( CNInstance *, CNDB *, char *, void * );
 static CNInstance * query_assignment( int, char *, BMQueryData * );
 
 CNInstance *
@@ -58,7 +58,9 @@ bm_query( int type, char *expression, BMContext *ctx,
 				if ( verify_candidate( e, expression, &data )==BMQ_DONE ) {
 					freeListItem( &s );
 					return e; }
-			return query_self( expression, &data );
+			e = BMContextSelf( ctx );
+			return e=query_base( e, db, expression, &data ) ? e :
+				db_arena_query( db, expression, query_base, &data );
 		default:
 			for ( e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
 				if ( xp_verify( e, expression, &data ) ) {
@@ -89,18 +91,15 @@ verify_candidate( CNInstance *e, char *expression, BMQueryData *data ) {
 
 
 //---------------------------------------------------------------------------
-//	query_self
+//	query_base
 //---------------------------------------------------------------------------
-static inline CNInstance * dotnext( CNDB *, listItem ** );
+static inline CNInstance * query_next( CNDB *, listItem ** );
 
-static inline CNInstance *
-query_self( char *expression, BMQueryData *data ) {
-	BMContext *ctx = data->ctx;
-	CNDB *db = data->db;
+static CNInstance *
+query_base( CNInstance *e, CNDB *db, char *expression, void *data ) {
 	listItem *s = NULL;
-	CNInstance *e = BMContextSelf( ctx );
 	listItem *i = newItem( e );
-	for ( addItem(&s,i); e!=NULL; e=dotnext(db,&s) )
+	for ( addItem(&s,i); e!=NULL; e=query_next(db,&s) )
 		if ( verify_candidate( e, expression, data )==BMQ_DONE ) {
 			freeListItem( &s );
 			break; }
@@ -108,7 +107,7 @@ query_self( char *expression, BMQueryData *data ) {
 	return e; }
 
 static inline CNInstance *
-dotnext( CNDB *db, listItem **stack ) {
+query_next( CNDB *db, listItem **stack ) {
 	if ( !*stack ) return NULL;
 	listItem *i = (*stack)->ptr;
 	CNInstance *e = i->ptr;
