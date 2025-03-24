@@ -102,7 +102,6 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 //	db_update
 //---------------------------------------------------------------------------
 // cf design/specs/db-update.txt
-
 void
 db_update( CNDB *db ) {
 	CNInstance *nil = db->nil;
@@ -167,22 +166,22 @@ fprintf( stderr, "db_update: 3. actualize to-be-manifested entities\n" );
 #ifdef DEBUG
 fprintf( stderr, "db_update: 4. actualize to-be-released entities\n" );
 #endif
-	listItem *released = NULL;
+	listItem *released[2] = { NULL, NULL };
 	for ( listItem *i=nil->as_sub[ 1 ], *next_i; i!=NULL; i=next_i ) {
 		next_i = i->next;
 		f = i->ptr;
 		if (( f->as_sub[ 1 ] )) { // to-be-released
 			cn_release( f->as_sub[1]->ptr ); }
 		else {
-			x = f->sub[0]; // released candidate
-			addItem( &released, x ); // reordered
+			x = f->sub[0]; // release candidate
+			addItem( &released[isBase(x)], x ); // reordered
 			cn_release( f ); } }
 #ifdef DEBUG
 fprintf( stderr, "db_update: 5. remove released entities\n" );
 #endif
-	while (( x=popListItem( &released ) )) {
-		if ( !isBase(x) ) cn_release( x );
-		else if ( cnIsShared(x) ) db_arena_deregister( x, db );
+	while (( x=popListItem( &released[0] ) )) cn_release( x );
+	while (( x=popListItem( &released[1] ) )) {
+		if ( cnIsShared(x) ) db_arena_deregister( x, db );
 		else if ( cnIsProxy(x) ) free_proxy( x, db );
 		else db_deregister( x, db ); }
 #ifdef DEBUG

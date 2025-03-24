@@ -1,5 +1,5 @@
-#ifndef DB_TYPE_H
-#define	DB_TYPE_H
+#ifndef DB_DEBUG_H
+#define	DB_DEBUG_H
 
 typedef enum {
 	DB_NEWBORN = 0,
@@ -22,4 +22,4 @@ DBGType test_instantiate( char *src, CNInstance *, CNDB * );
 DBGType test_deprecate( char *src, CNInstance *, CNDB * );
 
 
-#endif	// DB_TYPE_H
+#endif	// DB_DEBUG_H

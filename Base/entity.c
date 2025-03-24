@@ -106,6 +106,7 @@ cn_release( CNEntity *e )
 	for ( listItem *j=e->as_sub[ 1 ]; j!=NULL; j=j->next ) {
 		CNEntity *instance = j->ptr;
 		instance->sub[ 1 ] = NULL; }
+
 	/* 3. free e
 	*/
 	cn_free( e ); }

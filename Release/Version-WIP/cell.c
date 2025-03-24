@@ -187,7 +187,6 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 					bm_context_pop( ctx, "." ); } } }
 			freeRegistry( warden[ 1 ], free_CB );
 			bm_context_release( ctx ); } } }
-
 	if (( pf )) { // execute post-frame narrative
 		bm_context_actualize( ctx, pf->proto, NULL );
 		bm_operate( pf, ctx, story, narratives, NULL );

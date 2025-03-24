@@ -375,12 +375,4 @@ NOTES
 		      /
 		: "next occurrence" ON|OFF
 		  ...
-	. Design consistency
-			per .action:expression 
-		should be achieved via
-			do : action : ( action | ?:(expression) (%|,%?):| )
-	  and traversing action list (then guard, then triggers) instead of
-	  relying on sequential execution of 'per' implementation -
-	  However we allow it for specific purpose (output)
-
 

@@ -60,40 +60,38 @@
 	else on : bar : ?
 		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
 		do : bar : ^bar~
-	else
-		on : bar : ~.
-			do : trigger : ^trigger~
-		else on : trigger : ~.
-			do : guard : ^guard~
-		else on : guard : ~.
+	else on : bar : ~.
+		do : trigger : ^trigger~
+	else on : trigger : ~.
+		do : guard : ^guard~
+	else on : guard : ~.
+		do : action : ^action~
+		do >:
+	else in genpass
+		do ~( genpass )
+		in .%action: %(.,((.,.),?:( %((!!,/(CL|SET)/),?), . )))
+			do >"--\nnon-generative Actions\n\--\n\n"
 			do : action : ^action~
-			do >:
-		else on : action : ~.
-			in genpass
-				do ~( genpass )
-				in .%action: %(.,((.,.),?:( %((!!,/(CL|SET)/),?), . )))
-					do >"--\nnon-generative Actions\n\--\n\n"
-					do : action : ^action~
-				else do : report
-			else do : report
+		else do : report
+	else do : report
 
 .: report
 	on : .
 		in .%noop: %(?,ON):~%((!!,/(SET|DO|>)/),?)
 			do : noop : ^noop~
-			in ?: "init" // excluded from noop
+			in ?: "init" // not counted as noop
 				do : init : %?
 		else do : noop : ~.
 	else on : noop : ?
 		in ~.:: init : %?
-			do >"Warning: verify: ErrNoActuation: ON \"%s\"\n": %?
+			do >"Warning: verify: ErrOnConditionNotActuated: \"%s\"\n": %?
 		do : noop : ^noop~
 	else on : noop : ~.
 		in .%nocl: %(?,OFF):~%((!!,/(CL|DO|>)/),?)
 			do : nocl : ^nocl~
 		else do : nocl : ~.
 	else on : nocl : ?
-		do >&"Warning: verify: ErrNoActuation: OFF \"%s\"\n": %?
+		do >&"Warning: verify: ErrOffEventNotActuated: \"%s\"\n": %?
 		do : nocl : ^nocl~
 	else on : nocl : ~.
 		in ?: "init"

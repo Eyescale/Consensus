@@ -33,9 +33,9 @@
 	else on : exit : .
 		// ascribe occurrence to cosystem
 		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
-			do : err |: ErrNoActuationOn
+			do : err |: ErrOnConditionNotActuated
 		else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
-			do : err |: ErrNoActuationOff
+			do : err |: ErrOffEventNotActuated
 		else per .occurrence: %( ?, /(ON|OFF)/ )
 			in (( ?:!!, DO ), occurrence )
 				do (( %?, CO ), ?::occurrence )
@@ -58,10 +58,9 @@
 		do : ascribed : ^ascribed~
 	else on : ascribed : ~.
 		do >&"--\nSystem summary\n"
-		do genpass
 		in .%cosystem: %((.,CO), ?:~system )
 			do : cosystem : ^cosystem~
-		else do : cosystem : ~.
+		else do : cosystem : system
 	else on : cosystem : ?
 		do > "\n  %_\n": %?
 		in .%action: %!/((?,/(DO|CL|SET)/),!):%((?,CO),%?)/
@@ -80,8 +79,7 @@
 	else on : generated : ~.
 		in ?: ^cosystem~
 			do : cosystem : %?
-		else in genpass
-			do ~( genpass )
+		else in : cosystem : ~system
 			do : cosystem : system
 		else do > "--\n"
 #endif
@@ -107,16 +105,17 @@
 			%!/((?:!!,CO),!):%((?,.),%?)/ >
 		do : clor : ^clor~
 	else on : clor : ~.
-		in .%generated:%((!!,'>'),?)
+		in .%generated:%((?:!!,'>'),~'&')
 			do : generated : ^generated~
 		else do : generated : ~.
 	else on : generated : ?
-		in %!/((?,CO),!):%((?,.),%generated:%?)/:~%!/((?,CO),!):%((?,.),%?)/
-			do >&"Error: occurrence has multiple origins: %_\n": %?
+		in %!/((?:%generated,CO),!):%((?,'>'),%((%?,'>'),?))/:~%((%?,CO),?)
+			do >&"Error: ErrOriginMultiple: \"%_\"\n": %((%?,'>'),?)
 			do errout
 		do : generated : ^generated~
 	else in errout
 		do exit
+		do >:
 	else
 		do : launch
 

@@ -13,7 +13,7 @@ extern void db_remove( CNInstance *, CNDB * );
 //===========================================================================
 //	db_op_debug
 //===========================================================================
-static DBGType dbgType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db );
+static inline DBGType dbgType( CNInstance *, CNInstance *, CNInstance *, CNDB * );
 
 int
 db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
@@ -22,8 +22,7 @@ db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
 	1. op==DB_MANIFEST_OP - e is newly created
 	2. op==DB_DEPRECATE_OP - e is not released
 
-*/
-{
+*/ {
 	CNInstance *f, *g;
 	CNInstance *nil = db->nil;
 	switch ( op ) {
@@ -71,8 +70,7 @@ db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
 			cn_new( nil, cn_new( e, nil ));
 			return DB_TO_BE_RELEASED;
 		case DB_PRIVATE:
-			return DB_PRIVATE;
-		}
+			return DB_PRIVATE; }
 		break;
 
 	case DB_REHABILITATE_OP: // objective: neither released nor to-be-released
@@ -106,8 +104,7 @@ db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
 		case DB_DEFAULT:
 			return DB_DEFAULT;
 		case DB_PRIVATE:
-			return DB_PRIVATE;
-		}
+			return DB_PRIVATE; }
 		break;
 
 	case DB_REASSIGN_OP: // objective: reassigned, newborn or to-be-manifested
@@ -144,23 +141,19 @@ db_op_debug( DBOperation op, CNInstance *e, CNDB *db )
 			cn_new( nil, cn_new( nil, e ));
 			return DB_TO_BE_MANIFESTED;
 		case DB_PRIVATE:
-			return DB_PRIVATE;
-		}
-		break;
-	}
-	return 0;
-}
+			return DB_PRIVATE; }
+		break; }
+	return 0; }
 
-static DBGType
+static inline DBGType
 dbgType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
 /*
    Assumption:
-   if e == NULL, then g == NULL and f is the target entity
-   otherwise
-	f == cn_instance( e, nil, 1 );
-	g == cn_instance( nil, e, 0 );
-*/
-{
+   if e: NULL, then g: NULL and f is the target entity
+   otherwise we have
+	f: cn_instance( e, nil, 1 )
+	g: cn_instance( nil, e, 0 )
+*/ {
 #ifdef DEBUG
 	int mismatch = 0;
 #define CHALLENGE( condition ) \
@@ -168,63 +161,53 @@ dbgType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
 #else
 #define CHALLENGE( condition )
 #endif
-	if ( e == NULL ) {
+	if ( !e ) {
 		CNInstance *nil = db->nil;
 		if ( f->sub[0]==nil || f->sub[1]==nil )
 			return DB_PRIVATE;
 		e = f;
 		f = cn_instance( e, nil, 1 );
-		g = cn_instance( nil, e, 0 );
-	}
+		g = cn_instance( nil, e, 0 ); }
+
 	DBGType type;
 	if ((f)) {
 		if ((f->as_sub[0])) {
 			if ((f->as_sub[1])) {
 				CHALLENGE( (g) );
-				type = DB_NEWBORN_TO_BE_RELEASED;
-			}
+				type = DB_NEWBORN_TO_BE_RELEASED; }
 			else if ((g)) {
 				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
-				type = DB_MANIFESTED_REASSIGNED;
-			}
-			else type = DB_NEWBORN;
-		}
+				type = DB_MANIFESTED_REASSIGNED; }
+			else type = DB_NEWBORN; }
 		else if ((f->as_sub[1])) {
 			if ((g)) {
 				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
-				type = DB_MANIFESTED_TO_BE_RELEASED;
-			}
-			else type = DB_TO_BE_RELEASED;
-		}
+				type = DB_MANIFESTED_TO_BE_RELEASED; }
+			else type = DB_TO_BE_RELEASED; }
 		else if ((g)) {
 			CHALLENGE( (g->as_sub[0]) || !(g->as_sub[1]) )
-			type = DB_RELEASED_TO_BE_MANIFESTED;
-		}
-		else type = DB_RELEASED;
-	}
+			type = DB_RELEASED_TO_BE_MANIFESTED; }
+		else type = DB_RELEASED; }
 	else if ((g)) {
 		CHALLENGE( (g->as_sub[0]) )
 		if ((g->as_sub[1])) {
-			type = DB_TO_BE_MANIFESTED;
-		}
-		else type = DB_MANIFESTED;
-	}
+			type = DB_TO_BE_MANIFESTED; }
+		else type = DB_MANIFESTED; }
 	else type = DB_DEFAULT;
 #ifdef DEBUG
 	if ( mismatch ) {
 		fprintf( stderr, "B%%:: db_debug: Error: dbgType mismatch: %d - e=", type );
 		db_output( stderr, "", e, db );
 		fprintf( stderr, "\n" );
-		exit( -1 );
-	}
+		exit( -1 ); }
 #endif
-	return type;
-}
+	return type; }
 
 //===========================================================================
 //	db_update_debug
 //===========================================================================
-static void db_cache_log( CNDB *db, listItem **log );
+static inline void db_cache_log( CNDB *db, listItem **log );
+
 #define TRASH(x) \
 	addItem( ((x->sub[0]) ? &trash[0] : &trash[1]), x )
 #define DBUpdateBegin( type ) \
@@ -240,8 +223,7 @@ void
 db_update_debug( CNDB *db )
 /*
    cf design/specs/db-update.txt
-*/
-{
+*/ {
 	Pair *pair;
 	CNInstance *e, *f, *g;
 	listItem *trash[ 2 ] = { NULL, NULL };	
@@ -326,12 +308,12 @@ fprintf( stderr, "db_update: 5. actualize to be released entities\n" );
 	fprintf( stderr, "db_update_debug: end\n" );
 #endif
 }
-static void
+
+static inline void
 db_cache_log( CNDB *db, listItem **log )
 /*
 	cache log, as: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
-*/
-{
+*/ {
 	Pair *pair;
 	CNInstance *e, *f, *g;
 	CNInstance *nil = db->nil;
@@ -342,8 +324,7 @@ db_cache_log( CNDB *db, listItem **log )
 			continue;
 		g = cn_instance( nil, e, 0 );
 		pair = newPair( f, g );
-		addItem( &log[ dbgType(e,f,g,db) ], newPair( e, pair ));
-	}
+		addItem( &log[ dbgType(e,f,g,db) ], newPair( e, pair )); }
 	f = NULL;
 	for ( listItem *i=nil->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 		g = i->ptr;
@@ -353,16 +334,13 @@ db_cache_log( CNDB *db, listItem **log )
 		if (( cn_instance( e, nil, 1 ) )) // already done
 			continue;
 		pair = newPair( f, g );
-		addItem( &log[ dbgType(e,f,g,db) ], newPair( e, pair ));
-	}
-}
+		addItem( &log[ dbgType(e,f,g,db) ], newPair( e, pair )); } }
 
 //===========================================================================
-//	test_instantiate
+//	test_instantiate - debugging utility
 //===========================================================================
 DBGType
-test_instantiate( char *src, CNInstance *e, CNDB *db )
-{
+test_instantiate( char *src, CNInstance *e, CNDB *db ) {
 	DBGType type = dbgType( NULL, e, NULL, db );
 	switch( type ) {
 	case DB_PRIVATE:
@@ -384,17 +362,14 @@ test_instantiate( char *src, CNInstance *e, CNDB *db )
 	case DB_TO_BE_MANIFESTED:
 	case DB_RELEASED_TO_BE_MANIFESTED:
 	case DB_DEFAULT:
-		break;
-	}
-	return type;
-}
+		break; }
+	return type; }
 
 //===========================================================================
-//	test_deprecate
+//	test_deprecate - debugging utility
 //===========================================================================
 DBGType
-test_deprecate( char *src, CNInstance *e, CNDB *db )
-{
+test_deprecate( char *src, CNInstance *e, CNDB *db ) {
 	DBGType type = dbgType( NULL, e, NULL, db );
 	switch( type ) {
 	case DB_PRIVATE:
@@ -416,7 +391,5 @@ test_deprecate( char *src, CNInstance *e, CNDB *db )
 	case DB_MANIFESTED_REASSIGNED:
 	case DB_TO_BE_MANIFESTED:
 	case DB_DEFAULT:
-		break;
-	}
-	return type;
-}
+		break; }
+	return type; }
