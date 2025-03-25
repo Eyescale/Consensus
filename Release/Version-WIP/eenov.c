@@ -14,6 +14,7 @@
 //===========================================================================
 static EEnovType eenov_type( BMContext *, char *, EEnovData * );
 static int eenov_query( EEnovQueryOp, BMContext *, char *, EEnovData * );
+static CNInstance *lookup_EEVA( CNInstance *, char *, CNDB * );
 
 int
 eenov_output( char *p, BMContext *ctx, OutputData *od ) {
@@ -87,7 +88,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 	case EEnovNone:
 		return 0;
 	case EEvaType:
-		return !!lookup_EEVA( x, db_x );
+		return !!lookup_EEVA( x, p, db_x );
 	case EEnovSrcType:
 		return db_match( x, db_x, data.src, BMContextDB(ctx) ); 
 	case EEnovInstanceType:
@@ -103,7 +104,7 @@ eenov_match( BMContext *ctx, char *p, CNInstance *x, CNDB *db_x )
 static EEnovType
 eenov_type( BMContext *ctx, char *p, EEnovData *data ) {
 	EEnoRV *eenov;
-	if ( p[2]=='.' )
+	if ( p[2]=='.' || !strncmp(p+2,"::",2) )
 		return EEvaType;
 	else if (!( eenov=BMContextEENOV(ctx) ))
 		return EEnovNone;
@@ -277,9 +278,10 @@ BMTraverseCBEnd
 //===========================================================================
 //	lookup_EEVA
 //===========================================================================
-CNInstance *
-lookup_EEVA( CNInstance *instance, CNDB *db )
+static CNInstance *
+lookup_EEVA( CNInstance *instance, char *p, CNDB *db )
 /*
+	General case: %<::>
 	we want to find ((*,x),y) in db_dst's manifested log
 	where either
 		db_dst: BMProxyDB( instance->sub[1] )
@@ -289,7 +291,7 @@ lookup_EEVA( CNInstance *instance, CNDB *db )
 		db_dst: db
 		x: instance->sub[0]
 		y: instance->sub[1]
-	Special case:
+	Special case: %<.> and db_dst!=db
 		if all of the above fails, we check (instance,.)
 		presuming instance contributed to a guard Status
 */ {
@@ -319,8 +321,9 @@ lookup_EEVA( CNInstance *instance, CNDB *db )
 		if (( f ) && f->sub[0]==star && f->sub[1]==x ) {
 			freeListItem( &s );
 			return e; } } // return ((*,x),y)
-	// EEva failed as value assignment - check (instance,.)
-	for ( listItem *i=instance->as_sub[0]; i!=NULL; i=i->next )
-		if ( db_deprecated(i->ptr,db) ) return instance;
+	if ( p[2]=='.' && db_dst!=db ) {
+		// EEva failed as value assignment - check (instance,.)
+		for ( listItem *i=instance->as_sub[0]; i!=NULL; i=i->next )
+			if ( db_deprecated(i->ptr,db) ) return instance; }
 	return NULL; }
 

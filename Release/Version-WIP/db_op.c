@@ -4,12 +4,18 @@
 #include "database.h"
 
 // #define DEBUG
+// #define DB_CACHE
 
 //===========================================================================
 //	db_op
 //===========================================================================
+static int dbc_op( DBOperation, CNInstance *, CNDB *);
+
 int
 db_op( DBOperation op, CNInstance *e, CNDB *db ) {
+#ifdef DB_CACHE
+	return dbc_op( op, e, db );
+#endif
 	CNInstance *nil = db->nil, *f, *g;
 	switch ( op ) {
 	case DB_MANIFEST_OP: // assumption: e was just created
@@ -101,9 +107,13 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 //---------------------------------------------------------------------------
 //	db_update
 //---------------------------------------------------------------------------
-// cf design/specs/db-update.txt
+static void dbc_update( CNDB * ); // cf design/specs/db-update.txt
+
 void
 db_update( CNDB *db ) {
+#ifdef DB_CACHE
+	return dbc_update( db );
+#endif
 	CNInstance *nil = db->nil;
 	CNInstance *f, *g, *x;
 #ifdef DEBUG
@@ -217,4 +227,365 @@ DBLog( int first, int released, CNDB *db, listItem **stack )
 		return e; }
 
 	return NULL; }
+
+/*===========================================================================
+|
+|			dbc_op, dbc_update
+|
++==========================================================================*/
+typedef enum {
+	DB_NEWBORN = 0,
+	DB_NEWBORN_TO_BE_RELEASED,
+	DB_MANIFESTED,
+	DB_MANIFESTED_TO_BE_RELEASED,
+	DB_MANIFESTED_TO_BE_MANIFESTED,
+	DB_RELEASED,
+	DB_RELEASED_TO_BE_RELEASED,
+	DB_RELEASED_TO_BE_MANIFESTED,
+	DB_TO_BE_MANIFESTED,
+	DB_TO_BE_RELEASED,
+	DB_DEFAULT, // keep before last
+	DB_PRIVATE  // keep last
+} DBCType;
+
+//===========================================================================
+//	dbc_op
+//===========================================================================
+static inline DBCType dbcType( CNInstance *, CNInstance *, CNInstance *, CNDB * );
+
+static int
+dbc_op( DBOperation op, CNInstance *e, CNDB *db )
+/*
+	Assumptions
+	1. op==DB_MANIFEST_OP - e is newly created
+	2. op==DB_DEPRECATE_OP - e is not released
+
+*/ {
+	CNInstance *f, *g;
+	CNInstance *nil = db->nil;
+	switch ( op ) {
+	case DB_MANIFEST_OP: // assumption: e was just created
+		cn_new( cn_new( e, nil ), nil );
+		break;
+
+	case DB_DEPRECATE_OP: // objective: either released or to-be-released
+		f = cn_instance( e, nil, 1 );
+		g = cn_instance( nil, e, 0 );
+		switch ( dbcType(e, f, g, db ) ) {
+		case DB_NEWBORN:
+			cn_new( nil, f );
+			return DB_NEWBORN_TO_BE_RELEASED;
+		case DB_NEWBORN_TO_BE_RELEASED:	// deadborn: return as-is
+			return DB_NEWBORN_TO_BE_RELEASED;
+		case DB_RELEASED:
+			cn_new( cn_new( nil, e ), nil );
+			return DB_RELEASED_TO_BE_RELEASED;
+		case DB_RELEASED_TO_BE_RELEASED: // return as-is
+			return DB_RELEASED_TO_BE_RELEASED;
+		case DB_RELEASED_TO_BE_MANIFESTED: // rehabilitated
+			cn_release( g->as_sub[1]->ptr );
+			cn_new( g, nil );
+			return DB_RELEASED_TO_BE_RELEASED;
+		case DB_MANIFESTED:
+			cn_new( nil, cn_new( e, nil ));
+			return DB_MANIFESTED_TO_BE_RELEASED;
+		case DB_MANIFESTED_TO_BE_MANIFESTED: // reassigned
+			cn_release( f->as_sub[0]->ptr );
+			cn_new( nil, f );
+			return DB_MANIFESTED_TO_BE_RELEASED;
+		case DB_MANIFESTED_TO_BE_RELEASED: // return as-is
+			return DB_MANIFESTED_TO_BE_RELEASED;
+		case DB_TO_BE_MANIFESTED: // return TO_BE_RELEASED
+			cn_release( g->as_sub[1]->ptr );
+			cn_release( g );
+			cn_new( nil, cn_new( e, nil ));
+			return DB_TO_BE_RELEASED;
+		case DB_TO_BE_RELEASED:	 // return as-is
+			return DB_TO_BE_RELEASED;
+		case DB_DEFAULT: // return TO_BE_RELEASED
+			cn_new( nil, cn_new( e, nil ));
+			return DB_TO_BE_RELEASED;
+		case DB_PRIVATE:
+			return DB_PRIVATE; }
+		break;
+
+	case DB_REHABILITATE_OP: // objective: neither released nor to-be-released
+		f = cn_instance( e, nil, 1 );
+		g = cn_instance( nil, e, 0 );
+		switch ( dbcType( e, f, g, db ) ) {
+		case DB_RELEASED: // return RELEASED_TO_BE_MANIFESTED (rehabilitated)
+			cn_new( nil, cn_new( nil, e ));
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_TO_BE_RELEASED:	// remove to-be-released condition
+			cn_release( f->as_sub[1]->ptr );
+			cn_release( f );
+			return DB_DEFAULT;
+		case DB_RELEASED_TO_BE_RELEASED:
+			cn_release( g->as_sub[0]->ptr );
+			cn_new( nil, g );
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_MANIFESTED_TO_BE_RELEASED: // return MANIFESTED
+			cn_release( f->as_sub[1]->ptr );
+			cn_release( f );
+			return DB_MANIFESTED;
+		case DB_NEWBORN_TO_BE_RELEASED:	// return NEWBORN
+			cn_release( f->as_sub[1]->ptr );
+			return DB_NEWBORN;
+		case DB_NEWBORN: // return as-is
+			return DB_NEWBORN;
+		case DB_MANIFESTED:
+			return DB_MANIFESTED;
+		case DB_MANIFESTED_TO_BE_MANIFESTED:
+			return DB_MANIFESTED_TO_BE_MANIFESTED;
+		case DB_RELEASED_TO_BE_MANIFESTED:
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_TO_BE_MANIFESTED:
+			return DB_TO_BE_MANIFESTED;
+		case DB_DEFAULT:
+			return DB_DEFAULT;
+		case DB_PRIVATE:
+			return DB_PRIVATE; }
+		break;
+
+	case DB_REASSIGN_OP: // objective: reassigned, newborn or to-be-manifested
+		f = cn_instance( e, nil, 1 );
+		g = cn_instance( nil, e, 0 );
+		switch ( dbcType( e, f, g, db ) ) {
+		case DB_RELEASED: // return RELEASED_TO_BE_MANIFESTED
+			cn_new( nil, cn_new( nil, e ));
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_TO_BE_RELEASED:	// return TO_BE_MANIFESTED
+			cn_release( f->as_sub[1]->ptr );
+			cn_release( f );
+			cn_new( nil, cn_new( nil, e ));
+			return DB_TO_BE_MANIFESTED;
+		case DB_RELEASED_TO_BE_RELEASED:
+			cn_release( g->as_sub[0]->ptr );
+			cn_new( nil, g );
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_MANIFESTED_TO_BE_RELEASED:
+			cn_release( f->as_sub[1]->ptr );
+			cn_new( f, nil );
+			return DB_MANIFESTED_TO_BE_MANIFESTED;
+		case DB_MANIFESTED:
+			cn_new( cn_new( e, nil ), nil );
+			return DB_MANIFESTED_TO_BE_MANIFESTED;
+		case DB_NEWBORN_TO_BE_RELEASED:	// return NEWBORN
+			cn_release( f->as_sub[1]->ptr );
+			return DB_NEWBORN;
+		case DB_NEWBORN: // return as-is
+			return DB_NEWBORN;
+		case DB_MANIFESTED_TO_BE_MANIFESTED:
+			return DB_MANIFESTED_TO_BE_MANIFESTED;
+		case DB_RELEASED_TO_BE_MANIFESTED:
+			return DB_RELEASED_TO_BE_MANIFESTED;
+		case DB_TO_BE_MANIFESTED:
+			return DB_TO_BE_MANIFESTED;
+		case DB_DEFAULT: // return TO_BE_MANIFESTED
+			cn_new( nil, cn_new( nil, e ));
+			return DB_TO_BE_MANIFESTED;
+		case DB_PRIVATE:
+			return DB_PRIVATE; }
+		break; }
+	return 0; }
+
+//---------------------------------------------------------------------------
+//	dbcType
+//---------------------------------------------------------------------------
+#ifdef DEBUG
+#define CHALLENGE( condition ) \
+	if ( condition ) mismatch = 1;
+#else
+#define CHALLENGE( condition )
+#endif
+
+static inline DBCType
+dbcType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
+/*
+   Assumption:
+   if e: NULL, then g: NULL and f is the target entity
+   otherwise we have
+	f: cn_instance( e, nil, 1 )
+	g: cn_instance( nil, e, 0 )
+*/ {
+#ifdef DEBUG
+	int mismatch = 0;
+#endif
+	if ( !e ) {
+		CNInstance *nil = db->nil;
+		if ( f->sub[0]==nil || f->sub[1]==nil )
+			return DB_PRIVATE;
+		e = f;
+		f = cn_instance( e, nil, 1 );
+		g = cn_instance( nil, e, 0 ); }
+	DBCType type;
+	if ((f)) {
+		if ((f->as_sub[0])) {
+			if ((f->as_sub[1])) {
+				CHALLENGE( (g) );
+				type = DB_NEWBORN_TO_BE_RELEASED; }
+			else if ((g)) {
+				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
+				type = DB_MANIFESTED_TO_BE_MANIFESTED; }
+			else type = DB_NEWBORN; }
+		else if ((f->as_sub[1])) {
+			if ((g)) {
+				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
+				type = DB_MANIFESTED_TO_BE_RELEASED; }
+			else type = DB_TO_BE_RELEASED; }
+		else if ((g)) {
+			if ((g->as_sub[1])) {
+				CHALLENGE( (g->as_sub[0]) )
+				type = DB_RELEASED_TO_BE_MANIFESTED; }
+			else {
+				CHALLENGE( !g->as_sub[0] )
+				type = DB_RELEASED_TO_BE_RELEASED; } }
+		else type = DB_RELEASED; }
+	else if ((g)) {
+		CHALLENGE( (g->as_sub[0]) )
+		if ((g->as_sub[1])) {
+			type = DB_TO_BE_MANIFESTED; }
+		else type = DB_MANIFESTED; }
+	else type = DB_DEFAULT;
+#ifdef DEBUG
+	if ( mismatch ) {
+		db_outputf( db, stderr, "B%%:: Error: dbcType mismatch, type=%d, e=%_\n", type, e );
+		exit( -1 ); }
+#endif
+	return type; }
+
+//===========================================================================
+//	dbc_update
+//===========================================================================
+static inline void cache_inform( CNDB *db, listItem **log );
+#define DBUpdateBegin( type ) \
+	while (( pair = popListItem(&log[type]) )) { \
+		e = pair->name; \
+		f = ((Pair*) pair->value)->name; \
+		g = ((Pair*) pair->value)->value; \
+		freePair( pair->value ); \
+		freePair( pair );
+#define DBUpdateEnd }
+
+static void
+dbc_update( CNDB *db )
+/*
+	cf design/specs/db-update.txt
+*/ {
+#ifdef DEBUG
+	fprintf( stderr, "db_update_debug: bgn\n" );
+#endif
+	Pair *pair;
+	CNInstance *e, *f, *g;
+	CNInstance *nil = db->nil;
+	listItem *released[2] = { NULL, NULL };
+	listItem *log[ DB_DEFAULT ];
+	memset( log, 0, sizeof(log) );
+
+	/* cache log, as: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
+	*/
+	cache_inform( db, log );
+
+#ifdef DEBUG
+fprintf( stderr, "db_update: 1. actualize manifested entities\n" );
+#endif
+	/* transform manifested into default or manifested
+	*/
+	DBUpdateBegin( DB_MANIFESTED );
+		cn_release( g );
+	DBUpdateEnd
+	DBUpdateBegin( DB_MANIFESTED_TO_BE_MANIFESTED );
+		cn_release( f->as_sub[0]->ptr );
+		cn_release( f );
+	DBUpdateEnd
+#ifdef DEBUG
+fprintf( stderr, "db_update: 2. actualize newborn entities\n" );
+#endif
+	/* transform newborn into manifested or released
+	*/
+	DBUpdateBegin( DB_NEWBORN );
+		cn_release( f->as_sub[0]->ptr );
+		cn_release( f );
+		cn_new( nil, e );
+	DBUpdateEnd
+	DBUpdateBegin( DB_NEWBORN_TO_BE_RELEASED );
+		cn_release( f->as_sub[1]->ptr );
+		cn_release( f->as_sub[0]->ptr );
+	DBUpdateEnd
+#ifdef DEBUG
+fprintf( stderr, "db_update: 3. actualize to be manifested entities\n" );
+#endif
+	/* transform to-be-manifested into manifested
+	*/
+	DBUpdateBegin( DB_TO_BE_MANIFESTED );
+		cn_release( g->as_sub[1]->ptr );
+	DBUpdateEnd
+	DBUpdateBegin( DB_RELEASED_TO_BE_MANIFESTED );
+		cn_release( f );
+		cn_release( g->as_sub[1]->ptr );
+	DBUpdateEnd
+#ifdef DEBUG
+fprintf( stderr, "db_update: 4. actualize to be released entities\n" );
+#endif
+	/* transform to-be-released into released
+	*/
+	DBUpdateBegin( DB_TO_BE_RELEASED );
+		cn_release( f->as_sub[1]->ptr );
+	DBUpdateEnd
+        DBUpdateBegin( DB_RELEASED_TO_BE_RELEASED )
+		cn_release( g->as_sub[0]->ptr );
+		cn_release( g );
+	DBUpdateEnd
+        DBUpdateBegin( DB_MANIFESTED_TO_BE_RELEASED )
+		cn_release( f->as_sub[1]->ptr );
+		cn_release( g );
+	DBUpdateEnd
+#ifdef DEBUG
+fprintf( stderr, "db_update: 5. remove released entities\n" );
+#endif
+	/* remove released
+	*/
+	DBUpdateBegin( DB_RELEASED );
+		cn_release( f );
+		addItem( &released[isBase(e)], e );
+	DBUpdateEnd
+	while (( e=popListItem( &released[0] ) )) cn_release( e );
+	while (( e=popListItem( &released[1] ) )) {
+		if ( cnIsShared(e) ) db_arena_deregister( e, db );
+		else if ( cnIsProxy(e) ) free_proxy( e, db );
+		else db_deregister( e, db ); }
+#ifdef DEBUG
+	fprintf( stderr, "db_update_debug: end\n" );
+#endif
+}
+
+//---------------------------------------------------------------------------
+//	cache_inform
+//---------------------------------------------------------------------------
+static inline void
+cache_inform( CNDB *db, listItem **log )
+/*
+	cache log, as: {{ [ e, [ f:(e,nil), g:(nil,e) ] ] }}
+*/ {
+	Pair *pair;
+	CNInstance *e, *f, *g;
+	CNInstance *nil = db->nil;
+	for ( listItem *i=nil->as_sub[ 1 ]; i!=NULL; i=i->next ) {
+		f = i->ptr;
+		e = f->sub[ 0 ];
+		if ( e->sub[0]==nil || e->sub[1]==nil )
+			continue;
+		g = cn_instance( nil, e, 0 );
+		pair = newPair( f, g );
+		addItem( &log[ dbcType(e,f,g,db) ], newPair( e, pair )); }
+	f = NULL;
+	for ( listItem *i=nil->as_sub[ 0 ]; i!=NULL; i=i->next ) {
+		g = i->ptr;
+		e = g->sub[ 1 ];
+		if ( e->sub[0]==nil || e->sub[1]==nil )
+			continue;
+		if (( cn_instance( e, nil, 1 ) )) // already done
+			continue;
+		pair = newPair( f, g );
+		addItem( &log[ dbcType(e,f,g,db) ], newPair( e, pair )); } }
 

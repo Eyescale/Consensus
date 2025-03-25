@@ -351,6 +351,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 				on_( '(' )	do_( "expr" )	REENTER
 				end
 		in_( "%<" ) bgn_
+			on_( ':' )	do_( "%<:" )	s_take
 			on_( '.' ) if ( *type&IN || is_f(SUB_EXPR) ) {
 					do_( "%<." )	s_take }
 			on_( '(' )	do_( "expr" )	s_take
@@ -364,6 +365,14 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 							f_reset( INFORMED|FIRST, 0 )
 			on_other	do_( "expr" )	REENTER
 							f_set( INFORMED )
+			end
+		in_( "%<:" ) bgn_
+			on_( ':' ) if ( *type&IN || is_f(SUB_EXPR) ) {
+					do_( "%<." )	s_take }
+			on_other if ( !is_f(PROTECTED) ) {
+					do_( "expr" )	REENTER
+							f_set_BYREF
+							f_set( FILTERED ) }
 			end
 		in_( "%<." ) bgn_
 			on_( '>' )	do_( "expr" )	s_take

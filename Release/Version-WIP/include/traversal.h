@@ -151,6 +151,8 @@ CB_OpenCB				f_push( stack )
 CB_RegisterVariableCB			if ( strmatch( "?!(.", p[2] ) ) {
 						p = p_prune( PRUNE_TERM, p+2 );
 						f_set( EENOV ); }
+					else if ( !strncmp(p+2,"::",2) ) {
+						p+=4; f_set( EENOV ); }
 					else p+=2;
 					break;
 				case '%':
@@ -260,13 +262,15 @@ CB_LoopCB			f_set( INFORMED )
 					f_set( TERNARY )
 CB_TernaryOperatorCB			f_clr( NEGATED|FILTERED|INFORMED )
 					p++; }
-				else {
-CB_WildCardCB				if ( !strncmp(p+1,"::",2) )
+				else if ( p[1]==':' ) {
+CB_WildCardCB				if ( p[2]==':' ) {
 						p = p_prune( PRUNE_TERM, p+3 );
-					else if ( !strncmp( p+1, ":...", 4 ) )
-						p+=5;
-					else p++;
-					f_set( INFORMED ) }
+						f_set( INFORMED ) }
+					else if ( !strncmp( p+2, "...", 3 ) ) {
+						p+=5; f_set( INFORMED ); }
+					else p+=2; }
+				else {
+CB_WildCardCB				p++; f_set( INFORMED ) }
 				break;
 			case '.':
 				if ( p[1]=='(' ) {

@@ -158,7 +158,7 @@ case_( register_variable_CB )
 		case '!': mark = EMARK; break;
 		case '%': mark = SELF; break;
 		case '@': mark = ACTIVE; break;
-		case '<': if ( p[2]=='.' ) break;
+		case '<': if ( p[2]=='.' || !strncmp(p+2,"::",2) ) break;
 			{ mark = EENOK; break; }
 		default: if ( !is_separator(p[1]) )
 			{ mark = TAG; } }

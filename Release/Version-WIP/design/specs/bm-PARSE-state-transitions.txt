@@ -21,6 +21,7 @@ Consensus B% Version-WIP
 			%<	expr
 				%<?	expr
 				%<.	expr
+				%<:	%<.	expr
 		(	expr
 			(:
 		,	expr
@@ -48,6 +49,7 @@ Consensus B% Version-WIP
 				!!$	!!$_	expr
 		.	expr
 			term
+			.%	expr
 		^	expr
 			*^%?
 		*	*^	expr

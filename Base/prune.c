@@ -342,11 +342,9 @@ prune_mod( char *p )
 				case '/':  p = prune_regex( p ); break;
 				default: p++; }
 			p++; break;
-		case '.':
-			p+=2; break;
-		case '(':
-			p = prune_sub( p ) + 1;
-			break; }
+		case '(': p = prune_sub( p ) + 1; break;
+		case ':': if ( p[1]==':' ) p+=3; break;
+		case '.': p+=2; break; }
 		break;
 	case '?':
 	case '!':

@@ -29,11 +29,11 @@
 			in ((.,/(ON|OFF)/),%<?>:~%%)
 				do %<?> @<
 
-		// initialize ( condition, ( Status, guard )), and
+		// initialize ( condition, ( %, guard )), and
 		// commission condition-free guards
 		per ?: %( ?, ((.,.), (.,/(ON|OFF)/)))
 			do ((.,%?) ?
-				( %(?,%?), ( Status, %? )) :
+				( %(?,%?), ( %, %? )) :
 				%( %?|^guard ))
 
 		// register system "exit" and trigger "init"
@@ -44,11 +44,11 @@
 		in %?: ~((.,.),.) // system
 			in ?: "init"
 				en .ON( %? )
-	else in : exit : %<.>
+	else in : exit : %<::>
 		do exit
 	else
 		// flush tag list & commission condition-free guards
-		.%tag~: { ^.:~%(.,(Status,?))|^guard }
+		.%tag~: { ^.:~%(.,(%,?))|^guard }
 		en %active // enable active occurrence sub-narratives
 
 		// actuate local actions based on %guard and EEVA
@@ -62,12 +62,12 @@
 			// remove eeno-corresponding condition from relevant guard
 			// Status, and tag these guards for next frame
 			in ?: (( %<?>, %<!:(.,?)> ), %< )
-				do ~( %?, %( Status, .|^tag ))
+				do ~( %?, %( %, .|^tag ))
 
 			// add eeno-complementary condition to relevant guard
 			// Status, and decommission these guards
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
-				do ( %?, %( Status, %(%?,?)|^guard~ ))
+				do ( %?, %( %, %(%?,?)|^guard~ ))
 
 
 //===========================================================================
@@ -93,12 +93,12 @@
 		// remove corresponding condition from relevant guard
 		// Status, and tag these guards for next frame
 		in ?:(( occurrence, ON ), %% )
-			do ~( %?, %( Status, .|^tag ))
+			do ~( %?, %( %, .|^tag ))
 
 		// add complementary condition to relevant guard
 		// Status, and decommission these guards
 		in ?:(( occurrence, OFF ), %% )
-			do ( %?, %( Status, %(%?,?)|^guard~ ))
+			do ( %?, %( %, %(%?,?)|^guard~ ))
 	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
 		do : occurrence : ON // allow repetition
 
@@ -121,12 +121,12 @@
 		// remove corresponding condition from relevant guard
 		// Status, and tag these guards for next frame
 		in ?:(( occurrence, OFF ), %% )
-			do ~( %?, %( Status, .|^tag ))
+			do ~( %?, %( %, .|^tag ))
 
 		// add complementary condition to relevant guard
 		// Status, and decommission these guards
 		in ?:(( occurrence, ON ), %% )
-			do ( %?, %( Status, %(%?,?)|^guard~ ))
+			do ( %?, %( %, %(%?,?)|^guard~ ))
 	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
 		do : occurrence : OFF // allow repetition
 

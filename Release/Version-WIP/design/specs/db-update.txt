@@ -65,7 +65,7 @@ Rationale
 	released during the current frame, hence the RELEASED_TO_BE_MANIFESTED case.
 
 	And again when releasing a released entity, hence the (x,nil) and ((nil,x),nil)
-	(signal) configuration.
+	(signal, aka. RELEASED_TO_BE_RELEASED) configuration.
 
 Implementation
 	db_op() and db_update() ensure that we have only the combinations allowed, the
@@ -86,3 +86,18 @@ Implementation
 	    the proper order for removal; and at removal time first reorders all
 	    deprecated entities.
 
+as per db_debug.c
+	f = ( e, nil )
+	g = ( nil, e )
+
+	DB_NEWBORN			((e,nil),nil)
+	DB_NEWBORN_TO_BE_RELEASED	((e,nil),nil) && (nil,(e,nil))
+	DB_MANIFESTED			(nil,e)
+	DB_MANIFESTED_TO_BE_RELEASED	(nil,e)	&& (nil,(e,nil))
+	DB_MANIFESTED_TO_BE_MANIFESTED	(nil,e)	&& ((e,nil),nil)
+	DB_RELEASED			(e,nil)
+	DB_RELEASED_TO_BE_RELEASED	(e,nil)	&& ((nil,e),nil)
+	DB_RELEASED_TO_BE_MANIFESTED	(e,nil) && (nil,(nil,e))
+	DB_TO_BE_RELEASED		(nil,(e,nil))
+	DB_DEFAULT			e
+	
