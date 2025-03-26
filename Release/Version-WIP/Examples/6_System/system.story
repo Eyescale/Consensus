@@ -31,14 +31,19 @@
 			else do : exit : (%?,ON)
 		else do : err |: ErrNoExit
 	else on : exit : .
+		in .%onff: (.,((.,.),(.,ON)))
+			do : onff : ^onff~
+		else do : onff : ~.
+	else on : onff : ?
+		in ( %?::(?,.), ( %?::(.,(?,.)), ( %?::(.,(.,(?,.))), OFF )))
+			do : err |: ErrOnOffActuation
+		else do : onff : ^onff~
+	else on : onff : ~.
 		// ascribe occurrence to cosystem
 		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
-//			do : err |: ErrOnConditionNotActuated
-			do >&"Error: ErrOnConditionNotActuated: %_\n": %?
+			do : err |: ErrOnConditionNotActuated
 		else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
 			do : err |: ErrOffEventNotActuated
-		else in ?:%(.,((.,.),(?,ON))):%(.,((.,.),(?,OFF)))
-			do : err |: ErrOnOffActuation
 		else per .occurrence: %( ?, /(ON|OFF)/ )
 			in (( ?:!!, DO ), occurrence )
 				do (( %?, CO ), ?::occurrence )

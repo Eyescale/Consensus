@@ -57,8 +57,8 @@ KNOWN ISSUES and WORKAROUNDS
 
 DONE
 	. Examples/6_System/{inform,system}.story
-		handled on-off race condition
-	. Examples/6_System/include/cosystem.bm:
+		handled on-off race condition e.g. cl "same" do "same"
+	. Examples/6_System/include/cosystem.bm
 		using '%' instead of Status
 	. refined EEVA + implemented %<::> where
 	     %<::> only check for value assignment

@@ -233,7 +233,8 @@ CB_TermCB			break;
 					// ?:(_)(_) skip to last parenthesis
 					p = p_prune( PRUNE_TERM, p+1 );
 					// note the special case ?:(_)(_):|)
-					p -= ( *p==')' && p[-1]=='|' ? 3 : 1 ); }
+					if ( !strncmp(p-1,"|)",2) ) p-=3;
+					else p--; }
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					f_next = cast_i((*stack)->ptr);
 CB_EndPipeCB				f_pop( stack, 0 ) }

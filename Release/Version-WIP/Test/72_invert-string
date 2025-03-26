@@ -17,9 +17,8 @@
 		do exit
 
 /*
-	The targeted implementation was:
-	do ( '\0' |
-		?:%((?,...):*s):(.,?) (%|,%?) :| {
+	The working implementation ends up being:
+	do ( '\0' | ?:%((?,...):*s):(.,?) (%|,%?) :| {
 			((*,*tab), ( **tab, ((ELSE,%?),%|))),
 			((*,that), %| ) } )
 	But still we should have : copy : '\0' in the above....
