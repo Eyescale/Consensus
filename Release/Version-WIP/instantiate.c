@@ -305,6 +305,14 @@ case_( register_variable_CB )
 		found = eenov_inform( data->ctx, db, p, carry );
 		data->sub[ NDX ] = found;
 		break;
+	case '?':
+	case '!':
+		if ( p[2]=='~' ) {
+			e = BMContextRVV( data->ctx, p );
+			e = bm_translate( carry, e, db, 1 );
+			if ( !e ) _prune( BMT_PRUNE_LEVEL, p )
+			data->sub[ NDX ] = newItem( e );
+			_break }
 	default:
 		switch_over( collect_CB, p, p ) }
 	_break

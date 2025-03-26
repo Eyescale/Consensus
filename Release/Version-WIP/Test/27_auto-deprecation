@@ -1,11 +1,11 @@
 
 	on init
-		do !! Func()
+		do !! class()
 	else on ~( %%, ? ) < .
 		do >"Received: %_\n": %<?>
 	else on ~.:. < .
 		do exit
-: Func
+: class
 	on init
 		do ( .., ( hello, world ))
 	else on exit < ..

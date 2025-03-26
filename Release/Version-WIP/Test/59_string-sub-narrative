@@ -9,10 +9,3 @@
 		do >: this
 		do exit
 
-/* Note: the following works as well, and no strcmp
-
-: %((*,string), ? )
-	on ( this )
-		do >: this
-		do exit
-*/

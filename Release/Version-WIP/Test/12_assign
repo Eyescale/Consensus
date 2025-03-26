@@ -6,7 +6,6 @@
 		do : variable : ~.
 	else on : variable : ~.
 		do >"variable unassigned: last chance\n"
-#	else in ~.: variable : value	// same as the following:
 	else in : variable : ~.
 		do >"unassigned it remains\n"
 		do exit

@@ -363,10 +363,6 @@ system.story
 			do %(( ., /(ON|OFF)/), ?:~%% ) @<
 
 NOTES
-	. currently we do allow CL string DO string // with same string
-	. output.story allows in/on/off occurrences to be specified with
-	  no action at the end of system description, whereas
-	  inform.story will report error and exit in this case.
 	. guard, on, bar may have no associated condition/event in which
 	  case inform.story will report - here with all three barren:
 		: "occurrence" ON|OFF
@@ -375,4 +371,7 @@ NOTES
 		      /
 		: "next occurrence" ON|OFF
 		  ...
+	. output.story allows in/on/off occurrences to be specified with
+	  no action at the end of system description, whereas
+	  inform.story will report error and exit in this case.
 

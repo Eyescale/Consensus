@@ -7,9 +7,9 @@
 		do >"bingo: %_:(.,%_)\n":< %!, %? >
 		do exit
 #else
-	else on :( ., ? )
-		do >"bingo1: %_:(.,%_)\n":< %!, %? >
-	else in :( ., ? )
-		do >"bingo2: %_:(.,%_)\n":< %!, %? >
+	else on : (.,?)
+		do >"bingo1: %_ => (.,%_)\n":< %!, %? >
+	else in : (.,?)
+		do >"bingo2: %_ => (.,%_)\n":< %!, %? >
 		do exit
 #endif

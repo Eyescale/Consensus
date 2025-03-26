@@ -21,7 +21,7 @@
 		do > ">>>>>>>>>>>>>>>>>>>> TAKING rule: %_\n": %<?>
 		do ( schema, %((Rule,%<?>),(Schema,?)))
 	else on exit < *s
-		do > "exiting too...\n"
+		do > "thread exiting => schema too...\n"
 		do ~( s )
 
 : Take

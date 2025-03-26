@@ -630,11 +630,12 @@ BMContextRVTest( BMContext *ctx, char *p, int *rv )
 /*
 	optimization - cf operation.c:{ do_enable(), do_enable_x() }
 */ {
-	void *rvv = lookup_rv( ctx, p, rv );
-	switch ( *rv ) {
-	case 1: case 3:
-		switch ( *p_prune( PRUNE_FILTER, p ) ) {
-		case '\0': case ')': return rvv; } }
+	if ( strcmp(p,".") ) {
+		void *rvv = lookup_rv( ctx, p, rv );
+		switch ( *rv ) {
+		case 1: case 3:
+			switch ( *p_prune( PRUNE_FILTER, p ) ) {
+			case '\0': case ')': return rvv; } } }
 	*rv=0; return NULL; }
 
 //===========================================================================

@@ -1640,25 +1640,26 @@ CB_if_( ProtoSet ) {		do_( "def<_" )	TAB_CURRENT = 0;
 				do_( ".$" )	s_take }
 		end
 		in_( ".%" ) bgn_
+			ons( " \t" ) if ( !s_at('%') ) {
+					do_( ".%$" ) }
+			on_( ':' ) if ( !s_at('%') ) {
+					do_( ".%$" )	REENTER }
+			on_( '~' ) if ( !s_at('%') ) {
+CB_( TagTake )				do_( ".%$" )	s_take
+							f_set( NEGATED ) }
 			on_separator	; // err
-			on_other	do_( ".%$" )	s_take
+			on_other	do_( same )	s_take
 			end
 		in_( ".%$" ) bgn_
-			ons( " \t" )	do_( ".%$." )
-			on_( '\n' ) if ( s_at('~') ) {
-					do_( ".%$_" )	REENTER }
-			on_( '~' )
-CB_( TagTake )				do_( same )	s_take
-							f_set( NEGATED )
+			ons( " \t" )	do_( same )
 			on_( ':' ) if ( !s_at('~') ) {
 CB_( TagTake )				do_( ".%$_" )	s_take }
 				else {	do_( ".%$_" )	s_take }
-			on_other if ( !s_at('~') ) {
-					do_( same )	s_take }
+			on_( '\n' )	do_( ".%$_" )	REENTER
 			end
 		in_( ".%$_" ) bgn_
 			ons( " \t" )	do_( same )
-			on_( '\n' ) if ( is_f(NEGATED) ) {
+			on_( '\n' ) if ( s_at('~') ) {
 					do_( "_expr" )	REENTER
 							TAB_CURRENT += TAB_SHIFT;
 							*type = LOCALE;

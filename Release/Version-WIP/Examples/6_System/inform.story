@@ -94,6 +94,13 @@
 		do >&"Warning: verify: ErrOffEventNotActuated: \"%s\"\n": %?
 		do : nocl : ^nocl~
 	else on : nocl : ~.
+		in .%onff:%(.,((.,.),(?,ON))):%(.,((.,.),(?,OFF)))
+			do : onff : ^onff~
+		else do : onff : ~.
+	else on : onff : ?
+		do >&"Warning: verify: ErrOnOffActuation: \"%s\"\n": %?
+		do : onff : ^onff~
+	else on : onff : ~.
 		in ?: "init"
 			in (((!!,DO),%?) ?: ((!!,'>'),%?))
 				do >"Warning: verify: ErrInitGenerativeUsage\n"

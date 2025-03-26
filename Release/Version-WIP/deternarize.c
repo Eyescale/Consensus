@@ -44,7 +44,6 @@ bm_deternarize( char **candidate, int type, BMContext *ctx )
 #ifdef DEBUG
 	fprintf( stderr, "bm_deternarize: bgn - candidate: %s\n", *candidate );
 #endif
-
 	char *expression = *candidate;
 	if ( !expression || !strcmp( expression, ":<" ) )
 		return NULL;
@@ -224,7 +223,8 @@ case_( ternary_operator_CB )
 		// sequence is already informed and completed
 		data->segment = NULL;
 		// proceed to ")"
-		_prune( BMT_PRUNE_TERM, p+1 ) }
+		p = p_prune( PRUNE_TERNARY, p+1 );
+		_continue( p ) }
 	else {
 		// release guard sequence
 		free_deternarized( data->sequence );
@@ -237,7 +237,8 @@ case_( filter_CB )
 		// option completed
 		data->segment->value = p;
 		// proceed to ")"
-		_prune( BMT_PRUNE_TERM, p ) }
+		p = p_prune( PRUNE_TERNARY, p );
+		_continue( p ) }
 	else _break
 case_( close_CB )
 	if is_f( TERNARY ) {

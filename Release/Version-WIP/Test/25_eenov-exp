@@ -1,6 +1,6 @@
 
 	on init
-		do !! func()
+		do !! class()
 #define Q_SRC
 #ifndef Q_SRC
 	else on ( hello, ? ) < .
@@ -14,7 +14,7 @@
 		do >: %<(!,?:...)>
 		do exit
 #endif
-: func
+: class
 	on init
 		do (( hello, world ), tti )
 		do exit

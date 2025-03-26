@@ -1,6 +1,27 @@
-Release Checklist
-	. run through ALL Test/ directory contents
+Regression Testing Results
+    To be deprecated
+	. Test/10_basemark
+	. Test/11_negated
+	. Test/29_xpan-PROTO
+	. Test/32_xpan-PARAM
+	. Test/45_proto_sub-expr
+    Fixed
+	. Test/12_assign - %(*?:value) broken
+	  restored FilterCB invokation after ?:_ in traversal.h 
+	. Test/13_ternary - PRUNE_TERM no longer invoke prune_ternary
+	  using p_prune( PRUNE_TERNARY, p+1 ) in deternarize.c
+	. Test/33_untrace - do %?~ broken
+	  restored %?~ feature in instantiate.c:register_variable_CB
+    To be fixed
+	. Test/56_FORE
+		?:%(a,?){(e,%?)} <= DOESN'T WORK?!?
+		?:%(a,?)(e,%?) <= DOES WORK
+	. Test/67_string-condition <<< string output format
+	  Test/84_string-makeup <<< should be rewritten
+	. Test/72_invert-string <<< BUG: see comment in file
+	. clarify string output format %_ vs. %s vs. %$
 
+Release Checklist
     TODOC
 	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
 	. NOTE: EEVA returns true if entity.as_sub[0] was released,
@@ -18,16 +39,9 @@ Release Checklist
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
 
-    NOTE
-	. FEATURE: per-else sequences are accepted, e.g.
-		per expression	// resp. per expression < .
-			action	// not even required
-		else // no match was found for expression
-			...
-
 KNOWN ISSUES and WORKAROUNDS
     external
-	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...)
+	. do >"%(N,...):%_\n": %(N,...) => outputs { N, (N,9) }N,...):
 	  => that's because parser replaces %( with default format %_
 	     should actually exit on error
 	. do ~({titi,toto}) accepted but does nothing
@@ -40,22 +54,22 @@ KNOWN ISSUES and WORKAROUNDS
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
 		done in case of identifier, but not for proxy nor shared
-	. include/traversal.h: FilterCB is NOT invoked on "?:"
 
 DONE
+	. Examples/6_System/{inform,system}.story
+		handled on-off race condition
+	. Examples/6_System/include/cosystem.bm:
+		using '%' instead of Status
 	. refined EEVA + implemented %<::> where
-	     %<::>
-		only check for value assignment
-	     %<.>
-		when we have occurrence:((variable,value),proxy:~%%)
-	        also check for ( occurrence, . ) deprecation - assuming that
+	     %<::> only check for value assignment
+	     %<.>  also check for ( occurrence, . ) deprecation - assuming
 			( occurrence, . ):( condition, (%,!!:guard))
+		and that we have occurrence:((variable,value),proxy:~%%)
 	  As a consequence, any EXTERNAL event which is also used as local
 	  condition will have its EEVA verified twice:
 		. once upon reception of the event, and
 		. once upon the local condition being set
-	  whereas local events only verify upon reception of the event -
-		  ie. *prior* to the condition being set
+	  whereas for local events these are one and the same
 	. re-integrated and validated Version-1.1/db_debug.c into db_op.c
 	. Examples/6_System/system.story
 	  . verify generated occurrences all come from the same cosystem
@@ -108,7 +122,7 @@ DONE
 	    => story.c: StringTake: pass data->entry to db_arena.c: set_origin()
 	. changed %list syntax - supported expressions are now
 		.%list:<_> / .%list:{_} / .%list~ / .%list~:{_}
-	  . .%list:< expression, ... > now reset tag values
+	  . .%list:< expression, ... > now resets list
 	  . .%tag~:{_} only performs condition evaluation (and tagging) of
 	    passed expressions, as we don't want to transport private entities
 	    and we need to support .%tag~:{ ^.:~%(.,(Status,?))|^guard }
@@ -117,8 +131,8 @@ DONE
 		: < class	// cf. Examples/6_System/inform.story
 	  where class overloads cosystem's main AND post-frame narratives
 	. rewrote Examples/6_System/TM.system
-	  . no bar event is used in this version - bar Use Case is when different
-	    events may occur simultaneously in a given state and in this case we
+	  . no bar event is used in this version - bar Use Case is when several
+	    events may occur concurrently in a given state in which case we
 	    want to handle only one of them by priority order.
 	  . inform.bm: .: finish //	v--------- if not CL
 		off & => replace ((?:!!,SET),*s) with ((%?,DO),*s)
@@ -131,7 +145,7 @@ DONE
 	  removed sub-expression and ellipsis support from narrative declaration
 	  - cf format description in design/specs/bm-EN-command.txt
 	. db_arena_makeup() now puts whole identifier(s) into string
-	. Base/btree.c: integrated caching
+	. Base/btree.c: integrated caching of free leaves
 	. parser_io.c: implemented #define term sequence
 	. implemented "selection" expression - cf. Test/88_selection
 		%!/(_?_!_):%(_):%(_):.../
@@ -154,7 +168,7 @@ DONE
 	  cf. Test/{
 		61_instantiate-rvsub, 62_instantiate-rvtest,
 		69_inc, 53_output-system-launch-formula }
-	. implemented in/on/per .locale: expression
+	. implemented in/on/per .variable: expression
 		cf design/specs/bm-CONTEXT-data-structure.txt
 	. allowed marked CASE expression, e.g. in
 	  Examples/6_System/inform.story
@@ -313,7 +327,7 @@ DONE
 		. as terminating a piped expression => must be (_| _(_):|)
 	  and pass through unless (_| ?:(_)(_):| ) and actually looping
 	  cf Test/69_inc_dec
-	  Note: we don't inforce FORE as preceding but we could, ie.
+	  Note: we don't enforce FORE as preceding but we could, ie.
 		parser.c in "?:(_)" on '(' set some flag, but which?
 	. rename traverse_data into traversal everywhere
 	. FIXED: prune.c:prune_list()
@@ -630,7 +644,6 @@ NICE TO HAVE
 	  . do "" / on "" for do exit / on init
 		=> db_arena_makeup must accept NULL
 	    Note: B% does not support on "_" for the time being
-	  . cl-do same occurrence - ?
 	. system.story launch optimization
 			?*:( ?, %?::((?,.),.) ) (...)
 			?*:( ?:~!!, %?:((.,?),.) ) (...)
@@ -778,8 +791,13 @@ NICE TO HAVE
 	  The thing I am interested in being the relationship between %% and nil
 
 TODOC
+	. FEATURE: per-else sequences are accepted, e.g.
+		per expression	// resp. per expression < .
+			action	// not even required
+		else // no match was found for expression
+			...
 	. FORE and PER register ALL matches regardless of mark
-	  e.g. the following will output a twice, resp. (a,b) and (a,c)
+	  e.g. the following will output 'a' twice, resp. (a,b) and (a,c)
 		on init
 			do { (a,b), (a,c) }
 		else per ( ?, . )

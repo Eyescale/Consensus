@@ -33,9 +33,12 @@
 	else on : exit : .
 		// ascribe occurrence to cosystem
 		in ?:%((?,ON):~*init):~%((!!,/(SET|DO|>)/),?)
-			do : err |: ErrOnConditionNotActuated
+//			do : err |: ErrOnConditionNotActuated
+			do >&"Error: ErrOnConditionNotActuated: %_\n": %?
 		else in ?:%(?,OFF):~%((!!,/(CL|DO|>)/),?)
 			do : err |: ErrOffEventNotActuated
+		else in ?:%(.,((.,.),(?,ON))):%(.,((.,.),(?,OFF)))
+			do : err |: ErrOnOffActuation
 		else per .occurrence: %( ?, /(ON|OFF)/ )
 			in (( ?:!!, DO ), occurrence )
 				do (( %?, CO ), ?::occurrence )

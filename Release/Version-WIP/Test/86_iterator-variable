@@ -5,6 +5,8 @@
 		// multiple iterations on same %?
 		per ( ?, . )
 			do >: %?
+		do count
+	else on count
 		// multiple iterations with no mark
 		per %( a, ? )
 			do >"bingo\n"

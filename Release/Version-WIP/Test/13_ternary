@@ -1,7 +1,8 @@
 
 	on init
-		do toto
+//		do toto
 		do tata
+//		do : titi : toto
 		do : titi : tata
 //		do : titi : tutu
 	else on : titi : (?:( toto ?: tata ?: tutu ))

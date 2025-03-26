@@ -1,13 +1,7 @@
 
-#define CORRECT
-
 	on init
 		do : toto : "hello, world"
-#ifndef CORRECT
-	else en . // original test: fails as query has no pivot
-#else
-	else en *toto
-#endif
+	else en .
 
 : "hello, world"
 	do >: this

@@ -7,6 +7,6 @@
 
 : Toto
 	on init
-		do (( .., titi ), tata )
+		do (( .., titi ), bingo )
 	else
 		do exit

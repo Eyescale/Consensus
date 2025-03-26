@@ -1,6 +1,6 @@
 
 	on init
-		do ( (a,b) | ( c, %|:(.,?) ) )
+		do ( (a,b) | ( c, %|::(.,?) ) )
 	else
 		do >:.	// expected: { (a,b), (c,b), %% }
 		do exit

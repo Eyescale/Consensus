@@ -195,7 +195,9 @@
 			do : err |: ( NCR, %? )
 		else in ((?:!!,DO), *s )
 			do : err |: ( NCR, %? )
-		else in ((?:!!,CL), *s )
+		else in ((?:!!,/(CL|SET)/), *s )
+			in ~.:((%?,CL),.)
+				do ((%?,CL),*s)
 			do : take
 		else do : take |: !! | {
 			((%|,IN), $(line,?:...)),
@@ -216,6 +218,8 @@
 				((%|,IN), $(line,?:...)),
 				((%|,DO), *s ) }
 		else in ((?:!!,/(DO|CL|SET)/), *s )
+			in ~.:(((%?,DO),.)?:((%?:SET),.))
+				do ((%?,SET),*s)
 			do : take
 		else do : take |: !! | {
 			((%|,IN), $(line,?:...)),
@@ -369,23 +373,23 @@
 		on ~(:?) // just transitioned from
 			do >&"Error: %_: ": %?
 	else on ~( %%, l ) < *lc
-		do >&"l%$": %<(!,?:...)>
+		do >&"l%$: ": %<(!,?:...)>
 	else
 		in : err :
 			(NCR,?)
-				do >&": generative vs. generated usage: "
+				do >&"generative vs. generated usage: "
 					"prior reference in l%$\n": %((%?,IN),?)
 			.
-				do >&": %_\n": *^^
+				do >&"%_\n": *^^
 		else in : input :
 			'\t'
-				do >&": ErrUnexpectedTab\n"
+				do >&"ErrUnexpectedTab\n"
 			'\n'
-				do >&": ErrUnexpectedCR\n"
+				do >&"ErrUnexpectedCR\n"
 			~.
-				do >&": ErrUnexpectedEOF\n"
+				do >&"ErrUnexpectedEOF\n"
 			.
-				do >&": ErrUnexpectedCharacter: '%s'\n": *^^
+				do >&"ErrUnexpectedCharacter: '%s'\n": *^^
 		do exit
 
 .: &
