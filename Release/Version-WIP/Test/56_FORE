@@ -2,9 +2,8 @@
 	on init
 		do ( a, { b, c, d } )
 	else on a
-		do >"in there!\n"
-//		do ?:%( a, ? ){( e, %? )}
-		do ?:%( a, ? )( e, %? )
+		do ?:%( a, ? ){( e, %? )}
+//		do ?:%( a, ? )( e, %? )
 	else
 		do >:.
 		do exit

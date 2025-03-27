@@ -165,14 +165,15 @@ case_( close_CB )
 			data->sub[ 0 ] = instances;
 		else {
 			data->sub[ 0 ] = popListItem( &data->results );
-			data->sub[ 1 ] = instances; }
-		_break }
+			data->sub[ 1 ] = instances; } }
 	else {
-		popListItem( &data->stack.flags );
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
-		_prune( BMT_PRUNE_LEVEL, p+1 ) }
+		if ( p[1]!=')' && p[1]!=',' ) {
+			popListItem( &data->stack.flags );
+			_prune( BMT_PRUNE_LEVEL, p+1 ) } }
+	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin
 	LoopData *loop = ((data->loop) ? data->loop->ptr : NULL );
@@ -244,8 +245,8 @@ case_( comma_CB )
 		listItem *instances = popListItem( results );
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
 		data->sub[ 0 ] = NULL; }
-	else if ( !data->sub[ 0 ] )
-		_prune( BMT_PRUNE_LEVEL, p+1 )
+	else if ( !data->sub[ 0 ] ) {
+		_prune( BMT_PRUNE_LEVEL, p+1 ) }
 	else if ( !strncmp( p+1, "~.)", 3 ) ) {
 		CNDB *db = data->db;
 		for ( listItem *i=data->sub[0]; i!=NULL; i=i->next )

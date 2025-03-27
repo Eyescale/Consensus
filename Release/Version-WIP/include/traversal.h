@@ -232,7 +232,7 @@ CB_TermCB			break;
 				if ( p[1]=='(' && !(mode&TERNARY) ) {
 					// ?:(_)(_) skip to last parenthesis
 					p = p_prune( PRUNE_TERM, p+1 );
-					// note the special case ?:(_)(_):|)
+					// handle special case ?:(_)(_):|)
 					if ( !strncmp(p-1,"|)",2) ) p-=3;
 					else p--; }
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
@@ -247,10 +247,14 @@ CB_CloseCB			f_pop( stack, 0 );
 				if ( *p=='|' ) {
 					f_set( INFORMED )
 					break; }
+				else if ( *p=='{' ) {
+					if ( mode&INFORMED ) break;
+					p = p_prune(PRUNE_TERM,p);
+					break; }
 CB_LoopCB			f_set( INFORMED )
 				if ( !strncmp(p,":|",2) ) {
-					if ( !is_f(PIPED) ) {
-						f_push( stack )
+					if ( !is_f(PIPED) && p[2]!=')' ) {
+CB_BgnPipeCB					f_push( stack )
 						f_reset( PIPED|FIRST, SET ) }
 					else f_clr( NEGATED|INFORMED|FILTERED )
 					p+=2; }

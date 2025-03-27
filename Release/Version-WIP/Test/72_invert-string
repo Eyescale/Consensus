@@ -4,22 +4,17 @@
 	on init
 		do : s : (((s,a),b),c)
 	else on s
-		do >&"1\n"
 		do ( '\0' |{ ( ?:%((?,...):*s):(.,?) (%|,%?):| ), ((*,copy),%|) } )
-#		do ( '\0' |{ ( ?:%(%((?,...):*s):(.,?)) (%|,%?):| ), ((*,copy),%|) } )
+//		do ( '\0' |{ ( ?:%(%((?,...):*s):(.,?)) (%|,%?):| ), ((*,copy),%|) } )
 #			       ^---- { c, b, a } -----^         ^----------------^
 # 				(((('\0',c),b),a) built and saved into copy
 	else on copy
-		do >&"2\n"
-//		do >"%$\n": %(%((?,...):*copy):(.,?))
-		do >"%$\n": %((?,...):*copy)
-#				outputs abc
+//		do >"passed: %$\n": %(%((?,...):*copy):(.,?))
+		do >"passed: %$\n": %((?,...):*copy)
+#				outputs abc // note: (.,?) here built-in output
+		do exit
+	else
+		do >"Error: failed\n"
+		do >: .
 		do exit
 
-/*
-	The working implementation ends up being:
-	do ( '\0' | ?:%((?,...):*s):(.,?) (%|,%?) :| {
-			((*,*tab), ( **tab, ((ELSE,%?),%|))),
-			((*,that), %| ) } )
-	But still we should have : copy : '\0' in the above....
-*/

@@ -12,14 +12,13 @@ Regression Testing Results
 	  using p_prune( PRUNE_TERNARY, p+1 ) in deternarize.c
 	. Test/33_untrace - do %?~ broken
 	  restored %?~ feature in instantiate.c:register_variable_CB
+	. Test/56_FORE - do ?:%(_){(_)}
+	. Test/72_invert-string - do ('\0'|{ ((_):|), (.,%|) })
+	  note: (_):| ***replaces*** current %| in {_}
     To be fixed
-	. Test/56_FORE
-		?:%(a,?){(e,%?)} <= DOESN'T WORK?!?
-		?:%(a,?)(e,%?) <= DOES WORK
+	. clarify string output format %_ vs. %s vs. %$
 	. Test/67_string-condition <<< string output format
 	  Test/84_string-makeup <<< should be rewritten
-	. Test/72_invert-string <<< BUG: see comment in file
-	. clarify string output format %_ vs. %s vs. %$
 
 Release Checklist
     TODOC

@@ -98,7 +98,7 @@
 			do : onff : ^onff~
 		else do : onff : ~.
 	else on : onff : ?
-		in ?: %( %?::(?,.), ( %?::(.,(?,.)), ( ?: %?::(.,(.,(?,.))), OFF )))
+		in ( %?::(?,.), ( %?::(.,(?,.)), ( ?: %?::(.,(.,(?,.))), OFF )))
 			do >&"Warning: verify: ErrOnOffActuation: \"%s\"\n": %?
 		do : onff : ^onff~
 	else on : onff : ~.

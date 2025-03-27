@@ -118,7 +118,7 @@
 		else do : generated : ~.
 	else on : generated : ?
 		in %!/((?:%generated,CO),!):%((?,'>'),%((%?,'>'),?))/:~%((%?,CO),?)
-			do >&"Error: ErrOriginMultiple: \"%_\"\n": %((%?,'>'),?)
+			do >&"Error: ErrMultipleOrigin: \"%_\"\n": %((%?,'>'),?)
 			do errout
 		do : generated : ^generated~
 	else in errout
