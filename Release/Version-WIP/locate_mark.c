@@ -58,14 +58,14 @@ case_( dereference_CB )
 	xpn_add( exponent, SUB, 1 );
 	_break
 case_( selection_CB )
-	_prune( BMT_PRUNE_FILTER, p )
+	_prune( BMCB_FILTER, p )
 case_( dot_identifier_CB )
 	if ( p[1]=='?' ) {
 		xpn_add( data->exponent, SUB, 1 );
 		_return( 2 ); }
 	_break
 case_( sub_expression_CB )
-	_prune( BMT_PRUNE_FILTER, p+1 )
+	_prune( BMCB_FILTER, p+1 )
 case_( dot_expression_CB )
 	xpn_add( data->exponent, SUB, 1 );
 	_break

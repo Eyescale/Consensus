@@ -64,7 +64,7 @@ bm_locate_pivot( char *expression, listItem **xpn )
 
 BMTraverseCBSwitch( locate_pivot_traversal )
 case_( not_CB )
-	_prune( BMT_PRUNE_FILTER, p+1 )
+	_prune( BMCB_FILTER, p+1 )
 case_( bgn_selection_CB )
 	listItem *mark_exp = NULL;
 	bm_locate_emark( p+3, &mark_exp );
@@ -199,7 +199,7 @@ case_( sub_expression_CB )
 				Pair * list_expr = newPair( p, mark );
 				addItem( data->exponent, list_expr );
 				_return( 2 ) }
-			_prune( BMT_PRUNE_FILTER, p+1 ) }
+			_prune( BMCB_FILTER, p+1 ) }
 	if ( is_f(SEL_EXPR) && !is_f(LEVEL) ) {
 		for ( listItem *i=data->mark_sel; i!=NULL; i=i->next )
 			addItem( &mark_exp, i->ptr ); }

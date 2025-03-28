@@ -148,7 +148,7 @@ PARSER_FUNC( bm_parse_expr )
 								f_pop( stack, EMARKED|INFORMED ) }
 					else if ( is_f(LEVEL) ) {
 						do_( same )	s_take
-								f_pop( stack, EMARKED|MARKED|INFORMED|FILTERED ) }
+								f_pop( stack, EMARKED|MARKED|INFORMED ) }
 					else if ( is_f(FORE) ) {
 						do_( "?:(_)" )	s_take }
 					else { // is_f(SUB_EXPR)

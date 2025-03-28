@@ -75,6 +75,7 @@ prune_term( char *p, PruneType type ) {
 	int informed = 0;
 	while ( *p ) {
 		switch ( *p ) {
+		case '~': p++; break;
 		case '(':
 		case '{':
 			p = prune_sub( p );

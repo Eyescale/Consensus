@@ -21,11 +21,11 @@ typedef struct {
 	} BMTraverseData;
 
 typedef enum {
-	BMT_CONTINUE = 0,
-	BMT_DONE,
-	BMT_PRUNE_FILTER,
-	BMT_PRUNE_TERM,
-	BMT_PRUNE_LEVEL
+	BMCB_CONTINUE = 0,
+	BMCB_DONE,
+	BMCB_FILTER,
+	BMCB_TERM,
+	BMCB_LEVEL
 	} BMCBTake;
 
 typedef char *BMTraversal( char *, BMTraverseData *, int );

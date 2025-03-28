@@ -250,11 +250,11 @@ case_( open_CB )
 			data->instance = x; }
 		else {
 			data->success = !!is_f( NEGATED );
-			_prune( BMT_PRUNE_TERM, p ) } }
+			_prune( BMCB_TERM, p ) } }
 	_break
 case_( comma_CB )
 	if ( !data->success )
-		_prune( BMT_PRUNE_TERM, p+1 )
+		_prune( BMCB_TERM, p+1 )
 	else {
 		listItem *stack = data->stack.instance;
 		data->instance = ((CNInstance*)stack->ptr)->sub[ 1 ];

@@ -208,7 +208,6 @@ CB_TermCB				break; }
 			case ':':
 CB_FilterCB			if ( p[1]=='|' ) {
 					if ( !is_f(PIPED) ) {
-fprintf( stderr, "IN THERE!\n" );
 						f_push( stack )
 						f_reset( PIPED|FIRST, SET ) }
 					else f_clr( NEGATED|INFORMED|FILTERED )
@@ -245,25 +244,19 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 				f_next = cast_i((*stack)->ptr);
 CB_CloseCB			f_pop( stack, 0 );
 				p++; // move past ')'
-				if ( traversal->done==-1 ) {
-					p = p_prune( PRUNE_LEVEL, p );
-					traversal->done = 0;
-					break; }
-				else if ( *p=='|' ) {
+				if ( *p=='|' ) {
 					f_set( INFORMED )
 					break; }
 				else if ( *p=='{' ) {
 					if ( mode&INFORMED ) break;
-					p = p_prune(PRUNE_TERM,p);
+					p = p_prune( PRUNE_TERM, p );
 					break; }
 CB_LoopCB			f_set( INFORMED )
 				if ( !strncmp(p,":|",2) ) {
 					if ( !is_f(PIPED) ) {
 						switch ( p[2] ) {
 						case '\0': case ')': break;
-						default:
-fprintf( stderr, "IN THERE 2: %s!\n", p+2 );
-							f_push( stack )
+						default: f_push( stack )
 							f_reset( PIPED|FIRST, SET ) } }
 					else f_clr( NEGATED|INFORMED|FILTERED )
 					p+=2; }

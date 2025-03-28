@@ -12,10 +12,10 @@
 			do exit
 
 	else in INPUT
-		en .
+		en (((schema,.),.),.)
 		on ( INPUT ) // start base rule instance - feeding base
 			do ( ((rule,base), (']',(record,*))) | {
-				(((schema, %((base,%),?:~'\0')), %|:(.,?)), %| ),
+				(((schema, %((base,%),?:~'\0')), %|::(.,?)), %| ),
 				.( %|, base ) } )
 		else in .( ?, base )
 			in ( %?, READY )
@@ -203,7 +203,7 @@
 							do .( %?, s )
 							do .CYCLIC
 						else do ( ((rule,%?), ('[',*record)) | {
-							(((schema, %((%?,%),?:~'\0')), %|:(.,?)), %| ),
+							(((schema, %((%?,%),?:~'\0')), %|::(.,?)), %| ),
 							.( %|, s ) } )
 					else in (( %?, % ), '\0' )
 						do : p : %(*p:(.,?))
@@ -251,7 +251,7 @@
 						do .( %?, s )
 						do .CYCLIC
 					else do ( ((rule,%?), (']',*record)) | {
-						(((schema, %((%?,%),?:~'\0')), %|:(.,?)), %| ),
+						(((schema, %((%?,%),?:~'\0')), %|::(.,?)), %| ),
 						.( %|, s ) } )
 				else in (( %?, % ), '\0' )
 					do : p : %(*p:(.,?))

@@ -560,7 +560,7 @@ case_( tag_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
-		_prune( BMT_PRUNE_LEVEL, p+1 )
+		_prune( BMCB_LEVEL, p+1 )
 	else if ( p[2]=='.' ) // special case: |^.
 		*(int *)data->user_data = (p[3]=='~');
 	else if (( p=tag(p,data) ))
@@ -582,7 +582,7 @@ case_( filter_CB )
 	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
 		_return( 1 )
 	else if ( !data->success )
-		_prune( BMT_PRUNE_LEVEL, p+1 )
+		_prune( BMCB_LEVEL, p+1 )
 	_break
 case_( match_CB )
 	switch ( match( p, data ) ) {
@@ -631,11 +631,11 @@ case_( dot_expression_CB )
 	switch ( match( p, data ) ) {
 	case 0: if is_f( NEGATED ) {
 			data->success=1; popListItem( stack );
-			_prune( BMT_PRUNE_FILTER, p+1 ) }
+			_prune( BMCB_FILTER, p+1 ) }
 		// no break
 	case -1:
 		data->success=0; popListItem( stack );
-		_prune( BMT_PRUNE_LEVEL, p+1 )
+		_prune( BMCB_LEVEL, p+1 )
 	default: xpn_set( *stack, AS_SUB, 1 ); }
 	_break
 case_( open_CB )
@@ -645,11 +645,11 @@ case_( open_CB )
 		switch ( match( p, data ) ) {
 		case 0: if is_f( NEGATED ) {
 				data->success=1; popListItem( stack );
-			 	_prune( BMT_PRUNE_FILTER, p ) }
+			 	_prune( BMCB_FILTER, p ) }
 			// no break
 		case -1:
 			data->success=0; popListItem( stack );
-			_prune( BMT_PRUNE_LEVEL, p )
+			_prune( BMCB_LEVEL, p )
 		default: xpn_set( *stack, AS_SUB, 1 ); } }
 	else if is_f_next( COUPLE ) {
 		listItem **stack = &data->stack.exponent;
@@ -657,7 +657,7 @@ case_( open_CB )
 	_break
 case_( comma_CB )
 	if ( data->stack.flags==data->OOS ) _return( 1 )
-	if ( !data->success ) _prune( BMT_PRUNE_LEVEL, p+1 )
+	if ( !data->success ) _prune( BMCB_LEVEL, p+1 )
 	xpn_set( data->stack.exponent, AS_SUB, 1 );
 	_break
 case_( close_CB )

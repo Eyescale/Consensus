@@ -77,7 +77,7 @@ case_( filter_CB )
 	   so as to be handled by collect_CB
 	*/
 	listItem *r = data->sub[ NDX ];
-	if ( !r ) _prune( BMT_PRUNE_LEVEL, p+2 )
+	if ( !r ) _prune( BMCB_LEVEL, p+2 )
 	else if ( !is_f(PIPED) )
 		switch_over( bgn_pipe_CB, p+1, p )
 	else {
@@ -119,7 +119,7 @@ case_( bgn_pipe_CB )
 			data->sub[ 1 ] = NULL; }
 		data->sub[ 0 ] = NULL;
 		_break }
-	else _prune( BMT_PRUNE_LEVEL, p+1 )
+	else _prune( BMCB_LEVEL, p+1 )
 case_( end_pipe_CB )
 	listItem *r, *pprv = bm_context_pop( data->ctx, "|" );
 	freeListItem( &data->sub[ 0 ] );
@@ -170,7 +170,7 @@ case_( close_CB )
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
-		traversal->done = -1; }
+		_return( -1 ) }
 	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin
@@ -236,7 +236,7 @@ case_( collect_CB )
 	else {
 		listItem *results = bm_scan( p, data->ctx );
 		data->sub[ NDX ] = bm_inform( data->carry, &results, data->db ); }
-	_prune( PRUNE_TERM, p )
+	_prune( BMCB_TERM, p )
 case_( comma_CB )
 	if (!is_f(LEVEL|SUB_EXPR)) { // Assumption: is_f(SET|VECTOR)
 		listItem **results = &data->results;
@@ -244,7 +244,7 @@ case_( comma_CB )
 		addItem( results, catListItem( instances, data->sub[ 0 ] ));
 		data->sub[ 0 ] = NULL; }
 	else if ( !data->sub[ 0 ] ) {
-		_prune( BMT_PRUNE_LEVEL, p+1 ) }
+		_prune( BMCB_LEVEL, p+1 ) }
 	else if ( !strncmp( p+1, "~.)", 3 ) ) {
 		CNDB *db = data->db;
 		for ( listItem *i=data->sub[0]; i!=NULL; i=i->next )
@@ -278,7 +278,7 @@ case_( wildcard_CB )
 			bm_context_mark( data->ctx, mark );
 			_continue( p ) }
 		else {
-			_prune( BMT_PRUNE_LEVEL, p ) } }
+			_prune( BMCB_LEVEL, p ) } }
 	_break
 case_( register_variable_CB )
 	BMContext *carry = data->carry;
@@ -288,7 +288,7 @@ case_( register_variable_CB )
 	switch ( p[1] ) {
 	case '|':
 		found = BMContextRVV( data->ctx, p );
-		if ( !found ) _prune( BMT_PRUNE_LEVEL, p )
+		if ( !found ) _prune( BMCB_LEVEL, p )
 		listItem **sub = &data->sub[ NDX ];
 		if ( strncmp(p+2,"::",2) ) {
 			for ( listItem *i=found; i!=NULL; i=i->next )
@@ -309,7 +309,7 @@ case_( register_variable_CB )
 		if ( p[2]=='~' ) {
 			e = BMContextRVV( data->ctx, p );
 			e = bm_translate( carry, e, db, 1 );
-			if ( !e ) _prune( BMT_PRUNE_LEVEL, p )
+			if ( !e ) _prune( BMCB_LEVEL, p )
 			data->sub[ NDX ] = newItem( e );
 			_break }
 	default:

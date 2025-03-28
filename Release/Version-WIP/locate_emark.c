@@ -63,7 +63,7 @@ case_( close_CB )
 	data->level = popListItem( &data->stack.level );
 	_break;
 case_( prune_CB )
-	_prune( BMT_PRUNE_TERM, p+1 )
+	_prune( BMCB_TERM, p+1 )
 case_( end_CB )
 	_return( 1 )
 BMTraverseCBEnd
