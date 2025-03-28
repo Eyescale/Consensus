@@ -61,7 +61,7 @@
 			do : ascribed : ^ascribed~
 		else do : ascribed : ~.
 	else on : ascribed : ?
-		do >&"Warning: ascribing l%$: \"%s\" to '%_'\n": <
+		do >&"Warning: ascribing l%$: %_ to '%_'\n": <
 			%!/((?:!!,IN),!):%((?,.),%?)/, %?, %!/((?:!!,CO),!):%((?,.),%?)/ >
 		do : ascribed : ^ascribed~
 	else on : ascribed : ~.
@@ -74,7 +74,7 @@
 		in .%action: %!/((?,/(DO|CL|SET)/),!):%((?,CO),%?)/
 			do : action : ^action~
 	else on : action : ?
-		do >&"    \"%_\"\n": %?
+		do >&"    %_\n": %?
 		do : action : ^action~
 	else on : action : ~.
 		in .%generated: %!/((?,'>'),!:~'&'):%((?,CO),*cosystem)/
@@ -82,7 +82,7 @@
 			do >&"  >\n"
 		else do : generated : ~.
 	else on : generated : ?
-		do >&"    \"%_\"\n": %?
+		do >&"    %_\n": %?
 		do : generated : ^generated~
 	else on : generated : ~.
 		in ?: ^cosystem~
@@ -100,7 +100,7 @@
 			do errout
 		else do : noor : ~.
 	else on : noor : ?
-		do >&"Error: origin not found: \"%s\"\n": %((%?,DO),?)
+		do >&"Error: origin not found: %_\n": %((%?,DO),?)
 		do : noor : ^noor~
 	else on : noor : ~.
 		in .%clor: %!/((?:!!,CL),!):%((?,CO),~system)/
@@ -108,7 +108,7 @@
 			do errout
 		else do : clor : ~.
 	else on : clor : ?
-		do >&"Error: l%$: CL \"%s\" - not ascribable to '%_'\n": <
+		do >&"Error: l%$: CL %_ - not ascribable to '%_'\n": <
 			%!/((?:!!,IN),!):%((?,.),%?)/, %?,
 			%!/((?:!!,CO),!):%((?,.),%?)/ >
 		do : clor : ^clor~
@@ -118,7 +118,7 @@
 		else do : generated : ~.
 	else on : generated : ?
 		in %!/((?:%generated,CO),!):%((?,'>'),%((%?,'>'),?))/:~%((%?,CO),?)
-			do >&"Error: ErrMultipleOrigin: \"%_\"\n": %((%?,'>'),?)
+			do >&"Error: ErrMultipleOrigin: %_\n": %((%?,'>'),?)
 			do errout
 		do : generated : ^generated~
 	else in errout

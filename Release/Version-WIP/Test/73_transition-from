@@ -15,5 +15,5 @@
 		do : z
 	else on : z
 		on ~(:?)
-			do >"Hey: caught myself leaving %_\n" : %?
+			do >"from C: caught myself leaving %_\n" : %?
 	else do exit

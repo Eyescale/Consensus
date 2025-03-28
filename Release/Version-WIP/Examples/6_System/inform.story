@@ -17,18 +17,18 @@
 		else do : action : ~.
 	else on : action : ?
 		in genpass
-			do >": \"%_\"\n": %?::(?,.)
+			do >": %_\n": %?::(?,.)
 			in .%generated: %!/((?,'>'),!:~'&'):%((?,DO),%?::(?,.))/
 				do : generated : ^generated~
 			else do : generated : '&'
 		else
-			do >": \"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+			do >": %_ %_\n":< %?::(?,.), %?::(.,?) >
 			in .%guard : %( ?, ( ., *action ))
 				do : guard : ^guard~
 	else on : generated : ?
 		in %?: '&'
 			do >"  > &\n"
-		else	do >"  > \"%_\"\n": %?
+		else	do >"  > %_\n": %?
 		do : generated : ^generated~
 	else on : generated : ~.
 		in .%guard : %( ?, ((.,.), *action ))
@@ -39,7 +39,7 @@
 			do : condition : ^condition~
 		else do : condition : ~.
 	else on : condition : ?
-		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >"\t%_ %_\n":< %?::(?,.), %?::(.,?) >
 		do : condition : ^condition~
 	else on : condition : ~.
 		in .%trigger: %( *guard, ( ?, *action ))
@@ -50,7 +50,7 @@
 			do : event : ^event~
 		else do : event : ~.
 	else on : event : ?
-		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >"\t%_ %_\n":< %?::(?,.), %?::(.,?) >
 		do : event : ^event~
 	else on : event : ~.
 		do >"      /\n"
@@ -58,7 +58,7 @@
 			do : bar : ^bar~
 		else do : bar : ~.
 	else on : bar : ?
-		do >"\t\"%_\" %_\n":< %?::(?,.), %?::(.,?) >
+		do >"\t%_ %_\n":< %?::(?,.), %?::(.,?) >
 		do : bar : ^bar~
 	else on : bar : ~.
 		do : trigger : ^trigger~
@@ -84,14 +84,14 @@
 		else do : noop : ~.
 	else on : noop : ?
 		in ~.:: init : %?
-			do >"Warning: verify: ErrOnConditionNotActuated: \"%s\"\n": %?
+			do >"Warning: verify: ErrOnConditionNotActuated: %_\n": %?
 		do : noop : ^noop~
 	else on : noop : ~.
 		in .%nocl: %(?,OFF):~%((!!,/(CL|DO|>)/),?)
 			do : nocl : ^nocl~
 		else do : nocl : ~.
 	else on : nocl : ?
-		do >&"Warning: verify: ErrOffEventNotActuated: \"%s\"\n": %?
+		do >&"Warning: verify: ErrOffEventNotActuated: %_\n": %?
 		do : nocl : ^nocl~
 	else on : nocl : ~.
 		in .%onff: (.,((.,.),(.,ON)))
@@ -99,7 +99,7 @@
 		else do : onff : ~.
 	else on : onff : ?
 		in ( %?::(?,.), ( %?::(.,(?,.)), ( ?: %?::(.,(.,(?,.))), OFF )))
-			do >&"Warning: verify: ErrOnOffActuation: \"%s\"\n": %?
+			do >&"Warning: verify: ErrOnOffActuation: %_\n": %?
 		do : onff : ^onff~
 	else on : onff : ~.
 		in ?: "init"

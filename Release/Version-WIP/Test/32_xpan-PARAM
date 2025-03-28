@@ -1,3 +1,9 @@
+#define DEPRECATED
+#ifdef DEPRECATED
+	on init
+		do >"***** This test is deprecated\n"
+		do exit
+#else
 :
 	do >"------------------------\n"
 	en .
@@ -14,3 +20,5 @@
 // :( ( .passthrough, ... ), ... )
 	do >"hi from ( %_,...) as %_\n": < passthrough, this >
 //	do exit
+
+#endif

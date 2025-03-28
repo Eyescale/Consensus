@@ -1,25 +1,3 @@
-Regression Testing Results
-    To be deprecated
-	. Test/10_basemark
-	. Test/11_negated
-	. Test/29_xpan-PROTO
-	. Test/32_xpan-PARAM
-	. Test/45_proto_sub-expr
-    Fixed
-	. Test/12_assign - %(*?:value) broken
-	  restored FilterCB invokation after ?:_ in traversal.h 
-	. Test/13_ternary - PRUNE_TERM no longer invoke prune_ternary
-	  using p_prune( PRUNE_TERNARY, p+1 ) in deternarize.c
-	. Test/33_untrace - do %?~ broken
-	  restored %?~ feature in instantiate.c:register_variable_CB
-	. Test/56_FORE - do ?:%(_){(_)}
-	. Test/72_invert-string - do ('\0'|{ ((_):|), (.,%|) })
-	  note: (_):| ***replaces*** current %| in {_}
-    To be fixed
-	. clarify string output format %_ vs. %s vs. %$
-	. Test/67_string-condition <<< string output format
-	  Test/84_string-makeup <<< should be rewritten
-
 Release Checklist
     TODOC
 	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
@@ -55,6 +33,26 @@ KNOWN ISSUES and WORKAROUNDS
 		done in case of identifier, but not for proxy nor shared
 
 DONE
+    	. B% output format spec - cf design/specs/bm-OUTPUT-format.txt
+	. Regression Testing
+	    Deprecated
+		. Test/10_basemark
+		. Test/11_negated
+		. Test/29_xpan-PROTO
+		. Test/32_xpan-PARAM
+		. Test/45_proto_sub-expr
+	    Fixed
+		. Test/12_assign - %(*?:value) broken
+		  restored FilterCB invokation after ?:_ in traversal.h 
+		. Test/13_ternary - PRUNE_TERM no longer invoke prune_ternary
+		  using p_prune( PRUNE_TERNARY, p+1 ) in deternarize.c
+		. Test/33_untrace - do %?~ broken
+		  restored %?~ feature in instantiate.c:register_variable_CB
+		. Test/56_FORE - do ?:%(_){(_)}
+		. Test/72_invert-string - do ('\0'|{ ((_):|), (.,%|) })
+		  note: (_):| ***replaces*** current %| in {_}
+		. Test/67_string-condition
+		. Test/84_string-condition
 	. Examples/6_System/{inform,system}.story
 		handled on-off race condition e.g. cl "same" do "same"
 	. Examples/6_System/include/cosystem.bm

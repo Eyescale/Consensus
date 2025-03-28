@@ -1,3 +1,10 @@
+#define DEPRECATED
+#ifdef DEPRECATED
+	on init
+		do >"***** This test is deprecated\n"
+		do exit
+#else
+
 :
 #	en %( list, ... )
 #	en %( list, ... ):~%(?,.)
@@ -14,4 +21,4 @@
 	do > "yeah, man: %_\n" : this
 	do exit
 
-
+#endif

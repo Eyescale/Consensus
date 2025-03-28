@@ -582,13 +582,9 @@ db_outputf( CNDB *db, FILE *stream, char *fmt, ... ) {
 static int
 outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 /*
-	type is either 's' or '_', the difference being that,
-	in case type=='s' we start non-base entity expression
-	with backslash and we output SCE as-is
+	type is either 's' or '_',
 */ {
 	if ( e == NULL ) return 0;
-	if ( type=='s' && CNSUB(e,0) )
-		fprintf( stream, "\\" );
 
 	CNInstance *nil = db->nil;
 	listItem *stack = NULL;
@@ -606,15 +602,8 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 			fprintf( stream, "%s", cnIsSelf(e)?"%%":"@@@" ); }
 		else if ( cnIsShared(e) ) {
 			if ( cnIsUnnamed(e) ) fprintf( stream, "!!" );
-			else {
-				char *p = db_arena_identifier( e );
-				if ( type=='s' ) fprintf( stream, "%s", p );
-				else for ( ; *p; p++ )
-					switch ( *p ) {
-					case '\n': fprintf( stream, "\\n" ); break;
-					case '\t': fprintf( stream, "\\t" ); break;
-					case '\\': fprintf( stream, "\\\\" ); break;
-					default: fprintf( stream, "%c", *p ); } } }
+			else if ( type=='s' ) fprintf( stream, "%s", db_arena_identifier(e) );
+			else fprintf( stream, "\"%s\"", db_arena_identifier(e) ); }
 		else {
 			char *p = CNIdentifier( e );
 			if ( type=='s' || *p=='*' || *p=='%' || !is_separator(*p) )
@@ -627,8 +616,7 @@ outputf( FILE *stream, CNDB *db, int type, CNInstance *e )
 				case '\'': fprintf( stream, "'\\''" ); break;
 				case '\\': fprintf( stream, "'\\\\'" ); break;
 				default:
-					if ( is_printable(*p) )
-						fprintf( stream, "'%c'", *p );
+					if ( is_printable(*p) ) fprintf( stream, "'%c'", *p );
 					else fprintf( stream, "'\\x%.2X'", *(unsigned char *)p );
 				} } }
 		for ( ; ; ) {

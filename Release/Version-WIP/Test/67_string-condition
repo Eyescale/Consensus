@@ -1,8 +1,6 @@
 
 	on init
-//		do : string : "hello, world\n"
 		do "hello, world\n"
-	else
-		in ?: "hello, world\n"
-			do >: %?
+	else in ?: "hello, world\n"
+		do >"bingo: %_\n": %?
 		do exit

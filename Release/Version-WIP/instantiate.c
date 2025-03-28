@@ -170,9 +170,7 @@ case_( close_CB )
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
-		if ( p[1]!=')' && p[1]!=',' ) {
-			popListItem( &data->stack.flags );
-			_prune( BMT_PRUNE_LEVEL, p+1 ) } }
+		traversal->done = -1; }
 	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin

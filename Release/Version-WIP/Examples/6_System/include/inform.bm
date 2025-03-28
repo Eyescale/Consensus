@@ -144,8 +144,7 @@
 				do ((*take,'>'),'&')
 			else in ?: ((type,OFF) ? %((?:!!,SET),*s:~%((.,CL),?)) :)
 #ifdef verbose
-				do >&"l%$: off & - recasting l%$: "
-					"do \"%s\" as generative\n": <
+				do >&"l%$: off & - recasting l%$: do %_ as generative\n": <
 					%(line,?:...), %((%?,IN),?), %((%?,SET),?) >
 #endif
 				do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }
@@ -188,8 +187,7 @@
 	in ( type, '>' )
 		in ((?:!!,/(DO|CL|SET)/), *s )
 			do : err |: ( NCR, %? )
-		else do : take |
-			((*take,'>'), *s )
+		else do : take | ((*take,'>'), *s )
 	else in ( type, CL )
 		in ((?:!!,'>'), *s )
 			do : err |: ( NCR, %? )
@@ -360,7 +358,7 @@
 		else do : ~.
 	else on : recast : ?
 #ifdef verbose
-		do >&"EOF: recasting l%$: do \"%s\" as generative\n":<
+		do >&"EOF: recasting l%$: do %_ as generative\n":<
 			%((%?,IN),?), %((%?,SET),?) >
 #endif
 		do { ~(%?,SET), ((%?,DO),%((%?,SET),?)), ((%?,'>'),'&') }

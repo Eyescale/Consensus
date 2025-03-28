@@ -1,0 +1,34 @@
+Contents
+	B% output format specification
+
+Description
+	%s	output entity's "contents" as string of characters
+			STE => _	in case of "_"
+			SCE => as-is	e.g. / in case of '/'
+			RI  => (_,_)	in case of (_,_)
+			       {_,_}	in case of multiple results
+
+	%_	output entity's B%-readable "identifier"
+			STE => "_"
+			SCE => '_'	in case of separator
+			       as-is	in case of non-separator
+			RI  => (_,_)	relationship instance
+			       {_,_}	in case of multiple results
+
+	$	special case
+			%((?,...)_)	concatenates match.sub[1] as %s
+			other		same as %s, except concatenates in case
+					of multiple results - that is: no {_,_}
+					e.g. in case of %(s,?:...)
+
+		Note: as db_outputf() format specifier %$ allows to output
+		strings as is (since %s is used for CNDB entities) as well
+		as STE keys - as opposed to the referenced string
+			
+
+	^	internal only
+		db_outputf() invokes xpn_out()
+
+
+*RI: Relationship Instance(s)
+

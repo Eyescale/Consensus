@@ -12,7 +12,7 @@
 	else on : toto : . < ?
 		in %<: ..
 			do > "child: << toto assigned %_\n": %<!:(.,?)>
-			do %<!>
+			do %<!>	// perform assignment
 	else on exit < ..
 		do > "child: exit - %_\n": ~%(.,?):~%(?,.)
 		do exit

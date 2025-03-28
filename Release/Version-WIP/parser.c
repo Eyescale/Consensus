@@ -1045,7 +1045,9 @@ CB_if_( TagTake ) {		do_( "expr" )	REENTER
 			else {	do_( "expr" )	REENTER }
 		end
 	in_( "|" ) bgn_ // allow \nl after '|'
-		ons( " \t\n" )	do_( same )
+		ons( " \t" )	do_( same )
+		on_( '\n' ) if ( is_f(LEVEL|SUB_EXPR|VECTOR|SET) ) {
+				do_( same ) }
 		ons( ":," ) if ( is_f(ASSIGN) && !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
 				do_( "::" )	s_add( "," )
 						f_clr( NEGATED|STARRED|BYREF|FIRST|INFORMED )

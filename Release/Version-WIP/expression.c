@@ -440,7 +440,7 @@ bm_out_put( OutputData *data, CNInstance *f, CNDB *db ) {
 		char *fmt = (*data->fmt=='.') ? "$" : data->fmt;
 		db_outputf( db, data->stream,
 			*fmt=='$' ? "%s" : data->first ?
-				*fmt=='s' ? "\\{ %s" : "{ %_" :
+				*fmt=='s' ? "{ %s" : "{ %_" :
 				*fmt=='s' ? ", %s" : ", %_", e );
 		data->first = 0; }
 	data->last = (*data->fmt=='.') ? CNSUB(f,1) : f; }

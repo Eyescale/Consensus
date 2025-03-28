@@ -49,12 +49,8 @@ loopPop( InstantiateData *data, int once ) {
 		if ( once ) return; } }
 
 #ifdef DEBUG
-#define DBG_CLEANUP dbg_cleanup
-#else
-#define DBG_CLEANUP( data, expression )
-#endif
 static inline void
-dbg_cleanup( InstantiateData *data, char *expression ) {
+DBG_CLEANUP( InstantiateData *data, char *expression ) {
 	if ( !data->sub[0] && ( expression ))
 		errout( InstantiatePartial, expression );
 	if ( !data->sub[1] && !data->stack.flags && !data->results && !BMContextRVV(data->ctx,"%|") )
@@ -85,5 +81,8 @@ dbg_cleanup( InstantiateData *data, char *expression ) {
 		freeListItem( &instances );
 	bm_context_pipe_flush( data->ctx );
 	exit( -1 ); }
+#else
+#define DBG_CLEANUP( traversal, expression )
+#endif
 
 #endif	// INSTANTIATE_PRIVATE_H

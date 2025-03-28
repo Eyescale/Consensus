@@ -252,7 +252,7 @@ retab( fprintExprData *data, char *p ) {
 BMTraverseCBSwitch( fprint_expr_traversal )
 case_( bgn_pipe_CB )
 	if ( p[1]=='{' ) data->piped = 1;
-	else retab( data, p );
+	else if is_f(LEVEL|SUB_EXPR|VECTOR|SET) retab( data, p );
 	_break
 case_( bgn_set_CB )
 	if ( !is_f(LEVEL) && *p_prune(PRUNE_LEVEL,p+1)==',' ) {
