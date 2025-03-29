@@ -1,13 +1,3 @@
-BUGS
-	Examples/1_Schematize
-		schematize is good
-	    but
-		schematize.new
-		yak.story
-		yak.new
-		yak.proper	
-	    all have memory leaks!!
-
 Release Checklist
     TODOC
 	. DOC: MUST WRITE DOWN ALL RULES / SYSTEM COMPLETION CRITERIA
