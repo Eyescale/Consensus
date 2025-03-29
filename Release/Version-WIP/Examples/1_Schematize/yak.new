@@ -147,11 +147,9 @@
 			do : p : position
 			do : s : !! Take( ((*,p),.position) )
 	else on .EXIT
-		in ~.: (.,r): ~%(?,EXIT) // all r feeder schemas failed
-			do ~( r )
-		else do ~( s )
+		do ~( s )
 	else in ~.: (r,.) // all r subscribers failed
-		do ~( r )
+		do ~( s )
 	else on ~( .(.,s) ) // feeder rule failed
 		do .EXIT
 	else in .DONE

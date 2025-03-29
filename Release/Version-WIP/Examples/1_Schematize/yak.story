@@ -145,16 +145,10 @@
 			in flag: '['
 				do ((*,event), %((.,?):frame))
 	else on .EXIT
-		in (((schema,.),.), r ): ~%(?,EXIT)
-			do ~( this )
-		else in ?: (((schema,.),.), r )
-			in %?: this // not a MUST, but avoids race condition
-				do ~( r ) // all feeder schemas failed
+		do ~( this )
 
 	else in r: ~((.,base),.): ~%( ?, (((schema,.),.),.))
-		in ?: (((schema,.),.), r )
-			in %?: this // not a MUST, but avoids race condition
-				do ~( r ) // all subscribers failed
+		do ~( this )
 
 	else in ?: %( ?:((rule,.),.), this ) // pending on rule
 		on %? // instantiate rule schemas

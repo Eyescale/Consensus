@@ -144,13 +144,11 @@
 			in start: ( '[', ? )
 				do : event : %(%?:(.,?))
 	else on .EXIT
-		in (((schema,.),.), r ): ~%(?,EXIT)
-			do ~( s )
-		else do ~( r ) // all r feeder schemas failed
+		do ~( s ) // all r feeder schemas failed
 	else on ~( .(.,s) )
 		do .EXIT // feeder rule failed
 	else in ~.: ( (r,base) ?: ( r, (((schema,.),.),.)) )
-		do ~( r ) // all r subscribers failed
+		do ~( s ) // all r subscribers failed
 	else in .DONE
 		in .( ?, s ) // s has successor schema
 			on ~( s, (((schema,.),.),.) ) // successor schema failed
