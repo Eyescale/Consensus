@@ -1,0 +1,17 @@
+#define BUG
+
+	do >"----------------------------\n"
+	on init
+		do ((schema, {e,f} ), g )
+	else on schema
+		en ((schema,.),.)
+	else do exit
+
+
+.s: (( schema, .p ), .r )
+	.toto .titi .tata
+#ifdef BUG
+	do ~( r )
+#else
+	do ~( s )
+#endif
