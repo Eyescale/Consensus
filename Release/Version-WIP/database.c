@@ -100,6 +100,27 @@ db_register( char *p, CNDB *db )
 		db_op( DB_MANIFEST_OP, e, db ); }
 	return e; }
 
+CNInstance *
+db_register_locale( char *p, CNInstance *perso, CNDB *db ) {
+	CNInstance *x, *y;
+	Pair *entry = registryLookup( db->index, p );
+	if ( !entry ) x = db_register(p,db);
+	else {
+		x = entry->value;
+		y = cn_instance ( perso, x, 0 );
+		if (( y )) return y; }
+	x = cn_new( perso, x );
+	CNInstance *nil = db->nil;
+	if (( y=cn_instance( perso, nil, 1 ) )) {
+		CNInstance *f = cn_new( x, nil );
+		if (( y->as_sub[0] )) cn_new( f, nil );
+		if (( y->as_sub[1] )) cn_new( nil, f ); }
+	if (( y=cn_instance( nil, perso, 0 ) )) {
+		CNInstance *f = cn_new( nil, x );
+		if (( y->as_sub[0] )) cn_new( f, nil );
+		if (( y->as_sub[1] )) cn_new( nil, f ); }
+	return x; }
+
 //===========================================================================
 //	db_deregister
 //===========================================================================

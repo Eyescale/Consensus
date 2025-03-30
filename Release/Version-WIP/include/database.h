@@ -26,6 +26,7 @@ CNInstance *	db_share( uint master[2], Registry *ref, CNDB * );
 CNInstance *	new_proxy( CNEntity *, CNEntity *, CNDB * );
 void		free_proxy( CNEntity *, CNDB * );
 CNInstance *	db_register( char *identifier, CNDB * );
+CNInstance *	db_register_locale( char *, CNInstance *, CNDB * );
 void		db_deregister( CNInstance *, CNDB * );
 void		db_deprecate( CNInstance *, CNDB * );
 void		db_signal( CNInstance *, CNDB * );

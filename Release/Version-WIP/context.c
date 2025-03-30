@@ -692,9 +692,8 @@ bm_register( BMContext *ctx, char *p, CNDB *db )
 int
 bm_register_locales( BMContext *ctx, char *p ) {
 	Registry *locales = BMContextCurrent( ctx );
-	CNInstance *perso = BMContextPerso( ctx );
+	CNInstance *perso = BMContextPerso( ctx ), *x;
 	CNDB *db = BMContextDB( ctx );
-	CNInstance *x, *y;
 	while ( *p=='.' ) {
 		p++;
 		Pair *entry = registryLookup( locales, p );
@@ -704,14 +703,8 @@ bm_register_locales( BMContext *ctx, char *p ) {
 				ContextLocaleMultiple : ContextLocaleConflict, p );
 			exit( -1 ); }
 		else {
-			x = db_lookup( 0, p, db );
-			if ( !x ) x = db_register( p, db );
-			y = cn_instance( perso, x, 0 );
-			if (( y ))
-				registryRegister( locales, p, y );
-			else {
-				x = db_instantiate( perso, x, db );	
-				registryRegister( locales, p, x ); } }
+			x = db_register_locale( p, perso, db );
+			registryRegister( locales, p, x ); }
 
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
