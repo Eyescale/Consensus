@@ -115,6 +115,7 @@ prune_term( char *p, PruneType type ) {
 		case '^':
 			if ( p[1]=='^' || p[1]=='.' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
+			if ( *p=='~' ) p++;
 			informed = 1; break;
 		case '\'':
 			p = prune_char( p );
@@ -127,10 +128,7 @@ prune_term( char *p, PruneType type ) {
 			if ( type==PRUNE_FILTER )
 				return p;
 			else if ( p[1]=='^' ) {
-				if ( p[2]=='.' ) p+=3;
-				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
-				if ( *p=='~' ) p++;
-				return p; }
+				p++; break; }
 			else return p;
 		case '~':
 		case '@':
@@ -170,7 +168,6 @@ prune_ternary( char *p )
 	the expression it is passed. In both cases, the syntax is assumed to
 	have been checked beforehand.
 */ {
-// fprintf( stderr, "PRUNE_TERNARY: bgn at %s\n", p );
 	int start = *p++;
 	int ternary = ( start=='?' || start==':' );
 	char *candidate = NULL;
@@ -221,6 +218,7 @@ prune_ternary( char *p )
 		case '^':
 			if ( p[1]=='^' || p[1]=='.' ) p+=2;
 			else do p++; while ( !is_separator(*p) );
+			if ( *p=='~' ) p++;
 			informed = 1; break;
 		case '\'':
 			p = prune_char( p );
@@ -230,14 +228,8 @@ prune_ternary( char *p )
 			informed = 1;
 			break;
 		case '|':
-			if ( p[1]=='^' ) {
-				if ( p[2]=='.' ) p+=3;
-				else p = p_prune( PRUNE_IDENTIFIER, p+2 );
-				if ( *p=='~' ) p++; }
-			else {
-				informed = 0;
-				p++; }
-			break;
+			informed = 0;
+			p++; break;
 		case ',':
 		case ')':
 			goto RETURN;
@@ -245,7 +237,6 @@ prune_ternary( char *p )
 			do p++; while ( !is_separator(*p) );
 			informed = 1; } }
 RETURN:
-// fprintf( stderr, "PRUNE_TERNARY: end at %s\n", p );
 	if (( candidate )) return candidate;
 	else return p; }
 
