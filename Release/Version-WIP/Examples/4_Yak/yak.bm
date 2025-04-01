@@ -72,16 +72,16 @@
 						do : pending : (IN,%?)
 						do : push : ~.
 					else
-						do :< s, r >:< %?, %(%?:(.,?)) >
+						do :< s, r >:< %?, %?::(.,?) >
 						do : push : ( OUT, OUT )
 				else in %<?:( PRUNE )>
 					do : push : OUT
 			else in %?:( IN, ? ) // after push notification
-				do :< s, r >:< %?, %(%?:(.,?)) >
+				do :< s, r >:< %?, %?::(.,?) >
 				in %<?:( PRUNE )>
 					do : push : ( IN, OUT )
 			else in %?:( OUT, ? ) // after pop notification
-				do :< s, r >:< %?, %(%?:(.,?)) >
+				do :< s, r >:< %?, %?::(.,?) >
 				in %<?:( PRUNE )>
 					do : push : OUT
 			do ~( %? )
@@ -90,12 +90,12 @@
 				do (( .., TAKE ), %? )
 			else in %?:( IN, ? )
 				in *r // notify next, from current rule id
-					do ((( .., IN ), %(((.,?),.):%(%?:(.,?)))), %(*r:(.,?),.))
-				else	do (( .., IN ), %(((.,?),.):%(%?:(.,?))))
+					do ((( .., IN ), %?::(.,((.,?),.))), %(*r:((.,?),.)))
+				else	do (( .., IN ), %?::(.,((.,?),.)))
 			else in %?:( OUT, ? )	// notify current, to next rule id
-				do ((( .., OUT ), %(*r:((.,?),.))), %(((.,?),.):%(%?:(.,?))))
+				do ((( .., OUT ), %(*r:((.,?),.))), %?::(.,((.,?),.)))
 			else in %?: ( CARRY, . )
-				do ((( .., OUT ), base ), %(%?:(.,?)) )
+				do ((( .., OUT ), base ), %?::(.,?) )
 			else in %?: OUT
 				do (( .., OUT ), base )
 -
@@ -112,9 +112,9 @@
 				   fed and which started at s's finishing frame */
 				in ( %(*r,?), ?:(((schema,.),%?),.) )
 					in : push : ( ., OUT ) // pruning
-						do :< s, r >:< %?, %(%?:(.,?)) >
+						do :< s, r >:< %?, %?::(.,?) >
 						in : push : ( ?, . )
-							do : push : ( %(%?:~IN) ? %? :)
+							do : push : ( %?:~IN ? %? :)
 							do ~( %?, . )
 						do : pop : ~.
 					else
@@ -150,7 +150,7 @@
 			// rule has schema starting & not finishing at the same frame => pushing
 			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
 				in : push : . // pruning
-					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
+					do :< s, r, push >:< %?, %?::(.,?), (*push,OUT) >
 				else do : pending : ( IN, %? )
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
@@ -162,7 +162,7 @@
 			// rule has schema starting & not finishing at the same frame => pushing
 			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?): ~%(?,('[',(*f,.)))
 				in : push : . // pruning
-					do :< s, r, push >:< %?, %(%?:(.,?)), (*push,OUT) >
+					do :< s, r, push >:< %?, %?::(.,?), (*push,OUT) >
 				// output current schema's last event, providing it's not also starting
 				else in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
 					do :< pending, push >:<( TAKE, %(*f:(.,?)) ), %? >
@@ -189,7 +189,7 @@
 				// output current schema's last event, if consumed
 				in : push : . // pruning
 				else in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
-					do : pending : ( TAKE, %(%?:(.,?)) )
+					do : pending : ( TAKE, %?::(.,?) )
 				do : s : %?
 			else do : pop : %?
 

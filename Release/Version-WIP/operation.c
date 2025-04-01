@@ -111,7 +111,7 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 	int success=0, negated=0;
 	if ( !strncmp( expression, "~.:", 3 ) ) {
 		negated=1; expression+=3; }
-	int as_per = flags&AS_PER;
+	int as_per = flags & AS_PER;
 	void *found = NULL;
 	switch ( *expression ) {
 	case '.':
@@ -132,7 +132,7 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 			goto RETURN; }
 		break;
 	case '%':
-		if (!(as_per||expression[1]!='<'||p_filtered(expression))) {
+		if ( expression[1]=='<' && !as_per && !p_filtered(expression) ) {
 			found = eenov_lookup( ctx, NULL, expression );
 			goto RETURN; }
 		break;

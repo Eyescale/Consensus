@@ -88,13 +88,13 @@
 			else
 				// output current schema's last event, if consumed
 				in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
-					do >"%s}": %(%?:(.,?))
+					do >"%s}": %?::(.,?)
 				else do >"}"
 				in ~.: ( *r, base )
 					/* set s to the successor of the schema which the current r
 					   fed and which started at s's finishing frame */
 					in ( %(*r,?), ?:(((schema,.),%?),.) )
-						do :< s, r >:< %?, %(%?:(.,?)) >
+						do :< s, r >:< %?, %?::(.,?) >
 					else // no such successor, we should have (*r,base)
 						do >" *** Error: Yak: rule '%_': "
 							"subscriber has no successor ***\n": %(*r:((.,?),.))
@@ -115,17 +115,17 @@
 			// test if r has other feeders starting at s's starting frame
 			in ( (.,%(*s:((.,?),.))), %? ): ~*s
 				do >" *** Warning: Yak: rule '%_': "
-					"multiple interpretations ***\n": %(%?:((.,?),.))
+					"multiple interpretations ***\n": %?::((.,?),.)
 			-----------------------------------------------------------------*/
 			on : pop : ~.
 			else // output r begin
-				do >"%%%s:{": %(%?:((.,?),.))
+				do >"%%%s:{": %?::((.,?),.)
 
 		// s has rule with event to-be-consumed starting this frame => pushing or popping
 		else in ( (.,?:('[',*f)):~*r, *s )
 			// rule has schema starting & not finishing at the same frame => pushing
 			in ?: (((.,~'\0'), %?), %(?:(.,%?):~*r,*s)): ~%(?,%?)
-				do :< s, r >:< %?, %(%?:(.,?)) >
+				do :< s, r >:< %?, %?::(.,?) >
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
 				do : s : %?
@@ -138,7 +138,7 @@
 				// output current schema's last event, providing it's not also starting
 				in *f: ~%(*s:((.,(']',?)),.)): ~(record,*)
 					do >"%s": %(*f:(.,?))
-				do :< s, r >:< %?, %(%?:(.,?)) >
+				do :< s, r >:< %?, %?::(.,?) >
 			// s has sibling starting and not finishing at s's finishing frame
 			else in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
 				// output current schema's last event, providing it's not also starting
@@ -158,7 +158,7 @@
 			in ?: ((.,%?), *r ): ~%(?,%?): ~*s 
 				// output current schema's last event, if consumed
 				in ( *s:(((.,~'\0'),.),.), (']',?:~(record,*)) )
-					do >"%s": %(%?:(.,?))
+					do >"%s": %?::(.,?)
 				do : s : %?
 			else do : pop : %?
 

@@ -104,11 +104,14 @@ CNInstance *
 db_register_locale( char *p, CNInstance *perso, CNDB *db ) {
 	CNInstance *x, *y;
 	Pair *entry = registryLookup( db->index, p );
-	if ( !entry ) x = db_register(p,db);
-	else {
+	if (( entry )) {
 		x = entry->value;
 		y = cn_instance ( perso, x, 0 );
 		if (( y )) return y; }
+	else {
+		entry = registryRegister( db->index, strmake(p), NULL );
+		x = entry->value = cn_carrier( entry );
+		db_op( DB_MANIFEST_OP, x, db ); }
 	x = cn_new( perso, x );
 	CNInstance *nil = db->nil;
 	if (( y=cn_instance( perso, nil, 1 ) )) {

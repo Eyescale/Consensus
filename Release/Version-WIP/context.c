@@ -702,10 +702,8 @@ bm_register_locales( BMContext *ctx, char *p ) {
 			errout( instance->sub[0]==perso ?
 				ContextLocaleMultiple : ContextLocaleConflict, p );
 			exit( -1 ); }
-		else {
-			x = db_register_locale( p, perso, db );
-			registryRegister( locales, p, x ); }
-
+		x = db_register_locale( p, perso, db );
+		registryRegister( locales, p, x ); }
 		p = p_prune( PRUNE_IDENTIFIER, p );
 		while ( *p==' ' || *p=='\t' ) p++; }
 	return 1; }

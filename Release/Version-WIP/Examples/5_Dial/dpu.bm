@@ -80,14 +80,14 @@
 					do : r : %?
 					in ?:( *t, . )
 						do : t : %?
-					else do ((*dial,...),< MSUM, %(%?:(.,?)), 0, *c >)
+					else do ((*dial,...),< MSUM, %?::(.,?), 0, *c >)
 				else do : r : ~.
 			else on : r : ~.
 				do ~((r,*),.) // clear (r,*)
 				do : %(:?) // REENTER
 				do ~( .MSUM )
 			else on : t : ?
-				do (( *dial,...),< MSUM, %(*r:(.,?)), %(%?:(.,?)), *c >)
+				do (( *dial,...),< MSUM, %(*r:(.,?)), %?::(.,?), *c >)
 			else on : .
 				do : c : 0
 				in u
@@ -97,7 +97,7 @@
 					do : r : %(( r, * ), . )
 				else in ?:((r,*),.)
 					// very first round: separate r into s and u
-					do : s : ((s,*),%(%?:(.,?)))
+					do : s : ((s,*),%?::(.,?))
 					do : t : (t,*)
 					in ( %?, . )  // r has more than one digit
 						do : u : (((u,*),...),%(%?,?:...))
@@ -140,11 +140,11 @@
 		on : r : ?
 			in %?: ~(.,*)
 				in .check // leading 0 eliminated
-					do : A : ( *A, %(%?:(.,?)) )
+					do : A : ( *A, %?::(.,?) )
 				else in %?:(.,?:~0)
 					do .check
 					do : A : ( *A, %? )
-				do : r : %(%?:(?,.))
+				do : r : %?::(?,.)
 			else in %?: ~(r,.): ~(s,.) // (t,*) or (u,*)
 				do ~( u )
 				do ~( t )

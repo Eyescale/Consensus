@@ -165,49 +165,52 @@
 
 .: take
 	on : .
-		in (( type, '>' )?:( ~.: ready ))
-			// clamp tab to level and reset level
-			in ~.:: tab : *level
-				do : tab : ( *level, ~. )
-			in ~.: (cmd,.)
-				do : level : root
-		else do : output
-	else
-		in ( type, ?:~ELSE )
-			in (( %?:CL )?:( %?:DO ))
-				// in CL_DO force DO to register at same level
-				// otherwise enable output - barring '>'
-				do (( cmd, . ) ? ( type, ELSE ) : ready )
-				in ( type, ELSE ) // ELSE CL or ELSE DO
-					// **tab is informed, by preceding IN or ON or OFF
-					do ( '\0' |
-						?:%((?,...):*s):(.,?) (%|,%?) :| {
-							((*,*tab), ( **tab, ((ELSE,%?),%|))),
-							((*,that), %| ) } )
-				else // CL or DO
-					do ( '\0' |
-						?:%((?,...):*s):(.,?) (%|,%?):| {
-							((*,*tab), ((.(*tab),~.),(%?,%|))),
-							((*,that), %| ) } )
-			else in %?: '>' // no ELSE
+		in ready
+			in ( type, '>' ) // no ELSE
 				// **tab is informed, by preceding DO
 				in : s : '&'
 					do : *tab : ( **tab, (%?,'&') )
 				else do ( '\0' |
 					?:%((?,...):*s):(.,?) (%|,%?):|
 						((*,*tab), (**tab, (%?,%|)) ))
-			else // [ ELSE ] IN, ON, OFF
-				do : tab : ( *tab, '\t' ) // set new tab
-				in : s : '&'
-					do : *tab : (( type, ELSE ) ?
-						( **tab, ((ELSE,%?),*that) ) :
-						( .(*tab), (%?,*that) ))
-				else do ( '\0' |
-					?:%((?,...):*s):(.,?) (%|,%?):|
-						((*,*tab), ( ( type, ELSE ) ?
-							(**tab, ((ELSE,%?),%|)) :
-							((.(*tab),~.),(%?,%|)) )))
-		else // standalone ELSE
+				do : level : root
+				do : base | { ((*,s),~.), ~(type,.) }
+			else do : output
+		else
+			// clamp tab to level and reset level
+			in ~.:: tab : *level
+				do : tab : ( *level, ~. )
+			in ~.: (cmd,.)
+				do : level : root
+	else
+		in ( type, ?:~ELSE )
++		in (( %?:CL )?:( %?:DO ))
+			// in CL_DO force DO to register at same level
+			// otherwise enable output - barring '>'
+			do (( cmd, . ) ? ( type, ELSE ) : ready )
+			in ( type, ELSE ) // ELSE CL or ELSE DO
+				// **tab is informed, by preceding IN or ON or OFF
+				do ( '\0' |
+					?:%((?,...):*s):(.,?) (%|,%?) :| {
+						((*,*tab), ( **tab, ((ELSE,%?),%|))),
+						((*,that), %| ) } )
+			else // CL or DO
+				do ( '\0' |
+					?:%((?,...):*s):(.,?) (%|,%?):| {
+						((*,*tab), ((.(*tab),~.),(%?,%|))),
+						((*,that), %| ) } )
+		else // [ ELSE ] IN, ON, OFF
+			do : tab : ( *tab, '\t' ) // set new tab
+			in : s : '&'
+				do : *tab : (( type, ELSE ) ?
+					( **tab, ((ELSE,%?),*that) ) :
+					( .(*tab), (%?,*that) ))
+			else do ( '\0' |
+				?:%((?,...):*s):(.,?) (%|,%?):|
+					((*,*tab), ( ( type, ELSE ) ?
+						(**tab, ((ELSE,%?),%|)) :
+						((.(*tab),~.),(%?,%|)) )))
+-		else // standalone ELSE
 			do : tab : (*tab,'\t') // set new tab
 			do : *tab : ( **tab, ELSE ) // inform current
 

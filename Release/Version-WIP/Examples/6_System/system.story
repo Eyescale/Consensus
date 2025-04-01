@@ -27,7 +27,7 @@
 			else in ~.:( ., (%?,ON))
 				do : err |: ErrNoExitAction
 			else in ((%?,ON), . )
-				do : err |: ErrExitAsCondition
+				do : err |: ErrExitSubscription
 			else do : exit : (%?,ON)
 		else do : err |: ErrNoExit
 	else on : exit : .
@@ -117,7 +117,7 @@
 			do : generated : ^generated~
 		else do : generated : ~.
 	else on : generated : ?
-		in %!/((?:%generated,CO),!):%((?,'>'),%((%?,'>'),?))/:~%((%?,CO),?)
+		in %!/((?:%generated,CO),!:~%((%?,CO),?)):%((?,'>'),%((%?,'>'),?))/
 			do >&"Error: ErrMultipleOrigin: %_\n": %((%?,'>'),?)
 			do errout
 		do : generated : ^generated~
