@@ -847,8 +847,7 @@ verify_value( CNInstance *e, char *expression, BMQueryData *data ) {
 	return BMQ_CONTINUE; }
 
 static BMQTake
-verify_variable( CNInstance *e, char *expression, BMQueryData *data )
-{
+verify_variable( CNInstance *e, char *expression, BMQueryData *data ) {
 	if ( !xp_verify( e, expression, data ) )
 		return BMQ_CONTINUE;
 	char *variable = data->user_data;
@@ -922,8 +921,7 @@ bm_query_assignee( int type, char *expression, BMContext *ctx )
 	return data.instance; }
 
 static BMQTake
-verify_assignee( CNInstance *e, char *expression, BMQueryData *data )
-{
+verify_assignee( CNInstance *e, char *expression, BMQueryData *data ) {
 	if ( !xp_verify( e, expression, data ) )
 		return BMQ_CONTINUE;
 	CNDB *db = data->db;

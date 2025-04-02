@@ -417,7 +417,11 @@ bm_output( FILE *stream, char *fmt, char *arg, BMContext *ctx )
 	data.last = NULL;
 
 	// special case: EEnoRV as-is
+#if 0
 	if ( !strncmp(arg,"%<",2) && strmatch("s$_",*fmt) && !p_filtered(arg) )
+#else
+	if ( !strncmp(arg,"%<",2) )
+#endif
 		return eenov_output( arg, ctx, &data );
 	else if ( *fmt=='$' && !strncmp(arg,"%((?,...)",9) ) 
 		data.fmt = ".";

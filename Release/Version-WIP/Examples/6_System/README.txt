@@ -7,7 +7,7 @@ Synopsis
 
 Usage
 	../../B% output.story < TM.system
-	../../B% [-Dverbose] inform.story < TM.system
+	../../B% inform.story < TM.system
 	../../B% [-Dverbose] system.story < TM.system
 
 	TM.system File Format & Rules

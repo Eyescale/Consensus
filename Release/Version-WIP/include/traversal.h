@@ -347,14 +347,13 @@ CB_RegexCB				p = p_prune( PRUNE_FILTER, p );
 			case '&':
 				p++; break;
 			default:
-				if ( is_separator(*p) ) {
-					traversal->done = BMTraverseError; }
-				else {
+				if ( !is_separator(*p) ) {
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
-					f_set( INFORMED )
-					break; } } }
+					f_set( INFORMED ) }
+				else {
+					traversal->done = BMTraverseError; } } }
 	if ( !*p && is_f(PIPED) ) do {
 		f_next = cast_i((*stack)->ptr);
 CB_EndPipeCB	f_pop( stack, 0 ) } while ( 0 );

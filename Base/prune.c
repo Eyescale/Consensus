@@ -233,6 +233,9 @@ prune_ternary( char *p )
 		case ',':
 		case ')':
 			goto RETURN;
+		case '"':
+			p = prune_format( p );
+			informed = 1; break;
 		default:
 			do p++; while ( !is_separator(*p) );
 			informed = 1; } }
@@ -269,9 +272,6 @@ prune_sub( char *p )
 			if ( !level ) return p;
 			if ( *p=='/' ) p++;
 			break;
-		case '\\':
-			if ( p[1] ) p++;
-			p++; break;
 		case '\'':
 			p = prune_char( p );
 			break;
@@ -283,6 +283,9 @@ prune_sub( char *p )
 			else if ( p[1]=='!' )
 				p += p[2]=='/' ? 3 : 2;
 			else p = prune_mod( p );
+			break;
+		case '"':
+			p = prune_format( p );
 			break;
 		case '.':
 			if ( !strncmp( p, "...", 3 ) ) {

@@ -21,6 +21,7 @@
 #define PER		(1<<9)
 #define SWITCH		(1<<10)
 #define CASE		(1<<11)
+#define TERNARIZED	(1<<12)
 
 #define IN_S		(IN|SWITCH)
 #define ON_S		(ON|SWITCH)

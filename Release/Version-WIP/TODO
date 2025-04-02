@@ -28,6 +28,11 @@ KNOWN ISSUES and WORKAROUNDS
 	  Assumption is that no translation is ever asked of deprecated entity
 	  which is not true - e.g. on ~(:?) is supported
 	  => proper solution would be for bm_mark to check !db_deprecated()
+	. operation.c:in_condition() and expression.c:bm_output()
+	  commented out !p_filtered(p) test for EEnoRV as-is
+	  therefore	in %<_>:_ 	=> same as in %<_>
+		and	do >"_": %<_>:_	=> same as do >"_":%<_>
+	  Workaround: filter the other way around, or enclose in parentheses
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
 		done in case of identifier, but not for proxy nor shared

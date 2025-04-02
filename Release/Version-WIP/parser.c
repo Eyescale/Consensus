@@ -120,6 +120,7 @@ PARSER_FUNC( bm_parse_expr )
 				     ( !is_f(MARKED) || ( is_f(LEVEL) && f_parent(MARKED) ) ) ) {
 					do_( "(_?" )	s_take
 							f_set( TERNARY )
+							*type |= TERNARIZED;
 							if is_f(FIRST) f_set( PRIMED )
 							f_restore( NEGATED|STARRED|BYREF|FILTERED )
 							f_push( stack )

@@ -124,9 +124,9 @@ output_proto( FILE *stream, char *p ) {
 		if ( p[1]=='"' ) db_arena_output( stream, ":%_\n", p+1 );
 		else fprintf( stream, "%s\n", p ); } }
 
-static inline int in_x( int type, char *p );
+static inline int type_IN( int type, char *p );
 static inline int
-output_cmd( FILE *stream, int type, int level, char *expression ) {
+output_cmd( FILE *stream, int type, int level, char *p ) {
 	if ( type==ROOT ) return 0;
 	TAB( level );
 	if ( type==ELSE ) {
@@ -136,18 +136,16 @@ output_cmd( FILE *stream, int type, int level, char *expression ) {
 		return 1;
 	if ( type&ELSE ) fprintf( stream, "else " );
 	if ( type&EN ) fprintf( stream, "en " );
-	else if	( in_x(type,expression) ) fprintf( stream, "in " );
+	else if	( type_IN(type,p) ) fprintf( stream, "in " );
 	else if ( type&PER ) fprintf( stream, "per " );
-	else if ( type&IN ) fprintf( stream, "in " );
 	else if ( type&(ON|ON_X) ) fprintf( stream, "on " );
 	else if ( type&(DO|INPUT|OUTPUT) ) fprintf( stream, "do " );
 	return 1; }
 
-static inline int in_x( int type, char *p ) {
-	return	(type&(PER|ON))==(PER|ON) &&
-		!strncmp(p,".%",2) &&
-		!is_separator(p[2]) &&
-		*p_prune(PRUNE_IDENTIFIER,p+3)==':'; }
+static inline int type_IN( int type, char *p ) {
+	return	type&IN || ( (type&IN_X)==IN_X &&
+		!strncmp(p,".%",2) && !is_separator(p[2]) &&
+		*p_prune(PRUNE_IDENTIFIER,p+3)==':' ); }
 
 static inline void
 output_expr( FILE *stream, char *p, int level, int type ) {

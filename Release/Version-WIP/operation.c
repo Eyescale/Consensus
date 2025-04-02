@@ -46,9 +46,9 @@ bm_operate( CNNarrative *narrative, BMContext *ctx, CNStory *story,
 		CNOccurrence *occurrence = i->ptr;
 		int type = cast_i( occurrence->data->type );
 		if (!( type&ELSE && passed )) {
-			type &= ~ELSE; // Assumption: ELSE handled as ROOT#=0
 			char *expression = occurrence->data->expression;
 			char *deternarized = bm_deternarize( &expression, type, ctx );
+			type &= ~(ELSE|TERNARIZED); // Assumption: ELSE handled as ROOT#=0
 			listItem *j = occurrence->sub;
 			BMMark **mark = (( j ) ? &marked : NULL );
 			if ( type&(SWITCH|CASE) ) {
@@ -132,7 +132,11 @@ in_condition( int flags, char *expression, BMContext *ctx, BMMark **mark )
 			goto RETURN; }
 		break;
 	case '%':
+#if 0
 		if ( expression[1]=='<' && !as_per && !p_filtered(expression) ) {
+#else
+		if ( expression[1]=='<' && !as_per ) {
+#endif
 			found = eenov_lookup( ctx, NULL, expression );
 			goto RETURN; }
 		break;
