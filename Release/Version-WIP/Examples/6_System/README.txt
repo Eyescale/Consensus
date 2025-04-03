@@ -10,8 +10,7 @@ Usage
 	../../B% inform.story < TM.system
 	../../B% [-Dverbose] system.story < TM.system
 
-	TM.system File Format & Rules
-
+  TM.system File Format & Rules
 		tabs else
 		tabs [else] (in|on|off|do|cl) "_"
 		tabs [else] cl "_" do "_"
@@ -28,7 +27,6 @@ Usage
 	. The same action may be mentioned in different places of the system
 	  description, in which case the string must be repeated verbatim
 
-Description
   1. output.story
 	traverses the TM.system file and generates the following output, which
 	represents for each action individually the complete set of enabling
@@ -60,9 +58,9 @@ Description
 
 	where
 		!! references a Consensus Unnamed Based Entity (UBE)
-		condition: %( ?, !!:guard )
-		event: %( ?, !!:%(trigger:(?,.)) )
-		event: %( ?:~!!, !!:%(trigger:(.,?)) )
+		condition: %( ?, guard )
+		event: %( ?, %(trigger:(?,.)) )
+		event: %( ?:~!!, %(trigger:(.,?)) )
 		conditions and events themselves in the form 
 			( occurrence, /(ON|OFF)/ )
 

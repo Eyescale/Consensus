@@ -94,14 +94,14 @@ prune_term( char *p, PruneType type ) {
 			informed = 0;
 			p++; break;
 		case '%':
-			if ( p[1]=='(' ) p++;
-			else if ( p[1]=='!' ) {
+			if ( p[1]=='(' ) {
+				p++; break; }
+			if ( p[1]=='!' ) {
 				if ( p[2]=='/' )
 					p = prune_selection( p );
 				else p+=2; }
-			else {
-				p = prune_mod( p );
-				informed = 1; }
+			else p = prune_mod( p );
+			informed = 1;
 			break;
 		case '*':
 			if ( p[1]=='^' ) {
@@ -145,8 +145,7 @@ prune_term( char *p, PruneType type ) {
 			if ( !is_separator( *p ) ) {
 				do p++; while ( !is_separator( *p ) );
 				informed = 1; }
-			else {
-				return p; } } } // cases ,<>)}
+			else return p; } } // cases ,<>)}
 	return p; }
 
 //---------------------------------------------------------------------------
@@ -197,14 +196,14 @@ prune_ternary( char *p )
 			informed = 0;
 			p++; break;
 		case '%':
-			if ( p[1]=='(' ) p++;
+			if ( p[1]=='(' ) {
+				p++; break; }
 			else if ( p[1]=='!' ) {
 				if ( p[2]=='/' )
 					p = prune_selection( p );
 				else p+=2; }
-			else {
-				p = prune_mod( p );
-				informed = 1; }
+			else p = prune_mod( p );
+			informed = 1;
 			break;
 		case '*':
 			if ( p[1]=='^' ) {
@@ -279,7 +278,7 @@ prune_sub( char *p )
 			p = prune_regex( p );
 			break;
 		case '%':
-			if ( p[1]=='(' ) p++;
+			if ( p[1]=='(' ) p++; 
 			else if ( p[1]=='!' )
 				p += p[2]=='/' ? 3 : 2;
 			else p = prune_mod( p );
@@ -327,8 +326,7 @@ prune_mod( char *p )
 	case '<':
 		p+=2;
 		switch ( *p ) {
-		case '?':
-		case '!':
+		case '?': case '!':
 			for ( p++; *p!='>'; )
 				switch ( *p ) {
 				case '(':  p = prune_sub( p ); break;
@@ -340,10 +338,7 @@ prune_mod( char *p )
 		case ':': if ( p[1]==':' ) p+=3; break;
 		case '.': p+=2; break; }
 		break;
-	case '?':
-	case '!':
-	case '|':
-	case '%':
+	case '?': case '!': case '|': case '%': case '@':
 		p+=2; break;
 	default:
 		do p++; while ( !is_separator(*p) ); }

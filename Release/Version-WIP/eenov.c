@@ -323,6 +323,10 @@ lookup_EEVA( CNInstance *instance, char *p, CNDB *db )
 			return e; } } // return ((*,x),y)
 	if ( p[2]=='.' && db_dst!=db ) {
 		// EEva failed as value assignment - check (instance,.)
+		/* Here we consider instance as representing an external
+		   condition contributing to a local guard, which it just
+		   enabled => ( instance, ( %, !!:guard )) deprecated
+		   However we perform only minimum verification */
 		for ( listItem *i=instance->as_sub[0]; i!=NULL; i=i->next )
 			if ( db_deprecated(i->ptr,db) ) return instance; }
 	return NULL; }

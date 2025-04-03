@@ -297,9 +297,7 @@ CB_DotIdentifierCB			p+=2;
 						   Starting with cases
 							%(list,...)
 							%(list,?:...)
-							%((?,...):list)
-							.proto:(_,...)
-							.proto:(_(.param,...)_) */
+							%((?,...):list) */
 						if ( is_f(SUB_EXPR)||(mode&(SUB_EXPR|FILTERED))) {
 							f_set( ELLIPSIS )
 CB_WildCardCB						p+=3; }

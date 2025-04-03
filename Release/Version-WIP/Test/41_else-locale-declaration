@@ -4,3 +4,6 @@
 +	on titi
 		do >: .
 		do exit
+	else
+		do >"locale is not manifested [feature]\n"
+		do exit
