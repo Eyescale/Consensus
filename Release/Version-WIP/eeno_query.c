@@ -257,48 +257,45 @@ bm_eeno_scan( char *src, BMContext *ctx )
 	fprintf( stderr, "bm_eeno_scan: bgn - %s\n", src );
 #endif
 	listItem *results = NULL;
-	if ( *src=='?' ) {
-		if ( src[1]==':' ) src+=2; // skip leading "?:"
-		else {
-			ActiveRV *active = BMContextActive( ctx );
-			for ( listItem *i=active->value; i!=NULL; i=i->next )
-				addItem( &results, i->ptr );
-			reorderListItem( &results );
-			return results; } }
 
-	// Special case: src is or includes %%
-	if ( !strncmp( src, "%%", 2 ) ) {
-		CNInstance *proxy = BMContextSelf(ctx);
-		results = newItem( proxy );
+	// skip leading '?'
+	if ( !strncmp( src, "?:", 2 ) ) src+=2;
+
+	// special cases
+	if ( *src=='?' || !strcmp(src,".") ) {
+		ActiveRV *active = BMContextActive( ctx );
+		for ( listItem *i=active->value; i!=NULL; i=i->next )
+			addItem( &results, i->ptr );
+		reorderListItem( &results );
 		return results; }
-	else if ( *src=='{' ) {
-		char *p = src;
-		do {	p++;
-			if ( !strncmp( p, "%%", 2 ) ) {
-				CNInstance *proxy = BMContextSelf(ctx);
-				results = newItem( proxy );
-				break; }
-			p = p_prune( PRUNE_TERM, p ); }
-		while ( *p!='}' ); }
+	else if ( !strcmp(src,"..") )
+		return newItem( BMContextParent(ctx) );
+	else if ( !strcmp(src,"%%") )
+		return newItem( BMContextSelf(ctx) );
+
 	// General case
+	ActiveRV *active = BMContextActive( ctx );
 	CNDB *db = BMContextDB( ctx );
 	BMQueryData data;
 	memset( &data, 0, sizeof(BMQueryData) );
 	data.ctx = ctx;
 	data.db = db;
-	ActiveRV *active = BMContextActive( ctx );
 	if ( *src=='{' ) {
+		CNInstance *self = BMContextSelf( ctx );
 		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 			CNInstance *proxy = i->ptr;
 			char *p = src;
 			do {	p++;
-				if ( !strncmp( p, "%%", 2 ) )
-					{ p+=2; continue; }
-				if ( xp_verify( proxy, p, &data ) ) {
+				if ( !strncmp(p,"%%",2) && strmatch(",}",p[2]) ) {
+					if (( self )) {
+						addIfNotThere( &results, self );
+						self = NULL; }
+					p+=2; }
+				else if ( xp_verify( proxy, p, &data ) ) {
 					addIfNotThere( &results, proxy );
 					break; }
-				p = p_prune( PRUNE_TERM, p ); }
-			while ( *p!='}' ); } }
+				else p = p_prune( PRUNE_TERM, p );
+			} while ( *p!='}' ); } }
 	else {
 		for ( listItem *i=active->value; i!=NULL; i=i->next ) {
 			CNInstance *proxy = i->ptr;

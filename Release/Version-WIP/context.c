@@ -94,12 +94,6 @@ update_active( ActiveRV *active ) {
 //===========================================================================
 //	bm_context_update
 //===========================================================================
-static DBRemoveCB remove_CB;
-typedef struct {
-	CNInstance *parent;
-	BMContext *ctx;
-	} RemoveData;
-
 int
 bm_context_update( BMContext *ctx ) {
 #ifdef DEBUG
@@ -119,9 +113,6 @@ bm_context_update( BMContext *ctx ) {
 		db_fire( connection->as_sub[0]->ptr, db ); }
 
 	// invoke db_update
-	RemoveData data;
-	data.parent = BMContextParent( ctx );
-	data.ctx = ctx;
 	db_update( db );
 
 	// update active registry wrt deprecated connections

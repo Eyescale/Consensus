@@ -6,21 +6,25 @@
 // #define DEBUG
 // #define DB_CACHE
 
+static inline int dbc_op( DBOperation, CNInstance *, CNDB *);
+static inline void dbc_update( CNDB * ); // cf design/specs/db-update.txt
+static inline DBType dbc_type( CNInstance *, CNInstance *, CNInstance *, CNDB * );
+
 //===========================================================================
 //	db_op
 //===========================================================================
-static int dbc_op( DBOperation, CNInstance *, CNDB *);
+static inline int db_manifest_op( DBOperation, CNInstance *, CNDB * );
 
 int
 db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 #ifdef DB_CACHE
 	return dbc_op( op, e, db );
 #endif
-	CNInstance *nil = db->nil, *f, *g;
+	CNInstance *nil = db->nil, *f, *g, *perso;
 	switch ( op ) {
-	case DB_MANIFEST_OP: // assumption: e was just created
-		cn_new( cn_new( e, nil ), nil );
-		break;
+	case DB_MANIFEST_OP:
+	case DB_MANIFEST_LOCALE_OP:
+		return db_manifest_op( op, e, db );
 	case DB_DEPRECATE_OP:
 		f = cn_instance( e, nil, 1 );
 		if (( f )) {
@@ -104,11 +108,37 @@ db_op( DBOperation op, CNInstance *e, CNDB *db ) {
 		break; }
 	return 0; }
 
-//---------------------------------------------------------------------------
-//	db_update
-//---------------------------------------------------------------------------
-static void dbc_update( CNDB * ); // cf design/specs/db-update.txt
+static inline int
+db_manifest_op( DBOperation op, CNInstance *e, CNDB *db ) {
+	CNInstance *nil = db->nil;
+	if ( op==DB_MANIFEST_OP )
+		cn_new( cn_new( e, nil ), nil );
+	else {
+		CNInstance *perso = e->sub[ 0 ];
+		CNInstance *f = cn_instance( perso, nil, 1 );
+		CNInstance *g = cn_instance( nil, perso, 0 );
+		switch ( dbc_type( perso, f, g, db ) ) {
+		case DB_NEWBORN:
+		case DB_MANIFESTED:
+		case DB_MANIFESTED_TO_BE_MANIFESTED:
+		case DB_TO_BE_MANIFESTED:
+		case DB_DEFAULT:
+			cn_new( cn_new( e, nil ), nil );
+			break;
+		default: // take whatever type perso has
+		if (( f )) {
+			CNInstance *y = cn_new( e, nil );
+			if (( f->as_sub[0] )) cn_new( y, nil );
+			if (( f->as_sub[1] )) cn_new( nil, y ); }
+		if (( g )) {
+			CNInstance *y = cn_new( nil, e );
+			if (( g->as_sub[0] )) cn_new( y, nil );
+			if (( g->as_sub[1] )) cn_new( nil, y ); } } }
+	return 0; }
 
+//===========================================================================
+//	db_update
+//===========================================================================
 void
 db_update( CNDB *db ) {
 #ifdef DB_CACHE
@@ -200,6 +230,13 @@ fprintf( stderr, "--\n" );
 	}
 
 //===========================================================================
+//	db_type
+//===========================================================================
+DBType
+db_type( CNInstance *e, CNDB *db ) {
+	return dbc_type( NULL, e, NULL, db ); }
+
+//===========================================================================
 //	DBLog
 //===========================================================================
 CNInstance *
@@ -228,32 +265,75 @@ DBLog( int first, int released, CNDB *db, listItem **stack )
 
 	return NULL; }
 
-/*===========================================================================
-|
-|			dbc_op, dbc_update
-|
-+==========================================================================*/
-typedef enum {
-	DB_NEWBORN = 0,
-	DB_NEWBORN_TO_BE_RELEASED,
-	DB_MANIFESTED,
-	DB_MANIFESTED_TO_BE_RELEASED,
-	DB_MANIFESTED_TO_BE_MANIFESTED,
-	DB_RELEASED,
-	DB_RELEASED_TO_BE_RELEASED,
-	DB_RELEASED_TO_BE_MANIFESTED,
-	DB_TO_BE_MANIFESTED,
-	DB_TO_BE_RELEASED,
-	DB_DEFAULT, // keep before last
-	DB_PRIVATE  // keep last
-} DBCType;
+//===========================================================================
+//	dbc_type
+//===========================================================================
+#ifdef DEBUG
+#define CHALLENGE( condition ) \
+	if ( condition ) mismatch = 1;
+#else
+#define CHALLENGE( condition )
+#endif
+
+static inline DBType
+dbc_type( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
+/*
+   Assumption:
+   if e: NULL, then g: NULL and f is the target entity
+   otherwise we have
+	f: cn_instance( e, nil, 1 )
+	g: cn_instance( nil, e, 0 )
+*/ {
+#ifdef DEBUG
+	int mismatch = 0;
+#endif
+	if ( !e ) {
+		CNInstance *nil = db->nil;
+		if ( f->sub[0]==nil || f->sub[1]==nil )
+			return DB_PRIVATE;
+		e = f;
+		f = cn_instance( e, nil, 1 );
+		g = cn_instance( nil, e, 0 ); }
+	DBType type;
+	if ((f)) {
+		if ((f->as_sub[0])) {
+			if ((f->as_sub[1])) {
+				CHALLENGE( (g) );
+				type = DB_NEWBORN_TO_BE_RELEASED; }
+			else if ((g)) {
+				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
+				type = DB_MANIFESTED_TO_BE_MANIFESTED; }
+			else type = DB_NEWBORN; }
+		else if ((f->as_sub[1])) {
+			if ((g)) {
+				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
+				type = DB_MANIFESTED_TO_BE_RELEASED; }
+			else type = DB_TO_BE_RELEASED; }
+		else if ((g)) {
+			if ((g->as_sub[1])) {
+				CHALLENGE( (g->as_sub[0]) )
+				type = DB_RELEASED_TO_BE_MANIFESTED; }
+			else {
+				CHALLENGE( !g->as_sub[0] )
+				type = DB_RELEASED_TO_BE_RELEASED; } }
+		else type = DB_RELEASED; }
+	else if ((g)) {
+		CHALLENGE( (g->as_sub[0]) )
+		if ((g->as_sub[1])) {
+			type = DB_TO_BE_MANIFESTED; }
+		else type = DB_MANIFESTED; }
+	else type = DB_DEFAULT;
+#ifdef DEBUG
+	if ( mismatch ) {
+		db_outputf( db, stderr, "B%%:: Error: dbc_type mismatch, type=%d, e=%_\n", type, e );
+		exit( -1 ); }
+#endif
+	return type; }
 
 //===========================================================================
 //	dbc_op
 //===========================================================================
-static inline DBCType dbcType( CNInstance *, CNInstance *, CNInstance *, CNDB * );
-
-static int
+static inline int
 dbc_op( DBOperation op, CNInstance *e, CNDB *db )
 /*
 	Assumptions
@@ -264,14 +344,14 @@ dbc_op( DBOperation op, CNInstance *e, CNDB *db )
 	CNInstance *f, *g;
 	CNInstance *nil = db->nil;
 	switch ( op ) {
-	case DB_MANIFEST_OP: // assumption: e was just created
-		cn_new( cn_new( e, nil ), nil );
-		break;
+	case DB_MANIFEST_OP:
+	case DB_MANIFEST_LOCALE_OP:
+		return db_manifest_op( op, e, db );
 
 	case DB_DEPRECATE_OP: // objective: either released or to-be-released
 		f = cn_instance( e, nil, 1 );
 		g = cn_instance( nil, e, 0 );
-		switch ( dbcType(e, f, g, db ) ) {
+		switch ( dbc_type(e, f, g, db ) ) {
 		case DB_NEWBORN:
 			cn_new( nil, f );
 			return DB_NEWBORN_TO_BE_RELEASED;
@@ -312,7 +392,7 @@ dbc_op( DBOperation op, CNInstance *e, CNDB *db )
 	case DB_REHABILITATE_OP: // objective: neither released nor to-be-released
 		f = cn_instance( e, nil, 1 );
 		g = cn_instance( nil, e, 0 );
-		switch ( dbcType( e, f, g, db ) ) {
+		switch ( dbc_type( e, f, g, db ) ) {
 		case DB_RELEASED: // return RELEASED_TO_BE_MANIFESTED (rehabilitated)
 			cn_new( nil, cn_new( nil, e ));
 			return DB_RELEASED_TO_BE_MANIFESTED;
@@ -350,7 +430,7 @@ dbc_op( DBOperation op, CNInstance *e, CNDB *db )
 	case DB_REASSIGN_OP: // objective: reassigned, newborn or to-be-manifested
 		f = cn_instance( e, nil, 1 );
 		g = cn_instance( nil, e, 0 );
-		switch ( dbcType( e, f, g, db ) ) {
+		switch ( dbc_type( e, f, g, db ) ) {
 		case DB_RELEASED: // return RELEASED_TO_BE_MANIFESTED
 			cn_new( nil, cn_new( nil, e ));
 			return DB_RELEASED_TO_BE_MANIFESTED;
@@ -385,74 +465,8 @@ dbc_op( DBOperation op, CNInstance *e, CNDB *db )
 			cn_new( nil, cn_new( nil, e ));
 			return DB_TO_BE_MANIFESTED;
 		case DB_PRIVATE:
-			return DB_PRIVATE; }
-		break; }
+			return DB_PRIVATE; } }
 	return 0; }
-
-//---------------------------------------------------------------------------
-//	dbcType
-//---------------------------------------------------------------------------
-#ifdef DEBUG
-#define CHALLENGE( condition ) \
-	if ( condition ) mismatch = 1;
-#else
-#define CHALLENGE( condition )
-#endif
-
-static inline DBCType
-dbcType( CNInstance *e, CNInstance *f, CNInstance *g, CNDB *db )
-/*
-   Assumption:
-   if e: NULL, then g: NULL and f is the target entity
-   otherwise we have
-	f: cn_instance( e, nil, 1 )
-	g: cn_instance( nil, e, 0 )
-*/ {
-#ifdef DEBUG
-	int mismatch = 0;
-#endif
-	if ( !e ) {
-		CNInstance *nil = db->nil;
-		if ( f->sub[0]==nil || f->sub[1]==nil )
-			return DB_PRIVATE;
-		e = f;
-		f = cn_instance( e, nil, 1 );
-		g = cn_instance( nil, e, 0 ); }
-	DBCType type;
-	if ((f)) {
-		if ((f->as_sub[0])) {
-			if ((f->as_sub[1])) {
-				CHALLENGE( (g) );
-				type = DB_NEWBORN_TO_BE_RELEASED; }
-			else if ((g)) {
-				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
-				type = DB_MANIFESTED_TO_BE_MANIFESTED; }
-			else type = DB_NEWBORN; }
-		else if ((f->as_sub[1])) {
-			if ((g)) {
-				CHALLENGE( (g->as_sub[0]) || (g->as_sub[1]) )
-				type = DB_MANIFESTED_TO_BE_RELEASED; }
-			else type = DB_TO_BE_RELEASED; }
-		else if ((g)) {
-			if ((g->as_sub[1])) {
-				CHALLENGE( (g->as_sub[0]) )
-				type = DB_RELEASED_TO_BE_MANIFESTED; }
-			else {
-				CHALLENGE( !g->as_sub[0] )
-				type = DB_RELEASED_TO_BE_RELEASED; } }
-		else type = DB_RELEASED; }
-	else if ((g)) {
-		CHALLENGE( (g->as_sub[0]) )
-		if ((g->as_sub[1])) {
-			type = DB_TO_BE_MANIFESTED; }
-		else type = DB_MANIFESTED; }
-	else type = DB_DEFAULT;
-#ifdef DEBUG
-	if ( mismatch ) {
-		db_outputf( db, stderr, "B%%:: Error: dbcType mismatch, type=%d, e=%_\n", type, e );
-		exit( -1 ); }
-#endif
-	return type; }
 
 //===========================================================================
 //	dbc_update
@@ -467,7 +481,7 @@ static inline void cache_inform( CNDB *db, listItem **log );
 		freePair( pair );
 #define DBUpdateEnd }
 
-static void
+static inline void
 dbc_update( CNDB *db )
 /*
 	cf design/specs/db-update.txt
@@ -577,7 +591,7 @@ cache_inform( CNDB *db, listItem **log )
 			continue;
 		g = cn_instance( nil, e, 0 );
 		pair = newPair( f, g );
-		addItem( &log[ dbcType(e,f,g,db) ], newPair( e, pair )); }
+		addItem( &log[ dbc_type(e,f,g,db) ], newPair( e, pair )); }
 	f = NULL;
 	for ( listItem *i=nil->as_sub[ 0 ]; i!=NULL; i=i->next ) {
 		g = i->ptr;
@@ -587,5 +601,5 @@ cache_inform( CNDB *db, listItem **log )
 		if (( cn_instance( e, nil, 1 ) )) // already done
 			continue;
 		pair = newPair( f, g );
-		addItem( &log[ dbcType(e,f,g,db) ], newPair( e, pair )); } }
+		addItem( &log[ dbc_type(e,f,g,db) ], newPair( e, pair )); } }
 

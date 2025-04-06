@@ -198,7 +198,7 @@ prune_ternary( char *p )
 		case '%':
 			if ( p[1]=='(' ) {
 				p++; break; }
-			else if ( p[1]=='!' ) {
+			if ( p[1]=='!' ) {
 				if ( p[2]=='/' )
 					p = prune_selection( p );
 				else p+=2; }

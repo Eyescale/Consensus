@@ -4,7 +4,7 @@ Objective
 	where
 		. the overall expression is not filtered
 		. clip has only . and ? terms (aka. sub)
-		. traverse has only pivot, . and, ? terms (sub-expr)
+		. traverse has only pivot, . and ? terms (sub-expr)
 		. verify has everything else, i.e. *no* pivot term
 Benefit
 	Performances: if pivot is inside %(_?_) then exponent will start
@@ -26,7 +26,7 @@ Benefit
 	Note
 		*pivot == %((.,pivot),?):%((*,.),?) == *.:%((.,pivot),?)
 	So
-		%((.,toto),?) would go into xp_traverse, and
+		%((.,pivot),?) would go into xp_traverse, and
 		*. would go in the verify part
 
 Analysis

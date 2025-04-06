@@ -17,6 +17,7 @@ bm_traverse( char *expression, BMTraverseData *traversal, int flags ) {
 
 	listItem **stack = traversal->stack;
 	char *p = expression;
+	if ( *p=='>' ) p+= p[1]=='&' ? 2 : 1;
 
 	// invoke BMTermCB - if it is set - first thing
 	do {
@@ -68,17 +69,15 @@ CB_BgnPipeCB				f_push( stack )
 					p++; }
 				break;
 			case '>':
+				if ( !is_f(EENOV|VECTOR) ) {
+					traversal->done = 1;
+					break; }
 				if is_f( EENOV ) {
 CB_EEnovEndCB				f_clr( EENOV ) }
 				else if is_f( VECTOR ) {
 					f_next = cast_i((*stack)->ptr);
-CB_EndSetCB				f_pop( stack, 0 )
-					f_set( INFORMED ) }
-				else if ( p!=expression ) {
-					traversal->done = 1;
-					break; }
-				else { // output symbol
-					if ( p[1]=='&' ) p++; }
+CB_EndSetCB				f_pop( stack, 0 ) }
+				f_set( INFORMED )
 				p++; break;
 			case '<':
 				if is_f( INFORMED ) { // input or EENO
@@ -96,10 +95,7 @@ CB_TermCB			break;
 				if ( p[1]=='/' ) {
 					f_push( stack )
 					f_reset( SEL_EXPR, 0 )
-					if ( mode&TERNARY ) {
-						p = p_prune( PRUNE_FILTER, p+2 ); 
-						if ( *p==':' ) p++; }
-					else p+=2; }
+					p+=2; }
 				else if ( p[1]=='!' ) {
 CB_BangBangCB				p+=2; }
 				else {
@@ -130,8 +126,6 @@ CB_DereferenceCB			f_clr( INFORMED )
 CB_StarCharacterCB			f_set( INFORMED )
 					p++; }
 				break;
-			case '$':
-CB_StrExpressionCB		p++; break;
 			case '%':
 				switch ( p[1] ) {
 				case '(':
@@ -298,7 +292,7 @@ CB_DotIdentifierCB			p+=2;
 							%(list,...)
 							%(list,?:...)
 							%((?,...):list) */
-						if ( is_f(SUB_EXPR)||(mode&(SUB_EXPR|FILTERED))) {
+						if ( is_f(SUB_EXPR) || (mode&SUB_EXPR) ) {
 							f_set( ELLIPSIS )
 CB_WildCardCB						p+=3; }
 						else {	// instantiating or deternarizing
@@ -342,16 +336,15 @@ CB_EndSelectionCB			p++; break; }
 CB_RegexCB				p = p_prune( PRUNE_FILTER, p );
 					f_set( INFORMED ) }
 				break;
-			case '&':
-				p++; break;
+			case '$':
+CB_StrExpressionCB		p++; break;
 			default:
 				if ( !is_separator(*p) ) {
 CB_IdentifierCB				p = p_prune( PRUNE_IDENTIFIER, p );
 					if ( *p=='~' && p[1]!='<' ) {
 CB_SignalCB					p++; }
 					f_set( INFORMED ) }
-				else {
-					traversal->done = BMTraverseError; } } }
+				else traversal->done = BMTraverseError; } }
 	if ( !*p && is_f(PIPED) ) do {
 		f_next = cast_i((*stack)->ptr);
 CB_EndPipeCB	f_pop( stack, 0 ) } while ( 0 );

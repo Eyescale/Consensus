@@ -106,22 +106,15 @@ db_register_locale( char *p, CNInstance *perso, CNDB *db ) {
 	Pair *entry = registryLookup( db->index, p );
 	if (( entry )) {
 		x = entry->value;
-		y = cn_instance ( perso, x, 0 );
+		y = cn_instance( perso, x, 0 );
 		if (( y )) return y; }
 	else {
 		entry = registryRegister( db->index, strmake(p), NULL );
 		x = entry->value = cn_carrier( entry );
 		db_op( DB_MANIFEST_OP, x, db ); }
+	// create locale: ( perso, x )
 	x = cn_new( perso, x );
-	CNInstance *nil = db->nil;
-	if (( y=cn_instance( perso, nil, 1 ) )) {
-		CNInstance *f = cn_new( x, nil );
-		if (( y->as_sub[0] )) cn_new( f, nil );
-		if (( y->as_sub[1] )) cn_new( nil, f ); }
-	if (( y=cn_instance( nil, perso, 0 ) )) {
-		CNInstance *f = cn_new( nil, x );
-		if (( y->as_sub[0] )) cn_new( f, nil );
-		if (( y->as_sub[1] )) cn_new( nil, f ); }
+	db_op( DB_MANIFEST_LOCALE_OP, x, db );
 	return x; }
 
 //===========================================================================

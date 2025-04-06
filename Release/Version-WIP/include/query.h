@@ -23,15 +23,13 @@ CNInstance *bm_query_assignee( int type, char *, BMContext * );
 CNInstance *bm_query_assigner( char *, BMContext * );
 
 typedef struct {
-	BMContext *ctx;
-	CNDB *db;
-	int type, privy, op, success, list_expr;
-	Pair *pivot, *list;
-	CNInstance *instance, *star;
-	listItem *exponent, *mark_exp, *mark_sel, *base, *OOS;
-	struct { listItem *flags, *scope, *exponent, *base; } stack;
-	BMQueryCB *user_CB;
-	void *user_data;
+	BMContext *ctx; CNDB *db;
+	Pair *pivot;
+	CNInstance *instance;
+	int type, op, success, list_expr;
+	listItem *mark_exp, *mark_sel, *base, *OOS;
+	struct { listItem *flags, *exponent, *base, *scope; } stack;
+	BMQueryCB *user_CB; void *user_data;
 	} BMQueryData;
 
 int xp_verify( CNInstance *, char *, BMQueryData * );

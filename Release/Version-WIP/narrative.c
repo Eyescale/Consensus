@@ -292,7 +292,7 @@ case_( close_CB )
 	_break
 case_( wildcard_CB )
 	if ( !strncmp(p,"?:",2) ) {
-		p = p_prune( PRUNE_TERM, p );
+		p = p_prune( PRUNE_TERM, p+2 );
 		if ( *p=='(' ) retab( data, p-1 );
 		_continue( p ); }
 	_break;

@@ -164,16 +164,26 @@ typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 //---------------------------------------------------------------------------
 #define OP_END( data ) op_end( data ); /* see below */
 
-#define POP_STACK( start_p, i, mark_exp, list_expr, flags ) { \
-	pop_mark_sel( &data->mark_sel, &mark_sel ); \
-	start_p = popListItem( &stack.p ); \
-	i = pop_as_sub( &stack, i, &mark_exp ); \
-	mark_exp = popListItem( &stack.mark_exp ); \
-	list_expr = pop_item( &stack.list_expr ); \
-	flags = pop_item( &stack.flags ); }
+#define PUSH_STACK( p, i, mark_exp, list_expr, flags ) { \
+	add_item( &stack.heap, flags ); \
+	add_item( &stack.heap, list_expr ); \
+	addItem( &stack.heap, mark_exp ); \
+	addItem( &stack.heap, stack.as_sub ); \
+	addItem( &stack.heap, i ); \
+	addItem( &stack.heap, p ); } /* MUST BE LAST */
 
-#define is_DOUBLE_STARRED( start_p, expression, data ) \
-	( start_p!=expression && !strncmp(start_p-1,"**",2) && op_end(data) )
+#define POP_STACK( p, i, mark_exp, list_expr, flags ) { \
+	pop_mark_sel( &data->mark_sel, &mark_sel ); \
+	pop_as_sub( &stack, i, &mark_exp ); \
+	p = popListItem( &stack.heap ); \
+	i = popListItem( &stack.heap ); \
+	stack.as_sub = popListItem( &stack.heap ); \
+	mark_exp = popListItem( &stack.heap ); \
+	list_expr = pop_item( &stack.heap ); \
+	flags = pop_item( &stack.heap ); }
+
+#define is_DOUBLE_STARRED( p, expression, data ) \
+	( p!=expression && !strncmp(p-1,"**",2) && op_end(data) )
 
 static inline int
 op_end( BMQueryData *data ) {
