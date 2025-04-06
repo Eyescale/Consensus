@@ -177,7 +177,7 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 	void *pve = bm_lookup( privy, p, data->ctx, db );
 	if ( !pve ) return cleanup( exponent, xpn, list, 1 );
 #ifdef DEBUG
-db_outputf( db, stderr, "PIVOT_QUERY bgn: privy=%d, pivot=%_, exponent=%^\n", privy, e, exponent );
+db_outputf( db, stderr, "PIVOT_QUERY bgn: privy=%d, pivot=%_, exponent=%^\n", privy, pve, exponent );
 #endif
 	if (( user_data )) data->user_data = user_data;
 	Pair *pivot = data->pivot = newPair( p, pve );
@@ -250,7 +250,7 @@ static inline int is_multi( char *pv ) {
 //---------------------------------------------------------------------------
 //	xp_verify	- also invoked by eeno_query.c: bm_eeno_scan()
 //---------------------------------------------------------------------------
-static inline void op_bgn( BMVerifyOp, BMQueryData *, CNInstance *, char *, int );
+static inline void op_set( int, BMQueryData *, CNInstance *, char *, int );
 static inline void push_mark_sel( char *, listItem **, listItem ** );
 static inline void pop_mark_sel( listItem **, listItem ** );
 static inline CNInstance * star_sub( CNInstance *, CNDB *, int exp );
@@ -281,7 +281,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 	XPVerifyStack stack;
 	memset( &stack, 0, sizeof(stack) );
 
-	BMVerifyOp op = BM_INIT;
+	int op = INIT_OP;
 	listItem *exponent = NULL;
 	listItem *list_i = NULL;
 	listItem *mark_exp = NULL;
@@ -315,11 +315,10 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 				exponent = exponent->next;
 				i = newItem( x );
 				continue; } }
-
 		if (( x )) {
-			if ( op==BM_BGN ) {
+			if ( op==BGN_OP ) {
 				if ( *p++=='*' ) {
-					if (!( x=assignment_fetch( x, data ) )) {
+					if (!( x=assignment_fetch( x ) )) {
 						success = 0;
 						goto POST_OP; } }
 				else switch ( list_expr ) {
@@ -327,7 +326,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 						p++; break;
 					case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
 						p+=9; break; } }
-			op_bgn( op, data, x, p, success );
+			op_set( op, data, x, p, success );
 			//----------------------------------------------------------
 
 				p = query_traversal( p, &traversal, flags );
@@ -345,7 +344,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					PUSH_STACK( p, i, mark_exp, list_expr, flags )
 					// setup new sub context
 					f_clr( NEGATED )
-					list_expr = data->list_expr;
+					list_expr = BM_LIST;
 					// cases %(list,...) or %((?,...):list)
 					if ( list_expr==2 || list_expr==6 )
 						freeListItem( &data->mark_exp );
@@ -354,7 +353,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					i = newItem( x );
 					exponent = mark_exp;
 					// traverse sub-expression
-					op = BM_BGN;
+					op = BGN_OP;
 					success = 0;
 					continue; }
 				else {
@@ -364,11 +363,11 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 					if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
 					p = prune( p, success );
 					exponent = NULL;
-					op = BM_END;
+					op = END_OP;
 					continue; } }
 			else {
-				DBG_OP_RETURN( p, data->success )
-				success = data->success; } }
+				success = BM_SUCCESS;
+				DBG_OP_RETURN( p, success ) } }
 		else success = 0;
 POST_OP:
 		if (( mark_exp ) || list_expr ) {
@@ -385,20 +384,20 @@ POST_OP:
 				// move on - p is already informed
 				if is_f( NEGATED ) { success = 0; f_clr( NEGATED ) }
 				exponent = NULL;
-				op = BM_END; }
+				op = END_OP; }
 			else {
 				if ( list_expr ) {
 					if_LDIG( list_expr, x, i, list_i, stack.list_i ) {
 						i = j;
 						p = stack.heap->ptr;
-						op = BM_BGN;
+						op = BGN_OP;
 						continue; } }
 				for ( ; ; ) {
 					if (( i->next )) {
 						i = i->next;
 						if ( !db_private( privy, i->ptr, db ) ) {
 							p = stack.heap->ptr;
-							op = BM_BGN;
+							op = BGN_OP;
 							break; } }
 					else if (( stack.as_sub )) {
 						exponent = popListItem( &stack.as_sub );
@@ -411,7 +410,7 @@ POST_OP:
 						if is_f( NEGATED ) { success = 1; f_clr( NEGATED ) }
 						if ( x==NULL ) p = prune( start_p, success );
 						exponent = NULL;
-						op = BM_END;
+						op = END_OP;
 						break; } } } }
 		else break; }
 #ifdef DEBUG
@@ -423,31 +422,29 @@ POST_OP:
 	if ((data->stack.scope) || (data->stack.base)) {
 		errout( QueryScopeMemoryLeak );
 		exit( -1 ); }
-	fprintf( stderr, "xp_verify:........} success=%d\n", success );
+	fprintf( stderr, "xp_verify:........} success=%d\n", !!success );
 #endif
 	freeItem( i );
 	return success; }
 
 static inline void
-op_bgn( BMVerifyOp op, BMQueryData *data, CNInstance *x, char *p, int success )
+op_set( int op, BMQueryData *data, CNInstance *x, char *p, int success )
 /*
 	Note: we cannot use exponent to track scope, as no exponent is
 	pushed in case of "single" expressions - e.g. %(%?:(.,?))
 */ {
 	DBG_OP_SET( data->db, x, p, success );
 	switch ( op ) {
-	case BM_BGN:
-	case BM_INIT:
+	case BGN_OP:
+	case INIT_OP:
 		data->base = data->stack.exponent;
 		data->OOS = data->stack.flags;
 		break;
 	default:
 		OP_END( data ) }
-	data->op = op;
+	data->op = success ? (op|SUCCESS_OP) : op;
 	data->instance = x;
-	data->list_expr = 0;
-	data->mark_exp = NULL;
-	data->success = success; }
+	data->mark_exp = NULL; }
 
 static inline void
 push_mark_sel( char *p, listItem **mark_sel, listItem **backup ) {
@@ -508,9 +505,9 @@ static char *tag( char *, BMQueryData * );
 
 BMTraverseCBSwitch( query_traversal )
 case_( tag_CB )
-	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+	if ( BM_BGN && BM_OOS )
 		_return( 1 )
-	else if ( !data->success )
+	else if ( !BM_SUCCESS )
 		_prune( BMCB_LEVEL, p+1 )
 	else if ( p[2]=='.' ) // special case: |^.
 		*(int *)data->user_data = (p[3]=='~');
@@ -524,36 +521,35 @@ case_( bgn_selection_CB )
 		i->ptr = cast_ptr( cast_i(i->ptr) & 1 );
 	_return( 1 )
 case_( end_selection_CB )
-	if ( data->stack.flags==data->OOS )
-		_return( 1 )
-	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
+	if ( BM_OOS ) _return( 1 )
+	if ( BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
 		traversal->done = 1; // after popping
 	_break
 case_( filter_CB )
-	if ( data->op==BM_BGN && data->stack.flags==data->OOS )
+	if ( BM_BGN && BM_OOS )
 		_return( 1 )
-	else if ( !data->success )
+	else if ( !BM_SUCCESS )
 		_prune( BMCB_LEVEL, p+1 )
 	_break
 case_( match_CB )
 	switch ( match( p, data ) ) {
-	case -1: data->success = 0; break;
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-	case  1: data->success = is_f( NEGATED ) ? 0 : 1; break; }
+	case -1: clr_SUCCESS; break;
+	case  0: if is_f( NEGATED ) set_SUCCESS else clr_SUCCESS; break;
+	case  1: if is_f( NEGATED ) clr_SUCCESS else set_SUCCESS; break; }
 	_break
 case_( dot_identifier_CB )
 	xpn_add( &data->stack.exponent, AS_SUB, 0 );
 	switch ( match( p, data ) ) {
-	case -1: data->success = 0; break;
-	case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
+	case -1: clr_SUCCESS; break;
+	case  0: if is_f( NEGATED ) set_SUCCESS else clr_SUCCESS; break;
 	case  1: if ( p[1]=='?' ) { // special case: .? (cannot be negated)
-			data->success = 1;
+			set_SUCCESS;
 			break; }
 		xpn_set( data->stack.exponent, AS_SUB, 1 );
 		switch ( match( p+1, data ) ) {
-		case -1: data->success = 0; break;
-		case  0: data->success = is_f( NEGATED ) ? 1 : 0; break;
-		default: data->success = is_f( NEGATED ) ? 0 : 1; break; } }
+		case -1: clr_SUCCESS; break;
+		case  0: if is_f( NEGATED ) set_SUCCESS else clr_SUCCESS; break;
+		default: if is_f( NEGATED ) clr_SUCCESS else set_SUCCESS; break; } }
 	popListItem( &data->stack.exponent );
 	_break
 case_( dereference_CB )
@@ -567,11 +563,11 @@ case_( sub_expression_CB )
 			addItem( mark_exp, i->ptr ); }
 	if (( mark )) {
 		if ( !strncmp( mark, "...", 3 ) ) // %(list,...)
-			data->list_expr = 2;
+			data->op |= 2;
 		else if ( !strncmp( mark+1, ":...", 4 ) ) // %(list,?:...)
-			data->list_expr = 4;
+			data->op |= 4;
 		else if ( !strncmp( mark+1, ",...", 4 ) ) // %((?,...):list)
-			data->list_expr = 6;
+			data->op |= 6;
 		_return( 1 ) }
 	else if (( *mark_exp ))
 		_return( 1 )
@@ -581,11 +577,11 @@ case_( dot_expression_CB )
 	xpn_add( stack, AS_SUB, 0 );
 	switch ( match( p, data ) ) {
 	case 0: if is_f( NEGATED ) {
-			data->success=1; popListItem( stack );
+			set_SUCCESS; popListItem( stack );
 			_prune( BMCB_FILTER, p+1 ) }
 		// no break
 	case -1:
-		data->success=0; popListItem( stack );
+		clr_SUCCESS; popListItem( stack );
 		_prune( BMCB_LEVEL, p+1 )
 	default: xpn_set( *stack, AS_SUB, 1 ); }
 	_break
@@ -595,11 +591,11 @@ case_( open_CB )
 		xpn_add( stack, AS_SUB, 0 );
 		switch ( match( p, data ) ) {
 		case 0: if is_f( NEGATED ) {
-				data->success=1; popListItem( stack );
+				set_SUCCESS; popListItem( stack );
 			 	_prune( BMCB_FILTER, p ) }
 			// no break
 		case -1:
-			data->success=0; popListItem( stack );
+			clr_SUCCESS; popListItem( stack );
 			_prune( BMCB_LEVEL, p )
 		default: xpn_set( *stack, AS_SUB, 1 ); } }
 	else if is_f_next( COUPLE ) {
@@ -607,27 +603,27 @@ case_( open_CB )
 		xpn_add( stack, AS_SUB, 0 ); }
 	_break
 case_( comma_CB )
-	if ( data->stack.flags==data->OOS ) _return( 1 )
-	if ( !data->success ) _prune( BMCB_LEVEL, p+1 )
+	if ( BM_OOS ) _return( 1 )
+	if ( !BM_SUCCESS ) _prune( BMCB_LEVEL, p+1 )
 	xpn_set( data->stack.exponent, AS_SUB, 1 );
 	_break
 case_( close_CB )
-	if ( data->stack.flags==data->OOS ) _return( 1 )
+	if ( BM_OOS ) _return( 1 )
 	if is_f( COUPLE ) popListItem( &data->stack.exponent );
 	else if is_f( ASSIGN ) popListItem( &data->stack.exponent );
 	if is_f( DOT ) popListItem( &data->stack.exponent );
-	if is_f_next( NEGATED ) data->success = !data->success;
-	if ( data->op==BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
+	if is_f_next( NEGATED ) { if BM_SUCCESS clr_SUCCESS else set_SUCCESS }
+	if ( BM_END && (data->stack.scope) && data->stack.flags->next==data->OOS )
 		traversal->done = 1; // after popping
 	_break
 case_( wildcard_CB )
-	if is_f( NEGATED ) data->success = 0;
+	if is_f( NEGATED ) clr_SUCCESS
 	else if ( !uneq( data->stack.exponent, 1 ) ) {
-		data->success = 1; } // wildcard is any or as_sub[1]
+		set_SUCCESS } // wildcard is any or as_sub[1]
 	else switch ( match( NULL, data ) ) {
 		case -1: // no break
-		case  0: data->success = 0; break;
-		case  1: data->success = 1; break; }
+		case  0: clr_SUCCESS; break;
+		case  1: set_SUCCESS; break; }
 	_break
 BMTraverseCBEnd
 

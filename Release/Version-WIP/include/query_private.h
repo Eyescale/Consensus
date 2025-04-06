@@ -2,19 +2,32 @@
 #define QUERY_PRIVATE_H
 
 typedef BMQTake XPTraverseCB( CNInstance *, char *, BMQueryData * );
-typedef enum { BM_INIT, BM_BGN, BM_END } BMVerifyOp;
 #define uneq( i, operand ) ((i) && ( operand!=cast_i(i->ptr) ))
+
+#define LIST_OP		7
+#define INIT_OP		8
+#define BGN_OP		16
+#define END_OP		32
+#define SUCCESS_OP	64
+
+#define BM_BGN	(data->op&BGN_OP)
+#define BM_END	(data->op&END_OP)
+#define BM_LIST (data->op&LIST_OP)
+#define BM_OOS	(data->stack.flags==data->OOS)
+#define BM_SUCCESS (data->op & SUCCESS_OP)
+#define set_SUCCESS data->op |= SUCCESS_OP;
+#define clr_SUCCESS data->op &= ~SUCCESS_OP;
 
 #ifdef DEBUG
 #define DBG_OP_SET( db, x, p, success ) \
 	fprintf( stderr, "xp_verify: " ); \
-	switch ( op ) { \
-	case BM_INIT: db_outputf( db, stderr, "BM_INIT x=%_, ", x ); break; \
-	case BM_BGN: db_outputf( db, stderr, "BM_BGN x=%_, ", x ); break; \
-	case BM_END: db_outputf( db, stderr, "BM_END success=%d, ", success ); } \
+	switch ( op & 56 ) { \
+	case INIT_OP: db_outputf( db, stderr, "BM_INIT x=%_, ", x ); break; \
+	case BGN_OP: db_outputf( db, stderr, "BM_BGN x=%_, ", x ); break; \
+	case END_OP: db_outputf( db, stderr, "BM_END success=%d, ", !!success ); } \
 	fprintf( stderr, "at '%s'\n", p );
 #define DBG_OP_RETURN( p, success ) \
-	fprintf( stderr, "xp_verify: returning %d, at '%s'\n", success, p );
+	fprintf( stderr, "xp_verify: returning %d, at '%s'\n", !!success, p );
 #define DBG_OP_SUB_EXPR( p ) \
 	fprintf( stderr, "xp_verify: bgn SUB_EXPR, at '%s'\n", p );
 #else
@@ -203,11 +216,10 @@ static inline CNInstance * assignment( CNInstance *e, CNDB *db ) {
 	return NULL; }
 
 static inline CNInstance *
-assignment_fetch( CNInstance *x, BMQueryData *data ) {
+assignment_fetch( CNInstance *x ) {
 	/* take x.sub[0].sub[1] if x.sub[0].sub[0]==star */
-	if (( x=CNSUB(x,0) ) && cnStarMatch( CNSUB(x,0) ))
-		return x->sub[ 1 ];
-	else { data->success = 0; return NULL; } }
+	return (( x=CNSUB(x,0) ) && cnStarMatch( CNSUB(x,0) )) ?
+		x->sub[ 1 ] : NULL; }
 
 
 #endif // QUERY_PRIVATE_H

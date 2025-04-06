@@ -24,9 +24,9 @@ CNInstance *bm_query_assigner( char *, BMContext * );
 
 typedef struct {
 	BMContext *ctx; CNDB *db;
+	int type, op;
 	Pair *pivot;
 	CNInstance *instance;
-	int type, op, success, list_expr;
 	listItem *mark_exp, *mark_sel, *base, *OOS;
 	struct { listItem *flags, *exponent, *base, *scope; } stack;
 	BMQueryCB *user_CB; void *user_data;
