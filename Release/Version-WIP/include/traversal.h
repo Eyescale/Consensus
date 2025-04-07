@@ -232,24 +232,22 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 				f_next = cast_i((*stack)->ptr);
 CB_CloseCB			f_pop( stack, 0 );
 				p++; // move past ')'
-				if ( *p=='|' ) {
+				if ( !(mode&TERNARY) && strmatch("({",*p) ) {
+					if ( mode || *p=='{' ) {
+						traversal->done = 1;
+						break; }
+					p = p_prune( PRUNE_FILTER, p );
+					if ( !strncmp(p,":|",2) && !is_f(PIPED) ) {
+						f_push( stack )
+						f_reset( PIPED|FIRST, SET ) }
+					traversal->done = 1;
+					break; }
+				else if ( *p=='|' ) {
 					f_set( INFORMED )
 					break; }
-				else if ( *p=='{' ) {
-					if ( mode&INFORMED ) break;
-					p = p_prune( PRUNE_TERM, p );
-					break; }
-				else if ( *p=='(' && !(mode&TERNARY) )
-					p = p_prune( PRUNE_FILTER, p );
 CB_LoopCB			f_set( INFORMED )
 				if ( !strncmp(p,":|",2) ) {
-					if ( !is_f(PIPED) ) {
-						switch ( p[2] ) {
-						case '\0': case ')': break;
-						default:
-							f_push( stack )
-							f_reset( PIPED|FIRST, SET ) } }
-					else f_clr( NEGATED|INFORMED|FILTERED )
+					f_clr( NEGATED|INFORMED|FILTERED )
 					p+=2; }
 				break;
 			case '?':
