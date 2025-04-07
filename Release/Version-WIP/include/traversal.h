@@ -223,12 +223,6 @@ CB_CommaCB			if is_f( SUB_EXPR|LEVEL ) f_clr( FIRST )
 				p++;
 CB_TermCB			break;
 			case ')':
-				if ( p[1]=='(' && !(mode&TERNARY) ) {
-					// ?:(_)(_) skip to last parenthesis
-					p = p_prune( PRUNE_TERM, p+1 );
-					// handle special case ?:(_)(_):|)
-					if ( !strncmp(p-1,"|)",2) ) p-=3;
-					else p--; }
 				if ( is_f(PIPED) && !is_f(SUB_EXPR|LEVEL) ) {
 					f_next = cast_i((*stack)->ptr);
 CB_EndPipeCB				f_pop( stack, 0 ) }
@@ -245,12 +239,15 @@ CB_CloseCB			f_pop( stack, 0 );
 					if ( mode&INFORMED ) break;
 					p = p_prune( PRUNE_TERM, p );
 					break; }
+				else if ( *p=='(' && !(mode&TERNARY) )
+					p = p_prune( PRUNE_FILTER, p );
 CB_LoopCB			f_set( INFORMED )
 				if ( !strncmp(p,":|",2) ) {
 					if ( !is_f(PIPED) ) {
 						switch ( p[2] ) {
 						case '\0': case ')': break;
-						default: f_push( stack )
+						default:
+							f_push( stack )
 							f_reset( PIPED|FIRST, SET ) } }
 					else f_clr( NEGATED|INFORMED|FILTERED )
 					p+=2; }
