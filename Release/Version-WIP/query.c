@@ -244,7 +244,7 @@ static inline int is_multi( char *pv ) {
 //---------------------------------------------------------------------------
 //	xp_verify	- also invoked by eeno_query.c: bm_eeno_scan()
 //---------------------------------------------------------------------------
-static inline void op_set( int, BMQueryData *, CNInstance *, char *, int );
+static inline void op_set( int, BMTraverseData *, CNInstance *, char *, int );
 static inline void push_mark_sel( char *, listItem **, listItem ** );
 static inline void pop_mark_sel( listItem **, listItem ** );
 static inline CNInstance * star_sub( CNInstance *, CNDB *, int exp );
@@ -287,7 +287,6 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 	BMTraverseData traversal;
 	traversal.user_data = data;
 	traversal.stack = &data->stack.flags;
-	traversal.done = 0;
 	for ( ; ; ) {
 		x = i->ptr;
 		if (( exponent )) {
@@ -320,7 +319,7 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 						p++; break;
 					case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
 						p+=9; break; } }
-			op_set( op, data, x, p, success );
+			op_set( op, &traversal, x, p, success );
 			//----------------------------------------------------------
 
 				p = query_traversal( p, &traversal, flags );
@@ -422,15 +421,17 @@ POST_OP:
 	return success; }
 
 static inline void
-op_set( int op, BMQueryData *data, CNInstance *x, char *p, int success )
+op_set( int op, BMTraverseData *traversal, CNInstance *x, char *p, int success )
 /*
 	Note: we cannot use exponent to track scope, as no exponent is
 	pushed in case of "single" expressions - e.g. %(%?:(.,?))
 */ {
+	BMQueryData *data = traversal->user_data;
 	DBG_OP_SET( data->db, x, p, success );
+	traversal->done = 0;
 	switch ( op ) {
-	case BGN_OP:
 	case INIT_OP:
+	case BGN_OP:
 		data->base = data->stack.exponent;
 		data->OOS = data->stack.flags;
 		break;

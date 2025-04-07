@@ -129,7 +129,48 @@ bm_cell_input( CNCell *cell, CNStory *story ) {
 //===========================================================================
 //	bm_cell_init, bm_cell_update
 //===========================================================================
-// see cell.h
+static inline void update_active( ActiveRV * );
+
+void
+bm_cell_init( CNCell *cell ) {
+	BMContext *ctx = BMCellContext( cell );
+	// integrate cell's init conditions
+	db_init( BMContextDB(ctx) );
+	// activate parent connection, if there is
+	update_active( BMContextActive(ctx) ); }
+
+int
+bm_cell_update( CNCell *cell ) {
+	BMContext *ctx = BMCellContext( cell );
+	// update active registry according to user request
+	ActiveRV *active = BMContextActive( ctx );
+	update_active( active );
+	// fire - resp. deprecate dangling - connections
+	CNDB *db = BMContextDB( ctx );
+	for ( listItem *i=cell->as_sub[0]; i!=NULL; i=i->next ) {
+		CNEntity *connection = i->ptr;
+		db_fire( connection->as_sub[0]->ptr, db ); }
+	// invoke db_update
+	db_update( db );
+	// update active registry wrt deprecated connections
+	listItem **entries = &active->value, *last_i=NULL;
+	for ( listItem *i=*entries, *next_i; i!=NULL; i=next_i ) {
+		next_i = i->next;
+		if ( db_deprecated( i->ptr, db ) )
+			clipListItem( entries, i, last_i, next_i );
+		else last_i = i; }
+	return DBExitOn( db ); }
+
+static inline void
+update_active( ActiveRV *active ) {
+	CNInstance *proxy;
+	listItem **current = &active->value;
+	listItem **buffer = &active->buffer->deactivated;
+	while (( proxy = popListItem(buffer) ))
+		removeIfThere( current, proxy );
+	buffer = &active->buffer->activated;
+	while (( proxy = popListItem(buffer) ))
+		addIfNotThere( current, proxy ); }
 
 //===========================================================================
 //	bm_cell_operate
@@ -186,11 +227,11 @@ bm_cell_operate( CNCell *cell, CNStory *story ) {
 					enlist( subs, enabled[1], invoked[1], warden, &pf );
 					bm_context_pop( ctx, "." ); } } }
 			freeRegistry( warden[ 1 ], free_CB );
-			bm_context_release( ctx ); } } }
+			bm_context_flush( ctx ); } } }
 	if (( pf )) { // execute post-frame narrative
 		bm_context_actualize( ctx, pf->proto, NULL );
 		bm_operate( pf, ctx, story, narratives, NULL );
-		bm_context_release( ctx ); }
+		bm_context_flush( ctx ); }
 
 	freeRegistry( warden[ 0 ], free_CB );
 	freeRegistry( enabled[ 0 ], NULL );

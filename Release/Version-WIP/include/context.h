@@ -11,11 +11,8 @@ typedef struct {
 
 BMContext *	newContext( CNEntity *cell );
 void		freeContext( BMContext * );
-
-void		bm_context_init( BMContext * );
-int		bm_context_update( BMContext * );
 void 		bm_context_actualize( BMContext *, char *, CNInstance * );
-void		bm_context_release( BMContext * );
+void		bm_context_flush( BMContext * );
 
 int		proto_verify( char *, CNInstance *, BMContext * );
 

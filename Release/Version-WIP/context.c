@@ -26,7 +26,7 @@ newContext( CNEntity *cell ) {
 	registryRegister( ctx, "@", active ); // active connections (proxies)
 	registryRegister( ctx, ".", newItem( locales ) ); // locales stack
 	registryRegister( ctx, "^", NULL ); // aka. [ ^^, *^^ ]
-	registryRegister( ctx, "?", NULL ); // aka. [ %!, %? ]
+	registryRegister( ctx, "!", NULL ); // aka. [ %!, %? ]
 	registryRegister( ctx, "|", NULL ); // aka. %|
 	registryRegister( ctx, "<", NULL ); // aka. [ [ %<!>, %<?> ], %< ]
 	return ctx; }
@@ -68,84 +68,24 @@ untag_CB( Registry *registry, Pair *entry ) {
 		freeListItem((listItem **) &entry->value ); } }
 
 //===========================================================================
-//	bm_context_init
-//===========================================================================
-static inline void update_active( ActiveRV * );
-
-void
-bm_context_init( BMContext *ctx ) {
-	CNDB *db = BMContextDB( ctx );
-	// integrate cell's init conditions
-	db_init( db );
-	// activate parent connection, if there is
-	update_active( BMContextActive(ctx) ); }
-
-static inline void
-update_active( ActiveRV *active ) {
-	CNInstance *proxy;
-	listItem **current = &active->value;
-	listItem **buffer = &active->buffer->deactivated;
-	while (( proxy = popListItem(buffer) ))
-		removeIfThere( current, proxy );
-	buffer = &active->buffer->activated;
-	while (( proxy = popListItem(buffer) ))
-		addIfNotThere( current, proxy ); }
-
-//===========================================================================
-//	bm_context_update
-//===========================================================================
-int
-bm_context_update( BMContext *ctx ) {
-#ifdef DEBUG
-	fprintf( stderr, "bm_context_update: bgn\n" );
-#endif
-	CNEntity *this = BMContextCell( ctx );
-	CNDB *db = BMContextDB( ctx );
-	CNInstance *proxy;
-
-	// update active registry according to user request
-	ActiveRV *active = BMContextActive( ctx );
-	update_active( active );
-
-	// fire - resp. deprecate dangling - connections
-	for ( listItem *i=this->as_sub[0]; i!=NULL; i=i->next ) {
-		CNEntity *connection = i->ptr;
-		db_fire( connection->as_sub[0]->ptr, db ); }
-
-	// invoke db_update
-	db_update( db );
-
-	// update active registry wrt deprecated connections
-	listItem **entries = &active->value;
-	for ( listItem *i=*entries, *last_i=NULL, *next_i; i!=NULL; i=next_i ) {
-		CNInstance *e = i->ptr;
-		next_i = i->next;
-		if ( db_deprecated( e, db ) )
-			clipListItem( entries, i, last_i, next_i );
-		else last_i = i; }
-#ifdef DEBUG
-	fprintf( stderr, "bm_context_update: end\n" );
-#endif
-	return DBExitOn( db ); }
-
-//===========================================================================
 //	bm_context_actualize
 //===========================================================================
 static inline int proto_set( char *, CNInstance *, BMContext *, int check );
 
 void
-bm_context_actualize( BMContext *ctx, char *proto, CNInstance *instance ) {
-	// set perso
-	if ( !proto || !instance ) {
-		bm_context_rebase( ctx, instance ); return; }
-	else if ( *proto==':' ) { // :func(_) or :
+bm_context_actualize( BMContext *ctx, char *proto, CNInstance *perso ) {
+	// set perso - unless proto is :func(_)
+	if ( !perso || !proto ) {
+		bm_context_rebase( ctx, perso );
+		return; }
+	else if ( *proto==':' ) { // : or :func(_)
 		proto = p_prune( PRUNE_IDENTIFIER, proto+1 );
 		if ( !*proto ) {
-			bm_context_rebase( ctx, instance );
+			bm_context_rebase( ctx, perso );
 			return; } }
-	else bm_context_rebase( ctx, instance );
+	else bm_context_rebase( ctx, perso );
 	// set locales
-	proto_set( proto, instance, ctx, 0 ); }
+	proto_set( proto, perso, ctx, 0 ); }
 
 static inline int
 proto_set( char *p, CNInstance *instance, BMContext *ctx, int check ) {
@@ -207,12 +147,12 @@ proto_verify( char *p, CNInstance *instance, BMContext *ctx ) {
 	return proto_set( p, instance, ctx, 1 ); }
 
 //===========================================================================
-//	bm_context_release
+//	bm_context_flush
 //===========================================================================
 static inline void locale_flush( listItem *stack );
 
 void
-bm_context_release( BMContext *ctx )
+bm_context_flush( BMContext *ctx )
 /*
 	Assumption: ActiveRV and Pipe dealt with separately
 */ {
@@ -334,7 +274,7 @@ bm_context_mark( BMContext *ctx, BMMark *mark ) {
 			Pair *vm = mark->data->xpn->ptr;
 			if (( vm )) vm->value = markv->value; } }
 	else if ( type&(EMARK|QMARK) ) {
-		bm_context_push( ctx, "?", markv );
+		bm_context_push( ctx, "!", markv );
 		if ( type&VMARK ) {
 			Pair *vm = mark->data->xpn->ptr;
 			if (( vm )) vm->value = markv->value; } }
@@ -355,7 +295,7 @@ bm_context_unmark( BMContext *ctx, BMMark *mark ) {
 	if ( type&EENOK )
 		bm_context_pop( ctx, "<" );
 	else if ( type&(EMARK|QMARK) )
-		bm_context_pop( ctx, "?" );
+		bm_context_pop( ctx, "!" );
 	if ( !mark->match.record ) {
 		listItem **xpn = &mark->data->xpn;
 		if ( type&VMARK ) {
@@ -377,10 +317,10 @@ bm_context_check( BMContext *ctx, BMMark *mark )
 	int type = cast_i( mark->data->type );
 	if (( mark->match.record )) {
 		Pair *markv = mark_pop( mark, type );
-		bm_context_take( ctx, "?", markv );
+		bm_context_take( ctx, "!", markv );
 		return 1; }
 	else {
-		bm_context_pop( ctx, "?" );
+		bm_context_pop( ctx, "!" );
 		freeListItem( &mark->data->xpn );
 		freePair((Pair *) mark->data );
 		freePair((Pair *) mark );
@@ -478,7 +418,7 @@ bm_context_pop( BMContext *ctx, char *p ) {
 			Pair *previous = popListItem((listItem **) &entry->value );
 			switch ( *p ) {
 			case '<': freePair( previous->name ); // no break
-			case '?': freePair( previous ); // no break
+			case '!': freePair( previous ); // no break
 			default: return previous; } }
 	return NULL; }
 
@@ -494,7 +434,7 @@ bm_context_take( BMContext *ctx, char *p, void *value ) {
 			return (listItem *) previous;
 		case '<':
 			freePair( previous->name ); // no break
-		case '?':
+		case '!':
 			freePair( previous ); // no break
 		default:
 			stack->ptr = value; } }
@@ -578,7 +518,7 @@ lookup_rv( BMContext *ctx, char *p, int *rv ) {
 		switch ( p[1] ) {
 		case '?':
 		case '!':
-			entry = registryLookup( ctx, "?" );
+			entry = registryLookup( ctx, "!" );
 			if (!( i=entry->value )) return NULL;
 			CNInstance *e = p[1]=='!' ?
 				((Pair *) i->ptr )->name :

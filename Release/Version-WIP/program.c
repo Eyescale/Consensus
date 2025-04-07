@@ -137,8 +137,7 @@ cnSync( CNProgram *program ) {
 	listItem *out = NULL;
 	listItem **active = &program->threads->active;
 	for ( listItem *i=*active; i!=NULL; i=i->next ) {
-		cell = i->ptr;
-		if ( bm_cell_update( cell, story ) )
+		if ( cell=i->ptr, bm_cell_update(cell) )
 			addItem( &out, cell ); }
 	// activate new cells
 	listItem **new = &program->threads->new;
