@@ -34,7 +34,7 @@ PARSER_FUNC( bm_parse_expr )
 			else if ( is_f(LEVEL|SUB_EXPR) ||
 				  ( *type&DO && is_f(FILTERED) && !is_f(byref) ) ||
 				  ( *type&ON && expr(RELEASED) && is_f(MARKED) ) ||
-				  ( (*type&(ON|PER))==(ON|PER) && expr(VMARKED) && is_f(MARKED) ) ||
+				  ( ((*type&IN_X)==IN_X) && expr(VMARKED) && is_f(MARKED) ) ||
 				  (( *type&DO || s_at(',')) && is_f(MARKED) ) )
 				; // err
 			else if ( *type&(IN|ON) && is_f(ASSIGN) && s_at(',') ) {
@@ -176,7 +176,8 @@ PARSER_FUNC( bm_parse_expr )
 			else if ( *type&ON && !expr(VMARKED) &&
 				  (is_f(ASSIGN)?is_f(PRIMED):is_f(FIRST)) ) {
 				do_( "_<" )	s_take
-						*type = (*type&~ON)|ON_X; }
+						*type &= ~ON;
+						*type |= ON_X; }
 			else if ( *type&DO && !is_f(ASSIGN|ELLIPSIS) ) {
 				do_( "_<" )	s_take }
 		on_( '>' ) if ( *type&DO && s_empty ) {
@@ -649,7 +650,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 				do_( "expr" )	REENTER
 						f_set( INFORMED )
 						*type &= ~IN;
-						*type |= PER|ON; }
+						*type |= IN_X; }
 			else {	do_( "expr" )	REENTER
 						f_set( INFORMED )
 						expr_clr( VMARKED ) }
@@ -1717,7 +1718,7 @@ CB_if_( EnTake ) {		do_( "cmd_" )	REENTER
 						*type |= DO; }
 			else if ( !s_cmp( "per" ) ) {
 				do_( "cmd_" )	REENTER
-						*type |= PER|ON; }
+						*type |= IN_X; }
 			else if ( !s_cmp( "else" ) && !(*type&ELSE) ) {
 				do_( "else" )	REENTER
 						*type = ELSE; }

@@ -59,7 +59,7 @@ bm_query( int type, char *expression, BMContext *ctx, BMQueryCB user_CB, void *u
 					freeListItem( &s );
 					return e; }
 			e = BMContextSelf( ctx );
-			return e=query_base( e, db, expression, &data ) ? e :
+			return (e=query_base( e, db, expression, &data )) ? e :
 				db_arena_query( db, expression, query_base, &data );
 		default:
 			for ( e=DBLog(1,privy,db,&s); e!=NULL; e=DBLog(0,privy,db,&s) )
@@ -83,13 +83,13 @@ verify_candidate( CNInstance *e, char *expression, BMQueryData *data ) {
 //---------------------------------------------------------------------------
 //	query_base
 //---------------------------------------------------------------------------
-static inline CNInstance * query_next( CNDB *, listItem ** );
+static inline CNInstance * qb_next( CNDB *, listItem ** );
 
 static CNInstance *
 query_base( CNInstance *e, CNDB *db, char *expression, void *data ) {
 	listItem *s = NULL;
 	listItem *i = newItem( e );
-	for ( addItem(&s,i); e!=NULL; e=query_next(db,&s) )
+	for ( addItem(&s,i); e!=NULL; e=qb_next(db,&s) )
 		if ( verify_candidate( e, expression, data )==BMQ_DONE ) {
 			freeListItem( &s );
 			break; }
@@ -97,22 +97,19 @@ query_base( CNInstance *e, CNDB *db, char *expression, void *data ) {
 	return e; }
 
 static inline CNInstance *
-query_next( CNDB *db, listItem **stack ) {
+qb_next( CNDB *db, listItem **stack ) {
 	if ( !*stack ) return NULL;
 	listItem *i = (*stack)->ptr;
 	CNInstance *e = i->ptr;
 	for ( i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-		e = i->ptr;
-		if ( !db_private( 0, e, db ) ) {
+		if ( e=i->ptr, !db_private( 0, e, db ) ) {
 			addItem( stack, i );
 			return e; } }
-	while (( i = popListItem( stack ) ))
-		if (( i->next )) {
-			i = i->next;
-			e = i->ptr;
-			if ( !db_private( 0, e, db ) ) {
-				addItem( stack, i );
-				return e; } }
+	while (( i=popListItem( stack ) )) {
+		if (!( i=i->next )) continue;
+		if ( e=i->ptr, !db_private( 0, e, db ) ) {
+			addItem( stack, i );
+			return e; } }
 	return NULL; }
 
 //---------------------------------------------------------------------------
@@ -131,14 +128,11 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 	returns current match on the callback's BMQ_DONE, and NULL otherwise
 
 	Assumptions
-	. when set, we have data->list:[ list:[ list_p, mark_p ], xpn ]
-	  and expression as described in above pivot_query()
 	. user_data only specified for query_assignment, in which case
-	  we can overwrite data->user_data with the passed user_data
+	  we overwrite data->user_data with the passed user_data
 	. pivot->value is not deprecated - and neither are its subs
-
-	bm_locate_pivot returns list:[ list_p, mark_p ] as first exponent
-	element when expression is in either form:
+	. bm_locate_pivot returns list:[ list_p, mark_p ] as first exponent
+	  element when expression is in either of the following forms:
 
 		_%(list,...)_				lm	list_expr
 		 ^      ^---------------- mark_p	0	   2|3
@@ -443,8 +437,8 @@ op_set( int op, BMQueryData *data, CNInstance *x, char *p, int success )
 	default:
 		OP_END( data ) }
 	data->op = success ? (op|SUCCESS_OP) : op;
-	data->instance = x;
-	data->mark_exp = NULL; }
+	data->mark_exp = NULL;
+	data->instance = x; }
 
 static inline void
 push_mark_sel( char *p, listItem **mark_sel, listItem **backup ) {

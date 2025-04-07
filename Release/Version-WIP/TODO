@@ -134,8 +134,7 @@ DONE
 	  where class overloads cosystem's main AND post-frame narratives
 	. rewrote Examples/6_System/TM.system
 	  . no bar event is used in this version - bar Use Case is when several
-	    events may occur concurrently in a given state in which case we
-	    want to handle only one of them by priority order.
+	    events occur concurrently and we want to prioritize handling them
 	  . inform.bm: .: finish //	v--------- if not CL
 		off & => replace ((?:!!,SET),*s) with ((%?,DO),*s)
 	  . inform.story: .: verify //		 v---------- if not CL
@@ -148,12 +147,11 @@ DONE
 	  - cf format description in design/specs/bm-EN-command.txt
 	. db_arena_makeup() now puts whole identifier(s) into string
 	. Base/btree.c: integrated caching of free leaves
-	. parser_io.c: implemented #define term sequence
+	. parser_io.c: support "#define term sequence"
 	. implemented "selection" expression - cf. Test/88_selection
 		%!/(_?_!_):%(_):%(_):.../
 	  same as	   ^--------v
-				 %(_._?_)
-	  e.g.
+	  e.g.			 %(_._?_)
 		%!/((?,CO),!):%((?,.),%?)/
 	  is the same as      ^-----v
 				 %((%((?,.),%?),CO),?)

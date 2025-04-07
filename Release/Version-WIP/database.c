@@ -532,8 +532,7 @@ CNInstance *
 DBNext( CNDB *db, CNInstance *e, listItem **stack ) {
 	if ( e == NULL ) return NULL;
 	for ( listItem *i=e->as_sub[0]; i!=NULL; i=i->next ) {
-		e = i->ptr;
-		if ( !db_private( 0, e, db ) ) {
+		if ( e=i->ptr, !db_private( 0, e, db ) ) {
 			addItem( stack, i );
 			return e; } }
 	listItem *i = popListItem( stack );
