@@ -268,8 +268,13 @@ bm_eeno_scan( char *src, BMContext *ctx )
 			addItem( &results, i->ptr );
 		reorderListItem( &results );
 		return results; }
-	else if ( !strcmp(src,"..") )
-		return newItem( BMContextParent(ctx) );
+	else if ( !strcmp(src,"..") ) {
+		CNInstance *parent = BMContextParent( ctx );
+		if (( parent )) {
+			ActiveRV *active = BMContextActive( ctx );
+			if (( lookupItem( active->value, parent ) ))
+				return newItem( parent ); }
+		return NULL; }
 	else if ( !strcmp(src,"%%") )
 		return newItem( BMContextSelf(ctx) );
 

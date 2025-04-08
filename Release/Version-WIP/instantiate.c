@@ -170,7 +170,7 @@ case_( close_CB )
 		if ( !is_f_next(FIRST) ) {
 			instances = popListItem( &data->results );
 			freeListItem( &instances ); }
-		_return( -1 ) }
+		_prune( BMCB_LEVEL_DOWN, p ) }
 	_break
 case_( loop_CB )
 	// called past ) and } => test for a respin

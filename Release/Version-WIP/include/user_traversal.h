@@ -25,7 +25,8 @@ typedef enum {
 	BMCB_DONE,
 	BMCB_FILTER,
 	BMCB_TERM,
-	BMCB_LEVEL
+	BMCB_LEVEL,
+	BMCB_LEVEL_DOWN,
 	} BMCBTake;
 
 typedef char *BMTraversal( char *, BMTraverseData *, int );

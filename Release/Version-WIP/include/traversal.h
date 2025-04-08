@@ -14,6 +14,7 @@ static char *
 bm_traverse( char *expression, BMTraverseData *traversal, int flags ) {
 	int f_next, mode = traversal->done;
 	traversal->done = 0;
+	int pruneval = 0;
 
 	listItem **stack = traversal->stack;
 	char *p = expression;
