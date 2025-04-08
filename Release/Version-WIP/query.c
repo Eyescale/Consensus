@@ -168,6 +168,7 @@ pivot_query( int privy, char *expression, BMQueryData *data, XPTraverseCB *cb, v
 		if ( !p || !strncmp(p,"%(",2) )
 			return cleanup( exponent, xpn, list, 0 ); }
 	CNDB *db = data->db;
+	data->instance = NULL;
 	void *pve = bm_lookup( privy, p, data->ctx, db );
 	if ( !pve ) return cleanup( exponent, xpn, list, 1 );
 #ifdef DEBUG
@@ -175,7 +176,6 @@ db_outputf( db, stderr, "PIVOT_QUERY bgn: privy=%d, pivot=%_, exponent=%^\n", pr
 #endif
 	if (( user_data )) data->user_data = user_data;
 	Pair *pivot = data->pivot = newPair( p, pve );
-	data->instance = NULL;
 	listItem *i, *j, *pvi;
 	CNInstance *e, *f;
 	if ( is_multi(p) ) { i=pve; e=i->ptr; pvi=NULL; }
@@ -215,16 +215,16 @@ POP_xpn:		POP( stack.xpn, xpn, PUSH_xpn )
 		POP_ALL( stack.exp )
 		freeListItem( &stack.list );
 		POP_ALL( stack.xpn ) }
-#ifdef DEBUG
-	db_outputf( db, stderr, "PIVOT_QUERY end: returning '%_'\n", success );
-#endif
 	freeListItem( &trail );
 	if (( pvi )) freeItem( pvi );
-	if ( !success ) data->instance = NULL;
 	if ( *p=='/' ) // regex results
 		freeListItem((listItem **) &pivot->value );
 	freePair( pivot );
 	data->pivot = NULL;
+	if ( !success ) data->instance = NULL;
+#ifdef DEBUG
+	db_outputf( db, stderr, "PIVOT_QUERY end: returning '%_'\n", success );
+#endif
 	return cleanup( exponent, xpn, list, 1 ); }
 
 static inline int

@@ -30,8 +30,8 @@ CB_RegisterVariableCB		f_set( INFORMED )
 				else do p++; while ( !is_separator(*p) );
 				break;
 			case '{':
-				if ( is_f(INFORMED) && BASE ) {
-					traversal->done = 1; // forescan
+				if ( is_f(INFORMED) && BASE && p[-1]==')' ) {
+					traversal->done = 1; // forescan sub-expr
 					break; }
 CB_BgnSetCB			f_push( stack )
 				f_reset( SET|FIRST, 0 )
@@ -181,8 +181,8 @@ CB_ModCharacterCB				f_set( INFORMED )
 						p++; } }
 				break;
 			case '(':
-				if ( is_f(INFORMED) && BASE ) {
-					traversal->done = 1; // forescan
+				if ( is_f(INFORMED) && BASE && p[-1]==')' ) {
+					traversal->done = 1; // forescan sub-expr
 					break; }
 				if ( p[1]==':' ) {
 					if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
