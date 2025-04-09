@@ -167,80 +167,24 @@ prune_ternary( char *p )
 	the expression it is passed. In both cases, the syntax is assumed to
 	have been checked beforehand.
 */ {
-	int start = *p++;
-	int ternary = ( start=='?' || start==':' );
-	char *candidate = NULL;
-	int informed = 0;
-	while ( *p ) {
-		switch ( *p ) {
-		case '(':
-		case '{':
-			p = prune_sub( p );
-			if ( *p=='/' ) p++;
-			informed = 1; break;
-		case '?':
-			if ( informed ) {
-				if ( start=='(' ) goto RETURN;
-				informed = 0; ternary++; }
-			else informed = 1;
-			p++; break;
-		case ':':
-			if ( p[1]=='|' || p[1]==':' ) {
-				p+=2; break; }
-			if ( ternary ) {
-				ternary--;
-				if ( start=='?' ) {
-					candidate = p;
-					if ( !ternary )
-						goto RETURN; } }
-			informed = 0;
-			p++; break;
-		case '%':
-			if ( p[1]=='(' ) {
-				p++; break; }
-			if ( p[1]=='!' ) {
-				if ( p[2]=='/' )
-					p = prune_selection( p );
-				else p+=2; }
-			else p = prune_mod( p );
-			informed = 1;
-			break;
-		case '*':
-			if ( p[1]=='^' ) {
-				p += p[2]=='%'? 2 : 1;
-				break; }
-			// no break
-		case '.':
-			if ( p[1]=='?' || p[1]=='.' ) p+=2;
-			else do p++; while ( !is_separator(*p) );
-			informed = 1; break;
-		case '^':
-			if ( p[1]=='^' || p[1]=='.' ) p+=2;
-			else do p++; while ( !is_separator(*p) );
-			if ( *p=='~' ) p++;
-			informed = 1; break;
-		case '\'':
-			p = prune_char( p );
-			informed = 1; break;
-		case '/':
-			p = prune_regex( p );
-			informed = 1;
-			break;
-		case '|':
-			informed = 0;
-			p++; break;
-		case ',':
-		case ')':
-			goto RETURN;
-		case '"':
-			p = prune_format( p );
-			informed = 1; break;
-		default:
-			do p++; while ( !is_separator(*p) );
-			informed = 1; } }
-RETURN:
-	if (( candidate )) return candidate;
-	else return p; }
+	switch ( *p ) {
+	case '(':
+		return prune_term( p+1, PRUNE_TERM );
+	case '?':
+		for ( listItem *stack = NULL; ; ) {
+			p = prune_term( p+1, PRUNE_FILTER );
+			switch ( *p ) {
+			case '?': addItem( &stack, p ); break;
+			case ':': if (( stack ) && p[1]!=')' ) {
+					popListItem( &stack );
+					break; }
+				else freeListItem( &stack );
+			default: // no break
+				return p; } }
+	case ':':
+		do p=prune_term( p+1, PRUNE_TERM ); while (*p=='?');
+	default: // no break
+		return p; } }
 
 //---------------------------------------------------------------------------
 //	prune_sub
