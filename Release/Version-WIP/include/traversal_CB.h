@@ -27,6 +27,8 @@ static char *user_traversal( char *expression, BMTraverseData *traversal, int fl
 		switch ( pruneval ) {				\
 		case BMCB_FILTER:				\
 			p = p_prune( PRUNE_FILTER, p );		\
+			if ( strmatch("({",*p) )		\
+				traversal->done = 1;		\
 			f_cls; break;				\
 		case BMCB_TERM:					\
 			p = p_prune( PRUNE_TERM, p );		\

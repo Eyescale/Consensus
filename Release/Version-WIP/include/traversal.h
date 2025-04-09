@@ -31,9 +31,6 @@ CB_RegisterVariableCB		f_set( INFORMED )
 				else do p++; while ( !is_separator(*p) );
 				break;
 			case '{':
-				if ( is_f(INFORMED) && BASE && p[-1]==')' ) {
-					traversal->done = 1; // forescan sub-expr
-					break; }
 CB_BgnSetCB			f_push( stack )
 				f_reset( SET|FIRST, 0 )
 				p++;
@@ -182,9 +179,6 @@ CB_ModCharacterCB				f_set( INFORMED )
 						p++; } }
 				break;
 			case '(':
-				if ( is_f(INFORMED) && BASE && p[-1]==')' ) {
-					traversal->done = 1; // forescan sub-expr
-					break; }
 				if ( p[1]==':' ) {
 					if ( (mode&LITERAL) && !is_f(SUB_EXPR)) {
 CB_LiteralCB					f_set( INFORMED )
@@ -231,11 +225,10 @@ CB_EndPipeCB				f_pop( stack, 0 ) }
 					traversal->done = 1;
 					break; }
 				f_next = cast_i((*stack)->ptr);
-CB_CloseCB			f_pop( stack, 0 );
+CB_CloseCB			f_pop( stack, 0 )
 				p++; // move past ')'
 				if ( !(mode&TERNARY) && strmatch("({",*p) ) {
-					p = p_prune( PRUNE_TERM, p );
-					f_set( INFORMED )
+					traversal->done = 1;
 					break; }
 				else if ( *p=='|' ) {
 					f_set( INFORMED )

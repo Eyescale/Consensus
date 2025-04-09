@@ -101,15 +101,12 @@ qb_next( CNDB *db, listItem **stack ) {
 	if ( !*stack ) return NULL;
 	listItem *i = (*stack)->ptr;
 	CNInstance *e = i->ptr;
-	for ( i=e->as_sub[ 0 ]; i!=NULL; i=i->next ) {
-		if ( e=i->ptr, !db_private( 0, e, db ) ) {
-			addItem( stack, i );
-			return e; } }
-	while (( i=popListItem( stack ) )) {
-		if (!( i=i->next )) continue;
-		if ( e=i->ptr, !db_private( 0, e, db ) ) {
-			addItem( stack, i );
-			return e; } }
+	for ( i=e->as_sub[ 0 ]; i!=NULL; i=i->next )
+		if ( e=i->ptr, !db_private(0,e,db) )
+			return ( addItem(stack,i), e );
+	while (( i=popListItem( stack ) ))
+		if (( i=i->next ) && ( e=i->ptr, !db_private(0,e,db) ))
+			return ( addItem(stack,i), e );
 	return NULL; }
 
 //---------------------------------------------------------------------------
@@ -244,7 +241,7 @@ static inline int is_multi( char *pv ) {
 //---------------------------------------------------------------------------
 //	xp_verify	- also invoked by eeno_query.c: bm_eeno_scan()
 //---------------------------------------------------------------------------
-static inline void op_set( int, BMTraverseData *, CNInstance *, char *, int );
+static inline void op_set( BMTraverseData *, int op, CNInstance *, char *, int );
 static inline void push_mark_sel( char *, listItem **, listItem ** );
 static inline void pop_mark_sel( listItem **, listItem ** );
 static inline CNInstance * star_sub( CNInstance *, CNDB *, int exp );
@@ -319,7 +316,11 @@ db_outputf( db, stderr, "xp_verify: %$ / candidate=%_ ........{\n", p, x );
 						p++; break;
 					case 6: case 7: // start past opening '%((?,...):' of %((?,...):list)
 						p+=9; break; } }
-			op_set( op, &traversal, x, p, success );
+			else if ( op==END_OP )
+				switch ( *p ) {
+				case ':': if ( success ) p++; break;
+				case '(': case '{': op_end(data); goto POST_OP; }
+			op_set( &traversal, op, x, p, success );
 			//----------------------------------------------------------
 
 				p = query_traversal( p, &traversal, flags );
@@ -421,7 +422,7 @@ POST_OP:
 	return success; }
 
 static inline void
-op_set( int op, BMTraverseData *traversal, CNInstance *x, char *p, int success )
+op_set( BMTraverseData *traversal, int op, CNInstance *x, char *p, int success )
 /*
 	Note: we cannot use exponent to track scope, as no exponent is
 	pushed in case of "single" expressions - e.g. %(%?:(.,?))
@@ -489,8 +490,7 @@ x_sub( CNInstance *x, listItem *exponent, listItem *base ) {
 
 static inline char *
 prune( char *p, int success ) {
-	p = p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 );
-	return ( p[0]==':' ? p+1 : p ); }
+	return p_prune(( success ? PRUNE_FILTER : PRUNE_LEVEL ), p+1 ); }
 
 //===========================================================================
 //	query_traversal
