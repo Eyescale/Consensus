@@ -1,5 +1,5 @@
 Name
-	Consensus Programming Language (B%) version 2.1	[ BETA ]
+	Consensus Programming Language (B%) version 2.1
 
 Usage
 	./B% program.story
@@ -7,25 +7,26 @@ Usage
 	./B% -f file.ini program.story
 
 Description
-	The purpose of the B% Version-2.1 development was to complete
-	the ./Examples/1_Schematize/yak.story example and demonstrate
-	how user input can be turned into useful and B% specifiable
-	program data & actions after segmentation.
+	B% Version-2.1 aimed at completing and turning the Version-1.2
+	./Examples/1_Schematize/yak.story into a complete Service Package,
+	to be used by other B% applications.
 
-	This objective required the capability from B% to extract relevant
-	sub-sequences from the segmentized input and pass them as arguments
-	to appropriate functions* for further processing.
+	The example itself demonstrates how text input can be turned into
+	externally specifiable program data & actions after segmentation,
+	based on the B% capability to extract relevant sub-sequences from
+	the segmentized input and pass them as arguments to appropriate
+	"functions" for further processing.
 
-	The NEW ./Examples/4_Yak/yak.bm service package together with
-	the NEW ./Examples/5_Dial/dpu-drive.story example effectively
-	demonstrate implementation of the targeted capability, based on
-	the B% Version-2.1 New Features and Extensions described below.
-
-	*we use the term function here only to characterize the desired
-	capability, the notion of service interface better representing
+	We use the term "function" here only to characterize the desired
+	capability, the notion of Service Interface better representing
 	both the B% execution model and Consensus's generally targeted
 	client-server architecture - see ./design/story/func.story for
 	a general B% Version-2.1 software architecture overview
+
+	The NEW ./Examples/4_Yak/yak.bm service package, used by
+	the NEW ./Examples/5_Dial/dpu-drive.story example, demonstrate
+	successful completion of the targeted capability, relying on
+	the following B% Version-2.1 New Features and Extensions
 
 New Features and Extensions
 New Features
