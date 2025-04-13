@@ -1,0 +1,55 @@
+Objective
+	clarify BMContext data structure esp. regarding locales stack
+	and context's perso variable usaage
+Contents
+	a BMContext is a Registry of [ name, value ] entries whose "."
+	entry->value holds the locales stack, each element of which
+	is a Registry whose "." entry, when set, holds the context's
+	perso variable value.
+Programming Interface
+	bm_context_actualize
+		set locales values from narrative proto
+		sets current perso's value to parameter value -
+		except in case of function invokation (cf. cell.c)
+	bm_context_release
+		reset whole locale stack to base with only perso
+		value set to BMContextSelf
+	bm_context_push( ctx, ".", value )
+		push locales stack, and registers value if not NULL
+		as perso - if value is NULL perso is not touched
+	bm_context_pop( ctx, "." )
+		pop locales stack
+	bm_vmark
+		push locales stack, with no change in perso
+	bm_context_unmark
+		pop locales stack if VMARK flag is set in BMMark
+
+	BMLocaleEntry(ctx,name)
+		returns the latest entry on the locales stack
+		corresponding to the passed name argument
+	BMContextPerso(ctx)
+		 returns the BMLocaleEntry(ctx,".")->value
+User Interface
+	in/on/per .variable: expression
+		pushes locale stack level - no change in perso - and
+		registers current expression result as locale under
+		variable name in current locales stack level
+		locales stack is popped along with narrative level
+	.locale declaration instantiates (perso,locale) and registers
+		locale as (perso,locale) in current context locales
+	do .locale instantiates (perso,locale) in CNDB with no effect
+		on locales stack
+	
+	TBD:
+	We could forbid do .identifier - vs. do .( identifier ) -
+	instantiation to avoid ambiguity such as
+		.locale		// declares locale variable as (perso,locale)
+		do .locale	// here instantiates (perso,(perso,locale))
+		in .locale: expression // *
+			...
+
+	* pushes and registers locale regardless of previous definition
+
+
+
+

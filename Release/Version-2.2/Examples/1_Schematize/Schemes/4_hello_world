@@ -1,0 +1,11 @@
+#	Yak scheme definition file:
+#		((identifier,%), (a,(b,...((%,id),...(z,'\0')))) )
+#		((base,%), ((%,identifier),'\0') )
+#	Assumed to be used in conjunction with schematize, as in
+#		./%B -f Schemes/file schematize < input
+
+	((h,%), (h,(e,(l,(l,(o,'\0'))))) )
+	((w,%), (w,(o,(r,(l,(d,'\0'))))) )
+	((g,%), ((%,h),(',',(' ',((%,w),'\0')))) )
+	((base,%), ((%,g),'\0') )
+

@@ -1,0 +1,5 @@
+
+	on init
+		do >:%(.,...)
+	else
+		do exit

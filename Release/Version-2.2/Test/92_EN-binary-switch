@@ -1,0 +1,13 @@
+
+	on init
+		do : toto : titi
+	else on : toto : ?
+//		en .( *toto:titi ? ON : OFF )( %? )
+		en .( *toto:tata ? ON : OFF )( %? )
+		do exit
+
+.: ON( .arg )
+	do >"%_ ON\n": arg
+
+.: OFF( .arg )
+	do >"%_ OFF\n": arg

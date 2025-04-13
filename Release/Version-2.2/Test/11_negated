@@ -1,0 +1,12 @@
+#define DEPRECATED
+#ifdef DEPRECATED
+	on init
+		do >"***** This test is deprecated\n"
+		do exit
+#else
+	on init
+		do ((*,toto),tata)
+	else in ( ~(*,?), tata )
+		do >"found:%_\n": %?
+		do exit
+#endif

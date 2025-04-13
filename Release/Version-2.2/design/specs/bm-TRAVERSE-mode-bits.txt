@@ -1,0 +1,52 @@
+
+bm_traverse mode init and usage
+	mode initialized as traverse_data.done = bitwise combination of
+
+	TERNARY		=> 1. on '<' continues vs. terminating traversal
+			   2. skips ellipsis
+	INFORMED	=> on '(' p_single() is not called by bm_traverse()
+	LITERAL		=> on '(:' invokes p_prune( PRUNE_LITERAL, p )
+	SUB_EXPR	=> 1. passes ellipsis as wildcard
+			   2. overrides LITERAL mode setting
+	ASSIGN		=> 1. passed by bm_assign() as bm_traverse's flags
+			      argument (first pass only)
+			   2. on '|' continues vs. terminating traversal
+	CARRY		=> 1. passed by bm_assign() during inform_carry()
+			   2. on '|' continues vs. terminating traversal
+
+	Note about parser.c
+	. PROTECTED flag prevents expression from being FILTERED and literals
+	  from being used as ternary guards
+
+Complete table of mode vs. traverse_data.done flags
+	The table below indicates whether to interprete (:_) as STATE or LITERAL
+	if such question is relevant (N/A otherwise)
+
+X	deternarize_traversal		INFORMED|TERNARY	[STATE/LITERAL]
+N/A	eeno_query_traversal		0			[STATE]
+N/A	eenov_traversal			0			[STATE]
+X	fprint_expr_traversal		INFORMED|TERNARY	[STATE/LITERAL]
+X	instantiate_traversal		INFORMED[|ASSIGN|CARRY]	[LITERAL]
+X	locate_emark_traversal		SUB_EXPR		[STATE]
+X	locate_mark_traversal		SUB_EXPR		[STATE]
+X	locate_pivot_traversal		0			[STATE]
+X	query_traversal			0			[STATE]
+
+	Basically literals are found only in instantiation but deternarize()
+	needs to know what the expression is for => uses flag LITERAL which
+	in case of DO is passed to deternarize() allowing it to know whether
+	to skip or enter (:_)
+
+	Note that TERNARY mode is used to traverse the whole expression and
+	enter every (_) and {_} and <_> (here in reverse order) as the main
+	use case is to deternarize expression.
+
+Active / inactive / contrary:
+
+	on ~.		always fails - needed for ternary
+
+	on .		means active
+	on ~.: .	means inactive / quiet
+	on ~( . )	means any released
+	on ~.:~( . ) 	means none released
+

@@ -1,0 +1,79 @@
+:
+	en %( list, ... )
+	on init
+		do >"Usage: ./B%% -p Test/syntax\n"
+		do exit
+	else in %(((*,%(((*,titi),.),...):(.,(.,toto))),.),...):(.,(.,tutu)) // titi.toto.tutu
+	else in %(((*,titi),.),...):(.,(.,toto)) // titi.toto
+		do > "hello"
+		do !! | toto
+		do : titi : !! | toto
+	else in (titi,(:toto))
+	else in toto
+		do : toto : !! Toto
+		do : titi
+		do ((alpha,...),<a,%(b,?),c>)
+		do :<
+		do input:<
+		do input:"asldkj"<
+		do input: <
+		do input,"asldkj"<
+		do :<
+		do identifier~
+		do ( titi ? ~toto : tata ? ~titi :)
+		do >"asd":< alpha,
+			beta >
+		do ( toto, %<!:(.,~(.,toto))> )
+		do ( titi, %<?> )
+		do ( *.( toto ), titi )
+		do %(?:(toto,titi)) @<
+		do { asdlkj, alsdkj } ~<
+		do : toto : !! world (
+			baby, .titi
+			tutu
+			) ~<
+		on toto:. < ?:tata
+			do >"bingo\n"
+		do (:titi:)
+		do ( titi, (( toto, ... ):asdlkjasd:) )
+		in ( toto ? tata ? titi : roro : titi )
+		else in ( toto ? tata ? titi : roro )
+		else in ( toto ? tata ? titi ? tutu :)
+		else do : ~titi : ~( tutu, tata )
+		do ( { tata, toto }, titi )
+		do ~.	// nop
+	else on ~( signal )
+	else in ( titi ?: tata )
+	else in ( expr1 ? expr2 ? expr3 :: expr4 )
+		do ( titi ? tutu ? a~ : b~ )
+	else on ~.:((*,titi),toto)
+		do >"~.: gotcha\n"
+	else in : titi : ~.
+		do >"in :titi:~.\n"
+	else in ?:%( titi ?: tata )
+		do : toto : %( tutu ? toto : titi )
+		do %( titi ? toto :)
+	else on ((*,input), . )
+		do >"read: %s\n": *input
+		do titi~
+	else in ( *, input )
+		in alpha
+		else do toto~
+	else in %<?:~'\0'>
+		do : p : %<?:((?,.),.)>
+	else in ( toto, %( list, ?:... ) )
+	else in %<((tata,(!,.)),?:...)>
+		do (( toto, ... ), titi )
+	else in %(( titi, . ), ... )
+	else in %(( ?, ... ) : expression )
+		do ( toto, (titi,%@) )
+		do %?~
+		do %!~
+	else in :titi
+	else
+		do ( toto, $((titi,~.),?:...) )
+		do ( $(toto,?:...), titi )
+		do exit
+
+:( %%, ... )
+	do >"hi\n"

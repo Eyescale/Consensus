@@ -1,0 +1,56 @@
+Synopsis
+	Consensus B% Version-2.0 classes & dependency diagram
+
+Overview
+	We have
+
+		CNProgram:[ story:CNStory, threads:[ active:{CNCell}, new:{CNCell} ] ]
+
+	where
+		CNStory:Registry(CNStoryEntry:[ name, narratives:{ CNNarrative } ])
+		where
+			CNNarrative:[ proto:char*, root:CNOccurrence ]
+			where
+				CNOccurrence:[ data:[ type, expression ], sub:{CNOccurrence} ]
+
+	and
+		CNCell::CNEntity( [ entry:CNStoryEntry, carry:{} ], ctx:BMContext )
+		where
+			BMContext:Registry(CNRegisterVariable:[ name, value ])
+			where
+				BMContextId( ctx ): registryLookup( ctx, "" )->value
+					BMContextSelf( ctx ): BMContextId( ctx )->name
+					BMContextParent( ctx ): BMContextId( ctx )->value
+				BMContextDB( ctx ): registryLookup( ctx, "%" )->value
+				BMContextPerso( ctx ): registryLookup( ctx, "." )->value
+				BMContextActive( ctx ): registryLookup( ctx, "@" )->value
+
+Description
+	Visualizing the CNCell entity in its entirety we have
+
+		this:CNCell:CNEntity:[
+			sub:contents:[
+				nucleus:[
+					entry,
+					carry ],
+				ctx ],
+			as_sub:connections:[
+				to,
+				from ] ]
+
+	where
+		. the cell's nucleus hosts the cell's CNStory entry (DNA) as well as
+		  its progeny (production)
+		. the cell's ctx hosts the parameters of the cell's production agent -
+		  otherwise known as ribosome, and/or DNA/RNA polymerase enzyme
+		  (when it is inside the nucleus)
+		. the cell's connections to:( this, that ) are connections to cells 
+		  this cell potentially subscribes to
+		. the cell's connections from:( that, this ) are connections from cells
+		  potentially subscribing to this cell
+
+See Also
+	design/specs/bm-PROXY-considerations.txt
+	design/specs/Version-2.0-software-packages.txt
+	design/new-features-and-additions.txt
+

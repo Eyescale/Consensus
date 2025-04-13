@@ -1,0 +1,10 @@
+
+	on init
+		do >"Usage: ./B%% -p Test/52_output-carry\n"
+		do exit
+	else
+		in ~.:hex
+			do :dial,!!Dial((:0123456789:),OPT)
+		else do :dial,!!Dial((:0123456789ABCDEF:),OPT)
+		do :READY
+

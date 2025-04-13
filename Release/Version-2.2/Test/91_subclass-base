@@ -1,0 +1,7 @@
+
+: Cosystem
+	do >"hello, world\n"
+	do exit
+
+:< Cosystem
+

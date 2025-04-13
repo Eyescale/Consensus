@@ -1,0 +1,124 @@
+Overview
+	Unnamed entities cannot be written out, which prevents backup
+	and restore operations.
+
+	We shall therefore use indexes as literals, but with a twist,
+	as we want e.g.
+
+		100	to be represented as (0,(0,1)) - that is:
+			least significant digit comes first
+
+	Requirements
+		do ((...,?):%/100/)		creates (0,(0,1))
+		do $((...,?):(0,(0,1)))		creates 100 if (0,(0,1)) exists
+
+		do : index : ((...,?):%/100/)	assigns (0,(0,1)) if 100 exists
+		do >: $((...,?):*index)		outputs 100
+
+    Notes
+	$(_) same as $%(_), argument=<SCE> / SCE: Single Character Entity
+	$<_> not same as $%<_>	// EENOV
+	$_ represents the identifier corresponding to _ as < SCE >
+	%/_/ represents the < SCE > corresponding to _ as identifier
+		=> these SCE must be instantiated!
+
+	SCE Vectors are the key to converting lists, literals, and
+	identifiers into each other
+
+Specifications
+
+	%/identifier/ = < i, d, e, n, t, i, f, i, e, r >
+
+	$< i, d, e, n, t, i, f, i, e, r > = identifier
+
+		$%<(!,?:... )>
+		$%(list,?:...)
+
+	%((...,?):(a,(b,c)))	< c, b, a >
+
+	%(( ?:...:(a,(b,c)))	< a, b, c >
+	
+		$%((...,?):(a,(b,c)))	cba
+		$%(( ?:...:(a,(b,c)))	abc
+
+	do ( ..., %/abc/ )	instantiates (c,(b,a))
+	do ( ..., <a,b,c> )	likewise - LIFO
+				a -> (b,a) -> (c,(b,a))
+
+	do $%((...,?):(c,(b,a)))	abc
+
+	do ( %/abc/, ... :)	instantiates (a,(b,c))
+	do ( <a,b,c>, ... :)	likewise
+
+		do ( <a,b,c>, ... :)		(:abc)
+		do ( <a,b,c,'\0'>, ... :)	(:abc:)
+
+	To swap literal:
+		do ( %/$((...,?):(a,(b,c)))/, ... :)	creates (c,(b,a))
+		%( %/$((...,?):(a,(b,c)))/, ... :)	represents (c,(b,a))
+
+	TBD
+		As we have
+			%( list, ... )	representing
+				< list, (list,.), ((list,.),.), etc. >
+		What do
+			%( ..., (a,(b,c)) )
+				or is it %( ..., %/abc/ )
+			%( (a,(b,c)), ... :)
+				or is it %( %/abc/, ... :)
+		represent?
+
+
+Example - UIDB++ implementation in hexa
+:
+	on init
+		do :< UIDB, UIDZ >:< 0, 0 >
+		do : UIDMAX : 987
+	else in pending
+		on ~( UIDINC ) // alt. on :UIDB:?
+			do >"%$\n": %((...,?):*UIDB)
+			do ~( pending )
+//	else in ~.:: UIDM : $((...,?):*UIDB)
+	else in : UIDB : ~%( ..., %/*UIDMAX/ )
+		do UIDINC // UIDB++
+		do pending
+	else do exit
+
+:( UIDINC )
+/*
+	Assumption: UIDB and UIDZ have been initialized to 0
+*/
+	.s .o .d
+	on ( this )
+		do :< s, o >:< *UIDB, o >
+	else on : s : ( F, ? )
+		do :< s, o >:< %?, (*o,0) >
+	else on ( *s:(.,.) ? (*s:(?,.)) : (?:*s) :)
+		do : d : ( \
+			(%?:0) ? 1 :
+			(%?:1) ? 2 :
+			(%?:2) ? 3 :
+			(%?:3) ? 4 :
+			(%?:4) ? 5 :
+			(%?:5) ? 6 :
+			(%?:6) ? 7 :
+			(%?:7) ? 8 :
+			(%?:8) ? 9 :
+			(%?:9) ? A :
+			(%?:A) ? B :
+			(%?:B) ? C :
+			(%?:C) ? D :
+			(%?:D) ? E :
+			(%?:E) ? F : 0 )
+	else
+		in : d : 0 // only possible if UIDB is all F
+			do : UIDB : ( 1, *UIDZ )
+			do : UIDZ : ( 0, *UIDZ )
+		else in : s : ( ., ? )
+			do : UIDB : ((o,.) ?
+				(...,<%?,*d,%(o,?:...)>) : (*d,%?) )
+		else	//           ^-------- FILO
+			do : UIDB : ((o,.) ?
+				(...,<*d,%(o,?:...)>) : *d )
+		do this~
+

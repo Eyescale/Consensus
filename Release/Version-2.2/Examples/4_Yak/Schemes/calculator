@@ -1,0 +1,41 @@
+/*---------------------------------------------------------------------------
+|
+|			calculator Scheme
+|
++---------------------------------------------------------------------------/
+/*
+	instantiates the following rule hierarchy (from left to right):
+
+				     number -> \i
+				   /
+		              term -> ( sum )	     number -> \i
+			    /                      /
+	base -> sum -> part -> mult -> term * term -> ( sum )
+			    +                      *
+		              part                   term
+			           +                      *
+		                     ...                    ...
+*/
+	(( Rule, base ), ( Schema, {
+		(: %sum :)
+	} ))
+	(( Rule, sum ), ( Schema, {
+		(:%part:)
+		(:%sum + %part:)
+	} ))
+	(( Rule, part ), ( Schema, {
+		(:%mult:)
+		(:%term:)
+	} ))
+	(( Rule, mult ), ( Schema, {
+		(:%term * %term:)
+		(:%mult * %term:)
+	} ))
+	(( Rule, term ), ( Schema, {
+		(:%number:)
+		(:\( %sum \):)
+	} ))
+	(( Rule, number ), ( Schema, {
+		(:\i:)
+	} ))
+

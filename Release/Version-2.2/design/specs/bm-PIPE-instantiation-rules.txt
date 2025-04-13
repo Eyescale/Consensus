@@ -1,0 +1,110 @@
+TOC
+	. Piped Expression
+	. Filtered Piped Expression
+	. Implementation
+	. Example Usage
+
+. Piped Expression
+	Pipes are used in instantation expressions to allow the same term
+	to participate in multiple instantations, through the register
+	variable %|, e.g.
+
+		do ( a | pipe_expr, b )	%| in pipe_expr holds a
+		do ( a, b | pipe_expr )	%| in pipe_expr holds b
+		do ( c | pipe_expr )	%| in pipe_expr holds c
+
+	where pipe_expr is an expression accessing (or not) the register
+	variable %|, which holds the results of the pre-pipe expression
+
+	Note that the piped expression's results are always discarded at
+	the end of the current pipe scope (except in case of filter pipe,
+	see below), so that e.g.
+			do ( a | piped, b )
+		will effectively instantiate { (a,b), piped }
+	and likewise
+			do ( a | piped1 | piped2, b )
+		will effectively instantiate { (a,b), piped1, piped2 }
+	whereas e.g.
+			do ( a | ( piped1 | (%|,piped2) ), b )
+		will effectively instantiate { (a,b), (piped1,piped2) }
+
+. Filtered Piped Expression
+
+		do ( a | pipe_expr :| filter_pipe_expr, c ) 
+
+	allows pipe_expr results to be passed on to filter_pipe_expr as
+	both the value of the register variable %| and the current piped
+	expression results, to be discarded at the end of the current
+	pipe scope (barring additional filter pipe expression), so that
+	in e.g.
+		do ( a | b :| c )	%| in c holds b
+	vs.	do ( a | b | c )	%| in c holds a
+
+	Note that if the expression is not already piped, the filter pipe
+	expression :| will push a new pipe on the stack functioning the same
+	way as a regular pipe expression | except in a FORE loop context, in
+	which case :| assigns the last iteration results to %|, and eventually
+	passes the last iteration result as both current piped expression
+	results and the value of the register variable %| to what comes next,
+	e.g.
+		do ( a:| piped, b )	same as ( a | piped, b )
+		do ( ?:(_)(a):| b )	%| in b holds a's last results
+
+	Conversely ( ?:(_)(a) | b ) %| in b holds all loop instantiated results,
+	instead of only the results from the last iteration in
+		do ( ?:(_)(a):| b )
+
+. Implementation
+	in parser.c
+		in "expr" or ":", on '|'
+			if is_f(PIPED) do not push pipe
+	in include/traversal.h
+		case '|'
+			// tag case handled separately
+			if is_f(PIPED) do not push pipe
+		case ':'
+			// filter_CB handles filter pipe
+			need to detect if ":|" then
+			if !is_f(PIPED)
+				push & set PIPED flag => end_pipe_CB
+				Note: filter_CB must also check ":|"
+				to actually inform %| and push results
+		case ')'
+			// loop_CB handles filter pipe
+			need to detect if "):|" then
+			if !is_f(PIPED)
+				push & set PIPED flag => end_pipe_CB
+				Note: loop_CB must also check ":|" to
+				actually inform %| and push results
+		Note: PIPED flag is cleared on ( or {
+	in instantiate.c
+		bgn_pipe_CB:
+			if already piped => just replace %| value [*]
+			otherwise push data->result[ NDX ] on pipe
+			Note that bm_context_push( ctx, "|", value ) will
+			push pipe register variable regardless of value,
+			which is what we want in case of NULL
+		end_pipe_CB:	
+			free current pipe results if not originally pushed
+		filter_CB:
+		loop_CB:
+			detect and handle filter pipe if there is,
+			then if !is_f(PIPED) branch over to bgn_pipe_CB
+			otherwise replace %| value with data->sub[ NDX ]
+
+		[*] the previous value must be freed if !=data->results->ptr
+
+. Example Usage
+	in Examples/6_System/system.story we use
+
+		do ( '\0' | ?:(_)(%|,%?):| {_,_} )
+
+	to create a reverse-ordered null-terminated character list from
+	a regular one, and assigning the newly created list to *tab and
+	the variable that
+
+		do ( '\0' | ?:%((?,...):*s):(.,?) (%|,%?):| {
+				((*,*tab), ((.(*tab),~.),(%?,%|))),
+				((*,that),%|) } )
+
+

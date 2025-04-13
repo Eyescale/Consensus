@@ -1,0 +1,18 @@
+Objective
+	clarify mark setting in context
+Description
+	the register variables %! %? and eenov %<!> %<?> %< are set
+	in operation from the occurrences
+		in expression( marked )
+		on expression( marked )
+		on expression( marked ) < src( marked )
+		per expression( marked ) < src( marked )
+	where
+		marked signifies that ? is used
+
+	in operation.c: in_condition(), on_event(), on_event_x()
+	the expression is processed:
+		first, by bm_feel which treats ? as .
+		then, if results are found, by bm_mark() which
+		returns the mark's type and exponent - or NULL if not marked
+

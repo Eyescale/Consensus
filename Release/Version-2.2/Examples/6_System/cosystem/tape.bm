@@ -1,0 +1,187 @@
+#include "../include/cosystem.bm"
+
+//===========================================================================
+//		TM.system: tape Cosystem's narrative
+//===========================================================================
+: tape < Cosystem
+
+//---------------------------------------------------------------------------
+//		tape Cosystem's actions sub-narratives
+//---------------------------------------------------------------------------
+: "tape initializes start=point cell and default symbol"
+# > "point cell has right cell"
+# > "point cell has left cell"
+	on activation
+		do : start : !! Cell( ((*,symbol),0) )
+	else on : start : ?
+		do : point	: %?
+		do : left	: ~.
+		do : right	: ~.
+		do : leftmost	: %?
+		do : rightmost	: %?
+	else on : point : ?
+		en point_check( %? )
+
+: "starting with leftmost cell"
+# > "caller is start cell"
+# > "caller is point cell"
+# > "caller has right cell"
+	on activation
+		do : caller : *leftmost
+	else on : caller : ?
+		en call_check( %? )
+
+: "output start symbol '|'"
+# > &
+	on activation
+		do > "|"
+		deactivate
+
+: "output space"
+# > &
+	on activation
+		do > " "
+		deactivate
+
+: "output blank"
+# > &
+	on activation
+		do > " "
+		deactivate
+
+: "output caller's symbol"
+# > &
+	on activation
+		do ( *caller, symbol )
+	else on ~( %%, symbol ) < ?
+		do >"%_": %<(!,?)>
+		deactivate
+
+: "call shifts to right cell"
+# > "caller is start cell"
+# > "caller is point cell"
+# > "caller has right cell"
+	on activation
+		do ( *caller, right )
+	else on ~( %%, right ) < ?
+		do : caller : %<(!,?)>
+	else on : caller : ?
+		en call_check( %? )
+
+: "output CR"
+# > &
+	on activation
+		do > "\n"
+		deactivate
+
+: "tape communicates point cell's symbol to head"
+# > &
+	on activation
+		do ( *point, symbol )
+	else on ~( %%, symbol ) < ?
+		do (( *head, symbol ), %<(!,?)> )
+		deactivate
+
+: "tape updates point cell's symbol from head's passed symbol"
+# > &
+	on ~( %%, symbol ) < ?:*head
+		do (( *point, set ), %<(!,?)> )
+		deactivate
+
+: "point shifts to right cell"
+# > "point cell has left cell"
+# > "point cell has right cell"
+# > "point is set"
+	on activation
+		do : point : *right
+		do : left : *point
+	else on : point : *rightmost
+		do : right : ~.
+		en point_check( *point )
+	else on ~( %%, right ) < ?
+		do : right : %<(!,?)>
+		en point_check( *point )
+
+: "point shifts to left cell"
+# > "point cell has left cell"
+# > "point cell has right cell"
+# > "point is set"
+	on activation
+		do : point : *left
+		do : right : *point
+	else on : point : *leftmost
+		do : left : ~.
+		en point_check( *point )
+	else on ~( %%, left ) < ?
+		do : left : %<(!,?)>
+		en point_check( *point )
+
+: "allocate new left cell"
+# > &
+	on activation
+		do : leftmost : !! Cell(
+			((*,symbol),0), ((*,right),*leftmost) )
+	else on : leftmost : ?
+		do : left : %?
+		deactivate
+
+: "allocate new right cell"
+# > &
+	on activation
+		do : rightmost : !! Cell(
+			((*,symbol),0), ((*,left),*rightmost) )
+	else on : rightmost : ?
+		do : right : %?
+		deactivate
+
+//---------------------------------------------------------------------------
+//	call_check / point_check
+//---------------------------------------------------------------------------
+.: call_check( .caller )
+	in ?: "caller is start cell"
+		en .( caller:*start ? ON : OFF )( %? )
+	in ?: "caller is point cell"
+		en .( caller:*point ? ON : OFF )( %? )
+	in ?: "caller has right cell"
+		en .( caller:*rightmost ? OFF : ON )( %? )
+	deactivate
+
+.: point_check( .point )
+	in ?: "point cell has left cell"
+		en .( point:*leftmost ? OFF : ON )( %? )
+	in ?: "point cell has right cell"
+		en .( point:*rightmost ? OFF : ON )( %? )
+	in ?: "point is set"
+		en .ON( %? )
+	deactivate
+
+//---------------------------------------------------------------------------
+//	Cell
+//---------------------------------------------------------------------------
+: Cell
+	on init
+	else on : rightmost : ? < ..
+		in ~.: *right
+			on ~.:: point : . < ..
+				do : right : %<?>
+	else on : leftmost : ? < ..
+		in ~.: *left
+			on ~.:: point : . < ..
+				do : left : %<?>
+	else on : point : %% < ..
+		on : left : . < .. // left known => communicate right
+			in : right : ?
+				do (( .., right ), %? )
+		else on : right : . < .. // right known => communicate left
+			in : left : ?
+				do (( .., left ), %? )
+	else on ~( %%, right ) < ..
+		do (( .., right ), *right )
+	else on ~( %%, symbol ) < ..
+		do (( .., symbol ), *symbol )
+	else on ~( %%, set ) < ..
+		do : symbol : %<(!,?)>
+	else on exit < ..
+		do exit
+
+

@@ -1,0 +1,20 @@
+/*
+	ISSUE:  do : toto : !! | { ( ^^, titi ), ( *^^, tata ) }
+		( *^^, tata ) will not show on its own
+		as UBE not in DBLog
+*/
+	on init
+		do ( cosystem, { A, B, C } )
+	else on cosystem
+		do :%( cosystem, ? ): !! | {
+			(( handle, *^^ ), ^^ ),
+			?:( cosystem, ?:~(^^) ) (( connection, ^^ ), *^%? ) }
+	else
+		// note: relying on stdout to serialize inputs, here
+		do >:.
+		per ( cosystem, ? )
+			do >"cosystem: %_\n\thandle for: %_\n\tconnections: %_\n":<
+				%?,
+				%((handle,?),%?),
+				%(*?:%((connection,%?),?)) >
+		do exit

@@ -1,0 +1,54 @@
+#ifndef LINENO_BM
+#define LINENO_BM
+
+// #~#	// uncomment to unpound the pounded lines below
+// ##	// uncomment to repound the pounded lines below
+
+//---------------------------------------------------------------------------
+//	LineNo
+//---------------------------------------------------------------------------
+: LineNo
+	on buffer < ..
+		// input buffer starts with '\n' of current line
+		do ( c, ~. )
+	else on : input : ? < ..
+		in c:~%(?,.) // ignore input buffer's leading '\n'
+			do ( c, 0 )
+		else in nl // pending new line's first character
+			in %<?:'\n'>
+#				do >"l+1c1\n"
+			else do { ~( nl ), ((c,~.),1) }
+			en increment( l )
+		else in c
+			in %<?:'\n'>
+#				do >"l%$c%$\n":< %(l,?:...), %(c,?:...) >
+				do nl
+			else en increment( c )
+		else
+			in %<?:'\n'>
+#				do >"l1c1\n"
+				do nl
+			else do (c,1)
+			do (l,1)
+	else on : .. : line < ..
+		do (((..,l),...), %(l,?:...))
+	else on : .. : err < ..
+		do ((( .., l ), ... ),< %(l,?:...), 'c', %(c,?:...) >)
+	else on : .. : ~. < ..
+		do exit
+	else on exit < ..
+		do exit
+
+.: increment( .N )
+	// for each subsequence in %(N,...) not ending with 9
+	per ?: %((N,.),...):(.,~9)
+		// which is not itself part of a sequence ending with not 9
+		in ~.: %((%?,.), ... ):( ., ~9 )
+			// replace last subsequence's digit with digit successor in dial
+			// Assumption: No (digit,(.,.)) instance exists other than in dial
+			do ( (( %?::(?,.), ~. ), %( %?::(.,?), (?,.) )) | ?:%(%?,?:...) (%|,0):| )
+	else in ?: N // either all %(N,...) digits are 9 or N has no digit association
+		// replace N's all successor digits with 0, preceded by 1
+		do ((( %?, ~. ), 1 ) | ?:%(%?,?:...) (%|,0):| )
+
+#endif // LINENO_BM

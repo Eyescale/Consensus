@@ -1,0 +1,69 @@
+About main
+	Intuitively we would expect the code to read
+
+		do cnOperate(threads); while ( cnSync(threads) );
+
+	Operations however are actually only performed upon cnSync(threads)
+	So we have
+		
+		do cnSync(threads); while ( cnOperate(threads) );
+	Where
+		cnSync() performs
+			for all active cells
+				invoke bm_context_update( cell )
+				add cell to out if DBExitOn()
+			for all new cells
+				invoke bm_context_init( cell )
+				move cell to active
+			for all out cells
+				mark cell out
+
+		cnOperate() performs
+			for all active cells
+				if cell marked out
+					clip cell from active
+				else
+					invoke bm_cell_operate( cell, story )
+					add cell->carry to new
+			for all marked out cells
+				release cell
+			return ((*active)||(*new));
+
+	do exit operation, in particular, which sets DBExitOn(), only takes effect
+	during the following cnSync(), where the cell is marked out - via
+		*BMCellCarry(cell) = (void*) cell // HACK: see bm_cell_update()
+	- to be released only at the end of the next cnOperate() so that other
+	cells can access its last events (including exit) during that frame
+
+About interactive
+	prior to cnOperate, we have
+						            v---- carry   v---- new
+	CNProgram *threads:[ story, [ active:{ cell:[[entry,NULL],ctx] }, NULL ] ]
+			     ^------- narrative ------^           ^----- CNDB
+			      entry:[ identifier, { sub:[proto,root] } ]
+
+	So we can access any of the active CNDB and narratives there
+
+	We only allow one Main cell per process, which in the case of interactive
+	B% execution we put under user control - that is: ./B% -i allows the user
+	to specify the Main narrative every frame, as either
+
+		=> one do operation
+		=> multiple (in-on-do-else-...) operations
+			need cmd to enter/exit mode edition => done?
+		=> set breakpoint
+			need command to relinquish control
+			need operation to restore control
+			interruption?
+		=> input/output file
+			narrative/sub-narrative definition
+			command
+			data
+			etc.
+
+	Notes
+	. must start thinking in terms of web-interface
+		=> html-formatting results?
+	. eventually we want to support multi-processing
+		=> join running program - interface TBD
+

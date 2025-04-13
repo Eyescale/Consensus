@@ -1,0 +1,21 @@
+
+	on init
+		do !! class()
+#define Q_SRC
+#ifndef Q_SRC
+	else on ( hello, ? ) < .
+//		do >:%<?>
+		do >:%<(!,?)>
+		do exit
+#else
+	else on hello < ?
+#		do >: %<!>
+#		do >: %<((!,.),?)>
+		do >: %<(!,?:...)>
+		do exit
+#endif
+: class
+	on init
+		do (( hello, world ), tti )
+		do exit
+

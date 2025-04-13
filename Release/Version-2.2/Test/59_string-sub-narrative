@@ -1,0 +1,11 @@
+
+	on init
+		do : string : "hello, world"
+	else
+		en *string
+
+:"hello, world"
+	on ( this )
+		do >: this
+		do exit
+

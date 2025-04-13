@@ -1,0 +1,10 @@
+
+	on init
+		do : a : b
+	else on a
+		do : b : c
+	else
+		in **a: c
+			do >"alright\n"
+		do exit
+

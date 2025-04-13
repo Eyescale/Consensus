@@ -1,0 +1,11 @@
+
+	on init
+		do !! Child()
+	else on ?:((.,.),.) < .
+		do >"%_\n":%<?:((?,.),.)>
+		do exit
+
+:Child
+	on init
+		do ((titi,toto),tata)
+		do exit

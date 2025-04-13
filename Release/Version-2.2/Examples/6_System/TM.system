@@ -1,0 +1,97 @@
+
+# The following pseudo-narrative allows us to inform our data structure
+# Note that '&' stands for the last specified action occurrence
+
+in "init"
+	on "init"
+		do "head initializes state and registry"
+		 > "head's state is Halt"
+		do "tape initializes start=point cell and default symbol"
+		 > "point cell has right cell"
+		 > "point cell has left cell"
+	off &
+		cl "init" do "rollcall"
+
+else in "rollcall"
+	on "rollcall"
+		do "starting with leftmost cell"
+		 > "caller is start cell"
+		 > "caller is point cell"
+		 > "caller has right cell"
+	off &
+		do "callout"
+
+	in "caller is start cell"
+		on "callout"
+			do "output start symbol '|'"
+	in "caller is point cell"
+		in "caller is start cell"
+			off &
+				do "output head's state"
+		else on "callout"
+			do "output head's state"
+		off &
+			do "output caller's symbol"
+	else
+		in "caller is start cell"
+			off "output start symbol '|'"
+				do "output blank"
+		else on "callout"
+			do "output blank"
+		off &
+			do "output caller's symbol"
+
+	in "caller has right cell"
+		off &
+			do "output space"
+			do "call shifts to right cell"
+			 > "caller is start cell"
+			 > "caller is point cell"
+			 > "caller has right cell"
+		off &
+			do "callout"
+	else
+		off "output caller's symbol"
+			do "output CR"
+		off &
+			in "head's state is Halt"
+				do "exit"
+			else cl "rollcall" do "operation"
+
+else in "operation"
+	on "operation"
+		do "tape communicates point cell's symbol to head"
+	on &
+		do "head looks up registry entry corresponding to "
+		   "tape's passed symbol and current head's state"
+	off &
+		do "head updates its own state from entry's state"
+		 > "head's state is Halt"
+		do "head informs shift direction from entry's direction"
+		 > "shift right"
+		 > "shift left"
+		do "head communicates entry's symbol to tape"
+	on &
+		do "tape updates point cell's symbol from head's passed symbol"
+	off &
+		in "shift right"
+			in "point cell has right cell"
+				do "point shifts to right cell"
+				 > "point cell has left cell"
+				 > "point cell has right cell"
+				 > "point is set"
+			else do "allocate new right cell"
+		else in "shift left"
+			in "point cell has left cell"
+				do "point shifts to left cell"
+				 > "point cell has left cell"
+				 > "point cell has right cell"
+				 > "point is set"
+			else do "allocate new left cell"
+	off "allocate new right cell"
+		do "point shifts to right cell"
+	off "allocate new left cell"
+		do "point shifts to left cell"
+	on "point is set"
+		cl "operation" do "rollcall"
+

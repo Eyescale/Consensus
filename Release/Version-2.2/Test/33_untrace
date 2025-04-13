@@ -1,0 +1,11 @@
+
+#~#	// %?~ only deprecates what is not referenced elsewhere
+
+	on init
+		do : this : toto
+#		do ( a, (*,this) )
+	else on ?: ((*,this),toto)
+		do %?~
+	else
+		do >"all: %_\n": .
+		do exit

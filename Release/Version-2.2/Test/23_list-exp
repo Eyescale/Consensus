@@ -1,0 +1,12 @@
+
+	on init
+		do (((((( list, titi ), tata ), tutu ), toto ), zack ), gideon )
+		do ( toto, tutu )
+	else
+#		do >"list = %_\n": %( (list,.), ?:... )
+#		do >"list = %_\n": ( %( list, ?:... ), . )
+#		do >"list = %_\n": ( ~toto, %( list, ?:... ) )
+		do >"list = %_\n": %( list, ?:... )
+		do >"toto paired with %_\n": %( toto, ?:%( list, ?:... ) )
+		do exit
+

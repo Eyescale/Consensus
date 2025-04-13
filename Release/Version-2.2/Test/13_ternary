@@ -1,0 +1,16 @@
+
+	on init
+//		do toto
+		do tata
+//		do : titi : toto
+		do : titi : tata
+//		do : titi : tutu
+	else on : titi : (?:( toto ?: tata ?: tutu ))
+		do >"PASSED 1: %_\n": %?
+//	else in ( *titi ?: toto )
+	else in ?:( toto ? *titi : tata )
+		do >"PASSED 2: %_\n": %?
+		do exit
+	else
+		do >"bye\n"
+		do exit

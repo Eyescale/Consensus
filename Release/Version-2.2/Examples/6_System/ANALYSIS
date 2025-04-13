@@ -1,0 +1,24 @@
+
+	I turn the *guard* off|on IFF I have a condition, e.g. in that case
+
+		I have a guard:
+			init		OFF
+			output		ON
+			has right cell	ON
+
+	=> the moment this condition is turned OFF, the guard is decommissioned
+	=> how come I am still able to perform:
+
+		in "output"
+			in "caller has right cell"
+				off "output caller's symbol"
+					do "call shifts to right cell"
+					 > "caller has right cell"
+				off &
+					do "callout"
+
+	It's possible because "callout" is set by system !!!!! (Wow...)
+		which receives the changes
+			: "caller has right cell" : OFF
+			: "call shifts to right cell" : OFF
+		at the same time !!!!!!!!!!!!!

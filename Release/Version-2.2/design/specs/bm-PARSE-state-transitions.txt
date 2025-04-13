@@ -1,0 +1,192 @@
+
+Consensus B% Version-WIP
+
+    parser.c: bm_parse_expr()
+	expr	expr_	base
+			""
+		\"$	expr
+			\"$\\	\"$
+		\"	expr
+			\"\\	\"
+		~	expr
+			~.	expr
+				term
+		%	expr
+			%(	expr
+			%|	expr
+				:_sub
+			%!	expr
+				:_sub
+				%!/	expr
+			%<	expr
+				%<?	expr
+				%<.	expr
+				%<:	%<.	expr
+		(	expr
+			(:
+		,	expr
+			,.	.
+				,..	expr
+					,...	expr
+						,...)	(:
+							,...),	expr
+			,?	expr
+				,?:	expr
+					,?:.	.
+						,?:..	expr
+							,?:...	expr
+		:	expr
+			/
+			:~	:
+				~
+			_,
+		:_	expr
+			\"
+			~
+			:<	expr
+			:!	!!
+		!	!!	expr
+				!!$	!!$_	expr
+		.	expr
+			term
+			.%	expr
+		^	expr
+			*^%?
+		*	*^	expr
+				*^%	*^%?	expr
+						:_sub
+			*_	expr
+				term
+		:_sub	expr
+			:sub 	expr
+				:sub_ 	expr
+					:sub
+		?	?:	expr
+				?:%	%(
+				?::	expr
+					?::_:	?::
+		%term	expr
+		term	expr
+		/_	expr
+			/_:	/_:%	%(
+		?:(_)	expr
+			?:(_)_	?:(_)
+		(:?	(:?)	expr
+		(_?	expr
+			(_?:	expr
+		(_?_:	expr
+		@	@<	expr
+		>	>:	expr
+			>&	>:
+				>\"
+			>\"	>\"%	>\"
+					>\"%(	>\"
+				>\"\\	>\"
+				>_	expr
+					>_:	expr
+		_,	_<
+			_,\"	_,\"%	_,\"
+				_,\"\\	_,\"
+				_,_	_<
+		_<	expr
+		_\\n	expr
+		|	expr
+		{_,	expr
+			_\\n
+		$	// cf. bm_parse_string below
+
+    parser.c: bm_parse_char()
+		char	char_	expr
+			char\\	char_
+				char\\x	char\\x_ char_
+
+    parser.c: bm_parse_regex()
+		/	expr
+			/\\	/
+				/\\x	/\\x_	/
+			/[	/
+				/[\\	/[
+					/[\\x	/[\\x_	/[
+
+    parser.c: bm_parse_seq()
+		(:	expr
+			(:\\	(:
+				(:\\x	(:\\x_	(:
+			(:%	(:
+				(:%$	(:
+					(:%$'	(:
+			(::	(:
+				expr
+
+    parser.c: bm_parse_string()
+		$	$(	$((	$(_
+				$(_	$(_.	$((_,	$(_.
+						$(_,	$(_,..	$(_,_	expr
+
+    parser.c: bm_load()
+	base	""
+		expr
+	expr	expr_
+		(	expr
+			(:	expr
+				(:\\	(:
+					(:\\x	(:\\x_	(:
+				(:%	(:
+					(:%$	(:
+						(:%$'	(:
+				(::	(:
+		,	expr
+			,.	.
+				,..	,...	,...)	(:
+							expr
+		term	expr
+		char	char_	expr
+			char\\	char_	expr
+				char\\x	char\\x_ char_ expr
+		|	expr
+		{_,	expr
+			_\\n
+		_\\n	expr
+	expr_	base
+		""
+
+    parser.c: bm_parse_cmd()
+	base	""
+		:
+		.
+		cmd
+		case	expr
+	.	.%	.%$	.%$_	_expr
+		.$ 	.$_
+		.$_	_expr
+			.:
+			.
+	:	.:
+		def_
+		def.	def_
+			def	def_
+				def<.	def<_
+	.:	def_
+		:\"	def_
+			:\"\\	:\"
+		:$	:$.	:_
+				def_
+		:_	def_
+			:._	:_
+				:.$	:_
+			:!_	:_
+			:%_	:_
+			:$_	:_
+	def_	base
+	cmd	%_	_expr
+		cmd_	_expr
+		else	cmd
+			_expr
+			else.
+	_expr	expr
+
+    parser.c: bm_parse_ui()
+	base	""
+		/	""
+		cmd	expr
+

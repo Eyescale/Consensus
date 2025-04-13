@@ -1,0 +1,9 @@
+
+	on init
+		do ( type, { A, B } )
+		do cmd
+	else on A
+		do : state |{ C, ~(type,(cmd?A:B)) }
+	else
+		do >:.
+		do exit

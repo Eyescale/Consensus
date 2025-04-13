@@ -1,0 +1,8 @@
+
+
+	on init
+		do : titi : ( toto, tata )
+	else in : titi :
+		(.,?)
+			do >"found: %_\n": %?
+			do exit

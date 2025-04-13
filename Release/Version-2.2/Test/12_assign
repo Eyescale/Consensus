@@ -1,0 +1,12 @@
+	on init
+		do : variable : value
+	else on : ? : value
+		do >"assigned to value: %_": %?
+		do >" - same as: %_\n": %( *?:value )
+		do : variable : ~.
+	else on : variable : ~.
+		do >"variable unassigned: last chance\n"
+	else in : variable : ~.
+		do >"unassigned it remains\n"
+		do exit
+

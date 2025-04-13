@@ -1,0 +1,6 @@
+
+	on init
+		do : a |: b
+	else
+		do >:.
+		do exit

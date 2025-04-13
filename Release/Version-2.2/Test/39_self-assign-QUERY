@@ -1,0 +1,24 @@
+
+	on init
+#		do ((:\i:)? 1 : 2 )	// bm_parse should fail
+		do : yak : !! Yak(
+			(( Rule, base ), ( Schema, (:%term:)))
+			(( Rule, term ), ( Schema, (:%test.:)))
+			(( Rule, test ), ( Schema, {
+				(:\d:)
+				(:%test\d:)	} ))
+			)
+		do : 1
+	else on (:1)
+		do >"Self-assigned: %_\n": %(:?)
+		do :( %(:1) ? 2 : 3 )
+	else on :2
+		do >"all good - Bye\n"
+		do exit
+	else
+		do >"failed\n"
+		do exit
+
+: Yak
+	on init
+		do exit

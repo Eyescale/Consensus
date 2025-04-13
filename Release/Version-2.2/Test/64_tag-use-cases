@@ -1,0 +1,45 @@
+
+	on init
+		do {	guardA |{
+				( %|, ( trigger, action )),
+				( conditionA, %| ) },
+			guardB |{
+				( %|, ( trigger, action )),
+				( conditionB, %| ) },
+			guardC |( %|, ( trigger, action )) }
+	else on action
+		// initialize Status
+		per ( ?, ( ., action ) )
+			do ( (.,%?) ? // guard has condition(s)
+				( %(?,%?), ( Status, %? )) :
+				%( %?|^guard ) )
+		do : A
+	else on : A
+		do >"active [=w/o condition]: %_\n\treleasing conditionA\n": %guard
+		do : set : conditionA
+	else on : B
+		do >"active: %_\n\treleasing conditionB\n": %guard
+		do : set : conditionB
+	else on : set : ?
+		// remove condition from guard's status & tag guard
+		do ~( %?, %( Status, .|^tag ) )
+
+		// assuming mutual exclusion: add complementary condition
+		// and decommission guards
+		in %?:conditionB
+			do > "\tdecommissioning %_\n": %(conditionA,?)
+			do ( %?, %( Status, %(conditionA,?)|^guard~ ) )
+	else in : .
+		// flush tag list and enrol tagged guard if status-free
+		.%tag~:{ ^.:~%(.,(Status,?))|^guard }
+		do :( %(:A) ? B :)
+	else
+		do >"active: %_\nSystem status:\n"
+			"\tcondition-free: %_\n"
+			"\tstatus-free: %_\n"
+			"\tpending: %_\n": <
+				%guard,
+				%(?,(.,action)):~%(.,?),
+				%(Status,.):~%(.,?),
+				%(.,(Status,.)) >
+		do exit

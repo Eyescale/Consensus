@@ -1,0 +1,13 @@
+	on init
+		do >"Usage: ./B%% -p Test/51_output-system\n"
+		do exit
+	else
++
+	do : cosystem : !! Cosystem(
+		{ ( %?::(?,.), *current ) |
+			{ ( %?::(?,.), %| ) | {
+				(( %?::(?,.), *bufferized ), %|::(?,.)),
+				{ ( %?::(?,.), %| ) |
+					(( %?::(?,.), *bufferized ), %|::(?,.)) }
+				titi
+				} } } )

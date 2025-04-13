@@ -1,0 +1,31 @@
+
+	on init
+		do : test : value
+//		do : test : variable
+	else in : test : value
+		on : . : ?
+			do >"1. QMARK = %_\n": %?
+			do >"   EMARK = %_\n": %!
+			do : test : ~.
+	else in : test : variable
+		on : ? : .
+			do >"2. QMARK = %_\n": %?
+			do >"   EMARK = %_\n": %!
+			do : test : ~.
+	else on : ? : ~.
+		do >"2. QMARK = %_\n": %?
+		do >"   EMARK = %_\n": %!
+		do exit
+/*
+	// alternative syntax
+	on init
+		do : variable, value
+	else on : ., ?
+		do >"1. QMARK = %_\n": %?
+		do >"   EMARK = %_\n": %!
+		do : variable, ~.
+	else on : ?, ~.
+		do >"2. QMARK = %_\n": %?
+		do >"   EMARK = %_\n": %!
+		do exit
+*/

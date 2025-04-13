@@ -1,0 +1,69 @@
+Analysis - using %active list instead of en %(*?:ON)
+
+	Assumptions:
+		occurrence state ON set on event unless USERR
+		occurrence state OFF set by narrative if there is
+		narrative enabled on event (unless active?)
+		narrative registers occurrence in %active
+		narrative deregisters occurrence from %active
+		en %active
+
+	on ( occurrence, ON )
+		in occurrence ON, active, narrative
+			USERR	already active
+
+		in occurrence OFF, active, narrative
+			N/A	active => ~OFF
+		in occurrence ON, active, ~narrative
+			N/A	active => narrative
+		in occurrence OFF, active, ~narrative
+			N/A	active => narrative
+		in occurrence ON, ~active, narrative
+			N/A	narrative + ON => active
+
+		in occurrence OFF, ~active, narrative
+			Normal use case
+		in occurrence ON, ~active, ~narrative
+			reset ON (event)
+		in occurrence OFF, ~active, ~narrative
+			Normal use case => set ON
+	on ( occurrence, OFF )
+		in occurrence ON, active, narrative
+			USERR	interrupt narrative?
+
+		in occurrence OFF, active, narrative
+			N/A	active => ~OFF
+		in occurrence ON, active, ~narrative
+			N/A	active => narrative
+		in occurrence OFF, active, ~narrative
+			N/A	active => narrative
+		in occurrence ON, ~active, narrative
+			N/A	narrative + ON => active
+
+		in occurrence OFF, ~active, narrative
+			USERR
+		in occurrence ON, ~active, ~narrative
+			Normal use case => set OFF
+		in occurrence OFF, ~active, ~narrative
+			reset OFF (event)
+
+	Conclusion: USERR = there is a narrative, and
+		it's either told OFF or already active
+
+	Q: How to know when there is narrative?
+	A1. occurrence listed in %active
+	A2. narrative-generated events specified, i.e.
+	    action occurrence links to event occurrence(s)
+	    which we could systematize with ( occurrence, OFF )
+
+Notes
+. We could have action narrative started directly on event to
+  save one frame latency. However then we can not use *this:ON
+  to start sub-narrative
+	 => must use
+		in : this : OFF
+			first frame action
+		else
+			...
+			actuate %( this, OFF )
+

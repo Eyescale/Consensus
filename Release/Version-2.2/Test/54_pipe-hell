@@ -1,0 +1,8 @@
+
+on init
+	do ((toto,tata|(titi|(tutu),x|(a))),b)
+//	do (toto,tata|(titi))
+//	do (toto,tata|(titi,tutu))
+else
+	do >:.
+	do exit

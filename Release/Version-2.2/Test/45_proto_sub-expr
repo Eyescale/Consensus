@@ -1,0 +1,16 @@
+#define DEPRECATED
+#ifdef DEPRECATED
+	on init
+		do >"***** This test is deprecated\n"
+		do exit
+#else
+:
+	on init
+		do ( toto, titi )
+	else en .
+
+.who: %( ?, titi )
+	do >: who
+	do exit
+
+#endif

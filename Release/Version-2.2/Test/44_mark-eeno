@@ -1,0 +1,12 @@
+:
+	on init
+		do : p : !! Toto
+	else on ~( %%, ?:titi ) < .
+		do >: %<(!,?)>
+		do exit
+
+: Toto
+	on init
+		do (( .., titi ), bingo )
+	else
+		do exit

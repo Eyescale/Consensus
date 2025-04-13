@@ -1,0 +1,165 @@
+
+Objective
+	I want to execute B% command from string
+
+Interface
+	do (($,...), %((string,*),?:...))
+				  ^---------- my command
+Example
+	on init
+		do !! Proxy
+	in : state
+		on : .
+			do (( proxy, ... ):xxxxxxxxxx:)
+		else on ~( %%, ? )  < proxy
+			do >"%$":%<(!,?)>	<<<< return
+Proxy
+	on ~( %%, ? ) < ..
+		do (( $, ... ), %<(!,?:...)> )
+	else on ~( %%, ? ) < $	<<<<< return from B%
+		do (( .., ... ), %<(!,?:...)> )
+
+Alternative
+	do >fmt:expr<
+		    ^-------------------notice
+Usage
+	do >"%$":%((cmd,*),?:...)<
+		 ^----------------------this is read as action expression (do)
+
+	in >"%$":%((cmd,*),?:...)<
+		 ^----------------------this is read as condition expression (in)
+
+
+	on ~( %%, ?:DO ) < .
+		do >"%$":%<(!,?:...)><
+
+	do >"(%$,%$)":< expr1, expr2 ><
+
+	Q: How do I query?
+	A: as described below: assign variable or local entity
+	   Then I can do "on" / "in" / "per" that variable resp. locale
+	A: do >"(result,%$)":%((query,*),?:...) <
+	   do >".variable:%$":%((query,*),?:...) <	// TBD
+
+	Q: what name to give this new occurrence ?
+	A: INTRO (?) - for introspect
+
+	Next question: how do I build - and execute - narratives/sub-narratives?
+
+===========================================================================
+Archive - brainstorming
+===========================================================================
+--
+	Operation: 	do %$<(!,?:...)>
+			   ^^--------- interprets as string
+                           +---------- executes
+--
+Now to build narrative ?
+	Every expression can be reduced to a list of
+		{ { term^exponent } }	(E)
+	where
+		the outer bracket denotes union / OR
+		the inner bracket denotes intersection / AND
+	and
+		term can be either
+			.
+			identifier
+			~identifier
+	Note
+		possibility of ? somewhere => additional exponent
+		Note: could have it first instead of last currently
+		ellipsis ?
+Challenges
+	convert expression into (E)
+	convert (E) into expression
+	expression operations
+		intersection
+		union
+		others?
+--
+	can
+		do ((result, ... ):%$((query,*),?:...))
+		do >"%$\n": %((result,*),?:...)
+	or
+		do : m : Memory
+		...
+		do (( *m, ... ):%((query,*),?:...))
+		...
+		on ~( %%, * ) < ?:*m
+			do >"%$\n": %<(!,?:...)>
+:Memory
+	on ~( %%, * ) < ?	// could even do per
+		do ((%<,...):%$<(!,?:...)>)
+		            ^------- adds star
+
+	Problem: concurrent queries from same originator?
+		There must be maximum one per frame
+		=> how to guarantee that?
+--
+	Operation: 	do %$<(!,?:...)>
+			   ^^--------- interprets as string
+                           +---------- executes
+--
+	typedef:
+
+		do (( Type, ... ),< fields >)
+		assuming: each field has a unique identifier
+
+	instantiation:
+
+		do (((*,instance), ... ), %((Type,.), ... ))
+
+	reference: instance.field
+
+		%(((*,instance),.), ... ):(.,(.,field))
+		example: instance.titi where titi is first field
+			((*,instance),(Type,titi))
+
+	value: *instance.field
+
+		Note: . has precedence over * - same as C
+		Note: instance.field1.field2 == (instance.field1).field2
+			but not same as instance.(field1.field2)
+
+	Implementation:
+
+		expression1.expression2 represents %(((*,expression1),.), ... ):(.,(.,expression2))
+
+			cannot be handled by bm_verify()
+
+		Possibilities:
+		1. allow preprocessing in parser - upon registering occurrence
+		2. extend deternarize [ same principle ]
+
+		Note: can also include escape sequences in occurrences upon registration
+
+		expression1.expression2 => starts on either alphanumerical or %( or (
+			=> must exclude leading ~ or * or whatever
+			=> must replace with (expression1.expression2)
+
+		=> every term: look if followed by .
+			%(((*,expr.expr[N-1]),.),...):(.,(.,exprN))
+			      ^--- must expand
+			      %(((*,expr.expr[N-2]),.),...):(.,(.,expr[N-1]))
+		So it is relatively easy
+
+			%(((*,	**** M times, where M=#dots ****
+
+				expr1
+
+				),.),...):(.,(.,expr2))
+
+				),.),...):(.,(.,expr3))
+
+				etc.
+
+				),.),...):(.,(.,exprN))
+
+		while any expri can be the same! <<<< That's the challenge
+
+	So: extend deternarize would seem the best option
+
+	Alternative format:
+
+		(instance,(type,field))
+		=> (((instance,(type,field)),subtype),field)

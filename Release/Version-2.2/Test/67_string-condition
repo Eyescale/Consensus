@@ -1,0 +1,6 @@
+
+	on init
+		do "hello, world\n"
+	else in ?: "hello, world\n"
+		do >"bingo: %_\n": %?
+		do exit

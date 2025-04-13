@@ -1,0 +1,8 @@
+
+	on init
+	else .titi
++	on titi
+		do >: .
+		do exit
+	else
+		do >"*** Feature: locale as entity will manifest only next frame\n"

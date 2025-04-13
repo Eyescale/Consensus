@@ -1,0 +1,19 @@
+
+	do >"================\n"
+	en &	// enable post-frame narrative
+	on init
+		do toto
+	else on ?: toto
+		en %?
+	else in toto
+		do ~( toto )
+	else on ~( toto )
+		do >: "How about that?"
+	else
+		do exit
+
+:( toto )
+	do >: this
+
+.:&
+	do >"post-frame\n"

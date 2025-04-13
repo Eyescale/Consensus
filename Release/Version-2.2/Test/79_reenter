@@ -1,0 +1,12 @@
+
+	on init
+		do : state
+	else in : state
+		on : .
+			in reenter
+				do > "... bye\n"
+				do exit
+			else
+				do >"Chottomatte...\n"
+				do reenter
+				do : . // reenter

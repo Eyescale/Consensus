@@ -1,0 +1,8 @@
+
+	on init
+		do : titi : toto
+	else on ~.:: titi : toto
+		do >"Bye\n"
+		do exit
+	else
+		do >"hello\n"

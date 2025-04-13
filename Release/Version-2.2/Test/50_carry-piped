@@ -1,0 +1,11 @@
+
+	on init
+		do : toto : !! Narrative( titi|(toto,%|), tutu|(%|,toto) )
+	else on toto
+		do { titi|(alpha,%|), beta }
+	else on titi
+		do >:.
+		do exit
+:Narrative
+	do >:.
+	do exit

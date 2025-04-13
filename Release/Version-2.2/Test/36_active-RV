@@ -1,0 +1,13 @@
+
+	on init
+		do : toto : !! Cell
+	else in ?:%@
+		do >"found active: %_\n": %(*?:%?)
+		do exit
+
+: Cell
+	on init
+		do >"hi\n"
+	else on exit < ..
+		do exit
+	

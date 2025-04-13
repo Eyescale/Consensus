@@ -1,0 +1,18 @@
+:
+	on init
+		do ( schema, rule )
+		do ( schema, READY )
+	else in %( ?:schema, rule ): ~%(rule,?): ~%(?,COMPLETE)
+		in %( ?:schema, rule ): ~%(rule,?): ~%(?,COMPLETE): ~%(?,READY)
+			do >"BUG\n"
+			do exit
+		else in %( ?:schema, rule ): ~%(?,COMPLETE): ~%(?,READY): ~%(rule,?)
+			do >"BUG\n"
+			do exit
+		else
+			do >"BINGO\n"
+			do exit
+	else
+		do >"WTF?\n"
+		do exit
+

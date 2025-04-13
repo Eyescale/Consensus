@@ -1,0 +1,134 @@
+#ifndef COSYSTEM_BM
+#define COSYSTEM_BM
+
+// #define TRACE
+
+//===========================================================================
+//	Cosystem	class definition
+//===========================================================================
+/*
+   Usage
+	: cosystem-name < Cosystem
+	: "occurrence" // cosystem occurrence sub-narrative
+		on activation
+			...
+			in ?:"generated occurrence"
+				en .ON/OFF( %? )
+			...
+			deactivate
+   Where
+	occurrence sub-narrative can only be
+	. activated from base narrative, in which case 'this' is not set
+	. deactivated from within, in which case we have en .OFF( this )
+*/
+: Cosystem
+	on init
+		// get cosystem identifiers and subscribe if needed
+		per : . : ? < ..
+			do %<!> // ((*,identifier),proxy)
+			in ((.,/(ON|OFF)/),%<?>:~%%)
+				do %<?> @<
+
+		// initialize ( condition, ( %, guard )), and
+		// commission condition-free guards
+		per ?: %( ?, ((.,.), (.,/(ON|OFF)/)))
+			do ((.,%?) ?
+				( %(?,%?), ( %, %? )) :
+				%( %?|^guard ))
+
+		// register system "exit" and trigger "init"
+		in ?: "exit"
+			in ?:( %?, ON )
+				do : exit : %((%?,.)?:%?)
+	else on : exit : ?
+		in %?: ~((.,.),.) // system
+			in ?: "init"
+				en .ON( %? )
+	else in : exit : %<::>
+		do exit
+	else
+		// flush tag list & commission condition-free guards
+		.%tag~: { ^.:~%(.,(%,?))|^guard }
+		en %active // enable active occurrence sub-narratives
+
+		// actuate local actions based on %guard and EEVA
+		per ?: %( %guard, ((~%(~%<.>,?),~%(%<.>,?)), ? ))
+			in : exit : ((.,.),.) // not system
+				do %( %?::(?,.)|^active )
+			en .( %?:(.,ON) ? ON : OFF )( %?::(?,.) )
+
+		// update all guard status from EENO - for next frame
+		per : ? : . < .
+			// remove eeno-corresponding condition from relevant guard
+			// Status, and tag these guards for next frame
+			in ?: (( %<?>, %<!:(.,?)> ), %< )
+				do ~( %?, %( %, .|^tag ))
+
+			// add eeno-complementary condition to relevant guard
+			// Status, and decommission these guards
+			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
+				do ( %?, %( %, %(%?,?)|^guard~ ))
+
+
+//===========================================================================
+//	Cosystem	public interface
+//===========================================================================
+#define activation	: this : ON
+#define deactivate	en .OFF( this )
+#define generative	%(.,((.,.),(?,.)))
+
+.: ON( .occurrence )
+#ifdef TRACE
+	do >&"ON........%_\n": occurrence
+#endif
+	in ( occurrence:generative ? this :)
+		do >&"Error: cosystem: %_\n"
+			"\tnarrative: %_\n"
+			"\toccurrence [ON]: %_\n"
+		"actuation not authorized\n":< %(*?:%%), this, occurrence >
+	else in ~.:: occurrence : ON
+		// actuate occurrence condition & event
+		do : occurrence : ON
+
+		// remove corresponding condition from relevant guard
+		// Status, and tag these guards for next frame
+		in ?:(( occurrence, ON ), %% )
+			do ~( %?, %( %, .|^tag ))
+
+		// add complementary condition to relevant guard
+		// Status, and decommission these guards
+		in ?:(( occurrence, OFF ), %% )
+			do ( %?, %( %, %(%?,?)|^guard~ ))
+	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
+		do : occurrence : ON // allow repetition
+
+.: OFF( .occurrence )
+#ifdef TRACE
+	do >&"      OFF %_\n": occurrence
+#endif
+	in ( occurrence:generative ? this ? (occurrence:~this) :)
+		do >&"Error: cosystem: %_\n"
+			"\tnarrative: %_\n"
+			"\toccurrence [OFF]: %_\n"
+		"actuation not authorized\n":< %(*?:%%), this, occurrence >
+	else in ~.:: occurrence : OFF
+		// deactivate occurrence sub-narrative
+		do ( occurrence:this ? %( this|^active~ ) :)
+
+		// actuate occurrence condition & event
+		do : occurrence : OFF
+
+		// remove corresponding condition from relevant guard
+		// Status, and tag these guards for next frame
+		in ?:(( occurrence, OFF ), %% )
+			do ~( %?, %( %, .|^tag ))
+
+		// add complementary condition to relevant guard
+		// Status, and decommission these guards
+		in ?:(( occurrence, ON ), %% )
+			do ( %?, %( %, %(%?,?)|^guard~ ))
+	else // in ((occurrence:~generative)?:(*exit:~((.,.),.)))
+		do : occurrence : OFF // allow repetition
+
+
+#endif // COSYSTEM_BM

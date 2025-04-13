@@ -1,0 +1,10 @@
+
+	on init
+		do ((titi,CO),bingo)
+		do ((titi,OC),toto)
+	else in ?:%!/((?,CO),!):%((?,OC),toto)/
+		do >: %?
+		do exit
+	else
+		do >"***** not found\n"
+		do exit

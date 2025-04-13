@@ -1,0 +1,7 @@
+
+	on init
+		do ( a, { b, c } )
+	else on a
+		per (a,?)
+			do >"found: %_\n": %?
+	else do exit

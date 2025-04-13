@@ -1,0 +1,15 @@
+
+	We have
+	Pair *BMContextCurrent( ctx ) {
+		return ((listItem *) registryLookup( ctx, "." )->value )->ptr; }
+	and
+	CNInstance *BMContextPerso( ctx ) { return BMContextCurrent( ctx )->name; }
+	Registry *BMContextLocales( ctx ) { return BMContextCurrent( ctx )->value; }
+
+	Pair *entry = registryLookup( ctx, "." ) is
+		[ ".", listItem *stack:{ [ CNInstance *perso, Registry *locales ] } ] 
+
+	and we return as current the first item in stack list, which is stack->ptr
+
+	The idea is obviously to allow stacking [ perso, locales ]
+	

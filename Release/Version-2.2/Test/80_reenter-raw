@@ -1,0 +1,10 @@
+
+	on init
+		do : state
+	else on (*,%%)
+		do >"hello!!!\n"
+		do : state
+	else in : state
+		on : .
+			do > "... bye\n"
+			do exit

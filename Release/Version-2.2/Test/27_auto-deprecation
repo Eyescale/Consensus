@@ -1,0 +1,12 @@
+
+	on init
+		do !! class()
+	else on ~( %%, ? ) < .
+		do >"Received: %_\n": %<?>
+	else on ~.:. < .
+		do exit
+: class
+	on init
+		do ( .., ( hello, world ))
+	else on exit < ..
+		do exit

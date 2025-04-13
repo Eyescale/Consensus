@@ -1,0 +1,20 @@
+
+	on init
+		do ( A, toto )
+		do ( A, titi )
+		do ( A, tata )
+		do ( A, tutu )
+		do ( A, zebulon )
+	else on A
+		do >"A: %_\n": %(A,?)
+		/* %(A,?) should not come in any particular order,
+		   but in this monothread implementation, they will
+		   be reversed once at creation time, and again
+		   during instantiation, prior to coupling */
+		do (( B, ... ), %(A,?) )
+		do (( C, ... ), instantiate )
+	else
+		do >"B:%_\n": %(B,...):~%(?,.)
+		do >: %( B, ?:... )
+		do >: %( C, ?:... )
+		do exit

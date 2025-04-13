@@ -1,0 +1,8 @@
+
+	on init
+		do : toto : "hello, world"
+	else en .
+
+: "hello, world"
+	do >: this
+	do exit
