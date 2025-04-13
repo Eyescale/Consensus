@@ -66,28 +66,24 @@ Description
 				do occurrence(s) // action
 
 	The System's Requirement Specification process involves identifying,
-	for each occurrence
+	for each action occurrence
 
-	. the referent, i.e. the cosystem for which this occurrence
-	  represents a condition ON|OFF
+	. the referent, aka. cosystem responsible for its actuation ON|OFF
 	. the ON|OFF set of triggers, each trigger composed of
 		its triggering set of occurrences ON|OFF (events)
 		its enabling set of guards, each guard composed of
 			its defining set of occurrences ON|OFF (conditions)
-	  leading to its actuation ON|OFF
 
 System Execution
 	Once launched, we want our System to execute the following, which
 	we call System frame, over and over again:
 
 	        for each action candidate
-	            done = 0
-	            for each candidate<-trigger, barring done==1
+	            for each candidate<-trigger
 	                if all trigger events are verified
-	                    for each guard in trigger<-guard, barring done==1
+	                    for each guard in trigger<-guard
 	                        if all guard conditions are verified
-	                            execute action
-	                            done = 1
+	                            execute action / goto next action
 	                        end if
 	                    end for
 	                end if
@@ -221,7 +217,7 @@ System Execution
 			in ?: (( %<?>, ~%<!:(.,?)> ), %< )
 				do ( %?, %( Status, %(%?,?)|^guard~ ))
 	
-	: cosystemA : Cosystem	// note the sub-classing
+	: cosystemA < Cosystem	// note the sub-classing
 		...
 	:"occurrence" // invoked when occurrence is ON
 		...
@@ -230,7 +226,7 @@ System Execution
 	:"occurrence" // invoked when occurrence is ON
 		...
 	
-	: cosystemB : Cosystem	// note the sub-classing
+	: cosystemB < Cosystem	// note the sub-classing
 		...
 	...
 

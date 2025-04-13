@@ -15,6 +15,17 @@ Release Checklist
 	  2. extract occurrences, associate cosystems
 	  3. create system narrative aka. narrative.pseudo
 	  4. load system model from narrative.pseudo
+    TODO
+	. change literal and list into <:sequence:> or <:sequence>
+		=> NO CONFUSION
+		+ do not add star
+		=> (:_) can be used as-is as is anywhere
+	  list
+		do (( list, ... ), <:sequence:> ) // list
+		do (( list, ... ), < sequence > )
+		do (( list, ... ), expression )
+	  literal
+		do !!Toto( <:askdjh:> )	// literal
 
 KNOWN ISSUES and WORKAROUNDS
     external
@@ -35,7 +46,7 @@ KNOWN ISSUES and WORKAROUNDS
 	  Workaround: filter the other way around, or enclose in parentheses
 	. in context.c:bm_translate()
 		if ( db_deprecated(x,db_dst) ) => must REHABILITATE
-		done in case of identifier, but not for proxy nor shared
+		done in case of identifier, but not for proxy nor shared entity
 
 DONE
     	. B% output format spec - cf design/specs/bm-OUTPUT-format.txt
@@ -165,8 +176,7 @@ DONE
 	. disallowed on/per .variable: expression < src // VMARKED vs. ON_X
 	. replaced %?^sub with %?::sub (and likewise for %! and %|)
 	  Note: using '!' instead of '?' in sub would make it as_sub
-	  cf. Test/{
-		61_instantiate-rvsub, 62_instantiate-rvtest,
+	  cf. Test/{ 61_instantiate-rvsub, 62_instantiate-rvtest,
 		69_inc, 53_output-system-launch-formula }
 	. implemented in/on/per .variable: expression
 		cf design/specs/bm-CONTEXT-data-structure.txt
@@ -277,8 +287,7 @@ DONE
 	  2. *^^ NULL systematically fails all cases other than "~."
 	. allowed FORE expression to be filtered and marked, e.g.
 	  in Examples/6_System/system.story
-		do ( '\0' |
-			?:%((?,...):*s):(.,?) (%|,%?):|
+		do ( '\0' | ?:%((?,...):*s):(.,?) (%|,%?):|
 				((*,*tab), (**tab, (%?,%|))) )
 	  cf. PivotQueryOptimization.spec for performance win
 	. parser now detects and **forbids** FILTERED expressions
@@ -427,27 +436,7 @@ DONE
 		~.:	must be written verbatim (no space)
 		~.(	must be written verbatim (no space)
 		?:...	must be written verbatim (no space)
-	. RE-REVISION 2.2: using %|:sub instead of %|^sub - more understandable
-	. p_prune( PRUNE_TERM, p ) now returns on '^' if follows ')'
-	. p_prune( PRUNE_LEVEL, p ) / integrated in prune.c / handles '^'
-	. bm_traverse(): handles '^' use cases:
-		*^	=> *^^	& DereferenceCB alt. p++ to ^^
-			   *^? 	& DereferenceCB alt. p++ to ^?
-		^.	=> INFORMED & RegisterVariableCB alt. p+=2; set INFORMED
-		^^	=> INFORMED & RegisterVariableCB alt. p+=2; set INFORMED
-		^?	=> following *
-		)^	=> INFORMED & NewBornCB / p++ past )^
-		|^	=> BgnPipeCB alt. skip |^_~
-	. parser: (_)^ PROTECTED => cannot be followed by ':' nor be ternary guard
-	. deternarize no longer optimizes any of ?:(_)(_) or !^:(_)(_) or (_)^
-		=> parser.c: does not allow ternary in FORE
-		=> deternarize.c: does not optimize if )(_) or )^
-	. bugfix ?:(_){_} => traversal.h
-		. on )(_) skip to the last closing parenthesis - for !^:(_)(_)
-		. bugfix markscan - for ?:(_)(_) and ?:(_){_}
-		  on (_) or {_} when BASE and INFORMED => traverse_data->done = 1
-		  allows markscan / bm_query() to return after FORE
-	  cf Test/56_Loop
+	. RE-REVISION 2.2: using %|::sub instead of %|^sub - more understandable
 	. implemented EEVA as %<.> - we do not implement EENOC in this release
 		=> parser.c: %<.> RESTRICTED to ( *type&IN || is_f(SUB_EXPR) )
 		=> locate_pivot.c: ignore %<.>
@@ -474,7 +463,7 @@ DONE
 		context.c: bm_match => db_match_identifier( x, p )
 	. re-fixed "?:" in eeno_query => using wildcard_CB to skip "?:"
 	. moved bm_inform() and bm_intake() from context.c to cell.c
-	. NOTE: do :_:!! |{ here %| is *^^, not the whole set of UBE's }
+	. NOTE: do :_: !! |{ here %| is *^^, not the whole set of UBE's }
 	. implement ^^ and *^^ and *^?:sub (including *^?)
 	  in instantiate.c: inform_carry and inform_UBE, we do
 		registryRegister( ctx, ";", (Registry *) buffer );
@@ -482,11 +471,11 @@ DONE
 			registryRegister( ctx, ":", (Pair *) current ); }
 	  in include/traversal.h, we associate
 		^^  			=> CB_RegisterVariableCB
-		*^^ / *^?:(_) / *^?	=> CB_DereferenceCB
+		*^^ / *^%! / *^%?	=> CB_DereferenceCB
 	  *^_ is only authorized as term in the actionable part of DO expressions
 		instantiate_traversal	=> collect_CB // DONE: bm_scan()
 	      where
-		*^?:sub = bufferized value of %(%?:sub) (including *^?)
+		*^%?:sub = bufferized value of %(%?:sub) (including *^?)
 		DONE: bm_scan() now invokes bm_context_lookup() to extract value
 	  ^^ is queryable => wherever BMRegisterVariableCB is defined, that is:
 		eeno_feel_traversal.h		N/A
@@ -609,6 +598,9 @@ DONE
 	. branched Version-2.1
 
 NICE TO HAVE
+	. p_prune and bm_parse_expr can be implemented using bm_traverse()
+	  which would centralize all B% file format and syntax dependencies
+	  into the single file ./include/traversal.h
 	. Note: in the future I want to be able to
 		do list: "%$" <"string"	or do list < "string"
 	  so that

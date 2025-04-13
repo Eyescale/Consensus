@@ -40,7 +40,7 @@ Consensus B% Version-WIP
 			:~	:
 				~
 			_,
-		::	expr
+		:_	expr
 			\"
 			~
 			:<	expr

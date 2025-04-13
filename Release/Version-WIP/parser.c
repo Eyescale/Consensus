@@ -68,7 +68,7 @@ PARSER_FUNC( bm_parse_expr )
 				; // err
 			else if ( is_f(ASSIGN) ) {
 				if ( !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
-					do_( *type&DO ? "::" : same )
+					do_( *type&DO ? ":_" : same )
 							s_take
 							f_clr( NEGATED|STARRED|BYREF|FILTERED|FIRST|INFORMED )
 							f_set( PRIMED ) } }
@@ -86,12 +86,12 @@ PARSER_FUNC( bm_parse_expr )
 		on_( ':' ) if ( *type&PER && !s_cmp("~.") )
 				; // err
 			else if ( s_empty || !s_cmp( "~.:" ) ) {
-				do_( "::" )	s_take
+				do_( ":_" )	s_take
 						f_set( ASSIGN ) }
 			else if ( is_f(INFORMED) ) {
 				if ( is_f(ASSIGN) ) {
 					if ( !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
-						do_( *type&DO ? "::" : same )
+						do_( *type&DO ? ":_" : same )
 								s_add( "," )
 								f_clr( NEGATED|STARRED|BYREF|FIRST|INFORMED )
 								f_set( PRIMED ) } }
@@ -109,7 +109,7 @@ PARSER_FUNC( bm_parse_expr )
 								f_clr( INFORMED ) } }
 			else if ( *type&DO ) {
 				if ( s_at('|') && is_f(ASSIGN) && !is_f(PRIMED|LEVEL) ) {
-					do_( "::" )	f_clr( NEGATED|STARRED||BYREF|FIRST )
+					do_( ":_" )	f_clr( NEGATED|STARRED||BYREF|FIRST )
 							f_set( PRIMED ) } }
 		on_( '?' ) if ( *type&LOCALE && !is_f(SUB_EXPR) )
 				; // err
@@ -549,7 +549,7 @@ CB_if_( StringTake ) {		do_( "expr" )	s_take
 			on_other	do_( "~" )	REENTER
 							s_add( ":" )
 			end
-	in_( "::" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
+	in_( ":_" ) bgn_ // Assumption: ASSIGN is set, may or may not be PRIMED
 		ons( " \t" )	do_( same )
 		on_( '^' ) if ( *type&DO && is_f(PRIMED) && !s_at('|') ) {
 				do_( ":^" )	s_take }
@@ -1051,7 +1051,7 @@ CB_if_( TagTake ) {		do_( "expr" )	REENTER
 		on_( '\n' ) if ( is_f(LEVEL|SUB_EXPR|VECTOR|SET) ) {
 				do_( same ) }
 		ons( ":," ) if ( is_f(ASSIGN) && !is_f(PRIMED|LEVEL|SUB_EXPR) ) {
-				do_( "::" )	s_add( "," )
+				do_( ":_" )	s_add( "," )
 						f_clr( NEGATED|STARRED|BYREF|FIRST|INFORMED )
 						f_set( PRIMED ) }
 		on_other	do_( "expr" )	REENTER
