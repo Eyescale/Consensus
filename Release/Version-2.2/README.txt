@@ -114,7 +114,7 @@ New Features and Additions
 		do !! | { expressions invoving %| }
 		do : expression(s) : !! { expressions involving %| }
 		do : expression(s) : !!
-	!! can also be used in queries to specify a type requirement
+	!! can also be used in queries as type requirement
 
     6. assignment register variables and buffer operation
 	The register variables ^^ and *^^ can be used in the following
@@ -219,7 +219,7 @@ New Features and Additions
 
    14. EEVA - external event value assignment
 	%<::> or %<.> as term of a query expression passes if the
-	corresponding match's sub-entity is either
+	current term is either
 	. of type (( variable, value ), proxy ) and verifies either
 		on : variable : value < proxy
 	  or, if this fails and in the case of %<.>, verifies
@@ -242,12 +242,11 @@ New Features and Additions
 
 Misc.
 	. regex group /(option|option|...)/ now supported
-	. do { ..., ~( expression ), ... } allows release action
-	. do > "%$": %((?,...):*p) same as
-	  do > "%$": %(%((?,...):*p):(.,?))
-	. do >"%s\n": "hello, world" supported
-	. on ~(:?) assigns previous self-assignment to %?
 	. in (~.:condition) supported as contrary condition
+	. on ~(:?) informs %? with previous self-assignment value
+	. do { ..., ~( expression ), ... } deprecates expression
+	. do > "%$": %((?,...):*p) <=> do > "%$": %(%((?,...):*p):(.,?))
+	. do >"%s\n": "hello, world" supported
 	. do ~( %% ) <=> do exit
 
 
