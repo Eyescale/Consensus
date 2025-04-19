@@ -111,7 +111,7 @@ New Features and Additions
 		: "string"
 			// string narrative
 	UBE - can be used in the following instances
-		do !! | { expressions invoving %| }
+		do !! | { expressions involving %| }
 		do : expression(s) : !! { expressions involving %| }
 		do : expression(s) : !!
 	!! can also be used in queries as type requirement
@@ -141,7 +141,7 @@ New Features and Additions
 	%!/((?:!!,field2),!):%((?,field0),value0):%((?,field1),value1)/
 		returns field2's value of the ube created via
 			do !! | {
-				((%|,field0),value2),
+				((%|,field0),value0),
 				((%|,field1),value1),
 				((%|,field2),value2) }
 	Generally
@@ -214,18 +214,18 @@ New Features and Additions
    13. string narrative class origin
 		in .string: "string"
 			do : classname : ?::string::default
-	assigns to variable the name of the first class where "string"
+	assigns to classname the name of the first class where "string"
 	narrative has been defined, default if none exist
 
    14. EEVA - external event value assignment
 	%<::> or %<.> as term of a query expression passes if the
 	current term is either
-	. of type (( variable, value ), proxy ) and verifies either
+	. of type (( variable, value ), proxy ) and verifies
 		on : variable : value < proxy
-	  or, if this fails and in the case of %<.>, verifies
-		on ~((( variable, value ), proxy ), . )
 	. of type ( variable, value ) and verifies
 		on : variable : value
+	. of type (( variable, value ), proxy:~%% ) and verifies 
+		on ~((( variable, value ), proxy ), . )
 
    15. narrative subclassing and post-frame narrative
 	: < class	// main subclassing
